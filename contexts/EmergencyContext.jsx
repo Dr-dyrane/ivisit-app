@@ -16,6 +16,7 @@ import { demoEcosystemService } from "../services/demoEcosystemService";
 import { usePreferences } from "./PreferencesContext";
 import { useAuth } from "./AuthContext";
 import { useGlobalLocation } from "./GlobalLocationContext";
+import { normalizeBedBookingRuntimeState } from "../hooks/emergency/bedBookingRuntime";
 import {
 	coverageModeService,
 	COVERAGE_MODES,
@@ -24,6 +25,7 @@ import {
 } from "../services/coverageModeService";
 import { DEFAULT_APP_REGION } from "../constants/locationDefaults";
 import { calculateBearing, isValidCoordinate } from "../utils/mapUtils";
+import { safeRemoveLocationSubscription } from "../utils/locationSubscriptions";
 import {
 	parseRecordTimestampMs,
 	parsePointGeometry,
@@ -454,11 +456,16 @@ export function EmergencyProvider({ children }) {
 	const lastRealtimeSyncMsRef = useRef(0);
 	const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
 	const activeAmbulanceTripRef = useRef(activeAmbulanceTrip);
+	const activeBedBookingRef = useRef(activeBedBooking);
 	const userLocationRef = useRef(userLocation);
 
 	useEffect(() => {
 		activeAmbulanceTripRef.current = activeAmbulanceTrip;
 	}, [activeAmbulanceTrip]);
+
+	useEffect(() => {
+		activeBedBookingRef.current = activeBedBooking;
+	}, [activeBedBooking]);
 
 	useEffect(() => {
 		userLocationRef.current = userLocation;
@@ -676,40 +683,29 @@ export function EmergencyProvider({ children }) {
 				}
 
 				if (activeBed) {
-					const etaSeconds = parseEtaToSeconds(activeBed.estimatedArrival);
-					const startedAt = Number.isFinite(etaSeconds) ? Date.now() : null;
-					const triageSnapshot =
-						activeBed.triageSnapshot ??
-						activeBed.triage ??
-						(activeBed.triageCheckin
-							? { signals: { userCheckin: activeBed.triageCheckin } }
-							: null);
-					const triageCheckin =
-						activeBed.triageCheckin ??
-						triageSnapshot?.signals?.userCheckin ??
-						null;
-					setActiveBedBooking({
-						id: activeBed.id ?? null,
-						hospitalId: activeBed.hospitalId,
-						bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
-						requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
-						status: activeBed.status ?? null,
-						triage: triageSnapshot,
-						triageSnapshot,
-						triageCheckin,
-						triageProgress:
-							activeBed.triageProgress ??
-							triageSnapshot?.progress ??
-							null,
-						bedNumber: activeBed.bedNumber ?? null,
-						bedType: activeBed.bedType ?? null,
-						bedCount: activeBed.bedCount ?? null,
-						specialty: activeBed.specialty ?? null,
-						hospitalName: activeBed.hospitalName ?? null,
-						estimatedWait: activeBed.estimatedArrival ?? null,
-						etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-						startedAt,
-					});
+					setActiveBedBooking(
+						normalizeBedBookingRuntimeState(
+							{
+								id: activeBed.id ?? null,
+								hospitalId: activeBed.hospitalId,
+								bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
+								requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
+								status: activeBed.status ?? null,
+								triage: activeBed.triage ?? null,
+								triageSnapshot: activeBed.triageSnapshot ?? null,
+								triageCheckin: activeBed.triageCheckin ?? null,
+								triageProgress: activeBed.triageProgress ?? null,
+								bedNumber: activeBed.bedNumber ?? null,
+								bedType: activeBed.bedType ?? null,
+								bedCount: activeBed.bedCount ?? null,
+								specialty: activeBed.specialty ?? null,
+								hospitalName: activeBed.hospitalName ?? null,
+								estimatedWait: activeBed.estimatedArrival ?? null,
+								estimatedArrival: activeBed.estimatedArrival ?? null,
+							},
+							activeBedBookingRef.current,
+						),
+					);
 				} else {
 					setActiveBedBooking(null);
 				}
@@ -818,17 +814,21 @@ export function EmergencyProvider({ children }) {
 									return null;
 								}
 
-								return {
-									...prev,
-									status: newRecord.status,
-									hospitalId: newRecord.hospital_id ?? prev.hospitalId,
-									hospitalName: newRecord.hospital_name ?? prev.hospitalName,
-									specialty: newRecord.specialty ?? prev.specialty,
-									bedNumber: newRecord.bed_number ?? prev.bedNumber,
-									bedType: newRecord.bed_type ?? prev.bedType,
-									bedCount: newRecord.bed_count ?? prev.bedCount,
-									estimatedWait: newRecord.estimated_arrival ?? prev.estimatedWait,
-								};
+								return normalizeBedBookingRuntimeState(
+									{
+										...prev,
+										status: newRecord.status,
+										hospitalId: newRecord.hospital_id ?? prev.hospitalId,
+										hospitalName: newRecord.hospital_name ?? prev.hospitalName,
+										specialty: newRecord.specialty ?? prev.specialty,
+										bedNumber: newRecord.bed_number ?? prev.bedNumber,
+										bedType: newRecord.bed_type ?? prev.bedType,
+										bedCount: newRecord.bed_count ?? prev.bedCount,
+										estimatedWait: newRecord.estimated_arrival ?? prev.estimatedWait,
+										estimatedArrival: newRecord.estimated_arrival ?? prev.estimatedWait,
+									},
+									prev,
+								);
 							});
 
 							setActiveAmbulanceTrip((prev) => {
@@ -891,13 +891,14 @@ export function EmergencyProvider({ children }) {
 		if (Platform.OS === "web") return;
 
 		let locationSubscription = null;
+		let isCancelled = false;
 
 		(async () => {
 			try {
 				const { status } = await Location.getForegroundPermissionsAsync();
 				if (status !== 'granted') return;
 
-				locationSubscription = await Location.watchPositionAsync(
+				const subscription = await Location.watchPositionAsync(
 					{
 						accuracy: Location.Accuracy.High,
 						distanceInterval: 10, // Update every 10 meters
@@ -922,19 +923,19 @@ export function EmergencyProvider({ children }) {
 						);
 					}
 				);
+				if (isCancelled) {
+					safeRemoveLocationSubscription(subscription, "active trip");
+					return;
+				}
+				locationSubscription = subscription;
 			} catch (e) {
 				console.warn("Location tracking failed:", e);
 			}
 		})();
 
 		return () => {
-			try {
-				locationSubscription?.remove?.();
-			} catch (error) {
-				if (__DEV__) {
-					console.warn("[EmergencyContext] Location subscription cleanup skipped:", error);
-				}
-			}
+			isCancelled = true;
+			safeRemoveLocationSubscription(locationSubscription, "active trip");
 		};
 	}, [activeAmbulanceTrip?.requestId, activeAmbulanceTrip?.status]);
 
@@ -1517,47 +1518,11 @@ export function EmergencyProvider({ children }) {
 		(booking) => {
 			if (!booking?.hospitalId) return;
 
-			const rawEta = booking?.estimatedWait ?? booking?.estimatedArrival;
-
-			const etaSeconds =
-				Number.isFinite(booking?.etaSeconds)
-					? booking.etaSeconds
-					: parseEtaToSeconds(booking?.estimatedWait ?? booking?.estimatedArrival);
-			const triageSnapshot =
-				booking?.triageSnapshot ??
-				booking?.triage ??
-				(booking?.triageCheckin
-					? { signals: { userCheckin: booking.triageCheckin } }
-					: null);
-			const triageCheckin =
-				booking?.triageCheckin ??
-				triageSnapshot?.signals?.userCheckin ??
-				null;
-
-			setActiveBedBooking({
-				id: booking.id ?? null,
-				hospitalId: booking.hospitalId,
-				bookingId: booking.bookingId ?? booking.requestId ?? null,
-				requestId: booking.requestId ?? booking.bookingId ?? null,
-				status: booking.status ?? null,
-				bedNumber: booking.bedNumber ?? null,
-				bedType: booking.bedType ?? null,
-				bedCount: booking.bedCount ?? null,
-				specialty: booking.specialty ?? null,
-				hospitalName: booking.hospitalName ?? null,
-				estimatedWait: booking.estimatedWait ?? booking.estimatedArrival ?? null,
-				etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
-				triage: triageSnapshot,
-				triageSnapshot,
-				triageCheckin,
-				triageProgress:
-					booking?.triageProgress ??
-					triageSnapshot?.progress ??
-					null,
-				startedAt: Number.isFinite(booking?.startedAt) ? booking.startedAt : Date.now(),
-			});
+			setActiveBedBooking(
+				normalizeBedBookingRuntimeState(booking, activeBedBookingRef.current),
+			);
 		},
-		[parseEtaToSeconds]
+		[]
 	);
 
 	const stopBedBooking = useCallback(() => {

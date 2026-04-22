@@ -74,6 +74,14 @@ export default function MapCommitTriageStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const topSlotContainerStyle = [
+		sheetStageStyles.topSlotContained,
+		presentationMode === "sheet" ? sheetStageStyles.topSlotSheet : null,
+		presentationMode === "modal" ? sheetStageStyles.topSlotModal : null,
+		isSidebarPresentation ? sheetStageStyles.topSlotSidebar : null,
+		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
+		modalContainedStyle,
+	];
 
 	const {
 		titleColor,
@@ -133,15 +141,17 @@ export default function MapCommitTriageStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<MapCommitDetailsTopSlot
-					title={topSlotTitle}
-					subtitle={topSlotSubtitle}
-					onBack={handleBack}
-					onClose={onClose}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					closeSurface={closeSurface}
-				/>
+				<View style={topSlotContainerStyle}>
+					<MapCommitDetailsTopSlot
+						title={topSlotTitle}
+						subtitle={topSlotSubtitle}
+						onBack={handleBack}
+						onClose={onClose}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						closeSurface={closeSurface}
+					/>
+				</View>
 			}
 			onHandlePress={handleSnapToggle}
 		>

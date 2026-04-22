@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import * as Updates from 'expo-updates';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { database } from '../database/db';
 
 const OTAUpdatesContext = createContext(null);
 
@@ -21,10 +21,10 @@ export const OTAUpdatesProvider = ({ children }) => {
             if (__DEV__) return;
 
             try {
-                const pending = await AsyncStorage.getItem(UPDATE_PENDING_KEY);
+                const pending = await database.readRaw(UPDATE_PENDING_KEY, null, { parseJson: false });
                 if (pending === 'true' && isMounted) {
                     console.log('[OTA Updates] Update was applied, showing success modal');
-                    await AsyncStorage.removeItem(UPDATE_PENDING_KEY);
+                    await database.deleteRaw(UPDATE_PENDING_KEY);
                     successTimer = setTimeout(() => {
                         if (isMounted) {
                             setShowSuccessModal(true);
@@ -77,7 +77,7 @@ export const OTAUpdatesProvider = ({ children }) => {
         setShowModal(false);
 
         try {
-            await AsyncStorage.setItem(UPDATE_PENDING_KEY, 'true');
+            await database.writeRaw(UPDATE_PENDING_KEY, 'true', { stringifyJson: false });
         } catch (error) {
             console.warn('[OTA Updates] Error storing update pending flag:', error.message);
         }

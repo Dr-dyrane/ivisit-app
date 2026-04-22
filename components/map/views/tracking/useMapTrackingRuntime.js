@@ -18,6 +18,7 @@ export function useMapTrackingRuntime({
 	allHospitals = [],
 	hospital,
 	payload = null,
+	activeMapRequest = null,
 	currentLocation = null,
 	routeInfo = null,
 	activeAmbulanceTrip,
@@ -45,6 +46,7 @@ export function useMapTrackingRuntime({
 	}, []);
 
 	const triageRequestId =
+		activeMapRequest?.requestId ||
 		activeAmbulanceTrip?.requestId ||
 		activeBedBooking?.requestId ||
 		pendingApproval?.requestId ||
@@ -142,6 +144,7 @@ export function useMapTrackingRuntime({
 				payload,
 				currentLocation,
 				routeInfo,
+				activeMapRequest,
 				activeAmbulanceTrip,
 				activeBedBooking,
 				pendingApproval,
@@ -154,6 +157,7 @@ export function useMapTrackingRuntime({
 				isDarkMode,
 			}),
 		[
+			activeMapRequest,
 			activeAmbulanceTrip,
 			activeBedBooking,
 			allHospitals,
@@ -187,18 +191,20 @@ export function useMapTrackingRuntime({
 
 	const canMarkArrived =
 		viewState.trackingKind === "ambulance" &&
-		ambulanceComputedStatus === "Arrived" &&
+		(activeMapRequest?.canConfirmArrival || ambulanceComputedStatus === "Arrived") &&
 		activeAmbulanceTrip?.status !== EmergencyRequestStatus.ARRIVED;
 	const canCompleteAmbulance =
 		viewState.trackingKind === "ambulance" &&
-		activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED;
+		(activeMapRequest?.canCompleteAmbulance ||
+			activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED);
 	const canCheckInBed =
 		viewState.trackingKind === "bed" &&
 		bedStatus === "Ready" &&
 		activeBedBooking?.status !== EmergencyRequestStatus.ARRIVED;
 	const canCompleteBed =
 		viewState.trackingKind === "bed" &&
-		activeBedBooking?.status === EmergencyRequestStatus.ARRIVED;
+		(activeMapRequest?.canCompleteBed ||
+			activeBedBooking?.status === EmergencyRequestStatus.ARRIVED);
 	const shouldPromoteTriage =
 		Boolean(pendingApproval?.requestId) && (!triageHasData || !triageIsComplete);
 

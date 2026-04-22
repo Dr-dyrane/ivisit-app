@@ -12,6 +12,7 @@ import MapSheetOrchestrator, {
   getMapSheetHeight,
 } from "../components/map/core/MapSheetOrchestrator";
 import { buildBedDecisionSourcePayload } from "../components/map/core/mapSheetFlowPayloads";
+import { MAP_ACTIVE_REQUEST_KINDS } from "../components/map/core/mapActiveRequestModel";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
@@ -41,15 +42,14 @@ import {
 } from "../components/map/views/tracking/mapTracking.timeline";
 import {
   buildRecoveredTrackingRatingState,
-  deleteTrackingRatingRecoveryClaim,
   findPendingTrackingRatingVisit,
   readTrackingRatingRecoveryClaims,
+  resolveTrackingRatingSkip,
+  resolveTrackingRatingSubmit,
 } from "../components/map/views/tracking/mapTracking.rating";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
-import { paymentService } from "../services/paymentService";
-import { EMERGENCY_VISIT_LIFECYCLE } from "../constants/visits";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -129,6 +129,7 @@ export default function MapScreen() {
     sheetSnapState,
     totalAvailableBeds,
     closeHospitalList,
+    activeMapRequest,
     activeAmbulanceTrip,
     patchActiveAmbulanceTrip,
     ambulanceTelemetryHealth,
@@ -403,9 +404,7 @@ export default function MapScreen() {
         const trackingRequestId =
           triagePayload?.requestId ||
           sheetPayload?.requestId ||
-          activeAmbulanceTrip?.requestId ||
-          activeBedBooking?.requestId ||
-          pendingApproval?.requestId ||
+          activeMapRequest?.requestId ||
           null;
         if (trackingRequestId && triagePayload?.triageSnapshot) {
           await emergencyRequestsService.updateTriage(
@@ -440,13 +439,11 @@ export default function MapScreen() {
       });
     },
     [
-      activeAmbulanceTrip?.requestId,
-      activeBedBooking?.requestId,
+      activeMapRequest?.requestId,
       closeCommitTriage,
       featuredHospital?.id,
       nearestHospital?.id,
       openCommitPayment,
-      pendingApproval?.requestId,
       sheetPayload,
     ],
   );
@@ -466,19 +463,15 @@ export default function MapScreen() {
 
   const mapFocusedHospitalId = useMemo(
     () =>
-      activeAmbulanceTrip?.hospitalId ||
-      activeBedBooking?.hospitalId ||
-      pendingApproval?.hospitalId ||
+      activeMapRequest?.hospitalId ||
       (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
         ? sheetPayload?.hospital?.id || null
         : null) ||
       nearestHospital?.id ||
       null,
     [
-      activeAmbulanceTrip?.hospitalId,
-      activeBedBooking?.hospitalId,
+      activeMapRequest?.hospitalId,
       nearestHospital?.id,
-      pendingApproval?.hospitalId,
       sheetPhase,
       sheetPayload?.hospital?.id,
     ],
@@ -487,12 +480,14 @@ export default function MapScreen() {
   const mapFocusedHospital = useMemo(
     () =>
       discoveredHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
+      activeMapRequest?.hospital ||
       featuredHospital ||
       sheetPayload?.hospital ||
       nearestHospital ||
       null,
     [
       discoveredHospitals,
+      activeMapRequest?.hospital,
       featuredHospital,
       mapFocusedHospitalId,
       nearestHospital,
@@ -507,9 +502,7 @@ export default function MapScreen() {
       if (!targetHospital?.id) return;
       const trackingRequestId =
         trackingPayload?.requestId ||
-        activeAmbulanceTrip?.requestId ||
-        activeBedBooking?.requestId ||
-        pendingApproval?.requestId ||
+        activeMapRequest?.requestId ||
         null;
       openCommitTriage(targetHospital, trackingPayload?.transport || null, {
         ...trackingPayload,
@@ -522,13 +515,11 @@ export default function MapScreen() {
       });
     },
     [
-      activeAmbulanceTrip?.requestId,
-      activeBedBooking?.requestId,
+      activeMapRequest?.requestId,
       featuredHospital,
       mapFocusedHospital,
       nearestHospital,
       openCommitTriage,
-      pendingApproval?.requestId,
       renderedSnapState,
     ],
   );
@@ -559,39 +550,44 @@ export default function MapScreen() {
   );
 
   const mapServiceMarkerKind = useMemo(() => {
-    if (activeAmbulanceTrip?.requestId) return "ambulance";
-    if (pendingApproval?.requestId) {
-      return pendingApproval?.serviceType === "bed" ? null : "ambulance";
+    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
+      return "ambulance";
+    }
+    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.PENDING) {
+      return activeMapRequest?.pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED
+        ? null
+        : "ambulance";
     }
     if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) {
       return paymentPreviewKind;
     }
     return null;
   }, [
-    activeAmbulanceTrip?.requestId,
+    activeMapRequest?.kind,
+    activeMapRequest?.pendingKind,
     paymentPreviewKind,
-    pendingApproval?.requestId,
-    pendingApproval?.serviceType,
     sheetPhase,
   ]);
 
   const mapServiceMarkerCoordinate = useMemo(() => {
-    if (activeAmbulanceTrip?.currentResponderLocation) {
-      return activeAmbulanceTrip.currentResponderLocation;
+    const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
+    if (activeAmbulance?.currentResponderLocation) {
+      return activeAmbulance.currentResponderLocation;
     }
     if (mapServiceMarkerKind === "ambulance") {
       return mapFocusedHospitalCoordinate;
     }
     return null;
   }, [
-    activeAmbulanceTrip?.currentResponderLocation,
+    activeMapRequest?.raw?.activeAmbulanceTrip,
     mapFocusedHospitalCoordinate,
     mapServiceMarkerKind,
   ]);
 
   const mapServiceMarkerHeading = useMemo(() => {
-    if (Number.isFinite(activeAmbulanceTrip?.currentResponderHeading)) {
-      return Number(activeAmbulanceTrip.currentResponderHeading);
+    const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
+    if (Number.isFinite(activeAmbulance?.currentResponderHeading)) {
+      return Number(activeAmbulance.currentResponderHeading);
     }
     if (
       mapServiceMarkerKind === "ambulance" &&
@@ -602,7 +598,7 @@ export default function MapScreen() {
     }
     return 0;
   }, [
-    activeAmbulanceTrip?.currentResponderHeading,
+    activeMapRequest?.raw?.activeAmbulanceTrip,
     activeLocation,
     mapFocusedHospitalCoordinate,
     mapServiceMarkerKind,
@@ -629,9 +625,7 @@ export default function MapScreen() {
     if (
       sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT ||
       hasActiveMapModal ||
-      activeAmbulanceTrip?.requestId ||
-      activeBedBooking?.requestId ||
-      pendingApproval?.requestId
+      activeMapRequest?.hasActiveRequest
     ) {
       return null;
     }
@@ -641,11 +635,9 @@ export default function MapScreen() {
       allowedVisitIds: Object.keys(ratingRecoveryClaims),
     });
   }, [
-    activeAmbulanceTrip?.requestId,
-    activeBedBooking?.requestId,
+    activeMapRequest?.hasActiveRequest,
     handledRecoveredRatingVersion,
     hasActiveMapModal,
-    pendingApproval?.requestId,
     ratingRecoveryClaims,
     sheetPhase,
     visits,
@@ -682,19 +674,17 @@ export default function MapScreen() {
       return true;
     }
 
-    try {
-      await updateVisit?.(visitId, {
-        lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
-        lifecycleUpdatedAt: new Date().toISOString(),
-      });
-      await deleteTrackingRatingRecoveryClaim(visitId);
-      markRecoveredRatingHandled(visitId);
-      closeRecoveredRating();
-      return true;
-    } catch (_error) {
+    const resolution = await resolveTrackingRatingSkip({
+      visitId,
+      updateVisit,
+    });
+    if (!resolution.ok) {
       showToast("Could not close rating right now.", "error");
       return false;
     }
+    markRecoveredRatingHandled(visitId);
+    closeRecoveredRating();
+    return true;
   }, [
     closeRecoveredRating,
     markRecoveredRatingHandled,
@@ -708,37 +698,26 @@ export default function MapScreen() {
       const visitId = recoveredRatingState?.visitId;
       if (!visitId) return false;
 
-      const nowIso = new Date().toISOString();
-      try {
-        await updateVisit?.(visitId, {
-          rating,
-          ratingComment: comment,
-          ratedAt: nowIso,
-          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
-          lifecycleUpdatedAt: nowIso,
-        });
-        await deleteTrackingRatingRecoveryClaim(visitId);
-
-        if (Number(tipAmount) > 0) {
-          try {
-            await paymentService.processVisitTip(
-              visitId,
-              Number(tipAmount),
-              tipCurrency || "USD",
-            );
-          } catch (error) {
-            console.warn("[MapScreen] Recovered rating tip processing failed:", error);
-          }
-        }
-
-        markRecoveredRatingHandled(visitId);
-        closeRecoveredRating();
-        showToast("Thanks for the feedback.", "success");
-        return true;
-      } catch (_error) {
+      const resolution = await resolveTrackingRatingSubmit({
+        visitId,
+        rating,
+        comment,
+        tipAmount,
+        tipCurrency,
+        updateVisit,
+      });
+      if (!resolution.ok) {
         showToast("Could not save your rating right now.", "error");
         return false;
       }
+      if (resolution.tipError) {
+        console.warn("[MapScreen] Recovered rating tip processing failed:", resolution.tipError);
+      }
+
+      markRecoveredRatingHandled(visitId);
+      closeRecoveredRating();
+      showToast("Thanks for the feedback.", "success");
+      return true;
     },
     [
       closeRecoveredRating,
@@ -917,6 +896,7 @@ export default function MapScreen() {
           recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
           featuredHospital={featuredHospital}
           sheetPayload={sheetPayload}
+          activeMapRequest={activeMapRequest}
           trackingRouteInfo={trackingRouteInfo}
           trackingHeaderActionRequest={trackingHeaderActionRequest}
           onConsumeTrackingHeaderActionRequest={clearTrackingHeaderActionRequest}

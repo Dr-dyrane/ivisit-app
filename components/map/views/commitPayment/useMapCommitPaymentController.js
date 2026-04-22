@@ -28,6 +28,16 @@ import {
 	normalizeCommitPaymentCost,
 	parseCommitPaymentAmount,
 } from "./mapCommitPayment.helpers";
+import {
+	MAP_COMMIT_PAYMENT_METHOD_KINDS,
+	MAP_COMMIT_PAYMENT_TRANSACTION_STATES,
+	createCommitPaymentSubmissionState,
+	getCommitPaymentRequestIdentifiers,
+	isCommitPaymentDismissibleState,
+	isCommitPaymentFailureState,
+	isCommitPaymentIdleState,
+	validateCommitPaymentSubmitContract,
+} from "./mapCommitPayment.transaction";
 
 export function useMapCommitPaymentController({
 	hospital,
@@ -94,6 +104,9 @@ export function useMapCommitPaymentController({
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 	const selectedPaymentMethodRef = useRef(null);
 	const paymentMethodsRefreshRef = useRef(0);
+	const submitLockRef = useRef(false);
+	const autoApprovalTimeoutRef = useRef(null);
+	const isMountedRef = useRef(true);
 	const [isRefreshingPaymentMethods, setIsRefreshingPaymentMethods] = useState(false);
 	const [paymentMethodsSnapshotReady, setPaymentMethodsSnapshotReady] = useState(false);
 	const [paymentMethodsRefreshKey, setPaymentMethodsRefreshKey] = useState(0);
@@ -109,9 +122,7 @@ export function useMapCommitPaymentController({
 	const [errorMessage, setErrorMessage] = useState("");
 	const [infoMessage, setInfoMessage] = useState("");
 	const [submissionState, setSubmissionState] = useState({
-		kind: "idle",
-		displayId: null,
-		requestId: null,
+		...createCommitPaymentSubmissionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE),
 	});
 
 	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
@@ -122,6 +133,22 @@ export function useMapCommitPaymentController({
 	useEffect(() => {
 		selectedPaymentMethodRef.current = selectedPaymentMethod;
 	}, [selectedPaymentMethod]);
+
+	useEffect(() => {
+		return () => {
+			isMountedRef.current = false;
+			submitLockRef.current = false;
+			if (autoApprovalTimeoutRef.current) {
+				clearTimeout(autoApprovalTimeoutRef.current);
+				autoApprovalTimeoutRef.current = null;
+			}
+		};
+	}, []);
+
+	const setTransactionState = useCallback((kind, meta = {}) => {
+		if (!isMountedRef.current) return;
+		setSubmissionState(createCommitPaymentSubmissionState(kind, meta));
+	}, []);
 
 	const demoCashOnly = useMemo(
 		() =>
@@ -403,14 +430,11 @@ export function useMapCommitPaymentController({
 		[refreshPaymentMethodSnapshot],
 	);
 
-	const isIdleState = submissionState.kind === "idle";
-	const canDismissStatusState =
-		submissionState.kind === "waiting_approval" ||
-		submissionState.kind === "dispatched" ||
-		(submissionState.kind === "finalizing_dispatch" && !isSubmitting);
-	const isFailureState =
-		submissionState.kind === "failed" ||
-		submissionState.kind === "payment_declined";
+	const isIdleState = isCommitPaymentIdleState(submissionState);
+	const canDismissStatusState = isCommitPaymentDismissibleState(submissionState, {
+		isSubmitting,
+	});
+	const isFailureState = isCommitPaymentFailureState(submissionState);
 	const isPaymentMethodSnapshotPending =
 		isIdleState && (!paymentMethodsSnapshotReady || isRefreshingPaymentMethods);
 
@@ -422,68 +446,45 @@ export function useMapCommitPaymentController({
 			return;
 		}
 
-		if (!hospital?.id) {
-			setErrorMessage("Choose a hospital before continuing.");
-			showToast("Choose a hospital before continuing.", "error");
-			return;
-		}
-
-		if (!paymentMethodsSnapshotReady || isRefreshingPaymentMethods) {
-			setInfoMessage("Checking payment method.");
-			return;
-		}
-
-		if (!selectedPaymentMethod) {
-			setErrorMessage("Select a payment method.");
-			showToast("Select a payment method.", "error");
-			return;
-		}
-
-		if (isCombinedFlow) {
-			setErrorMessage(paymentUnsupportedMessage);
-			showToast(paymentUnsupportedMessage, "info");
-			return;
-		}
-
-		const isWalletSelected = selectedPaymentMethod?.is_wallet === true;
-		const isCashSelected = selectedPaymentMethod?.is_cash === true;
-		const isCardSelected = !isWalletSelected && !isCashSelected;
-		const stripePaymentMethodId = isCardSelected
+		const stripePaymentMethodId = selectedPaymentMethod
 			? paymentService.getStripePaymentMethodId(selectedPaymentMethod)
 			: null;
+		const submitContract = validateCommitPaymentSubmitContract({
+			hospital,
+			paymentMethodsSnapshotReady,
+			isRefreshingPaymentMethods,
+			selectedPaymentMethod,
+			isCombinedFlow,
+			paymentUnsupportedMessage,
+			stripePaymentMethodId,
+			totalCostValue,
+		});
 
-		if (isWalletSelected) {
-			setErrorMessage("Choose card or cash for this request.");
-			showToast("Choose card or cash for this request.", "error");
+		if (!submitContract.ok) {
+			if (submitContract.level === "info") {
+				setInfoMessage(submitContract.message);
+				setErrorMessage("");
+			} else {
+				setErrorMessage(submitContract.message);
+				setInfoMessage("");
+			}
+			if (submitContract.level !== "info") {
+				showToast(submitContract.message, submitContract.level || "error");
+			}
 			return;
 		}
 
-		if (isCardSelected && !stripePaymentMethodId) {
-			setErrorMessage("Choose a saved card to continue.");
-			showToast("Choose a saved card to continue.", "error");
-			return;
-		}
+		if (submitLockRef.current) return;
+		submitLockRef.current = true;
 
-		if (isCardSelected && !Number.isFinite(totalCostValue)) {
-			setErrorMessage("Could not lock the card total right now. Try again.");
-			showToast("Could not lock the card total right now. Try again.", "error");
-			return;
-		}
-
-		if (
-			selectedPaymentMethod?.is_wallet &&
-			Number.isFinite(totalCostValue) &&
-			Number(selectedPaymentMethod.balance || 0) < Number(totalCostValue)
-		) {
-			setErrorMessage("Choose another payment method.");
-			showToast("Choose another payment method.", "error");
-			return;
-		}
+		const isCardSelected =
+			submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
 
 		setIsSubmitting(true);
 		setErrorMessage("");
 		setInfoMessage("");
 		const pendingStartedAt = Date.now();
+		let transactionRequestIds = { displayId: null, requestId: null };
 
 		try {
 			let chargeOrganizationId = null;
@@ -492,7 +493,10 @@ export function useMapCommitPaymentController({
 					hospital?.organization_id || hospital?.organizationId || null,
 				);
 				if (!chargeOrganizationId) {
-					setErrorMessage("Card checkout is unavailable for this hospital right now.");
+					const nextMessage =
+						"Card checkout is unavailable for this hospital right now.";
+					setErrorMessage(nextMessage);
+					showToast(nextMessage, "error");
 					return;
 				}
 			}
@@ -533,6 +537,10 @@ export function useMapCommitPaymentController({
 			initiatedRequest._realId = initiationResult.requestId || initiatedRequest.requestId;
 			initiatedRequest._displayId =
 				initiationResult.displayId || initiatedRequest.requestId;
+			transactionRequestIds = getCommitPaymentRequestIdentifiers(
+				initiationResult,
+				initiatedRequest,
+			);
 
 			if (initiationResult.requiresApproval) {
 				const pendingApprovalState = buildPendingApprovalState({
@@ -541,11 +549,10 @@ export function useMapCommitPaymentController({
 					hospital,
 				});
 				setPendingApproval?.(pendingApprovalState);
-				setSubmissionState({
-					kind: "waiting_approval",
-					displayId: initiationResult.displayId || initiatedRequest.requestId,
-					requestId: initiationResult.requestId || initiatedRequest.requestId,
-				});
+				setTransactionState(
+					MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL,
+					transactionRequestIds,
+				);
 				showToast("Waiting for hospital approval.", "info");
 				if (
 					pendingApprovalState.demoAutoApprove &&
@@ -557,7 +564,8 @@ export function useMapCommitPaymentController({
 						result: initiationResult,
 						hospital,
 					});
-					setTimeout(() => {
+					autoApprovalTimeoutRef.current = setTimeout(() => {
+						autoApprovalTimeoutRef.current = null;
 						void paymentService
 							.requestDemoCashAutoApproval(
 								pendingApprovalState.paymentId,
@@ -566,14 +574,18 @@ export function useMapCommitPaymentController({
 							.then(() => handleRequestComplete(completionPayload))
 							.then(() => {
 								setPendingApproval?.(null);
-								setSubmissionState({
-									kind: "dispatched",
-									displayId: completionPayload.displayId,
-									requestId: completionPayload.requestId || null,
-								});
+								setTransactionState(
+									MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
+									{
+										displayId: completionPayload.displayId,
+										requestId: completionPayload.requestId,
+									},
+								);
 								showToast("Provider confirmed the cash handoff.", "success");
 								setTimeout(() => {
-									onConfirm?.();
+									if (isMountedRef.current) {
+										onConfirm?.();
+									}
 								}, 800);
 							})
 							.catch((error) => {
@@ -590,11 +602,10 @@ export function useMapCommitPaymentController({
 			}
 
 			if (initiationResult.awaitsPaymentConfirmation) {
-				setSubmissionState({
-					kind: "processing_payment",
-					displayId: initiationResult.displayId || initiatedRequest.requestId,
-					requestId: initiationResult.requestId || initiatedRequest.requestId,
-				});
+				setTransactionState(
+					MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT,
+					transactionRequestIds,
+				);
 
 				try {
 					const paymentIntent = await paymentService.createEmergencyCardPaymentIntent(
@@ -612,23 +623,19 @@ export function useMapCommitPaymentController({
 					const settlementAfterConfirmError =
 						await paymentService
 							.waitForEmergencyPaymentSettlement(initiationResult.requestId, {
-								timeoutMs: 6000,
-								pollIntervalMs: 900,
-							})
+							timeoutMs: 6000,
+							pollIntervalMs: 900,
+						})
 							.catch(() => null);
-
-					setSubmissionState({ kind: "idle", displayId: null, requestId: null });
 
 					if (
 						settlementAfterConfirmError?.success === false &&
 						settlementAfterConfirmError?.code === "PAYMENT_DECLINED"
 					) {
-						setSubmissionState({
-							kind: "payment_declined",
-							displayId:
-								initiationResult.displayId || initiatedRequest.requestId,
-							requestId: initiationResult.requestId || initiatedRequest.requestId,
-						});
+						setTransactionState(
+							MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
+							transactionRequestIds,
+						);
 						setErrorMessage("Payment was declined. Choose another card or cash.");
 						showToast("Payment was declined. Choose another card or cash.", "error");
 						return;
@@ -638,21 +645,19 @@ export function useMapCommitPaymentController({
 						paymentError?.message,
 						"Could not confirm card payment.",
 					);
-					setSubmissionState({
-						kind: "failed",
-						displayId: initiationResult.displayId || initiatedRequest.requestId,
-						requestId: initiationResult.requestId || initiatedRequest.requestId,
-					});
+					setTransactionState(
+						MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
+						transactionRequestIds,
+					);
 					setErrorMessage(nextMessage);
 					showToast(nextMessage, "error");
 					return;
 				}
 
-				setSubmissionState({
-					kind: "finalizing_dispatch",
-					displayId: initiationResult.displayId || initiatedRequest.requestId,
-					requestId: initiationResult.requestId || initiatedRequest.requestId,
-				});
+				setTransactionState(
+					MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH,
+					transactionRequestIds,
+				);
 
 				const settlementResult = await paymentService.waitForEmergencyPaymentSettlement(
 					initiationResult.requestId,
@@ -660,12 +665,10 @@ export function useMapCommitPaymentController({
 
 				if (!settlementResult?.success) {
 					if (settlementResult?.code === "PAYMENT_DECLINED") {
-						setSubmissionState({
-							kind: "payment_declined",
-							displayId:
-								initiationResult.displayId || initiatedRequest.requestId,
-							requestId: initiationResult.requestId || initiatedRequest.requestId,
-						});
+						setTransactionState(
+							MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
+							transactionRequestIds,
+						);
 						setErrorMessage("Payment was declined. Choose another card or cash.");
 						showToast("Payment was declined. Choose another card or cash.", "error");
 						return;
@@ -692,11 +695,13 @@ export function useMapCommitPaymentController({
 					hospital,
 				});
 				await handleRequestComplete(completionPayload);
-				setSubmissionState({
-					kind: "dispatched",
-					displayId: completionPayload.displayId,
-					requestId: completionPayload.requestId || null,
-				});
+				setTransactionState(
+					MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
+					{
+						displayId: completionPayload.displayId,
+						requestId: completionPayload.requestId,
+					},
+				);
 				showToast(
 					isBedFlow
 						? "Payment received. Booking is live."
@@ -704,7 +709,9 @@ export function useMapCommitPaymentController({
 					"success",
 				);
 				setTimeout(() => {
-					onConfirm?.();
+					if (isMountedRef.current) {
+						onConfirm?.();
+					}
 				}, 800);
 				return;
 			}
@@ -715,27 +722,35 @@ export function useMapCommitPaymentController({
 				hospital,
 			});
 			await handleRequestComplete(completionPayload);
-			setSubmissionState({
-				kind: "dispatched",
+			setTransactionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED, {
 				displayId: completionPayload.displayId,
-				requestId: completionPayload.requestId || null,
+				requestId: completionPayload.requestId,
 			});
 			showToast(
 				isBedFlow ? "Booking request submitted." : "Dispatch request submitted.",
 				"success",
 			);
 			setTimeout(() => {
-				onConfirm?.();
+				if (isMountedRef.current) {
+					onConfirm?.();
+				}
 			}, 800);
 		} catch (error) {
 			const nextMessage = normalizeApiErrorMessage(
 				error?.message,
 				`Could not submit ${requestVerb}.`,
 			);
+			setTransactionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED, {
+				displayId: transactionRequestIds.displayId,
+				requestId: transactionRequestIds.requestId,
+			});
 			setErrorMessage(nextMessage);
 			showToast(nextMessage, "error");
 		} finally {
-			setIsSubmitting(false);
+			submitLockRef.current = false;
+			if (isMountedRef.current) {
+				setIsSubmitting(false);
+			}
 		}
 	}, [
 		clearCommitFlow,
@@ -757,6 +772,7 @@ export function useMapCommitPaymentController({
 		room,
 		selectedPaymentMethod,
 		setPendingApproval,
+		setTransactionState,
 		showToast,
 		totalCostValue,
 		transport,

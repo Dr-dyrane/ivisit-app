@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
@@ -72,6 +73,14 @@ export default function MapCommitDetailsStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const topSlotContainerStyle = [
+		sheetStageStyles.topSlotContained,
+		presentationMode === "sheet" ? sheetStageStyles.topSlotSheet : null,
+		presentationMode === "modal" ? sheetStageStyles.topSlotModal : null,
+		isSidebarPresentation ? sheetStageStyles.topSlotSidebar : null,
+		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
+		modalContainedStyle,
+	];
 
 	const {
 		titleColor,
@@ -119,15 +128,17 @@ export default function MapCommitDetailsStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<MapCommitDetailsTopSlot
-					title={currentStepConfig.headerTitle}
-					subtitle={headerSubtitle}
-					onBack={handleBack}
-					onClose={onClose}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					closeSurface={closeSurface}
-				/>
+				<View style={topSlotContainerStyle}>
+					<MapCommitDetailsTopSlot
+						title={currentStepConfig.headerTitle}
+						subtitle={headerSubtitle}
+						onBack={handleBack}
+						onClose={onClose}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						closeSurface={closeSurface}
+					/>
+				</View>
 			}
 			onHandlePress={handleSnapToggle}
 		>

@@ -11,6 +11,7 @@ import {
   toTitleCaseLabel,
 } from "./mapTracking.presentation";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
+import { formatMapRequestDisplayId } from "../../core/mapRequestPresentation";
 
 export function buildTrackingViewState({
   hospitals = [],
@@ -19,6 +20,7 @@ export function buildTrackingViewState({
   payload,
   currentLocation,
   routeInfo,
+  activeMapRequest,
   activeAmbulanceTrip,
   activeBedBooking,
   pendingApproval,
@@ -33,6 +35,7 @@ export function buildTrackingViewState({
   const allKnownHospitals =
     Array.isArray(allHospitals) && allHospitals.length > 0 ? allHospitals : hospitals;
   const trackedHospitalId =
+    activeMapRequest?.hospitalId ||
     activeAmbulanceTrip?.hospitalId ||
     activeBedBooking?.hospitalId ||
     pendingApproval?.hospitalId ||
@@ -40,12 +43,14 @@ export function buildTrackingViewState({
     hospital?.id ||
     null;
   const resolvedHospital =
+    activeMapRequest?.hospital ||
     hospital ||
     payload?.hospital ||
     allKnownHospitals.find((entry) => entry?.id === trackedHospitalId) ||
     null;
   const hospitalName =
     resolvedHospital?.name ||
+    activeMapRequest?.hospitalName ||
     activeAmbulanceTrip?.hospitalName ||
     activeBedBooking?.hospitalName ||
     pendingApproval?.hospitalName ||
@@ -68,13 +73,15 @@ export function buildTrackingViewState({
     responder?.rating ? `${responder.rating}` : null,
   ]);
   const responderSafetyMeta = responderPlate || responderMetaText || null;
-  const trackingKind = activeAmbulanceTrip?.requestId
-    ? "ambulance"
-    : activeBedBooking?.requestId
-      ? "bed"
-      : pendingApproval?.requestId
-        ? "pending"
-        : "idle";
+  const trackingKind = activeMapRequest?.kind || (
+    activeAmbulanceTrip?.requestId
+      ? "ambulance"
+      : activeBedBooking?.requestId
+        ? "bed"
+        : pendingApproval?.requestId
+          ? "pending"
+          : "idle"
+  );
   const remainingSeconds =
     trackingKind === "ambulance"
       ? Number.isFinite(ambulanceRemainingSeconds)
@@ -121,11 +128,13 @@ export function buildTrackingViewState({
           ? pendingApproval?.bedType || "Admission"
           : resolveTransportServiceLabel(pendingApproval?.ambulanceType);
   const requestLabel =
-    pendingApproval?.displayId ||
-    activeAmbulanceTrip?.requestId ||
-    activeBedBooking?.requestId ||
-    pendingApproval?.requestId ||
-    "";
+    formatMapRequestDisplayId(
+      activeMapRequest?.displayId ||
+        pendingApproval?.displayId ||
+        activeAmbulanceTrip?.requestId ||
+        activeBedBooking?.requestId ||
+        pendingApproval?.requestId,
+    ) || "";
   const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
   const shouldShowTelemetryWarning =
     trackingKind === "ambulance" &&

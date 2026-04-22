@@ -1,5 +1,13 @@
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { database, StorageKeys } from "../../../../database";
+import { paymentService } from "../../../../services/paymentService";
+
+export const TRACKING_RATING_RESOLUTION_KINDS = Object.freeze({
+	MISSING_VISIT: "missing_visit",
+	SKIPPED: "skipped",
+	RATED: "rated",
+	FAILED: "failed",
+});
 
 const normalizeTrackingRatingClaims = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -173,4 +181,77 @@ export function buildRecoveredTrackingRatingState(visit, claim = null) {
       provider: providerName || "Care team",
     },
   };
+}
+
+export async function resolveTrackingRatingSkip({
+	visitId,
+	updateVisit,
+	deleteRecoveryClaim = deleteTrackingRatingRecoveryClaim,
+}) {
+	if (!visitId) {
+		return { ok: true, kind: TRACKING_RATING_RESOLUTION_KINDS.MISSING_VISIT };
+	}
+
+	try {
+		await updateVisit?.(visitId, {
+			lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
+			lifecycleUpdatedAt: new Date().toISOString(),
+		});
+		await deleteRecoveryClaim(visitId);
+		return { ok: true, kind: TRACKING_RATING_RESOLUTION_KINDS.SKIPPED };
+	} catch (error) {
+		return {
+			ok: false,
+			kind: TRACKING_RATING_RESOLUTION_KINDS.FAILED,
+			error,
+		};
+	}
+}
+
+export async function resolveTrackingRatingSubmit({
+	visitId,
+	rating,
+	comment,
+	tipAmount,
+	tipCurrency,
+	updateVisit,
+	deleteRecoveryClaim = deleteTrackingRatingRecoveryClaim,
+	processTip = paymentService.processVisitTip,
+}) {
+	if (!visitId) {
+		return { ok: false, kind: TRACKING_RATING_RESOLUTION_KINDS.MISSING_VISIT };
+	}
+
+	const nowIso = new Date().toISOString();
+	try {
+		await updateVisit?.(visitId, {
+			rating,
+			ratingComment: comment,
+			ratedAt: nowIso,
+			lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
+			lifecycleUpdatedAt: nowIso,
+		});
+		await deleteRecoveryClaim(visitId);
+
+		let tipError = null;
+		if (Number(tipAmount) > 0) {
+			try {
+				await processTip(visitId, Number(tipAmount), tipCurrency || "USD");
+			} catch (error) {
+				tipError = error;
+			}
+		}
+
+		return {
+			ok: true,
+			kind: TRACKING_RATING_RESOLUTION_KINDS.RATED,
+			tipError,
+		};
+	} catch (error) {
+		return {
+			ok: false,
+			kind: TRACKING_RATING_RESOLUTION_KINDS.FAILED,
+			error,
+		};
+	}
 }

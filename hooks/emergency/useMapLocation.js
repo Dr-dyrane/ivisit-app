@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
 import { LOCATION_CONFIG } from "../../constants/mapConfig";
 import { useOptionalLocation } from "../../contexts/GlobalLocationContext";
+import { safeRemoveLocationSubscription } from "../../utils/locationSubscriptions";
 
 export const useMapLocation = () => {
 	// Hook initializing - no debug logs
@@ -123,6 +125,10 @@ export const useMapLocation = () => {
 	}, [location, hasPermission]);
 
 	const startLocationTracking = useCallback(() => {
+		if (Platform.OS === "web") {
+			return;
+		}
+
 		if (!locationPermission) {
 			// Location permission not granted
 			return;
@@ -141,7 +147,12 @@ export const useMapLocation = () => {
 						longitude: location.coords.longitude,
 					});
 				}
-			).then((subscription) => subscription);
+			).catch((err) => {
+				if (__DEV__) {
+					console.warn("[useMapLocation] Location tracking failed:", err?.message || err);
+				}
+				return null;
+			});
 		} catch (err) {
 			// Location tracking failed
 		}
@@ -150,8 +161,8 @@ export const useMapLocation = () => {
 	const stopLocationTracking = useCallback(() => {
 		if (locationWatcherRef.current) {
 			locationWatcherRef.current.then((subscription) => {
-				subscription?.remove?.();
-			});
+				safeRemoveLocationSubscription(subscription, "map location");
+			}).catch(() => {});
 			locationWatcherRef.current = null;
 		}
 	}, []);

@@ -1,3 +1,5 @@
+import { MAP_COMMIT_PAYMENT_TRANSACTION_STATES } from "./mapCommitPayment.transaction";
+
 export function getPaymentTransportTitle(transport) {
 	const raw = [
 		transport?.tierKey,
@@ -85,7 +87,7 @@ export function buildCommitPaymentStatusConfig({
 	errorMessage = "",
 	statusCopy,
 }) {
-	if (submissionKind === "processing_payment") {
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT) {
 		return {
 			accentColor,
 			title: statusCopy.STATUS_PROCESSING_PAYMENT_TITLE,
@@ -93,7 +95,7 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
-	if (submissionKind === "finalizing_dispatch") {
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH) {
 		return {
 			accentColor: infoColor,
 			title: isBedFlow ? "Finalizing booking" : statusCopy.STATUS_FINALIZING_TITLE,
@@ -103,7 +105,7 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
-	if (submissionKind === "waiting_approval") {
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL) {
 		return {
 			accentColor: warningColor,
 			title: statusCopy.STATUS_WAITING_TITLE,
@@ -111,7 +113,7 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
-	if (submissionKind === "payment_declined") {
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED) {
 		return {
 			accentColor: errorColor,
 			title: "Payment declined",
@@ -120,7 +122,7 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
-	if (submissionKind === "failed") {
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED) {
 		return {
 			accentColor: errorColor,
 			title: "Payment could not complete",

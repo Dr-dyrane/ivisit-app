@@ -32,6 +32,7 @@ export default function MapTrackingStageBase({
 	snapState,
 	hospital,
 	payload = null,
+	activeMapRequest = null,
 	currentLocation = null,
 	routeInfo = null,
 	headerActionRequest = null,
@@ -110,6 +111,7 @@ export default function MapTrackingStageBase({
 		allHospitals,
 		hospital,
 		payload,
+		activeMapRequest,
 		currentLocation,
 		routeInfo,
 		activeAmbulanceTrip,
@@ -173,6 +175,14 @@ export default function MapTrackingStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const topSlotContainerStyle = [
+		sheetStageStyles.topSlotContained,
+		presentationMode === "sheet" ? sheetStageStyles.topSlotSheet : null,
+		presentationMode === "modal" ? sheetStageStyles.topSlotModal : null,
+		isSidebarPresentation ? sheetStageStyles.topSlotSidebar : null,
+		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
+		modalContainedStyle,
+	];
 
 	const handleSheetToggle = useCallback(() => {
 		if (!canToggleSnapState || typeof onSnapStateChange !== "function") return;
@@ -197,6 +207,7 @@ export default function MapTrackingStageBase({
 		activeAmbulanceTrip,
 		activeBedBooking,
 		pendingApproval,
+		activeMapRequest,
 		setPendingApproval,
 		setRequestStatus,
 		cancelVisit,
@@ -392,30 +403,32 @@ export default function MapTrackingStageBase({
 				shellWidth={shellWidth}
 				allowedSnapStates={allowedSnapStates}
 				topSlot={
-					<MapTrackingTopSlot
-						title={trackingKind === "idle" ? "Tracking" : sheetTitleDisplay}
-						subtitle={trackingKind === "idle" ? hospitalName : sheetSubtitle}
-						titleColor={themeTokens.titleColor}
-						mutedColor={themeTokens.mutedColor}
-						actionSurfaceColor={themeTokens.actionSurfaceColor}
-						triageSurfaceColor={themeTokens.triageActionSurface}
-						triageIconColor={themeTokens.triageActionIconColor}
-						triageIconName="medkit"
-						triageRingColor={themeTokens.triageRingColor}
-						triageTrackColor={themeTokens.triageTrackColor}
-						onToggle={handleSheetToggle}
-						onOpenTriage={openTrackingTriage}
-						showTriage={Boolean(triageRequestId)}
-						triageComplete={triageIsComplete}
-						triageProgress={triageProgressValue}
-						showToggle={canToggleSnapState}
-						toggleIconName={isExpanded ? "chevron-down" : "chevron-up"}
-						toggleAccessibilityLabel={
-							isExpanded
-								? "Collapse tracking sheet"
-								: "Expand tracking sheet"
-						}
-					/>
+					<View style={topSlotContainerStyle}>
+						<MapTrackingTopSlot
+							title={trackingKind === "idle" ? "Tracking" : sheetTitleDisplay}
+							subtitle={trackingKind === "idle" ? hospitalName : sheetSubtitle}
+							titleColor={themeTokens.titleColor}
+							mutedColor={themeTokens.mutedColor}
+							actionSurfaceColor={themeTokens.actionSurfaceColor}
+							triageSurfaceColor={themeTokens.triageActionSurface}
+							triageIconColor={themeTokens.triageActionIconColor}
+							triageIconName="medkit"
+							triageRingColor={themeTokens.triageRingColor}
+							triageTrackColor={themeTokens.triageTrackColor}
+							onToggle={handleSheetToggle}
+							onOpenTriage={openTrackingTriage}
+							showTriage={Boolean(triageRequestId)}
+							triageComplete={triageIsComplete}
+							triageProgress={triageProgressValue}
+							showToggle={canToggleSnapState}
+							toggleIconName={isExpanded ? "chevron-down" : "chevron-up"}
+							toggleAccessibilityLabel={
+								isExpanded
+									? "Collapse tracking sheet"
+									: "Expand tracking sheet"
+							}
+						/>
+					</View>
 				}
 				onHandlePress={handleSheetToggle}
 			>

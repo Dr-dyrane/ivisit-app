@@ -221,7 +221,7 @@ export function buildTrackingMidActions({
         tone: "state",
       });
     }
-  } else if (trackingKind === "ambulance") {
+  } else if (trackingKind === "ambulance" || trackingKind === "bed") {
     actions.push({
       key: "share",
       label: "Share ETA",

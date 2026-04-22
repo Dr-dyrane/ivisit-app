@@ -1,20 +1,18 @@
 import { formatDistanceMeters } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
 import { COLORS } from "../../../../constants/colors";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
+import {
+  formatMapClockArrival,
+  formatMapDistanceLabel,
+  formatMapRemainingMinutes,
+} from "../../core/mapMetricPresentation";
 
 export function formatClockArrival(remainingSeconds, nowMs = Date.now()) {
-  if (!Number.isFinite(remainingSeconds)) return "--";
-  const arrivalDate = new Date(nowMs + remainingSeconds * 1000);
-  return arrivalDate.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatMapClockArrival(remainingSeconds, nowMs);
 }
 
 export function formatRemainingShort(remainingSeconds) {
-  if (!Number.isFinite(remainingSeconds)) return "--";
-  const minutes = Math.max(1, Math.ceil(remainingSeconds / 60));
-  return `${minutes} min`;
+  return formatMapRemainingMinutes(remainingSeconds);
 }
 
 export function formatHospitalDistanceLabel(hospital) {
@@ -24,9 +22,7 @@ export function formatHospitalDistanceLabel(hospital) {
 
   const distanceKm = Number(hospital?.distanceKm);
   if (Number.isFinite(distanceKm) && distanceKm > 0) {
-    return distanceKm < 1
-      ? `${Math.round(distanceKm * 1000)} m`
-      : `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`;
+    return formatMapDistanceLabel(distanceKm);
   }
 
   return "--";

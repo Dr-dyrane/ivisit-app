@@ -12,6 +12,7 @@ Related references:
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
 - [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
+- [architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md](./architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md)
 - [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
 
 ## 0. Standing reference order for `/map` UI work
@@ -330,6 +331,7 @@ Web persistence rule:
 - prefer the shared app storage boundary over new scattered direct `AsyncStorage` calls when adding `/map` persistence
 - dynamic app-owned keys that cannot live in `StorageKeys` should still go through `database.readRaw/writeRaw/deleteRaw`
 - do not move Supabase auth storage behind app-specific helpers; the Supabase client owns that AsyncStorage adapter contract
+- foreground location watchers must clean up through `safeRemoveLocationSubscription`; web paths should not start Expo foreground watchers
 
 Minimum `/map` resume payload:
 

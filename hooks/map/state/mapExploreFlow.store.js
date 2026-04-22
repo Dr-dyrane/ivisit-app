@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useReducer } from "react";
 import {
 	MAP_SHEET_PHASES,
-	MAP_SHEET_MODES,
-	MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
+import {
+	getMapSheetDefaultSnapState,
+	normalizeMapSheetView,
+} from "../../../components/map/core/mapFlowContracts";
 import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
 import {
 	createInitialMapExploreRuntimeState,
@@ -38,9 +40,9 @@ const ACTIONS = {
 };
 
 function getDefaultSheetSnapState(usesSidebarLayout) {
-	return usesSidebarLayout
-		? MAP_SHEET_SNAP_STATES.EXPANDED
-		: MAP_SHEET_SNAP_STATES.HALF;
+	return getMapSheetDefaultSnapState(MAP_SHEET_PHASES.EXPLORE_INTENT, {
+		usesSidebarLayout,
+	});
 }
 
 export function createInitialMapExploreFlowState(usesSidebarLayout) {
@@ -206,38 +208,54 @@ function mapExploreFlowReducer(state, action) {
 		case ACTIONS.SET_SHEET_VIEW:
 			return {
 				...state,
-				sheet: {
-					...state.sheet,
-					phase: action.phase ?? state.sheet.phase,
-					snapState: action.snapState ?? state.sheet.snapState,
-					payload:
-						action.payload === undefined ? state.sheet.payload : action.payload,
-				},
+				sheet: normalizeMapSheetView(
+					{
+						phase: action.phase ?? state.sheet.phase,
+						snapState: action.snapState ?? state.sheet.snapState,
+						payload:
+							action.payload === undefined ? state.sheet.payload : action.payload,
+					},
+					{ usesSidebarLayout: action.usesSidebarLayout },
+				),
 			};
 		case ACTIONS.SET_SHEET_PHASE:
-		case ACTIONS.SET_SHEET_MODE:
+		case ACTIONS.SET_SHEET_MODE: {
+			const phase = action.value;
 			return {
 				...state,
-				sheet: {
-					...state.sheet,
-					phase: action.value,
-				},
+				sheet: normalizeMapSheetView(
+					{
+						phase: action.value,
+						snapState: getMapSheetDefaultSnapState(phase, {
+							usesSidebarLayout: action.usesSidebarLayout,
+						}),
+						payload: state.sheet.payload,
+					},
+					{ usesSidebarLayout: action.usesSidebarLayout },
+				),
 			};
+		}
 		case ACTIONS.SET_SHEET_PAYLOAD:
 			return {
 				...state,
-				sheet: {
-					...state.sheet,
-					payload: action.value,
-				},
+				sheet: normalizeMapSheetView(
+					{
+						...state.sheet,
+						payload: action.value,
+					},
+					{ usesSidebarLayout: action.usesSidebarLayout },
+				),
 			};
 		case ACTIONS.SET_SHEET_SNAP_STATE:
 			return {
 				...state,
-				sheet: {
-					...state.sheet,
-					snapState: action.value,
-				},
+				sheet: normalizeMapSheetView(
+					{
+						...state.sheet,
+						snapState: action.value,
+					},
+					{ usesSidebarLayout: action.usesSidebarLayout },
+				),
 			};
 		case ACTIONS.SET_RUNTIME_SLICE:
 			return {
@@ -332,14 +350,21 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 					value,
 				}),
 			setSheetView: ({ phase, snapState, payload }) =>
-				dispatch({ type: ACTIONS.SET_SHEET_VIEW, phase, snapState, payload }),
+				dispatch({
+					type: ACTIONS.SET_SHEET_VIEW,
+					phase,
+					snapState,
+					payload,
+					usesSidebarLayout,
+				}),
 			setSheetPhase: (value) =>
-				dispatch({ type: ACTIONS.SET_SHEET_PHASE, value }),
+				dispatch({ type: ACTIONS.SET_SHEET_PHASE, value, usesSidebarLayout }),
 			setSheetPayload: (value) =>
-				dispatch({ type: ACTIONS.SET_SHEET_PAYLOAD, value }),
-			setSheetMode: (value) => dispatch({ type: ACTIONS.SET_SHEET_MODE, value }),
+				dispatch({ type: ACTIONS.SET_SHEET_PAYLOAD, value, usesSidebarLayout }),
+			setSheetMode: (value) =>
+				dispatch({ type: ACTIONS.SET_SHEET_MODE, value, usesSidebarLayout }),
 			setSheetSnapState: (value) =>
-				dispatch({ type: ACTIONS.SET_SHEET_SNAP_STATE, value }),
+				dispatch({ type: ACTIONS.SET_SHEET_SNAP_STATE, value, usesSidebarLayout }),
 			setRuntimeSlice: (scope, key, value) =>
 				dispatch({ type: ACTIONS.SET_RUNTIME_SLICE, scope, key, value }),
 			patchRuntimeSlice: (scope, key, value) =>
@@ -350,7 +375,7 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 			setHasCompletedInitialMapLoad: (value) =>
 				dispatch({ type: ACTIONS.SET_HAS_COMPLETED_INITIAL_MAP_LOAD, value }),
 		}),
-		[resetExplorePresentation],
+		[resetExplorePresentation, usesSidebarLayout],
 	);
 
 	return {

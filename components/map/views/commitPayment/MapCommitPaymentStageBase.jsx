@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
@@ -32,6 +32,8 @@ import {
 } from "./MapCommitPaymentStageParts";
 import useMapCommitPaymentController from "./useMapCommitPaymentController";
 import styles from "./mapCommitPayment.styles";
+import { MAP_COMMIT_PAYMENT_TRANSACTION_STATES } from "./mapCommitPayment.transaction";
+import { formatMapRequestDisplayId } from "../../core/mapRequestPresentation";
 
 export default function MapCommitPaymentStageBase({
 	sheetHeight,
@@ -97,6 +99,18 @@ export default function MapCommitPaymentStageBase({
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
+	const webWideInsetStyle =
+		Platform.OS === "web" && presentationMode !== "sheet"
+			? styles.webWideContentInset
+			: null;
+	const topSlotContainerStyle = [
+		sheetStageStyles.topSlotContained,
+		presentationMode === "sheet" ? sheetStageStyles.topSlotSheet : null,
+		presentationMode === "modal" ? sheetStageStyles.topSlotModal : null,
+		isSidebarPresentation ? sheetStageStyles.topSlotSidebar : null,
+		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
+		modalContainedStyle,
+	];
 
 	const {
 		titleColor,
@@ -365,8 +379,9 @@ export default function MapCommitPaymentStageBase({
 		isPaymentMethodSnapshotPending ||
 		(isLoadingCost && Boolean(selectedPaymentMethod));
 
-	const requestMetaLabel = submissionState.displayId
-		? `${hospitalName} - ${submissionState.displayId}`
+	const formattedRequestDisplayId = formatMapRequestDisplayId(submissionState.displayId);
+	const requestMetaLabel = formattedRequestDisplayId
+		? `${hospitalName} - ${formattedRequestDisplayId}`
 		: hospitalName;
 	const statusConfig = useMemo(
 		() =>
@@ -401,7 +416,7 @@ export default function MapCommitPaymentStageBase({
 	}, [handleSubmit, isIdleState, openPaymentSelector, selectedPaymentMethod]);
 
 	const body =
-		submissionState.kind === "idle" ? (
+		submissionState.kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE ? (
 			<View style={styles.sectionStack}>
 				<MapCommitPaymentHeroBlade
 					title={isLoadingCost ? "Total" : totalCostLabel || "Total"}
@@ -525,32 +540,34 @@ export default function MapCommitPaymentStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<MapCommitDetailsTopSlot
-					title={MAP_COMMIT_PAYMENT_COPY.HEADER_TITLE}
-					subtitle={hospitalName}
-					onBack={canToggleSnapState ? handleHeaderSnapToggle : undefined}
-					leftIconName={
-						effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-							? "chevron-down"
-							: "chevron-up"
-					}
-					leftAccessibilityLabel={
-						effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
-							? "Collapse payment sheet"
-							: "Expand payment sheet"
-					}
-					showLeftControl={canToggleSnapState}
-					onClose={
-						isIdleState || isFailureState
-							? onClose
-							: canDismissStatusState
-								? onConfirm
-								: undefined
-					}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					closeSurface={closeSurface}
-				/>
+				<View style={topSlotContainerStyle}>
+					<MapCommitDetailsTopSlot
+						title={MAP_COMMIT_PAYMENT_COPY.HEADER_TITLE}
+						subtitle={hospitalName}
+						onBack={canToggleSnapState ? handleHeaderSnapToggle : undefined}
+						leftIconName={
+							effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "chevron-down"
+								: "chevron-up"
+						}
+						leftAccessibilityLabel={
+							effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "Collapse payment sheet"
+								: "Expand payment sheet"
+						}
+						showLeftControl={canToggleSnapState}
+						onClose={
+							isIdleState || isFailureState
+								? onClose
+								: canDismissStatusState
+									? onConfirm
+									: undefined
+						}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						closeSurface={closeSurface}
+					/>
+				</View>
 			}
 			footerSlot={null}
 			onHandlePress={handleHeaderSnapToggle}

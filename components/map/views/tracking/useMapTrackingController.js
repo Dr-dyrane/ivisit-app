@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share } from "react-native";
 import { useToast } from "../../../../contexts/ToastContext";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
-import { paymentService } from "../../../../services/paymentService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
 import {
   buildTrackingRatingState,
+  resolveTrackingRatingSkip,
+  resolveTrackingRatingSubmit,
   deleteTrackingRatingRecoveryClaim,
   writeTrackingRatingRecoveryClaim,
 } from "./mapTracking.rating";
@@ -35,6 +36,7 @@ export function useMapTrackingController({
   activeAmbulanceTrip,
   activeBedBooking,
   pendingApproval,
+  activeMapRequest,
   setPendingApproval,
   setRequestStatus,
   cancelVisit,
@@ -80,6 +82,18 @@ export function useMapTrackingController({
   const [busyAction, setBusyAction] = useState(null);
   const [ratingState, setRatingState] = useState(INITIAL_RATING_STATE);
   const handledHeaderActionRef = useRef(null);
+  const activeAmbulanceRequestId =
+    activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||
+    activeAmbulanceTrip?.requestId ||
+    null;
+  const activeBedBookingRequestId =
+    activeMapRequest?.raw?.activeBedBooking?.requestId ||
+    activeBedBooking?.requestId ||
+    null;
+  const pendingApprovalRequestId =
+    activeMapRequest?.raw?.pendingApproval?.requestId ||
+    pendingApproval?.requestId ||
+    null;
 
   const openTrackingTriage = useCallback(() => {
     onOpenCommitTriageFromTracking?.({
@@ -266,13 +280,13 @@ export function useMapTrackingController({
   const secondaryActions = useMemo(
     () =>
       buildTrackingSecondaryActions({
-        activeAmbulanceRequestId: activeAmbulanceTrip?.requestId,
-        activeBedBookingRequestId: activeBedBooking?.requestId,
+        activeAmbulanceRequestId,
+        activeBedBookingRequestId,
         onAddBedFromTracking,
       }),
     [
-      activeAmbulanceTrip?.requestId,
-      activeBedBooking?.requestId,
+      activeAmbulanceRequestId,
+      activeBedBookingRequestId,
       onAddBedFromTracking,
     ],
   );
@@ -280,9 +294,9 @@ export function useMapTrackingController({
   const destructiveAction = useMemo(
     () =>
       buildTrackingDestructiveAction({
-        pendingApprovalRequestId: pendingApproval?.requestId,
-        activeAmbulanceRequestId: activeAmbulanceTrip?.requestId,
-        activeBedBookingRequestId: activeBedBooking?.requestId,
+        pendingApprovalRequestId,
+        activeAmbulanceRequestId,
+        activeBedBookingRequestId,
         runBusyAction,
         handleCancelPendingRequest,
         onCancelAmbulanceTrip,
@@ -290,13 +304,13 @@ export function useMapTrackingController({
         busyAction,
       }),
     [
-      activeAmbulanceTrip?.requestId,
-      activeBedBooking?.requestId,
+      activeAmbulanceRequestId,
+      activeBedBookingRequestId,
       busyAction,
       handleCancelPendingRequest,
       onCancelAmbulanceTrip,
       onCancelBedBooking,
-      pendingApproval?.requestId,
+      pendingApprovalRequestId,
       runBusyAction,
     ],
   );
@@ -417,20 +431,18 @@ export function useMapTrackingController({
       showToast("Could not complete the request right now.", "error");
       return false;
     }
-    const nowIso = new Date().toISOString();
-    try {
-      await updateVisit?.(visitId, {
-        lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
-        lifecycleUpdatedAt: nowIso,
-      });
-      await deleteTrackingRatingRecoveryClaim(visitId);
-      setRatingState(INITIAL_RATING_STATE);
-      finalizeCompletedTracking(ratingState.completeKind);
-      return true;
-    } catch (error) {
+    const resolution = await resolveTrackingRatingSkip({
+      visitId,
+      updateVisit,
+      deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
+    });
+    if (!resolution.ok) {
       showToast("Could not close rating right now.", "error");
       return false;
     }
+    setRatingState(INITIAL_RATING_STATE);
+    finalizeCompletedTracking(ratingState.completeKind);
+    return true;
   }, [
     finalizeCompletedTracking,
     ratingState.completionCommitted,
@@ -461,35 +473,26 @@ export function useMapTrackingController({
         showToast("Could not complete the request right now.", "error");
         return false;
       }
-      const nowIso = new Date().toISOString();
-      try {
-        await updateVisit?.(visitId, {
-          rating,
-          ratingComment: comment,
-          ratedAt: nowIso,
-          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
-          lifecycleUpdatedAt: nowIso,
-        });
-        await deleteTrackingRatingRecoveryClaim(visitId);
-        if (Number(tipAmount) > 0) {
-          try {
-            await paymentService.processVisitTip(
-              visitId,
-              Number(tipAmount),
-              tipCurrency || "USD",
-            );
-          } catch (error) {
-            console.warn("[MapTracking] Tip processing failed:", error);
-          }
-        }
-        showToast("Thanks for the feedback.", "success");
-        setRatingState(INITIAL_RATING_STATE);
-        finalizeCompletedTracking(ratingState.completeKind);
-        return true;
-      } catch (error) {
+      const resolution = await resolveTrackingRatingSubmit({
+        visitId,
+        rating,
+        comment,
+        tipAmount,
+        tipCurrency,
+        updateVisit,
+        deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
+      });
+      if (!resolution.ok) {
         showToast("Could not save your rating right now.", "error");
         return false;
       }
+      if (resolution.tipError) {
+        console.warn("[MapTracking] Tip processing failed:", resolution.tipError);
+      }
+      showToast("Thanks for the feedback.", "success");
+      setRatingState(INITIAL_RATING_STATE);
+      finalizeCompletedTracking(ratingState.completeKind);
+      return true;
     },
     [
       onCompleteAmbulanceTrip,

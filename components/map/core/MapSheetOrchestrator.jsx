@@ -80,6 +80,7 @@ export default function MapSheetOrchestrator({
 	onChangeHospitalLocation = () => {},
 	activeLocation = null,
 	sheetPayload = null,
+	activeMapRequest = null,
 	trackingRouteInfo = null,
 	trackingHeaderActionRequest = null,
 	onConsumeTrackingHeaderActionRequest = () => {},
@@ -297,6 +298,7 @@ export default function MapSheetOrchestrator({
 						snapState={snapState}
 						hospital={trackingHospital}
 						payload={sheetPayload}
+						activeMapRequest={activeMapRequest}
 						currentLocation={currentLocation}
 						routeInfo={trackingRouteInfo}
 						headerActionRequest={trackingHeaderActionRequest}

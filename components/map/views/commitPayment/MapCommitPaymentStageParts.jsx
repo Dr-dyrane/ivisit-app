@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import PaymentMethodSelector from "../../../payment/PaymentMethodSelector";
 import styles from "./mapCommitPayment.styles";
+import { MAP_COMMIT_PAYMENT_TRANSACTION_STATES } from "./mapCommitPayment.transaction";
 
 function MapCommitPaymentOverlaySurface({
 	style,
@@ -765,20 +766,21 @@ export function MapCommitPaymentStatusCard({
 	statusTitle,
 	statusDescription,
 	requestMeta,
-	statusKind = "dispatched",
+	statusKind = MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
 	primaryActionLabel = null,
 	onPrimaryAction,
 	secondaryActionLabel = null,
 	onSecondaryAction,
 }) {
 	const iconName =
-		statusKind === "waiting_approval"
+		statusKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL
 			? "time-outline"
-			: statusKind === "processing_payment"
+			: statusKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT
 				? "card-outline"
-				: statusKind === "finalizing_dispatch"
+				: statusKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH
 					? "sync-outline"
-					: statusKind === "failed" || statusKind === "payment_declined"
+					: statusKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED ||
+						  statusKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED
 						? "alert-circle-outline"
 						: "checkmark-done-circle-outline";
 

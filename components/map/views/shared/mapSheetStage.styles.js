@@ -40,6 +40,9 @@ const sheetStageStyles = StyleSheet.create({
 	topSlotPanel: {
 		paddingHorizontal: 16,
 	},
+	topSlotWide: {
+		paddingHorizontal: 20,
+	},
 	iconButton: {
 		width: 38,
 		height: 38,

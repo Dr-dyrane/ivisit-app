@@ -4,7 +4,6 @@ import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import React from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { View, StyleSheet, Dimensions, Text, TouchableOpacity, Linking, Switch, Alert } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEmergency } from "../contexts/EmergencyContext";
 import { useEmergencyUI } from "../contexts/EmergencyUIContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
@@ -23,6 +22,7 @@ import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
 import { EmergencyRequestStatus, emergencyRequestsService } from "../services/emergencyRequestsService";
+import { database } from "../database/db";
 import {
 	NOTIFICATION_PRIORITY,
 	NOTIFICATION_TYPES,
@@ -251,7 +251,9 @@ const EmergencyScreen = () => {
 		let isMounted = true;
 		const loadCoveragePreference = async () => {
 			try {
-				const stored = await AsyncStorage.getItem(COVERAGE_DISCLAIMER_STORAGE_KEY);
+				const stored = await database.readRaw(COVERAGE_DISCLAIMER_STORAGE_KEY, null, {
+					parseJson: false,
+				});
 				if (!isMounted) return;
 				setCoverageOptOut(stored === "1");
 			} catch (error) {
@@ -991,7 +993,9 @@ const EmergencyScreen = () => {
 		if (!coverageDontRemind) return;
 
 		try {
-			await AsyncStorage.setItem(COVERAGE_DISCLAIMER_STORAGE_KEY, "1");
+			await database.writeRaw(COVERAGE_DISCLAIMER_STORAGE_KEY, "1", {
+				stringifyJson: false,
+			});
 			setCoverageOptOut(true);
 		} catch (error) {
 			console.warn("[EmergencyScreen] Failed to persist coverage disclaimer preference", error);
