@@ -2,24 +2,14 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useVisits } from "../../contexts/VisitsContext";
 import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
-import { navigateToVisits } from "../../utils/navigationHelpers";
 import MapModalShell from "./surfaces/MapModalShell";
 
 const squircle = (radius) => ({
 	borderRadius: radius,
 	borderCurve: "continuous",
 });
-
-function formatVisitSupport(visit) {
-	const hospital = visit?.hospital || visit?.hospitalName || "iVisit care";
-	const date = typeof visit?.date === "string" ? visit.date : "";
-	const time = typeof visit?.time === "string" ? visit.time : "";
-	return [hospital, date, time].filter(Boolean).join(" | ");
-}
 
 function CareBlade({
 	colors,
@@ -66,21 +56,16 @@ export default function MapCareHistoryModal({
 	visible,
 	onClose,
 	onChooseCare,
+	onBookVisit,
 }) {
-	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
-	const { visits = [] } = useVisits();
-	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 3) : []), [visits]);
-	const hasVisits = recentVisits.length > 0;
 
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const bladeSurface = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)";
 	const responsiveStyles = useMemo(() => {
 		const bladeIconSize = Math.max(42, Math.round(viewportMetrics.radius.card * 1.7));
-		const visitIconSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.48));
 		return {
 			content: {
 				paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
@@ -108,40 +93,6 @@ export default function MapCareHistoryModal({
 				fontSize: viewportMetrics.type.caption,
 				lineHeight: viewportMetrics.type.captionLineHeight,
 			},
-			recentSection: {
-				marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 4),
-			},
-			recentHeader: {
-				marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
-			},
-			recentTitle: {
-				fontSize: Math.max(16, viewportMetrics.type.title),
-				lineHeight: viewportMetrics.type.titleLineHeight,
-			},
-			recentAction: {
-				fontSize: viewportMetrics.type.caption,
-				lineHeight: viewportMetrics.type.captionLineHeight,
-			},
-			visitCard: {
-				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 2),
-				paddingVertical: Math.max(14, viewportMetrics.insets.sectionGap),
-				gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
-				marginBottom: Math.max(8, viewportMetrics.insets.sectionGap - 2),
-			},
-			visitIconWrap: {
-				width: visitIconSize,
-				height: visitIconSize,
-				borderRadius: Math.round(visitIconSize / 2),
-			},
-			visitTitle: {
-				fontSize: Math.max(15, viewportMetrics.type.body),
-				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
-			},
-			visitMeta: {
-				marginTop: 4,
-				fontSize: viewportMetrics.type.caption,
-				lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
-			},
 		};
 	}, [viewportMetrics]);
 
@@ -150,6 +101,7 @@ export default function MapCareHistoryModal({
 			visible={visible}
 			onClose={onClose}
 			title="Choose care"
+			headerLayout="leading"
 			minHeightRatio={0.78}
 			contentContainerStyle={[styles.content, responsiveStyles.content]}
 		>
@@ -176,6 +128,13 @@ export default function MapCareHistoryModal({
 						subtext: "Transport and admission",
 						onPress: () => onChooseCare?.("both"),
 					},
+					{
+						colors: ["#F59E0B", "#EA580C"],
+						iconName: "calendar-check",
+						title: "Book a visit",
+						subtext: "Clinic or telehealth care",
+						onPress: () => onBookVisit?.(),
+					},
 				].map((item) => (
 					<View
 						key={item.title}
@@ -196,72 +155,6 @@ export default function MapCareHistoryModal({
 					</View>
 				))}
 			</View>
-
-			{hasVisits ? (
-				<View style={[styles.recentSection, responsiveStyles.recentSection]}>
-					<View style={[styles.recentHeader, responsiveStyles.recentHeader]}>
-						<Text
-							style={[
-								styles.recentTitle,
-								responsiveStyles.recentTitle,
-								{ color: titleColor },
-							]}
-						>
-							Recent visits
-						</Text>
-						<Pressable
-							onPress={() => {
-								onClose();
-								navigateToVisits({ router });
-							}}
-						>
-							<Text
-								style={[
-									styles.recentAction,
-									responsiveStyles.recentAction,
-									{ color: mutedColor },
-								]}
-							>
-								See more
-							</Text>
-						</Pressable>
-					</View>
-
-					{recentVisits.map((visit, index) => (
-						<View
-							key={visit?.id || `${visit?.hospital || "visit"}-${index}`}
-							style={[
-								styles.visitCard,
-								responsiveStyles.visitCard,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.06)"
-										: "rgba(15,23,42,0.04)",
-									borderRadius: viewportMetrics.radius.card,
-								},
-							]}
-						>
-							<View style={[styles.visitIconWrap, responsiveStyles.visitIconWrap]}>
-								<Ionicons name="time-outline" size={18} color="#86100E" />
-							</View>
-							<View style={styles.visitCopy}>
-								<Text
-									numberOfLines={1}
-									style={[styles.visitTitle, responsiveStyles.visitTitle, { color: titleColor }]}
-								>
-									{visit?.type || "Care visit"}
-								</Text>
-								<Text
-									numberOfLines={2}
-									style={[styles.visitMeta, responsiveStyles.visitMeta, { color: bodyColor }]}
-								>
-									{formatVisitSupport(visit)}
-								</Text>
-							</View>
-						</View>
-					))}
-				</View>
-			) : null}
 		</MapModalShell>
 	);
 }
@@ -294,39 +187,6 @@ const styles = StyleSheet.create({
 		fontWeight: "800",
 	},
 	bladeSubtext: {
-		fontWeight: "400",
-	},
-	recentSection: {
-		marginTop: 8,
-	},
-	recentHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-	},
-	recentTitle: {
-		fontWeight: "800",
-	},
-	recentAction: {
-		fontWeight: "700",
-	},
-	visitCard: {
-		flexDirection: "row",
-		alignItems: "center",
-		...squircle(26),
-	},
-	visitIconWrap: {
-		backgroundColor: "rgba(134, 16, 14, 0.10)",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	visitCopy: {
-		flex: 1,
-	},
-	visitTitle: {
-		fontWeight: "800",
-	},
-	visitMeta: {
 		fontWeight: "400",
 	},
 });

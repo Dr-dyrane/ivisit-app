@@ -16,6 +16,7 @@ import {
 } from "./MapExploreIntentStageParts";
 import useMapExploreIntentResponsiveMetrics from "./useMapExploreIntentResponsiveMetrics";
 import styles from "./mapExploreIntent.styles";
+import MapExploreIntentRecentHistory from "./MapExploreIntentRecentHistory";
 
 export default function MapExploreIntentStageBase({
 	variant = MAP_INTENT_VARIANTS.IOS_MOBILE,
@@ -30,6 +31,7 @@ export default function MapExploreIntentStageBase({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory,
+	onOpenRecentVisits,
 	onOpenFeaturedHospital,
 	onSnapStateChange,
 	profileImageSource,
@@ -125,10 +127,10 @@ export default function MapExploreIntentStageBase({
 				pulseProgress,
 				isExpanded,
 				featuredHospitals,
-			onOpenFeaturedHospital,
-			featuredRailWidth,
-			responsiveMetrics,
-		}),
+				onOpenFeaturedHospital,
+				featuredRailWidth,
+				responsiveMetrics,
+			}),
 		[
 			variant,
 			hospitalSummaryMode,
@@ -263,6 +265,7 @@ export default function MapExploreIntentStageBase({
 						contentMaxWidth={contentMaxWidth}
 						responsiveMetrics={responsiveMetrics}
 					/>
+					<MapExploreIntentRecentHistory onOpen={onOpenRecentVisits} />
 				</ScrollView>
 			)}
 		</MapSheetShell>

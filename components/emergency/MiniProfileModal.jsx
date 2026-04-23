@@ -27,6 +27,7 @@ import {
 	navigateToVisits,
 } from "../../utils/navigationHelpers";
 import { waitForMinimumPending } from "../../utils/ui/apiInteractionFeedback";
+import { selectHistoryBadgeCount } from "../../hooks/visits/useVisitHistorySelectors";
 
 export default function MiniProfileModal({
 	visible,
@@ -39,7 +40,7 @@ export default function MiniProfileModal({
 	const { isDarkMode } = useTheme();
 	const { user } = useAuth();
 	const { showToast } = useToast();
-	const { visitCounts } = useVisits();
+	const { visits = [] } = useVisits();
 	const { contacts = [], isLoading: contactsLoading } = useEmergencyContacts();
 	const router = useRouter();
 	const viewportMetrics = useResponsiveSurfaceMetrics({
@@ -127,7 +128,7 @@ export default function MiniProfileModal({
 	const titleText = hasName ? displayName : "What's your name?";
 	const subtitleText =
 		user?.email || (hasName ? "Manage your care profile" : "Add your details");
-	const visitsTotal = Number(visitCounts?.all || 0);
+	const historyCount = selectHistoryBadgeCount(visits);
 	const contactsCount = Array.isArray(contacts) ? contacts.length : 0;
 
 	const colors = useMemo(
@@ -146,7 +147,19 @@ export default function MiniProfileModal({
 	const shortcutGroups = useMemo(() => {
 		const groups = [];
 
-		// Group 1: Account (Identity first anchoring)
+		// Group 1: Activity (history first for the map-owned control panel)
+		groups.push([
+			{
+				key: "recent-visits",
+				label: "History",
+				icon: "time",
+				tone: tones.care,
+				badge: formatCountBadge(historyCount, null),
+				onPress: executeRecentVisits,
+			},
+		]);
+
+		// Group 2: Account (identity second, but still prominent)
 		groups.push([
 			{
 				key: "profile",
@@ -155,18 +168,6 @@ export default function MiniProfileModal({
 				tone: tones.profile,
 				badge: null, // Removed "Open" / "Add name" noise
 				onPress: () => executeNav(navigateToProfile),
-			},
-		]);
-
-		// Group 2: Activity
-		groups.push([
-			{
-				key: "recent-visits",
-				label: "Recent Visits",
-				icon: "time",
-				tone: tones.care,
-				badge: formatCountBadge(visitsTotal, null), // Only show if count > 0
-				onPress: executeRecentVisits,
 			},
 		]);
 
@@ -209,7 +210,7 @@ export default function MiniProfileModal({
 		executeNav,
 		executeRecentVisits,
 		tones,
-		visitsTotal,
+		historyCount,
 	]);
 
 
@@ -301,4 +302,3 @@ const styles = StyleSheet.create({
 		width: "100%",
 	},
 });
-

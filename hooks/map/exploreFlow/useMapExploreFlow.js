@@ -300,6 +300,9 @@ export function useMapExploreFlow() {
     guestProfileVisible,
     careHistoryVisible,
     recentVisitsVisible,
+    // PULLBACK NOTE: Pass 12 F3b - map-owned booking flow surface
+    bookingVisible,
+    bookingInitialData,
     authModalVisible,
   } = selectMapExploreSurfaceState(flowState);
   const {
@@ -321,6 +324,8 @@ export function useMapExploreFlow() {
   const {
     resetExplorePresentation,
     setAuthModalVisible,
+    setBookingVisible,
+    setBookingInitialData,
     setCareHistoryVisible,
     setFeaturedHospital,
     setHospitalServiceSelection: setHospitalServiceSelectionValue,
@@ -1066,6 +1071,7 @@ export function useMapExploreFlow() {
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
+    bookingVisible ||
     authModalVisible;
   const trackingHeaderOwnsCurrentPhase =
     sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
@@ -1640,6 +1646,7 @@ export function useMapExploreFlow() {
     closeCommitTriage,
     closeCommitPayment,
     closeTracking,
+    openTracking,
     finishCommitPayment,
     closeHospitalDetail,
     closeHospitalList,
@@ -1676,11 +1683,15 @@ export function useMapExploreFlow() {
     profileModalVisible,
     recentVisits,
     recentVisitsVisible,
+    bookingVisible,
+    bookingInitialData,
     searchSheetMode,
     searchSheetVisible,
     selectedCare,
     sheetPhase,
     setAuthModalVisible,
+    setBookingVisible,
+    setBookingInitialData,
     setCareHistoryVisible,
     setGuestProfileEmail,
     setGuestProfileVisible,

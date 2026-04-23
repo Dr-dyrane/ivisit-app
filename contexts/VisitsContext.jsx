@@ -1,109 +1,66 @@
 // contexts/VisitsContext.jsx - Visits state management
+//
+// PULLBACK NOTE: Pass 12 F5 - removed list-screen-only UI state from shared provider
+// OLD: exposed filter, filters, filteredVisits, visitCounts, selectedVisitId, selectVisit, setFilterType
+// NEW: shared provider owns only canonical collection + lifecycle CRUD (per VISITS_REQUEST_HISTORY_PLAN §10)
+//
+// Rationale: legacy VisitsScreen (demoted to bridge in F4a) was the only consumer of list-UI state.
+// /map consumers (MapRecentVisitsModal, MapVisitDetailsModal) read canonical `visits` and derive
+// grouped/filtered views through pure selectors in hooks/visits/useVisitHistorySelectors.js.
 
-import { createContext, useContext, useState, useMemo, useCallback } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { useVisitsData } from "../hooks/visits/useVisitsData";
 
-// Create the visits context
 const VisitsContext = createContext();
 
-// Visits provider component
 export function VisitsProvider({ children }) {
-    const { 
-        visits, 
-        isLoading, 
-        addVisit, 
-        updateVisit, 
-        cancelVisit, 
-        completeVisit,
-        deleteVisit,
-        refetch: refreshVisits
-    } = useVisitsData();
+const {
+visits,
+isLoading,
+addVisit,
+updateVisit,
+cancelVisit,
+completeVisit,
+deleteVisit,
+refetch: refreshVisits,
+} = useVisitsData();
 
-    const [filter, setFilter] = useState("all");
-    const [selectedVisitId, setSelectedVisitId] = useState(null);
+// Lifetime stats stay in the provider because they are cross-consumer truth.
+// Per-filter list UI counts were removed; consumers derive those locally when needed.
+const stats = useMemo(
+() => ({
+total: visits.length,
+upcoming: visits.filter((v) => v.status === "upcoming").length,
+completed: visits.filter((v) => v.status === "completed").length,
+cancelled: visits.filter((v) => v.status === "cancelled").length,
+inProgress: visits.filter((v) => v.status === "in_progress").length,
+}),
+[visits],
+);
 
-	// Calculate stats based on visits
-	const stats = useMemo(() => ({
-		total: visits.length,
-		upcoming: visits.filter(v => v.status === "upcoming").length,
-		completed: visits.filter(v => v.status === "completed").length,
-		cancelled: visits.filter(v => v.status === "cancelled").length,
-		inProgress: visits.filter(v => v.status === "in_progress").length,
-	}), [visits]);
+const value = {
+visits,
+isLoading,
+stats,
+addVisit,
+updateVisit,
+cancelVisit,
+completeVisit,
+deleteVisit,
+refreshVisits,
+};
 
-    // Available filters
-    const filters = useMemo(() => [
-        { id: "all", label: "All", icon: "apps" },
-        { id: "upcoming", label: "Upcoming", icon: "calendar" },
-        { id: "completed", label: "Completed", icon: "checkmark-done" },
-        { id: "cancelled", label: "Cancelled", icon: "close" },
-    ], []);
-
-    // Filtered visits based on current filter
-    const filteredVisits = useMemo(() => {
-        if (!Array.isArray(visits)) return [];
-        
-        switch (filter) {
-            case "upcoming":
-                return visits.filter(v => v.status === "upcoming");
-            case "completed":
-                return visits.filter(v => v.status === "completed");
-            case "cancelled":
-                return visits.filter(v => v.status === "cancelled");
-            default:
-                return visits;
-        }
-    }, [visits, filter]);
-
-    // Visit counts per filter
-    const visitCounts = useMemo(() => ({
-        all: visits.length,
-        upcoming: stats.upcoming,
-        completed: stats.completed,
-        cancelled: stats.cancelled,
-    }), [visits.length, stats.upcoming, stats.completed, stats.cancelled]);
-
-    const selectVisit = useCallback((visitId) => {
-        setSelectedVisitId(visitId);
-    }, []);
-
-    const setFilterType = useCallback((filterType) => {
-        setFilter(filterType);
-        setSelectedVisitId(null);
-    }, []);
-
-	const value = {
-		visits,
-        isLoading,
-		stats,
-		addVisit,
-		updateVisit,
-		cancelVisit,
-		completeVisit,
-		deleteVisit,
-        refreshVisits,
-        // New properties for VisitsScreen
-        filteredVisits,
-        filter,
-        filters,
-        visitCounts,
-        selectedVisitId,
-        selectVisit,
-        setFilterType,
-	};
-
-	return (
-		<VisitsContext.Provider value={value}>{children}</VisitsContext.Provider>
-	);
+return (
+<VisitsContext.Provider value={value}>{children}</VisitsContext.Provider>
+);
 }
 
-// Custom hook to use the visits context
 export function useVisits() {
-	const context = useContext(VisitsContext);
-	if (context === undefined) {
-		throw new Error("useVisits must be used within a VisitsProvider");
-	}
-	return context;
+const context = useContext(VisitsContext);
+if (context === undefined) {
+throw new Error("useVisits must be used within a VisitsProvider");
+}
+return context;
 }
 
 export default VisitsContext;

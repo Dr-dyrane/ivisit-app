@@ -41,6 +41,7 @@ export default function MapModalShell({
 	onClose,
 	onBack = null,
 	title = null,
+	headerLayout = "centered",
 	minHeightRatio = 0.78,
 	maxHeightRatio = 0.9,
 	matchExpandedSheetHeight = true,
@@ -656,23 +657,59 @@ export default function MapModalShell({
 				</View>
 			) : null}
 
-			<View
-				{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
-				style={[
-					styles.headerRow,
-					{
-						minHeight: viewportMetrics.modal.headerHeight,
-						marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
-					},
-				]}
-			>
-				{typeof onBack === "function" ? (
+			{headerLayout === "leading" ? (
+				<View
+					{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
+					style={[
+						styles.headerRow,
+						{
+							minHeight: viewportMetrics.modal.headerHeight,
+							marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+						},
+					]}
+				>
+					<View style={styles.headerLeadingWrap}>
+						{typeof onBack === "function" ? (
+							<MapHeaderIconButton
+								onPress={onBack}
+								accessibilityLabel={backAccessibilityLabel}
+								backgroundColor={closeBg}
+								color={titleColor}
+								iconName={backIconName}
+								style={[
+									styles.closeButton,
+									{
+										width: viewportMetrics.modal.headerButtonSize,
+										height: viewportMetrics.modal.headerButtonSize,
+									},
+								]}
+							/>
+						) : null}
+						{title ? (
+							<Text
+								style={[
+									styles.headerTitle,
+									styles.headerTitleLeading,
+									{
+										color: titleColor,
+										fontSize: viewportMetrics.modal.titleSize,
+										lineHeight: viewportMetrics.modal.titleLineHeight,
+										fontWeight: viewportMetrics.type.titleWeight,
+									},
+								]}
+								numberOfLines={1}
+							>
+								{title}
+							</Text>
+						) : (
+							<View style={styles.headerTitleSpacer} />
+						)}
+					</View>
 					<MapHeaderIconButton
-						onPress={onBack}
-						accessibilityLabel={backAccessibilityLabel}
+						onPress={onClose}
+						accessibilityLabel={title ? `Close ${title}` : "Close"}
 						backgroundColor={closeBg}
 						color={titleColor}
-						iconName={backIconName}
 						style={[
 							styles.closeButton,
 							{
@@ -681,49 +718,77 @@ export default function MapModalShell({
 							},
 						]}
 					/>
-				) : (
-					<View
+				</View>
+			) : (
+				<View
+					{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
+					style={[
+						styles.headerRow,
+						{
+							minHeight: viewportMetrics.modal.headerHeight,
+							marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+						},
+					]}
+				>
+					{typeof onBack === "function" ? (
+						<MapHeaderIconButton
+							onPress={onBack}
+							accessibilityLabel={backAccessibilityLabel}
+							backgroundColor={closeBg}
+							color={titleColor}
+							iconName={backIconName}
+							style={[
+								styles.closeButton,
+								{
+									width: viewportMetrics.modal.headerButtonSize,
+									height: viewportMetrics.modal.headerButtonSize,
+								},
+							]}
+						/>
+					) : (
+						<View
+							style={[
+								styles.headerSpacer,
+								{
+									width: viewportMetrics.modal.headerButtonSize,
+									height: viewportMetrics.modal.headerButtonSize,
+								},
+							]}
+						/>
+					)}
+					{title ? (
+						<Text
+							style={[
+								styles.headerTitle,
+								{
+									color: titleColor,
+									fontSize: viewportMetrics.modal.titleSize,
+									lineHeight: viewportMetrics.modal.titleLineHeight,
+									fontWeight: viewportMetrics.type.titleWeight,
+								},
+							]}
+							numberOfLines={1}
+						>
+							{title}
+						</Text>
+					) : (
+						<View style={styles.headerTitleSpacer} />
+					)}
+					<MapHeaderIconButton
+						onPress={onClose}
+						accessibilityLabel={title ? `Close ${title}` : "Close"}
+						backgroundColor={closeBg}
+						color={titleColor}
 						style={[
-							styles.headerSpacer,
+							styles.closeButton,
 							{
 								width: viewportMetrics.modal.headerButtonSize,
 								height: viewportMetrics.modal.headerButtonSize,
 							},
 						]}
 					/>
-				)}
-				{title ? (
-					<Text
-						style={[
-							styles.headerTitle,
-							{
-								color: titleColor,
-								fontSize: viewportMetrics.modal.titleSize,
-								lineHeight: viewportMetrics.modal.titleLineHeight,
-								fontWeight: viewportMetrics.type.titleWeight,
-							},
-						]}
-						numberOfLines={1}
-					>
-						{title}
-					</Text>
-				) : (
-					<View style={styles.headerTitleSpacer} />
-				)}
-				<MapHeaderIconButton
-					onPress={onClose}
-					accessibilityLabel={title ? `Close ${title}` : "Close"}
-					backgroundColor={closeBg}
-					color={titleColor}
-					style={[
-						styles.closeButton,
-						{
-							width: viewportMetrics.modal.headerButtonSize,
-							height: viewportMetrics.modal.headerButtonSize,
-						},
-					]}
-				/>
-			</View>
+				</View>
+			)}
 
 			{scrollEnabled ? (
 				<View

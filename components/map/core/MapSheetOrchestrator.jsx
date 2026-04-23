@@ -39,6 +39,8 @@ export default function MapSheetOrchestrator({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory = () => {},
+	// PULLBACK NOTE: Pass 12 F6 - secondary history entry in explore_intent
+	onOpenRecentVisits = () => {},
 	onOpenAmbulanceHospitals = () => {},
 	onOpenBedHospitals = () => {},
 	onOpenFeaturedHospital = () => {},
@@ -407,6 +409,7 @@ export default function MapSheetOrchestrator({
 						onChooseCare={onChooseCare}
 						onOpenProfile={onOpenProfile}
 						onOpenCareHistory={onOpenCareHistory}
+						onOpenRecentVisits={onOpenRecentVisits}
 						onOpenFeaturedHospital={onOpenFeaturedHospital}
 						onSnapStateChange={onSnapStateChange}
 						profileImageSource={

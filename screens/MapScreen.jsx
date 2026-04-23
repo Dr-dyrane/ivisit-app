@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Alert, Linking, Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
@@ -17,6 +17,8 @@ import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
 import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
+import MapVisitDetailsModal from "../components/map/history/MapVisitDetailsModal";
+import MapVisitBookingFlow from "../components/map/history/MapVisitBookingFlow";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
@@ -53,13 +55,14 @@ import {
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
+import { selectHistoryItemByAnyKey } from "../hooks/visits/useVisitHistorySelectors";
 
 export default function MapScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const { showToast } = useToast();
   const { logout, user } = useAuth();
-  const { visits = [], updateVisit } = useVisits();
+  const { visits = [], updateVisit, cancelVisit } = useVisits();
   const { registerFAB, unregisterFAB } = useFABActions();
   const { width, height, browserInsetTop, browserInsetBottom } =
     useAuthViewport();
@@ -88,6 +91,7 @@ export default function MapScreen() {
     closeCommitTriage,
     closeCommitPayment,
     closeTracking,
+    openTracking,
     finishCommitPayment,
     clearCommitFlow,
     handleMapHospitalPress,
@@ -117,6 +121,8 @@ export default function MapScreen() {
     profileModalVisible,
     recentVisits,
     recentVisitsVisible,
+    bookingVisible,
+    bookingInitialData,
     searchSheetMode,
     sheetPhase,
     sheetPayload,
@@ -128,6 +134,8 @@ export default function MapScreen() {
     setGuestProfileVisible,
     setProfileModalVisible,
     setRecentVisitsVisible,
+    setBookingVisible,
+    setBookingInitialData,
     setSheetSnapState,
     sheetMode,
     sheetSnapState,
@@ -182,6 +190,9 @@ export default function MapScreen() {
   const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
   const [recoveredRatingState, setRecoveredRatingState] = useState(null);
+  const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useState(null);
+  const [historyVisitDetailsVisible, setHistoryVisitDetailsVisible] = useState(false);
+  const [historyRatingState, setHistoryRatingState] = useState(null);
 
   const hasActiveMapModal =
 
@@ -189,6 +200,9 @@ export default function MapScreen() {
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
+    bookingVisible ||
+    historyVisitDetailsVisible ||
+    Boolean(historyRatingState?.visible) ||
     authModalVisible ||
     Boolean(recoveredRatingState?.visible) ||
     mapLoadingState?.visible;
@@ -228,6 +242,111 @@ export default function MapScreen() {
     }
     return result;
   }, [clearCommitFlow, logout]);
+  const selectedHistoryVisit = useMemo(
+    () => selectHistoryItemByAnyKey(visits, selectedHistoryVisitKey),
+    [selectedHistoryVisitKey, visits],
+  );
+  const activeHistoryRequestKeys = useMemo(() => {
+    return new Set(
+      [
+        activeMapRequest?.requestId,
+        activeMapRequest?.id,
+        activeMapRequest?.record?.displayId,
+        activeAmbulanceTrip?.displayId,
+        activeBedBooking?.displayId,
+        pendingApproval?.displayId,
+      ]
+        .filter(
+          (value) =>
+            value !== null &&
+            value !== undefined &&
+            String(value).trim().length > 0,
+        )
+        .map((value) => String(value)),
+    );
+  }, [
+    activeAmbulanceTrip?.displayId,
+    activeBedBooking?.displayId,
+    activeMapRequest?.id,
+    activeMapRequest?.record?.displayId,
+    activeMapRequest?.requestId,
+    pendingApproval?.displayId,
+  ]);
+
+  const closeHistoryVisitDetails = useCallback(() => {
+    setHistoryVisitDetailsVisible(false);
+    setSelectedHistoryVisitKey(null);
+  }, []);
+  const closeHistoryRating = useCallback(() => {
+    setHistoryRatingState(null);
+  }, []);
+
+  const handleOpenChooseCareFromHistory = useCallback(() => {
+    setRecentVisitsVisible(false);
+    setCareHistoryVisible(true);
+  }, [setCareHistoryVisible, setRecentVisitsVisible]);
+  // PULLBACK NOTE: Pass 12 F3c - book-visit opens map-owned sheet instead of legacy route
+  // OLD: router.push("/(user)/(stacks)/book-visit")
+  // NEW: setBookingInitialData(null) + setBookingVisible(true)
+  const handleBookVisitFromCare = useCallback(() => {
+    setCareHistoryVisible(false);
+    setBookingInitialData(null);
+    setBookingVisible(true);
+  }, [setBookingInitialData, setBookingVisible, setCareHistoryVisible]);
+
+  const handleSelectHistoryItem = useCallback(
+    (historyItem) => {
+      if (!historyItem) return;
+
+      setRecentVisitsVisible(false);
+      const historyKeys = [
+        historyItem.requestId,
+        historyItem.displayId,
+        historyItem.id,
+      ]
+        .filter(
+          (value) =>
+            value !== null &&
+            value !== undefined &&
+            String(value).trim().length > 0,
+        )
+        .map((value) => String(value));
+      const wantsResumeAction =
+        historyItem.primaryAction === "resume_tracking" ||
+        historyItem.primaryAction === "resume_request";
+      const matchesActiveEmergencyRequest =
+        historyItem.sourceKind === "emergency" &&
+        historyKeys.some((key) => activeHistoryRequestKeys.has(key));
+
+      const canResumeLiveRequest =
+        Boolean(activeMapRequest?.hasActiveRequest) &&
+        wantsResumeAction &&
+        matchesActiveEmergencyRequest;
+
+      if (canResumeLiveRequest) {
+        openTracking?.();
+        return;
+      }
+
+      setSelectedHistoryVisitKey(
+        historyItem.requestId || historyItem.displayId || historyItem.id,
+      );
+      setHistoryVisitDetailsVisible(true);
+    },
+    [
+      activeHistoryRequestKeys,
+      activeMapRequest?.hasActiveRequest,
+      openTracking,
+      setRecentVisitsVisible,
+    ],
+  );
+
+  useEffect(() => {
+    if (!historyVisitDetailsVisible) return;
+    if (selectedHistoryVisit) return;
+    closeHistoryVisitDetails();
+  }, [closeHistoryVisitDetails, historyVisitDetailsVisible, selectedHistoryVisit]);
+
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
   const [trackingRouteInfo, setTrackingRouteInfo] = useState({
     durationSec: null,
@@ -508,8 +627,54 @@ export default function MapScreen() {
     return null;
   }, [sheetPhase, sheetPayload?.transport]);
 
+  const historyFocusedHospital = useMemo(() => {
+    if (!historyVisitDetailsVisible || !selectedHistoryVisit) return null;
+
+    const byId = selectedHistoryVisit.hospitalId
+      ? discoveredHospitals.find((item) => item?.id === selectedHistoryVisit.hospitalId)
+      : null;
+    if (byId) return byId;
+
+    const byName = selectedHistoryVisit.facilityName
+      ? discoveredHospitals.find(
+          (item) =>
+            String(item?.name || "").trim().toLowerCase() ===
+            String(selectedHistoryVisit.facilityName || "").trim().toLowerCase(),
+        )
+      : null;
+    if (byName) return byName;
+
+    if (selectedHistoryVisit.facilityCoordinate) {
+      return {
+        id:
+          selectedHistoryVisit.hospitalId ||
+          selectedHistoryVisit.requestId ||
+          selectedHistoryVisit.id,
+        name: selectedHistoryVisit.facilityName || "Care facility",
+        address: selectedHistoryVisit.facilityAddress || null,
+        image: selectedHistoryVisit.heroImageUrl || null,
+        coordinates: selectedHistoryVisit.facilityCoordinate,
+        latitude: selectedHistoryVisit.facilityCoordinate.latitude,
+        longitude: selectedHistoryVisit.facilityCoordinate.longitude,
+      };
+    }
+
+    return null;
+  }, [discoveredHospitals, historyVisitDetailsVisible, selectedHistoryVisit]);
+
+  const mapHospitals = useMemo(() => {
+    if (!historyFocusedHospital) return discoveredHospitals;
+    const alreadyPresent = discoveredHospitals.some(
+      (item) => item?.id === historyFocusedHospital?.id,
+    );
+    return alreadyPresent
+      ? discoveredHospitals
+      : [historyFocusedHospital, ...discoveredHospitals];
+  }, [discoveredHospitals, historyFocusedHospital]);
+
   const mapFocusedHospitalId = useMemo(
     () =>
+      historyFocusedHospital?.id ||
       activeMapRequest?.hospitalId ||
       (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
         ? sheetPayload?.hospital?.id || null
@@ -517,6 +682,7 @@ export default function MapScreen() {
       nearestHospital?.id ||
       null,
     [
+      historyFocusedHospital?.id,
       activeMapRequest?.hospitalId,
       nearestHospital?.id,
       sheetPhase,
@@ -526,14 +692,16 @@ export default function MapScreen() {
 
   const mapFocusedHospital = useMemo(
     () =>
-      discoveredHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
+      historyFocusedHospital ||
+      mapHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
       activeMapRequest?.hospital ||
       featuredHospital ||
       sheetPayload?.hospital ||
       nearestHospital ||
       null,
     [
-      discoveredHospitals,
+      historyFocusedHospital,
+      mapHospitals,
       activeMapRequest?.hospital,
       featuredHospital,
       mapFocusedHospitalId,
@@ -617,6 +785,9 @@ export default function MapScreen() {
   );
 
   const mapServiceMarkerKind = useMemo(() => {
+    if (historyVisitDetailsVisible) {
+      return null;
+    }
     if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
       return "ambulance";
     }
@@ -632,6 +803,7 @@ export default function MapScreen() {
   }, [
     activeMapRequest?.kind,
     activeMapRequest?.pendingKind,
+    historyVisitDetailsVisible,
     paymentPreviewKind,
     sheetPhase,
   ]);
@@ -818,6 +990,175 @@ export default function MapScreen() {
     ],
   );
 
+  const handleResumeHistoryRequest = useCallback(() => {
+    closeHistoryVisitDetails();
+    openTracking?.();
+  }, [closeHistoryVisitDetails, openTracking]);
+
+  const handleRateHistoryVisit = useCallback(() => {
+    if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
+
+    setHistoryRatingState({
+      visible: true,
+      visitId: selectedHistoryVisit.id,
+      serviceType:
+        selectedHistoryVisit.requestType === "visit"
+          ? "visit"
+          : selectedHistoryVisit.requestType,
+      title:
+        selectedHistoryVisit.requestType === "ambulance"
+          ? "Rate your transport"
+          : selectedHistoryVisit.requestType === "bed"
+            ? "Rate your stay"
+            : "Rate your visit",
+      subtitle: selectedHistoryVisit.facilityName
+        ? `For ${selectedHistoryVisit.facilityName}`
+        : null,
+      serviceDetails: {
+        hospital: selectedHistoryVisit.facilityName || null,
+        provider:
+          selectedHistoryVisit.doctorName ||
+          selectedHistoryVisit.actorName ||
+          (selectedHistoryVisit.requestType === "ambulance"
+            ? "Emergency services"
+            : "Care team"),
+      },
+    });
+    closeHistoryVisitDetails();
+  }, [closeHistoryVisitDetails, selectedHistoryVisit]);
+
+  const handleCallHistoryClinic = useCallback(() => {
+    const phone = selectedHistoryVisit?.contactPhone;
+    if (!phone) return;
+    Linking.openURL(`tel:${phone}`);
+  }, [selectedHistoryVisit?.contactPhone]);
+
+  const handleJoinHistoryVisit = useCallback(() => {
+    const meetingLink = selectedHistoryVisit?.meetingLink;
+    if (!meetingLink) return;
+    Linking.openURL(meetingLink);
+  }, [selectedHistoryVisit?.meetingLink]);
+
+  // PULLBACK NOTE: Pass 12 F3c - book-again opens map-owned sheet with pre-filled initialData
+  // OLD: router.push({ pathname: "/(user)/(stacks)/book-visit", params: { ... } })
+  // NEW: setBookingInitialData(prefill) + setBookingVisible(true); useBookVisit consumes initialData
+  const handleBookHistoryAgain = useCallback(() => {
+    if (!selectedHistoryVisit) return;
+    closeHistoryVisitDetails();
+    const rawVisit = selectedHistoryVisit.visit || {};
+    const isTelehealth =
+      selectedHistoryVisit.requestType === "visit" &&
+      String(rawVisit?.type || "").toLowerCase().includes("tele");
+    setBookingInitialData({
+      type: isTelehealth ? "telehealth" : "clinic",
+      specialty: rawVisit?.specialty || undefined,
+      hospital: rawVisit?.hospital
+        ? {
+            id: rawVisit?.hospitalId || undefined,
+            name: rawVisit?.hospital,
+            address: rawVisit?.address || undefined,
+            image: rawVisit?.image || rawVisit?.hospitalImage || undefined,
+            phone: rawVisit?.phone || undefined,
+          }
+        : undefined,
+      step: 1,
+    });
+    setBookingVisible(true);
+  }, [
+    closeHistoryVisitDetails,
+    selectedHistoryVisit,
+    setBookingInitialData,
+    setBookingVisible,
+  ]);
+
+  const handleCancelHistoryVisit = useCallback(() => {
+    if (!selectedHistoryVisit?.id) return;
+
+    Alert.alert(
+      "Cancel Visit",
+      "Are you sure you want to cancel this visit?",
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Cancel Visit",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cancelVisit(selectedHistoryVisit.id);
+              showToast("Visit cancelled.", "success");
+            } catch (error) {
+              console.error("[MapScreen] Failed to cancel history visit:", error);
+              showToast("Could not cancel this visit right now.", "error");
+            }
+          },
+        },
+      ],
+    );
+  }, [cancelVisit, selectedHistoryVisit, showToast]);
+
+  const handleSkipHistoryRating = useCallback(async () => {
+    const resolution = await resolveTrackingRatingSkip({
+      visitId: historyRatingState?.visitId,
+      updateVisit,
+    });
+    if (!resolution.ok) {
+      showToast("Could not close rating right now.", "error");
+      return false;
+    }
+
+    closeHistoryRating();
+    const toast = buildTrackingResolutionToast({
+      action: "skipped",
+      serviceType: historyRatingState?.serviceType || "visit",
+      hospitalTitle: historyRatingState?.serviceDetails?.hospital ?? null,
+    });
+    showToast(toast.message, toast.level);
+    return true;
+  }, [
+    closeHistoryRating,
+    historyRatingState?.serviceDetails?.hospital,
+    historyRatingState?.serviceType,
+    historyRatingState?.visitId,
+    showToast,
+    updateVisit,
+  ]);
+
+  const handleSubmitHistoryRating = useCallback(
+    async ({ rating, comment, tipAmount, tipCurrency }) => {
+      const resolution = await resolveTrackingRatingSubmit({
+        visitId: historyRatingState?.visitId,
+        rating,
+        comment,
+        tipAmount,
+        tipCurrency,
+        updateVisit,
+      });
+      if (!resolution.ok) {
+        showToast("Could not save your rating right now.", "error");
+        return false;
+      }
+
+      closeHistoryRating();
+      const toast = buildTrackingResolutionToast({
+        action: "rated",
+        serviceType: historyRatingState?.serviceType || "visit",
+        hospitalTitle: historyRatingState?.serviceDetails?.hospital ?? null,
+        tipAmount,
+        tipError: resolution.tipError,
+      });
+      showToast(toast.message, toast.level);
+      return true;
+    },
+    [
+      closeHistoryRating,
+      historyRatingState?.serviceDetails?.hospital,
+      historyRatingState?.serviceType,
+      historyRatingState?.visitId,
+      showToast,
+      updateVisit,
+    ],
+  );
+
   const trackingRouteCoordinates = useMemo(
     () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
     [trackingRouteInfo?.coordinates],
@@ -909,7 +1250,7 @@ export default function MapScreen() {
     >
       <EmergencyLocationPreviewMap
         location={activeLocation}
-        hospitals={discoveredHospitals}
+        hospitals={mapHospitals}
         selectedHospitalId={mapFocusedHospitalId}
         serviceMarkerKind={mapServiceMarkerKind}
         serviceMarkerCoordinate={mapServiceMarkerCoordinate}
@@ -951,7 +1292,9 @@ export default function MapScreen() {
           onOpenCareHistory={() => setCareHistoryVisible(true)}
           onOpenAmbulanceHospitals={openAmbulanceHospitalList}
           onOpenBedHospitals={openBedHospitalList}
-          onOpenRecents={() => setRecentVisitsVisible(true)}
+          // PULLBACK NOTE: Pass 12 F6 - renamed from onOpenRecents to onOpenRecentVisits
+          // so MapSheetOrchestrator + MapExploreIntentStageBase can consume it consistently.
+          onOpenRecentVisits={() => setRecentVisitsVisible(true)}
           onOpenFeaturedHospital={handleOpenFeaturedHospital}
           onCycleHospital={
             featuredHospitals.length > 1
@@ -1043,11 +1386,53 @@ export default function MapScreen() {
           setCareHistoryVisible(false);
           handleChooseCare(mode);
         }}
+        onBookVisit={handleBookVisitFromCare}
       />
 
       <MapRecentVisitsModal
         visible={recentVisitsVisible}
         onClose={() => setRecentVisitsVisible(false)}
+        onSelectVisit={handleSelectHistoryItem}
+        onChooseCare={handleOpenChooseCareFromHistory}
+      />
+
+      <MapVisitDetailsModal
+        visible={historyVisitDetailsVisible}
+        historyItem={selectedHistoryVisit}
+        onClose={closeHistoryVisitDetails}
+        onResume={handleResumeHistoryRequest}
+        onRateVisit={handleRateHistoryVisit}
+        onCallClinic={handleCallHistoryClinic}
+        onJoinVideo={handleJoinHistoryVisit}
+        onBookAgain={handleBookHistoryAgain}
+        onCancelVisit={handleCancelHistoryVisit}
+      />
+
+      {/* PULLBACK NOTE: Pass 12 F3c - map-owned visit booking flow.
+          Replaces legacy /(user)/(stacks)/book-visit bridge. */}
+      <MapVisitBookingFlow
+        visible={bookingVisible}
+        initialData={bookingInitialData}
+        onClose={() => setBookingVisible(false)}
+        onCompleted={(visit) => {
+          showToast(
+            `Visit booked for ${visit?.date || "your selection"}.`,
+            "success",
+          );
+        }}
+      />
+
+      <ServiceRatingModal
+        visible={Boolean(historyRatingState?.visible)}
+        serviceType={historyRatingState?.serviceType || "visit"}
+        title={historyRatingState?.title || "Rate your visit"}
+        subtitle={historyRatingState?.subtitle || null}
+        serviceDetails={historyRatingState?.serviceDetails || null}
+        onClose={closeHistoryRating}
+        onSkip={handleSkipHistoryRating}
+        onSubmit={handleSubmitHistoryRating}
+        surfaceVariant="map"
+        preferDrawerPresentation={usesSidebarLayout}
       />
 
       <ServiceRatingModal

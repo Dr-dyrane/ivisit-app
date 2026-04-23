@@ -34,7 +34,10 @@ export const TIME_SLOTS = [
 ];
 
 export function useBookVisit(props = {}) {
-	const { initialData = {} } = props;
+	// PULLBACK NOTE: Pass 12 F3 - accept onSuccess + onCancel for map-owned booking sheet
+	// OLD: submit always router.replace("/(user)/(stacks)/visit/${id}")
+	// NEW: if onSuccess is provided, invoke it with the created visit; else fall back to router.replace
+	const { initialData = {}, onSuccess = null } = props;
 	const { user } = useAuth();
 	const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
 	const router = useRouter();
@@ -272,15 +275,20 @@ export function useBookVisit(props = {}) {
 
 			await addVisit(visit);
 
-			// Replace with visit details
-			router.replace(`/(user)/(stacks)/visit/${id}`);
+			// PULLBACK NOTE: Pass 12 F3 - prefer onSuccess callback over legacy route redirect
+			if (typeof onSuccess === "function") {
+				onSuccess(visit);
+			} else {
+				// Legacy route fallback (VisitDetailsScreen is now a bridge to /(user))
+				router.replace(`/(user)/(stacks)/visit/${id}`);
+			}
 
 		} catch (error) {
 			console.error("Booking failed", error);
 			Alert.alert("Error", "Failed to book visit. Please try again.");
 			setIsSubmitting(false);
 		}
-	}, [addVisit, bookingData, cost?.total_cost, isDemoBookingFlow, router]);
+	}, [addVisit, bookingData, cost?.total_cost, isDemoBookingFlow, onSuccess, router]);
 
 	return {
 		step,

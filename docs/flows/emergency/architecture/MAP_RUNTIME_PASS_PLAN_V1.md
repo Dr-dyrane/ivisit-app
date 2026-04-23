@@ -21,7 +21,7 @@ Related audit:
 - Pass 9: complete
 - Pass 10: complete
 - Pass 11: complete
-- Pass 12: in progress
+- Pass 12: complete
 - Pass 13: pending
 - Pass 14: pending
 - Pass 15: pending
@@ -1139,16 +1139,28 @@ Pass 12 current output:
 - [`hooks/visits/useVisitHistorySelectors.js`](../../../../hooks/visits/useVisitHistorySelectors.js) now provides grouped history selectors, normalized history rows, and deterministic history-item lookup by `id`, `requestId`, or `displayId`
 - [`components/map/MapRecentVisitsModal.jsx`](../../../../components/map/MapRecentVisitsModal.jsx) is now the grouped map-owned history owner instead of a lightweight recents preview
 - [`components/map/MapCareHistoryModal.jsx`](../../../../components/map/MapCareHistoryModal.jsx) is now care-only again; history is no longer mixed into choose-care ownership
-- choose-care now includes `Book a visit` as the fourth care action, but it currently bridges into the existing booking stack rather than a fully map-owned booking flow
+- choose-care now includes `Book a visit` as the fourth care action, and it now opens the map-owned booking sheet instead of the legacy booking stack
 - [`components/map/history/MapVisitDetailsModal.jsx`](../../../../components/map/history/MapVisitDetailsModal.jsx) now exists as the canonical `/map` visit-details owner and supports resume, rate, call, join-video, book-again, cancel, and preparation/detail rendering from normalized history data
 - [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now routes grouped history selection into either live tracking resume for the matching active emergency request or the map-owned visit-details modal, and it suppresses live service markers while history details own the map
 - `/map` now has a manual history-rating path using the shared rating modal and the existing visit update/rating resolution helpers, so rating-pending history rows no longer depend only on cross-device recovery timing
+- [`components/map/history/history.theme.js`](../../../../components/map/history/history.theme.js) centralizes history status-tone tokens (`resolveHistoryRowTone`, `resolveHistoryHeroTone`); `MapRecentVisitsModal` and `MapVisitDetailsModal` no longer carry duplicated inline tone maps
+- [`hooks/visits/useBookVisit.js`](../../../../hooks/visits/useBookVisit.js) now accepts an `onSuccess` callback; submit resolves through the callback when provided instead of forcing a legacy route push
+- [`components/map/history/MapVisitBookingFlow.jsx`](../../../../components/map/history/MapVisitBookingFlow.jsx) is the canonical `/map` visit booking owner, composing the existing `components/visits/book-visit/*` step components inside `MapModalShell`
+- [`hooks/map/state/mapExploreFlow.store.js`](../../../../hooks/map/state/mapExploreFlow.store.js) now owns `bookingVisible` + `bookingInitialData` surface state and exposes `setBookingVisible` / `setBookingInitialData`; `hasActiveMapModal` now considers the booking surface
+- [`contexts/VisitsContext.jsx`](../../../../contexts/VisitsContext.jsx) is now only shared visit truth + CRUD side effects; list-screen-only UI state (`filter`, `filters`, `filteredVisits`, `visitCounts`, `selectedVisitId`, `selectVisit`, `setFilterType`) has been removed per VISITS_REQUEST_HISTORY_PLAN §10
+- [`screens/VisitsScreen.jsx`](../../../../screens/VisitsScreen.jsx) and [`screens/VisitDetailsScreen.jsx`](../../../../screens/VisitDetailsScreen.jsx) are now thin compatibility bridges that redirect to `/(user)` — the legacy Alert-only cancel in visit details is moot because the canonical modal uses the real `cancelVisit` path through `useVisits`
+- [`components/map/views/exploreIntent/MapExploreIntentRecentHistory.jsx`](../../../../components/map/views/exploreIntent/MapExploreIntentRecentHistory.jsx) adds a subordinate "Recent care history" entry inside `explore_intent` when history exists; tap opens the canonical grouped history modal
+- [`components/map/core/MapSheetOrchestrator.jsx`](../../../../components/map/core/MapSheetOrchestrator.jsx) + [`components/map/views/exploreIntent/MapExploreIntentStageBase.jsx`](../../../../components/map/views/exploreIntent/MapExploreIntentStageBase.jsx) now forward `onOpenRecentVisits` so the explore-intent history entry reaches the grouped history owner without divergent plumbing
 
-Pass 12 still deferred:
+Pass 12 Done-criteria status:
 
-- grouped history is not yet surfaced as a secondary support section inside `explore_intent`
-- `/map` still bridges both `Book a Visit` and `Book again` into the legacy booking stack
-- legacy `VisitsScreen` and route-owned visit details still exist as compatibility owners during migration
+- users can open grouped history from `/map` — ✅
+- tapping a visit opens canonical visit details on `/map` — ✅
+- active emergency-derived history rows resume tracking instead of duplicating tracking UI — ✅
+- contextual recent history surfaced inside `explore_intent` as a subordinate support surface — ✅
+- visit side effects + lifecycle truth shared across legacy and `/map` owners — ✅ (all handlers resolve through `useVisits` / `visitsService` — verified)
+- standalone visit screens are no longer primary owners — ✅ (legacy screens demoted to compatibility bridges)
+- choose-care has a stable header contract and only includes `Book a Visit` with visit ownership locked — ✅ (booking is now map-owned)
 
 Choose-care modal requirements once `Book a Visit` is promoted:
 

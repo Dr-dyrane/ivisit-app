@@ -20,6 +20,9 @@ const ACTIONS = {
 	SET_GUEST_PROFILE_VISIBLE: "setGuestProfileVisible",
 	SET_CARE_HISTORY_VISIBLE: "setCareHistoryVisible",
 	SET_RECENT_VISITS_VISIBLE: "setRecentVisitsVisible",
+	// PULLBACK NOTE: Pass 12 F3b - map-owned booking flow surface state
+	SET_BOOKING_VISIBLE: "setBookingVisible",
+	SET_BOOKING_INITIAL_DATA: "setBookingInitialData",
 	SET_AUTH_MODAL_VISIBLE: "setAuthModalVisible",
 	SET_SELECTED_CARE: "setSelectedCare",
 	SET_MANUAL_LOCATION: "setManualLocation",
@@ -55,6 +58,9 @@ export function createInitialMapExploreFlowState(usesSidebarLayout) {
 			guestProfileVisible: false,
 			careHistoryVisible: false,
 			recentVisitsVisible: false,
+			// PULLBACK NOTE: Pass 12 F3b - map-owned booking flow visibility + pre-fill payload
+			bookingVisible: false,
+			bookingInitialData: null,
 			authModalVisible: false,
 		},
 		selection: {
@@ -134,6 +140,27 @@ function mapExploreFlowReducer(state, action) {
 				surfaces: {
 					...state.surfaces,
 					recentVisitsVisible: action.visible,
+				},
+			};
+		case ACTIONS.SET_BOOKING_VISIBLE:
+			return {
+				...state,
+				surfaces: {
+					...state.surfaces,
+					bookingVisible: action.visible,
+					// Clear pre-fill payload when closing so next open starts clean unless
+					// the caller explicitly seeds it via setBookingInitialData.
+					bookingInitialData: action.visible
+						? state.surfaces.bookingInitialData
+						: null,
+				},
+			};
+		case ACTIONS.SET_BOOKING_INITIAL_DATA:
+			return {
+				...state,
+				surfaces: {
+					...state.surfaces,
+					bookingInitialData: action.value,
 				},
 			};
 		case ACTIONS.SET_AUTH_MODAL_VISIBLE:
@@ -330,6 +357,10 @@ export function useMapExploreFlowStore({ usesSidebarLayout }) {
 				dispatch({ type: ACTIONS.SET_CARE_HISTORY_VISIBLE, visible }),
 			setRecentVisitsVisible: (visible) =>
 				dispatch({ type: ACTIONS.SET_RECENT_VISITS_VISIBLE, visible }),
+			setBookingVisible: (visible) =>
+				dispatch({ type: ACTIONS.SET_BOOKING_VISIBLE, visible }),
+			setBookingInitialData: (value) =>
+				dispatch({ type: ACTIONS.SET_BOOKING_INITIAL_DATA, value }),
 			setAuthModalVisible: (visible) =>
 				dispatch({ type: ACTIONS.SET_AUTH_MODAL_VISIBLE, visible }),
 			setSelectedCare: (value) =>

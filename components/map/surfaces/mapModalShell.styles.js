@@ -41,6 +41,12 @@ export const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		marginBottom: 10,
 	},
+	headerLeadingWrap: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		minWidth: 0,
+	},
 	headerTitle: {
 		flex: 1,
 		fontSize: 21,
@@ -48,6 +54,12 @@ export const styles = StyleSheet.create({
 		fontWeight: "800",
 		textAlign: "center",
 		marginHorizontal: 12,
+	},
+	headerTitleLeading: {
+		flex: 1,
+		textAlign: "left",
+		marginLeft: 0,
+		marginRight: 12,
 	},
 	headerTitleSpacer: {
 		flex: 1,

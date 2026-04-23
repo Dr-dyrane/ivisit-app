@@ -1,75 +1,177 @@
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
-import { navigateToVisits } from "../../utils/navigationHelpers";
+import {
+	selectGroupedHistoryBuckets,
+	selectHistoryCount,
+} from "../../hooks/visits/useVisitHistorySelectors";
 import MapModalShell from "./surfaces/MapModalShell";
+import { resolveHistoryRowTone } from "./history/history.theme";
 
 const squircle = (radius) => ({
 	borderRadius: radius,
 	borderCurve: "continuous",
 });
 
-function formatVisitMeta(visit) {
-	const hospital = visit?.hospital || visit?.hospitalName || "iVisit care";
-	const date = typeof visit?.date === "string" ? visit.date : "";
-	const time = typeof visit?.time === "string" ? visit.time : "";
-	return [hospital, date, time].filter(Boolean).join(" | ");
+const getItemIcon = (item) => {
+	switch (item?.requestType) {
+		case "ambulance":
+			return { name: "ambulance", library: "material" };
+		case "bed":
+			return { name: "bed", library: "material" };
+		default:
+			return { name: "calendar", library: "ion" };
+	}
+};
+
+// PULLBACK NOTE: status-tone tokens centralized in history.theme.js (F1)
+// OLD: local getToneColors duplicated inline
+// NEW: import { resolveHistoryRowTone } from "./history/history.theme"
+
+function HistoryRow({
+	item,
+	onPress,
+	titleColor,
+	mutedColor,
+	cardSurface,
+	isDarkMode,
+	responsiveStyles,
+}) {
+	const icon = getItemIcon(item);
+	const toneColors = resolveHistoryRowTone(item?.statusTone, isDarkMode);
+
+	return (
+		<Pressable
+			onPress={() => onPress?.(item)}
+			style={[
+				styles.rowCard,
+				responsiveStyles.rowCard,
+				{
+					backgroundColor: cardSurface,
+					borderRadius: responsiveStyles.cardRadius,
+				},
+			]}
+		>
+			<View
+				style={[
+					styles.rowIconWrap,
+					responsiveStyles.rowIconWrap,
+					{ backgroundColor: toneColors.orb },
+				]}
+			>
+				{icon.library === "material" ? (
+					<MaterialCommunityIcons name={icon.name} size={responsiveStyles.iconSize} color={toneColors.icon} />
+				) : (
+					<Ionicons name={icon.name} size={responsiveStyles.iconSize} color={toneColors.icon} />
+				)}
+			</View>
+
+			<View style={styles.rowCopy}>
+				<Text numberOfLines={1} style={[styles.rowTitle, responsiveStyles.rowTitle, { color: titleColor }]}>
+					{item.title}
+				</Text>
+				<Text numberOfLines={2} style={[styles.rowSubtitle, responsiveStyles.rowSubtitle, { color: mutedColor }]}>
+					{item.subtitle}
+				</Text>
+			</View>
+
+			<View style={styles.rowMeta}>
+				<View
+					style={[
+						styles.statusChip,
+						{ backgroundColor: toneColors.chip },
+					]}
+				>
+					<Text style={[styles.statusChipText, { color: toneColors.chipText }]}>
+						{item.statusLabel}
+					</Text>
+				</View>
+				<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+			</View>
+		</Pressable>
+	);
 }
 
-export default function MapRecentVisitsModal({ visible, onClose }) {
-	const router = useRouter();
+export default function MapRecentVisitsModal({
+	visible,
+	onClose,
+	onSelectVisit,
+	onChooseCare,
+}) {
 	const { isDarkMode } = useTheme();
 	const viewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "modal" });
 	const { visits = [] } = useVisits();
-	const recentVisits = useMemo(() => (Array.isArray(visits) ? visits.slice(0, 8) : []), [visits]);
+	const groupedHistory = useMemo(() => selectGroupedHistoryBuckets(visits), [visits]);
+	const historyCount = useMemo(() => selectHistoryCount(visits), [visits]);
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
+	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
 	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.04)";
+
 	const responsiveStyles = useMemo(() => {
-		const visitIconSize = Math.max(36, Math.round(viewportMetrics.radius.card * 1.48));
+		const iconSize = Math.max(20, Math.round(viewportMetrics.type.body * 1.22));
+		const orbSize = Math.max(42, Math.round(viewportMetrics.radius.card * 1.54));
 		return {
 			content: {
 				paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
 				gap: viewportMetrics.insets.sectionGap,
 			},
-			visitCard: {
+			section: {
+				gap: Math.max(8, viewportMetrics.insets.sectionGap - 2),
+			},
+			sectionHeader: {
+				paddingTop: Math.max(4, viewportMetrics.insets.sectionGap - 8),
+			},
+			sectionTitle: {
+				fontSize: Math.max(14, viewportMetrics.type.caption + 1),
+				lineHeight: Math.max(18, viewportMetrics.type.captionLineHeight),
+			},
+			rowCard: {
 				paddingHorizontal: Math.max(14, viewportMetrics.modal.contentPadding - 2),
 				paddingVertical: Math.max(14, viewportMetrics.insets.sectionGap),
-				gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+				gap: Math.max(12, viewportMetrics.insets.sectionGap),
 			},
-			visitIconWrap: {
-				width: visitIconSize,
-				height: visitIconSize,
-				borderRadius: Math.round(visitIconSize / 2),
+			rowIconWrap: {
+				width: orbSize,
+				height: orbSize,
+				borderRadius: Math.round(orbSize / 2),
 			},
-			visitTitle: {
+			rowTitle: {
 				fontSize: Math.max(15, viewportMetrics.type.body),
 				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
 			},
-			visitMeta: {
-				marginTop: 4,
+			rowSubtitle: {
+				marginTop: 3,
 				fontSize: viewportMetrics.type.caption,
 				lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
 			},
-			moreAction: {
-				marginTop: Math.max(6, viewportMetrics.insets.sectionGap - 6),
-			},
-			moreText: {
-				fontSize: viewportMetrics.type.caption,
-				lineHeight: viewportMetrics.type.captionLineHeight,
-			},
 			emptyCard: {
 				paddingHorizontal: Math.max(18, viewportMetrics.modal.contentPadding),
-				paddingVertical: Math.max(20, viewportMetrics.insets.largeGap),
+				paddingVertical: Math.max(22, viewportMetrics.insets.largeGap),
 			},
 			emptyTitle: {
+				fontSize: Math.max(16, viewportMetrics.type.title),
+				lineHeight: Math.max(22, viewportMetrics.type.titleLineHeight - 2),
+			},
+			emptyBody: {
+				marginTop: 8,
+				fontSize: viewportMetrics.type.body,
+				lineHeight: viewportMetrics.type.bodyLineHeight,
+			},
+			emptyAction: {
+				marginTop: Math.max(16, viewportMetrics.insets.sectionGap),
+				paddingHorizontal: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+				paddingVertical: 14,
+			},
+			emptyActionText: {
 				fontSize: Math.max(15, viewportMetrics.type.body),
 				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 4),
 			},
+			cardRadius: viewportMetrics.radius.card,
+			iconSize,
 		};
 	}, [viewportMetrics]);
 
@@ -77,56 +179,33 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 		<MapModalShell
 			visible={visible}
 			onClose={onClose}
-			title="Recents"
+			title={historyCount > 0 ? "History" : "Your history"}
+			headerLayout="leading"
 			minHeightRatio={0.78}
 			contentContainerStyle={[styles.content, responsiveStyles.content]}
 		>
-			{recentVisits.length > 0 ? (
-				<>
-					{recentVisits.map((visit, index) => (
-						<View
-							key={visit?.id || `${visit?.hospital || "visit"}-${index}`}
-							style={[
-								styles.visitCard,
-								responsiveStyles.visitCard,
-								{
-									backgroundColor: cardSurface,
-									borderRadius: viewportMetrics.radius.card,
-								},
-							]}
-						>
-							<View style={[styles.visitIconWrap, responsiveStyles.visitIconWrap]}>
-								<Ionicons name="time-outline" size={18} color="#86100E" />
-							</View>
-							<View style={styles.visitCopy}>
-								<Text
-									numberOfLines={1}
-									style={[styles.visitTitle, responsiveStyles.visitTitle, { color: titleColor }]}
-								>
-									{visit?.type || "Care visit"}
-								</Text>
-								<Text
-									numberOfLines={2}
-									style={[styles.visitMeta, responsiveStyles.visitMeta, { color: mutedColor }]}
-								>
-									{formatVisitMeta(visit)}
-								</Text>
-							</View>
+			{groupedHistory.length > 0 ? (
+				groupedHistory.map((group) => (
+					<View key={group.key} style={[styles.section, responsiveStyles.section]}>
+						<View style={[styles.sectionHeader, responsiveStyles.sectionHeader]}>
+							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: mutedColor }]}>
+								{group.label}
+							</Text>
 						</View>
-					))}
-					<Pressable
-						onPress={() => {
-							onClose?.();
-							navigateToVisits({ router });
-						}}
-						style={[styles.moreAction, responsiveStyles.moreAction]}
-					>
-						<Text style={[styles.moreText, responsiveStyles.moreText, { color: titleColor }]}>
-							See more
-						</Text>
-						<Ionicons name="chevron-forward" size={16} color={titleColor} />
-					</Pressable>
-				</>
+						{group.items.map((item) => (
+							<HistoryRow
+								key={item.id}
+								item={item}
+								onPress={onSelectVisit}
+								titleColor={titleColor}
+								mutedColor={bodyColor}
+								cardSurface={cardSurface}
+								isDarkMode={isDarkMode}
+								responsiveStyles={responsiveStyles}
+							/>
+						))}
+					</View>
+				))
 			) : (
 				<View
 					style={[
@@ -134,13 +213,41 @@ export default function MapRecentVisitsModal({ visible, onClose }) {
 						responsiveStyles.emptyCard,
 						{
 							backgroundColor: cardSurface,
-							borderRadius: viewportMetrics.radius.card,
+							borderRadius: responsiveStyles.cardRadius,
 						},
 					]}
 				>
 					<Text style={[styles.emptyTitle, responsiveStyles.emptyTitle, { color: titleColor }]}>
-						No recent visits
+						No care history yet
 					</Text>
+					<Text style={[styles.emptyBody, responsiveStyles.emptyBody, { color: mutedColor }]}>
+						Your completed care, upcoming visits, and active requests will appear here.
+					</Text>
+					{typeof onChooseCare === "function" ? (
+						<Pressable
+							onPress={onChooseCare}
+							style={[
+								styles.emptyAction,
+								responsiveStyles.emptyAction,
+								{
+									backgroundColor: isDarkMode
+										? "rgba(255,255,255,0.08)"
+										: "rgba(15,23,42,0.06)",
+									borderRadius: responsiveStyles.cardRadius - 6,
+								},
+							]}
+						>
+							<Text
+								style={[
+									styles.emptyActionText,
+									responsiveStyles.emptyActionText,
+									{ color: titleColor },
+								]}
+							>
+								Choose care
+							</Text>
+						</Pressable>
+					) : null}
 				</View>
 			)}
 		</MapModalShell>
@@ -153,40 +260,64 @@ const styles = StyleSheet.create({
 		paddingBottom: 12,
 		gap: 12,
 	},
-	visitCard: {
+	section: {
+		gap: 8,
+	},
+	sectionHeader: {},
+	sectionTitle: {
+		fontWeight: "700",
+		textTransform: "none",
+	},
+	rowCard: {
 		flexDirection: "row",
 		alignItems: "center",
 		...squircle(28),
 	},
-	visitIconWrap: {
-		backgroundColor: "rgba(134,16,14,0.10)",
+	rowIconWrap: {
 		alignItems: "center",
 		justifyContent: "center",
 	},
-	visitCopy: {
+	rowCopy: {
 		flex: 1,
+		minWidth: 0,
 	},
-	visitTitle: {
-		fontWeight: "800",
+	rowTitle: {
+		fontWeight: "700",
 	},
-	visitMeta: {
+	rowSubtitle: {
 		fontWeight: "400",
 	},
-	moreAction: {
-		flexDirection: "row",
-		alignItems: "center",
-		alignSelf: "flex-start",
-		gap: 6,
-		paddingVertical: 4,
+	rowMeta: {
+		alignItems: "flex-end",
+		gap: 10,
+		marginLeft: 10,
 	},
-	moreText: {
+	statusChip: {
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 999,
+	},
+	statusChipText: {
+		fontSize: 11,
 		fontWeight: "700",
 	},
 	emptyCard: {
-		alignItems: "center",
+		alignItems: "flex-start",
 		...squircle(28),
 	},
 	emptyTitle: {
+		fontWeight: "700",
+	},
+	emptyBody: {
 		fontWeight: "400",
+	},
+	emptyAction: {
+		alignSelf: "stretch",
+		alignItems: "center",
+		justifyContent: "center",
+		...squircle(24),
+	},
+	emptyActionText: {
+		fontWeight: "700",
 	},
 });
