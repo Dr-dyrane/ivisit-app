@@ -14,6 +14,8 @@ export const historyRowStyles = StyleSheet.create({
 	row: {
 		flexDirection: "row",
 		alignItems: "center",
+		borderRadius: 18,
+		borderCurve: "continuous",
 	},
 	iconWrap: {
 		alignItems: "center",
@@ -27,12 +29,25 @@ export const historyRowStyles = StyleSheet.create({
 		fontWeight: "600",
 	},
 	subtitle: {
-		fontWeight: "400",
+		fontWeight: "500",
+		letterSpacing: -0.08,
 	},
 	metaColumn: {
+		minWidth: 72,
 		alignItems: "flex-end",
 		marginLeft: 10,
+		gap: 8,
+	},
+	metaTimeText: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "700",
+		letterSpacing: -0.08,
+	},
+	metaBottomRow: {
 		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "flex-end",
 		gap: 8,
 	},
 	statusChip: {
@@ -81,7 +96,7 @@ export const historyModalStyles = StyleSheet.create({
 		gap: 14,
 	},
 	scrollContent: {
-		paddingBottom: 24,
+		paddingBottom: 100,
 	},
 	sectionHeader: {
 		flexDirection: "row",

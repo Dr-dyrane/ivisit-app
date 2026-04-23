@@ -3,6 +3,19 @@ const remoteImageSourceCache = new Map();
 const prefetchedRemoteImageUris = new Set();
 const MAX_REMOTE_IMAGE_SOURCE_CACHE_SIZE = 120;
 
+// PULLBACK NOTE: Add URL validation utility to prevent network errors
+// OLD: No validation, malformed URLs passed through to Image component
+// NEW: Validate protocol, format, and structure before caching
+function isValidUrl(string) {
+	if (typeof string !== "string" || string.trim().length === 0) return false;
+	try {
+		const url = new URL(string.trim());
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 function toStringList(value) {
 	return Array.isArray(value)
 		? value
@@ -19,7 +32,13 @@ export function getHospitalHeroSource(hospital) {
 		...toStringList(hospital?.google_photos),
 	];
 	const uri = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
-	return getCachedRemoteImageSource(uri) || DEFAULT_HOSPITAL_HERO_IMAGE;
+	// PULLBACK NOTE: Validate URI before caching to prevent network errors
+	// OLD: Pass any non-empty string to getCachedRemoteImageSource
+	// NEW: Only pass valid URLs, fallback to default image
+	if (uri && isValidUrl(uri)) {
+		return getCachedRemoteImageSource(uri);
+	}
+	return DEFAULT_HOSPITAL_HERO_IMAGE;
 }
 
 export function getCachedRemoteImageSource(uri) {

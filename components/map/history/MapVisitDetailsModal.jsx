@@ -14,17 +14,69 @@ import {
 	resolveFacilityLine,
 	resolveHistoryDetailsTitle,
 	resolveHistoryRequestIcon,
-	resolveRatingLabel,
 	resolveTypeValue,
 	resolveWhenValue,
 } from "./history.presentation";
+
+const RATING_STAR_GOLD = "#F6C453";
+
+const toFiniteNumber = (value) => {
+	if (typeof value === "string") {
+		const normalized = value.replace(/[^0-9.-]/g, "");
+		if (!normalized) return null;
+		const numeric = Number(normalized);
+		return Number.isFinite(numeric) ? numeric : null;
+	}
+	const numeric = Number(value);
+	return Number.isFinite(numeric) ? numeric : null;
+};
+
+const normalizeRatingValue = (value) => {
+	const numeric = toFiniteNumber(value);
+	if (numeric == null) return 0;
+	return Math.max(0, Math.min(5, numeric));
+};
+
+const formatRatingDisplay = (value) => normalizeRatingValue(value).toFixed(1);
+
+function renderRatingStars(value, activeColor, mutedColor, size = 14) {
+	const clamped = normalizeRatingValue(value);
+	const stars = [];
+	for (let index = 1; index <= 5; index += 1) {
+		let iconName = "star-outline";
+		let color = mutedColor;
+		if (clamped >= index) {
+			iconName = "star";
+			color = activeColor;
+		} else if (clamped >= index - 0.5) {
+			iconName = "star-half";
+			color = activeColor;
+		}
+		stars.push(
+			<Ionicons key={`rating-star-${index}`} name={iconName} size={size} color={color} />,
+		);
+	}
+	return (
+		<View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginTop: 4 }}>
+			{stars}
+		</View>
+	);
+}
 
 /**
  * Single row in the Details section — label + value.
  * Hidden when value is falsy.
  */
-function DetailRow({ label, value, theme, metrics }) {
-	if (!value) return null;
+function DetailRow({ label, value, theme, metrics, kind = null, ratingValue = null }) {
+	const isRating = kind === "rating";
+	const starsNode = isRating
+		? renderRatingStars(
+				ratingValue,
+				RATING_STAR_GOLD,
+				theme.mutedColor,
+			)
+		: null;
+	if (!isRating && !value) return null;
 	return (
 		<View style={historyDetailsStyles.detailRow}>
 			<Text
@@ -39,18 +91,22 @@ function DetailRow({ label, value, theme, metrics }) {
 			>
 				{label}
 			</Text>
-			<Text
-				style={[
-					historyDetailsStyles.detailValue,
-					{
-						color: theme.titleColor,
-						fontSize: metrics.detailValueSize,
-						lineHeight: metrics.detailValueLineHeight,
-					},
-				]}
-			>
-				{value}
-			</Text>
+			{isRating ? (
+				starsNode
+			) : (
+				<Text
+					style={[
+						historyDetailsStyles.detailValue,
+						{
+							color: theme.titleColor,
+							fontSize: metrics.detailValueSize,
+							lineHeight: metrics.detailValueLineHeight,
+						},
+					]}
+				>
+					{value}
+				</Text>
+			)}
 		</View>
 	);
 }
@@ -164,7 +220,6 @@ export default function MapVisitDetailsModal({
 	const whenValue = resolveWhenValue(historyItem);
 	const typeValue = resolveTypeValue(historyItem);
 	const clinicianLabel = resolveClinicianLabel(historyItem);
-	const ratingLabel = resolveRatingLabel(historyItem?.existingRating);
 	const facilityLine = resolveFacilityLine(historyItem);
 
 	if (!historyItem) return null;
@@ -384,8 +439,14 @@ export default function MapVisitDetailsModal({
 						metrics={metrics}
 					/>
 					<DetailRow
-						label={HISTORY_DETAILS_COPY.detailLabels.rating}
-						value={ratingLabel}
+						label={HISTORY_DETAILS_COPY.detailLabels.myRating || "My rating"}
+						value={
+							normalizeRatingValue(historyItem?.existingRating) > 0
+								? null
+								: formatRatingDisplay(historyItem?.existingRating)
+						}
+						kind="rating"
+						ratingValue={historyItem?.existingRating}
 						theme={theme}
 						metrics={metrics}
 					/>

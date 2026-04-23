@@ -36,6 +36,8 @@ import { buildTrackingThemeTokens } from "../../views/tracking/mapTracking.theme
 import { getToneColors } from "../../views/tracking/mapTracking.presentation";
 import { useOptionalLocation } from "../../../../contexts/GlobalLocationContext";
 
+const RATING_STAR_GOLD = "#F6C453";
+
 function HeroIcon({ iconDescriptor, size, color }) {
 	if (!iconDescriptor) {
 		return <Ionicons name="medical-outline" size={size} color={color} />;
@@ -62,33 +64,22 @@ const EXPANDED_ACTION_ROW_HEADER_CLEARANCE = 0;
 // Render icon based on iconType (ion or material) - mirrors hospital detail
 function renderIcon(item, color, size = 16) {
 	if (!item?.icon) return null;
-	if (item.iconType === "material") {
-		return <MaterialCommunityIcons name={item.icon} size={size} color={color} />;
+	const resolvedIconName =
+		item?.primary && !item?.disabled && item?.activeIcon ? item.activeIcon : item.icon;
+	const resolvedIconType =
+		item?.primary && !item?.disabled && item?.activeIconType
+			? item.activeIconType
+			: item.iconType;
+	if (resolvedIconType === "material") {
+		return (
+			<MaterialCommunityIcons
+				name={resolvedIconName}
+				size={size}
+				color={color}
+			/>
+		);
 	}
-	return <Ionicons name={item.icon} size={size} color={color} />;
-}
-
-// 5-star strip for the mid-snap stats slot. Filled / half / outline stars
-// using the active color for filled and the muted color for outlines so the
-// strip reads cleanly at glanceable size (12px).
-function renderStatStars(value, activeColor, mutedColor, size = 12) {
-	const numeric = Number(value);
-	if (!Number.isFinite(numeric) || numeric <= 0) return null;
-	const clamped = Math.max(0, Math.min(5, numeric));
-	const stars = [];
-	for (let i = 1; i <= 5; i += 1) {
-		let name = "star-outline";
-		let starColor = mutedColor;
-		if (clamped >= i) {
-			name = "star";
-			starColor = activeColor;
-		} else if (clamped >= i - 0.5) {
-			name = "star-half";
-			starColor = activeColor;
-		}
-		stars.push(<Ionicons key={i} name={name} size={size} color={starColor} />);
-	}
-	return <View style={bodyStyles.placeStatStars}>{stars}</View>;
+	return <Ionicons name={resolvedIconName} size={size} color={color} />;
 }
 
 function SkeletonBlock({ style, color }) {
@@ -182,6 +173,9 @@ function PassportHero({ hero, theme }) {
 			fadeDuration={0}
 			style={bodyStyles.heroCanvas}
 			imageStyle={bodyStyles.heroCanvasImage}
+			onError={(error) => {
+				console.log("[PassportHero] Image load error:", error.nativeEvent?.error || error);
+			}}
 		>
 			<LinearGradient
 				colors={theme.heroImageScrimColors}
@@ -377,20 +371,11 @@ export default function MapVisitDetailBody({
 		});
 	};
 
-	// CTA group — Book again (positive) + Cancel (destructive). Mirrors the
-	// tracking sheet's mid-actions card pattern (TrackingCtaButton, grouped).
+	// Secondary CTA group — keep this narrow. High-frequency actions already
+	// live in the top action row, so this group only carries follow-up actions
+	// like cancel instead of repeating "Book again".
 	const ctaActions = useMemo(() => {
 		const items = [];
-		const bookAgainAction = (actions || []).find((a) => a.key === "bookAgain");
-		if (bookAgainAction) {
-			items.push({
-				key: "bookAgain",
-				label: bookAgainAction.label,
-				iconName: "repeat",
-				tone: "info",
-				onPress: bookAgainAction.onPress,
-			});
-		}
 		if (canCancel && typeof onCancelVisit === "function") {
 			items.push({
 				key: "cancel",
@@ -401,10 +386,10 @@ export default function MapVisitDetailBody({
 			});
 		}
 		return items;
-	}, [actions, canCancel, onCancelVisit]);
+	}, [canCancel, onCancelVisit]);
 
 	// Deep "Actions" CTAs (expanded only) — Call / Video / Payment / Directions.
-	// Book again is already rendered in the mid-snap CTA group above; filter it out
+	// Book again is already rendered in the top action row; filter it out
 	// here to avoid duplication. Shaped to feed TrackingCtaButton (1:1 with the
 	// tracking sheet's mid-actions card).
 	const deepActionCtas = useMemo(
@@ -584,23 +569,21 @@ export default function MapVisitDetailBody({
 			{placeStats?.length > 0 ? (
 				<View style={bodyStyles.placeStatsCard}>
 					{placeStats.map((item, index) => {
-						const isRating = item.kind === "rating";
-						const starsNode = isRating
-							? renderStatStars(item.ratingValue, COLORS.brandPrimary, subtleColor, 12)
-							: null;
 						return (
 							<View key={`${item.label}-${index}`} style={bodyStyles.placeStatItem}>
 								<Text numberOfLines={1} style={[bodyStyles.placeStatLabel, { color: subtleColor }]}>
 									{item.label}
 								</Text>
-								{starsNode || (
-									<View style={bodyStyles.placeStatValueRow}>
-										{renderIcon(item, subtleColor, 15)}
-										<Text numberOfLines={1} style={[bodyStyles.placeStatValue, { color: titleColor }]}>
-											{item.value}
-										</Text>
-									</View>
-								)}
+								<View style={bodyStyles.placeStatValueRow}>
+									{renderIcon(
+										item,
+										item.kind === "rating" ? COLORS.brandPrimary : subtleColor,
+										15,
+									)}
+									<Text numberOfLines={1} style={[bodyStyles.placeStatValue, { color: titleColor }]}>
+										{item.value}
+									</Text>
+								</View>
 							</View>
 						);
 					})}
@@ -676,7 +659,7 @@ export default function MapVisitDetailBody({
 							collapsible
 							collapsed={moreDetailsCollapsed}
 							onToggleCollapsed={handleToggleMoreDetails}
-							ratingStarColor={COLORS.brandPrimary}
+							ratingStarColor={RATING_STAR_GOLD}
 						/>
 					) : null}
 
@@ -769,6 +752,9 @@ export default function MapVisitDetailBody({
 						fadeDuration={0}
 						style={bodyStyles.expandedHero}
 						imageStyle={[bodyStyles.expandedHeroImage, { opacity: heroImageOpacity }]}
+						onError={(error) => {
+							console.log("[ExpandedHero] Image load error:", error.nativeEvent?.error || error);
+						}}
 					>
 						<LinearGradient
 							pointerEvents="none"
@@ -867,6 +853,9 @@ export default function MapVisitDetailBody({
 					fadeDuration={0}
 					style={bodyStyles.hero}
 					imageStyle={[bodyStyles.heroImage, { opacity: heroImageOpacity }]}
+					onError={(error) => {
+						console.log("[MidSnapHero] Image load error:", error.nativeEvent?.error || error);
+					}}
 				>
 					<LinearGradient
 						pointerEvents="none"

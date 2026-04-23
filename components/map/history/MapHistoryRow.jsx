@@ -53,6 +53,7 @@ export default function MapHistoryRow({
 	if (!item) return null;
 
 	const iconDescriptor = resolveHistoryRequestIcon(item.requestType);
+	const hasMetaBottom = Boolean(item.statusLabel) || !hideChevron;
 	const handlePress = () => {
 		if (typeof onPress === "function") onPress(item);
 	};
@@ -114,7 +115,7 @@ export default function MapHistoryRow({
 				</Text>
 				{item.subtitle ? (
 					<Text
-						numberOfLines={2}
+						numberOfLines={1}
 						style={[
 							historyRowStyles.subtitle,
 							{
@@ -131,30 +132,45 @@ export default function MapHistoryRow({
 			</View>
 
 			<View style={historyRowStyles.metaColumn}>
-				{item.statusLabel ? (
-					<View
+				{item.timeLabel ? (
+					<Text
+						numberOfLines={1}
 						style={[
-							historyRowStyles.statusChip,
-							{ backgroundColor: theme.tone.chip },
+							historyRowStyles.metaTimeText,
+							{ color: theme.titleColor },
 						]}
 					>
-						<Text
-							style={[
-								historyRowStyles.statusChipText,
-								{ color: theme.tone.chipText },
-							]}
-						>
-							{item.statusLabel}
-						</Text>
+						{item.timeLabel}
+					</Text>
+				) : null}
+				{hasMetaBottom ? (
+					<View style={historyRowStyles.metaBottomRow}>
+						{item.statusLabel ? (
+							<View
+								style={[
+									historyRowStyles.statusChip,
+									{ backgroundColor: theme.tone.chip },
+								]}
+							>
+								<Text
+									style={[
+										historyRowStyles.statusChipText,
+										{ color: theme.tone.chipText },
+									]}
+								>
+									{item.statusLabel}
+								</Text>
+							</View>
+						) : null}
+						{hideChevron ? null : (
+							<Ionicons
+								name="chevron-forward"
+								size={metrics.chevronSize}
+								color={theme.chevronColor}
+							/>
+						)}
 					</View>
 				) : null}
-				{hideChevron ? null : (
-					<Ionicons
-						name="chevron-forward"
-						size={metrics.chevronSize}
-						color={theme.chevronColor}
-					/>
-				)}
 			</View>
 		</Pressable>
 	);

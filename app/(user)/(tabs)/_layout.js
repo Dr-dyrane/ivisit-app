@@ -5,6 +5,9 @@
 
 import { Stack } from "expo-router";
 
+// PULLBACK NOTE: Remove WebAppShell - only applies to web, causes issues on Android
+// OLD: WebAppShell wrapper with surfaceMode handling
+// NEW: Plain Stack matching auth layout pattern for platform-specific handling
 export default function LegacyTabsCompatibilityLayout() {
 	return (
 		<Stack

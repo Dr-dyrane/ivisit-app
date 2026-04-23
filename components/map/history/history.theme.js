@@ -225,8 +225,8 @@ export function buildHistoryThemeTokens({
 	const chevronColor = isDarkMode ? "#64748B" : "#94A3B8";
 	const headerChevronColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const pressedOverlay = isDarkMode
-		? "rgba(255,255,255,0.06)"
-		: "rgba(15,23,42,0.04)";
+		? "rgba(255,255,255,0.10)"
+		: "rgba(15,23,42,0.07)";
 	// Filter chip surfaces — mirror hospital list's specialty filter pills
 	// (components/map/surfaces/hospitals/MapHospitalListContent.jsx):
 	//   filterPillSurface / filterPillActive / filterCountText.

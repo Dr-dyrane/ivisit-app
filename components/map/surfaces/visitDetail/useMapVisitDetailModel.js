@@ -13,7 +13,6 @@ import {
 	resolveHistoryDetailsTitle,
 	resolveHistoryRequestIcon,
 	resolveHistoryServiceLabel,
-	resolveRatingLabel,
 	resolveTypeValue,
 	resolveWhenValue,
 } from "../../history/history.presentation";
@@ -36,6 +35,14 @@ const toFiniteNumber = (value) => {
 	const numeric = Number(value);
 	return Number.isFinite(numeric) ? numeric : null;
 };
+
+const normalizeRatingValue = (value) => {
+	const numeric = toFiniteNumber(value);
+	if (numeric == null) return 0;
+	return Math.max(0, Math.min(5, numeric));
+};
+
+const formatRatingDisplay = (value) => normalizeRatingValue(value).toFixed(1);
 
 const pickText = (...values) => {
 	for (const value of values) {
@@ -79,12 +86,25 @@ const toCurrencyLabel = (value) => {
 	return text || null;
 };
 
+// PULLBACK NOTE: Add URL validation to prevent network errors
+// OLD: Return { uri: text } for any non-empty string
+// NEW: Only return { uri: ... } for valid URLs
+const isValidUrl = (string) => {
+	if (typeof string !== "string" || string.trim().length === 0) return false;
+	try {
+		const url = new URL(string.trim());
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+};
+
 const resolveMediaSource = (...values) => {
 	for (const value of values) {
 		if (typeof value === "number") return value;
 		if (value && typeof value === "object" && value.uri) return value;
 		const text = toText(value);
-		if (text) return { uri: text };
+		if (text && isValidUrl(text)) return { uri: text };
 	}
 	return null;
 };
@@ -303,7 +323,13 @@ const buildTriageRows = (raw) => {
 };
 
 const filterMeaningfulRows = (rows) =>
-	rows.filter((row) => row && row.value != null && String(row.value).trim());
+	rows.filter((row) => {
+		if (!row) return false;
+		if (row.kind === "rating") {
+			return true;
+		}
+		return row.value != null && String(row.value).trim();
+	});
 
 export default function useMapVisitDetailModel({
 	historyItem,
@@ -640,8 +666,7 @@ export default function useMapVisitDetailModel({
 
 	const expandedDetails = useMemo(() => {
 		if (!historyItem) return [];
-		const ratingLabel = resolveRatingLabel(historyItem?.existingRating);
-		const ratingValue = toFiniteNumber(historyItem?.existingRating);
+		const ratingValue = normalizeRatingValue(historyItem?.existingRating);
 		return filterMeaningfulRows([
 			{
 				key: "type",
@@ -675,8 +700,8 @@ export default function useMapVisitDetailModel({
 			},
 			{
 				key: "rating",
-				label: HISTORY_DETAILS_COPY.detailLabels.rating,
-				value: ratingLabel,
+				label: HISTORY_DETAILS_COPY.detailLabels.myRating || "My rating",
+				value: null,
 				ratingValue,
 				kind: "rating",
 				icon: "star-outline",
@@ -771,13 +796,18 @@ export default function useMapVisitDetailModel({
 		const paymentStatus = toTitleCase(
 			readRawField(raw, "paymentStatus", "payment_status"),
 		);
+		const paymentTotalLabel =
+			totalLabel &&
+			(historyItem.status === "completed" || historyItem.status === "rating_pending")
+				? HISTORY_DETAILS_COPY.detailLabels.paid || "Paid"
+				: HISTORY_DETAILS_COPY.detailLabels.total || "Total";
 		const paymentMethod = resolvePaymentMethodLabel(raw);
 		return filterMeaningfulRows([
 			{
 				key: "payment",
 				label:
-					totalLabel && paymentStatus
-						? HISTORY_DETAILS_COPY.detailLabels.total
+					totalLabel
+						? paymentTotalLabel
 						: HISTORY_DETAILS_COPY.detailLabels.payment,
 				value: totalLabel,
 				icon: "cash-outline",
@@ -911,7 +941,6 @@ export default function useMapVisitDetailModel({
 	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
 	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
 	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
-	const canVideo = Boolean(historyItem?.canJoinVideo && typeof onJoinVideo === "function");
 	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
 	const canRevisit = Boolean(historyItem?.canBookAgain && typeof onBookAgain === "function");
 
@@ -957,28 +986,16 @@ export default function useMapVisitDetailModel({
 		}
 
 		if (status === "completed") {
-			const ratingValue = toFiniteNumber(historyItem?.existingRating);
-			if (ratingValue != null) {
-				const display = ratingValue.toFixed(1).replace(/\.0$/, "");
-				return {
-					key: "lifecycleRating",
-					label: HISTORY_DETAILS_COPY.detailLabels.rating || "Rating",
-					value: display,
-					ratingValue,
-					kind: "rating",
-					icon: "star",
-					iconType: "ion",
-				};
-			}
-			if (historyItem.nextVisitLabel) {
-				return {
-					key: "lifecycleNextVisit",
-					label: HISTORY_DETAILS_COPY.detailLabels.nextVisit || "Next visit",
-					value: historyItem.nextVisitLabel,
-					icon: "calendar-outline",
-					iconType: "ion",
-				};
-			}
+			const ratingValue = normalizeRatingValue(historyItem?.existingRating);
+			return {
+				key: "lifecycleRating",
+				label: HISTORY_DETAILS_COPY.detailLabels.myRating || "My rating",
+				value: formatRatingDisplay(historyItem?.existingRating),
+				ratingValue,
+				kind: "rating",
+				icon: ratingValue > 0 ? "star" : "star-outline",
+				iconType: "ion",
+			};
 		}
 
 		// Upcoming / active clinic visits — room number is high-value wayfinding.
@@ -997,7 +1014,7 @@ export default function useMapVisitDetailModel({
 		}
 
 		return null;
-	}, [historyItem, paymentSummary]);
+	}, [historyItem]);
 
 	// Dedicated price stat for the mid-snap stats card. When payment data is
 	// present this displaces the requestType-specific slot-3 detail (vehicle /
@@ -1008,12 +1025,15 @@ export default function useMapVisitDetailModel({
 		if (!paymentSummary) return null;
 		return {
 			key: "price",
-			label: HISTORY_DETAILS_COPY.detailLabels.total || "Price",
+			label:
+				historyItem?.status === "completed" || historyItem?.status === "rating_pending"
+					? HISTORY_DETAILS_COPY.detailLabels.paid || "Paid"
+					: HISTORY_DETAILS_COPY.detailLabels.total || "Total",
 			value: paymentSummary,
 			icon: "cash-outline",
 			iconType: "ion",
 		};
-	}, [paymentSummary]);
+	}, [historyItem?.status, paymentSummary]);
 
 	// Build place actions - 4 buttons whose primary slot tracks visit lifecycle.
 	// Primary priority: Track (active/upcoming with resume) > Rate (rating pending)
@@ -1024,17 +1044,14 @@ export default function useMapVisitDetailModel({
 		if (!historyItem) return [];
 
 		const status = historyItem.status;
-		const isCompleted = status === "completed";
 		const isCancelled = status === "cancelled";
 		const isRatingPending = status === "rating_pending";
-		// Live = anything where the user can still resume the flow (active/pending/confirmed)
 		const showTrack = canResume;
 
-		// Choose the single primary slot based on lifecycle.
 		let primaryKey = null;
 		if (showTrack) primaryKey = "track";
 		else if (isRatingPending && canRate) primaryKey = "rate";
-		else if (isCompleted && canDirections) primaryKey = "directions";
+		else if (canDirections && !isCancelled) primaryKey = "directions";
 		else if (canRevisit) primaryKey = "revisit";
 
 		const slot1 = showTrack
@@ -1045,7 +1062,10 @@ export default function useMapVisitDetailModel({
 						historyItem.requestType === REQUEST_TYPES.BED
 							? "bed-outline"
 							: "navigate-circle-outline",
+					activeIcon:
+						historyItem.requestType === REQUEST_TYPES.BED ? "bed" : "navigate-circle",
 					iconType: "ion",
+					activeIconType: "ion",
 					primary: primaryKey === "track",
 					onPress: onResume,
 					disabled: false,
@@ -1055,19 +1075,36 @@ export default function useMapVisitDetailModel({
 					key: "directions",
 					label: "Directions",
 					icon: "navigate-outline",
+					activeIcon: "navigate",
 					iconType: "ion",
+					activeIconType: "ion",
 					primary: primaryKey === "directions",
 					onPress: canDirections && !isCancelled ? onGetDirections : undefined,
 					disabled: !canDirections || isCancelled,
 					accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.directions,
 				};
 
+		const slot2 = {
+			key: "call",
+			label: "Call",
+			icon: "call-outline",
+			activeIcon: "call",
+			iconType: "ion",
+			activeIconType: "ion",
+			primary: false,
+			onPress: canCall && !isCancelled ? onCallClinic : undefined,
+			disabled: !canCall || isCancelled,
+			accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.callClinic,
+		};
+
 		const slot3 = showTrack
 			? {
 					key: "directions",
 					label: "Directions",
 					icon: "navigate-outline",
+					activeIcon: "navigate",
 					iconType: "ion",
+					activeIconType: "ion",
 					primary: false,
 					onPress: canDirections ? onGetDirections : undefined,
 					disabled: !canDirections,
@@ -1075,9 +1112,11 @@ export default function useMapVisitDetailModel({
 				}
 			: {
 					key: "revisit",
-					label: HISTORY_DETAILS_COPY.actionLabels.bookAgain || "Revisit",
+					label: HISTORY_DETAILS_COPY.actionLabels.bookAgain || "Book again",
 					icon: "repeat-outline",
+					activeIcon: "repeat",
 					iconType: "ion",
+					activeIconType: "ion",
 					primary: primaryKey === "revisit",
 					onPress: canRevisit ? onBookAgain : undefined,
 					disabled: !canRevisit,
@@ -1085,31 +1124,21 @@ export default function useMapVisitDetailModel({
 						HISTORY_DETAILS_COPY.actionLabels.bookAgain || "Book again",
 				};
 
-		return [
-			slot1,
-			{
-				key: "call",
-				label: "Call",
-				icon: "call-outline",
-				iconType: "ion",
-				primary: false,
-				onPress: canCall && !isCancelled ? onCallClinic : undefined,
-				disabled: !canCall || isCancelled,
-				accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.callClinic,
-			},
-			slot3,
-			{
-				key: "rate",
-				label: "Rate",
-				icon: "star-outline",
-				iconType: "ion",
-				primary: primaryKey === "rate",
-				onPress: canRate ? onRateVisit : undefined,
-				disabled: !canRate,
-				accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.rate || "Rate visit",
-			},
-		];
-	}, [historyItem, canResume, canRate, canCall, canVideo, canDirections, canRevisit, onResume, onRateVisit, onCallClinic, onJoinVideo, onGetDirections, onBookAgain]);
+		const slot4 = {
+			key: "rate",
+			label: "Rate",
+			icon: "star-outline",
+			activeIcon: "star",
+			iconType: "ion",
+			activeIconType: "ion",
+			primary: primaryKey === "rate",
+			onPress: canRate ? onRateVisit : undefined,
+			disabled: !canRate,
+			accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.rate || "Rate visit",
+		};
+
+		return [slot1, slot2, slot3, slot4];
+	}, [historyItem, canResume, canRate, canCall, canDirections, canRevisit, onResume, onRateVisit, onCallClinic, onGetDirections, onBookAgain]);
 
 	// Build place stats - request-type-specific per contract.
 	// Status is intentionally NOT included here: it lives on the compact hero chip

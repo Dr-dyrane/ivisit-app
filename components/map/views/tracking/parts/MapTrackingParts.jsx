@@ -370,14 +370,20 @@ export function TrackingRouteCard({
             size={15}
             color={toneColors.icon}
           />
-          <Text style={[styles.servicePillText, { color: toneColors.text }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.servicePillText, { color: toneColors.text }]}
+          >
             {serviceLabel}
           </Text>
         </View>
         {requestLabel ? (
           <View style={[styles.requestPill, { backgroundColor: toneColors.surface }]}>
             <Ionicons name="receipt-outline" size={15} color={toneColors.icon} />
-            <Text style={[styles.requestPillText, { color: toneColors.text }]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.requestPillText, { color: toneColors.text }]}
+            >
               {requestLabel}
             </Text>
           </View>
@@ -460,8 +466,7 @@ export function TrackingRouteCard({
 
 function renderRatingStars(value, color, mutedColor) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric) || numeric <= 0) return null;
-  const clamped = Math.max(0, Math.min(5, numeric));
+  const clamped = Number.isFinite(numeric) ? Math.max(0, Math.min(5, numeric)) : 0;
   const stars = [];
   for (let i = 1; i <= 5; i += 1) {
     let name = "star-outline";
@@ -557,7 +562,9 @@ export function TrackingDetailsCard({
                     {detail.label}
                   </Text>
                 </View>
-                {starsNode || (
+                {isRating ? (
+                  starsNode
+                ) : (
                   <Text
                     numberOfLines={detail.valueNumberOfLines || valueNumberOfLines}
                     style={[styles.detailValue, { color: titleColor }]}

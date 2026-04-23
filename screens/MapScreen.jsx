@@ -1129,9 +1129,29 @@ export default function MapScreen() {
   // restored when the map-owned booking sheet lands.
   const handleBookHistoryAgain = useCallback(() => {
     if (!selectedHistoryVisit) return;
+
+    const targetHospital = historyFocusedHospital || null;
     closeHistoryVisitDetails();
+
+    if (selectedHistoryVisit.requestType === "ambulance") {
+      openAmbulanceDecision(targetHospital);
+      return;
+    }
+
+    if (selectedHistoryVisit.requestType === "bed") {
+      openBedDecision(targetHospital, "bed");
+      return;
+    }
+
     router.push("/(user)/(stacks)/book-visit");
-  }, [closeHistoryVisitDetails, router, selectedHistoryVisit]);
+  }, [
+    closeHistoryVisitDetails,
+    historyFocusedHospital,
+    openAmbulanceDecision,
+    openBedDecision,
+    router,
+    selectedHistoryVisit,
+  ]);
 
   const handleCancelHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id) return;

@@ -13,13 +13,16 @@ import WebAppShell from "../../components/web/WebAppShell";
 import { getHeaderBehavior } from "../../constants/header";
 
 export default function UserLayout() {
+	const segments = useSegments();
+	const isTabsIndex = segments?.[0] === "(user)" && segments?.[1] === "(tabs)" && segments?.[2] === "index";
+
 	useEffect(() => {
 		appMigrationsService.run().catch(() => { });
 	}, []);
 
 	return (
 		<UserProviders>
-			<WebAppShell variant="app">
+			<WebAppShell variant="app" surfaceMode={isTabsIndex ? "none" : "surface"}>
 				<View style={styles.container}>
 					<UserHeaderWrapper />
 

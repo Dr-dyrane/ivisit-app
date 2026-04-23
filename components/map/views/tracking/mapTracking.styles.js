@@ -248,6 +248,8 @@ const styles = StyleSheet.create({
 		gap: 8,
 		paddingHorizontal: 12,
 		paddingVertical: 9,
+		flexShrink: 1,
+		minWidth: 0,
 		...squircle(18),
 	},
 	servicePillText: {
@@ -255,6 +257,7 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "700",
 		letterSpacing: -0.14,
+		flexShrink: 1,
 	},
 	requestPill: {
 		flexDirection: "row",
@@ -262,6 +265,8 @@ const styles = StyleSheet.create({
 		gap: 8,
 		paddingHorizontal: 12,
 		paddingVertical: 9,
+		flexShrink: 1,
+		minWidth: 0,
 		...squircle(18),
 	},
 	requestPillText: {
@@ -269,6 +274,7 @@ const styles = StyleSheet.create({
 		lineHeight: 15,
 		fontWeight: "700",
 		letterSpacing: 0.08,
+		flexShrink: 1,
 	},
 	stopList: {
 		marginTop: 16,
@@ -657,6 +663,18 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 2,
+	},
+	detailRatingValueWrap: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "flex-end",
+		gap: 8,
+		flex: 1,
+	},
+	detailRatingValueText: {
+		fontSize: 15,
+		lineHeight: 19,
+		fontWeight: "600",
 	},
 	detailList: {
 		marginTop: 12,

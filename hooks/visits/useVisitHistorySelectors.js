@@ -202,6 +202,13 @@ const mapLegacyStatus = (visit) => {
 
 const inferHistoryStatus = (visit) => mapLifecycleStatus(visit) || mapLegacyStatus(visit);
 
+const canHistoryItemBookAgain = ({ sourceKind, status }) =>
+	sourceKind === "scheduled_visit" ||
+	(sourceKind === "emergency" &&
+		(status === "completed" ||
+			status === "rating_pending" ||
+			status === "cancelled"));
+
 const getRequestTypeLabel = (requestType) => {
 	switch (requestType) {
 		case "ambulance":
@@ -269,15 +276,36 @@ const formatDateLabel = (date) => {
 };
 
 const formatTimeLabel = (date, visit) => {
-	if (toText(visit?.time)) return toText(visit.time);
 	if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+	
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const yesterday = new Date(today);
+	yesterday.setDate(yesterday.getDate() - 1);
+	
+	const isToday = date >= today;
+	const isYesterday = date >= yesterday && date < today;
+	
+	let datePrefix = "";
+	if (isToday) {
+		datePrefix = "Today";
+	} else if (isYesterday) {
+		datePrefix = "Yesterday";
+	} else {
+		datePrefix = new Intl.DateTimeFormat(undefined, {
+			month: "short",
+			day: "numeric",
+		}).format(date);
+	}
+	
 	try {
-		return new Intl.DateTimeFormat(undefined, {
+		const timeStr = new Intl.DateTimeFormat(undefined, {
 			hour: "numeric",
 			minute: "2-digit",
 		}).format(date);
+		return `${datePrefix}, ${timeStr}`;
 	} catch (_error) {
-		return date.toLocaleTimeString();
+		return `${datePrefix}, ${date.toLocaleTimeString()}`;
 	}
 };
 
@@ -344,8 +372,7 @@ const resolveGroupKey = (status, sortDate, now = new Date()) => {
 	return "older";
 };
 
-const buildSubtitleParts = (typeLabel, dateLabel, timeLabel) =>
-	[typeLabel, dateLabel, timeLabel].filter(Boolean);
+const buildSubtitleParts = (typeLabel, dateLabel) => [typeLabel, dateLabel].filter(Boolean);
 
 const buildInitials = (value) => {
 	const parts = toText(value)
@@ -451,7 +478,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		statusLabel,
 		statusTone,
 		title: facilityName,
-		subtitle: buildSubtitleParts(visitTypeLabel, dateLabel, timeLabel).join(" / "),
+		subtitle: buildSubtitleParts(visitTypeLabel, dateLabel).join(" · "),
 		facilityName,
 		facilityAddress: facilityAddress || null,
 		facilityCoordinate:
@@ -482,7 +509,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		canCancel:
 			sourceKind === "scheduled_visit" &&
 			(status === "confirmed" || status === "pending"),
-		canBookAgain: sourceKind === "scheduled_visit",
+		canBookAgain: canHistoryItemBookAgain({ sourceKind, status }),
 		canJoinVideo: Boolean(toText(visit?.meetingLink)),
 		canCallClinic: Boolean(toText(visit?.phone)),
 		notes: toText(visit?.notes) || null,
