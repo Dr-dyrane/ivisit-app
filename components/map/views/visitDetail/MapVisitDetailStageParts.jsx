@@ -2,13 +2,42 @@ import React from "react";
 import { Text, View } from "react-native";
 import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapVisitDetailBody from "../../surfaces/visitDetail/MapVisitDetailBody";
+import MapVisitDetailCollapsedRow from "./MapVisitDetailCollapsedRow";
 import styles from "./mapVisitDetailStage.styles";
+
+/**
+ * MapVisitDetailCollapsedTopSlot
+ *
+ * Collapsed top slot for VISIT_DETAIL sheet phase.
+ * Mirrors MapHospitalDetailCollapsedTopSlot for map functionality when collapsed.
+ */
+export function MapVisitDetailCollapsedTopSlot({
+	model,
+	onExpand,
+	onClose,
+	titleColor,
+	mutedColor,
+	iconSurfaceColor,
+}) {
+	return (
+		<MapVisitDetailCollapsedRow
+			action={model.collapsedAction}
+			title={model.hero?.title || model.topSlot?.title || "Visit"}
+			subtitle={model.collapsedDistanceLabel}
+			onExpand={onExpand}
+			onClose={onClose}
+			titleColor={titleColor}
+			mutedColor={mutedColor}
+			iconSurfaceColor={iconSurfaceColor}
+		/>
+	);
+}
 
 /**
  * MapVisitDetailFloatingTopSlot
  *
  * Floating top slot for VISIT_DETAIL sheet phase.
- * Mirrors MapHospitalDetailFloatingTopSlot but simpler (no collapsed state):
+ * Mirrors MapHospitalDetailFloatingTopSlot:
  *   - Toggle button (half ↔ expanded) on the leading edge
  *   - Centered title (hospital name) + subtitle (visit type)
  *   - Close button on the trailing edge
@@ -103,6 +132,7 @@ export function MapVisitDetailBodyContent({
 	onCancelVisit,
 	isExpanded,
 	onExpandedHeaderLayout,
+	onSnapStateChange,
 }) {
 	return (
 		<MapVisitDetailBody
@@ -110,6 +140,7 @@ export function MapVisitDetailBodyContent({
 			onCancelVisit={onCancelVisit}
 			revealHero={isExpanded}
 			onExpandedHeaderLayout={onExpandedHeaderLayout}
+			onSnapStateChange={onSnapStateChange}
 		/>
 	);
 }

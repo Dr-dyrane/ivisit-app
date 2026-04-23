@@ -11,6 +11,7 @@ import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollap
 import useMapVisitDetailModel from "../../surfaces/visitDetail/useMapVisitDetailModel";
 import {
 	MapVisitDetailBodyContent,
+	MapVisitDetailCollapsedTopSlot,
 	MapVisitDetailFloatingTopSlot,
 } from "./MapVisitDetailStageParts";
 import styles from "./mapVisitDetailStage.styles";
@@ -20,8 +21,8 @@ const FLOATING_TITLE_REVEAL_DELAY = 160;
 /**
  * MapVisitDetailStageBase
  *
- * Sheet-phase stage for the VISIT_DETAIL phase. Mirrors MapHospitalListStageBase's
- * minimal two-snap pattern (HALF + EXPANDED) — no collapsed row.
+ * Sheet-phase stage for the VISIT_DETAIL phase. Mirrors MapHospitalDetailStageBase's
+ * three-snap pattern (COLLAPSED + HALF + EXPANDED) — collapsed row for map functionality.
  *
  * Props
  *   - sheetHeight / snapState / onSnapStateChange   standard sheet lifecycle
@@ -68,8 +69,14 @@ export default function MapVisitDetailStageBase({
 		onGetDirections,
 	});
 
+	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
 	const allowedSnapStates = useMemo(
-		() => [MAP_SHEET_SNAP_STATES.HALF, MAP_SHEET_SNAP_STATES.EXPANDED],
+		() => [
+			MAP_SHEET_SNAP_STATES.COLLAPSED,
+			MAP_SHEET_SNAP_STATES.HALF,
+			MAP_SHEET_SNAP_STATES.EXPANDED,
+		],
 		[],
 	);
 	const {
@@ -135,7 +142,6 @@ export default function MapVisitDetailStageBase({
 	const isExpanded =
 		presentationMode !== "sheet" ||
 		snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
-	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
 	const shouldShowFloatingTitle =
 		isHalf || (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle);
 	const isHeroTopPresentation =
@@ -146,6 +152,7 @@ export default function MapVisitDetailStageBase({
 	const closeSurfaceColor = isDarkMode
 		? "rgba(148,163,184,0.14)"
 		: "rgba(255,255,255,0.42)";
+	const iconSurfaceColor = closeSurfaceColor;
 	const floatingCloseSurface = isHeroTopPresentation
 		? "rgba(15,23,42,0.24)"
 		: closeSurfaceColor;
@@ -169,36 +176,47 @@ export default function MapVisitDetailStageBase({
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
 			topSlot={
-				<MapVisitDetailFloatingTopSlot
-					modalContainedStyle={modalContainedStyle}
-					contentMaxWidth={contentMaxWidth}
-					showToggle={shouldShowHeaderToggle}
-					onToggle={handleHeaderToggle}
-					toggleAccessibilityLabel={
-						snapState === MAP_SHEET_SNAP_STATES.EXPANDED
-							? "Collapse visit sheet"
-							: "Expand visit sheet"
-					}
-					toggleIconName={
-						snapState === MAP_SHEET_SNAP_STATES.EXPANDED
-							? "chevron-down"
-							: "chevron-up"
-					}
-					floatingToggleSurface={floatingToggleSurface}
-					floatingToggleIconColor={floatingToggleIconColor}
-					shouldShowFloatingTitle={shouldShowFloatingTitle}
-					title={model.topSlot?.title || model.hero?.title || null}
-					subtitle={
-						isHalf ? model.topSlot?.subtitle || model.hero?.subtitle || null : null
-					}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					onClose={onClose}
-					floatingCloseSurface={floatingCloseSurface}
-					floatingCloseIconColor={floatingCloseIconColor}
-				/>
+				isCollapsed ? (
+					<MapVisitDetailCollapsedTopSlot
+						model={model}
+						onExpand={() => onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF)}
+						onClose={onClose}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						iconSurfaceColor={iconSurfaceColor}
+					/>
+				) : (
+					<MapVisitDetailFloatingTopSlot
+						modalContainedStyle={modalContainedStyle}
+						contentMaxWidth={contentMaxWidth}
+						showToggle={shouldShowHeaderToggle}
+						onToggle={handleHeaderToggle}
+						toggleAccessibilityLabel={
+							snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "Collapse visit sheet"
+								: "Expand visit sheet"
+						}
+						toggleIconName={
+							snapState === MAP_SHEET_SNAP_STATES.EXPANDED
+								? "chevron-down"
+								: "chevron-up"
+						}
+						floatingToggleSurface={floatingToggleSurface}
+						floatingToggleIconColor={floatingToggleIconColor}
+						shouldShowFloatingTitle={shouldShowFloatingTitle}
+						title={model.topSlot?.title || model.hero?.title || null}
+						subtitle={
+							isHalf ? model.topSlot?.subtitle || model.hero?.subtitle || null : null
+						}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						onClose={onClose}
+						floatingCloseSurface={floatingCloseSurface}
+						floatingCloseIconColor={floatingCloseIconColor}
+					/>
+				)
 			}
-			handleFloatsOverContent
+			handleFloatsOverContent={!isCollapsed}
 			onHandlePress={handleSnapToggle}
 		>
 			<MapStageBodyScroll
@@ -231,6 +249,7 @@ export default function MapVisitDetailStageBase({
 					onCancelVisit={onCancelVisit}
 					isExpanded={isExpanded}
 					onExpandedHeaderLayout={handleExpandedHeaderLayout}
+					onSnapStateChange={onSnapStateChange}
 				/>
 			</MapStageBodyScroll>
 		</MapSheetShell>

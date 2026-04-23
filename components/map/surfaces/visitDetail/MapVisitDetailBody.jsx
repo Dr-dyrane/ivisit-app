@@ -3,6 +3,7 @@ import {
 	Animated,
 	ImageBackground,
 	LayoutAnimation,
+	PanResponder,
 	Platform,
 	Pressable,
 	StyleSheet,
@@ -23,6 +24,11 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 const moreDetailsCollapseMemory = new Map();
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+// PULLBACK NOTE: Extract PassportHero and VisitDetailSkeleton to separate components for modularity
+// OLD: PassportHero and VisitDetailSkeleton defined inline in MapVisitDetailBody
+// NEW: Imported from separate files for easier maintenance and platform inclusivity
+import MapVisitDetailHero from "./MapVisitDetailHero";
+import MapVisitDetailSkeleton from "./MapVisitDetailSkeleton";
 import { styles as bodyStyles } from "./mapVisitDetail.styles";
 import { HISTORY_DETAILS_COPY } from "../../history/history.content";
 import { COLORS } from "../../../../constants/colors";
@@ -35,6 +41,7 @@ import {
 import { buildTrackingThemeTokens } from "../../views/tracking/mapTracking.theme";
 import { getToneColors } from "../../views/tracking/mapTracking.presentation";
 import { useOptionalLocation } from "../../../../contexts/GlobalLocationContext";
+import { MAP_SHEET_SNAP_STATES } from "../../mapSheet.constants";
 
 const RATING_STAR_GOLD = "#F6C453";
 
@@ -82,222 +89,17 @@ function renderIcon(item, color, size = 16) {
 	return <Ionicons name={resolvedIconName} size={size} color={color} />;
 }
 
-function SkeletonBlock({ style, color }) {
-	return <View style={[bodyStyles.skeletonBlock, { backgroundColor: color }, style]} />;
-}
 
-function VisitDetailSkeleton({ theme }) {
-	return (
-		<View style={bodyStyles.scrollContent}>
-			<View
-				style={[
-					bodyStyles.heroCanvas,
-					bodyStyles.skeletonHeroCard,
-					{ backgroundColor: theme.heroSurface },
-				]}
-			>
-				<View style={bodyStyles.skeletonHeroInner}>
-					<View style={bodyStyles.skeletonHeroBadgeRow}>
-						<SkeletonBlock
-							color={theme.skeletonSoftColor}
-							style={bodyStyles.skeletonHeroBadge}
-						/>
-						<SkeletonBlock
-							color={theme.skeletonBaseColor}
-							style={bodyStyles.skeletonHeroStatus}
-						/>
-					</View>
-					<View style={bodyStyles.skeletonHeroCopy}>
-						<SkeletonBlock
-							color={theme.skeletonBaseColor}
-							style={bodyStyles.skeletonHeroTitle}
-						/>
-						<SkeletonBlock
-							color={theme.skeletonSoftColor}
-							style={bodyStyles.skeletonHeroSubtitle}
-						/>
-						<SkeletonBlock
-							color={theme.skeletonSoftColor}
-							style={bodyStyles.skeletonHeroSupport}
-						/>
-					</View>
-				</View>
-			</View>
-
-			<SkeletonBlock
-				color={theme.skeletonBaseColor}
-				style={bodyStyles.skeletonPrimaryButton}
-			/>
-
-			<View style={[bodyStyles.sectionCard, { backgroundColor: theme.groupSurface }]}>
-				{Array.from({ length: 3 }).map((_, index) => (
-					<View key={`visit-skeleton-row-${index}`}>
-						<View style={bodyStyles.skeletonDetailRow}>
-							<SkeletonBlock
-								color={theme.skeletonSoftColor}
-								style={bodyStyles.skeletonDetailIcon}
-							/>
-							<View style={bodyStyles.skeletonDetailCopy}>
-								<SkeletonBlock
-									color={theme.skeletonBaseColor}
-									style={bodyStyles.skeletonDetailLabel}
-								/>
-								<SkeletonBlock
-									color={theme.skeletonSoftColor}
-									style={bodyStyles.skeletonDetailValue}
-								/>
-							</View>
-						</View>
-						{index < 2 ? (
-							<View
-								style={[
-									bodyStyles.detailHairline,
-									{ backgroundColor: theme.hairlineDivider },
-								]}
-							/>
-						) : null}
-					</View>
-				))}
-			</View>
-		</View>
-	);
-}
-
-function PassportHero({ hero, theme }) {
-	if (!hero) return null;
-
-	return (
-		<ImageBackground
-			source={hero.imageSource}
-			resizeMode="cover"
-			fadeDuration={0}
-			style={bodyStyles.heroCanvas}
-			imageStyle={bodyStyles.heroCanvasImage}
-			onError={(error) => {
-				console.log("[PassportHero] Image load error:", error.nativeEvent?.error || error);
-			}}
-		>
-			<LinearGradient
-				colors={theme.heroImageScrimColors}
-				style={StyleSheet.absoluteFillObject}
-			/>
-			<LinearGradient
-				colors={theme.heroImageTopMaskColors}
-				style={bodyStyles.heroTopMask}
-			/>
-			<View style={bodyStyles.heroCanvasInner}>
-				<View style={bodyStyles.heroCanvasMetaRow}>
-					<View style={bodyStyles.heroBadgeRail}>
-						{Array.isArray(hero.badges)
-							? hero.badges.slice(0, 2).map((badge, index) => {
-									const item =
-										badge && typeof badge === "object"
-											? badge
-											: { label: String(badge || ""), tone: "neutral" };
-									if (!item.label) return null;
-									const badgeBg =
-										item.tone === "verified"
-											? "rgba(16,185,129,0.18)"
-											: item.tone === "alert"
-												? "rgba(225,29,72,0.18)"
-												: theme.heroBadgeSurface;
-									return (
-										<View
-											key={`${item.label}-${index}`}
-											style={[bodyStyles.heroBadge, { backgroundColor: badgeBg }]}
-										>
-											{renderIcon(item, theme.heroOnImageBodyColor, 12)}
-											<Text
-												style={[
-													bodyStyles.heroBadgeText,
-													{ color: theme.heroOnImageBodyColor },
-												]}
-											>
-												{item.label}
-											</Text>
-										</View>
-									);
-								})
-							: null}
-					</View>
-					{hero.statusLabel ? (
-						<View
-							style={[
-								bodyStyles.heroStatusChip,
-								{ backgroundColor: theme.tone.chip },
-							]}
-						>
-							<Text
-								style={[
-									bodyStyles.heroStatusText,
-									{ color: theme.tone.chipText },
-								]}
-							>
-								{hero.statusLabel}
-							</Text>
-						</View>
-					) : null}
-				</View>
-
-				<View
-					style={[
-						bodyStyles.heroCanvasBody,
-						{ backgroundColor: theme.heroTextPanelSurface },
-					]}
-				>
-					<Text
-						numberOfLines={2}
-						style={[
-							bodyStyles.heroTitle,
-							{ color: theme.heroOnImageTitleColor },
-						]}
-					>
-						{hero.title}
-					</Text>
-					{hero.subtitle ? (
-						<Text
-							numberOfLines={2}
-							style={[
-								bodyStyles.heroSubtitle,
-								{ color: theme.heroOnImageBodyColor },
-							]}
-						>
-							{hero.subtitle}
-						</Text>
-					) : null}
-					{hero.supportLine ? (
-						<Text
-							numberOfLines={2}
-							style={[
-								bodyStyles.heroSupportLine,
-								{ color: theme.heroOnImageBodyColor },
-							]}
-						>
-							{hero.supportLine}
-						</Text>
-					) : null}
-					{hero.facilityLine ? (
-						<Text
-							numberOfLines={2}
-							style={[
-								bodyStyles.heroFacilityLine,
-								{ color: theme.heroOnImageMutedColor },
-							]}
-						>
-							{hero.facilityLine}
-						</Text>
-					) : null}
-				</View>
-			</View>
-		</ImageBackground>
-	);
-}
+// PULLBACK NOTE: Remove old PassportHero function (extracted to MapVisitDetailHero.jsx)
+// OLD: PassportHero function defined inline in MapVisitDetailBody
+// NEW: Use imported MapVisitDetailHero component for modularity
 
 export default function MapVisitDetailBody({
 	model,
 	onCancelVisit,
 	revealHero = false,
 	onExpandedHeaderLayout,
+	onSnapStateChange,
 }) {
 	const {
 		recordKey,
@@ -422,6 +224,10 @@ export default function MapVisitDetailBody({
 
 	const titleColor = theme?.titleColor || "#0F172A";
 	const subtleColor = theme?.mutedColor || "#64748B";
+	// PULLBACK NOTE: Update icon colors to use iVisit red token like hospital details
+	// OLD: Use subtleColor for icons
+	// NEW: Use COLORS.brandPrimary for icons to maintain iVisit red color token
+	const actionIconColor = isDarkMode ? "#E2E8F0" : COLORS.brandPrimary;
 	const actionSurface = theme?.neutralActionSurface || (isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)");
 	const actionTint = titleColor;
 	const cardSurface = theme?.groupSurface || (isDarkMode ? "rgba(255,255,255,0.06)" : "#FFFFFF");
@@ -490,6 +296,41 @@ export default function MapVisitDetailBody({
 		outputRange: [0, -64],
 	});
 
+	// PULLBACK NOTE: Add hero swipe gesture to toggle collapse/expand
+	// OLD: No swipe gesture on hero
+	// NEW: PanResponder for swipe to toggle between COLLAPSED and HALF states
+	const heroSwipeResponder = useMemo(() => {
+		if (typeof onSnapStateChange !== "function") return null;
+
+		return PanResponder.create({
+			onMoveShouldSetPanResponder: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				const absVx = Math.abs(gestureState.vx || 0);
+				return absDx > 16 && (absDx > absDy * 1.16 || absVx > 0.2);
+			},
+			onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				const absVx = Math.abs(gestureState.vx || 0);
+				return absDx > 16 && (absDx > absDy * 1.16 || absVx > 0.2);
+			},
+			onPanResponderRelease: (_event, gestureState) => {
+				const absDx = Math.abs(gestureState.dx);
+				const absDy = Math.abs(gestureState.dy);
+				const absVx = Math.abs(gestureState.vx || 0);
+				if (
+					(absDx > 42 && absDx > absDy * 1.08) ||
+					(absVx > 0.36 && absDx > 18)
+				) {
+					onSnapStateChange?.(MAP_SHEET_SNAP_STATES.COLLAPSED);
+				}
+			},
+			onPanResponderTerminationRequest: () => true,
+		});
+	}, [onSnapStateChange]);
+	const heroSwipeHandlers = heroSwipeResponder?.panHandlers ?? {};
+
 	const heroSubtitle = hero?.subtitle || hero?.supportLine || "";
 
 	if (!theme || !hero) {
@@ -541,7 +382,7 @@ export default function MapVisitDetailBody({
 											? subtleColor
 											: item.primary
 												? "#F8FAFC"
-												: actionTint,
+												: actionIconColor,
 										item.primary ? 19 : 16,
 									)}
 									<Text
@@ -755,6 +596,7 @@ export default function MapVisitDetailBody({
 						onError={(error) => {
 							console.log("[ExpandedHero] Image load error:", error.nativeEvent?.error || error);
 						}}
+						{...heroSwipeHandlers}
 					>
 						<LinearGradient
 							pointerEvents="none"
@@ -856,6 +698,7 @@ export default function MapVisitDetailBody({
 					onError={(error) => {
 						console.log("[MidSnapHero] Image load error:", error.nativeEvent?.error || error);
 					}}
+					{...heroSwipeHandlers}
 				>
 					<LinearGradient
 						pointerEvents="none"

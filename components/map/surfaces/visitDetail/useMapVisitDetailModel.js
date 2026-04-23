@@ -198,6 +198,83 @@ const resolveBedLabel = (raw) => {
 	});
 };
 
+// PULLBACK NOTE: Fix collapsed action to always show primary CTA (never null)
+// OLD: Return null if no action available (hides left button)
+// NEW: Always return directions as fallback (matches mid-snap behavior)
+const buildVisitCollapsedAction = ({
+	canResume,
+	onResume,
+	canRate,
+	onRateVisit,
+	canDirections,
+	onGetDirections,
+	canRevisit,
+	onBookAgain,
+	status,
+	requestType,
+}) => {
+	const isCancelled = status === "cancelled";
+	const isRatingPending = status === "rating_pending";
+	const showTrack = canResume;
+
+	// Primary action priority matches placeActions
+	if (showTrack) {
+		return {
+			onPress: onResume,
+			icon: requestType === REQUEST_TYPES.BED ? "bed-outline" : "navigate-outline",
+			iconType: "ion",
+			primary: true,
+			accessibilityLabel: "Resume tracking",
+		};
+	}
+	if (isRatingPending && canRate) {
+		return {
+			onPress: onRateVisit,
+			icon: "star-outline",
+			iconType: "ion",
+			primary: true,
+			accessibilityLabel: "Rate visit",
+		};
+	}
+	if (canDirections) {
+		return {
+			onPress: onGetDirections,
+			icon: "navigate-outline",
+			iconType: "ion",
+			primary: false,
+			accessibilityLabel: "Get directions",
+		};
+	}
+	if (canRevisit) {
+		return {
+			onPress: onBookAgain,
+			icon: "calendar-plus",
+			iconType: "ion",
+			primary: false,
+			accessibilityLabel: "Book again",
+		};
+	}
+	// Fallback to directions even if cancelled (matches mid-snap behavior)
+	if (onGetDirections) {
+		return {
+			onPress: onGetDirections,
+			icon: "navigate-outline",
+			iconType: "ion",
+			primary: false,
+			accessibilityLabel: "Get directions",
+		};
+	}
+	return null;
+};
+
+const buildVisitCollapsedDistanceLabel = ({ whenValue, status }) => {
+	if (status === "active") return "Active now";
+	if (status === "pending") return "Pending";
+	if (status === "confirmed") return "Upcoming";
+	if (whenValue) return whenValue;
+	return "Visit";
+};
+
 const resolvePaymentMethodLabel = (raw) => {
 	const directLabel = pickText(
 		readRawField(raw, "paymentMethodLabel"),
@@ -934,6 +1011,35 @@ export default function useMapVisitDetailModel({
 
 	const canCancel = Boolean(historyItem?.canCancel);
 
+	// PULLBACK NOTE: Add collapsed action and distance label for COLLAPSED snap state
+	// OLD: No collapsed state support
+	// NEW: Build collapsed action and distance label for collapsed row
+	const collapsedAction = useMemo(
+		() =>
+			buildVisitCollapsedAction({
+				canResume,
+				onResume,
+				canRate,
+				onRateVisit,
+				canDirections,
+				onGetDirections,
+				canRevisit,
+				onBookAgain,
+				status: historyItem?.status,
+				requestType: historyItem?.requestType,
+			}),
+		[canResume, onResume, canRate, onRateVisit, canDirections, onGetDirections, canRevisit, onBookAgain, historyItem?.status, historyItem?.requestType],
+	);
+
+	const collapsedDistanceLabel = useMemo(
+		() =>
+			buildVisitCollapsedDistanceLabel({
+				whenValue,
+				status: historyItem?.status,
+			}),
+		[whenValue, historyItem?.status],
+	);
+
 	// Derive action capabilities
 	const hasCoordinates = Boolean(
 		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
@@ -1292,5 +1398,7 @@ export default function useMapVisitDetailModel({
 		placeActions,
 		placeStats,
 		canCancel,
+		collapsedAction,
+		collapsedDistanceLabel,
 	};
 }

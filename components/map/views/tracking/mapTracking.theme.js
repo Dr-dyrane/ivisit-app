@@ -115,9 +115,12 @@ export function buildTrackingThemeTokens({
 					? "rgba(251,191,36,0.20)"
 					: "rgba(251,191,36,0.14)"
 				: teamHeroProgressColor;
+	// PULLBACK NOTE: Update secondary CTA surface to use iVisit red token like hospital details
+	// OLD: Neutral white/transparent surface
+	// NEW: iVisit red tinted surface for secondary CTAs
 	const secondaryCtaSurface = isDarkMode
-		? "rgba(255,255,255,0.08)"
-		: "rgba(255,255,255,0.9)";
+		? "rgba(180,35,24,0.12)"
+		: "rgba(180,35,24,0.08)";
 	const stopIconSurface = isDarkMode
 		? "rgba(255,255,255,0.07)"
 		: "rgba(248,250,252,0.92)";

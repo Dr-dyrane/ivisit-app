@@ -88,6 +88,67 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 4 },
 		borderRadius: 999,
 	},
+	collapsedRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		paddingHorizontal: 14,
+		paddingBottom: 4,
+		paddingTop: 2,
+	},
+	collapsedIconButton: {
+		flex: 1,
+		width: 38,
+		height: 38,
+		alignItems: "center",
+		justifyContent: "center",
+		overflow: "hidden",
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+		shadowOffset: { width: 0, height: 6 },
+		borderRadius: 999,
+	},
+	collapsedIconButtonPrimary: {
+		shadowOpacity: 0.2,
+		shadowRadius: 14,
+		shadowOffset: { width: 0, height: 8 },
+	},
+	collapsedIconButtonPressed: {
+		opacity: 0.92,
+		transform: [{ scale: 0.97 }],
+	},
+	collapsedIconButtonPressable: {
+		width: 38,
+		height: 38,
+	},
+	// PULLBACK NOTE: Fix collapsed summary pressable to match hospital detail
+	// OLD: Using flex: 5 and fixed height
+	// NEW: Use flex: 1 to match hospital detail pattern
+	collapsedSummaryPressable: {
+		flex: 1,
+	},
+	// PULLBACK NOTE: Fix collapsed summary card to match hospital detail for centered text
+	// OLD: Missing alignItems and padding
+	// NEW: Add alignItems center and padding for proper centering
+	collapsedSummaryCard: {
+		minHeight: 44,
+		paddingHorizontal: 4,
+		paddingVertical: 4,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	collapsedTitle: {
+		fontSize: 15,
+		lineHeight: 19,
+		fontWeight: "600",
+	},
+	collapsedSubtitle: {
+		marginTop: 1,
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "500",
+	},
 });
 
 export default styles;
