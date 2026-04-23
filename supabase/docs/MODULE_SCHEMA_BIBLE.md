@@ -38,6 +38,16 @@ Canonical ownership map for the 11 migration pillars, with runtime touchpoints f
 | `20260219000900_automations.sql` | `automations` | 0 | 11 | 11 |
 | `20260219010000_core_rpcs.sql` | `core_rpcs` | 0 | 51 | 0 |
 
+## Post-Pillar Patches
+Date-ordered migrations that extend a pillar without owning its contract. Ownership still belongs to the originating pillar.
+
+| Migration | Scope | Owner Pillar |
+|---|---|---|
+| `20260412050000_hospital_media_pipeline.sql` | `hospital_media` table + `hospitals.image_source/image_confidence/image_attribution_text/image_synced_at` columns | `org_structure` |
+| `20260423000100_active_request_concurrency_guard.sql` | Unique partial indexes on `emergency_requests(user_id)` preventing duplicate active ambulance/bed requests per user | `logistics` |
+
+Rule: post-pillar patches may add columns, indexes, or guards. Contract renames, table removals, or RPC signature changes must land in the owner pillar instead.
+
 ## Table Ownership (Authoritative)
 
 ### `identity`

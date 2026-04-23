@@ -22,9 +22,10 @@ Primary doctrine still lives in:
 
 - [rules.json](./rules.json)
 - [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
-- [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
-- [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
-- [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
+- [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
+- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
+- Historical context: [archive/legacy_specs/](./archive/legacy_specs/) + [archive/historical/](./archive/historical/)
 
 ## Current Goal
 
@@ -191,7 +192,7 @@ The emergency build is being grounded through:
 - runtime audit of [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx)
 - runtime audit of [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx)
 - shared emergency state copy in [emergencyFlowContent.js](../components/emergency/emergencyFlowContent.js)
-- explicit constraints documented in [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
+- explicit constraints documented in [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md) (historical context: [archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md))
 
 Pipeline rule:
 

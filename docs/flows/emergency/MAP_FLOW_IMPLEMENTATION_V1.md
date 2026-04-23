@@ -1,19 +1,31 @@
 # Map Flow Implementation (v1)
 
-> Status: Active implementation note
+> Status: Mixed — sections marked stale below are superseded
 > Scope: `/map` -> `explore_intent`, decision phases, commit, payment, tracking
 
-Status note:
+## ⚠️ Authoritative Current-State Override
 
-- This file contains older planning sections that still mention legacy bed-booking handoff and some earlier tracking assumptions.
-- Current verified state is tracked in [MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md).
-- Use the audit file as the current-state source of truth when implementation and this note disagree.
+When this file and the live audit disagree, the audit wins:
 
-2026-04-21 correction:
+- Current-state truth: [MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
+- Live execution plan: [architecture/MAP_RUNTIME_PASS_PLAN_V1.md](./architecture/MAP_RUNTIME_PASS_PLAN_V1.md)
+- Runtime contract: [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](./MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+
+Known stale sections in this file (still kept for historical context):
+
+- any planning text that describes legacy bed-booking handoff as the active path
+- any text that treats `COMMIT_TRIAGE` as a required pre-payment gate
+- any text that treats `tracking` as a not-yet-implemented phase
+
+## 2026-04-21 Correction (still applies)
 
 - `COMMIT_TRIAGE` is no longer required before payment.
 - Fast path is now `commit_details -> commit_payment`.
 - `COMMIT_TRIAGE` remains available from tracking as `My information` update.
+
+## 2026-04-23 Maintenance Note
+
+- This banner exists because the body below was written across multiple passes. Treat the body as reference for architectural shape and file ownership, but verify any specific phase rule against the 2026-04-20 polish audit before acting.
 
 Related:
 

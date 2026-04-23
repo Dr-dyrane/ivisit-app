@@ -77,7 +77,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 
 ## Hospital Media Rule (2026-04-12)
 - Emergency and `/map` hospital surfaces should consume the existing `hospital.image` field seamlessly; image delivery must therefore be normalized at the data layer, not solved with special-case UI logic.
-- The canonical runtime delivery path is the public [`hospital-media`](../supabase/functions/hospital-media/index.ts) edge function. Hospital rows should point `image` to that proxy whenever the selected source is app-governed media rather than a raw static URL.
+- The canonical runtime delivery path is the public [`hospital-media`](../../../supabase/functions/hospital-media/index.ts) edge function. Hospital rows should point `image` to that proxy whenever the selected source is app-governed media rather than a raw static URL.
 - Source priority is:
   1. `hospital_upload`
   2. `official_website_image`
@@ -86,7 +86,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
   5. `deterministic_fallback`
 - `discover-hospitals` and `bootstrap-demo-ecosystem` must use Google Places API (New), not legacy Places endpoints, when they need provider-backed photo-capable hospital metadata.
 - New provider-backed hospitals should not require a later manual cleanup before they can render a real image. The `hospital-media` proxy may resolve a raw provider `place_id` directly for that purpose.
-- Existing hospital rows should be normalized through [`backfill_hospital_media.js`](../supabase/scripts/backfill_hospital_media.js), which:
+- Existing hospital rows should be normalized through [`backfill_hospital_media.js`](../../../supabase/scripts/backfill_hospital_media.js), which:
   - creates active primary `hospital_media` rows
   - updates `hospitals.image` to the proxy URL
   - persists `image_source`, `image_confidence`, and `image_attribution_text`
@@ -100,7 +100,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Shadow rows must never crowd real nearby hospitals out of the top slice sent back to the app.
 
 ## Audit Script Rule (2026-04-11)
-- Use [`supabase/scripts/audit_demo_coverage.js`](../supabase/scripts/audit_demo_coverage.js) for live coverage audits.
+- Use [`supabase/scripts/audit_demo_coverage.js`](../../../supabase/scripts/audit_demo_coverage.js) for live coverage audits.
 - The script intentionally splits responsibilities:
   - service-role client for `nearby_hospitals`
   - public anon client for `discover-hospitals`

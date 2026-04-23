@@ -9,7 +9,7 @@ Related:
 - [../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 - [../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md](../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md)
 - [../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
-- [../WELCOME_AND_INTAKE_FLOW_MAP.md](../WELCOME_AND_INTAKE_FLOW_MAP.md)
+- [../flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](../flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
 
 ## Goal
 
@@ -42,7 +42,7 @@ Use this reading order before changing `/map` UI, sheet behavior, or the active 
    - implementation contract for map shell, sheet shell, and smart/active header
 4. [../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md](../flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md)
    - ownership map for runtime files and orchestration
-5. [../WELCOME_AND_INTAKE_FLOW_MAP.md](../WELCOME_AND_INTAKE_FLOW_MAP.md)
+5. [../flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](../flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
    - cross-flow reference for header/intake continuity outside `/map`
 
 ## Recommended modularization target for `MapSheetShell`

@@ -12,7 +12,7 @@ This document describes the registration flow UI/UX, components, contexts, helpe
   5. Password setup (finalize account)
 
 **Flow (logical)**
-- The canonical state container is `RegistrationContext` ([contexts/RegistrationContext.jsx](contexts/RegistrationContext.jsx)). It stores `currentStep` and `registrationData` and exposes: `updateRegistrationData`, `goToStep`, `nextStep`, `previousStep`, `resetRegistration`, `getProgress`.
+- The canonical state container is `RegistrationContext` ([contexts/RegistrationContext.jsx](../../../contexts/RegistrationContext.jsx)). It stores `currentStep` and `registrationData` and exposes: `updateRegistrationData`, `goToStep`, `nextStep`, `previousStep`, `resetRegistration`, `getProgress`.
 - Use `useRegistration()` hook to read and mutate the flow from any registration-related component.
 - On final step, call the sign-up API and then `AuthContext.login()` to persist user and token.
 
@@ -92,17 +92,17 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 - Persistence: sign-up should call `api/auth` wrapper and then `AuthContext.login()` which writes `token` and `user` keys to AsyncStorage.
 
 **Files to review / adapt when extending**
-- [contexts/RegistrationContext.jsx](contexts/RegistrationContext.jsx)
-- [components/register/AuthInputModal.jsx](components/register/AuthInputModal.jsx)
-- [components/register/PhoneInputField.jsx](components/register/PhoneInputField.jsx)
-- [components/register/EmailInputField.jsx](components/register/EmailInputField.jsx)
-- [components/register/OTPInputCard.jsx](components/register/OTPInputCard.jsx)
-- [components/register/ProfileForm.jsx](components/register/ProfileForm.jsx)
-- [components/register/PasswordInputField.jsx](components/register/PasswordInputField.jsx)
-- [components/ui/SlideButton.jsx](components/ui/SlideButton.jsx)
-- [contexts/ToastContext.jsx](contexts/ToastContext.jsx)
-- [constants/colors.js](constants/colors.js)
-- [contexts/AuthContext.jsx](contexts/AuthContext.jsx)
+- [contexts/RegistrationContext.jsx](../../../contexts/RegistrationContext.jsx)
+- [components/register/AuthInputModal.jsx](../../../components/register/AuthInputModal.jsx)
+- [components/register/PhoneInputField.jsx](../../../components/register/PhoneInputField.jsx)
+- [components/register/EmailInputField.jsx](../../../components/register/EmailInputField.jsx)
+- [components/register/OTPInputCard.jsx](../../../components/register/OTPInputCard.jsx)
+- [components/register/ProfileForm.jsx](../../../components/register/ProfileForm.jsx)
+- [components/register/PasswordInputField.jsx](../../../components/register/PasswordInputField.jsx)
+- [components/ui/SlideButton.jsx](../../../components/ui/SlideButton.jsx)
+- [contexts/ToastContext.jsx](../../../contexts/ToastContext.jsx)
+- [constants/colors.js](../../../constants/colors.js)
+- [contexts/AuthContext.jsx](../../../contexts/AuthContext.jsx)
 
 **Developer Notes / Best Practices**
 - Keep each registration card single-purpose and stateless where possible: read initial value and emit changes via callbacks; persist state to `RegistrationContext` in parent handlers.

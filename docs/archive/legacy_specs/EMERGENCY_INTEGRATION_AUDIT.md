@@ -20,9 +20,9 @@ Related references:
 
 - [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
-- [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md)
-- [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
-- [rules.json](./rules.json)
+- [SPONSOR_SPRINT.md](../../SPONSOR_SPRINT.md)
+- [MASTER_BLUEPRINT.md](../../MASTER_BLUEPRINT.md)
+- [rules.json](../../rules.json)
 
 ## Semantic Lock
 
@@ -87,7 +87,7 @@ The app currently splits emergency across two different product surfaces.
 
 ### 1. Broad Emergency Shell
 
-[`EmergencyScreen.jsx`](../screens/EmergencyScreen.jsx)
+[`EmergencyScreen.jsx`](../../../screens/EmergencyScreen.jsx)
 
 Role today:
 
@@ -104,7 +104,7 @@ Verdict:
 
 ### 2. Direct Ambulance Request Flow
 
-[`RequestAmbulanceScreen.jsx`](../screens/RequestAmbulanceScreen.jsx)
+[`RequestAmbulanceScreen.jsx`](../../../screens/RequestAmbulanceScreen.jsx)
 
 Role today:
 
@@ -120,12 +120,12 @@ Verdict:
 
 Already reusable:
 
-- [`EmergencyRequestModal.jsx`](../components/emergency/EmergencyRequestModal.jsx)
-- [`useRequestFlow.js`](../hooks/emergency/useRequestFlow.js)
-- [`EmergencyMapContainer.jsx`](../components/emergency/EmergencyMapContainer.jsx)
-- [`TripSummaryCard.jsx`](../components/emergency/bottomSheet/TripSummaryCard.jsx)
-- [`EmergencyContext.jsx`](../contexts/EmergencyContext.jsx)
-- [`GlobalLocationContext.jsx`](../contexts/GlobalLocationContext.jsx)
+- [`EmergencyRequestModal.jsx`](../../../components/emergency/EmergencyRequestModal.jsx)
+- [`useRequestFlow.js`](../../../hooks/emergency/useRequestFlow.js)
+- [`EmergencyMapContainer.jsx`](../../../components/emergency/EmergencyMapContainer.jsx)
+- [`TripSummaryCard.jsx`](../../../components/emergency/bottomSheet/TripSummaryCard.jsx)
+- [`EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx)
+- [`GlobalLocationContext.jsx`](../../../contexts/GlobalLocationContext.jsx)
 
 Verdict:
 
@@ -242,7 +242,7 @@ Implication:
 
 ### Request Creation Service
 
-[`emergencyRequestsService.js`](../services/emergencyRequestsService.js)
+[`emergencyRequestsService.js`](../../../services/emergencyRequestsService.js)
 
 Current behavior:
 
@@ -257,7 +257,7 @@ Implication:
 
 ### Request Flow Hook
 
-[`useRequestFlow.js`](../hooks/emergency/useRequestFlow.js)
+[`useRequestFlow.js`](../../../hooks/emergency/useRequestFlow.js)
 
 Current behavior already handles:
 
@@ -274,7 +274,7 @@ Implication:
 
 ### Live Tracking Context
 
-[`EmergencyContext.jsx`](../contexts/EmergencyContext.jsx)
+[`EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx)
 
 Current role:
 
@@ -291,7 +291,7 @@ Implication:
 
 ### Console Entry Point
 
-[`EmergencyRequestsPage.jsx`](../../ivisit-console/frontend/src/components/pages/EmergencyRequestsPage.jsx)
+[`EmergencyRequestsPage.jsx`](../../../../ivisit-console/frontend/src/components/pages/EmergencyRequestsPage.jsx)
 
 Current role:
 
@@ -307,7 +307,7 @@ Implication:
 
 ### Console Action Logic
 
-[`emergencyActions.js`](../../ivisit-console/frontend/src/utils/emergencyActions.js)
+[`emergencyActions.js`](../../../../ivisit-console/frontend/src/utils/emergencyActions.js)
 
 Current role:
 
@@ -322,8 +322,8 @@ Implication:
 
 ### Console Emergency Services
 
-[`emergencyService.js`](../../ivisit-console/frontend/src/services/emergencyService.js)
-[`emergencyResponseService.js`](../../ivisit-console/frontend/src/services/emergencyResponseService.js)
+[`emergencyService.js`](../../../../ivisit-console/frontend/src/services/emergencyService.js)
+[`emergencyResponseService.js`](../../../../ivisit-console/frontend/src/services/emergencyResponseService.js)
 
 Current role:
 
@@ -411,11 +411,11 @@ This is the best flow that fits the existing system.
 
 Build the new first live-action emergency flow on:
 
-- [`RequestAmbulanceScreen.jsx`](../screens/RequestAmbulanceScreen.jsx)
+- [`RequestAmbulanceScreen.jsx`](../../../screens/RequestAmbulanceScreen.jsx)
 
 Not on:
 
-- [`EmergencyScreen.jsx`](../screens/EmergencyScreen.jsx)
+- [`EmergencyScreen.jsx`](../../../screens/EmergencyScreen.jsx)
 
 Reason:
 

@@ -52,10 +52,11 @@ docs/
 ## Primary Navigation
 
 - Product blueprint: [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
-- Welcome screen dossier: [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
-- Emergency screen dossier: [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
-- Emergency integration audit: [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
-- Emergency UX progress log (2026-04-09): [EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-09.md)
+- Welcome + intake flow map: [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
+- Emergency flow doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
+- Archived screen dossiers (historical): [archive/legacy_specs/](./archive/legacy_specs/)
+- Archived progress logs (historical): [archive/historical/](./archive/historical/)
 - Map sheet implementation notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Docs entry: [README.md](./README.md)
 - Workflow map hub: [flows/README.md](./flows/README.md)

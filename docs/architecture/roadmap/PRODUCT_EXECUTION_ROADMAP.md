@@ -10,9 +10,9 @@
 - Treat seed data as part of the product: hospitals, beds, ambulances, visits.
 
 **Current assets in repo**
-- Layered auth refactor plan and structure: [AUTH_REFACTOR_PLAN.md](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/docs/architecture/AUTH_REFACTOR_PLAN.md)
-- Supabase integration point placeholder: [client.js](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/api/client.js)
-- Provider wiring and app structure summary: [repo.md](file:///c:/Users/Dyrane/Documents/GitHub/ivisit-app/docs/repo.md)
+- Layered auth refactor plan and structure: `docs/architecture/AUTH_REFACTOR_PLAN.md` _(planned — not yet created)_
+- Supabase integration point placeholder: `api/client.js` _(planned — not yet created)_
+- Provider wiring and app structure summary: [project_state/repo.md](../../project_state/repo.md)
 
 ---
 

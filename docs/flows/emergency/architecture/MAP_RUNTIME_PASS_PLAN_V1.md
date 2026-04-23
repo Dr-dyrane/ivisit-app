@@ -21,7 +21,7 @@ Related audit:
 - Pass 9: complete
 - Pass 10: complete
 - Pass 11: complete
-- Pass 12: pending
+- Pass 12: in progress
 - Pass 13: pending
 - Pass 14: pending
 - Pass 15: pending
@@ -55,11 +55,11 @@ Unified remaining order:
 
 Pass 1 landed the runtime-boundary cleanup needed before deeper module extraction:
 
-- added runtime slice helpers in [`hooks/map/state/mapExploreFlow.runtime.js`](../../../hooks/map/state/mapExploreFlow.runtime.js)
-- added store selectors in [`hooks/map/state/mapExploreFlow.selectors.js`](../../../hooks/map/state/mapExploreFlow.selectors.js)
-- extended the reducer-backed store in [`hooks/map/state/mapExploreFlow.store.js`](../../../hooks/map/state/mapExploreFlow.store.js) with named `runtime` subdomains and runtime actions
-- extracted pure sheet/commit transition builders into [`hooks/map/exploreFlow/mapExploreFlow.transitions.js`](../../../hooks/map/exploreFlow/mapExploreFlow.transitions.js)
-- rewired [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) to use selectors and transition builders instead of inline raw `setSheetView({ ... })` payload construction
+- added runtime slice helpers in [`hooks/map/state/mapExploreFlow.runtime.js`](../../../../hooks/map/state/mapExploreFlow.runtime.js)
+- added store selectors in [`hooks/map/state/mapExploreFlow.selectors.js`](../../../../hooks/map/state/mapExploreFlow.selectors.js)
+- extended the reducer-backed store in [`hooks/map/state/mapExploreFlow.store.js`](../../../../hooks/map/state/mapExploreFlow.store.js) with named `runtime` subdomains and runtime actions
+- extracted pure sheet/commit transition builders into [`hooks/map/exploreFlow/mapExploreFlow.transitions.js`](../../../../hooks/map/exploreFlow/mapExploreFlow.transitions.js)
+- rewired [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../../hooks/map/exploreFlow/useMapExploreFlow.js) to use selectors and transition builders instead of inline raw `setSheetView({ ... })` payload construction
 
 Result:
 
@@ -72,16 +72,16 @@ Result:
 
 Pass 2 finished the tracking extraction needed before commit-phase work:
 
-- tracking presentation helpers moved into [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js)
-- tracking action/detail derivation moved into [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js)
-- tracking pure view-state derivation moved into [`components/map/views/tracking/mapTracking.derived.js`](../../../components/map/views/tracking/mapTracking.derived.js)
-- tracking share payload shaping moved into [`components/map/views/tracking/mapTracking.share.js`](../../../components/map/views/tracking/mapTracking.share.js)
-- tracking rating payload shaping moved into [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js)
-- tracking operational controller state moved into [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js)
-- tracking runtime state moved into [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../components/map/views/tracking/useMapTrackingRuntime.js)
-- tracking theme/token shaping moved into [`components/map/views/tracking/mapTracking.theme.js`](../../../components/map/views/tracking/mapTracking.theme.js)
-- reusable tracking parts moved into [`components/map/views/tracking/parts/MapTrackingParts.jsx`](../../../components/map/views/tracking/parts/MapTrackingParts.jsx)
-- [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx) now depends on imported parts/presentation helpers instead of owning those concerns inline
+- tracking presentation helpers moved into [`components/map/views/tracking/mapTracking.presentation.js`](../../../../components/map/views/tracking/mapTracking.presentation.js)
+- tracking action/detail derivation moved into [`components/map/views/tracking/mapTracking.model.js`](../../../../components/map/views/tracking/mapTracking.model.js)
+- tracking pure view-state derivation moved into [`components/map/views/tracking/mapTracking.derived.js`](../../../../components/map/views/tracking/mapTracking.derived.js)
+- tracking share payload shaping moved into [`components/map/views/tracking/mapTracking.share.js`](../../../../components/map/views/tracking/mapTracking.share.js)
+- tracking rating payload shaping moved into [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js)
+- tracking operational controller state moved into [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js)
+- tracking runtime state moved into [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../../components/map/views/tracking/useMapTrackingRuntime.js)
+- tracking theme/token shaping moved into [`components/map/views/tracking/mapTracking.theme.js`](../../../../components/map/views/tracking/mapTracking.theme.js)
+- reusable tracking parts moved into [`components/map/views/tracking/parts/MapTrackingParts.jsx`](../../../../components/map/views/tracking/parts/MapTrackingParts.jsx)
+- [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../../components/map/views/tracking/MapTrackingStageBase.jsx) now depends on imported parts/presentation helpers instead of owning those concerns inline
 
 Result:
 
@@ -102,21 +102,21 @@ First target inside Pass 3:
 - extract payment-method hydration/selection state
 - extract cost loading and normalization state
 - extract submit/finalization controller logic
-- leave [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) render-led instead of controller-led
+- leave [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) render-led instead of controller-led
 
 Current output:
 
-- payment runtime/controller state moved into [`components/map/views/commitPayment/useMapCommitPaymentController.js`](../../../components/map/views/commitPayment/useMapCommitPaymentController.js)
-- payment presentation helpers moved into [`components/map/views/commitPayment/mapCommitPayment.presentation.js`](../../../components/map/views/commitPayment/mapCommitPayment.presentation.js)
-- payment theme/token shaping moved into [`components/map/views/commitPayment/mapCommitPayment.theme.js`](../../../components/map/views/commitPayment/mapCommitPayment.theme.js)
-- [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) no longer imports auth/preferences/visits/emergency request hooks, payment services, pricing services, or request-flow services directly
-- triage runtime/controller state moved into [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../components/map/views/commitTriage/useMapCommitTriageController.js)
-- triage theme/token shaping moved into [`components/map/views/commitTriage/mapCommitTriage.theme.js`](../../../components/map/views/commitTriage/mapCommitTriage.theme.js)
-- reusable triage visual parts moved into [`components/map/views/commitTriage/MapCommitTriageStageParts.jsx`](../../../components/map/views/commitTriage/MapCommitTriageStageParts.jsx)
-- [`components/map/views/commitTriage/MapCommitTriageStageBase.jsx`](../../../components/map/views/commitTriage/MapCommitTriageStageBase.jsx) no longer imports emergency context hooks, live triage services, haptics, or animation orchestration directly
-- commit-details runtime/controller state moved into [`components/map/views/commitDetails/useMapCommitDetailsController.js`](../../../components/map/views/commitDetails/useMapCommitDetailsController.js)
-- commit-details theme/token shaping moved into [`components/map/views/commitDetails/mapCommitDetails.theme.js`](../../../components/map/views/commitDetails/mapCommitDetails.theme.js)
-- [`components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`](../../../components/map/views/commitDetails/MapCommitDetailsStageBase.jsx) no longer imports auth/emergency context hooks, auth services, contact memory services, validators, or OTP/persistence orchestration directly
+- payment runtime/controller state moved into [`components/map/views/commitPayment/useMapCommitPaymentController.js`](../../../../components/map/views/commitPayment/useMapCommitPaymentController.js)
+- payment presentation helpers moved into [`components/map/views/commitPayment/mapCommitPayment.presentation.js`](../../../../components/map/views/commitPayment/mapCommitPayment.presentation.js)
+- payment theme/token shaping moved into [`components/map/views/commitPayment/mapCommitPayment.theme.js`](../../../../components/map/views/commitPayment/mapCommitPayment.theme.js)
+- [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) no longer imports auth/preferences/visits/emergency request hooks, payment services, pricing services, or request-flow services directly
+- triage runtime/controller state moved into [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../../components/map/views/commitTriage/useMapCommitTriageController.js)
+- triage theme/token shaping moved into [`components/map/views/commitTriage/mapCommitTriage.theme.js`](../../../../components/map/views/commitTriage/mapCommitTriage.theme.js)
+- reusable triage visual parts moved into [`components/map/views/commitTriage/MapCommitTriageStageParts.jsx`](../../../../components/map/views/commitTriage/MapCommitTriageStageParts.jsx)
+- [`components/map/views/commitTriage/MapCommitTriageStageBase.jsx`](../../../../components/map/views/commitTriage/MapCommitTriageStageBase.jsx) no longer imports emergency context hooks, live triage services, haptics, or animation orchestration directly
+- commit-details runtime/controller state moved into [`components/map/views/commitDetails/useMapCommitDetailsController.js`](../../../../components/map/views/commitDetails/useMapCommitDetailsController.js)
+- commit-details theme/token shaping moved into [`components/map/views/commitDetails/mapCommitDetails.theme.js`](../../../../components/map/views/commitDetails/mapCommitDetails.theme.js)
+- [`components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`](../../../../components/map/views/commitDetails/MapCommitDetailsStageBase.jsx) no longer imports auth/emergency context hooks, auth services, contact memory services, validators, or OTP/persistence orchestration directly
 
 Current effect:
 
@@ -154,7 +154,7 @@ The current pressure points are already too large:
 - `components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`
 - `screens/MapScreen.jsx`
 
-We already have a reducer-backed store boundary in [`hooks/map/state/mapExploreFlow.store.js`](../../../hooks/map/state/mapExploreFlow.store.js).
+We already have a reducer-backed store boundary in [`hooks/map/state/mapExploreFlow.store.js`](../../../../hooks/map/state/mapExploreFlow.store.js).
 
 So the next move is not another UI-only sprint and not a premature Zustand rewrite.
 
@@ -475,11 +475,11 @@ Pass 4A target:
 
 Pass 4A current output:
 
-- added [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js)
+- added [`components/map/core/mapActiveRequestModel.js`](../../../../components/map/core/mapActiveRequestModel.js)
 - normalized active request identity, kind, status, hospital, service label, ETA/arrival labels, minute/distance values, progress, telemetry state, and completion gates
-- [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now uses the model for the active session header request key, hospital, pickup, status, arrival, min, km, and progress values
-- [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now uses the model for map focus hospital, ambulance marker kind/coordinate/heading selection, tracking triage request id handoff, and recovered-rating suppression while any active request exists
-- [`components/map/core/MapSheetOrchestrator.jsx`](../../../components/map/core/MapSheetOrchestrator.jsx) passes the model into tracking
+- [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../../hooks/map/exploreFlow/useMapExploreFlow.js) now uses the model for the active session header request key, hospital, pickup, status, arrival, min, km, and progress values
+- [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now uses the model for map focus hospital, ambulance marker kind/coordinate/heading selection, tracking triage request id handoff, and recovered-rating suppression while any active request exists
+- [`components/map/core/MapSheetOrchestrator.jsx`](../../../../components/map/core/MapSheetOrchestrator.jsx) passes the model into tracking
 - tracking runtime/view derivation now receives the model for tracking kind, hospital, request display, triage request id, and confirm/complete gates
 
 Pass 4A proven by static checks:
@@ -502,34 +502,34 @@ Pass 4B target:
 Current slice:
 
 - started with tracking completion / rating handoff audit
-- removed a lifecycle race in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) where completion was writing both `COMPLETED` and `RATING_PENDING` in parallel
+- removed a lifecycle race in [`hooks/emergency/useEmergencyHandlers.js`](../../../../hooks/emergency/useEmergencyHandlers.js) where completion was writing both `COMPLETED` and `RATING_PENDING` in parallel
 - keep `RATING_PENDING` as the single post-completion pre-rating lifecycle until the rating modal resolves it to `RATED`
-- completion handlers in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) now return explicit success/failure results instead of swallowing failures silently
-- cleanup in [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) now runs only on successful complete/cancel flows, so failed operations no longer disappear from active tracking state
-- tracking rating flow in [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now blocks `RATED` writes when completion fails, resolves skip to `POST_COMPLETION`, and shows success/error toast feedback
-- [`components/emergency/ServiceRatingModal.jsx`](../../../components/emergency/ServiceRatingModal.jsx) now waits for async skip/submit handlers before closing, so rating state is no longer lost behind optimistic dismissal
-- ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) now seeds route progress from the live responder coordinate when available, and [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) now passes that live responder location into the animation hook to reduce reopen/reload drift
-- recovery hydration in [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now preserves richer client `map_route` ETA/route state for the same active request instead of downgrading it back to coarse server snapshot data
-- route timeline reconciliation is now centralized in [`components/map/views/tracking/mapTracking.timeline.js`](../../../components/map/views/tracking/mapTracking.timeline.js), and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now re-anchors `startedAt` whenever live route ETA becomes the better truth
-- [`hooks/emergency/useTripProgress.js`](../../../hooks/emergency/useTripProgress.js) no longer falls back to `createdAt`/`updatedAt` guesses, so countdown drift is no longer rebuilt from request timestamps after reload
-- triage live updates in [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../components/map/views/commitTriage/useMapCommitTriageController.js) now patch ambulance, bed, and pending-approval tracking state locally, and [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now exposes patch helpers for bed/pending state so header progress stays truthful before realtime/server echo returns
-- tracking completion is now a true two-step flow: [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js) supports deferred cleanup for complete actions, and [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now completes the request on both rating submit and rating skip, then performs local tracking cleanup only after the post-completion lifecycle write succeeds
-- `/map` tracking completion now matches legacy ordering: [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) commits request completion before opening the rating modal, and [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js) preserves that committed-completion flag so rating submit/skip no longer re-run completion or risk leaving a request active if rating is interrupted
-- reserve-bed-from-tracking now preserves its upstream source chain across bed decision, hospital list, service detail, commit details, and commit payment via [`components/map/core/mapSheetFlowPayloads.js`](../../../components/map/core/mapSheetFlowPayloads.js), so backing out of that lane can unwind cleanly to tracking instead of silently dropping the user back to explore
-- long-session ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) now distinguishes live responder progress from synthetic ETA resume progress, and it projects live responder coordinates onto route segments instead of snapping to the nearest vertex, so reopened tracking sessions stay on the route and finish over the correct remaining ETA window
-- active tracking route precedence in [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) and [`hooks/emergency/useMapRoute.js`](../../../hooks/emergency/useMapRoute.js) now prefers the richer preserved tracking route over a newly fetched fallback straight-line route, so route degradation does not silently flatten the live tracking path
-- rating recovery no longer depends on the tracking sheet staying mounted: [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now reopens [`components/emergency/ServiceRatingModal.jsx`](../../../components/emergency/ServiceRatingModal.jsx) from persisted visit lifecycle truth when the newest visit is still `RATING_PENDING`, and [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js) now exposes the recovery selectors/builders for that path
-- recovered rating exclusion in [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now bumps a handled-version state when a visit is resolved, so a just-skipped or just-submitted recovered rating does not immediately reopen from stale memoized exclusion state
-- recovered rating scope is now device-local instead of account-global: [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) writes a local recovery claim when completion opens the rating modal, and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) only reopens persisted `RATING_PENDING` visits that have a matching local claim from [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js)
-- ambulance animation restart in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) is now keyed to a normalized route signature instead of raw coordinate-array identity, so live tracking is less likely to restart just because the same polyline is re-emitted as a new array instance
-- authenticated public-map preservation in [`app/_layout.js`](../../../app/_layout.js) now normalizes the current pathname before auth redirect checks, so native iOS sessions on `/(auth)/map` no longer fall through to the legacy authenticated home tab just because the grouped route path differs from web
-- ambulance motion precedence in [`hooks/emergency/useAmbulanceAnimation.js`](../../../hooks/emergency/useAmbulanceAnimation.js) now prefers live responder coordinates over the synthetic timer loop whenever telemetry is present, which removes the timer-vs-telemetry race that caused occasional mid-route jumps
-- commit payment now has an explicit transaction contract in [`components/map/views/commitPayment/mapCommitPayment.transaction.js`](../../../components/map/views/commitPayment/mapCommitPayment.transaction.js), defining the only valid submit states (`idle`, `waiting_approval`, `processing_payment`, `finalizing_dispatch`, `dispatched`, `failed`, `payment_declined`) plus a pure submit validator for hospital, payment snapshot, method, and total requirements
-- [`components/map/views/commitPayment/useMapCommitPaymentController.js`](../../../components/map/views/commitPayment/useMapCommitPaymentController.js) now routes submit flow through that transaction contract, blocks duplicate submits with a local submit lock, cleans up demo auto-approval timers on unmount, and moves approval/card/dispatch/failure transitions through one named state boundary instead of scattered string literals
-- commit payment presentation now reads the same transaction constants in [`components/map/views/commitPayment/mapCommitPayment.presentation.js`](../../../components/map/views/commitPayment/mapCommitPayment.presentation.js), [`components/map/views/commitPayment/MapCommitPaymentStageParts.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageParts.jsx), and [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx), so UI status rendering cannot silently drift from controller state naming
-- wide-screen payment footer parity regression was closed in [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) by restoring the missing `webWideInsetStyle` contract used by the other promoted `/map` stages
-- tracking and recovered-rating resolution now share one persistence contract in [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js), which owns `POST_COMPLETION` and `RATED` lifecycle writes, recovery-claim deletion, and optional tip settlement results
-- [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now delegate rating skip/submit persistence to those shared helpers instead of duplicating backend lifecycle logic
+- completion handlers in [`hooks/emergency/useEmergencyHandlers.js`](../../../../hooks/emergency/useEmergencyHandlers.js) now return explicit success/failure results instead of swallowing failures silently
+- cleanup in [`hooks/emergency/useEmergencyHandlers.js`](../../../../hooks/emergency/useEmergencyHandlers.js) now runs only on successful complete/cancel flows, so failed operations no longer disappear from active tracking state
+- tracking rating flow in [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) now blocks `RATED` writes when completion fails, resolves skip to `POST_COMPLETION`, and shows success/error toast feedback
+- [`components/emergency/ServiceRatingModal.jsx`](../../../../components/emergency/ServiceRatingModal.jsx) now waits for async skip/submit handlers before closing, so rating state is no longer lost behind optimistic dismissal
+- ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../../hooks/emergency/useAmbulanceAnimation.js) now seeds route progress from the live responder coordinate when available, and [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) now passes that live responder location into the animation hook to reduce reopen/reload drift
+- recovery hydration in [`contexts/EmergencyContext.jsx`](../../../../contexts/EmergencyContext.jsx) now preserves richer client `map_route` ETA/route state for the same active request instead of downgrading it back to coarse server snapshot data
+- route timeline reconciliation is now centralized in [`components/map/views/tracking/mapTracking.timeline.js`](../../../../components/map/views/tracking/mapTracking.timeline.js), and [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now re-anchors `startedAt` whenever live route ETA becomes the better truth
+- [`hooks/emergency/useTripProgress.js`](../../../../hooks/emergency/useTripProgress.js) no longer falls back to `createdAt`/`updatedAt` guesses, so countdown drift is no longer rebuilt from request timestamps after reload
+- triage live updates in [`components/map/views/commitTriage/useMapCommitTriageController.js`](../../../../components/map/views/commitTriage/useMapCommitTriageController.js) now patch ambulance, bed, and pending-approval tracking state locally, and [`contexts/EmergencyContext.jsx`](../../../../contexts/EmergencyContext.jsx) now exposes patch helpers for bed/pending state so header progress stays truthful before realtime/server echo returns
+- tracking completion is now a true two-step flow: [`hooks/emergency/useEmergencyHandlers.js`](../../../../hooks/emergency/useEmergencyHandlers.js) supports deferred cleanup for complete actions, and [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) now completes the request on both rating submit and rating skip, then performs local tracking cleanup only after the post-completion lifecycle write succeeds
+- `/map` tracking completion now matches legacy ordering: [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) commits request completion before opening the rating modal, and [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js) preserves that committed-completion flag so rating submit/skip no longer re-run completion or risk leaving a request active if rating is interrupted
+- reserve-bed-from-tracking now preserves its upstream source chain across bed decision, hospital list, service detail, commit details, and commit payment via [`components/map/core/mapSheetFlowPayloads.js`](../../../../components/map/core/mapSheetFlowPayloads.js), so backing out of that lane can unwind cleanly to tracking instead of silently dropping the user back to explore
+- long-session ambulance animation in [`hooks/emergency/useAmbulanceAnimation.js`](../../../../hooks/emergency/useAmbulanceAnimation.js) now distinguishes live responder progress from synthetic ETA resume progress, and it projects live responder coordinates onto route segments instead of snapping to the nearest vertex, so reopened tracking sessions stay on the route and finish over the correct remaining ETA window
+- active tracking route precedence in [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) and [`hooks/emergency/useMapRoute.js`](../../../../hooks/emergency/useMapRoute.js) now prefers the richer preserved tracking route over a newly fetched fallback straight-line route, so route degradation does not silently flatten the live tracking path
+- rating recovery no longer depends on the tracking sheet staying mounted: [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now reopens [`components/emergency/ServiceRatingModal.jsx`](../../../../components/emergency/ServiceRatingModal.jsx) from persisted visit lifecycle truth when the newest visit is still `RATING_PENDING`, and [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js) now exposes the recovery selectors/builders for that path
+- recovered rating exclusion in [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now bumps a handled-version state when a visit is resolved, so a just-skipped or just-submitted recovered rating does not immediately reopen from stale memoized exclusion state
+- recovered rating scope is now device-local instead of account-global: [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) writes a local recovery claim when completion opens the rating modal, and [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) only reopens persisted `RATING_PENDING` visits that have a matching local claim from [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js)
+- ambulance animation restart in [`hooks/emergency/useAmbulanceAnimation.js`](../../../../hooks/emergency/useAmbulanceAnimation.js) is now keyed to a normalized route signature instead of raw coordinate-array identity, so live tracking is less likely to restart just because the same polyline is re-emitted as a new array instance
+- authenticated public-map preservation in [`app/_layout.js`](../../../../app/_layout.js) now normalizes the current pathname before auth redirect checks, so native iOS sessions on `/(auth)/map` no longer fall through to the legacy authenticated home tab just because the grouped route path differs from web
+- ambulance motion precedence in [`hooks/emergency/useAmbulanceAnimation.js`](../../../../hooks/emergency/useAmbulanceAnimation.js) now prefers live responder coordinates over the synthetic timer loop whenever telemetry is present, which removes the timer-vs-telemetry race that caused occasional mid-route jumps
+- commit payment now has an explicit transaction contract in [`components/map/views/commitPayment/mapCommitPayment.transaction.js`](../../../../components/map/views/commitPayment/mapCommitPayment.transaction.js), defining the only valid submit states (`idle`, `waiting_approval`, `processing_payment`, `finalizing_dispatch`, `dispatched`, `failed`, `payment_declined`) plus a pure submit validator for hospital, payment snapshot, method, and total requirements
+- [`components/map/views/commitPayment/useMapCommitPaymentController.js`](../../../../components/map/views/commitPayment/useMapCommitPaymentController.js) now routes submit flow through that transaction contract, blocks duplicate submits with a local submit lock, cleans up demo auto-approval timers on unmount, and moves approval/card/dispatch/failure transitions through one named state boundary instead of scattered string literals
+- commit payment presentation now reads the same transaction constants in [`components/map/views/commitPayment/mapCommitPayment.presentation.js`](../../../../components/map/views/commitPayment/mapCommitPayment.presentation.js), [`components/map/views/commitPayment/MapCommitPaymentStageParts.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageParts.jsx), and [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx), so UI status rendering cannot silently drift from controller state naming
+- wide-screen payment footer parity regression was closed in [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx) by restoring the missing `webWideInsetStyle` contract used by the other promoted `/map` stages
+- tracking and recovered-rating resolution now share one persistence contract in [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js), which owns `POST_COMPLETION` and `RATED` lifecycle writes, recovery-claim deletion, and optional tip settlement results
+- [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) and [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now delegate rating skip/submit persistence to those shared helpers instead of duplicating backend lifecycle logic
 
 Scope:
 
@@ -622,16 +622,16 @@ Required checks:
 Current slice:
 
 - restored a shared wide-panel top-slot containment contract for:
-  - [`components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`](../../../components/map/views/commitDetails/MapCommitDetailsStageBase.jsx)
-  - [`components/map/views/commitTriage/MapCommitTriageStageBase.jsx`](../../../components/map/views/commitTriage/MapCommitTriageStageBase.jsx)
-  - [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx)
-  - [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx)
-- [`components/map/views/shared/mapSheetStage.styles.js`](../../../components/map/views/shared/mapSheetStage.styles.js) now exposes `topSlotWide`, so promoted stages can keep header geometry aligned with the same wide-lane inset already used by body content
-- request-id presentation is now normalized through [`components/map/core/mapRequestPresentation.js`](../../../components/map/core/mapRequestPresentation.js), and active request/tracking/payment/header surfaces now format UUID-like fallback IDs into a stable UI-safe request token instead of leaking raw backend identifiers
-- metric presentation is now normalized through [`components/map/core/mapMetricPresentation.js`](../../../components/map/core/mapMetricPresentation.js), and both [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js) and [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js) now share the same arrival/minutes/distance formatter contract
-- map-overlay header geometry is now normalized through [`components/map/core/mapOverlayHeaderLayout.js`](../../../components/map/core/mapOverlayHeaderLayout.js), and both [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) and [`components/map/surfaces/MapExploreLoadingOverlay.jsx`](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx) now read the same header frame contract instead of carrying separate left/right/width math
-- active-session smart-header content is now normalized through [`components/map/core/mapActiveSessionPresentation.js`](../../../components/map/core/mapActiveSessionPresentation.js), so the persistent tracking header renders compact semantic status plus shared metrics instead of carrying hidden duplicated detail rows
-- [`components/headers/ScrollAwareHeader.jsx`](../../../components/headers/ScrollAwareHeader.jsx) now supports a warning pill tone, which lets delayed tracking states remain visually distinct without reintroducing expanded explanatory copy
+  - [`components/map/views/commitDetails/MapCommitDetailsStageBase.jsx`](../../../../components/map/views/commitDetails/MapCommitDetailsStageBase.jsx)
+  - [`components/map/views/commitTriage/MapCommitTriageStageBase.jsx`](../../../../components/map/views/commitTriage/MapCommitTriageStageBase.jsx)
+  - [`components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`](../../../../components/map/views/commitPayment/MapCommitPaymentStageBase.jsx)
+  - [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../../components/map/views/tracking/MapTrackingStageBase.jsx)
+- [`components/map/views/shared/mapSheetStage.styles.js`](../../../../components/map/views/shared/mapSheetStage.styles.js) now exposes `topSlotWide`, so promoted stages can keep header geometry aligned with the same wide-lane inset already used by body content
+- request-id presentation is now normalized through [`components/map/core/mapRequestPresentation.js`](../../../../components/map/core/mapRequestPresentation.js), and active request/tracking/payment/header surfaces now format UUID-like fallback IDs into a stable UI-safe request token instead of leaking raw backend identifiers
+- metric presentation is now normalized through [`components/map/core/mapMetricPresentation.js`](../../../../components/map/core/mapMetricPresentation.js), and both [`components/map/core/mapActiveRequestModel.js`](../../../../components/map/core/mapActiveRequestModel.js) and [`components/map/views/tracking/mapTracking.presentation.js`](../../../../components/map/views/tracking/mapTracking.presentation.js) now share the same arrival/minutes/distance formatter contract
+- map-overlay header geometry is now normalized through [`components/map/core/mapOverlayHeaderLayout.js`](../../../../components/map/core/mapOverlayHeaderLayout.js), and both [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../../hooks/map/exploreFlow/useMapExploreFlow.js) and [`components/map/surfaces/MapExploreLoadingOverlay.jsx`](../../../../components/map/surfaces/MapExploreLoadingOverlay.jsx) now read the same header frame contract instead of carrying separate left/right/width math
+- active-session smart-header content is now normalized through [`components/map/core/mapActiveSessionPresentation.js`](../../../../components/map/core/mapActiveSessionPresentation.js), so the persistent tracking header renders compact semantic status plus shared metrics instead of carrying hidden duplicated detail rows
+- [`components/headers/ScrollAwareHeader.jsx`](../../../../components/headers/ScrollAwareHeader.jsx) now supports a warning pill tone, which lets delayed tracking states remain visually distinct without reintroducing expanded explanatory copy
 
 Pass 5 proven in this slice:
 
@@ -706,17 +706,17 @@ Scope:
 
 Current slice:
 
-- bed timing/runtime ownership is now normalized through [`hooks/emergency/bedBookingRuntime.js`](../../../hooks/emergency/bedBookingRuntime.js)
-- [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now applies that normalizer when:
+- bed timing/runtime ownership is now normalized through [`hooks/emergency/bedBookingRuntime.js`](../../../../hooks/emergency/bedBookingRuntime.js)
+- [`contexts/EmergencyContext.jsx`](../../../../contexts/EmergencyContext.jsx) now applies that normalizer when:
   - hydrating active bed bookings from backend truth
   - starting a local bed booking
   - patching a live bed booking from realtime request updates
-- [`hooks/emergency/useBedBookingProgress.js`](../../../hooks/emergency/useBedBookingProgress.js) now reads the same hold/timestamp contract instead of re-parsing timing rules independently
-- [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js) now exposes the fallback `Share ETA` action for bed tracking too, matching the ambulance action model whenever bed is not in a higher-priority check-in/complete state
-- bed service labels are now normalized through [`components/map/views/tracking/mapTracking.presentation.js`](../../../components/map/views/tracking/mapTracking.presentation.js) and [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js), so runtime surfaces no longer leak raw `standard` / `icu` backend values
-- [`components/map/core/mapActiveRequestModel.js`](../../../components/map/core/mapActiveRequestModel.js) and [`components/map/core/mapActiveSessionPresentation.js`](../../../components/map/core/mapActiveSessionPresentation.js) now treat elapsed bed ETA as `Ready`, zero the minute metric, and promote the active-session header to a success tone when check-in is available
-- [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../components/map/views/tracking/useMapTrackingRuntime.js), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx), and [`components/map/views/tracking/mapTracking.theme.js`](../../../components/map/views/tracking/mapTracking.theme.js) now render the bed hero against live remaining-hold time and progress instead of a static reservation summary
-- [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js) now promotes `Complete Stay` to the bottom primary slot when the bed request reaches its completion gate, matching the ambulance completion hierarchy
+- [`hooks/emergency/useBedBookingProgress.js`](../../../../hooks/emergency/useBedBookingProgress.js) now reads the same hold/timestamp contract instead of re-parsing timing rules independently
+- [`components/map/views/tracking/mapTracking.model.js`](../../../../components/map/views/tracking/mapTracking.model.js) now exposes the fallback `Share ETA` action for bed tracking too, matching the ambulance action model whenever bed is not in a higher-priority check-in/complete state
+- bed service labels are now normalized through [`components/map/views/tracking/mapTracking.presentation.js`](../../../../components/map/views/tracking/mapTracking.presentation.js) and [`components/map/core/mapActiveRequestModel.js`](../../../../components/map/core/mapActiveRequestModel.js), so runtime surfaces no longer leak raw `standard` / `icu` backend values
+- [`components/map/core/mapActiveRequestModel.js`](../../../../components/map/core/mapActiveRequestModel.js) and [`components/map/core/mapActiveSessionPresentation.js`](../../../../components/map/core/mapActiveSessionPresentation.js) now treat elapsed bed ETA as `Ready`, zero the minute metric, and promote the active-session header to a success tone when check-in is available
+- [`components/map/views/tracking/useMapTrackingRuntime.js`](../../../../components/map/views/tracking/useMapTrackingRuntime.js), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../../components/map/views/tracking/MapTrackingStageBase.jsx), and [`components/map/views/tracking/mapTracking.theme.js`](../../../../components/map/views/tracking/mapTracking.theme.js) now render the bed hero against live remaining-hold time and progress instead of a static reservation summary
+- [`components/map/views/tracking/mapTracking.model.js`](../../../../components/map/views/tracking/mapTracking.model.js) now promotes `Complete Stay` to the bottom primary slot when the bed request reaches its completion gate, matching the ambulance completion hierarchy
 
 Pass 6 proven in this slice:
 
@@ -775,12 +775,12 @@ Scope:
 
 Current slice:
 
-- bed tracking now supports the reverse add-on lane through [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx), [`components/map/core/MapSheetOrchestrator.jsx`](../../../components/map/core/MapSheetOrchestrator.jsx), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../components/map/views/tracking/MapTrackingStageBase.jsx), [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js), and [`components/map/views/tracking/mapTracking.model.js`](../../../components/map/views/tracking/mapTracking.model.js)
+- bed tracking now supports the reverse add-on lane through [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx), [`components/map/core/MapSheetOrchestrator.jsx`](../../../../components/map/core/MapSheetOrchestrator.jsx), [`components/map/views/tracking/MapTrackingStageBase.jsx`](../../../../components/map/views/tracking/MapTrackingStageBase.jsx), [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js), and [`components/map/views/tracking/mapTracking.model.js`](../../../../components/map/views/tracking/mapTracking.model.js)
 - the tracking CTA group can now surface `Request Transport` when a bed request is active without an active ambulance request, matching the existing ambulance-to-bed add-on contract in the opposite direction
 - reverse add-on source return is now preserved through ambulance decision hospital switching and service detail navigation by:
-  - [`components/map/core/mapSheetFlowPayloads.js`](../../../components/map/core/mapSheetFlowPayloads.js)
-  - [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js)
-  - [`components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx`](../../../components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx)
+  - [`components/map/core/mapSheetFlowPayloads.js`](../../../../components/map/core/mapSheetFlowPayloads.js)
+  - [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../../hooks/map/exploreFlow/useMapExploreFlow.js)
+  - [`components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx`](../../../../components/map/views/ambulanceDecision/MapAmbulanceDecisionStageBase.jsx)
 - ambulance confirmation launched from bed tracking now preserves the tracking source context into commit/payment and explicitly bypasses the `selectedCare === "both"` redirect, so reverse add-on does not accidentally re-enter the combined checkout path
 - dual-active ownership is now explicit by rule:
   - ambulance remains the primary active request for smart-header/tracking-map ownership when both requests are live
@@ -856,29 +856,29 @@ Scope:
 
 Current slice:
 
-- direct storage re-audit is now recorded in this document and confirms that app-owned `/map` persistence routes through [`database/db.js`](../../../database/db.js) instead of direct component-level `AsyncStorage`
-- [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now hydrates and persists normalized emergency runtime state through `StorageKeys.EMERGENCY_STATE`, including:
+- direct storage re-audit is now recorded in this document and confirms that app-owned `/map` persistence routes through [`database/db.js`](../../../../database/db.js) instead of direct component-level `AsyncStorage`
+- [`contexts/EmergencyContext.jsx`](../../../../contexts/EmergencyContext.jsx) now hydrates and persists normalized emergency runtime state through `StorageKeys.EMERGENCY_STATE`, including:
   - active ambulance trip
   - active bed booking
   - pending approval state
   - commit-flow draft state
-- [`utils/domainNormalize.js`](../../../utils/domainNormalize.js) now normalizes persisted `pendingApproval` and `commitFlow` records, so web/native reload recovery no longer relies on arbitrary raw object shapes
+- [`utils/domainNormalize.js`](../../../../utils/domainNormalize.js) now normalizes persisted `pendingApproval` and `commitFlow` records, so web/native reload recovery no longer relies on arbitrary raw object shapes
 - persistence is now one-shot hydrated and signature-guarded before writes, which keeps the recovery boundary deterministic and avoids clobbering live runtime state during provider startup
-- [`contexts/EmergencyContext.jsx`](../../../contexts/EmergencyContext.jsx) now rejects equivalent `pendingApproval` and `commitFlow` writes, so effect-driven controllers such as commit details and commit triage cannot churn the shared runtime with semantically identical payloads
-- [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now limits active-session header ownership to `EXPLORE_INTENT` and `TRACKING`, so non-tracking sheets and map overlays cannot accidentally resurrect tracking header state
-- [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now renders through [`components/map/surfaces/MapModalShell.jsx`](../../../components/map/surfaces/MapModalShell.jsx) instead of owning a separate modal animation stack, and [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now explicitly opts it into drawer presentation only for sidebar `/map` layouts
-- [`components/emergency/ServiceRatingModal.jsx`](../../../components/emergency/ServiceRatingModal.jsx) now supports a `/map` shell branch through [`components/map/surfaces/MapModalShell.jsx`](../../../components/map/surfaces/MapModalShell.jsx), while legacy emergency screens keep the existing modal branch; `/map` tracking and recovered-rating flows now opt into that shared shell contract
+- [`contexts/EmergencyContext.jsx`](../../../../contexts/EmergencyContext.jsx) now rejects equivalent `pendingApproval` and `commitFlow` writes, so effect-driven controllers such as commit details and commit triage cannot churn the shared runtime with semantically identical payloads
+- [`hooks/map/exploreFlow/useMapExploreFlow.js`](../../../../hooks/map/exploreFlow/useMapExploreFlow.js) now limits active-session header ownership to `EXPLORE_INTENT` and `TRACKING`, so non-tracking sheets and map overlays cannot accidentally resurrect tracking header state
+- [`components/emergency/MiniProfileModal.jsx`](../../../../components/emergency/MiniProfileModal.jsx) now renders through [`components/map/surfaces/MapModalShell.jsx`](../../../../components/map/surfaces/MapModalShell.jsx) instead of owning a separate modal animation stack, and [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now explicitly opts it into drawer presentation only for sidebar `/map` layouts
+- [`components/emergency/ServiceRatingModal.jsx`](../../../../components/emergency/ServiceRatingModal.jsx) now supports a `/map` shell branch through [`components/map/surfaces/MapModalShell.jsx`](../../../../components/map/surfaces/MapModalShell.jsx), while legacy emergency screens keep the existing modal branch; `/map` tracking and recovered-rating flows now opt into that shared shell contract
 - noisy `/map`-adjacent startup diagnostics were removed from:
-  - [`App.js`](../../../App.js)
-  - [`app/_layout.js`](../../../app/_layout.js)
-  - [`app/auth/callback.js`](../../../app/auth/callback.js)
-  - [`contexts/GlobalLocationContext.jsx`](../../../contexts/GlobalLocationContext.jsx)
-  - [`contexts/OTAUpdatesContext.jsx`](../../../contexts/OTAUpdatesContext.jsx)
-  - [`components/emergency/EmergencyMapContainer.jsx`](../../../components/emergency/EmergencyMapContainer.jsx)
-  - [`components/map/FullScreenEmergencyMap.jsx`](../../../components/map/FullScreenEmergencyMap.jsx)
-  - [`hooks/emergency/useEmergencyHandlers.js`](../../../hooks/emergency/useEmergencyHandlers.js)
-  - [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
-  - [`services/appMigrationsService.js`](../../../services/appMigrationsService.js)
+  - [`App.js`](../../../../App.js)
+  - [`app/_layout.js`](../../../../app/_layout.js)
+  - [`app/auth/callback.js`](../../../../app/auth/callback.js)
+  - [`contexts/GlobalLocationContext.jsx`](../../../../contexts/GlobalLocationContext.jsx)
+  - [`contexts/OTAUpdatesContext.jsx`](../../../../contexts/OTAUpdatesContext.jsx)
+  - [`components/emergency/EmergencyMapContainer.jsx`](../../../../components/emergency/EmergencyMapContainer.jsx)
+  - [`components/map/FullScreenEmergencyMap.jsx`](../../../../components/map/FullScreenEmergencyMap.jsx)
+  - [`hooks/emergency/useEmergencyHandlers.js`](../../../../hooks/emergency/useEmergencyHandlers.js)
+  - [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx)
+  - [`services/appMigrationsService.js`](../../../../services/appMigrationsService.js)
 
 Pass 8 proven in this slice:
 
@@ -940,9 +940,9 @@ Done when:
 
 Current slice:
 
-- [`components/map/views/tracking/mapTracking.rating.js`](../../../components/map/views/tracking/mapTracking.rating.js) now exports `buildTrackingResolutionToast`, a shared post-resolution summary contract for `/map` rating outcomes
-- [`components/map/views/tracking/useMapTrackingController.js`](../../../components/map/views/tracking/useMapTrackingController.js) now uses that shared summary builder for skip and submit flows in active tracking
-- [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now uses the same shared summary builder for recovered-rating submit/skip flows after reload/recovery
+- [`components/map/views/tracking/mapTracking.rating.js`](../../../../components/map/views/tracking/mapTracking.rating.js) now exports `buildTrackingResolutionToast`, a shared post-resolution summary contract for `/map` rating outcomes
+- [`components/map/views/tracking/useMapTrackingController.js`](../../../../components/map/views/tracking/useMapTrackingController.js) now uses that shared summary builder for skip and submit flows in active tracking
+- [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now uses the same shared summary builder for recovered-rating submit/skip flows after reload/recovery
 
 Pass 9 proven in this slice:
 
@@ -996,13 +996,13 @@ Done when:
 
 Pass 10 implemented:
 
-- [`app/(user)/index.js`](../../../app/(user)/index.js) now renders `MapScreen` as the authenticated home
-- [`app/(user)/_layout.js`](../../../app/(user)/_layout.js) now includes the authenticated index route while keeping `(tabs)` and `(stacks)` as compatibility routes
-- [`app/(user)/(tabs)/_layout.js`](../../../app/(user)/(tabs)/_layout.js) no longer mounts a bottom-tab navigator; it is a stack-only compatibility shell
-- [`app/(user)/(tabs)/index.js`](../../../app/(user)/(tabs)/index.js) is now a compatibility map bridge instead of owning the legacy home surface
-- [`app/(user)/(stacks)/visits.js`](../../../app/(user)/(stacks)/visits.js) is the canonical route-owned Visits surface
+- [`app/(user)/index.js`](../../../../app/(user)/index.js) now renders `MapScreen` as the authenticated home
+- [`app/(user)/_layout.js`](../../../../app/(user)/_layout.js) now includes the authenticated index route while keeping `(tabs)` and `(stacks)` as compatibility routes
+- [`app/(user)/(tabs)/_layout.js`](../../../../app/(user)/(tabs)/_layout.js) no longer mounts a bottom-tab navigator; it is a stack-only compatibility shell
+- [`app/(user)/(tabs)/index.js`](../../../../app/(user)/(tabs)/index.js) is now a compatibility map bridge instead of owning the legacy home surface
+- [`app/(user)/(stacks)/visits.js`](../../../../app/(user)/(stacks)/visits.js) is the canonical route-owned Visits surface
 - `navigateToVisits` now targets `/(user)/(stacks)/visits`; legacy tab visit paths remain compatibility-only
-- authenticated redirects in [`app/_layout.js`](../../../app/_layout.js), reset-password completion, and complete-profile completion now point to `/(user)` as the primary home
+- authenticated redirects in [`app/_layout.js`](../../../../app/_layout.js), reset-password completion, and complete-profile completion now point to `/(user)` as the primary home
 
 Pass 10 proven:
 
@@ -1041,14 +1041,14 @@ Done when:
 
 Pass 11 implemented & refined:
 
-- [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now uses the locked window-style control-panel layout:
+- [`components/emergency/MiniProfileModal.jsx`](../../../../components/emergency/MiniProfileModal.jsx) now uses the locked window-style control-panel layout:
   - **Identity-First Anchoring**: `Profile` moved to the top group to anchor the surface around the user.
   - **Radical Noise Reduction**: Removed "Open", "Wallet", and "System" labels; badges reserved for dynamic data counts only.
   - **Refined Grouping**: Account → Activity → Essentials → System hierarchy.
   - **Visual Rhythm**: Increased group spacing ("breathing room") and identity block prominence.
   - **Intentional Iconography**: Desaturated icons with softer accent tones for a calmer, premium feel.
   - **Destructive Secondary**: `Sign Out` demarcated with a divider and lower saturation to prevent accidental taps.
-- [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now lets mini profile open the map-owned recent-visits modal instead of routing through the legacy visits tab first
+- [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now lets mini profile open the map-owned recent-visits modal instead of routing through the legacy visits tab first
 
 
 Pass 11 proven:
@@ -1132,6 +1132,23 @@ Pass 12 recommended execution order:
 5. preserve visit side effects and lifecycle parity
 6. move booking ownership into `/map`
 7. then add `Book a Visit` into choose-care as the fourth care action
+
+Pass 12 current output:
+
+- Mini Profile now uses `History` semantics instead of `Recent Visits` when rendering the lifetime badge count
+- [`hooks/visits/useVisitHistorySelectors.js`](../../../../hooks/visits/useVisitHistorySelectors.js) now provides grouped history selectors, normalized history rows, and deterministic history-item lookup by `id`, `requestId`, or `displayId`
+- [`components/map/MapRecentVisitsModal.jsx`](../../../../components/map/MapRecentVisitsModal.jsx) is now the grouped map-owned history owner instead of a lightweight recents preview
+- [`components/map/MapCareHistoryModal.jsx`](../../../../components/map/MapCareHistoryModal.jsx) is now care-only again; history is no longer mixed into choose-care ownership
+- choose-care now includes `Book a visit` as the fourth care action, but it currently bridges into the existing booking stack rather than a fully map-owned booking flow
+- [`components/map/history/MapVisitDetailsModal.jsx`](../../../../components/map/history/MapVisitDetailsModal.jsx) now exists as the canonical `/map` visit-details owner and supports resume, rate, call, join-video, book-again, cancel, and preparation/detail rendering from normalized history data
+- [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now routes grouped history selection into either live tracking resume for the matching active emergency request or the map-owned visit-details modal, and it suppresses live service markers while history details own the map
+- `/map` now has a manual history-rating path using the shared rating modal and the existing visit update/rating resolution helpers, so rating-pending history rows no longer depend only on cross-device recovery timing
+
+Pass 12 still deferred:
+
+- grouped history is not yet surfaced as a secondary support section inside `explore_intent`
+- `/map` still bridges both `Book a Visit` and `Book again` into the legacy booking stack
+- legacy `VisitsScreen` and route-owned visit details still exist as compatibility owners during migration
 
 Choose-care modal requirements once `Book a Visit` is promoted:
 

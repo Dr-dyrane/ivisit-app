@@ -52,9 +52,9 @@ Primary references audited:
 - [`MAP_MINI_PROFILE_HANDOFF_V1.md`](../architecture/MAP_MINI_PROFILE_HANDOFF_V1.md)
 - [`MASTER_REFERENCE_FLOW_V1.md`](../MASTER_REFERENCE_FLOW_V1.md)
 - [`EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md`](../EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
-- [`WELCOME_AND_INTAKE_FLOW_MAP.md`](../../../WELCOME_AND_INTAKE_FLOW_MAP.md)
+- [`WELCOME_AND_INTAKE_FLOW_MAP.md`](../WELCOME_AND_INTAKE_FLOW_MAP.md)
 - [`ambulance_and_bed_booking.md`](../ambulance_and_bed_booking.md)
-- [`EMERGENCY_INTEGRATION_AUDIT.md`](../../../EMERGENCY_INTEGRATION_AUDIT.md)
+- [`EMERGENCY_INTEGRATION_AUDIT.md`](../../../archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md) (archived)
 
 Primary runtime/code owners audited:
 

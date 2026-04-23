@@ -1,8 +1,21 @@
 # Emergency Screen Modularization & Refactoring Plan
 
-**Last Updated**: 2026-01-10  
-**Status**: Architecture redesign for modularization | Ready for implementation  
-**Priority**: High - Code maintainability, scalability, and bug reduction  
+**Last Updated**: 2026-01-10 (superseded 2026-04-23)
+**Status**: ⚠️ Superseded — kept for historical context only
+**Priority**: n/a
+
+## ⚠️ Superseded Notice
+
+This plan targeted the legacy monolithic `EmergencyScreen.jsx`. The emergency surface has since moved to a map-first runtime under `/map`, and the active refactor work is tracked in:
+
+- [../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md](../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live pass plan (Pass 12 in progress as of 2026-04-23)
+- [../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth
+- [../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) — runtime contract
+
+Use the pass plan and polish audit as the authoritative refactor guidance. The content below is preserved only to document how the team thought about modularization before the `/map` migration locked in.
+
+---
+
 
 ---
 

@@ -5,12 +5,12 @@
 
 ## Route Chain
 
-- [screens/RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
-- [components/emergency/intake/EmergencyIntakeOrchestrator.jsx](../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
+- [screens/RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
+- [components/emergency/intake/EmergencyIntakeOrchestrator.jsx](../../../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
 - iOS-standard source:
-  - [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+  - [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 - shared search sheet:
-  - [components/emergency/intake/EmergencyLocationSearchSheet.jsx](../components/emergency/intake/EmergencyLocationSearchSheet.jsx)
+  - [components/emergency/intake/EmergencyLocationSearchSheet.jsx](../../../components/emergency/intake/EmergencyLocationSearchSheet.jsx)
 
 ## Current Source Of Truth
 
@@ -68,6 +68,6 @@ The shared location-search sheet handles:
 
 After a location is chosen, the flow returns to the shared intake state in:
 
-- [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+- [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 
 That state then resumes the confirm-location and choose-hospital sequence.

@@ -10,9 +10,9 @@ Related references:
 - [workflow_map.md](./workflow_map.md)
 - [ambulance_and_bed_booking.md](./ambulance_and_bed_booking.md)
 - [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
-- [../../WELCOME_AND_INTAKE_FLOW_MAP.md](../../WELCOME_AND_INTAKE_FLOW_MAP.md)
-- [../../EMERGENCY_SCREEN_DOSSIER.md](../../EMERGENCY_SCREEN_DOSSIER.md)
-- [../../EMERGENCY_INTEGRATION_AUDIT.md](../../EMERGENCY_INTEGRATION_AUDIT.md)
+- [WELCOME_AND_INTAKE_FLOW_MAP.md](./WELCOME_AND_INTAKE_FLOW_MAP.md)
+- [Historical screen dossier](../../archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md) ([archival notice](../../archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md))
+- [Historical integration audit](../../archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md) ([archival notice](../../archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT_ARCHIVAL_NOTICE.md))
 - [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 
 ---

@@ -22,9 +22,9 @@ This file is intentionally screen-specific.
 
 Related references:
 
-- [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md)
-- [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
-- [rules.json](./rules.json)
+- [SPONSOR_SPRINT.md](../../SPONSOR_SPRINT.md)
+- [MASTER_BLUEPRINT.md](../../MASTER_BLUEPRINT.md)
+- [rules.json](../../rules.json)
 
 ## Screen Role
 
@@ -183,51 +183,51 @@ and not like tutorial copy.
 
 Current implementation lives in:
 
-- [WelcomeScreen.jsx](../screens/WelcomeScreen.jsx)
-- [WelcomeScreenOrchestrator.jsx](../components/welcome/WelcomeScreenOrchestrator.jsx)
-- [WelcomeStageBase.jsx](../components/welcome/views/WelcomeStageBase.jsx)
-- [welcomeContent.js](../components/welcome/welcomeContent.js)
-- [EntryActionButton.jsx](../components/entry/EntryActionButton.jsx)
-- [useAuthViewport.js](../hooks/ui/useAuthViewport.js)
-- [WebAppShell.jsx](../components/web/WebAppShell.jsx)
-- [app/(auth)/_layout.js](../app/(auth)/_layout.js)
+- [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx)
+- [WelcomeScreenOrchestrator.jsx](../../../components/welcome/WelcomeScreenOrchestrator.jsx)
+- [WelcomeStageBase.jsx](../../../components/welcome/views/WelcomeStageBase.jsx)
+- [welcomeContent.js](../../../components/welcome/welcomeContent.js)
+- [EntryActionButton.jsx](../../../components/entry/EntryActionButton.jsx)
+- [useAuthViewport.js](../../../hooks/ui/useAuthViewport.js)
+- [WebAppShell.jsx](../../../components/web/WebAppShell.jsx)
+- [app/(auth)/_layout.js](../../../app/(auth)/_layout.js)
 
 Current variant implementation:
 
 - Apple:
-  - [WelcomeIOSMobileView.jsx](../components/welcome/views/WelcomeIOSMobileView.jsx)
-  - [WelcomeIOSPadView.jsx](../components/welcome/views/WelcomeIOSPadView.jsx)
-  - [WelcomeMacbookView.jsx](../components/welcome/views/WelcomeMacbookView.jsx)
+  - [WelcomeIOSMobileView.jsx](../../../components/welcome/views/WelcomeIOSMobileView.jsx)
+  - [WelcomeIOSPadView.jsx](../../../components/welcome/views/WelcomeIOSPadView.jsx)
+  - [WelcomeMacbookView.jsx](../../../components/welcome/views/WelcomeMacbookView.jsx)
 - Android:
-  - [WelcomeAndroidMobileView.jsx](../components/welcome/views/WelcomeAndroidMobileView.jsx)
-  - [WelcomeAndroidFoldView.jsx](../components/welcome/views/WelcomeAndroidFoldView.jsx)
-  - [WelcomeAndroidTabletView.jsx](../components/welcome/views/WelcomeAndroidTabletView.jsx)
-  - [WelcomeAndroidChromebookView.jsx](../components/welcome/views/WelcomeAndroidChromebookView.jsx)
+  - [WelcomeAndroidMobileView.jsx](../../../components/welcome/views/WelcomeAndroidMobileView.jsx)
+  - [WelcomeAndroidFoldView.jsx](../../../components/welcome/views/WelcomeAndroidFoldView.jsx)
+  - [WelcomeAndroidTabletView.jsx](../../../components/welcome/views/WelcomeAndroidTabletView.jsx)
+  - [WelcomeAndroidChromebookView.jsx](../../../components/welcome/views/WelcomeAndroidChromebookView.jsx)
 - Web:
-  - [WelcomeWebMobileView.jsx](../components/welcome/views/WelcomeWebMobileView.jsx)
-  - [WelcomeWebSmWideView.jsx](../components/welcome/views/WelcomeWebSmWideView.jsx)
-  - [WelcomeWebMdView.jsx](../components/welcome/views/WelcomeWebMdView.jsx)
-  - [WelcomeWebLgView.jsx](../components/welcome/views/WelcomeWebLgView.jsx)
-  - [WelcomeWebXlView.jsx](../components/welcome/views/WelcomeWebXlView.jsx)
-  - [WelcomeWeb2Xl3XlView.jsx](../components/welcome/views/WelcomeWeb2Xl3XlView.jsx)
-  - [WelcomeWebUltraWideView.jsx](../components/welcome/views/WelcomeWebUltraWideView.jsx)
+  - [WelcomeWebMobileView.jsx](../../../components/welcome/views/WelcomeWebMobileView.jsx)
+  - [WelcomeWebSmWideView.jsx](../../../components/welcome/views/WelcomeWebSmWideView.jsx)
+  - [WelcomeWebMdView.jsx](../../../components/welcome/views/WelcomeWebMdView.jsx)
+  - [WelcomeWebLgView.jsx](../../../components/welcome/views/WelcomeWebLgView.jsx)
+  - [WelcomeWebXlView.jsx](../../../components/welcome/views/WelcomeWebXlView.jsx)
+  - [WelcomeWeb2Xl3XlView.jsx](../../../components/welcome/views/WelcomeWeb2Xl3XlView.jsx)
+  - [WelcomeWebUltraWideView.jsx](../../../components/welcome/views/WelcomeWebUltraWideView.jsx)
 
 Current collocated style modules:
 
-- [welcomeMobile.styles.js](../components/welcome/welcomeMobile.styles.js)
-- [welcomePad.styles.js](../components/welcome/welcomePad.styles.js)
-- [welcomeMacbook.styles.js](../components/welcome/welcomeMacbook.styles.js)
-- [welcomeAndroidMobile.styles.js](../components/welcome/welcomeAndroidMobile.styles.js)
-- [welcomeAndroidFold.styles.js](../components/welcome/welcomeAndroidFold.styles.js)
-- [welcomeAndroidTablet.styles.js](../components/welcome/welcomeAndroidTablet.styles.js)
-- [welcomeAndroidChromebook.styles.js](../components/welcome/welcomeAndroidChromebook.styles.js)
-- [welcomeWebMobile.styles.js](../components/welcome/welcomeWebMobile.styles.js)
-- [welcomeWebSmWide.styles.js](../components/welcome/welcomeWebSmWide.styles.js)
-- [welcomeWebMd.styles.js](../components/welcome/welcomeWebMd.styles.js)
-- [welcomeWebLg.styles.js](../components/welcome/welcomeWebLg.styles.js)
-- [welcomeWebXl.styles.js](../components/welcome/welcomeWebXl.styles.js)
-- [welcomeWeb2Xl3Xl.styles.js](../components/welcome/welcomeWeb2Xl3Xl.styles.js)
-- [welcomeWebUltraWide.styles.js](../components/welcome/welcomeWebUltraWide.styles.js)
+- [welcomeMobile.styles.js](../../../components/welcome/welcomeMobile.styles.js)
+- [welcomePad.styles.js](../../../components/welcome/welcomePad.styles.js)
+- [welcomeMacbook.styles.js](../../../components/welcome/welcomeMacbook.styles.js)
+- [welcomeAndroidMobile.styles.js](../../../components/welcome/welcomeAndroidMobile.styles.js)
+- [welcomeAndroidFold.styles.js](../../../components/welcome/welcomeAndroidFold.styles.js)
+- [welcomeAndroidTablet.styles.js](../../../components/welcome/welcomeAndroidTablet.styles.js)
+- [welcomeAndroidChromebook.styles.js](../../../components/welcome/welcomeAndroidChromebook.styles.js)
+- [welcomeWebMobile.styles.js](../../../components/welcome/welcomeWebMobile.styles.js)
+- [welcomeWebSmWide.styles.js](../../../components/welcome/welcomeWebSmWide.styles.js)
+- [welcomeWebMd.styles.js](../../../components/welcome/welcomeWebMd.styles.js)
+- [welcomeWebLg.styles.js](../../../components/welcome/welcomeWebLg.styles.js)
+- [welcomeWebXl.styles.js](../../../components/welcome/welcomeWebXl.styles.js)
+- [welcomeWeb2Xl3Xl.styles.js](../../../components/welcome/welcomeWeb2Xl3Xl.styles.js)
+- [welcomeWebUltraWide.styles.js](../../../components/welcome/welcomeWebUltraWide.styles.js)
 
 Current improvements already made:
 

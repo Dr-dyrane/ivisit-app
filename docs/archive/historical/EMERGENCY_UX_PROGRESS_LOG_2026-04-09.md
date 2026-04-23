@@ -7,7 +7,7 @@
 ## Proper doc assignment for today’s fixes
 
 - **User-visible emergency runtime changes** → this file
-- **Coverage/bootstrap rule changes** → [`DEMO_MODE_COVERAGE_FLOW.md`](./DEMO_MODE_COVERAGE_FLOW.md)
+- **Coverage/bootstrap rule changes** → [`DEMO_MODE_COVERAGE_FLOW.md`](../../flows/emergency/DEMO_MODE_COVERAGE_FLOW.md)
 - **Fast continuation memory for code work** → repo memory under `/memories/repo/`
 
 ---
@@ -188,7 +188,7 @@ After fix:
 - `screens/EmergencyScreen.jsx`
 - `screens/MoreScreen.jsx`
 - `supabase/functions/bootstrap-demo-ecosystem/index.ts`
-- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+- `docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`
 - `docs/flows/emergency/MAP_FLOW_IMPLEMENTATION_V1.md`
 
 #### Expected result after fix
@@ -220,7 +220,7 @@ After fix:
 - `supabase/functions/discover-hospitals/index.ts`
 - `supabase/config.toml`
 - `supabase/scripts/audit_demo_coverage.js`
-- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+- `docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`
 
 #### Live verification snapshots
 - Hemet:
@@ -261,7 +261,7 @@ After fix:
 #### Files involved
 - `services/demoEcosystemService.js`
 - `supabase/functions/bootstrap-demo-ecosystem/index.ts`
-- `docs/DEMO_MODE_COVERAGE_FLOW.md`
+- `docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`
 
 #### Sequential live verification
 - Shared demo org:
@@ -393,14 +393,14 @@ This should be treated as ongoing cleanup work, especially anywhere a map view f
 
 ### Fix implemented
 - Added a dedicated hospital media model and metadata columns via:
-  - [`20260412050000_hospital_media_pipeline.sql`](../supabase/migrations/20260412050000_hospital_media_pipeline.sql)
+  - [`20260412050000_hospital_media_pipeline.sql`](../../../supabase/migrations/20260412050000_hospital_media_pipeline.sql)
 - Added public proxy delivery for hospital images via:
-  - [`hospital-media`](../supabase/functions/hospital-media/index.ts)
+  - [`hospital-media`](../../../supabase/functions/hospital-media/index.ts)
 - Migrated live provider fetchers to Google Places API (New):
-  - [`bootstrap-demo-ecosystem`](../supabase/functions/bootstrap-demo-ecosystem/index.ts)
-  - [`discover-hospitals`](../supabase/functions/discovery/discover-hospitals/index.ts)
+  - [`bootstrap-demo-ecosystem`](../../../supabase/functions/bootstrap-demo-ecosystem/index.ts)
+  - [`discover-hospitals`](../../../supabase/functions/discovery/discover-hospitals/index.ts)
 - Added DB normalization/backfill via:
-  - [`backfill_hospital_media.js`](../supabase/scripts/backfill_hospital_media.js)
+  - [`backfill_hospital_media.js`](../../../supabase/scripts/backfill_hospital_media.js)
 
 ### Delivery model now
 - Emergency/map flows continue to use the existing hydrated `hospital.image` field.

@@ -18,13 +18,13 @@ It exists to answer:
 
 Related references:
 
-- [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md)
-- [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
+- [SPONSOR_SPRINT.md](../../SPONSOR_SPRINT.md)
+- [MASTER_BLUEPRINT.md](../../MASTER_BLUEPRINT.md)
 - [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
 - [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
-- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
-- [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](./EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
-- [rules.json](./rules.json)
+- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](../../flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- [EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md](../historical/EMERGENCY_UX_PROGRESS_LOG_2026-04-06.md)
+- [rules.json](../../rules.json)
 
 ## Semantic Lock
 
@@ -122,15 +122,15 @@ The current app does not yet have one clean emergency-first surface.
 
 The runtime path is split across three layers:
 
-1. [WelcomeScreen.jsx](../screens/WelcomeScreen.jsx)
+1. [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx)
    Current behavior still routes `Request Help` into `/(auth)/signup` with an `intent` param.
    This does not yet satisfy the agreed rule that auth should happen after intent, not before intent.
 
-2. [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
+2. [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
    This is the closest existing implementation to the desired first live-action emergency surface.
    It already wraps a focused emergency flow and is mounted under the emergency request stack route.
 
-3. [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx)
+3. [EmergencyScreen.jsx](../../../screens/EmergencyScreen.jsx)
    This is still the broader map-first emergency shell under the home tab.
    It contains hospital discovery, quick actions, the live map, and bottom-sheet tracking.
    It is valuable, but it is too broad to serve as the first post-CTA emergency state.
@@ -141,17 +141,17 @@ The emergency build is feasible without rebuilding from zero.
 
 What already exists:
 
-- request creation and trip start logic in [useRequestFlow.js](../hooks/emergency/useRequestFlow.js)
-- direct ambulance request stack route in [request-ambulance.js](../app/(user)/(stacks)/emergency/request-ambulance.js)
-- request flow UI shell in [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
-- iPhone-first emergency intake base in [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
-- iPhone-first emergency intake styles in [emergencyIosMobileIntake.styles.js](../components/emergency/intake/emergencyIosMobileIntake.styles.js)
-- welcome-style size-class routing in [EmergencyIntakeOrchestrator.jsx](../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
-- ambulance request modal flow in [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx)
-- live responder summary in [TripSummaryCard.jsx](../components/emergency/bottomSheet/TripSummaryCard.jsx)
-- live route and responder map support in [EmergencyMapContainer.jsx](../components/emergency/EmergencyMapContainer.jsx)
-- active trip and telemetry truth in [EmergencyContext.jsx](../contexts/EmergencyContext.jsx)
-- shared global location loading in [GlobalLocationContext.jsx](../contexts/GlobalLocationContext.jsx)
+- request creation and trip start logic in [useRequestFlow.js](../../../hooks/emergency/useRequestFlow.js)
+- direct ambulance request stack route in [request-ambulance.js](../../../app/(user)/(stacks)/emergency/request-ambulance.js)
+- request flow UI shell in [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
+- iPhone-first emergency intake base in [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+- iPhone-first emergency intake styles in [emergencyIosMobileIntake.styles.js](../../../components/emergency/intake/emergencyIosMobileIntake.styles.js)
+- welcome-style size-class routing in [EmergencyIntakeOrchestrator.jsx](../../../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
+- ambulance request modal flow in [EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx)
+- live responder summary in [TripSummaryCard.jsx](../../../components/emergency/bottomSheet/TripSummaryCard.jsx)
+- live route and responder map support in [EmergencyMapContainer.jsx](../../../components/emergency/EmergencyMapContainer.jsx)
+- active trip and telemetry truth in [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx)
+- shared global location loading in [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx)
 
 Feasibility verdict:
 
@@ -379,7 +379,7 @@ This bridge is the current product-safe handshake between the new urgent flow an
    - `proposed_hospital`
 
 2. **`dispatch_clearance` is the bridge layer**
-   - currently rendered inside [`EmergencyRequestModal.jsx`](../components/emergency/EmergencyRequestModal.jsx)
+   - currently rendered inside [`EmergencyRequestModal.jsx`](../../../components/emergency/EmergencyRequestModal.jsx)
    - must feel like one compact release checkpoint, not a generic payment modal
    - email OTP belongs here if the user is still a guest
 
@@ -518,9 +518,9 @@ What must not appear:
 
 Implementation truth to reuse:
 
-- [EmergencyContext.jsx](../contexts/EmergencyContext.jsx)
-- [TripSummaryCard.jsx](../components/emergency/bottomSheet/TripSummaryCard.jsx)
-- [EmergencyMapContainer.jsx](../components/emergency/EmergencyMapContainer.jsx)
+- [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx)
+- [TripSummaryCard.jsx](../../../components/emergency/bottomSheet/TripSummaryCard.jsx)
+- [EmergencyMapContainer.jsx](../../../components/emergency/EmergencyMapContainer.jsx)
 
 State success criteria:
 
@@ -579,18 +579,18 @@ Avoid:
 
 Primary implementation target:
 
-- [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
+- [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
 
 Supporting modules to refactor instead of rebuilding:
 
-- [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx)
-- [useRequestFlow.js](../hooks/emergency/useRequestFlow.js)
-- [TripSummaryCard.jsx](../components/emergency/bottomSheet/TripSummaryCard.jsx)
-- [EmergencyMapContainer.jsx](../components/emergency/EmergencyMapContainer.jsx)
+- [EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx)
+- [useRequestFlow.js](../../../hooks/emergency/useRequestFlow.js)
+- [TripSummaryCard.jsx](../../../components/emergency/bottomSheet/TripSummaryCard.jsx)
+- [EmergencyMapContainer.jsx](../../../components/emergency/EmergencyMapContainer.jsx)
 
 Secondary surface to align later:
 
-- [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx)
+- [EmergencyScreen.jsx](../../../screens/EmergencyScreen.jsx)
 
 Why:
 
@@ -629,9 +629,9 @@ This screen passes only if:
 
 ## Immediate Next Implementation Decision
 
-Do not start by styling [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx) as if it were the first live-action surface.
+Do not start by styling [EmergencyScreen.jsx](../../../screens/EmergencyScreen.jsx) as if it were the first live-action surface.
 
-Start by making [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx) the intentional emergency-state foundation, then let [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx) inherit the live tracking role more cleanly.
+Start by making [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx) the intentional emergency-state foundation, then let [EmergencyScreen.jsx](../../../screens/EmergencyScreen.jsx) inherit the live tracking role more cleanly.
 
 Current next build target:
 
@@ -852,9 +852,9 @@ Locked rule:
 
 ### Files That Carry The Fix
 
-- [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
-- [EmergencyHospitalRoutePreview.jsx](../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
-- [emergencyIosMobileIntake.styles.js](../components/emergency/intake/emergencyIosMobileIntake.styles.js)
-- [useMapRoute.js](../hooks/emergency/useMapRoute.js)
-- [EmergencyHospitalChoiceSheet.jsx](../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
-- [emergencyDebug.js](../utils/emergencyDebug.js)
+- [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+- [EmergencyHospitalRoutePreview.jsx](../../../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
+- [emergencyIosMobileIntake.styles.js](../../../components/emergency/intake/emergencyIosMobileIntake.styles.js)
+- [useMapRoute.js](../../../hooks/emergency/useMapRoute.js)
+- [EmergencyHospitalChoiceSheet.jsx](../../../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
+- [emergencyDebug.js](../../../utils/emergencyDebug.js)

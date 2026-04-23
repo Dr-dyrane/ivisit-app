@@ -16,11 +16,18 @@ It exists to keep product, design, engineering, and deployment aligned while iVi
 
 This file must stay aligned with [rules.json](./rules.json). If the two conflict, `rules.json` wins.
 
-Active screen dossier:
+Active screen references (current):
 
-- [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
-- [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
-- [EMERGENCY_INTEGRATION_AUDIT.md](./EMERGENCY_INTEGRATION_AUDIT.md)
+- Welcome + intake: [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
+- `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
+- Emergency flow doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- Runtime contract: [flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](./flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+
+Historical dossiers (archived, kept for context):
+
+- [archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md) — see [archival notice](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
+- [archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md) — see [archival notice](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
+- [archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md) — see [archival notice](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT_ARCHIVAL_NOTICE.md)
 
 ## Product Truth
 
@@ -61,8 +68,8 @@ Current live-facing checkpoint:
 - Emergency is the next active hardening checkpoint
 - `app.ivisit.ng` is the live product-facing web PWA
 - preview hospitals remain allowed until live provider coverage expands
-- the detailed welcome target is tracked in [WELCOME_SCREEN_DOSSIER.md](./WELCOME_SCREEN_DOSSIER.md)
-- the emergency action target is tracked in [EMERGENCY_SCREEN_DOSSIER.md](./EMERGENCY_SCREEN_DOSSIER.md)
+- the detailed welcome + intake target is tracked in [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
+- the emergency action target is tracked in [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) and [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 
 Current working model:
 

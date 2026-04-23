@@ -6,14 +6,14 @@
 ## Routes
 
 - Welcome route:
-  - [app/(auth)/index.js](../app/(auth)/index.js)
-  - [screens/WelcomeScreen.jsx](../screens/WelcomeScreen.jsx)
+  - [app/(auth)/index.js](../../../app/(auth)/index.js)
+  - [screens/WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx)
 - Map route:
-  - [app/(auth)/map.js](../app/(auth)/map.js)
-  - [screens/MapScreen.jsx](../screens/MapScreen.jsx)
+  - [app/(auth)/map.js](../../../app/(auth)/map.js)
+  - [screens/MapScreen.jsx](../../../screens/MapScreen.jsx)
 - Retained legacy intake screen:
-  - [app/(user)/(stacks)/emergency/request-ambulance.js](../app/(user)/(stacks)/emergency/request-ambulance.js)
-  - [screens/RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
+  - [app/(user)/(stacks)/emergency/request-ambulance.js](../../../app/(user)/(stacks)/emergency/request-ambulance.js)
+  - [screens/RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
 
 ## Welcome Phase
 
@@ -21,12 +21,12 @@ The welcome phase is the first actionable state.
 
 Current orchestration path:
 
-- [WelcomeScreen.jsx](../screens/WelcomeScreen.jsx)
-- [WelcomeScreenOrchestrator.jsx](../components/welcome/WelcomeScreenOrchestrator.jsx)
+- [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx)
+- [WelcomeScreenOrchestrator.jsx](../../../components/welcome/WelcomeScreenOrchestrator.jsx)
 - shared non-wide base:
-  - [WelcomeStageBase.jsx](../components/welcome/views/WelcomeStageBase.jsx)
+  - [WelcomeStageBase.jsx](../../../components/welcome/views/WelcomeStageBase.jsx)
 - shared wide web base:
-  - [WelcomeWideWebView.jsx](../components/welcome/views/WelcomeWideWebView.jsx)
+  - [WelcomeWideWebView.jsx](../../../components/welcome/views/WelcomeWideWebView.jsx)
 
 Runtime rule now locked:
 
@@ -49,26 +49,26 @@ Current rule:
 
 Current orchestration path:
 
-- [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
-- [EmergencyIntakeOrchestrator.jsx](../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
+- [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
+- [EmergencyIntakeOrchestrator.jsx](../../../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
 - iOS-standard intake surface:
-  - [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+  - [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 
 The actual "Where are you?" header state is set inside:
 
-- [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+- [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 
 The choose-location surface itself is split through:
 
-- [EmergencyChooseLocationStageOrchestrator.jsx](../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageOrchestrator.jsx)
-- [EmergencyChooseLocationStageBase.jsx](../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageBase.jsx)
+- [EmergencyChooseLocationStageOrchestrator.jsx](../../../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageOrchestrator.jsx)
+- [EmergencyChooseLocationStageBase.jsx](../../../components/emergency/intake/views/chooseLocation/EmergencyChooseLocationStageBase.jsx)
 
 Current runtime doctrine:
 
-- [GlobalLocationContext.jsx](../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and resolved place label
-- [EmergencyContext.jsx](../contexts/EmergencyContext.jsx) consumes that location for hospital discovery
-- explicit demo backfill belongs to [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx), not the background welcome prewarm path
-- in the `/map` flow, demo backfill is owned by [useMapExploreDemoBootstrap.js](../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js) only after location and nearby-coverage quality are known
+- [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and resolved place label
+- [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx) consumes that location for hospital discovery
+- explicit demo backfill belongs to [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx), not the background welcome prewarm path
+- in the `/map` flow, demo backfill is owned by [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js) only after location and nearby-coverage quality are known
 
 ## Location Search Modal Phase
 
@@ -77,12 +77,12 @@ The location-search modal is the editable branch of the intake flow. It now foll
 Current orchestration path:
 
 - phase behavior and modal entry:
-  - [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+  - [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 - location-search stage family:
-  - [EmergencyLocationSearchStageOrchestrator.jsx](../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageOrchestrator.jsx)
-  - [EmergencyLocationSearchStageBase.jsx](../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageBase.jsx)
+  - [EmergencyLocationSearchStageOrchestrator.jsx](../../../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageOrchestrator.jsx)
+  - [EmergencyLocationSearchStageBase.jsx](../../../components/emergency/intake/views/locationSearch/EmergencyLocationSearchStageBase.jsx)
 - shared search sheet:
-  - [EmergencyLocationSearchSheet.jsx](../components/emergency/intake/EmergencyLocationSearchSheet.jsx)
+  - [EmergencyLocationSearchSheet.jsx](../../../components/emergency/intake/EmergencyLocationSearchSheet.jsx)
 - dedicated dossier:
   - [LOCATION_SEARCH_MODAL_DOSSIER.md](./LOCATION_SEARCH_MODAL_DOSSIER.md)
 
@@ -93,16 +93,16 @@ The choose-hospital phase begins once nearby help resolves into a proposed hospi
 Current orchestration path:
 
 - hospital readiness and option quality:
-  - [RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
+  - [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
 - phase behavior and review shell:
-  - [EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+  - [EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 - choose-hospital stage family:
-  - [EmergencyChooseHospitalStageOrchestrator.jsx](../components/emergency/intake/views/chooseHospital/EmergencyChooseHospitalStageOrchestrator.jsx)
-  - [EmergencyChooseHospitalStageBase.jsx](../components/emergency/intake/views/chooseHospital/EmergencyChooseHospitalStageBase.jsx)
+  - [EmergencyChooseHospitalStageOrchestrator.jsx](../../../components/emergency/intake/views/chooseHospital/EmergencyChooseHospitalStageOrchestrator.jsx)
+  - [EmergencyChooseHospitalStageBase.jsx](../../../components/emergency/intake/views/chooseHospital/EmergencyChooseHospitalStageBase.jsx)
 - shared choose-hospital surface:
-  - [EmergencyHospitalChoiceSheet.jsx](../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
+  - [EmergencyHospitalChoiceSheet.jsx](../../../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
 - shared route preview:
-  - [EmergencyHospitalRoutePreview.jsx](../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
+  - [EmergencyHospitalRoutePreview.jsx](../../../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
 - dedicated dossier:
   - [CHOOSE_HOSPITAL_PHASE_DOSSIER.md](./CHOOSE_HOSPITAL_PHASE_DOSSIER.md)
 
@@ -125,8 +125,8 @@ Current high-level order:
 
 Canonical product reference:
 
-- [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
-- [flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./flows/emergency/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
+- [MASTER_REFERENCE_FLOW_V1.md](./MASTER_REFERENCE_FLOW_V1.md)
+- [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
 
 ## Current Source Of Truth
 
@@ -140,9 +140,9 @@ Canonical product reference:
 
 The remaining architectural seam is after the decision phases:
 
-- [screens/MapScreen.jsx](../screens/MapScreen.jsx) correctly owns the persistent `/map` shell
-- [hooks/map/exploreFlow/useMapExploreFlow.js](../hooks/map/exploreFlow/useMapExploreFlow.js) now owns the pre-dispatch map flow, including coverage/bootstrap timing
-- but after `ambulance_decision` it still eventually hands off into [EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx) through the legacy request bridge
+- [screens/MapScreen.jsx](../../../screens/MapScreen.jsx) correctly owns the persistent `/map` shell
+- [hooks/map/exploreFlow/useMapExploreFlow.js](../../../hooks/map/exploreFlow/useMapExploreFlow.js) now owns the pre-dispatch map flow, including coverage/bootstrap timing
+- but after `ambulance_decision` it still eventually hands off into [EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx) through the legacy request bridge
 - that modal is still the legacy commit/runtime surface to replace next
 
 Target direction:

@@ -5,14 +5,14 @@
 
 ## Route Chain
 
-- [screens/RequestAmbulanceScreen.jsx](../screens/RequestAmbulanceScreen.jsx)
-- [components/emergency/intake/EmergencyIntakeOrchestrator.jsx](../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
+- [screens/RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx)
+- [components/emergency/intake/EmergencyIntakeOrchestrator.jsx](../../../components/emergency/intake/EmergencyIntakeOrchestrator.jsx)
 - iOS-standard source:
-  - [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
+  - [components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx](../../../components/emergency/intake/views/EmergencyIOSMobileIntakeView.jsx)
 - choose-hospital sheet:
-  - [components/emergency/intake/EmergencyHospitalChoiceSheet.jsx](../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
+  - [components/emergency/intake/EmergencyHospitalChoiceSheet.jsx](../../../components/emergency/intake/EmergencyHospitalChoiceSheet.jsx)
 - route preview:
-  - [components/emergency/intake/EmergencyHospitalRoutePreview.jsx](../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
+  - [components/emergency/intake/EmergencyHospitalRoutePreview.jsx](../../../components/emergency/intake/EmergencyHospitalRoutePreview.jsx)
 
 ## Current Source Of Truth
 
@@ -91,6 +91,6 @@ Choose hospital now has explicit screen wrappers for:
 
 The next phase after choose hospital is the request-dispatch handoff into:
 
-- [components/emergency/EmergencyRequestModal.jsx](../components/emergency/EmergencyRequestModal.jsx)
+- [components/emergency/EmergencyRequestModal.jsx](../../../components/emergency/EmergencyRequestModal.jsx)
 
 That handoff should keep using the hospital selected in the choose-hospital phase as the committed source for dispatch.
