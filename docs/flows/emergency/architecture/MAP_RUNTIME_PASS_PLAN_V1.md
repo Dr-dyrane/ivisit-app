@@ -953,16 +953,186 @@ Pass 9 deferred by design:
 - trusted-contact handoff remains deferred until the sharing/token model is defined
 - Zustand migration remains deferred because the reducer/store boundary is now explicit and there is not yet evidence that subscription strain justifies a second state system
 
-## Immediate Next Pass
+## Post-Runtime Migration Program
 
 The runtime plan is complete through Pass 9.
 
-Next work should enter under a new scoped plan rather than reopening this one piecemeal:
+Passes 10+ continue from this exact boundary. They do not reopen the runtime plan piecemeal; they extend it into navigation ownership, modal migration, cross-surface parity, and platform inclusiveness.
 
-- legacy screen dissolution and modal migration into `/map`
-- bed-reservation feature parity and verification beyond the runtime plan
-- public share/ETA token architecture
-- post-runtime QA and device matrix signoff
+Core rules for Pass 10 onward:
+
+- `/map` remains the authenticated primary surface
+- legacy screens are not deleted first; they become compatibility bridges until their `/map` owners are proven
+- mini profile moves immediately after navigation ownership
+- visits and visit details move after the mini profile handoff and ahead of profile restructuring
+- platform inclusiveness is required work, not a polish afterthought
+- layout may adapt by platform, but runtime truth, action semantics, recovery, and state meaning must remain identical
+
+### Pass 10. Navigation Ownership And Legacy Compatibility
+
+Primary target:
+
+- move authenticated home ownership to `/map` while keeping legacy routes alive as compatibility surfaces
+
+Scope:
+
+- make `app/(user)/index.js` route to `MapScreen` as authenticated home
+- flatten `app/(user)/_layout.js` ownership toward a stack-led structure
+- keep `app/(user)/(tabs)` and legacy stack pages available only as compatibility entry points until replacement parity is proven
+- add explicit redirects/bridges from legacy entry points into canonical `/map` states where appropriate
+- define which surfaces remain true routes and which surfaces become `/map` modal or sheet owners
+
+Done when:
+
+- authenticated startup lands on `/map`
+- no existing legacy entry point hard-breaks
+- compatibility routes forward users into the new owners without losing state or causing route loops
+
+### Pass 11. Mini Profile Control Panel
+
+Primary target:
+
+- replace the current mini profile with a grouped high-frequency control panel for authenticated users
+- use [`MAP_MINI_PROFILE_HANDOFF_V1.md`](./MAP_MINI_PROFILE_HANDOFF_V1.md) as the design contract for this surface
+
+Scope:
+
+- implement grouped sections inside `MiniProfileModal.jsx`
+  - Care: `Recent Visits`
+  - Account: `Profile`
+  - Essentials: `Payment`, `Emergency Contacts`
+  - System: `Settings`
+- keep the authenticated mini profile as a window-like control panel:
+  - avatar, name, and email as the calm top identity block
+  - grouped shortcuts only, not a long management page
+  - no notifications in this surface
+- move notifications out of the mini profile and into Settings
+- preserve the shared `MapModalShell` contract across iOS, Android, web mobile, and web desktop
+- keep the control panel map-contextual and lightweight instead of turning it into a second “More” page
+
+Done when:
+
+- mini profile feels like a fast control surface, not a dumping ground
+- grouped navigation remains stable across device classes
+- authenticated users can reach visits, profile, payment, contacts, and settings from `/map` without legacy tab dependence
+
+### Pass 12. Visits Migration
+
+Primary target:
+
+- promote Visits and Visit Details into `/map` after the mini profile control panel and before profile/settings restructuring
+
+Scope:
+
+- keep visits simple and map-owned first:
+  - use `MapRecentVisitsModal` as the primary recent-visits owner
+  - promote `MapVisitDetailsModal` as the canonical visit-detail surface on `/map`
+  - keep legacy `VisitsScreen` and visit-details routes as compatibility stack surfaces during migration, not as primary owners
+- convert the current visit-details route behavior into a map-owned detail modal with canonical request/visit identity
+- make visit side effects explicit and shared:
+  - visit creation from emergency actions
+  - visit lifecycle updates
+  - rating recovery linkage
+  - reopen/recovery from persisted state
+  - call clinic
+  - book again
+  - share
+- add visits back into care discovery in a concise way:
+  - add `Book a Visit` as the user-facing choose-care label
+  - allow recent visits to appear in `explore_intent` after the choose-hospital section when visit history exists
+- ensure visit read/write state does not drift between legacy visits screens and `/map` modals during the compatibility period
+
+Done when:
+
+- users can open recent visits from `/map`
+- tapping a visit opens canonical visit details on `/map`
+- recent visits can be surfaced contextually inside `explore_intent` when useful
+- visit side effects and lifecycle truth are shared across legacy and `/map` owners
+- standalone visit screens are no longer primary owners even if they still exist as legacy bridges
+
+### Pass 13. Profile And Settings Hub Restructure
+
+Primary target:
+
+- reorganize the true route-owned hubs after visits are already migrated
+
+Scope:
+
+- keep `ProfileScreen.jsx` as the Identity Hub:
+  - Personal
+  - Medical
+  - Coverage
+  - Emergency
+- keep `SettingsScreen.jsx` as the System Hub:
+  - App Behavior
+  - Notifications
+  - Support
+- ensure these remain stack-owned routes across all platforms even if desktop presentation uses wider layouts or panel-like composition
+
+Done when:
+
+- profile and settings are no longer legacy overflow pages
+- notification controls live only in settings
+- no data previously reachable through the old more/profile sprawl becomes orphaned
+
+### Pass 14. Platform Inclusiveness And Viewport Propagation
+
+Primary target:
+
+- push the new ownership model cleanly across iOS, Android, web mobile, and web desktop
+
+Required platform rules:
+
+- same runtime behavior and user intent flow across platforms
+- map remains persistent and dominant unless a true blocking modal is required
+- profile/settings remain stack-owned routes on all platforms
+- mini profile, visits, and care-selection style surfaces remain modal/sheet-owned on all platforms
+- no platform-specific alternate navigation system
+- persistence and recovery must use the same storage and backend-truth contracts on every platform
+- no platform may rely on background timers continuing
+- state must reconstruct from persisted timestamps and backend truth
+
+Scope:
+
+- modal adaptation:
+  - iOS/Android: bottom sheet or native-feeling modal with swipe-to-dismiss where valid
+  - web mobile: bottom sheet or full-height modal depending on viewport
+  - web desktop: centered modal or side panel, not a fake mobile sheet
+- viewport propagation:
+  - panel/sheet padding
+  - header lane placement
+  - map control offsets
+  - modal-vs-drawer rules
+  - content max-width contracts
+- interaction normalization:
+  - swipe, drag, wheel, keyboard, escape, back button, click-outside
+
+Done when:
+
+- hierarchy, actions, semantics, and state meaning are identical across supported platforms
+- only layout and input affordances adapt
+
+### Pass 15. Legacy Surface De-Primarying
+
+Primary target:
+
+- make legacy screens clearly secondary without deleting them prematurely
+
+Scope:
+
+- remove bottom-tab and more-screen ownership from primary navigation once `/map`, visits, mini profile, profile, and settings are proven
+- mark legacy visits/more/tab surfaces as fallback or bridge-only
+- keep compatibility wrappers while references still exist
+- only retire a legacy owner after:
+  - feature parity
+  - entry-point parity
+  - recovery parity
+  - redirect coverage
+
+Done when:
+
+- primary user journeys no longer depend on legacy navigation ownership
+- legacy routes exist only as safe compatibility paths until final cleanup
 
 ## Success Metric
 
