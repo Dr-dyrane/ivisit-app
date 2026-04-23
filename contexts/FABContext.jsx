@@ -173,7 +173,8 @@ export function FABProvider({ children }) {
 
     const all = Array.from(registrations.values());
     const hasSuppression = all.some(f => f.visible && f.suppressGlobal);
-    if (hasSuppression) return null;
+    if (hasSuppression) return { visible: false, id: 'suppressed' };
+
 
     const visible = all.filter(f => f.visible && !f.disabled);
 

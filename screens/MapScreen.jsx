@@ -183,7 +183,10 @@ export default function MapScreen() {
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
-    authModalVisible;
+    authModalVisible ||
+    Boolean(recoveredRatingState?.visible) ||
+    mapLoadingState?.visible;
+
 
   useEffect(() => {
     const suppressionId = "map-modal-fab-suppression";
@@ -200,7 +203,19 @@ export default function MapScreen() {
     return undefined;
   }, [hasActiveMapModal, registerFAB, unregisterFAB]);
 
+  // Hide the global FAB entirely on the Map screen as it is not part of the intent-based flow
+  useEffect(() => {
+    const hideId = "map-hide-global-fab";
+    registerFAB(hideId, {
+      visible: false,
+      priority: 100,
+    });
+    return () => unregisterFAB(hideId);
+  }, [registerFAB, unregisterFAB]);
+
   const handleProfileSignOut = useCallback(async () => {
+
+
     const result = await logout();
     if (result?.success) {
       clearCommitFlow?.();
