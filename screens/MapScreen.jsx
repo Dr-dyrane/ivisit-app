@@ -178,7 +178,13 @@ export default function MapScreen() {
         : 0,
     [sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
   );
+  const handledRecoveredRatingVisitIdsRef = useRef(new Set());
+  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
+  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
+  const [recoveredRatingState, setRecoveredRatingState] = useState(null);
+
   const hasActiveMapModal =
+
     profileModalVisible ||
     guestProfileVisible ||
     careHistoryVisible ||
@@ -228,10 +234,7 @@ export default function MapScreen() {
     distanceMeters: null,
     coordinates: [],
   });
-  const handledRecoveredRatingVisitIdsRef = useRef(new Set());
-  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
-  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
-  const [recoveredRatingState, setRecoveredRatingState] = useState(null);
+
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
     : renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
