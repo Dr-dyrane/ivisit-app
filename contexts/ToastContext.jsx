@@ -4,14 +4,17 @@ import React, {
 	useContext,
 	useEffect,
 	useRef,
+	useCallback,
+	useMemo,
 } from "react";
-import { Text, View, Animated, Image, Pressable } from "react-native";
+import { Text, View, Animated, Image, Platform, Pressable, StyleSheet } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import logo from "../assets/logo.png";
 import { COLORS } from "../constants/colors";
 import { useTheme } from "../contexts/ThemeContext";
+import useWebViewportMetrics from "../hooks/ui/useWebViewportMetrics";
 
 const ToastContext = createContext();
 
@@ -23,11 +26,20 @@ const ToastProvider = ({ children }) => {
 		message: "",
 		type: "info",
 		icon: null,
-		position: "bottom",
+		position: "auto",
 		duration: 2500,
 	});
 
 	const opacity = useRef(new Animated.Value(0)).current;
+	const { isDarkMode } = useTheme();
+	const webViewport = useWebViewportMetrics();
+	const isWeb = Platform.OS === "web";
+	const webWidth = webViewport.visibleWidth || webViewport.layoutWidth || 390;
+	const isWebDesktop = isWeb && webWidth >= 768;
+
+	const hideToast = useCallback(() => {
+		setToast((prev) => ({ ...prev, visible: false }));
+	}, []);
 
 	useEffect(() => {
 		Animated.timing(opacity, {
@@ -40,22 +52,17 @@ const ToastProvider = ({ children }) => {
 			const timer = setTimeout(hideToast, toast.duration);
 			return () => clearTimeout(timer);
 		}
-	}, [toast.visible]);
+	}, [hideToast, opacity, toast.duration, toast.visible]);
 
-	const showToast = (
+	const showToast = useCallback((
 		message,
 		type = "info",
 		icon = null,
-		position = "bottom",
+		position = "auto",
 		duration = 2500
 	) => {
 		setToast({ visible: true, message, type, icon, position, duration });
-	};
-
-	const hideToast = () =>
-		setToast((prev) => ({ ...prev, visible: false }));
-
-	const { isDarkMode } = useTheme();
+	}, []);
 
 	const getStyleForType = () => {
 		switch (toast.type) {
@@ -97,7 +104,51 @@ const ToastProvider = ({ children }) => {
 	const STYLE = getStyleForType();
 
 	const getPositionStyle = () => {
-		switch (toast.position) {
+		const resolvedPosition =
+			toast.position === "auto"
+				? isWebDesktop
+					? "top"
+					: "bottom"
+				: toast.position;
+
+		if (isWeb) {
+			const leftInset = Math.max(14, webViewport.leftInset + 14);
+			const rightInset = Math.max(16, webViewport.rightInset + 18);
+			const bottomInset = Math.max(18, webViewport.bottomInset + 18);
+			const topInset = Math.max(18, webViewport.topInset + 18);
+			const availableWidth = Math.max(0, webWidth - leftInset - rightInset);
+			const webToastWidth = Math.min(420, availableWidth);
+
+			if (resolvedPosition === "center") {
+				return {
+					top: "50%",
+					left: "50%",
+					width: webToastWidth,
+					transform: [
+						{ translateX: -(webToastWidth / 2) },
+						{ translateY: -40 },
+					],
+				};
+			}
+
+			if (isWebDesktop) {
+				return {
+					top: resolvedPosition === "top" ? topInset : undefined,
+					bottom: resolvedPosition === "bottom" ? bottomInset : undefined,
+					right: rightInset,
+					width: webToastWidth,
+				};
+			}
+
+			return {
+				top: resolvedPosition === "top" ? topInset : undefined,
+				bottom: resolvedPosition === "bottom" ? bottomInset : undefined,
+				left: leftInset,
+				right: rightInset,
+			};
+		}
+
+		switch (resolvedPosition) {
 			case "top":
 				return { top: 48, left: 16, right: 16 };
 			case "center":
@@ -112,6 +163,31 @@ const ToastProvider = ({ children }) => {
 				return { bottom: 32, left: 16, right: 16 };
 		}
 	};
+
+	const containerStyle = useMemo(
+		() => [
+			styles.toastHost,
+			isWeb ? { position: "fixed" } : styles.nativeToastHost,
+			{ opacity },
+			getPositionStyle(),
+		],
+		[
+			isWeb,
+			isWebDesktop,
+			opacity,
+			toast.position,
+			webWidth,
+			webViewport.bottomInset,
+			webViewport.leftInset,
+			webViewport.rightInset,
+			webViewport.topInset,
+		],
+	);
+
+	const contextValue = useMemo(
+		() => ({ showToast, hideToast }),
+		[hideToast, showToast],
+	);
 
 	const renderIcon = () => {
 		if (toast.icon) {
@@ -149,28 +225,23 @@ const ToastProvider = ({ children }) => {
 	};
 
 	return (
-		<ToastContext.Provider value={{ showToast, hideToast }}>
+		<ToastContext.Provider value={contextValue}>
 			{children}
 
 			{toast.visible && (
 				<Animated.View
-					style={[
-						{
-							opacity,
-							position: "absolute",
-							zIndex: 50,
-							elevation: 6,
-						},
-						getPositionStyle(),
-					]}
+					accessibilityLiveRegion="polite"
+					accessibilityRole="alert"
+					pointerEvents="box-none"
+					style={containerStyle}
 				>
 					<LinearGradient
 						colors={STYLE.gradient}
 						start={{ x: 0, y: 0 }}
 						end={{ x: 1, y: 1 }}
-						className="rounded-2xl px-4 py-3"
+						style={styles.toastSurface}
 					>
-						<View className="flex-row items-center">
+						<View style={styles.toastContent}>
 							<View
 								style={{
 									width: 36,
@@ -197,6 +268,7 @@ const ToastProvider = ({ children }) => {
 									color: STYLE.textColor,
 									fontSize: 15,
 									fontWeight:'400',
+									lineHeight: 20,
 								}}
 							>
 								{toast.message}
@@ -210,5 +282,25 @@ const ToastProvider = ({ children }) => {
 		</ToastContext.Provider>
 	);
 };
+
+const styles = StyleSheet.create({
+	toastHost: {
+		zIndex: 2147483000,
+	},
+	nativeToastHost: {
+		position: "absolute",
+		elevation: 6,
+	},
+	toastSurface: {
+		borderRadius: 20,
+		overflow: "hidden",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+	},
+	toastContent: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+});
 
 export default ToastProvider;

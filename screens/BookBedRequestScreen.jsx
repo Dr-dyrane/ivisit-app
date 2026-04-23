@@ -55,6 +55,7 @@ export default function BookBedRequestScreen() {
 		selectedSpecialty,
 		activeAmbulanceTrip,
 		activeBedBooking,
+		pendingApproval,
 		startAmbulanceTrip,
 		startBedBooking,
 		clearSelectedHospital,
@@ -87,13 +88,14 @@ export default function BookBedRequestScreen() {
 		selectedHospital,
 		activeAmbulanceTrip,
 		activeBedBooking,
+		pendingApproval,
 		currentRoute: null,
 		effectiveDemoModeEnabled,
 		onRequestComplete: () => { },
 	});
 
 	const handleClose = useCallback(() => {
-		navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
+		navigateBack({ router, fallbackRoute: ROUTES.USER_HOME });
 	}, [router]);
 
 	const backButton = useCallback(
@@ -168,7 +170,7 @@ export default function BookBedRequestScreen() {
 			if (elapsed < minMs) {
 				await delay(minMs - elapsed);
 			}
-			navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
+			navigateBack({ router, fallbackRoute: ROUTES.USER_HOME });
 		},
 		[delay, handleRequestComplete, router]
 	);

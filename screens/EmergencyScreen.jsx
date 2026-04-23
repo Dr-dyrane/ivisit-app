@@ -181,6 +181,7 @@ const EmergencyScreen = () => {
 		activeAmbulanceTrip,
 		ambulanceTelemetryHealth,
 		activeBedBooking,
+		pendingApproval,
 		serviceType,
 		selectedSpecialty,
 		specialties,
@@ -235,6 +236,7 @@ const EmergencyScreen = () => {
 		selectedHospital,
 		activeAmbulanceTrip,
 		activeBedBooking,
+		pendingApproval,
 		currentRoute,
 		effectiveDemoModeEnabled,
 	});

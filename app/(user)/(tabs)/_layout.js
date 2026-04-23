@@ -1,54 +1,17 @@
 // app/(user)/(tabs)/_layout.js
+//
+// Legacy compatibility only. The authenticated app no longer owns a bottom-tab
+// navigator; `/map` is the primary home and Visits now lives in the stack group.
 
-import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../../contexts/ThemeContext";
-import { useTabBarVisibility } from "../../../contexts/TabBarVisibilityContext";
-import { COLORS } from "../../../constants/colors";
-import AnimatedTabBar from "../../../components/navigation/AnimatedTabBar";
+import { Stack } from "expo-router";
 
-export default function TabsLayout() {
-	const { isDarkMode } = useTheme();
-	const { resetTabBar } = useTabBarVisibility();
-
+export default function LegacyTabsCompatibilityLayout() {
 	return (
-		<Tabs
-			tabBar={(props) => <AnimatedTabBar {...props} />}
+		<Stack
 			screenOptions={{
-				tabBarShowLabel: true,
-				tabBarActiveTintColor: COLORS.brandPrimary,
-				tabBarInactiveTintColor: isDarkMode
-					? COLORS.textMutedDark
-					: COLORS.textMuted,
 				headerShown: false,
-				gestureEnabled: true,
-				gestureDirection: "horizontal",
+				animation: "none",
 			}}
-			screenListeners={{
-				tabPress: () => {
-					// Reset tab bar visibility when switching tabs
-					resetTabBar();
-				},
-			}}
-		>
-			<Tabs.Screen
-				name="index"
-				options={{
-					// title: "Home",
-					tabBarIcon: ({ color }) => (
-						<Ionicons name="map-outline" size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="visits"
-				options={{
-					// title: "Visits",
-					tabBarIcon: ({ color }) => (
-						<Ionicons name="time-outline" size={24} color={color} />
-					),
-				}}
-			/>
-		</Tabs>
+		/>
 	);
 }

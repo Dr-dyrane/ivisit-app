@@ -19,6 +19,12 @@ Related audit:
 - Pass 7: complete
 - Pass 8: complete
 - Pass 9: complete
+- Pass 10: complete
+- Pass 11: complete
+- Pass 12: pending
+- Pass 13: pending
+- Pass 14: pending
+- Pass 15: pending
 
 ## Unified Surgical Mapping
 
@@ -988,6 +994,23 @@ Done when:
 - no existing legacy entry point hard-breaks
 - compatibility routes forward users into the new owners without losing state or causing route loops
 
+Pass 10 implemented:
+
+- [`app/(user)/index.js`](../../../app/(user)/index.js) now renders `MapScreen` as the authenticated home
+- [`app/(user)/_layout.js`](../../../app/(user)/_layout.js) now includes the authenticated index route while keeping `(tabs)` and `(stacks)` as compatibility routes
+- [`app/(user)/(tabs)/_layout.js`](../../../app/(user)/(tabs)/_layout.js) no longer mounts a bottom-tab navigator; it is a stack-only compatibility shell
+- [`app/(user)/(tabs)/index.js`](../../../app/(user)/(tabs)/index.js) is now a compatibility map bridge instead of owning the legacy home surface
+- [`app/(user)/(stacks)/visits.js`](../../../app/(user)/(stacks)/visits.js) is the canonical route-owned Visits surface
+- `navigateToVisits` now targets `/(user)/(stacks)/visits`; legacy tab visit paths remain compatibility-only
+- authenticated redirects in [`app/_layout.js`](../../../app/_layout.js), reset-password completion, and complete-profile completion now point to `/(user)` as the primary home
+
+Pass 10 proven:
+
+- legacy tab routes still exist
+- old home-tab entry no longer owns primary startup
+- fallback navigation uses `ROUTES.USER_HOME`
+- bottom-tab rendering cannot be triggered by the legacy tab group
+
 ### Pass 11. Mini Profile Control Panel
 
 Primary target:
@@ -1008,13 +1031,40 @@ Scope:
   - no notifications in this surface
 - move notifications out of the mini profile and into Settings
 - preserve the shared `MapModalShell` contract across iOS, Android, web mobile, and web desktop
-- keep the control panel map-contextual and lightweight instead of turning it into a second “More” page
+- keep the control panel map-contextual and lightweight instead of turning it into a second "More" page
 
 Done when:
 
 - mini profile feels like a fast control surface, not a dumping ground
 - grouped navigation remains stable across device classes
 - authenticated users can reach visits, profile, payment, contacts, and settings from `/map` without legacy tab dependence
+
+Pass 11 implemented:
+
+- [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now uses the locked window-style control-panel layout:
+  - top identity block
+  - resilient `What's your name?` null-state copy
+  - grouped shortcut rows
+  - orb icon wrappers
+  - right-side badges
+  - explicit press feedback
+  - low-priority sign-out affordance
+- [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now lets mini profile open the map-owned recent-visits modal instead of routing through the legacy visits tab first
+
+Pass 11 proven:
+
+- mini profile no longer renders the old visit-stats / medical-passport layout
+- notifications are not present in the mini profile
+- recent visits, profile, payment, emergency contacts, settings, and sign out are reachable without bottom-tab dependence
+
+Active request concurrency hardening added during Pass 11:
+
+- invariant: a user may have at most one unresolved ambulance request and at most one unresolved bed request; an ambulance and bed may coexist because they are separate service families
+- `pending_approval` is now treated as active, not as a pre-active draft
+- client orchestration now checks `activeAmbulanceTrip`, `activeBedBooking`, and `pendingApproval` before starting a new request
+- `emergencyRequestsService.create` performs a Supabase preflight before calling `create_emergency_v4`, so stale `/map`, legacy stack, and local fallback paths share the same guard
+- migration `20260423000100_active_request_concurrency_guard.sql` recreates the database partial unique indexes so `pending_approval`, `in_progress`, `accepted`, and `arrived` are all protected per user/service type
+- duplicate active rows must be resolved before that migration can install the guard; the migration intentionally fails loudly instead of silently cancelling medical requests
 
 ### Pass 12. Visits Migration
 
@@ -1106,6 +1156,12 @@ Scope:
   - content max-width contracts
 - interaction normalization:
   - swipe, drag, wheel, keyboard, escape, back button, click-outside
+- feedback surfaces:
+  - native toast defaults to compact bottom snackbar behavior
+  - web mobile toast uses fixed viewport positioning with visible-viewport insets
+  - web desktop toast uses a fixed top-right rail with bounded width and a z-index above sheets/modals
+  - web toast width must be computed from available horizontal space after left and right viewport insets are applied
+  - no toast implementation may rely on a mobile absolute overlay inside a constrained web container
 
 Done when:
 

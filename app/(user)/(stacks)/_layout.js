@@ -190,6 +190,19 @@ export default function StacksLayout() {
 			/>
 
 			<Stack.Screen
+				name="visits"
+				options={{
+					headerTitle: "Visits",
+					headerTitleStyle: {
+						fontWeight: "bold",
+						fontSize: 18,
+						color: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+					},
+					headerLeft: () => <HeaderBackButton />,
+				}}
+			/>
+
+			<Stack.Screen
 				name="visit/[id]"
 				options={{
 					headerTitle: "Visit Details",

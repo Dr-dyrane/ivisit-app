@@ -15,6 +15,15 @@ export const EmergencyRequestStatus = {
     PAYMENT_DECLINED: "payment_declined",
 };
 
+export const ACTIVE_EMERGENCY_REQUEST_STATUSES = Object.freeze([
+    EmergencyRequestStatus.PENDING_APPROVAL,
+    EmergencyRequestStatus.IN_PROGRESS,
+    EmergencyRequestStatus.ACCEPTED,
+    EmergencyRequestStatus.ARRIVED,
+]);
+
+export const ACTIVE_EMERGENCY_REQUEST_ERROR_CODE = "ACTIVE_EMERGENCY_REQUEST_EXISTS";
+
 const EMERGENCY_STATUS_ALIASES = Object.freeze({
     pending: EmergencyRequestStatus.PENDING_APPROVAL,
     dispatched: EmergencyRequestStatus.IN_PROGRESS,
@@ -138,6 +147,51 @@ const withResolvedTriageFields = (request) => {
     };
 };
 
+const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
+    id: r.id,
+    requestId: r.display_id,
+    displayId: r.display_id,
+    serviceType: r.service_type,
+    hospitalId: r.hospital_id,
+    hospitalName: r.hospital_name,
+    specialty: r.specialty,
+    ambulanceType: r.ambulance_type,
+    ambulanceId: r.ambulance_id,
+    bedNumber: r.bed_number,
+    bedType: r.bed_type,
+    bedCount: r.bed_count,
+    estimatedArrival: r.estimated_arrival,
+    status: r.status,
+    totalCost: r.total_cost,
+    paymentStatus: r.payment_status,
+    paymentMethodId: r.payment_method_id ?? r.payment_method ?? null,
+    patient: r.patient_snapshot,
+    patient_snapshot: r.patient_snapshot,
+    shared: r.shared_data_snapshot,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    responderName: r.responder_name,
+    responderPhone: r.responder_phone,
+    responderVehicleType: r.responder_vehicle_type,
+    responderVehiclePlate: r.responder_vehicle_plate,
+    responderLocation: r.responder_location,
+    responderHeading: r.responder_heading,
+    patientLocation: r.patient_location,
+    patientHeading: r.patient_heading,
+});
+
+const createActiveRequestError = (serviceType, activeRequest) => {
+    const label = serviceType === "bed" ? "bed reservation" : "ambulance request";
+    const error = new Error(`You already have an active ${label}.`);
+    error.code = ACTIVE_EMERGENCY_REQUEST_ERROR_CODE;
+    error.serviceType = serviceType;
+    error.activeRequest = activeRequest ?? null;
+    return error;
+};
+
+const isGuardedServiceType = (serviceType) =>
+    serviceType === "ambulance" || serviceType === "bed";
+
 export const emergencyRequestsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -160,38 +214,7 @@ export const emergencyRequestsService = {
                 }
             } else {
                 const rows = Array.isArray(data) ? data : [];
-                const requests = rows.map((r) => withResolvedTriageFields({
-                    id: r.id,
-                    requestId: r.display_id,
-                    displayId: r.display_id,
-                    serviceType: r.service_type,
-                    hospitalId: r.hospital_id,
-                    hospitalName: r.hospital_name,
-                    specialty: r.specialty,
-                    ambulanceType: r.ambulance_type,
-                    ambulanceId: r.ambulance_id,
-                    bedNumber: r.bed_number,
-                    bedType: r.bed_type,
-                    bedCount: r.bed_count,
-                    estimatedArrival: r.estimated_arrival,
-                    status: r.status,
-                    totalCost: r.total_cost,
-                    paymentStatus: r.payment_status,
-                    paymentMethodId: r.payment_method_id ?? r.payment_method ?? null,
-                    patient: r.patient_snapshot,
-                    patient_snapshot: r.patient_snapshot,
-                    shared: r.shared_data_snapshot,
-                    createdAt: r.created_at,
-                    updatedAt: r.updated_at,
-                    responderName: r.responder_name,
-                    responderPhone: r.responder_phone,
-                    responderVehicleType: r.responder_vehicle_type,
-                    responderVehiclePlate: r.responder_vehicle_plate,
-                    responderLocation: r.responder_location,
-                    responderHeading: r.responder_heading,
-                    patientLocation: r.patient_location,
-                    patientHeading: r.patient_heading,
-                }));
+                const requests = rows.map(mapEmergencyRequestRow);
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
                 return requests;
@@ -274,12 +297,36 @@ export const emergencyRequestsService = {
             });
 
             const rpcPatientLocation = parsePointInput(request.patientLocation);
+            const serviceType = request?.serviceType ?? null;
+            if (isGuardedServiceType(serviceType)) {
+                const { data: activeRows, error: activeError } = await supabase
+                    .from("emergency_requests")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .eq("service_type", serviceType)
+                    .in("status", ACTIVE_EMERGENCY_REQUEST_STATUSES)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+
+                if (activeError) {
+                    console.error("[emergencyRequestsService] Active request preflight failed:", activeError);
+                    throw activeError;
+                }
+
+                const activeRequest = Array.isArray(activeRows) && activeRows[0]
+                    ? mapEmergencyRequestRow(activeRows[0])
+                    : null;
+                if (activeRequest) {
+                    throw createActiveRequestError(serviceType, activeRequest);
+                }
+            }
+
             const { data, error } = await supabase.rpc('create_emergency_v4', {
                 p_user_id: user.id,
                 p_request_data: {
                     hospital_id: request.hospitalId,
                     hospital_name: request.hospitalName,
-                    service_type: request.serviceType,
+                    service_type: serviceType,
                     specialty: request.specialty,
                     patient_location: rpcPatientLocation,
                     patient_snapshot: patientSnapshot,
@@ -314,6 +361,23 @@ export const emergencyRequestsService = {
             };
         } else {
             // Local fallback
+            const serviceType = request?.serviceType ?? null;
+            if (isGuardedServiceType(serviceType)) {
+                const existingItems = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
+                const activeLocalRequest = Array.isArray(existingItems)
+                    ? existingItems.find(
+                            (item) =>
+                                item?.serviceType === serviceType &&
+                                ACTIVE_EMERGENCY_REQUEST_STATUSES.includes(
+                                    canonicalizeEmergencyStatus(item?.status, "")
+                                )
+                        )
+                    : null;
+                if (activeLocalRequest) {
+                    throw createActiveRequestError(serviceType, withResolvedTriageFields(activeLocalRequest));
+                }
+            }
+
             const localItem = {
                 ...request,
                 ...commonFields,

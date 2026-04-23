@@ -1,5 +1,7 @@
-import VisitsScreen from "../../../screens/VisitsScreen"
+import VisitsScreen from "../../../screens/VisitsScreen";
 
-const Visits = () => <VisitsScreen />
+// Legacy compatibility only. New navigation must target
+// `/(user)/(stacks)/visits`.
+const LegacyVisitsTabBridge = () => <VisitsScreen />;
 
-export default Visits
+export default LegacyVisitsTabBridge;

@@ -21,6 +21,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { useVisits } from "../contexts/VisitsContext";
+import { useFABActions } from "../contexts/FABContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import {
   getMapViewportSurfaceConfig,
@@ -44,6 +45,7 @@ import {
   buildTrackingResolutionToast,
   buildRecoveredTrackingRatingState,
   findPendingTrackingRatingVisit,
+  getTrackingRatingRecoveryClaim,
   readTrackingRatingRecoveryClaims,
   resolveTrackingRatingSkip,
   resolveTrackingRatingSubmit,
@@ -58,6 +60,7 @@ export default function MapScreen() {
   const { showToast } = useToast();
   const { logout, user } = useAuth();
   const { visits = [], updateVisit } = useVisits();
+  const { registerFAB, unregisterFAB } = useFABActions();
   const { width, height, browserInsetTop, browserInsetBottom } =
     useAuthViewport();
   const {
@@ -181,6 +184,22 @@ export default function MapScreen() {
     careHistoryVisible ||
     recentVisitsVisible ||
     authModalVisible;
+
+  useEffect(() => {
+    const suppressionId = "map-modal-fab-suppression";
+    if (hasActiveMapModal) {
+      registerFAB(suppressionId, {
+        visible: true,
+        suppressGlobal: true,
+        priority: 1000,
+      });
+      return () => unregisterFAB(suppressionId);
+    }
+
+    unregisterFAB(suppressionId);
+    return undefined;
+  }, [hasActiveMapModal, registerFAB, unregisterFAB]);
+
   const handleProfileSignOut = useCallback(async () => {
     const result = await logout();
     if (result?.success) {
@@ -634,6 +653,9 @@ export default function MapScreen() {
     mapServiceMarkerKind,
   ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
+  const canRecoverTrackingRating =
+    sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
+    sheetPhase === MAP_SHEET_PHASES.TRACKING;
 
   useEffect(() => {
     let cancelled = false;
@@ -657,7 +679,7 @@ export default function MapScreen() {
 
   const pendingRecoveredRatingVisit = useMemo(() => {
     if (
-      sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT ||
+      !canRecoverTrackingRating ||
       hasActiveMapModal ||
       activeMapRequest?.hasActiveRequest
     ) {
@@ -670,10 +692,10 @@ export default function MapScreen() {
     });
   }, [
     activeMapRequest?.hasActiveRequest,
+    canRecoverTrackingRating,
     handledRecoveredRatingVersion,
     hasActiveMapModal,
     ratingRecoveryClaims,
-    sheetPhase,
     visits,
   ]);
 
@@ -681,8 +703,7 @@ export default function MapScreen() {
     if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
     const nextState = buildRecoveredTrackingRatingState(
       pendingRecoveredRatingVisit,
-      ratingRecoveryClaims[String(pendingRecoveredRatingVisit?.id ?? pendingRecoveredRatingVisit?.requestId ?? "")] ||
-        null,
+      getTrackingRatingRecoveryClaim(pendingRecoveredRatingVisit, ratingRecoveryClaims),
     );
     if (nextState) {
       setRecoveredRatingState(nextState);
@@ -985,6 +1006,7 @@ export default function MapScreen() {
         visible={profileModalVisible}
         onClose={() => setProfileModalVisible(false)}
         onSignOut={handleProfileSignOut}
+        onOpenRecentVisits={() => setRecentVisitsVisible(true)}
         showMapShortcut={false}
         preferDrawerPresentation={usesSidebarLayout}
       />

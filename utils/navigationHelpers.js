@@ -1,8 +1,7 @@
 import { EmergencyMode } from "../contexts/EmergencyContext";
 
 export const ROUTES = {
-	TABS_ROOT: "/(user)/(tabs)",
-	TAB_VISITS: "/(user)/(tabs)/visits",
+	USER_HOME: "/(user)",
 	STACK_MORE: "/(user)/(stacks)/more",
 	STACK_SEARCH: "/(user)/(stacks)/search",
 	STACK_NOTIFICATIONS: "/(user)/(stacks)/notifications",
@@ -11,6 +10,7 @@ export const ROUTES = {
 	STACK_MEDICAL_PROFILE: "/(user)/(stacks)/medical-profile",
 	STACK_PROFILE: "/(user)/(stacks)/profile",
 	STACK_PAYMENT: "/(user)/(stacks)/payment",
+	STACK_VISITS: "/(user)/(stacks)/visits",
 	STACK_VISIT_DETAILS: (id) => `/(user)/(stacks)/visit/${String(id)}`,
 	STACK_EMERGENCY_REQUEST_AMBULANCE: "/(user)/(stacks)/emergency/request-ambulance",
 	STACK_EMERGENCY_BOOK_BED: "/(user)/(stacks)/emergency/book-bed",
@@ -62,16 +62,16 @@ export function navigateToSOS({
 	if (typeof searchQuery === "string" && searchQuery.trim()) {
 		setEmergencySearch?.(searchQuery);
 	}
-	nav(router, method, ROUTES.TABS_ROOT);
+	nav(router, method, ROUTES.USER_HOME);
 }
 
 export function navigateToVisits({ router, filter, method = "push" }) {
 	const v = typeof filter === "string" && filter.trim() ? filter.trim() : null;
 	if (!v) {
-		nav(router, method, ROUTES.TAB_VISITS);
+		nav(router, method, ROUTES.STACK_VISITS);
 		return;
 	}
-	nav(router, method, { pathname: ROUTES.TAB_VISITS, params: { filter: v } });
+	nav(router, method, { pathname: ROUTES.STACK_VISITS, params: { filter: v } });
 }
 
 export function navigateToNotifications({ router, filter, method = "push" }) {

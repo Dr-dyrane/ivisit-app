@@ -100,6 +100,25 @@ const normalizeTrackingVisitKind = (visit) => {
   return null;
 };
 
+export const getTrackingRatingVisitKeys = (visit) =>
+  [
+    visit?.id,
+    visit?.requestId,
+    visit?.displayId,
+    visit?.requestDisplayId,
+  ]
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+    .map((value) => String(value));
+
+export function getTrackingRatingRecoveryClaim(visit, claims) {
+  const normalizedClaims = normalizeTrackingRatingClaims(claims);
+  const keys = getTrackingRatingVisitKeys(visit);
+  for (const key of keys) {
+    if (normalizedClaims[key]) return normalizedClaims[key];
+  }
+  return null;
+}
+
 export function findPendingTrackingRatingVisit(
   visits,
   { excludeVisitIds = [], allowedVisitIds = null } = {},
@@ -125,12 +144,15 @@ export function findPendingTrackingRatingVisit(
   return [...visits]
     .filter((visit) => {
       const lifecycleState = String(visit?.lifecycleState ?? "").toLowerCase();
-      const visitId = visit?.id ?? visit?.requestId ?? null;
+      const visitKeys = getTrackingRatingVisitKeys(visit);
+      const hasVisitKey = visitKeys.length > 0;
+      const isExcluded = visitKeys.some((key) => excludedIds.has(key));
+      const isAllowed = !allowedIds || visitKeys.some((key) => allowedIds.has(key));
       return (
         lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING &&
-        !!visitId &&
-        !excludedIds.has(String(visitId)) &&
-        (!allowedIds || allowedIds.has(String(visitId)))
+        hasVisitKey &&
+        !isExcluded &&
+        isAllowed
       );
     })
     .sort((left, right) => {

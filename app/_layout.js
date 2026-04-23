@@ -266,7 +266,7 @@ function AuthenticatedStack() {
 			const isBaseUrl = isBaseAppUrl(url);
 
 			if (user?.isAuthenticated && !isBaseUrl && !isAuthCallback) {
-				router.replace("/(user)/(tabs)");
+				router.replace("/(user)");
 			}
 		};
 
@@ -380,7 +380,7 @@ function AuthenticatedStack() {
 		}
 
 		if (!isPublicMapFlow && (rootGroup === "(auth)" || rootGroup !== "(user)")) {
-			router.replace("/(user)/(tabs)");
+			router.replace("/(user)");
 		}
 	}, [
 		initialRouteResolved,

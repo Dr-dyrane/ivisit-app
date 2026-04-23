@@ -79,6 +79,30 @@ Required feel:
 - low cognitive load
 - strong enough to feel intentional, not ornamental
 
+Android-safe orb rule:
+
+- shortcut icon wrappers are true circular orbs, not squircles
+- use solid tokenized fills and solid icons for orb hierarchy
+- do not use `BlurView`, shadow blur, or Android `elevation` on small icon orbs
+- avatar may be circular, but must not depend on blur/shadow depth for its shape or separation
+
+Typography and blade rule:
+
+- shortcut row blade height remains stable while type scales from viewport metrics
+- labels should be larger than the legacy profile menu, but lighter in weight
+- avoid heavy `800`/`900` label stacks except for truly primary hero identity moments
+- if label size increases, reduce internal horizontal padding rather than increasing blade height
+- badges remain supportive metadata, not bold competing CTAs
+
+Implementation boundaries:
+
+- `MiniProfileModal.jsx` owns orchestration, navigation, close timing, and data wiring
+- `miniProfile.model.js` owns identity fallback, badge formatting, color tokens, and viewport-derived layout tokens
+- `MiniProfileIdentity.jsx` owns the avatar/name/email block
+- `MiniProfileShortcutGroup.jsx` owns grouped shortcut rows and divider alignment
+- `MiniProfileSignOutButton.jsx` owns the low-priority sign-out action
+- child components render from explicit props and must not reach into navigation, auth, visits, or emergency context directly
+
 ## Interaction Rules
 
 - open from `/map` with immediate feedback

@@ -191,7 +191,7 @@ export default function CompleteProfileScreen() {
 			});
 			await syncUserData();
 			await clearDraft();
-			router.replace("/(user)/(tabs)");
+			router.replace("/(user)");
 		} catch (error) {
 			console.error("Update profile failed", error);
 			showToast("Couldn't save your profile", "error");

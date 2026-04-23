@@ -140,6 +140,7 @@ export default function RequestAmbulanceScreen() {
 		activeAmbulanceTrip,
 		ambulanceTelemetryHealth,
 		activeBedBooking,
+		pendingApproval,
 		startAmbulanceTrip,
 		startBedBooking,
 		selectHospital,
@@ -326,6 +327,7 @@ export default function RequestAmbulanceScreen() {
 		selectedHospital,
 		activeAmbulanceTrip,
 		activeBedBooking,
+		pendingApproval,
 		currentRoute: null,
 		effectiveDemoModeEnabled,
 		onRequestComplete: () => { },
@@ -345,7 +347,7 @@ export default function RequestAmbulanceScreen() {
 			console.log("[EmergencyTrace][RequestAmbulanceScreen] handleClose -> leaving emergency stack");
 		}
 		void clearPersistedIntakePhase();
-		navigateBack({ router, fallbackRoute: ROUTES.TABS_ROOT });
+		navigateBack({ router, fallbackRoute: ROUTES.USER_HOME });
 	}, [clearPersistedIntakePhase, router]);
 
 	const returnToLastIntakePhase = useCallback(() => {

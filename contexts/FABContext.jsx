@@ -109,6 +109,7 @@ const FAB_CONFIG_SCHEMA = {
   position: 'default|top-right|bottom-left',    // Position variant
   allowInStack: 'boolean',  // Override stack hiding behavior
   isFixed: 'boolean',      // Disable scroll responsiveness (NEW)
+  suppressGlobal: 'boolean', // Hide the global FAB while modal/panel overlays own focus
 };
 
 // Default FAB configs per tab (fallback when no screen override)
@@ -171,6 +172,9 @@ export function FABProvider({ children }) {
     if (!registrations) return null;
 
     const all = Array.from(registrations.values());
+    const hasSuppression = all.some(f => f.visible && f.suppressGlobal);
+    if (hasSuppression) return null;
+
     const visible = all.filter(f => f.visible && !f.disabled);
 
     // 1. Stack Overrides (highest priority)

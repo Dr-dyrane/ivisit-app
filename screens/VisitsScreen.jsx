@@ -6,7 +6,6 @@ import {
 	Text,
 	ScrollView,
 	StyleSheet,
-	Platform,
 	RefreshControl,
 	Animated,
 	ActivityIndicator,
@@ -16,7 +15,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
-import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useFAB } from "../contexts/FABContext";
@@ -32,8 +30,6 @@ const VisitsScreen = () => {
 	const router = useRouter();
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
@@ -91,7 +87,6 @@ const VisitsScreen = () => {
 	// Update header when screen is focused
 	useFocusEffect(
 		useCallback(() => {
-			resetTabBar();
 			resetHeader();
 			const nextFilter =
 				typeof filterParam === "string"
@@ -111,7 +106,6 @@ const VisitsScreen = () => {
 				rightComponent: null,
 			});
 		}, [
-			resetTabBar,
 			resetHeader,
 			setHeaderState,
 			leftComponent,
@@ -144,10 +138,9 @@ const VisitsScreen = () => {
 
 	const handleScroll = useCallback(
 		(event) => {
-			handleTabBarScroll(event);
 			handleHeaderScroll(event);
 		},
-		[handleTabBarScroll, handleHeaderScroll]
+		[handleHeaderScroll]
 	);
 
 	const handleVisitSelect = useCallback(
@@ -199,8 +192,7 @@ const VisitsScreen = () => {
 		);
 	}, [deleteVisit, selectedVisitId, selectVisit, filteredVisits]);
 
-	const tabBarHeight = Platform.OS === "ios" ? 85 + (insets?.bottom || 0) : 70;
-	const bottomPadding = tabBarHeight + 20;
+	const bottomPadding = Math.max(36, (insets?.bottom || 0) + 28);
 	const topPadding = STACK_TOP_PADDING + (insets?.top || 0) + 20;
 
 	const hasVisits = Array.isArray(filteredVisits) && filteredVisits.length > 0;

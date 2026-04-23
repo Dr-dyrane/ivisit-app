@@ -5,7 +5,11 @@ import {
 	VISIT_STATUS,
 	VISIT_TYPES,
 } from "../../constants/visits";
-import { emergencyRequestsService } from "../../services/emergencyRequestsService";
+import {
+	ACTIVE_EMERGENCY_REQUEST_ERROR_CODE,
+	ACTIVE_EMERGENCY_REQUEST_STATUSES,
+	emergencyRequestsService,
+} from "../../services/emergencyRequestsService";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { usePaymentFlow } from "./usePaymentFlow";
@@ -99,6 +103,29 @@ const getRequestedLocation = (request) => {
 	return null;
 };
 
+const hasActiveRequestRecord = (record) => {
+	const requestKey = record?.requestId ?? record?.id ?? null;
+	if (!requestKey) return false;
+	const status = String(record?.status ?? "").trim().toLowerCase();
+	if (!status) return true;
+	return ACTIVE_EMERGENCY_REQUEST_STATUSES.includes(status);
+};
+
+const hasActivePendingApproval = (pendingApproval, serviceType) => {
+	if (!pendingApproval || pendingApproval.serviceType !== serviceType) return false;
+	return hasActiveRequestRecord(pendingApproval);
+};
+
+const isActiveRequestUniqueConstraintError = (code, raw) => {
+	if (code !== "23505") return false;
+	return (
+		raw.includes("emergency_requests_one_active_bed_per_user_idx") ||
+		raw.includes("emergency_requests_one_active_ambulance_per_user_idx") ||
+		raw.includes("uniq_active_bed_per_user") ||
+		raw.includes("uniq_active_ambulance_per_user")
+	);
+};
+
 /**
  * 💡 STABILITY NOTE:
  * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned 
@@ -164,9 +191,15 @@ export const useRequestFlow = (props) => {
 
 	const canStartRequest = useCallback(
 		(serviceType) => {
-			const { activeAmbulanceTrip, activeBedBooking } = propsRef.current;
-			if (serviceType === "ambulance") return !activeAmbulanceTrip?.requestId;
-			if (serviceType === "bed") return !activeBedBooking?.requestId;
+			const { activeAmbulanceTrip, activeBedBooking, pendingApproval } =
+				propsRef.current;
+			if (hasActivePendingApproval(pendingApproval, serviceType)) return false;
+			if (serviceType === "ambulance") {
+				return !hasActiveRequestRecord(activeAmbulanceTrip);
+			}
+			if (serviceType === "bed") {
+				return !hasActiveRequestRecord(activeBedBooking);
+			}
 			return false;
 		},
 		[]
@@ -532,7 +565,13 @@ export const useRequestFlow = (props) => {
 				const details = typeof err?.details === "string" ? err.details : "";
 				const hint = typeof err?.hint === "string" ? err.hint : "";
 				const raw = `${message} ${details} ${hint}`.toLowerCase();
-				if (code === "23505" || raw.includes("uniq_active_bed_per_user") || raw.includes("uniq_active_ambulance_per_user")) {
+				if (code === ACTIVE_EMERGENCY_REQUEST_ERROR_CODE) {
+					return blockResult("ALREADY_ACTIVE", {
+						serviceType: err?.serviceType || request.serviceType,
+						activeRequest: err?.activeRequest ?? null,
+					});
+				}
+				if (isActiveRequestUniqueConstraintError(code, raw)) {
 					return blockResult("CONCURRENCY_DB", { serviceType: request.serviceType });
 				}
 				throw err;

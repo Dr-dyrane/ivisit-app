@@ -52,7 +52,7 @@ export default function ResetPasswordRoute() {
     try {
       await authService.resetPassword({ newPassword: password });
       showToast("Password updated", "success");
-      router.replace("/(user)/(tabs)");
+      router.replace("/(user)");
     } catch (resetError) {
       setError(resetError?.message || "Unable to update password");
       showToast(resetError?.message || "Unable to update password", "error");

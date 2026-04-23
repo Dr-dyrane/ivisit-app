@@ -29,6 +29,7 @@ export default function UserLayout() {
 							animation: "slide_from_right",
 						}}
 					>
+						<Stack.Screen name="index" />
 						<Stack.Screen name="(tabs)" />
 						<Stack.Screen
 							name="(stacks)"
