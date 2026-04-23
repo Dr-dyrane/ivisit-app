@@ -51,7 +51,7 @@ Grouped shortcut rows:
 - **Account** (Identity Anchor)
   - `Profile`
 - **Activity** (Contextual Activity)
-  - `Recent Visits` (with count badge)
+  - `History` (with count badge)
 - **Essentials** (Utility & Safety)
   - `Payment`
   - `Emergency Contacts` (with count badge)
@@ -175,7 +175,13 @@ Invariant:
 
 Visits remain adjacent to this work but are not owned by mini profile.
 
-The mini profile may link to recent visits, but the canonical visits surfaces remain map-owned.
+The mini profile may link to history, but the canonical visit/history surfaces remain map-owned.
+
+Locked semantic rule:
+
+- if the badge is lifetime total, the label is `History`
+- do not show `Recent Visits` with a lifetime total badge
+- if product later wants `Recent Activity`, the badge must become a rolling-window count instead
 
 Current plan:
 
@@ -188,5 +194,5 @@ Current plan:
 
 - the mini profile reads as a clean control panel for authenticated users
 - grouped shortcuts are stable across platforms
-- users can reach `Recent Visits`, `Profile`, `Payment`, `Emergency Contacts`, and `Settings` without tab or "More" dependence
+- users can reach `History`, `Profile`, `Payment`, `Emergency Contacts`, and `Settings` without tab or "More" dependence
 - the surface feels native to the `/map` architecture instead of legacy navigation residue

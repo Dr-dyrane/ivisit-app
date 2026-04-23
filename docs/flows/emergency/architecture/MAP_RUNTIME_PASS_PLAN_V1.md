@@ -1021,7 +1021,7 @@ Primary target:
 Scope:
 
 - implement grouped sections inside `MiniProfileModal.jsx`
-  - Care: `Recent Visits`
+  - Activity: `History`
   - Account: `Profile`
   - Essentials: `Payment`, `Emergency Contacts`
   - System: `Settings`
@@ -1072,10 +1072,16 @@ Primary target:
 
 - promote Visits and Visit Details into `/map` after the mini profile control panel and before profile/settings restructuring
 
+Primary references:
+
+- [`MAP_VISITS_SYSTEM_AUDIT_V1.md`](../history/MAP_VISITS_SYSTEM_AUDIT_V1.md)
+- [`VISITS_REQUEST_HISTORY_PLAN.md`](../history/VISITS_REQUEST_HISTORY_PLAN.md)
+
 Scope:
 
 - keep visits simple and map-owned first:
-  - use `MapRecentVisitsModal` as the primary recent-visits owner
+  - replace the mini profile `Recent Visits` semantics with `History` when the badge is a lifetime count
+  - replace lightweight recents preview ownership with a canonical grouped history owner on `/map`
   - promote `MapVisitDetailsModal` as the canonical visit-detail surface on `/map`
   - keep legacy `VisitsScreen` and visit-details routes as compatibility stack surfaces during migration, not as primary owners
 - convert the current visit-details route behavior into a map-owned detail modal with canonical request/visit identity
@@ -1092,13 +1098,64 @@ Scope:
   - allow recent visits to appear in `explore_intent` after the choose-hospital section when visit history exists
 - ensure visit read/write state does not drift between legacy visits screens and `/map` modals during the compatibility period
 
+Pass 12 design contract additions:
+
+- `History` is the truthful Mini Profile label when the badge source is a lifetime total
+- history uses grouped buckets:
+  - `Active now`
+  - `Upcoming`
+  - `Today`
+  - `Yesterday`
+  - `This week`
+  - `Last week`
+  - `This month`
+  - `Last month`
+  - `Older`
+- `Choose care` remains a care-decision surface, not a history surface
+- choose-care header uses left-aligned title and right-aligned close action
+- choose-care does not center the title once the unified `/map` modal chrome is applied
+- `Book a Visit` belongs in choose-care, not in Mini Profile
+- `Book a Visit` should only be added after the canonical visit owners are locked:
+  - grouped history entry on `/map`
+  - map-owned visit details as the canonical detail owner
+  - shared visit read/write truth across legacy and `/map`
+- until those owners are proven, choose-care may show ambulance, bed, and ambulance-plus-bed only
+
+Pass 12 recommended execution order:
+
+1. lock naming and ownership contracts:
+  - Mini Profile says `History`
+  - choose-care remains a care-decision owner
+2. extract grouped history selectors from legacy list assumptions
+3. replace recents preview with grouped `/map` history owner
+4. build canonical map-owned visit details with active-emergency handoff to tracking
+5. preserve visit side effects and lifecycle parity
+6. move booking ownership into `/map`
+7. then add `Book a Visit` into choose-care as the fourth care action
+
+Choose-care modal requirements once `Book a Visit` is promoted:
+
+- header:
+  - left: `Choose care`
+  - right: close
+- body:
+  - ambulance
+  - bed space
+  - ambulance + bed
+  - book a visit
+- recent history may remain a secondary section below the care actions only if it stays visually subordinate to the care choice itself
+- choose-care must not become a mixed-purpose management modal
+- if recent history starts dominating the surface, it should move back to its own dedicated recents modal instead of competing with the care decision
+
 Done when:
 
-- users can open recent visits from `/map`
+- users can open grouped history from `/map`
 - tapping a visit opens canonical visit details on `/map`
-- recent visits can be surfaced contextually inside `explore_intent` when useful
+- active emergency-derived history rows resume tracking instead of duplicating tracking UI
+- contextual recent history can be surfaced inside `explore_intent` only as a secondary support surface
 - visit side effects and lifecycle truth are shared across legacy and `/map` owners
 - standalone visit screens are no longer primary owners even if they still exist as legacy bridges
+- choose-care has a stable header contract and only includes `Book a Visit` once visit ownership is no longer ambiguous
 
 ### Pass 13. Profile And Settings Hub Restructure
 
