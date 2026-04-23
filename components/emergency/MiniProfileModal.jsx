@@ -144,80 +144,74 @@ export default function MiniProfileModal({
 	);
 
 	const shortcutGroups = useMemo(() => {
-		const careRows = [
+		const groups = [];
+
+		// Group 1: Account (Identity first anchoring)
+		groups.push([
+			{
+				key: "profile",
+				label: "Profile",
+				icon: "person",
+				tone: tones.profile,
+				badge: null, // Removed "Open" / "Add name" noise
+				onPress: () => executeNav(navigateToProfile),
+			},
+		]);
+
+		// Group 2: Activity
+		groups.push([
 			{
 				key: "recent-visits",
 				label: "Recent Visits",
 				icon: "time",
 				tone: tones.care,
-				badge: formatCountBadge(visitsTotal, "None"),
+				badge: formatCountBadge(visitsTotal, null), // Only show if count > 0
 				onPress: executeRecentVisits,
 			},
-		];
+		]);
 
-		if (showMapShortcut) {
-			careRows.push({
-				key: "map",
-				label: "Emergency Map",
-				icon: "navigate",
-				tone: tones.map,
-				badge: "Open",
-				onPress: handleOpenMap,
-			});
-		}
+		// Group 3: Essentials
+		groups.push([
+			{
+				key: "payment",
+				label: "Payment",
+				icon: "card",
+				tone: tones.payment,
+				badge: null, // Removed "Wallet" noise
+				onPress: () => executeNav(navigateToPayment),
+			},
+			{
+				key: "contacts",
+				label: "Emergency Contacts",
+				icon: "people",
+				tone: tones.contacts,
+				badge: contactsLoading ? "..." : formatCountBadge(contactsCount, null),
+				onPress: () => executeNav(navigateToEmergencyContacts),
+			},
+		]);
 
-		return [
-			careRows,
-			[
-				{
-					key: "profile",
-					label: "Profile",
-					icon: "person",
-					tone: tones.profile,
-					badge: hasName ? "Open" : "Add name",
-					onPress: () => executeNav(navigateToProfile),
-				},
-			],
-			[
-				{
-					key: "payment",
-					label: "Payment",
-					icon: "card",
-					tone: tones.payment,
-					badge: "Wallet",
-					onPress: () => executeNav(navigateToPayment),
-				},
-				{
-					key: "contacts",
-					label: "Emergency Contacts",
-					icon: "people",
-					tone: tones.contacts,
-					badge: contactsLoading ? "..." : formatCountBadge(contactsCount, "Add"),
-					onPress: () => executeNav(navigateToEmergencyContacts),
-				},
-			],
-			[
-				{
-					key: "settings",
-					label: "Settings",
-					icon: "settings",
-					tone: tones.system,
-					badge: "System",
-					onPress: () => executeNav(navigateToSettings),
-				},
-			],
-		];
+		// Group 4: System
+		groups.push([
+			{
+				key: "settings",
+				label: "Settings",
+				icon: "settings",
+				tone: tones.system,
+				badge: null, // Removed "System" noise
+				onPress: () => executeNav(navigateToSettings),
+			},
+		]);
+
+		return groups;
 	}, [
 		contactsCount,
 		contactsLoading,
 		executeNav,
 		executeRecentVisits,
-		handleOpenMap,
-		hasName,
-		showMapShortcut,
 		tones,
 		visitsTotal,
 	]);
+
 
 	return (
 		<MapModalShell
@@ -225,8 +219,9 @@ export default function MiniProfileModal({
 			onClose={requestClose}
 			enableSnapDetents={false}
 			matchExpandedSheetHeight={false}
-			minHeightRatio={0.6}
-			maxHeightRatio={0.88}
+			minHeightRatio={0.7} // Raised from 0.6
+			maxHeightRatio={0.92} // Increased from 0.88
+
 			presentationModeOverride={
 				preferDrawerPresentation ? "left-drawer" : "bottom-sheet"
 			}
@@ -239,16 +234,26 @@ export default function MiniProfileModal({
 				},
 			]}
 		>
-			<MiniProfileIdentity
-				user={user}
-				titleText={titleText}
-				subtitleText={subtitleText}
-				colors={colors}
-				layout={layout}
-				onPress={() => executeNav(navigateToProfile)}
-			/>
+			<View style={{ marginHorizontal: layout.identity.horizontalMargin }}>
+				<MiniProfileIdentity
+					user={user}
+					titleText={titleText}
+					subtitleText={subtitleText}
+					colors={colors}
+					layout={layout}
+					onPress={() => executeNav(navigateToProfile)}
+				/>
+			</View>
 
-			<View style={[styles.groupsWrap, { gap: layout.groups.gap }]}>
+			<View
+				style={[
+					styles.groupsWrap,
+					{
+						gap: layout.groups.gap,
+						marginHorizontal: layout.groups.horizontalMargin || 0,
+					},
+				]}
+			>
 				{shortcutGroups.map((rows, groupIndex) => (
 					<MiniProfileShortcutGroup
 						key={`group-${groupIndex}`}
@@ -259,13 +264,29 @@ export default function MiniProfileModal({
 				))}
 			</View>
 
-			<MiniProfileSignOutButton
-				visible={typeof onSignOut === "function"}
-				isSigningOut={isSigningOut}
-				colors={colors}
-				layout={layout}
-				onPress={handleSignOut}
+			<View
+				style={[
+					styles.signOutDivider,
+					{
+						backgroundColor: colors.divider,
+						marginTop: layout.groups.gap,
+						marginHorizontal: layout.signOut.horizontalMargin,
+						width: undefined, // Let margin define width
+					},
+				]}
 			/>
+
+			<View style={{ marginHorizontal: layout.signOut.horizontalMargin }}>
+				<MiniProfileSignOutButton
+					visible={typeof onSignOut === "function"}
+					isSigningOut={isSigningOut}
+					colors={colors}
+					layout={layout}
+					onPress={handleSignOut}
+				/>
+			</View>
+
+
 		</MapModalShell>
 	);
 }
@@ -275,4 +296,9 @@ const styles = StyleSheet.create({
 		flexGrow: 1,
 	},
 	groupsWrap: {},
+	signOutDivider: {
+		height: StyleSheet.hairlineWidth,
+		width: "100%",
+	},
 });
+

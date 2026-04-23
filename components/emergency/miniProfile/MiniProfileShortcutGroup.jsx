@@ -79,37 +79,40 @@ function MiniProfileShortcutRow({ row, isLast, colors, layout }) {
 					{row.label}
 				</Text>
 				<View style={styles.rowRight}>
-					<View
-						style={[
-							styles.badge,
-							{
-								backgroundColor: colors.badge,
-								minHeight: layout.row.badgeMinHeight,
-								paddingHorizontal: layout.row.badgePaddingHorizontal,
-							},
-						]}
-					>
-						<Text
+					{row.badge && (
+						<View
 							style={[
-								styles.badgeText,
+								styles.badge,
 								{
-									color: colors.badgeText,
-									fontSize: layout.row.badgeSize,
-									lineHeight: layout.row.badgeLineHeight,
-									fontWeight: layout.row.badgeWeight,
+									backgroundColor: colors.badge,
+									minHeight: layout.row.badgeMinHeight,
+									paddingHorizontal: layout.row.badgePaddingHorizontal,
 								},
 							]}
-							numberOfLines={1}
 						>
-							{row.badge}
-						</Text>
-					</View>
+							<Text
+								style={[
+									styles.badgeText,
+									{
+										color: colors.badgeText,
+										fontSize: layout.row.badgeSize,
+										lineHeight: layout.row.badgeLineHeight,
+										fontWeight: layout.row.badgeWeight,
+									},
+								]}
+								numberOfLines={1}
+							>
+								{row.badge}
+							</Text>
+						</View>
+					)}
 					<Ionicons
 						name="chevron-forward"
 						size={layout.row.chevronSize}
 						color={colors.subtle}
 					/>
 				</View>
+
 			</View>
 		</Pressable>
 	);

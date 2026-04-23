@@ -13,10 +13,21 @@ export default function MiniProfileIdentity({
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.identityBlock,
-				{ marginBottom: layout.identity.marginBottom },
+				{
+					marginBottom: layout.identity.marginBottom,
+					backgroundColor: pressed ? colors.pressBg : "transparent",
+					borderRadius: 24, // restored squircle
+					paddingVertical: 12,
+
+ // restored from 8
+
+					paddingHorizontal: 16,
+				},
+
 				pressed ? styles.identityPressed : null,
 			]}
 		>
+
 			<View
 				style={[
 					styles.avatarWrap,
@@ -80,9 +91,11 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	identityPressed: {
-		opacity: 0.9,
+		opacity: 0.92,
 		transform: [{ scale: 0.99 }],
 	},
+
+
 	avatarWrap: {
 		borderRadius: 999,
 		alignItems: "center",

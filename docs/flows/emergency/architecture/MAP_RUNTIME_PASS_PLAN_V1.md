@@ -1039,17 +1039,17 @@ Done when:
 - grouped navigation remains stable across device classes
 - authenticated users can reach visits, profile, payment, contacts, and settings from `/map` without legacy tab dependence
 
-Pass 11 implemented:
+Pass 11 implemented & refined:
 
 - [`components/emergency/MiniProfileModal.jsx`](../../../components/emergency/MiniProfileModal.jsx) now uses the locked window-style control-panel layout:
-  - top identity block
-  - resilient `What's your name?` null-state copy
-  - grouped shortcut rows
-  - orb icon wrappers
-  - right-side badges
-  - explicit press feedback
-  - low-priority sign-out affordance
+  - **Identity-First Anchoring**: `Profile` moved to the top group to anchor the surface around the user.
+  - **Radical Noise Reduction**: Removed "Open", "Wallet", and "System" labels; badges reserved for dynamic data counts only.
+  - **Refined Grouping**: Account → Activity → Essentials → System hierarchy.
+  - **Visual Rhythm**: Increased group spacing ("breathing room") and identity block prominence.
+  - **Intentional Iconography**: Desaturated icons with softer accent tones for a calmer, premium feel.
+  - **Destructive Secondary**: `Sign Out` demarcated with a divider and lower saturation to prevent accidental taps.
 - [`screens/MapScreen.jsx`](../../../screens/MapScreen.jsx) now lets mini profile open the map-owned recent-visits modal instead of routing through the legacy visits tab first
+
 
 Pass 11 proven:
 

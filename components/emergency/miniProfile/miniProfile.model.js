@@ -34,35 +34,37 @@ export function getMiniProfileColors(isDarkMode) {
 		divider: isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(15,23,42,0.09)",
 		badge: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)",
 		badgeText: isDarkMode ? "#D9E2F1" : "#475569",
-		dangerBg: isDarkMode ? "rgba(239,68,68,0.14)" : "rgba(134,16,14,0.10)",
-		dangerText: isDarkMode ? "#FCA5A5" : "#86100E",
+		dangerBg: isDarkMode ? "rgba(239,68,68,0.11)" : "rgba(15,23,42,0.05)",
+		dangerText: isDarkMode ? "#FCA5A5" : "#64748B",
+		pressBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
 	};
 }
 
 export function getMiniProfileTones(isDarkMode) {
+	// desaturate icons slightly + softer accent tones
 	return {
 		care: {
-			bg: isDarkMode ? "rgba(134,16,14,0.28)" : "rgba(134,16,14,0.13)",
-			icon: isDarkMode ? "#FCA5A5" : COLORS.brandPrimary,
+			bg: isDarkMode ? "rgba(134,16,14,0.22)" : "rgba(134,16,14,0.11)",
+			icon: isDarkMode ? "#F87171" : COLORS.brandPrimary,
 		},
 		profile: {
-			bg: isDarkMode ? "rgba(248,113,113,0.22)" : "rgba(248,113,113,0.18)",
+			bg: isDarkMode ? "rgba(248,113,113,0.18)" : "rgba(248,113,113,0.14)",
 			icon: isDarkMode ? "#FCA5A5" : "#C2410C",
 		},
 		payment: {
-			bg: isDarkMode ? "rgba(56,189,248,0.22)" : "rgba(14,165,233,0.16)",
+			bg: isDarkMode ? "rgba(56,189,248,0.18)" : "rgba(14,165,233,0.13)",
 			icon: isDarkMode ? "#7DD3FC" : "#0284C7",
 		},
 		contacts: {
-			bg: isDarkMode ? "rgba(34,197,94,0.22)" : "rgba(34,197,94,0.14)",
+			bg: isDarkMode ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
 			icon: isDarkMode ? "#86EFAC" : "#16A34A",
 		},
 		system: {
-			bg: isDarkMode ? "rgba(148,163,184,0.18)" : "rgba(100,116,139,0.12)",
+			bg: isDarkMode ? "rgba(148,163,184,0.14)" : "rgba(100,116,139,0.10)",
 			icon: isDarkMode ? "#CBD5E1" : "#64748B",
 		},
 		map: {
-			bg: isDarkMode ? "rgba(251,146,60,0.20)" : "rgba(251,146,60,0.14)",
+			bg: isDarkMode ? "rgba(251,146,60,0.16)" : "rgba(251,146,60,0.12)",
 			icon: isDarkMode ? "#FDBA74" : "#EA580C",
 		},
 	};
@@ -80,14 +82,15 @@ export function getMiniProfileLayout(viewportMetrics, { preferDrawerPresentation
 
 	return {
 		content: {
-			paddingHorizontal: round(clamp(horizontalInset - 16, 2, isDrawer ? 12 : 8)),
+			paddingHorizontal: round(clamp(horizontalInset - 8, 8, 12)), // restored native-like padding
 			paddingTop: round(clamp(sectionGap - 9, 0, 5)),
 			paddingBottom: round(clamp(sectionGap + 6, 18, 26)),
 		},
 		identity: {
 			avatarSize,
-			marginBottom: round(clamp(sectionGap + 5, 16, 20)),
-			avatarMarginBottom: round(clamp(sectionGap + 2, 14, 18)),
+			horizontalMargin: 0, // now governed by content padding
+			marginBottom: round(clamp(sectionGap + 8, 20, 24)),
+			avatarMarginBottom: round(clamp(sectionGap + 4, 14, 16)),
 			nameSize: round(clamp(titleSize + 1, 26, 29)),
 			nameLineHeight: round(clamp(titleSize + 6, 31, 34)),
 			nameWeight: "800",
@@ -96,13 +99,14 @@ export function getMiniProfileLayout(viewportMetrics, { preferDrawerPresentation
 			emailWeight: "600",
 		},
 		groups: {
-			gap: round(clamp(sectionGap - 4, 8, 10)),
+			gap: round(clamp(sectionGap + 2, 14, 18)),
+			horizontalMargin: 0, // governed by content padding
 			radius: viewportMetrics?.radius?.card || 28,
 		},
 		row: {
 			minHeight: 56,
-			paddingLeft: 10,
-			paddingRight: 8,
+			paddingLeft: 16,
+			paddingRight: 12,
 			orbSize: 38,
 			orbGap: 16,
 			iconSize: 23,
@@ -111,14 +115,15 @@ export function getMiniProfileLayout(viewportMetrics, { preferDrawerPresentation
 			labelLineHeight: rowLabelSize + 5,
 			labelWeight: "500",
 			badgeMinHeight: 24,
-			badgePaddingHorizontal: 9,
+			badgePaddingHorizontal: 10,
 			badgeSize,
 			badgeLineHeight: badgeSize + 4,
-			badgeWeight: "500",
+			badgeWeight: "600",
 			chevronSize: 17,
 		},
 		signOut: {
-			marginTop: round(clamp(sectionGap - 2, 10, 14)),
+			marginTop: round(clamp(sectionGap + 12, 24, 28)),
+			horizontalMargin: 0, // governed by content padding
 			minHeight: 50,
 			radius: 24,
 			iconSize: 20,
@@ -128,3 +133,9 @@ export function getMiniProfileLayout(viewportMetrics, { preferDrawerPresentation
 		},
 	};
 }
+
+
+
+
+
+

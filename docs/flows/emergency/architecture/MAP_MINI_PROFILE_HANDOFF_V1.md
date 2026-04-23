@@ -38,25 +38,51 @@ It should not become:
 - a long profile editor
 - a second navigation system
 
-## Information Architecture
+## Information Architecture (Refined)
+
+The architecture is now strictly anchored by identity, flowing from the user down to system controls.
 
 Top identity block:
-
 - avatar
 - full name
 - email
 
 Grouped shortcut rows:
-
-- Care
-  - `Recent Visits`
-- Account
+- **Account** (Identity Anchor)
   - `Profile`
-- Essentials
+- **Activity** (Contextual Activity)
+  - `Recent Visits` (with count badge)
+- **Essentials** (Utility & Safety)
   - `Payment`
-  - `Emergency Contacts`
-- System
+  - `Emergency Contacts` (with count badge)
+- **System** (Configuration)
   - `Settings`
+
+Bottom:
+- **Sign Out** (Destructive Secondary)
+
+## Refinement Rationale (v1.1)
+
+These refinements were implemented to elevate the surface from a "menu" to a "premium control panel":
+
+### 1. Identity-First Anchoring
+`Profile` is moved to the top group. The user sees themselves first, and the most personal action (managing identity) follows immediately. This anchors the entire surface.
+
+### 2. Radical Noise Reduction
+Labels like "Open", "Wallet", and "System" were removed from row badges. They added cognitive noise without adding meaning. Badges are now reserved exclusively for **dynamic data** (counts like 46 or 2), making them immediately scannable and relevant.
+
+### 3. Action Grouping (Not Flat Lists)
+Rows are explicitly grouped by intent. This reduces scanning effort by allowing the eye to skip entire blocks if the user is looking for a specific category (e.g., jumping straight to "Essentials").
+
+### 4. Visual Rhythm & Breathing
+Increased vertical rhythm and group spacing ("breathing, not separation") ensures the panel feels airy and premium. The identity block has more margin to emphasize its role as the surface anchor.
+
+### 5. Intentional Iconography
+Icons are desaturated slightly with softer accent tones. This prevents them from competing for attention, allowing the typography and content to lead while icons provide scannable support.
+
+### 6. Destructive Secondary Logic
+The `Sign Out` action is now visually demarcated with a divider and lower saturation. It feels like a secondary utility rather than a primary call to action, protecting the user from accidental taps and clarifying the hierarchy.
+
 
 Notifications:
 
