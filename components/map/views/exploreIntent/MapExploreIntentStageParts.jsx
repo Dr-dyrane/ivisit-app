@@ -7,6 +7,7 @@ import MapExploreIntentCareSection from "./MapExploreIntentCareSection";
 import MapExploreIntentHospitalRail from "./MapExploreIntentHospitalRail";
 import MapExploreIntentHospitalSummaryCard from "./MapExploreIntentHospitalSummaryCard";
 import MapExploreIntentProfileTrigger from "./MapExploreIntentProfileTrigger";
+import MapExploreIntentRecents from "./MapExploreIntentRecents";
 import styles from "./mapExploreIntent.styles";
 
 export function MapExploreIntentTopRow({
@@ -113,6 +114,8 @@ export function buildMapExploreIntentScreenSections({
 	onOpenHospitals,
 	onChooseCare,
 	onOpenCareHistory,
+	onOpenRecents,
+	onSelectHistoryItem,
 	pulseProgress,
 	isExpanded,
 	featuredHospitals,
@@ -208,6 +211,20 @@ export function buildMapExploreIntentScreenSections({
 					</View>
 				</View>
 			),
+		},
+		{
+			key: "recent_care",
+			content: (
+				<MapExploreIntentRecents
+					onOpenAll={onOpenRecents}
+					onSelectHistoryItem={onSelectHistoryItem}
+					responsiveMetrics={responsiveMetrics}
+					titleColor={tokens.titleColor}
+					mutedColor={tokens.mutedText}
+				/>
+			),
+			panelFlex: 1,
+			panelMinWidth: 280,
 		},
 	];
 }

@@ -52,6 +52,7 @@ import {
   buildCommitTriageTransition,
   buildExploreIntentSheetView,
   buildHospitalDetailSheetView,
+  buildVisitDetailSheetView,
   buildHospitalListSheetView,
   buildSearchSheetView,
   buildServiceDetailSheetView,
@@ -300,9 +301,6 @@ export function useMapExploreFlow() {
     guestProfileVisible,
     careHistoryVisible,
     recentVisitsVisible,
-    // PULLBACK NOTE: Pass 12 F3b - map-owned booking flow surface
-    bookingVisible,
-    bookingInitialData,
     authModalVisible,
   } = selectMapExploreSurfaceState(flowState);
   const {
@@ -324,8 +322,6 @@ export function useMapExploreFlow() {
   const {
     resetExplorePresentation,
     setAuthModalVisible,
-    setBookingVisible,
-    setBookingInitialData,
     setCareHistoryVisible,
     setFeaturedHospital,
     setHospitalServiceSelection: setHospitalServiceSelectionValue,
@@ -942,6 +938,19 @@ export function useMapExploreFlow() {
     setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
   }, [defaultExploreSnapState, setSheetView]);
 
+  const openVisitDetail = useCallback(
+    (historyItem) => {
+      setSheetView(
+        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null }),
+      );
+    },
+    [setSheetView, usesSidebarLayout],
+  );
+
+  const closeVisitDetail = useCallback(() => {
+    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
+  }, [defaultExploreSnapState, setSheetView]);
+
   const closeAmbulanceDecision = useCallback(() => {
     clearCommitFlow();
     setSheetView(
@@ -1071,7 +1080,6 @@ export function useMapExploreFlow() {
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
-    bookingVisible ||
     authModalVisible;
   const trackingHeaderOwnsCurrentPhase =
     sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
@@ -1649,6 +1657,8 @@ export function useMapExploreFlow() {
     openTracking,
     finishCommitPayment,
     closeHospitalDetail,
+    openVisitDetail,
+    closeVisitDetail,
     closeHospitalList,
     closeServiceDetail,
     confirmServiceDetail,
@@ -1683,15 +1693,11 @@ export function useMapExploreFlow() {
     profileModalVisible,
     recentVisits,
     recentVisitsVisible,
-    bookingVisible,
-    bookingInitialData,
     searchSheetMode,
     searchSheetVisible,
     selectedCare,
     sheetPhase,
     setAuthModalVisible,
-    setBookingVisible,
-    setBookingInitialData,
     setCareHistoryVisible,
     setGuestProfileEmail,
     setGuestProfileVisible,

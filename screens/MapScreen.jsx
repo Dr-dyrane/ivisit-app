@@ -16,9 +16,8 @@ import { MAP_ACTIVE_REQUEST_KINDS } from "../components/map/core/mapActiveReques
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
-import MapRecentVisitsModal from "../components/map/MapRecentVisitsModal";
-import MapVisitDetailsModal from "../components/map/history/MapVisitDetailsModal";
-import MapVisitBookingFlow from "../components/map/history/MapVisitBookingFlow";
+import MapHistoryModal from "../components/map/history/MapHistoryModal";
+import MapHistoryPaymentModal from "../components/map/history/MapHistoryPaymentModal";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
@@ -55,6 +54,7 @@ import {
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
+import { paymentService } from "../services/paymentService";
 import { selectHistoryItemByAnyKey } from "../hooks/visits/useVisitHistorySelectors";
 
 export default function MapScreen() {
@@ -116,13 +116,13 @@ export default function MapScreen() {
     nearbyHospitalCount,
     openSearchSheet,
     closeHospitalDetail,
+    openVisitDetail,
+    closeVisitDetail,
     closeSearchSheet,
     profileImageSource,
     profileModalVisible,
     recentVisits,
     recentVisitsVisible,
-    bookingVisible,
-    bookingInitialData,
     searchSheetMode,
     sheetPhase,
     sheetPayload,
@@ -134,8 +134,6 @@ export default function MapScreen() {
     setGuestProfileVisible,
     setProfileModalVisible,
     setRecentVisitsVisible,
-    setBookingVisible,
-    setBookingInitialData,
     setSheetSnapState,
     sheetMode,
     sheetSnapState,
@@ -191,8 +189,17 @@ export default function MapScreen() {
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
   const [recoveredRatingState, setRecoveredRatingState] = useState(null);
   const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useState(null);
-  const [historyVisitDetailsVisible, setHistoryVisitDetailsVisible] = useState(false);
   const [historyRatingState, setHistoryRatingState] = useState(null);
+  const [historyPaymentState, setHistoryPaymentState] = useState({
+    visible: false,
+    loading: false,
+    paymentRecord: null,
+  });
+  const historyPaymentRequestVersionRef = useRef(0);
+
+  // Visit details live in the VISIT_DETAIL sheet phase now (not a modal).
+  const historyVisitDetailsVisible =
+    sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
 
   const hasActiveMapModal =
 
@@ -200,8 +207,7 @@ export default function MapScreen() {
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
-    bookingVisible ||
-    historyVisitDetailsVisible ||
+    historyPaymentState.visible ||
     Boolean(historyRatingState?.visible) ||
     authModalVisible ||
     Boolean(recoveredRatingState?.visible) ||
@@ -274,25 +280,103 @@ export default function MapScreen() {
   ]);
 
   const closeHistoryVisitDetails = useCallback(() => {
-    setHistoryVisitDetailsVisible(false);
     setSelectedHistoryVisitKey(null);
-  }, []);
+    closeVisitDetail?.();
+  }, [closeVisitDetail]);
   const closeHistoryRating = useCallback(() => {
     setHistoryRatingState(null);
+  }, []);
+  const closeHistoryPaymentDetails = useCallback(() => {
+    historyPaymentRequestVersionRef.current += 1;
+    setHistoryPaymentState({
+      visible: false,
+      loading: false,
+      paymentRecord: null,
+    });
   }, []);
 
   const handleOpenChooseCareFromHistory = useCallback(() => {
     setRecentVisitsVisible(false);
     setCareHistoryVisible(true);
   }, [setCareHistoryVisible, setRecentVisitsVisible]);
-  // PULLBACK NOTE: Pass 12 F3c - book-visit opens map-owned sheet instead of legacy route
-  // OLD: router.push("/(user)/(stacks)/book-visit")
-  // NEW: setBookingInitialData(null) + setBookingVisible(true)
+
+  // Booking from the History modal is temporarily bridged to the legacy route
+  // while the sheet-native Pass 12 booking rebuild is in progress.
+  const handleBookVisitFromHistory = useCallback(() => {
+    setRecentVisitsVisible(false);
+    router.push("/(user)/(stacks)/book-visit");
+  }, [router, setRecentVisitsVisible]);
+
+  // Directions from visit detail — mirrors hospital detail's pattern.
+  const handleGetHistoryDirections = useCallback(() => {
+    const coordinate =
+      selectedHistoryVisit?.facilityCoordinate || selectedHistoryVisit?.hospitalCoordinate;
+    if (!coordinate) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${coordinate.latitude},${coordinate.longitude}`;
+    Linking.openURL(url);
+  }, [selectedHistoryVisit]);
+  const handleOpenHistoryPaymentDetails = useCallback(() => {
+    const paymentTransactionId =
+      selectedHistoryVisit?.paymentId ||
+      selectedHistoryVisit?.visit?.paymentId ||
+      selectedHistoryVisit?.visit?.payment_id ||
+      null;
+    const historyRequestId =
+      selectedHistoryVisit?.requestId ||
+      selectedHistoryVisit?.visit?.requestId ||
+      selectedHistoryVisit?.visit?.request_id ||
+      null;
+
+    if (!paymentTransactionId && !historyRequestId) return;
+
+    const requestVersion = historyPaymentRequestVersionRef.current + 1;
+    historyPaymentRequestVersionRef.current = requestVersion;
+    setHistoryPaymentState({
+      visible: true,
+      loading: true,
+      paymentRecord: null,
+    });
+
+    (async () => {
+      const paymentRecord = await paymentService.getPaymentHistoryEntry({
+        transactionId: paymentTransactionId || null,
+        requestId: historyRequestId || null,
+      });
+
+      if (historyPaymentRequestVersionRef.current !== requestVersion) return;
+
+      if (!paymentRecord) {
+        setHistoryPaymentState({
+          visible: false,
+          loading: false,
+          paymentRecord: null,
+        });
+        showToast("Payment details are not available yet.", "info");
+        return;
+      }
+
+      setHistoryPaymentState({
+        visible: true,
+        loading: false,
+        paymentRecord,
+      });
+    })();
+  }, [
+    selectedHistoryVisit?.paymentId,
+    selectedHistoryVisit?.requestId,
+    selectedHistoryVisit?.visit?.paymentId,
+    selectedHistoryVisit?.visit?.payment_id,
+    selectedHistoryVisit?.visit?.requestId,
+    selectedHistoryVisit?.visit?.request_id,
+    showToast,
+  ]);
+  // Booking flow is temporarily bridged to the legacy full-screen route while the
+  // sheet-native Pass 12 booking rebuild is in progress. When the rebuild lands,
+  // this handler will reopen the map-owned booking sheet with clean state.
   const handleBookVisitFromCare = useCallback(() => {
     setCareHistoryVisible(false);
-    setBookingInitialData(null);
-    setBookingVisible(true);
-  }, [setBookingInitialData, setBookingVisible, setCareHistoryVisible]);
+    router.push("/(user)/(stacks)/book-visit");
+  }, [router, setCareHistoryVisible]);
 
   const handleSelectHistoryItem = useCallback(
     (historyItem) => {
@@ -331,12 +415,13 @@ export default function MapScreen() {
       setSelectedHistoryVisitKey(
         historyItem.requestId || historyItem.displayId || historyItem.id,
       );
-      setHistoryVisitDetailsVisible(true);
+      openVisitDetail?.(historyItem);
     },
     [
       activeHistoryRequestKeys,
       activeMapRequest?.hasActiveRequest,
       openTracking,
+      openVisitDetail,
       setRecentVisitsVisible,
     ],
   );
@@ -1039,37 +1124,14 @@ export default function MapScreen() {
     Linking.openURL(meetingLink);
   }, [selectedHistoryVisit?.meetingLink]);
 
-  // PULLBACK NOTE: Pass 12 F3c - book-again opens map-owned sheet with pre-filled initialData
-  // OLD: router.push({ pathname: "/(user)/(stacks)/book-visit", params: { ... } })
-  // NEW: setBookingInitialData(prefill) + setBookingVisible(true); useBookVisit consumes initialData
+  // Book-again is temporarily bridged to the legacy full-screen route while the
+  // sheet-native Pass 12 booking rebuild is in progress. Prefill parity will be
+  // restored when the map-owned booking sheet lands.
   const handleBookHistoryAgain = useCallback(() => {
     if (!selectedHistoryVisit) return;
     closeHistoryVisitDetails();
-    const rawVisit = selectedHistoryVisit.visit || {};
-    const isTelehealth =
-      selectedHistoryVisit.requestType === "visit" &&
-      String(rawVisit?.type || "").toLowerCase().includes("tele");
-    setBookingInitialData({
-      type: isTelehealth ? "telehealth" : "clinic",
-      specialty: rawVisit?.specialty || undefined,
-      hospital: rawVisit?.hospital
-        ? {
-            id: rawVisit?.hospitalId || undefined,
-            name: rawVisit?.hospital,
-            address: rawVisit?.address || undefined,
-            image: rawVisit?.image || rawVisit?.hospitalImage || undefined,
-            phone: rawVisit?.phone || undefined,
-          }
-        : undefined,
-      step: 1,
-    });
-    setBookingVisible(true);
-  }, [
-    closeHistoryVisitDetails,
-    selectedHistoryVisit,
-    setBookingInitialData,
-    setBookingVisible,
-  ]);
+    router.push("/(user)/(stacks)/book-visit");
+  }, [closeHistoryVisitDetails, router, selectedHistoryVisit]);
 
   const handleCancelHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id) return;
@@ -1292,9 +1354,8 @@ export default function MapScreen() {
           onOpenCareHistory={() => setCareHistoryVisible(true)}
           onOpenAmbulanceHospitals={openAmbulanceHospitalList}
           onOpenBedHospitals={openBedHospitalList}
-          // PULLBACK NOTE: Pass 12 F6 - renamed from onOpenRecents to onOpenRecentVisits
-          // so MapSheetOrchestrator + MapExploreIntentStageBase can consume it consistently.
-          onOpenRecentVisits={() => setRecentVisitsVisible(true)}
+          onOpenRecents={() => setRecentVisitsVisible(true)}
+          onSelectHistoryItem={handleSelectHistoryItem}
           onOpenFeaturedHospital={handleOpenFeaturedHospital}
           onCycleHospital={
             featuredHospitals.length > 1
@@ -1314,6 +1375,15 @@ export default function MapScreen() {
           onAddBedFromTracking={handleAddBedFromTracking}
           onAddAmbulanceFromTracking={handleAddAmbulanceFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
+          onCloseVisitDetail={closeHistoryVisitDetails}
+          onResumeHistoryVisit={handleResumeHistoryRequest}
+          onRateHistoryVisit={handleRateHistoryVisit}
+          onCallHistoryClinic={handleCallHistoryClinic}
+          onJoinHistoryVideo={handleJoinHistoryVisit}
+          onBookHistoryAgain={handleBookHistoryAgain}
+          onOpenHistoryPaymentDetails={handleOpenHistoryPaymentDetails}
+          onGetHistoryDirections={handleGetHistoryDirections}
+          onCancelHistoryVisit={handleCancelHistoryVisit}
           onConfirmAmbulanceDecision={handleConfirmAmbulanceDecision}
           onConfirmBedDecision={handleConfirmBedDecision}
           onConfirmCommitDetails={handleConfirmCommitDetails}
@@ -1389,37 +1459,19 @@ export default function MapScreen() {
         onBookVisit={handleBookVisitFromCare}
       />
 
-      <MapRecentVisitsModal
+      <MapHistoryModal
         visible={recentVisitsVisible}
         onClose={() => setRecentVisitsVisible(false)}
         onSelectVisit={handleSelectHistoryItem}
+        onBookVisit={handleBookVisitFromHistory}
         onChooseCare={handleOpenChooseCareFromHistory}
       />
 
-      <MapVisitDetailsModal
-        visible={historyVisitDetailsVisible}
-        historyItem={selectedHistoryVisit}
-        onClose={closeHistoryVisitDetails}
-        onResume={handleResumeHistoryRequest}
-        onRateVisit={handleRateHistoryVisit}
-        onCallClinic={handleCallHistoryClinic}
-        onJoinVideo={handleJoinHistoryVisit}
-        onBookAgain={handleBookHistoryAgain}
-        onCancelVisit={handleCancelHistoryVisit}
-      />
-
-      {/* PULLBACK NOTE: Pass 12 F3c - map-owned visit booking flow.
-          Replaces legacy /(user)/(stacks)/book-visit bridge. */}
-      <MapVisitBookingFlow
-        visible={bookingVisible}
-        initialData={bookingInitialData}
-        onClose={() => setBookingVisible(false)}
-        onCompleted={(visit) => {
-          showToast(
-            `Visit booked for ${visit?.date || "your selection"}.`,
-            "success",
-          );
-        }}
+      <MapHistoryPaymentModal
+        visible={historyPaymentState.visible}
+        loading={historyPaymentState.loading}
+        paymentRecord={historyPaymentState.paymentRecord}
+        onClose={closeHistoryPaymentDetails}
       />
 
       <ServiceRatingModal

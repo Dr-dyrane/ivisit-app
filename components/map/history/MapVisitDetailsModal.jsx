@@ -1,50 +1,52 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { MAP_SHEET_SNAP_STATES } from "../core/mapSheet.constants";
 import MapModalShell from "../surfaces/MapModalShell";
 import useResponsiveSurfaceMetrics from "../../../hooks/ui/useResponsiveSurfaceMetrics";
 import { useTheme } from "../../../contexts/ThemeContext";
-import { resolveHistoryHeroTone } from "./history.theme";
+import buildHistoryThemeTokens from "./history.theme";
+import { HISTORY_DETAILS_COPY } from "./history.content";
+import { historyDetailsStyles } from "./history.styles";
+import {
+	resolveClinicianLabel,
+	resolveDetailsPrimaryAction,
+	resolveFacilityLine,
+	resolveHistoryDetailsTitle,
+	resolveHistoryRequestIcon,
+	resolveRatingLabel,
+	resolveTypeValue,
+	resolveWhenValue,
+} from "./history.presentation";
 
-const squircle = (radius) => ({
-	borderRadius: radius,
-	borderCurve: "continuous",
-});
-
-const getTypeIcon = (requestType) => {
-	switch (requestType) {
-		case "ambulance":
-			return { library: "material", name: "ambulance" };
-		case "bed":
-			return { library: "material", name: "bed" };
-		default:
-			return { library: "ion", name: "calendar" };
-	}
-};
-
-// PULLBACK NOTE: status-tone tokens centralized in history.theme.js (F1)
-// OLD: local getTone duplicated inline
-// NEW: import { resolveHistoryHeroTone } from "./history.theme"
-
-function DetailRow({ label, value, mutedColor, titleColor, responsiveStyles }) {
+/**
+ * Single row in the Details section — label + value.
+ * Hidden when value is falsy.
+ */
+function DetailRow({ label, value, theme, metrics }) {
 	if (!value) return null;
 	return (
-		<View style={styles.detailRow}>
+		<View style={historyDetailsStyles.detailRow}>
 			<Text
 				style={[
-					styles.detailLabel,
-					responsiveStyles.detailLabel,
-					{ color: mutedColor },
+					historyDetailsStyles.detailLabel,
+					{
+						color: theme.mutedColor,
+						fontSize: metrics.detailLabelSize,
+						lineHeight: metrics.detailLabelLineHeight,
+					},
 				]}
 			>
 				{label}
 			</Text>
 			<Text
 				style={[
-					styles.detailValue,
-					responsiveStyles.detailValue,
-					{ color: titleColor },
+					historyDetailsStyles.detailValue,
+					{
+						color: theme.titleColor,
+						fontSize: metrics.detailValueSize,
+						lineHeight: metrics.detailValueLineHeight,
+					},
 				]}
 			>
 				{value}
@@ -53,29 +55,29 @@ function DetailRow({ label, value, mutedColor, titleColor, responsiveStyles }) {
 	);
 }
 
-function ActionRow({
-	label,
-	icon,
-	toneColor,
-	onPress,
-	responsiveStyles,
-	titleColor,
-}) {
+/**
+ * Action row — label + leading semantic-tone icon.
+ */
+function ActionRow({ label, icon, toneColor, onPress, theme, metrics }) {
 	return (
 		<Pressable
 			onPress={onPress}
-			style={[styles.actionRow, responsiveStyles.actionRow]}
+			style={[
+				historyDetailsStyles.actionRow,
+				{ paddingVertical: metrics.actionRowPadding },
+			]}
+			accessibilityRole="button"
+			accessibilityLabel={label}
 		>
-			<Ionicons
-				name={icon}
-				size={responsiveStyles.actionIconSize}
-				color={toneColor}
-			/>
+			<Ionicons name={icon} size={metrics.actionIconSize} color={toneColor} />
 			<Text
 				style={[
-					styles.actionLabel,
-					responsiveStyles.actionLabel,
-					{ color: titleColor },
+					historyDetailsStyles.actionLabel,
+					{
+						color: theme.titleColor,
+						fontSize: metrics.actionLabelSize,
+						lineHeight: metrics.actionLabelLineHeight,
+					},
 				]}
 			>
 				{label}
@@ -84,6 +86,12 @@ function ActionRow({
 	);
 }
 
+/**
+ * MapVisitDetailsModal
+ *
+ * The canonical detail surface for any history item (visit, transport, reservation).
+ * Title adapts to requestType. All color/structure passes through history tokens.
+ */
 export default function MapVisitDetailsModal({
 	visible,
 	historyItem,
@@ -99,106 +107,65 @@ export default function MapVisitDetailsModal({
 	const viewportMetrics = useResponsiveSurfaceMetrics({
 		presentationMode: "modal",
 	});
-	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
-	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
-	const bodyColor = isDarkMode ? "#CBD5E1" : "#475569";
-	const surfaceColor = isDarkMode
-		? "rgba(255,255,255,0.06)"
-		: "rgba(15,23,42,0.04)";
-	const heroTone = resolveHistoryHeroTone(historyItem?.statusTone, isDarkMode);
-	const typeIcon = getTypeIcon(historyItem?.requestType);
 
-	const responsiveStyles = useMemo(() => {
+	const theme = useMemo(
+		() =>
+			buildHistoryThemeTokens({
+				isDarkMode,
+				toneKey: historyItem?.statusTone ?? null,
+				requestType: historyItem?.requestType ?? null,
+				surface: "hero",
+			}),
+		[isDarkMode, historyItem?.statusTone, historyItem?.requestType],
+	);
+
+	const modalTitle = resolveHistoryDetailsTitle(historyItem?.requestType);
+	const iconDescriptor = resolveHistoryRequestIcon(historyItem?.requestType);
+
+	const metrics = useMemo(() => {
 		const orbSize = Math.max(52, Math.round(viewportMetrics.radius.card * 1.72));
 		return {
-			content: {
-				paddingBottom: Math.max(12, viewportMetrics.insets.sectionGap),
-				gap: viewportMetrics.insets.largeGap,
-			},
-			hero: {
-				paddingHorizontal: Math.max(
-					16,
-					viewportMetrics.modal.contentPadding - 2,
-				),
-				paddingVertical: Math.max(16, viewportMetrics.insets.sectionGap + 2),
-				gap: Math.max(14, viewportMetrics.insets.sectionGap),
-			},
-			heroOrb: {
-				width: orbSize,
-				height: orbSize,
-				borderRadius: Math.round(orbSize / 2),
-			},
-			heroTitle: {
-				fontSize: Math.max(18, viewportMetrics.type.title + 1),
-				lineHeight: Math.max(23, viewportMetrics.type.titleLineHeight),
-			},
-			heroSubtitle: {
-				marginTop: 4,
-				fontSize: viewportMetrics.type.body,
-				lineHeight: viewportMetrics.type.bodyLineHeight,
-			},
-			heroMeta: {
-				marginTop: 6,
-				fontSize: viewportMetrics.type.caption,
-				lineHeight: viewportMetrics.type.captionLineHeight,
-			},
-			section: {
-				paddingHorizontal: Math.max(
-					16,
-					viewportMetrics.modal.contentPadding - 2,
-				),
-				paddingVertical: Math.max(16, viewportMetrics.insets.sectionGap + 1),
-			},
-			sectionTitle: {
-				fontSize: Math.max(16, viewportMetrics.type.title - 1),
-				lineHeight: Math.max(20, viewportMetrics.type.titleLineHeight - 4),
-			},
-			detailLabel: {
-				fontSize: viewportMetrics.type.caption,
-				lineHeight: viewportMetrics.type.captionLineHeight,
-			},
-			detailValue: {
-				fontSize: Math.max(15, viewportMetrics.type.body),
-				lineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 2),
-			},
-			actionRow: {
-				paddingVertical: Math.max(14, viewportMetrics.insets.sectionGap - 1),
-			},
-			actionLabel: {
-				fontSize: Math.max(16, viewportMetrics.type.body + 1),
-				lineHeight: Math.max(21, viewportMetrics.type.bodyLineHeight),
-			},
+			contentGap: viewportMetrics.insets.largeGap,
+			heroPaddingX: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+			heroPaddingY: Math.max(16, viewportMetrics.insets.sectionGap + 2),
+			heroGap: Math.max(14, viewportMetrics.insets.sectionGap),
+			orbSize,
+			orbIconSize: 26,
+			heroTitleSize: Math.max(18, viewportMetrics.type.title + 1),
+			heroTitleLineHeight: Math.max(23, viewportMetrics.type.titleLineHeight),
+			heroSubtitleSize: viewportMetrics.type.body,
+			heroSubtitleLineHeight: viewportMetrics.type.bodyLineHeight,
+			heroMetaSize: viewportMetrics.type.caption,
+			heroMetaLineHeight: viewportMetrics.type.captionLineHeight,
+			sectionPaddingX: Math.max(16, viewportMetrics.modal.contentPadding - 2),
+			sectionPaddingY: Math.max(16, viewportMetrics.insets.sectionGap + 1),
+			sectionTitleSize: Math.max(16, viewportMetrics.type.title - 1),
+			sectionTitleLineHeight: Math.max(20, viewportMetrics.type.titleLineHeight - 4),
+			detailLabelSize: viewportMetrics.type.caption,
+			detailLabelLineHeight: viewportMetrics.type.captionLineHeight,
+			detailValueSize: Math.max(15, viewportMetrics.type.body),
+			detailValueLineHeight: Math.max(20, viewportMetrics.type.bodyLineHeight - 2),
+			actionRowPadding: Math.max(14, viewportMetrics.insets.sectionGap - 1),
+			actionLabelSize: Math.max(16, viewportMetrics.type.body + 1),
+			actionLabelLineHeight: Math.max(21, viewportMetrics.type.bodyLineHeight),
 			actionIconSize: Math.max(21, viewportMetrics.type.body + 4),
-			cancelButton: {
-				paddingVertical: 16,
-			},
+			cancelPadding: 16,
 		};
 	}, [viewportMetrics]);
 
-	const primaryAction =
-		historyItem?.canRate && onRateVisit
-			? { label: "Rate visit", onPress: onRateVisit }
-			: historyItem?.primaryAction === "resume_tracking" ||
-				  historyItem?.primaryAction === "resume_request"
-				? {
-						label:
-							historyItem.primaryAction === "resume_tracking"
-								? "Resume tracking"
-								: "Resume request",
-						onPress: onResume,
-					}
-				: null;
-	const whenValue = [historyItem?.dateLabel, historyItem?.timeLabel]
-		.filter(Boolean)
-		.join(" / ");
-	const clinicianLabel = historyItem?.doctorName
-		? historyItem?.actorRole || "Doctor"
-		: historyItem?.actorRole || "Care team";
-	const typeValue =
-		historyItem?.visitTypeLabel || historyItem?.requestTypeLabel || null;
-	const ratingValue = historyItem?.existingRating
-		? `${historyItem.existingRating.toFixed(1)} / 5`
-		: null;
+	const containerRadius = viewportMetrics.radius.card;
+	const secondaryRadius = Math.max(14, containerRadius - 6);
+
+	const primaryAction = useMemo(
+		() => resolveDetailsPrimaryAction({ historyItem, onRateVisit, onResume }),
+		[historyItem, onRateVisit, onResume],
+	);
+
+	const whenValue = resolveWhenValue(historyItem);
+	const typeValue = resolveTypeValue(historyItem);
+	const clinicianLabel = resolveClinicianLabel(historyItem);
+	const ratingLabel = resolveRatingLabel(historyItem?.existingRating);
+	const facilityLine = resolveFacilityLine(historyItem);
 
 	if (!historyItem) return null;
 
@@ -206,240 +173,276 @@ export default function MapVisitDetailsModal({
 		<MapModalShell
 			visible={visible}
 			onClose={onClose}
-			title="Visit details"
+			title={modalTitle}
 			headerLayout="leading"
 			defaultSnapState={MAP_SHEET_SNAP_STATES.HALF}
 			minHeightRatio={0.62}
 			maxHeightRatio={0.92}
-			contentContainerStyle={[styles.content, responsiveStyles.content]}
+			contentContainerStyle={[
+				historyDetailsStyles.content,
+				{ gap: metrics.contentGap },
+			]}
 		>
+			{/* Hero */}
 			<View
 				style={[
-					styles.hero,
-					responsiveStyles.hero,
+					historyDetailsStyles.hero,
 					{
-						backgroundColor: surfaceColor,
-						borderRadius: viewportMetrics.radius.card,
+						paddingHorizontal: metrics.heroPaddingX,
+						paddingVertical: metrics.heroPaddingY,
+						backgroundColor: theme.heroSurface,
+						borderRadius: containerRadius,
 					},
 				]}
 			>
-				<View style={styles.heroTopRow}>
+				<View style={historyDetailsStyles.heroTopRow}>
 					<View
 						style={[
-							styles.heroOrb,
-							responsiveStyles.heroOrb,
-							{ backgroundColor: heroTone.orb },
+							historyDetailsStyles.heroOrb,
+							{
+								width: metrics.orbSize,
+								height: metrics.orbSize,
+								borderRadius: Math.round(metrics.orbSize / 2),
+								backgroundColor: theme.tone.orb,
+							},
 						]}
 					>
-						{typeIcon.library === "material" ? (
+						{iconDescriptor.library === "material" ? (
 							<MaterialCommunityIcons
-								name={typeIcon.name}
-								size={26}
-								color={heroTone.icon}
+								name={iconDescriptor.name}
+								size={metrics.orbIconSize}
+								color={theme.tone.icon}
 							/>
 						) : (
-							<Ionicons name={typeIcon.name} size={26} color={heroTone.icon} />
+							<Ionicons
+								name={iconDescriptor.name}
+								size={metrics.orbIconSize}
+								color={theme.tone.icon}
+							/>
 						)}
 					</View>
-					<View style={styles.heroCopy}>
+					<View style={historyDetailsStyles.heroCopy}>
 						<Text
 							style={[
-								styles.heroTitle,
-								responsiveStyles.heroTitle,
-								{ color: titleColor },
+								historyDetailsStyles.heroTitle,
+								{
+									color: theme.titleColor,
+									fontSize: metrics.heroTitleSize,
+									lineHeight: metrics.heroTitleLineHeight,
+								},
 							]}
 						>
 							{historyItem.title}
 						</Text>
-						<Text
-							style={[
-								styles.heroSubtitle,
-								responsiveStyles.heroSubtitle,
-								{ color: bodyColor },
-							]}
-						>
-							{historyItem.subtitle}
-						</Text>
-						{historyItem.facilityAddress ? (
+						{historyItem.subtitle ? (
 							<Text
 								style={[
-									styles.heroMeta,
-									responsiveStyles.heroMeta,
-									{ color: mutedColor },
+									historyDetailsStyles.heroSubtitle,
+									{
+										color: theme.bodyColor,
+										fontSize: metrics.heroSubtitleSize,
+										lineHeight: metrics.heroSubtitleLineHeight,
+										marginTop: 4,
+									},
 								]}
 							>
-								{historyItem.facilityAddress}
+								{historyItem.subtitle}
+							</Text>
+						) : null}
+						{facilityLine ? (
+							<Text
+								style={[
+									historyDetailsStyles.heroMeta,
+									{
+										color: theme.mutedColor,
+										fontSize: metrics.heroMetaSize,
+										lineHeight: metrics.heroMetaLineHeight,
+										marginTop: 6,
+									},
+								]}
+							>
+								{facilityLine}
 							</Text>
 						) : null}
 					</View>
-					<View
-						style={[
-							styles.heroStatusChip,
-							{ backgroundColor: heroTone.chip },
-						]}
-					>
-						<Text
+					{historyItem.statusLabel ? (
+						<View
 							style={[
-								styles.heroStatusText,
-								{ color: heroTone.chipText },
+								historyDetailsStyles.heroStatusChip,
+								{ backgroundColor: theme.tone.chip },
 							]}
 						>
-							{historyItem.statusLabel}
-						</Text>
-					</View>
+							<Text
+								style={[
+									historyDetailsStyles.heroStatusText,
+									{ color: theme.tone.chipText },
+								]}
+							>
+								{historyItem.statusLabel}
+							</Text>
+						</View>
+					) : null}
 				</View>
 			</View>
 
+			{/* Primary action */}
 			{primaryAction?.onPress ? (
 				<Pressable
 					onPress={primaryAction.onPress}
 					style={[
-						styles.primaryButton,
+						historyDetailsStyles.primaryButton,
 						{
-							backgroundColor: isDarkMode
-								? "rgba(255,255,255,0.08)"
-								: "rgba(15,23,42,0.06)",
-							borderRadius: viewportMetrics.radius.card - 6,
+							backgroundColor: theme.neutralActionSurface,
+							borderRadius: secondaryRadius,
 						},
 					]}
+					accessibilityRole="button"
+					accessibilityLabel={primaryAction.label}
 				>
-					<Text style={[styles.primaryButtonText, { color: titleColor }]}>
+					<Text
+						style={[
+							historyDetailsStyles.primaryButtonText,
+							{ color: theme.titleColor },
+						]}
+					>
 						{primaryAction.label}
 					</Text>
 				</Pressable>
 			) : null}
 
+			{/* Details */}
 			<View
 				style={[
-					styles.section,
-					responsiveStyles.section,
+					historyDetailsStyles.section,
 					{
-						backgroundColor: surfaceColor,
-						borderRadius: viewportMetrics.radius.card,
+						paddingHorizontal: metrics.sectionPaddingX,
+						paddingVertical: metrics.sectionPaddingY,
+						backgroundColor: theme.heroSurface,
+						borderRadius: containerRadius,
 					},
 				]}
 			>
 				<Text
 					style={[
-						styles.sectionTitle,
-						responsiveStyles.sectionTitle,
-						{ color: titleColor },
+						historyDetailsStyles.sectionTitle,
+						{
+							color: theme.sectionTitleColor,
+							fontSize: metrics.sectionTitleSize,
+							lineHeight: metrics.sectionTitleLineHeight,
+						},
 					]}
 				>
-					Details
+					{HISTORY_DETAILS_COPY.sectionTitles.details}
 				</Text>
-				<View style={styles.sectionBody}>
+				<View style={historyDetailsStyles.sectionBody}>
 					<DetailRow
-						label="When"
+						label={HISTORY_DETAILS_COPY.detailLabels.when}
 						value={whenValue}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Type"
+						label={HISTORY_DETAILS_COPY.detailLabels.type}
 						value={typeValue}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Specialty"
+						label={HISTORY_DETAILS_COPY.detailLabels.specialty}
 						value={historyItem.specialty}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
 						label={clinicianLabel}
 						value={historyItem.doctorName || historyItem.actorName}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Room"
+						label={HISTORY_DETAILS_COPY.detailLabels.room}
 						value={historyItem.roomNumber}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Reference"
+						label={HISTORY_DETAILS_COPY.detailLabels.reference}
 						value={historyItem.displayId || historyItem.requestId || historyItem.id}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Payment"
+						label={HISTORY_DETAILS_COPY.detailLabels.payment}
 						value={historyItem.paymentSummary}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Next visit"
+						label={HISTORY_DETAILS_COPY.detailLabels.nextVisit}
 						value={historyItem.nextVisitLabel}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Rating"
-						value={ratingValue}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						label={HISTORY_DETAILS_COPY.detailLabels.rating}
+						value={ratingLabel}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Feedback"
+						label={HISTORY_DETAILS_COPY.detailLabels.feedback}
 						value={historyItem.ratingComment}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 					<DetailRow
-						label="Notes"
+						label={HISTORY_DETAILS_COPY.detailLabels.notes}
 						value={historyItem.notes}
-						mutedColor={mutedColor}
-						titleColor={titleColor}
-						responsiveStyles={responsiveStyles}
+						theme={theme}
+						metrics={metrics}
 					/>
 				</View>
 			</View>
 
+			{/* Preparation (visit-only, when provided) */}
 			{historyItem.preparation?.length ? (
 				<View
 					style={[
-						styles.section,
-						responsiveStyles.section,
+						historyDetailsStyles.section,
 						{
-							backgroundColor: surfaceColor,
-							borderRadius: viewportMetrics.radius.card,
+							paddingHorizontal: metrics.sectionPaddingX,
+							paddingVertical: metrics.sectionPaddingY,
+							backgroundColor: theme.heroSurface,
+							borderRadius: containerRadius,
 						},
 					]}
 				>
 					<Text
 						style={[
-							styles.sectionTitle,
-							responsiveStyles.sectionTitle,
-							{ color: titleColor },
+							historyDetailsStyles.sectionTitle,
+							{
+								color: theme.sectionTitleColor,
+								fontSize: metrics.sectionTitleSize,
+								lineHeight: metrics.sectionTitleLineHeight,
+							},
 						]}
 					>
-						Preparation
+						{HISTORY_DETAILS_COPY.sectionTitles.preparation}
 					</Text>
-					<View style={styles.preparationList}>
+					<View style={historyDetailsStyles.preparationList}>
 						{historyItem.preparation.map((item) => (
-							<View key={item} style={styles.preparationRow}>
+							<View key={item} style={historyDetailsStyles.preparationRow}>
 								<View
 									style={[
-										styles.preparationDot,
-										{ backgroundColor: heroTone.icon },
+										historyDetailsStyles.preparationDot,
+										{ backgroundColor: theme.tone.icon },
 									]}
 								/>
 								<Text
-									style={[styles.preparationText, { color: bodyColor }]}
+									style={[
+										historyDetailsStyles.preparationText,
+										{ color: theme.bodyColor },
+									]}
 								>
 									{item}
 								</Text>
@@ -449,187 +452,94 @@ export default function MapVisitDetailsModal({
 				</View>
 			) : null}
 
-			<View
-				style={[
-					styles.section,
-					responsiveStyles.section,
-					{
-						backgroundColor: surfaceColor,
-						borderRadius: viewportMetrics.radius.card,
-					},
-				]}
-			>
-				<Text
+			{/* Actions */}
+			{(historyItem.canCallClinic && onCallClinic) ||
+			(historyItem.canJoinVideo && onJoinVideo) ||
+			(historyItem.canBookAgain && onBookAgain) ? (
+				<View
 					style={[
-						styles.sectionTitle,
-						responsiveStyles.sectionTitle,
-						{ color: titleColor },
+						historyDetailsStyles.section,
+						{
+							paddingHorizontal: metrics.sectionPaddingX,
+							paddingVertical: metrics.sectionPaddingY,
+							backgroundColor: theme.heroSurface,
+							borderRadius: containerRadius,
+						},
 					]}
 				>
-					Actions
-				</Text>
-				<View style={styles.sectionBody}>
-					{historyItem.canCallClinic && onCallClinic ? (
-						<ActionRow
-							label="Call clinic"
-							icon="call"
-							toneColor="#38BDF8"
-							onPress={onCallClinic}
-							responsiveStyles={responsiveStyles}
-							titleColor={titleColor}
-						/>
-					) : null}
-					{historyItem.canJoinVideo && onJoinVideo ? (
-						<ActionRow
-							label="Join video"
-							icon="videocam"
-							toneColor="#8B5CF6"
-							onPress={onJoinVideo}
-							responsiveStyles={responsiveStyles}
-							titleColor={titleColor}
-						/>
-					) : null}
-					{historyItem.canBookAgain && onBookAgain ? (
-						<ActionRow
-							label="Book again"
-							icon="calendar"
-							toneColor="#22C55E"
-							onPress={onBookAgain}
-							responsiveStyles={responsiveStyles}
-							titleColor={titleColor}
-						/>
-					) : null}
+					<Text
+						style={[
+							historyDetailsStyles.sectionTitle,
+							{
+								color: theme.sectionTitleColor,
+								fontSize: metrics.sectionTitleSize,
+								lineHeight: metrics.sectionTitleLineHeight,
+							},
+						]}
+					>
+						{HISTORY_DETAILS_COPY.sectionTitles.actions}
+					</Text>
+					<View style={historyDetailsStyles.sectionBody}>
+						{historyItem.canCallClinic && onCallClinic ? (
+							<ActionRow
+								label={HISTORY_DETAILS_COPY.actionLabels.callClinic}
+								icon="call"
+								toneColor={theme.actionCallColor}
+								onPress={onCallClinic}
+								theme={theme}
+								metrics={metrics}
+							/>
+						) : null}
+						{historyItem.canJoinVideo && onJoinVideo ? (
+							<ActionRow
+								label={HISTORY_DETAILS_COPY.actionLabels.joinVideo}
+								icon="videocam"
+								toneColor={theme.actionVideoColor}
+								onPress={onJoinVideo}
+								theme={theme}
+								metrics={metrics}
+							/>
+						) : null}
+						{historyItem.canBookAgain && onBookAgain ? (
+							<ActionRow
+								label={HISTORY_DETAILS_COPY.actionLabels.bookAgain}
+								icon="calendar"
+								toneColor={theme.actionBookColor}
+								onPress={onBookAgain}
+								theme={theme}
+								metrics={metrics}
+							/>
+						) : null}
+					</View>
 				</View>
-			</View>
+			) : null}
 
+			{/* Cancel (destructive) */}
 			{historyItem.canCancel && onCancelVisit ? (
 				<Pressable
 					onPress={onCancelVisit}
 					style={[
-						styles.cancelButton,
-						responsiveStyles.cancelButton,
+						historyDetailsStyles.cancelButton,
 						{
-							backgroundColor: isDarkMode
-								? "rgba(244,63,94,0.14)"
-								: "rgba(244,63,94,0.08)",
-							borderRadius: viewportMetrics.radius.card - 6,
+							paddingVertical: metrics.cancelPadding,
+							backgroundColor: theme.destructiveActionSurface,
+							borderRadius: secondaryRadius,
 						},
 					]}
+					accessibilityRole="button"
+					accessibilityLabel={HISTORY_DETAILS_COPY.actionLabels.cancel}
 				>
-					<Text style={styles.cancelButtonText}>Cancel Visit</Text>
+					<Text
+						style={{
+							color: theme.destructiveActionText,
+							fontSize: 16,
+							fontWeight: "700",
+						}}
+					>
+						{HISTORY_DETAILS_COPY.actionLabels.cancel}
+					</Text>
 				</Pressable>
 			) : null}
 		</MapModalShell>
 	);
 }
-
-const styles = StyleSheet.create({
-	content: {
-		paddingTop: 0,
-		paddingBottom: 12,
-		gap: 16,
-	},
-	hero: {
-		...squircle(28),
-	},
-	heroTopRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-	},
-	heroOrb: {
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	heroCopy: {
-		flex: 1,
-		marginLeft: 14,
-		minWidth: 0,
-	},
-	heroTitle: {
-		fontWeight: "700",
-	},
-	heroSubtitle: {
-		fontWeight: "500",
-	},
-	heroMeta: {
-		fontWeight: "400",
-	},
-	heroStatusChip: {
-		paddingHorizontal: 10,
-		paddingVertical: 7,
-		borderRadius: 999,
-		marginLeft: 12,
-	},
-	heroStatusText: {
-		fontSize: 11,
-		fontWeight: "700",
-	},
-	primaryButton: {
-		alignItems: "center",
-		justifyContent: "center",
-		paddingVertical: 16,
-		...squircle(24),
-	},
-	primaryButtonText: {
-		fontSize: 16,
-		fontWeight: "700",
-	},
-	section: {
-		...squircle(28),
-	},
-	sectionTitle: {
-		fontWeight: "700",
-	},
-	sectionBody: {
-		marginTop: 14,
-	},
-	detailRow: {
-		marginBottom: 14,
-	},
-	detailLabel: {
-		fontWeight: "500",
-	},
-	detailValue: {
-		marginTop: 4,
-		fontWeight: "600",
-	},
-	actionRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 14,
-	},
-	actionLabel: {
-		fontWeight: "600",
-	},
-	preparationList: {
-		marginTop: 14,
-	},
-	preparationRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: 10,
-		marginBottom: 12,
-	},
-	preparationDot: {
-		width: 7,
-		height: 7,
-		borderRadius: 999,
-		marginTop: 7,
-	},
-	preparationText: {
-		flex: 1,
-		fontSize: 15,
-		lineHeight: 21,
-		fontWeight: "400",
-	},
-	cancelButton: {
-		alignItems: "center",
-		justifyContent: "center",
-		...squircle(24),
-	},
-	cancelButtonText: {
-		color: "#F43F5E",
-		fontSize: 16,
-		fontWeight: "700",
-	},
-});

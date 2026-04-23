@@ -6,6 +6,7 @@ import MapCommitTriageOrchestrator from "../views/commitTriage/MapCommitTriageOr
 import MapCommitPaymentOrchestrator from "../views/commitPayment/MapCommitPaymentOrchestrator";
 import MapTrackingOrchestrator from "../views/tracking/MapTrackingOrchestrator";
 import MapHospitalDetailOrchestrator from "../views/hospitalDetail/MapHospitalDetailOrchestrator";
+import MapVisitDetailOrchestrator from "../views/visitDetail/MapVisitDetailOrchestrator";
 import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreIntentOrchestrator";
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
 import MapSearchOrchestrator from "../views/search/MapSearchOrchestrator";
@@ -39,8 +40,8 @@ export default function MapSheetOrchestrator({
 	onChooseCare,
 	onOpenProfile,
 	onOpenCareHistory = () => {},
-	// PULLBACK NOTE: Pass 12 F6 - secondary history entry in explore_intent
-	onOpenRecentVisits = () => {},
+	onOpenRecents = () => {},
+	onSelectHistoryItem = () => {},
 	onOpenAmbulanceHospitals = () => {},
 	onOpenBedHospitals = () => {},
 	onOpenFeaturedHospital = () => {},
@@ -58,6 +59,15 @@ export default function MapSheetOrchestrator({
 	onAddBedFromTracking = () => {},
 	onAddAmbulanceFromTracking = () => {},
 	onCloseHospitalDetail = () => {},
+	onCloseVisitDetail = () => {},
+	onResumeHistoryVisit = () => {},
+	onRateHistoryVisit = () => {},
+	onCallHistoryClinic = () => {},
+	onJoinHistoryVideo = () => {},
+	onBookHistoryAgain = () => {},
+	onOpenHistoryPaymentDetails = () => {},
+	onGetHistoryDirections = () => {},
+	onCancelHistoryVisit = () => {},
 	onConfirmAmbulanceDecision = () => {},
 	onConfirmBedDecision = () => {},
 	onConfirmCommitDetails = () => {},
@@ -375,6 +385,28 @@ export default function MapSheetOrchestrator({
 					/>
 				</MapPhaseTransitionView>
 			);
+		case MAP_SHEET_PHASES.VISIT_DETAIL:
+			return (
+				<MapPhaseTransitionView
+					phaseKey={`${phase}-${sheetPayload?.historyItem?.requestId || sheetPayload?.historyItem?.id || "unknown"}`}
+				>
+					<MapVisitDetailOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						historyItem={sheetPayload?.historyItem || null}
+						onClose={onCloseVisitDetail}
+						onResume={onResumeHistoryVisit}
+						onRateVisit={onRateHistoryVisit}
+						onCallClinic={onCallHistoryClinic}
+						onJoinVideo={onJoinHistoryVideo}
+						onBookAgain={onBookHistoryAgain}
+						onOpenPaymentDetails={onOpenHistoryPaymentDetails}
+						onGetDirections={onGetHistoryDirections}
+						onCancelVisit={onCancelHistoryVisit}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
 		case MAP_SHEET_PHASES.SERVICE_DETAIL:
 			return (
 				<MapPhaseTransitionView phaseKey={`${phase}-${sheetPayload?.service?.id || "unknown"}`}>
@@ -409,7 +441,8 @@ export default function MapSheetOrchestrator({
 						onChooseCare={onChooseCare}
 						onOpenProfile={onOpenProfile}
 						onOpenCareHistory={onOpenCareHistory}
-						onOpenRecentVisits={onOpenRecentVisits}
+						onOpenRecents={onOpenRecents}
+						onSelectHistoryItem={onSelectHistoryItem}
 						onOpenFeaturedHospital={onOpenFeaturedHospital}
 						onSnapStateChange={onSnapStateChange}
 						profileImageSource={

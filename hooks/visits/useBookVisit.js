@@ -37,7 +37,11 @@ export function useBookVisit(props = {}) {
 	// PULLBACK NOTE: Pass 12 F3 - accept onSuccess + onCancel for map-owned booking sheet
 	// OLD: submit always router.replace("/(user)/(stacks)/visit/${id}")
 	// NEW: if onSuccess is provided, invoke it with the created visit; else fall back to router.replace
-	const { initialData = {}, onSuccess = null } = props;
+	// PULLBACK NOTE: null-safe initialData (destructure default only handles undefined)
+	// OLD: const { initialData = {}, onSuccess = null } = props;
+	// NEW: normalize null -> {} so callers can pass null for "no pre-fill"
+	const { initialData: rawInitialData, onSuccess = null } = props;
+	const initialData = rawInitialData || {};
 	const { user } = useAuth();
 	const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
 	const router = useRouter();

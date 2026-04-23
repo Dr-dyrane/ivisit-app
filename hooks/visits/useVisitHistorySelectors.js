@@ -3,6 +3,7 @@ import {
 	VISIT_STATUS,
 	VISIT_TYPES,
 } from "../../constants/visits";
+import { resolveHistoryServiceLabel } from "../../components/map/history/history.presentation";
 
 export const REQUEST_HISTORY_GROUP_ORDER = [
 	"active_now",
@@ -34,6 +35,24 @@ const UPCOMING_HISTORY_STATUSES = new Set(["pending", "confirmed"]);
 const toText = (value) => (typeof value === "string" ? value.trim() : "");
 
 const toLower = (value) => toText(value).toLowerCase();
+
+const toFiniteNumber = (value) => {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	if (typeof value === "string") {
+		const normalized = value.replace(/[^0-9.-]/g, "");
+		if (!normalized) return null;
+		const parsed = Number(normalized);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+};
+
+const toCurrencyLabel = (value) => {
+	const numeric = toFiniteNumber(value);
+	if (numeric != null) return `$${numeric.toFixed(2)}`;
+	const text = toText(value);
+	return text || null;
+};
 
 const toDate = (value) => {
 	if (!value) return null;
@@ -325,8 +344,8 @@ const resolveGroupKey = (status, sortDate, now = new Date()) => {
 	return "older";
 };
 
-const buildSubtitleParts = (requestTypeLabel, dateLabel, timeLabel) =>
-	[requestTypeLabel, dateLabel, timeLabel].filter(Boolean);
+const buildSubtitleParts = (typeLabel, dateLabel, timeLabel) =>
+	[typeLabel, dateLabel, timeLabel].filter(Boolean);
 
 const buildInitials = (value) => {
 	const parts = toText(value)
@@ -337,10 +356,37 @@ const buildInitials = (value) => {
 	return parts.map((part) => part[0]?.toUpperCase() || "").join("") || null;
 };
 
-const resolveVisitTypeLabel = (visit, requestTypeLabel) => {
-	const explicitType = toText(visit?.type);
-	if (explicitType) return explicitType;
-	return requestTypeLabel;
+const resolveVisitTypeLabel = (visit, requestType, requestTypeLabel) => {
+	if (requestType === "ambulance") {
+		return resolveHistoryServiceLabel({
+			requestType,
+			value:
+				visit?.ambulanceType ||
+				visit?.ambulance_type ||
+				visit?.responderVehicleType ||
+				visit?.type,
+			fallbackLabel: requestTypeLabel,
+		});
+	}
+
+	if (requestType === "bed") {
+		return resolveHistoryServiceLabel({
+			requestType,
+			value:
+				visit?.bedType ||
+				visit?.bed_type ||
+				visit?.roomType ||
+				visit?.room_type ||
+				visit?.type,
+			fallbackLabel: requestTypeLabel,
+		});
+	}
+
+	return resolveHistoryServiceLabel({
+		requestType,
+		value: visit?.type,
+		fallbackLabel: requestTypeLabel,
+	});
 };
 
 const resolveActorRole = ({ sourceKind, requestType, actorName }) => {
@@ -367,7 +413,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 	const sourceKind = inferSourceKind(visit);
 	const status = inferHistoryStatus(visit);
 	const requestTypeLabel = getRequestTypeLabel(requestType);
-	const visitTypeLabel = resolveVisitTypeLabel(visit, requestTypeLabel);
+	const visitTypeLabel = resolveVisitTypeLabel(visit, requestType, requestTypeLabel);
 	const specialtyLabel = toText(visit?.specialty);
 	const statusLabel = getStatusLabel(status);
 	const statusTone = getStatusTone(status);
@@ -376,15 +422,28 @@ export const toHistoryItem = (visit, now = new Date()) => {
 	const dateLabel = formatDateLabel(sortDate);
 	const timeLabel = formatTimeLabel(sortDate, visit);
 	const facilityName = toText(visit?.hospital || visit?.hospitalName) || "Care request";
-	const facilityAddress = toText(visit?.address);
+	const facilityAddress = toText(
+		visit?.address ||
+			visit?.hospitalAddress ||
+			visit?._hospital_address_resolved
+	);
 	const actorName = toText(visit?.doctor || visit?.doctorName);
 	const actorRole = resolveActorRole({ sourceKind, requestType, actorName });
 	const existingRating = Number(visit?.rating);
+	const paymentSummary =
+		toCurrencyLabel(
+			visit?.user_amount ??
+				visit?.total_amount ??
+				visit?.totalCost ??
+				visit?.total_cost ??
+				visit?.amount
+		) || toCurrencyLabel(visit?.cost);
 
 	return {
 		id: String(visit.id),
 		requestId: toText(visit?.requestId) || null,
 		displayId: toText(visit?.displayId) || null,
+		paymentId: toText(visit?.paymentId || visit?.payment_id) || null,
 		requestType,
 		requestTypeLabel,
 		sourceKind,
@@ -392,7 +451,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		statusLabel,
 		statusTone,
 		title: facilityName,
-		subtitle: buildSubtitleParts(requestTypeLabel, dateLabel, timeLabel).join(" • "),
+		subtitle: buildSubtitleParts(visitTypeLabel, dateLabel, timeLabel).join(" / "),
 		facilityName,
 		facilityAddress: facilityAddress || null,
 		facilityCoordinate:
@@ -416,7 +475,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		startedAt: toText(visit?.startedAt) || null,
 		completedAt: toText(visit?.completedAt || visit?.ratedAt || visit?.tippedAt) || null,
 		terminalAt: toText(visit?.ratedAt || visit?.tippedAt || visit?.updatedAt) || null,
-		paymentSummary: toText(visit?.cost) || null,
+		paymentSummary,
 		canResume: status === "active" || status === "pending",
 		canViewDetails: status !== "active" || requestType !== "ambulance",
 		canRate: status === "rating_pending",

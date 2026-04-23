@@ -612,6 +612,50 @@ export const paymentService = {
   },
 
   /**
+   * Resolve a single payment history entry for deep-link / receipt use.
+   * Accepts either a concrete payment transaction id or an emergency request id.
+   */
+  async getPaymentHistoryEntry({ transactionId = null, requestId = null } = {}) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      if (!transactionId && !requestId) return null;
+
+      let query = supabase
+        .from('payments')
+        .select(`
+          *,
+          emergency_requests (
+            id,
+            service_type,
+            created_at,
+            hospitals (
+              name,
+              address
+            )
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (transactionId) {
+        query = query.eq('id', transactionId).limit(1);
+      } else {
+        query = query
+          .eq('emergency_request_id', requestId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return Array.isArray(data) ? data[0] || null : null;
+    } catch (error) {
+      console.error('Error fetching payment history entry:', error);
+      return null;
+    }
+  },
+
+  /**
    * Apply insurance coverage if available
    */
   async applyInsuranceCoverage(userId, cost) {

@@ -59,6 +59,7 @@ export function selectMapExplorePhaseVisibility(state) {
 		searchSheetVisible: phase === MAP_SHEET_PHASES.SEARCH,
 		hospitalListVisible: phase === MAP_SHEET_PHASES.HOSPITAL_LIST,
 		hospitalDetailVisible: phase === MAP_SHEET_PHASES.HOSPITAL_DETAIL,
+		visitDetailVisible: phase === MAP_SHEET_PHASES.VISIT_DETAIL,
 		ambulanceDecisionVisible: phase === MAP_SHEET_PHASES.AMBULANCE_DECISION,
 		bedDecisionVisible: phase === MAP_SHEET_PHASES.BED_DECISION,
 		commitTriageVisible: phase === MAP_SHEET_PHASES.COMMIT_TRIAGE,

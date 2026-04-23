@@ -6,6 +6,7 @@ export const MAP_SHEET_PHASES = {
 	SERVICE_DETAIL: "service_detail",
 	CARE_HISTORY: "care_history",
 	RECENT_VISITS: "recent_visits",
+	VISIT_DETAIL: "visit_detail",
 	HOSPITAL_PREVIEW: "hospital_preview",
 	AMBULANCE_DECISION: "ambulance_decision",
 	BED_DECISION: "bed_decision",

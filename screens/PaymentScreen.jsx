@@ -35,6 +35,13 @@ import { insuranceService } from '../services/insuranceService';
 
 const { width } = Dimensions.get('window');
 
+const readParamString = (value) => {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : '';
+  }
+  return typeof value === 'string' ? value : '';
+};
+
 const PaymentScreen = () => {
   const { isDarkMode } = useTheme();
   const router = useRouter();
@@ -46,10 +53,15 @@ const PaymentScreen = () => {
   const { registerFAB, unregisterFAB } = useFAB();
 
   // Mode Detection
-  const isManagementMode = !params.amount && !params.requestId && !params.serviceType;
-  const emergencyRequestId = params.requestId;
-  const serviceType = params.serviceType || 'ambulance';
-  const initialAmount = parseFloat(params.amount) || 0;
+  const transactionIdParam = readParamString(params.transactionId);
+  const historyRequestIdParam = readParamString(params.historyRequestId);
+  const amountParam = readParamString(params.amount);
+  const requestIdParam = readParamString(params.requestId);
+  const serviceTypeParam = readParamString(params.serviceType);
+  const isManagementMode = !amountParam && !requestIdParam && !serviceTypeParam;
+  const emergencyRequestId = requestIdParam;
+  const serviceType = serviceTypeParam || 'ambulance';
+  const initialAmount = parseFloat(amountParam) || 0;
 
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -64,8 +76,14 @@ const PaymentScreen = () => {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [consumedReceiptLinkKey, setConsumedReceiptLinkKey] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [paymentRefreshCount, setPaymentRefreshCount] = useState(0);
+  const receiptLinkKey = transactionIdParam
+    ? `transaction:${transactionIdParam}`
+    : historyRequestIdParam
+      ? `request:${historyRequestIdParam}`
+      : null;
 
   // Animations
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -87,6 +105,54 @@ const PaymentScreen = () => {
       }
     }
   }, [isManagementMode, params.isLinking]);
+
+  useEffect(() => {
+    if (!isManagementMode) return;
+    if (!transactionIdParam && !historyRequestIdParam) return;
+    if (!receiptLinkKey || consumedReceiptLinkKey === receiptLinkKey) return;
+
+    const fromHistory = paymentHistory.find((item) => {
+      if (transactionIdParam) {
+        return String(item?.id || '') === transactionIdParam;
+      }
+      return (
+        String(item?.emergency_request_id || '') === historyRequestIdParam ||
+        String(item?.emergency_requests?.id || '') === historyRequestIdParam
+      );
+    });
+
+    if (fromHistory) {
+      if (selectedTransaction?.id !== fromHistory.id) {
+        setSelectedTransaction(fromHistory);
+      }
+      setConsumedReceiptLinkKey(receiptLinkKey);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const linkedTransaction = await paymentService.getPaymentHistoryEntry({
+        transactionId: transactionIdParam || null,
+        requestId: historyRequestIdParam || null,
+      });
+      if (!cancelled && linkedTransaction) {
+        setSelectedTransaction(linkedTransaction);
+        setConsumedReceiptLinkKey(receiptLinkKey);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    consumedReceiptLinkKey,
+    historyRequestIdParam,
+    isManagementMode,
+    paymentHistory,
+    receiptLinkKey,
+    selectedTransaction?.id,
+    transactionIdParam,
+  ]);
 
   // Data Loading Functions
   const loadWalletData = async () => {

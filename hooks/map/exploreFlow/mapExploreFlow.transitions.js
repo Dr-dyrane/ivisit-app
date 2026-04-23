@@ -76,6 +76,18 @@ export function buildHospitalDetailSheetView({ usesSidebarLayout }) {
   });
 }
 
+export function buildVisitDetailSheetView({ usesSidebarLayout, historyItem = null }) {
+  return buildSheetView({
+    phase: MAP_SHEET_PHASES.VISIT_DETAIL,
+    snapState: usesSidebarLayout
+      ? MAP_SHEET_SNAP_STATES.EXPANDED
+      : MAP_SHEET_SNAP_STATES.HALF,
+    payload: {
+      historyItem,
+    },
+  });
+}
+
 export function resolveMapFlowHospital({
   preferredHospital = null,
   preferredHospitalId = null,

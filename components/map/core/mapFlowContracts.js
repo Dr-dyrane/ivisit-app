@@ -27,6 +27,7 @@ const EXPANDED_ONLY_PHASES = new Set([
 const PAYLOAD_OPTIONAL_OBJECT_PHASES = new Set([
 	MAP_SHEET_PHASES.HOSPITAL_LIST,
 	MAP_SHEET_PHASES.HOSPITAL_DETAIL,
+	MAP_SHEET_PHASES.VISIT_DETAIL,
 	MAP_SHEET_PHASES.SERVICE_DETAIL,
 	MAP_SHEET_PHASES.AMBULANCE_DECISION,
 	MAP_SHEET_PHASES.BED_DECISION,
@@ -60,6 +61,11 @@ export const MAP_FLOW_PHASE_CONTRACTS = {
 		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
 		payload: "optional_object",
 		description: "Provider detail and service review.",
+	},
+	[MAP_SHEET_PHASES.VISIT_DETAIL]: {
+		family: MAP_FLOW_PHASE_FAMILIES.HISTORY,
+		payload: "optional_object",
+		description: "Visit / transport / reservation detail from history.",
 	},
 	[MAP_SHEET_PHASES.SERVICE_DETAIL]: {
 		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
