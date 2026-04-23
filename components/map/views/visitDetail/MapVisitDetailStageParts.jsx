@@ -22,6 +22,7 @@ export function MapVisitDetailFloatingTopSlot({
 	toggleIconName = "chevron-up",
 	floatingToggleSurface,
 	floatingToggleIconColor,
+	shouldShowFloatingTitle = true,
 	title,
 	subtitle,
 	titleColor,
@@ -63,21 +64,25 @@ export function MapVisitDetailFloatingTopSlot({
 					<View style={styles.floatingTopActionSpacer} />
 				)}
 				<View style={styles.floatingTopTitleWrap}>
-					{title ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.floatingTopTitle, { color: titleColor }]}
-						>
-							{title}
-						</Text>
-					) : null}
-					{subtitle ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.floatingTopSubtitle, { color: mutedColor }]}
-						>
-							{subtitle}
-						</Text>
+					{shouldShowFloatingTitle ? (
+						<>
+							{title ? (
+								<Text
+									numberOfLines={1}
+									style={[styles.floatingTopTitle, { color: titleColor }]}
+								>
+									{title}
+								</Text>
+							) : null}
+							{subtitle ? (
+								<Text
+									numberOfLines={1}
+									style={[styles.floatingTopSubtitle, { color: mutedColor }]}
+								>
+									{subtitle}
+								</Text>
+							) : null}
+						</>
 					) : null}
 				</View>
 				<MapHeaderIconButton
@@ -93,12 +98,18 @@ export function MapVisitDetailFloatingTopSlot({
 	);
 }
 
-export function MapVisitDetailBodyContent({ model, onCancelVisit, isExpanded }) {
+export function MapVisitDetailBodyContent({
+	model,
+	onCancelVisit,
+	isExpanded,
+	onExpandedHeaderLayout,
+}) {
 	return (
 		<MapVisitDetailBody
 			model={model}
 			onCancelVisit={onCancelVisit}
-			isExpanded={isExpanded}
+			revealHero={isExpanded}
+			onExpandedHeaderLayout={onExpandedHeaderLayout}
 		/>
 	);
 }

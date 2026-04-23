@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { COLORS } from "../../../../constants/colors";
 
 const squircle = (radius) => ({
 	borderRadius: radius,
@@ -88,15 +89,18 @@ export const styles = StyleSheet.create({
 		flex: 1,
 	},
 	heroBadge: {
-		paddingHorizontal: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+		paddingHorizontal: 9,
 		paddingVertical: 6,
-		borderRadius: 999,
+		...squircle(999),
 	},
 	heroBadgeText: {
+		fontSize: 10,
+		lineHeight: 13,
+		fontWeight: "700",
 		color: "#F8FAFC",
-		fontSize: 12,
-		lineHeight: 15,
-		fontWeight: "600",
 	},
 	heroStatusChip: {
 		paddingHorizontal: 10,
@@ -161,50 +165,6 @@ export const styles = StyleSheet.create({
 		...squircle(24),
 		gap: 14,
 	},
-	sectionHeaderStatic: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		gap: 12,
-	},
-	sectionHeaderPressable: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		gap: 12,
-	},
-	sectionHeaderPressed: {
-		opacity: 0.76,
-	},
-	sectionHeaderMeta: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 6,
-		maxWidth: "52%",
-	},
-	sectionTitle: {
-		fontSize: 16,
-		lineHeight: 20,
-		fontWeight: "600",
-		flex: 1,
-	},
-	sectionSummary: {
-		fontSize: 12,
-		lineHeight: 16,
-		fontWeight: "500",
-		textAlign: "right",
-	},
-	detailList: {
-		gap: 0,
-	},
-	detailRow: {
-		minHeight: 46,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		gap: 12,
-		paddingVertical: 9,
-	},
 	skeletonDetailRow: {
 		minHeight: 46,
 		flexDirection: "row",
@@ -228,46 +188,6 @@ export const styles = StyleSheet.create({
 	skeletonDetailValue: {
 		width: "58%",
 		height: 16,
-	},
-	detailLeading: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 12,
-		flex: 1,
-		minWidth: 0,
-	},
-	detailIconWrap: {
-		width: 30,
-		height: 30,
-		borderRadius: 15,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	detailLabel: {
-		flex: 1,
-		fontSize: 14,
-		lineHeight: 18,
-		fontWeight: "500",
-	},
-	detailValue: {
-		maxWidth: "48%",
-		fontSize: 14,
-		lineHeight: 18,
-		fontWeight: "600",
-		textAlign: "right",
-	},
-	detailRatingWrap: {
-		flexShrink: 0,
-		paddingLeft: 12,
-	},
-	ratingStarsRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 2,
-	},
-	detailHairline: {
-		height: 1,
-		marginLeft: 42,
 	},
 	routeCardChrome: {
 		overflow: "hidden",
@@ -388,49 +308,283 @@ export const styles = StyleSheet.create({
 		bottom: 0,
 		width: 36,
 	},
-	preparationRow: {
+	// ───────────────────────────────────────────────
+	// Expanded passport layout (1:1 with mapHospitalDetail.styles.js).
+	// Used when the sheet is at EXPANDED snap: the hero image hosts the place
+	// header (orb + title + subtitle) overlaid on top, and the expandedBody
+	// holds actions / stats / route / CTAs / sections.
+	// ───────────────────────────────────────────────
+	expandedCardWrap: {
+		marginHorizontal: -14,
+		overflow: "visible",
+	},
+	expandedHero: {
+		height: 320,
+		justifyContent: "space-between",
+		zIndex: 1,
+	},
+	expandedHeroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 118,
+		zIndex: 1,
+	},
+	expandedHeroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 144,
+		zIndex: 1,
+	},
+	expandedHeroImage: {
+		borderTopLeftRadius: 34,
+		borderTopRightRadius: 34,
+		borderCurve: "continuous",
+	},
+	expandedHeroBadgeRow: {
+		paddingTop: 34,
+		paddingHorizontal: 14,
+		paddingRight: 62,
 		flexDirection: "row",
-		alignItems: "flex-start",
-		gap: 10,
+		flexWrap: "wrap",
+		gap: 6,
+		zIndex: 2,
 	},
-	preparationDot: {
-		width: 6,
-		height: 6,
-		borderRadius: 999,
-		marginTop: 9,
-	},
-	preparationText: {
-		flex: 1,
-		fontSize: 14,
-		lineHeight: 20,
-		fontWeight: "400",
-	},
-	actionRow: {
-		flexDirection: "row",
+	expandedHeaderBlock: {
+		marginTop: "auto",
+		paddingHorizontal: 20,
+		paddingBottom: 10,
 		alignItems: "center",
-		paddingVertical: 12,
-		paddingHorizontal: 4,
-		gap: 14,
+		zIndex: 2,
 	},
-	actionLabel: {
-		flex: 1,
-		fontSize: 16,
-		lineHeight: 20,
-		fontWeight: "600",
+	expandedHeaderMeasure: {
+		width: "100%",
+		alignItems: "center",
 	},
-	actionHairline: {
-		height: 1,
-		marginLeft: 40,
-	},
-	cancelButton: {
+	expandedPlaceMark: {
+		width: 64,
+		height: 64,
 		alignItems: "center",
 		justifyContent: "center",
-		paddingVertical: 15,
-		...squircle(18),
+		marginBottom: 10,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.22,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+		...squircle(19),
 	},
-	cancelButtonText: {
-		fontSize: 15,
-		lineHeight: 19,
+	expandedPlaceTitle: {
+		fontSize: 22,
+		lineHeight: 27,
 		fontWeight: "700",
+		textAlign: "center",
+		letterSpacing: -0.2,
+	},
+	expandedPlaceSubtitle: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+		textAlign: "center",
+		paddingHorizontal: 10,
+	},
+	expandedBody: {
+		position: "relative",
+		zIndex: 2,
+		paddingHorizontal: 14,
+		paddingTop: 8,
+		paddingBottom: 20,
+		gap: 12,
+	},
+	// ───────────────────────────────────────────────
+	// Hospital-detail-style mid-snap layout
+	// Matches hospital detail exactly (placeMark / placeTitle / placeSubtitle
+	// live in placeHeader, revealed only in expanded; topSlot owns mid-snap identity).
+	// ───────────────────────────────────────────────
+	heroRevealFrame: {
+		width: "100%",
+		overflow: "hidden",
+		marginHorizontal: -14,
+	},
+	hero: {
+		height: 270,
+		marginTop: 0,
+		marginHorizontal: 0,
+		overflow: "hidden",
+		justifyContent: "space-between",
+		borderTopLeftRadius: 34,
+		borderTopRightRadius: 34,
+		borderCurve: "continuous",
+	},
+	heroImage: {
+		borderTopLeftRadius: 34,
+		borderTopRightRadius: 34,
+		borderCurve: "continuous",
+	},
+	heroBlend: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 168,
+		zIndex: 1,
+	},
+	heroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 126,
+		zIndex: 1,
+	},
+	heroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 104,
+		zIndex: 1,
+	},
+	heroBadgeRow: {
+		paddingTop: 34,
+		paddingHorizontal: 14,
+		paddingRight: 62,
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 6,
+		zIndex: 2,
+	},
+	heroFooter: {
+		height: 44,
+	},
+	detailPanel: {
+		marginHorizontal: -14,
+		paddingHorizontal: 14,
+		paddingTop: 46,
+		paddingBottom: 20,
+		gap: 10,
+		overflow: "visible",
+		...squircle(34),
+	},
+	detailPanelContent: {
+		gap: 10,
+	},
+	midBodyContentGroup: {
+		gap: 18,
+	},
+	placeHeaderReveal: {
+		overflow: "hidden",
+	},
+	placeHeader: {
+		alignItems: "center",
+		paddingHorizontal: 16,
+		gap: 4,
+	},
+	placeMark: {
+		width: 64,
+		height: 64,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 6,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.22,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+		borderWidth: 1,
+		borderColor: "rgba(255,255,255,0.24)",
+		...squircle(19),
+	},
+	placeTitle: {
+		fontSize: 23,
+		lineHeight: 28,
+		fontWeight: "700",
+		textAlign: "center",
+		letterSpacing: -0.2,
+	},
+	placeSubtitle: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+		textAlign: "center",
+		paddingHorizontal: 10,
+	},
+	// Action row (matches hospital detail exactly)
+	placeActionRow: {
+		flexDirection: "row",
+		gap: 7,
+		paddingHorizontal: 0,
+	},
+	placeActionPressable: {
+		flex: 1,
+		minWidth: 0,
+	},
+	placeActionButton: {
+		minHeight: 42,
+		paddingHorizontal: 7,
+		paddingVertical: 3,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 2,
+		...squircle(14),
+	},
+	placeActionButtonPrimary: {
+		backgroundColor: COLORS.brandPrimary,
+		shadowColor: COLORS.brandPrimary,
+		shadowOpacity: 0.22,
+		shadowRadius: 14,
+		shadowOffset: { width: 0, height: 8 },
+	},
+	placeActionButtonPressed: {
+		opacity: 0.94,
+		transform: [{ scale: 0.985 }],
+	},
+	placeActionButtonDisabled: {
+		opacity: 0.48,
+	},
+	placeActionLabel: {
+		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "700",
+		textAlign: "center",
+	},
+	// Stats card (matches hospital detail exactly)
+	placeStatsCard: {
+		marginTop: 6,
+		marginBottom: 10,
+		paddingHorizontal: 10,
+		paddingVertical: 0,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 22,
+	},
+	placeStatItem: {
+		alignItems: "center",
+		gap: 4,
+		minWidth: 58,
+	},
+	placeStatLabel: {
+		fontSize: 10,
+		lineHeight: 12,
+		fontWeight: "600",
+	},
+	placeStatValueRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 4,
+	},
+	placeStatValue: {
+		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "700",
+	},
+	placeStatStars: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 1,
 	},
 });

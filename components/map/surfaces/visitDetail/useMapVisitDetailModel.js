@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import buildHistoryThemeTokens from "../../history/history.theme";
 import { HISTORY_DETAILS_COPY } from "../../history/history.content";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
+import { paymentService } from "../../../../services/paymentService";
+import { hospitalsService } from "../../../../services/hospitalsService";
+import { buildHeroBadges as buildHospitalHeroBadges } from "../hospitals/mapHospitalDetail.helpers";
 import {
 	resolveClinicianLabel,
 	resolveDetailsPrimaryAction,
@@ -91,6 +94,49 @@ const readRawField = (raw, ...keys) => {
 		if (raw && raw[key] != null) return raw[key];
 	}
 	return null;
+};
+
+// Render a timestamp as a friendly, glanceable label for the mid-snap stats
+// row. Same-day buckets read as "Today / Yesterday / Tomorrow, 10:30 AM";
+// near-term days collapse to "in 3 days" / "3 days ago"; everything else
+// drops back to a short locale date with time.
+const formatHumanWhen = (ms) => {
+	const numeric = Number(ms);
+	if (!Number.isFinite(numeric)) return null;
+	const date = new Date(numeric);
+	if (Number.isNaN(date.getTime())) return null;
+	const now = new Date();
+	const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+	const dayMs = 24 * 60 * 60 * 1000;
+	const todayStart = startOf(now);
+	const targetStart = startOf(date);
+	const dayDiff = Math.round((targetStart - todayStart) / dayMs);
+	let timePart = null;
+	try {
+		timePart = new Intl.DateTimeFormat(undefined, {
+			hour: "numeric",
+			minute: "2-digit",
+		}).format(date);
+	} catch (_error) {
+		timePart = null;
+	}
+	if (dayDiff === 0) return timePart ? `Today, ${timePart}` : "Today";
+	if (dayDiff === -1) return timePart ? `Yesterday, ${timePart}` : "Yesterday";
+	if (dayDiff === 1) return timePart ? `Tomorrow, ${timePart}` : "Tomorrow";
+	if (dayDiff < 0 && dayDiff >= -6) return `${Math.abs(dayDiff)} days ago`;
+	if (dayDiff > 0 && dayDiff <= 6) return `In ${dayDiff} days`;
+	try {
+		const sameYear = date.getFullYear() === now.getFullYear();
+		const datePart = new Intl.DateTimeFormat(undefined, {
+			weekday: "short",
+			day: "numeric",
+			month: "short",
+			...(sameYear ? {} : { year: "numeric" }),
+		}).format(date);
+		return timePart ? `${datePart}, ${timePart}` : datePart;
+	} catch (_error) {
+		return date.toLocaleString();
+	}
 };
 
 const resolveVehicleLabel = (_historyItem, raw) => {
@@ -293,6 +339,24 @@ export default function useMapVisitDetailModel({
 	);
 
 	const whenValue = useMemo(() => resolveWhenValue(historyItem), [historyItem]);
+	// Glance-friendly variant for the mid-snap stats row. Falls back to the
+	// raw date/time string when no canonical timestamp is available.
+	const humanWhenLabel = useMemo(() => {
+		const ms =
+			historyItem?.sortTimestampMs ??
+			(historyItem?.sortTimestamp ? Date.parse(historyItem.sortTimestamp) : null) ??
+			(historyItem?.scheduledFor ? Date.parse(historyItem.scheduledFor) : null) ??
+			(historyItem?.completedAt ? Date.parse(historyItem.completedAt) : null) ??
+			(historyItem?.createdAt ? Date.parse(historyItem.createdAt) : null);
+		return formatHumanWhen(ms) || whenValue;
+	}, [
+		historyItem?.sortTimestampMs,
+		historyItem?.sortTimestamp,
+		historyItem?.scheduledFor,
+		historyItem?.completedAt,
+		historyItem?.createdAt,
+		whenValue,
+	]);
 	const facilityLine = useMemo(() => resolveFacilityLine(historyItem), [historyItem]);
 	const actorName = useMemo(
 		() =>
@@ -340,6 +404,34 @@ export default function useMapVisitDetailModel({
 		};
 	}, [historyItem, modalTitle]);
 
+	// Hydrate the hospital row that backs this visit so the hero can render
+	// facility-level pills (Verified / Emergency level / service type) the same
+	// way MapHospitalDetailBody does. Cached per hospitalId; cleared on switch.
+	const hospitalId = historyItem?.hospitalId || null;
+	const [hospitalDetails, setHospitalDetails] = useState(null);
+	const hospitalLookupKeyRef = useRef(null);
+	useEffect(() => {
+		if (hospitalLookupKeyRef.current !== hospitalId) {
+			hospitalLookupKeyRef.current = hospitalId;
+			setHospitalDetails(null);
+		}
+		if (!hospitalId) return undefined;
+		let cancelled = false;
+		(async () => {
+			try {
+				const record = await hospitalsService.getById(hospitalId);
+				if (cancelled) return;
+				if (hospitalLookupKeyRef.current !== hospitalId) return;
+				if (record) setHospitalDetails(record);
+			} catch (_error) {
+				// Silent — hero falls back to visit-derived badges only.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [hospitalId]);
+
 	const hero = useMemo(() => {
 		if (!historyItem) return null;
 		const facilityName =
@@ -368,7 +460,9 @@ export default function useMapVisitDetailModel({
 					: bedLabel;
 		}
 
-		const badgeCandidates = uniqueTextList([
+		// Visit-specific identifier badge (room # / bed # / vehicle plate). Kept
+		// as the leading pill so the hero immediately surfaces the booked detail.
+		const visitIdentifier = uniqueTextList([
 			historyItem.requestType === REQUEST_TYPES.VISIT
 				? historyItem.roomNumber
 				: historyItem.requestType === REQUEST_TYPES.BED
@@ -377,14 +471,54 @@ export default function useMapVisitDetailModel({
 							readRawField(raw, "responderVehiclePlate", "responder_vehicle_plate"),
 							readRawField(raw, "ambulanceId", "ambulance_id"),
 						),
-		]);
+		])[0];
+		const visitBadge = visitIdentifier
+			? {
+					label: visitIdentifier,
+					icon:
+						historyItem.requestType === REQUEST_TYPES.AMBULANCE
+							? "car-outline"
+							: historyItem.requestType === REQUEST_TYPES.BED
+								? "bed-outline"
+								: "business-outline",
+					iconType: "ion",
+					tone: "neutral",
+				}
+			: null;
+
+		// Facility pills hydrated from the hospital DB row (verified / emergency
+		// level / service type). Fall back to any inline visit fields when the
+		// hospital row hasn't loaded yet so the hero never renders bare.
+		const hospitalSource = hospitalDetails || {
+			verified: historyItem?.facilityVerified,
+			emergencyLevel: readRawField(raw, "emergencyLevel", "emergency_level"),
+			serviceTypes: readRawField(raw, "serviceTypes", "service_types"),
+		};
+		const hospitalBadges = buildHospitalHeroBadges(hospitalSource) || [];
+
+		// Dedupe by case-insensitive label and cap at 3 total pills.
+		const seenLabels = new Set();
+		const badges = [];
+		[visitBadge, ...hospitalBadges].forEach((item) => {
+			if (!item || !item.label) return;
+			const key = String(item.label).trim().toLowerCase();
+			if (!key || seenLabels.has(key)) return;
+			seenLabels.add(key);
+			badges.push(item);
+		});
 
 		const heroHospital = {
 			name: facilityName,
-			image: historyItem.heroImageUrl || readRawField(raw, "hospitalImage", "hospital_image"),
-			imageUri: historyItem.heroImageUrl || readRawField(raw, "hospitalImage", "hospital_image"),
-			googlePhotos: [],
-			google_photos: [],
+			image:
+				hospitalDetails?.image ||
+				historyItem.heroImageUrl ||
+				readRawField(raw, "hospitalImage", "hospital_image"),
+			imageUri:
+				hospitalDetails?.image ||
+				historyItem.heroImageUrl ||
+				readRawField(raw, "hospitalImage", "hospital_image"),
+			googlePhotos: hospitalDetails?.googlePhotos || [],
+			google_photos: hospitalDetails?.google_photos || [],
 		};
 
 		return {
@@ -402,7 +536,7 @@ export default function useMapVisitDetailModel({
 					readRawField(raw, "hospitalImage", "hospital_image"),
 					readRawField(raw, "doctorImage", "doctor_image"),
 				),
-			badges: badgeCandidates.slice(0, 3),
+			badges: badges.slice(0, 3),
 		};
 	}, [
 		actorName,
@@ -410,6 +544,7 @@ export default function useMapVisitDetailModel({
 		clinicianLabel,
 		facilityLine,
 		historyItem,
+		hospitalDetails,
 		iconDescriptor,
 		modalTitle,
 		raw,
@@ -567,9 +702,72 @@ export default function useMapVisitDetailModel({
 		]);
 	}, [actorName, clinicianLabel, historyItem, specialtyLabel]);
 
+	// Local total resolved from the history record/raw blob. This is the
+	// authoritative source when present; otherwise we fall back to the
+	// background payment-history lookup below.
+	const localPaymentTotalLabel = useMemo(() => {
+		if (!historyItem) return null;
+		return resolvePaymentTotalLabel(historyItem, raw);
+	}, [historyItem, raw]);
+
+	// When the locally-resolved total is missing or reads as $0.00, fall back
+	// to the same lookup the payment-details modal makes
+	// (paymentService.getPaymentHistoryEntry) so both the stat row and the
+	// payment-details section carry the authoritative amount.
+	const paymentLookupKey = useMemo(
+		() => historyItem?.paymentId || historyItem?.requestId || null,
+		[historyItem?.paymentId, historyItem?.requestId],
+	);
+	const [fetchedPriceLabel, setFetchedPriceLabel] = useState(null);
+	const fetchedPriceKeyRef = useRef(null);
+	useEffect(() => {
+		if (paymentLookupKey !== fetchedPriceKeyRef.current) {
+			fetchedPriceKeyRef.current = paymentLookupKey;
+			setFetchedPriceLabel(null);
+		}
+		if (!paymentLookupKey) return undefined;
+		const localAmount = toFiniteNumber(localPaymentTotalLabel);
+		const hasUsableLocal = localAmount != null && Math.abs(localAmount) > 0;
+		if (hasUsableLocal) return undefined;
+		let cancelled = false;
+		(async () => {
+			try {
+				const entry = await paymentService.getPaymentHistoryEntry({
+					transactionId: historyItem?.paymentId || null,
+					requestId: historyItem?.requestId || null,
+				});
+				if (cancelled) return;
+				if (fetchedPriceKeyRef.current !== paymentLookupKey) return;
+				const label = toCurrencyLabel(entry?.amount);
+				const numeric = toFiniteNumber(label);
+				if (label && numeric != null && Math.abs(numeric) > 0) {
+					setFetchedPriceLabel(label);
+				}
+			} catch (_error) {
+				// Silent — payment row simply keeps the placeholder.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		paymentLookupKey,
+		localPaymentTotalLabel,
+		historyItem?.paymentId,
+		historyItem?.requestId,
+	]);
+
+	// Effective total: local first, fetched fallback when local is empty/$0.00.
+	const effectivePaymentTotalLabel = useMemo(() => {
+		const localAmount = toFiniteNumber(localPaymentTotalLabel);
+		const localUsable = localAmount != null && Math.abs(localAmount) > 0;
+		if (localUsable) return localPaymentTotalLabel;
+		return fetchedPriceLabel || localPaymentTotalLabel || null;
+	}, [localPaymentTotalLabel, fetchedPriceLabel]);
+
 	const paymentRows = useMemo(() => {
 		if (!historyItem) return [];
-		const totalLabel = resolvePaymentTotalLabel(historyItem, raw);
+		const totalLabel = effectivePaymentTotalLabel;
 		const paymentStatus = toTitleCase(
 			readRawField(raw, "paymentStatus", "payment_status"),
 		);
@@ -597,7 +795,7 @@ export default function useMapVisitDetailModel({
 				icon: "wallet-outline",
 			},
 		]);
-	}, [historyItem, raw]);
+	}, [historyItem, raw, effectivePaymentTotalLabel]);
 
 	const paymentSummary = useMemo(() => {
 		if (!paymentRows.length) return null;
@@ -706,6 +904,346 @@ export default function useMapVisitDetailModel({
 
 	const canCancel = Boolean(historyItem?.canCancel);
 
+	// Derive action capabilities
+	const hasCoordinates = Boolean(
+		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
+	);
+	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
+	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
+	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
+	const canVideo = Boolean(historyItem?.canJoinVideo && typeof onJoinVideo === "function");
+	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
+	const canRevisit = Boolean(historyItem?.canBookAgain && typeof onBookAgain === "function");
+
+	// Reference ID for display
+	const referenceId = useMemo(() => {
+		const displayId = historyItem?.displayId;
+		const requestId = historyItem?.requestId;
+		if (displayId) return displayId;
+		if (requestId && requestId.length > 8) {
+			return `REQ-${requestId.slice(-6).toUpperCase()}`;
+		}
+		return null;
+	}, [historyItem?.displayId, historyItem?.requestId]);
+
+	// Lifecycle-aware "headline" stat surfaced in the mid-snap stats card.
+	// Replaces the reference id (which already lives in the route card when an
+	// ambulance journey is rendered, and in the expanded details card always)
+	// with a single piece of high-signal context tuned to the visit's status.
+	// Returns null when no useful headline is available, so the stats builder
+	// can fall back to the reference id.
+	const headlineStat = useMemo(() => {
+		if (!historyItem) return null;
+		const status = historyItem.status;
+
+		if (status === "cancelled") {
+			return {
+				key: "lifecycleCancelled",
+				label: HISTORY_DETAILS_COPY.detailLabels.paymentStatus || "Status",
+				value: "Cancelled",
+				icon: "close-circle-outline",
+				iconType: "ion",
+			};
+		}
+
+		if (status === "rating_pending") {
+			return {
+				key: "lifecycleRate",
+				label: HISTORY_DETAILS_COPY.detailLabels.rating || "Rating",
+				value: "Tap to rate",
+				icon: "star-outline",
+				iconType: "ion",
+			};
+		}
+
+		if (status === "completed") {
+			const ratingValue = toFiniteNumber(historyItem?.existingRating);
+			if (ratingValue != null) {
+				const display = ratingValue.toFixed(1).replace(/\.0$/, "");
+				return {
+					key: "lifecycleRating",
+					label: HISTORY_DETAILS_COPY.detailLabels.rating || "Rating",
+					value: display,
+					ratingValue,
+					kind: "rating",
+					icon: "star",
+					iconType: "ion",
+				};
+			}
+			if (historyItem.nextVisitLabel) {
+				return {
+					key: "lifecycleNextVisit",
+					label: HISTORY_DETAILS_COPY.detailLabels.nextVisit || "Next visit",
+					value: historyItem.nextVisitLabel,
+					icon: "calendar-outline",
+					iconType: "ion",
+				};
+			}
+		}
+
+		// Upcoming / active clinic visits — room number is high-value wayfinding.
+		if (
+			(status === "pending" || status === "confirmed" || status === "active") &&
+			historyItem.requestType !== REQUEST_TYPES.AMBULANCE &&
+			historyItem.roomNumber
+		) {
+			return {
+				key: "lifecycleRoom",
+				label: HISTORY_DETAILS_COPY.detailLabels.room || "Room",
+				value: historyItem.roomNumber,
+				icon: "business-outline",
+				iconType: "ion",
+			};
+		}
+
+		return null;
+	}, [historyItem, paymentSummary]);
+
+	// Dedicated price stat for the mid-snap stats card. When payment data is
+	// present this displaces the requestType-specific slot-3 detail (vehicle /
+	// bed# / clinician) so the at-a-glance row carries the dollar amount.
+	// paymentSummary already incorporates the background-fetched label via
+	// effectivePaymentTotalLabel, so no extra fetch needed here.
+	const priceStat = useMemo(() => {
+		if (!paymentSummary) return null;
+		return {
+			key: "price",
+			label: HISTORY_DETAILS_COPY.detailLabels.total || "Price",
+			value: paymentSummary,
+			icon: "cash-outline",
+			iconType: "ion",
+		};
+	}, [paymentSummary]);
+
+	// Build place actions - 4 buttons whose primary slot tracks visit lifecycle.
+	// Primary priority: Track (active/upcoming with resume) > Rate (rating pending)
+	//                   > Directions (completed). Cancelled = none.
+	// Slot 3 is Directions when tracking is live, otherwise Revisit (Book again).
+	// Video stays in the deep CTA group (only valid in narrow joinable windows).
+	const placeActions = useMemo(() => {
+		if (!historyItem) return [];
+
+		const status = historyItem.status;
+		const isCompleted = status === "completed";
+		const isCancelled = status === "cancelled";
+		const isRatingPending = status === "rating_pending";
+		// Live = anything where the user can still resume the flow (active/pending/confirmed)
+		const showTrack = canResume;
+
+		// Choose the single primary slot based on lifecycle.
+		let primaryKey = null;
+		if (showTrack) primaryKey = "track";
+		else if (isRatingPending && canRate) primaryKey = "rate";
+		else if (isCompleted && canDirections) primaryKey = "directions";
+		else if (canRevisit) primaryKey = "revisit";
+
+		const slot1 = showTrack
+			? {
+					key: "track",
+					label: historyItem.requestType === REQUEST_TYPES.BED ? "Resume" : "Track",
+					icon:
+						historyItem.requestType === REQUEST_TYPES.BED
+							? "bed-outline"
+							: "navigate-circle-outline",
+					iconType: "ion",
+					primary: primaryKey === "track",
+					onPress: onResume,
+					disabled: false,
+					accessibilityLabel: "Resume tracking",
+				}
+			: {
+					key: "directions",
+					label: "Directions",
+					icon: "navigate-outline",
+					iconType: "ion",
+					primary: primaryKey === "directions",
+					onPress: canDirections && !isCancelled ? onGetDirections : undefined,
+					disabled: !canDirections || isCancelled,
+					accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.directions,
+				};
+
+		const slot3 = showTrack
+			? {
+					key: "directions",
+					label: "Directions",
+					icon: "navigate-outline",
+					iconType: "ion",
+					primary: false,
+					onPress: canDirections ? onGetDirections : undefined,
+					disabled: !canDirections,
+					accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.directions,
+				}
+			: {
+					key: "revisit",
+					label: HISTORY_DETAILS_COPY.actionLabels.bookAgain || "Revisit",
+					icon: "repeat-outline",
+					iconType: "ion",
+					primary: primaryKey === "revisit",
+					onPress: canRevisit ? onBookAgain : undefined,
+					disabled: !canRevisit,
+					accessibilityLabel:
+						HISTORY_DETAILS_COPY.actionLabels.bookAgain || "Book again",
+				};
+
+		return [
+			slot1,
+			{
+				key: "call",
+				label: "Call",
+				icon: "call-outline",
+				iconType: "ion",
+				primary: false,
+				onPress: canCall && !isCancelled ? onCallClinic : undefined,
+				disabled: !canCall || isCancelled,
+				accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.callClinic,
+			},
+			slot3,
+			{
+				key: "rate",
+				label: "Rate",
+				icon: "star-outline",
+				iconType: "ion",
+				primary: primaryKey === "rate",
+				onPress: canRate ? onRateVisit : undefined,
+				disabled: !canRate,
+				accessibilityLabel: HISTORY_DETAILS_COPY.actionLabels.rate || "Rate visit",
+			},
+		];
+	}, [historyItem, canResume, canRate, canCall, canVideo, canDirections, canRevisit, onResume, onRateVisit, onCallClinic, onJoinVideo, onGetDirections, onBookAgain]);
+
+	// Build place stats - request-type-specific per contract.
+	// Status is intentionally NOT included here: it lives on the compact hero chip
+	// so the stats row carries fresh detail instead of repeating the chip.
+	//   Ambulance: ETA/When, Responder, Vehicle,  Reference
+	//   Bed:       ETA/When, Bed type,  Bed #,    Reference
+	//   Visit:     When,     Specialty, Clinician, Reference
+	const placeStats = useMemo(() => {
+		if (!historyItem) return [];
+
+		const requestType = historyItem.requestType;
+		// ETA stays as the live delta string (e.g. "8 min"); non-live falls back
+		// to the human-friendly when label so the row reads "Today, 10:30 AM"
+		// instead of a raw "12/05/2024 / 10:30" string.
+		const whenOrEta = etaLabel || humanWhenLabel || whenValue;
+		const stats = [];
+
+		const pushWhen = (etaLabelText) => {
+			if (!whenOrEta) return;
+			stats.push({
+				key: "when",
+				label: etaLabel ? etaLabelText : "When",
+				value: whenOrEta,
+				icon: etaLabel ? "time-outline" : "calendar-outline",
+				iconType: "ion",
+			});
+		};
+
+		// Slot 3 of the row is the price stat when payment data is available;
+		// otherwise it falls back to the request-type-specific detail (vehicle
+		// for ambulance, bed# for bed, clinician for clinic visits).
+		if (requestType === REQUEST_TYPES.AMBULANCE) {
+			pushWhen("ETA");
+			if (actorName) {
+				stats.push({
+					key: "responder",
+					label: "Responder",
+					value: actorName,
+					icon: "person-outline",
+					iconType: "ion",
+				});
+			}
+			if (priceStat) {
+				stats.push(priceStat);
+			} else if (vehicleLabel) {
+				stats.push({
+					key: "vehicle",
+					label: "Vehicle",
+					value: vehicleLabel,
+					icon: "ambulance",
+					iconType: "material",
+				});
+			}
+		} else if (requestType === REQUEST_TYPES.BED) {
+			pushWhen("ETA");
+			if (bedLabel) {
+				stats.push({
+					key: "bedType",
+					label: "Bed",
+					value: bedLabel,
+					icon: "bed-outline",
+					iconType: "ion",
+				});
+			}
+			if (priceStat) {
+				stats.push(priceStat);
+			} else {
+				const bedNumber = pickText(readRawField(raw, "bedNumber", "bed_number"));
+				if (bedNumber) {
+					stats.push({
+						key: "bedNumber",
+						label: "Bed #",
+						value: bedNumber,
+						icon: "grid-outline",
+						iconType: "ion",
+					});
+				}
+			}
+		} else {
+			pushWhen("When");
+			if (specialtyLabel) {
+				stats.push({
+					key: "specialty",
+					label: "Specialty",
+					value: specialtyLabel,
+					icon: "medkit-outline",
+					iconType: "ion",
+				});
+			}
+			if (priceStat) {
+				stats.push(priceStat);
+			} else if (actorName) {
+				stats.push({
+					key: "clinician",
+					label: clinicianLabel || "Clinician",
+					value: actorName,
+					icon: "person-outline",
+					iconType: "ion",
+				});
+			}
+		}
+
+		// Trailing slot: prefer the lifecycle headline (payment / rating / next
+		// visit / room / cancelled). Fall back to the reference id when no
+		// headline applies, so the stat row is never short.
+		if (headlineStat) {
+			stats.push(headlineStat);
+		} else if (referenceId) {
+			stats.push({
+				key: "reference",
+				label: "Ref",
+				value: referenceId,
+				icon: "document-text-outline",
+				iconType: "ion",
+			});
+		}
+
+		return stats;
+	}, [
+		historyItem,
+		etaLabel,
+		whenValue,
+		humanWhenLabel,
+		actorName,
+		vehicleLabel,
+		bedLabel,
+		raw,
+		specialtyLabel,
+		clinicianLabel,
+		referenceId,
+		headlineStat,
+		priceStat,
+	]);
+
 	return {
 		recordKey: historyItem?.requestId || historyItem?.id || null,
 		theme,
@@ -722,6 +1260,8 @@ export default function useMapVisitDetailModel({
 		preparation,
 		primaryAction,
 		actions,
+		placeActions,
+		placeStats,
 		canCancel,
 	};
 }

@@ -385,16 +385,18 @@ export function TrackingRouteCard({
       </View>
 
       <View style={styles.stopList}>
-        <View style={[styles.stopConnector, { backgroundColor: connectorTrackColor }]} />
-        <View
-          style={[
-            styles.stopConnectorProgress,
-            {
-              backgroundColor: connectorProgressColor,
-              height: `${Math.max(0, Math.min(100, routeVisualProgress * 100))}%`,
-            },
-          ]}
-        />
+        <View style={styles.stopConnectorWrap}>
+          <View style={[styles.stopConnector, { backgroundColor: connectorTrackColor }]} />
+          <View
+            style={[
+              styles.stopConnectorProgress,
+              {
+                backgroundColor: connectorProgressColor,
+                height: `${Math.max(0, Math.min(100, routeVisualProgress * 100))}%`,
+              },
+            ]}
+          />
+        </View>
 
         <View style={styles.stopRow}>
           <View
@@ -456,6 +458,26 @@ export function TrackingRouteCard({
   );
 }
 
+function renderRatingStars(value, color, mutedColor) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  const clamped = Math.max(0, Math.min(5, numeric));
+  const stars = [];
+  for (let i = 1; i <= 5; i += 1) {
+    let name = "star-outline";
+    let starColor = mutedColor;
+    if (clamped >= i) {
+      name = "star";
+      starColor = color;
+    } else if (clamped >= i - 0.5) {
+      name = "star-half";
+      starColor = color;
+    }
+    stars.push(<Ionicons key={i} name={name} size={14} color={starColor} />);
+  }
+  return <View style={styles.detailRatingStars}>{stars}</View>;
+}
+
 export function TrackingDetailsCard({
   surfaceColor,
   detailCardRadius,
@@ -465,7 +487,23 @@ export function TrackingDetailsCard({
   trackingDetailRows,
   isDarkMode,
   titleColor,
+  headerLabel = "Details",
+  valueNumberOfLines = 1,
+  collapsible = false,
+  collapsed = false,
+  onToggleCollapsed = null,
+  ratingStarColor = null,
 }) {
+  const HeaderTag = collapsible ? Pressable : View;
+  const headerProps = collapsible
+    ? {
+        onPress: onToggleCollapsed,
+        accessibilityRole: "button",
+        accessibilityState: { expanded: !collapsed },
+        hitSlop: 8,
+      }
+    : {};
+  const starColor = ratingStarColor || titleColor;
   return (
     <View
       style={[
@@ -480,17 +518,32 @@ export function TrackingDetailsCard({
         end={{ x: 1, y: 1 }}
         style={styles.detailCardGradient}
       />
-      <Text style={[styles.detailHeader, { color: mutedColor }]}>Details</Text>
-      <View style={styles.detailList}>
-        {trackingDetailRows.map((detail, index) => (
-          <View
-            key={`${detail.label}-${index}`}
-            style={[styles.detailRow, { backgroundColor: requestSurfaceColor }]}
-          >
-            <View style={styles.detailLeading}>
-              {(() => {
-                const tone = getDetailTone(detail.label, isDarkMode);
-                return (
+      <HeaderTag style={styles.detailHeaderRow} {...headerProps}>
+        <Text style={[styles.detailHeader, { color: mutedColor }]}>{headerLabel}</Text>
+        {collapsible ? (
+          <View style={styles.detailHeaderChevron}>
+            <Ionicons
+              name={collapsed ? "chevron-down" : "chevron-up"}
+              size={16}
+              color={mutedColor}
+            />
+          </View>
+        ) : null}
+      </HeaderTag>
+      {collapsible && collapsed ? null : (
+        <View style={styles.detailList}>
+          {trackingDetailRows.map((detail, index) => {
+            const tone = getDetailTone(detail.label, isDarkMode);
+            const isRating = detail.kind === "rating";
+            const starsNode = isRating
+              ? renderRatingStars(detail.ratingValue, starColor, mutedColor)
+              : null;
+            return (
+              <View
+                key={`${detail.label}-${index}`}
+                style={[styles.detailRow, { backgroundColor: requestSurfaceColor }]}
+              >
+                <View style={styles.detailLeading}>
                   <View
                     style={[styles.detailIconWrap, { backgroundColor: tone.surface }]}
                   >
@@ -500,18 +553,23 @@ export function TrackingDetailsCard({
                       color={tone.icon}
                     />
                   </View>
-                );
-              })()}
-              <Text style={[styles.detailLabel, { color: mutedColor }]}>
-                {detail.label}
-              </Text>
-            </View>
-            <Text numberOfLines={1} style={[styles.detailValue, { color: titleColor }]}>
-              {detail.value}
-            </Text>
-          </View>
-        ))}
-      </View>
+                  <Text style={[styles.detailLabel, { color: mutedColor }]}>
+                    {detail.label}
+                  </Text>
+                </View>
+                {starsNode || (
+                  <Text
+                    numberOfLines={detail.valueNumberOfLines || valueNumberOfLines}
+                    style={[styles.detailValue, { color: titleColor }]}
+                  >
+                    {detail.value}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

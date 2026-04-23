@@ -275,24 +275,31 @@ const styles = StyleSheet.create({
 		position: "relative",
 		gap: 16,
 	},
-	stopConnector: {
+	// Wraps the track + progress so both share the same vertical extent —
+	// from icon-1 center to icon-2 center. Hidden under the 42px icons at
+	// each end; only the gap between rows is visually exposed.
+	stopConnectorWrap: {
 		position: "absolute",
-		left: 21,
-		top: 34,
-		bottom: 30,
+		left: 20,
+		top: 21,
+		bottom: 21,
 		width: 2,
+	},
+	stopConnector: {
+		flex: 1,
+		width: "100%",
 		borderRadius: 999,
 	},
 	stopConnectorProgress: {
 		position: "absolute",
-		left: 21,
-		top: 34,
-		width: 2,
+		top: 0,
+		left: 0,
+		width: "100%",
 		borderRadius: 999,
 	},
 	stopRow: {
 		flexDirection: "row",
-		alignItems: "center",
+		alignItems: "flex-start",
 		gap: 12,
 	},
 	stopIconWrap: {
@@ -632,6 +639,24 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "600",
 		letterSpacing: -0.16,
+	},
+	detailHeaderRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 12,
+	},
+	detailHeaderChevron: {
+		width: 24,
+		height: 24,
+		borderRadius: 999,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	detailRatingStars: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 2,
 	},
 	detailList: {
 		marginTop: 12,

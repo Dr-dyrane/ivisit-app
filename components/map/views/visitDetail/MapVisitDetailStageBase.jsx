@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
@@ -14,6 +14,8 @@ import {
 	MapVisitDetailFloatingTopSlot,
 } from "./MapVisitDetailStageParts";
 import styles from "./mapVisitDetailStage.styles";
+
+const FLOATING_TITLE_REVEAL_DELAY = 160;
 
 /**
  * MapVisitDetailStageBase
@@ -85,6 +87,8 @@ export default function MapVisitDetailStageBase({
 		presentationMode,
 		allowedSnapStates,
 	});
+	const [showFloatingTitle, setShowFloatingTitle] = useState(false);
+	const [expandedHeaderBottom, setExpandedHeaderBottom] = useState(null);
 	const {
 		androidExpandedBodyGesture,
 		androidExpandedBodyStyle,
@@ -96,7 +100,25 @@ export default function MapVisitDetailStageBase({
 		bodyScrollRef,
 		onScroll: handleBodyScroll,
 		onScrollBeginDrag: handleBodyScrollBeginDrag,
+		onExpandedToHalf: () => {
+			setShowFloatingTitle(false);
+		},
 	});
+	const handleVisitScroll = useCallback(
+		(event) => {
+			const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+			const nextShowTitle =
+				snapState === MAP_SHEET_SNAP_STATES.EXPANDED &&
+				offsetY > ((expandedHeaderBottom ?? 88) + FLOATING_TITLE_REVEAL_DELAY);
+			setShowFloatingTitle((current) => (current === nextShowTitle ? current : nextShowTitle));
+		},
+		[expandedHeaderBottom, snapState],
+	);
+	const handleExpandedHeaderLayout = useCallback((event) => {
+		const { y = 0, height = 0 } = event?.nativeEvent?.layout || {};
+		const nextBottom = y + height;
+		setExpandedHeaderBottom((current) => (current === nextBottom ? current : nextBottom));
+	}, []);
 	const handleHeaderToggle = useCallback(() => {
 		if (typeof onSnapStateChange !== "function") return;
 		onSnapStateChange(
@@ -105,23 +127,39 @@ export default function MapVisitDetailStageBase({
 				: MAP_SHEET_SNAP_STATES.EXPANDED,
 		);
 	}, [onSnapStateChange, snapState]);
+	useEffect(() => {
+		if (snapState !== MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle) {
+			setShowFloatingTitle(false);
+		}
+	}, [showFloatingTitle, snapState]);
 	const isExpanded =
 		presentationMode !== "sheet" ||
 		snapState === MAP_SHEET_SNAP_STATES.EXPANDED;
+	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
+	const shouldShowFloatingTitle =
+		isHalf || (snapState === MAP_SHEET_SNAP_STATES.EXPANDED && showFloatingTitle);
+	const isHeroTopPresentation =
+		snapState === MAP_SHEET_SNAP_STATES.EXPANDED && !showFloatingTitle;
 
 	const titleColor = tokens.titleColor;
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
 	const closeSurfaceColor = isDarkMode
 		? "rgba(148,163,184,0.14)"
 		: "rgba(255,255,255,0.42)";
-	const floatingCloseSurface = closeSurfaceColor;
-	const floatingCloseIconColor = titleColor;
-	const floatingToggleSurface = isDarkMode
-		? "rgba(255,255,255,0.10)"
-		: "rgba(255,255,255,0.72)";
-	const floatingToggleIconColor = isDarkMode
-		? "rgba(248,250,252,0.92)"
-		: "rgba(15,23,42,0.86)";
+	const floatingCloseSurface = isHeroTopPresentation
+		? "rgba(15,23,42,0.24)"
+		: closeSurfaceColor;
+	const floatingCloseIconColor = isHeroTopPresentation ? "#F8FAFC" : titleColor;
+	const floatingToggleSurface = isHeroTopPresentation
+		? "rgba(15,23,42,0.24)"
+		: isDarkMode
+			? "rgba(255,255,255,0.10)"
+			: "rgba(255,255,255,0.72)";
+	const floatingToggleIconColor = isHeroTopPresentation
+		? "#F8FAFC"
+		: isDarkMode
+			? "rgba(248,250,252,0.92)"
+			: "rgba(15,23,42,0.86)";
 
 	return (
 		<MapSheetShell
@@ -148,8 +186,11 @@ export default function MapVisitDetailStageBase({
 					}
 					floatingToggleSurface={floatingToggleSurface}
 					floatingToggleIconColor={floatingToggleIconColor}
+					shouldShowFloatingTitle={shouldShowFloatingTitle}
 					title={model.topSlot?.title || model.hero?.title || null}
-					subtitle={model.topSlot?.subtitle || model.hero?.subtitle || null}
+					subtitle={
+						isHalf ? model.topSlot?.subtitle || model.hero?.subtitle || null : null
+					}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
 					onClose={onClose}
@@ -176,7 +217,10 @@ export default function MapVisitDetailStageBase({
 				allowScrollDetents={allowScrollDetents}
 				handleBodyWheel={handleBodyWheel}
 				onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
-				onScroll={handleAndroidCollapseScroll}
+				onScroll={(event) => {
+					handleAndroidCollapseScroll(event);
+					handleVisitScroll(event);
+				}}
 				onScrollEndDrag={handleBodyScrollEndDrag}
 				scrollEnabled={bodyScrollEnabled}
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
@@ -186,6 +230,7 @@ export default function MapVisitDetailStageBase({
 					model={model}
 					onCancelVisit={onCancelVisit}
 					isExpanded={isExpanded}
+					onExpandedHeaderLayout={handleExpandedHeaderLayout}
 				/>
 			</MapStageBodyScroll>
 		</MapSheetShell>
