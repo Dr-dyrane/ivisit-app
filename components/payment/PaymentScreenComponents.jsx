@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
 	View,
 	Text,
@@ -10,12 +10,14 @@ import {
 	Modal,
 	TextInput,
 } from "react-native";
+import { useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import styles from "./paymentScreenComponents.styles.js";
 import { getPaymentGlassTokens, squircle } from "./tokens/paymentGlassTokens";
+import { getStackViewportVariant, getStackViewportSurfaceConfig } from "../../utils/ui/stackViewportConfig";
 
 // WalletBalanceCard - Premium balance card with gradient
 // PULLBACK NOTE: Extracted from PaymentScreen for reusability
@@ -245,6 +247,17 @@ export function PaymentHistoryList({ paymentHistory, onTransactionPress, refresh
 // REASON: RN Modal siblings do not reliably z-order across platforms; nesting is the canonical fix
 export function PaymentHistoryModal({ visible, paymentHistory, onTransactionPress, onClose, isDarkMode, children }) {
 	const [statusFilter, setStatusFilter] = useState("all"); // all, completed, pending, failed
+	const { width } = useWindowDimensions();
+
+	// Viewport config — resolve variant and surface config for modal sizing
+	const viewportVariant = useMemo(
+		() => getStackViewportVariant({ platform: Platform.OS, width }),
+		[width],
+	);
+	const surfaceConfig = useMemo(
+		() => getStackViewportSurfaceConfig(viewportVariant),
+		[viewportVariant],
+	);
 
 	const ModalOverlayContainer = Platform.OS === "ios" ? BlurView : View;
 	const modalOverlayProps = Platform.OS === "ios"
@@ -366,7 +379,7 @@ export function PaymentHistoryModal({ visible, paymentHistory, onTransactionPres
 		<Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
 			<ModalOverlayContainer {...modalOverlayProps} style={modalOverlayStyle}>
 				<Pressable style={styles.modalBackdrop} onPress={onClose} />
-				<View style={[styles.historyModalCard, { backgroundColor: colors.card }]}>
+				<View style={[styles.historyModalCard, { backgroundColor: colors.card, maxWidth: surfaceConfig.modalMaxWidth, width: '100%', alignSelf: 'center' }]}>
 				<View style={styles.modalGrabber} />
 
 				{/* Header */}
@@ -483,6 +496,17 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 	const tokens = getPaymentGlassTokens({ isDarkMode });
 	const isAndroid = Platform.OS === "android";
 	const isIOS = Platform.OS === "ios";
+	const { width } = useWindowDimensions();
+
+	// Viewport config — resolve variant and surface config for modal sizing
+	const viewportVariant = useMemo(
+		() => getStackViewportVariant({ platform: Platform.OS, width }),
+		[width],
+	);
+	const surfaceConfig = useMemo(
+		() => getStackViewportSurfaceConfig(viewportVariant),
+		[viewportVariant],
+	);
 
 	const ModalOverlayContainer = isIOS ? BlurView : View;
 	const modalOverlayProps = isIOS
@@ -523,7 +547,7 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 
 				{/* Card host: shadow + squircle + hardware texture for Android */}
 				<View
-					style={[styles.addFundsCard, squircle(24), tokens.shadowStyle, { overflow: "hidden" }]}
+					style={[styles.addFundsCard, squircle(24), tokens.shadowStyle, { overflow: "hidden", maxWidth: surfaceConfig.modalMaxWidth, width: '100%', alignSelf: 'center' }]}
 					renderToHardwareTextureAndroid={isAndroid}
 					needsOffscreenAlphaCompositing={isAndroid}
 				>
@@ -564,6 +588,7 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 					</View>
 
 					<View style={styles.amountInputWrapper}>
+						<Text style={[styles.currencyPrefix, { color: colors.textMuted }]}>$</Text>
 						<TextInput
 							style={[styles.amountInput, squircle(16), { color: colors.text, backgroundColor: colors.inputBg }]}
 							placeholder="Enter amount"
@@ -572,7 +597,6 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 							onChangeText={setAmount}
 							keyboardType="decimal-pad"
 						/>
-						<Text style={[styles.currencyPrefix, { color: colors.textMuted }]}>$</Text>
 					</View>
 
 					<View style={styles.presetGrid}>

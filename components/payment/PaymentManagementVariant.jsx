@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, Platform } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import {
   WalletBalanceCard,
   LinkPaymentCard,
@@ -7,6 +8,8 @@ import {
 } from './PaymentScreenComponents';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
+import { getStackViewportVariant, getStackViewportVariantGroup } from '../../utils/ui/stackViewportConfig';
+import { getStackResponsiveMetrics } from '../../utils/ui/stackResponsiveMetrics';
 
 // PULLBACK NOTE: Create PaymentManagementVariant following map sheets pattern
 // OLD: Management mode UI mixed in orchestrator
@@ -14,8 +17,24 @@ import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
 // REASON: Follow modular architecture pattern - variant files only pass config/theme
 
 export default function PaymentManagementVariant({ model, theme, isDarkMode }) {
+  const { width } = useWindowDimensions();
+
+  // Viewport config — resolve variant and responsive metrics
+  const viewportVariant = useMemo(
+    () => getStackViewportVariant({ platform: Platform.OS, width }),
+    [width],
+  );
+  const variantGroup = useMemo(
+    () => getStackViewportVariantGroup(viewportVariant),
+    [viewportVariant],
+  );
+  const metrics = useMemo(
+    () => getStackResponsiveMetrics(variantGroup || 'compact'),
+    [variantGroup],
+  );
+
   return (
-    <View style={{ gap: 24 }}>
+    <View style={{ gap: metrics?.spacing?.lg || 24 }}>
       <WalletBalanceCard
         walletBalance={model.walletBalance}
         onTopUp={model.handleTopUp}
@@ -28,8 +47,8 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode }) {
         isDarkMode={isDarkMode}
       />
 
-      <View style={[{ borderRadius: 24, padding: 20, backgroundColor: theme.card }]}>
-        <Text style={[{ fontSize: 16, fontWeight: '700', marginBottom: 16, color: theme.text }]}>
+      <View style={[{ borderRadius: metrics?.radii?.lg || 20, padding: metrics?.spacing?.lg || 16, backgroundColor: theme.card }]}>
+        <Text style={[{ fontSize: metrics?.typography?.body?.fontSize || 14, fontWeight: metrics?.typography?.body?.fontWeight || '400', marginBottom: metrics?.spacing?.md || 12, color: theme.text }]}>
           {PAYMENT_SCREEN_COPY.management.savedMethods}
         </Text>
         <PaymentMethodSelector

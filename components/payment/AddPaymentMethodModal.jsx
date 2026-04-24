@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Keyboard,
   Alert
 } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -20,14 +21,24 @@ import { CardField, useConfirmSetupIntent } from '@stripe/stripe-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 import { paymentService } from '../../services/paymentService';
-
-const { width } = Dimensions.get('window');
+import { getStackViewportVariant, getStackViewportSurfaceConfig } from '../../utils/ui/stackViewportConfig';
 
 const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
   const { isDarkMode } = useTheme();
   const [cardDetails, setCardDetails] = useState(null);
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { width } = useWindowDimensions();
+
+  // Viewport config — resolve variant and surface config for modal sizing
+  const viewportVariant = useMemo(
+    () => getStackViewportVariant({ platform: Platform.OS, width }),
+    [width],
+  );
+  const surfaceConfig = useMemo(
+    () => getStackViewportSurfaceConfig(viewportVariant),
+    [viewportVariant],
+  );
 
   const { confirmSetupIntent } = useConfirmSetupIntent();
 
@@ -107,7 +118,7 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalContentWrapper}
       >
-        <View style={[styles.modalContent, { backgroundColor: isDarkMode ? "rgba(10,15,26,0.95)" : "rgba(255,255,255,0.95)" }]}>
+        <View style={[styles.modalContent, { backgroundColor: isDarkMode ? "rgba(10,15,26,0.95)" : "rgba(255,255,255,0.95)", maxWidth: surfaceConfig.modalMaxWidth, width: '100%', alignSelf: 'center' }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
               <Ionicons name="close" size={24} color={textColor} />
@@ -186,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalContent: {
-    width: width * 0.95,
+    width: '100%',
     borderRadius: 48,
     padding: 24,
     borderWidth: 0,

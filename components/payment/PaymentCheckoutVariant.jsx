@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, Platform } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import {
   PaymentIdentitySection,
   PaymentSummarySection,
@@ -7,6 +8,8 @@ import {
 } from './PaymentScreenComponents';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
+import { getStackViewportVariant, getStackViewportVariantGroup } from '../../utils/ui/stackViewportConfig';
+import { getStackResponsiveMetrics } from '../../utils/ui/stackResponsiveMetrics';
 
 // PULLBACK NOTE: Create PaymentCheckoutVariant following map sheets pattern
 // OLD: Checkout mode UI mixed in orchestrator
@@ -14,6 +17,22 @@ import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
 // REASON: Follow modular architecture pattern - variant files only pass config/theme
 
 export default function PaymentCheckoutVariant({ model, theme, isDarkMode }) {
+  const { width } = useWindowDimensions();
+
+  // Viewport config — resolve variant and responsive metrics
+  const viewportVariant = useMemo(
+    () => getStackViewportVariant({ platform: Platform.OS, width }),
+    [width],
+  );
+  const variantGroup = useMemo(
+    () => getStackViewportVariantGroup(viewportVariant),
+    [viewportVariant],
+  );
+  const metrics = useMemo(
+    () => getStackResponsiveMetrics(variantGroup || 'compact'),
+    [variantGroup],
+  );
+
   return (
     <>
       <PaymentIdentitySection
@@ -27,8 +46,8 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode }) {
         isDarkMode={isDarkMode}
       />
 
-      <View style={{ gap: 8 }}>
-        <Text style={[{ fontSize: 16, fontWeight: '700', marginLeft: 8, marginBottom: 12, color: theme.text }]}>
+      <View style={{ gap: metrics?.spacing?.sm || 8 }}>
+        <Text style={[{ fontSize: metrics?.typography?.body?.fontSize || 14, fontWeight: metrics?.typography?.body?.fontWeight || '400', marginLeft: metrics?.spacing?.sm || 8, marginBottom: metrics?.spacing?.md || 12, color: theme.text }]}>
           {PAYMENT_SCREEN_COPY.checkout.paymentMethod}
         </Text>
         <PaymentMethodSelector

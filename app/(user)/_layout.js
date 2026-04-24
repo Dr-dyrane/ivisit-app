@@ -9,8 +9,12 @@ import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
-import WebAppShell from "../../components/web/WebAppShell";
 import { getHeaderBehavior } from "../../constants/header";
+
+// PULLBACK NOTE: Remove WebAppShell wrapper to eliminate viewport constraint on web
+// OLD: WebAppShell with surfaceMode handling constrains viewport on web
+// NEW: Plain container matching root/stack pattern for full viewport control
+// REASON: Map and stack layouts handle their own viewport; web should not be constrained
 
 export default function UserLayout() {
 	const segments = useSegments();
@@ -23,32 +27,27 @@ export default function UserLayout() {
 
 	return (
 		<UserProviders>
-			<WebAppShell
-				variant="app"
-				surfaceMode={isTabsIndex || isStackRoute ? "none" : "surface"}
-			>
-				<View style={styles.container}>
-					<UserHeaderWrapper />
+			<View style={styles.container}>
+				<UserHeaderWrapper />
 
-					<Stack
-						screenOptions={{
-							headerShown: false,
-							animation: "slide_from_right",
+				<Stack
+					screenOptions={{
+						headerShown: false,
+						animation: "slide_from_right",
+					}}
+				>
+					<Stack.Screen name="index" />
+					<Stack.Screen name="(tabs)" />
+					<Stack.Screen
+						name="(stacks)"
+						options={{
+							presentation: "card",
 						}}
-					>
-						<Stack.Screen name="index" />
-						<Stack.Screen name="(tabs)" />
-						<Stack.Screen
-							name="(stacks)"
-							options={{
-								presentation: "card",
-							}}
-						/>
-					</Stack>
+					/>
+				</Stack>
 
-					<GlobalFAB />
-				</View>
-			</WebAppShell>
+				<GlobalFAB />
+			</View>
 		</UserProviders>
 	);
 }

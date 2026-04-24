@@ -1,10 +1,12 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { Animated, Platform, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScrollAwareHeader } from '../../contexts/ScrollAwareHeaderContext';
 import { useTabBarVisibility } from '../../contexts/TabBarVisibilityContext';
 import { STACK_TOP_PADDING } from '../../constants/layout';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useWindowDimensions } from "react-native";
+import { getStackViewportVariant, getStackViewportSurfaceConfig } from "../../utils/ui/stackViewportConfig";
 import { createPaymentScreenTheme } from './paymentScreen.theme';
 
 // PULLBACK NOTE: Create PaymentStageBase following map sheets pattern
@@ -16,6 +18,17 @@ export default function PaymentStageBase({ children, isDarkMode }) {
   const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
   const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  // Viewport config — resolve variant and surface config
+  const viewportVariant = useMemo(
+    () => getStackViewportVariant({ platform: Platform.OS, width }),
+    [width],
+  );
+  const surfaceConfig = useMemo(
+    () => getStackViewportSurfaceConfig(viewportVariant),
+    [viewportVariant],
+  );
 
   // Motion - animations owned by StageBase
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -45,15 +58,27 @@ export default function PaymentStageBase({ children, isDarkMode }) {
   // Theme
   const theme = createPaymentScreenTheme({ isDarkMode });
 
+  // Scroll content style — centered with max-width from surface config
+  const scrollContentStyle = useMemo(
+    () => ({
+      gap: surfaceConfig.cardGap,
+      maxWidth: surfaceConfig.contentMaxWidth,
+      width: '100%',
+      alignSelf: 'center',
+    }),
+    [surfaceConfig.contentMaxWidth, surfaceConfig.cardGap],
+  );
+
   return (
     <LinearGradient colors={theme.background} style={styles.container}>
       <Animated.ScrollView
         contentContainerStyle={[
           styles.scrollContent,
+          scrollContentStyle,
           {
             paddingTop: STACK_TOP_PADDING,
             paddingBottom: bottomPadding,
-            paddingHorizontal: 12
+            paddingHorizontal: surfaceConfig.contentHorizontalPadding,
           }
         ]}
         showsVerticalScrollIndicator={false}
