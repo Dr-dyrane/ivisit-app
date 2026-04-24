@@ -1,12 +1,12 @@
 import React from "react";
-import { View, Text, Pressable, Modal, ScrollView, StyleSheet, Platform } from "react-native";
+import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import ProfileField from "../../form/ProfileField";
+import PersonalInfoSheet from "./PersonalInfoSheet";
 import { COLORS } from "../../../constants/colors";
 
-// PULLBACK NOTE: ProfileModals - Modular modal components
-// Extracted from ProfileScreen to follow /map module pattern
-// REASON: Separation of concerns, easier debugging and maintenance
+// PULLBACK NOTE: ProfileModals - Modal components with bottom sheet for personal info
+// Redesigned to follow Apple UX principles with bottom sheet pattern
+// REASON: Personal information now uses bottom sheet from below on mobile
 
 export default function ProfileModals({
 	isPersonalInfoModalOpen,
@@ -19,95 +19,16 @@ export default function ProfileModals({
 	deleteAccount,
 	isDeleting,
 }) {
-	const {
-		fullName, setFullName,
-		username, setUsername,
-		gender, setGender,
-		email, setEmail,
-		phone, setPhone,
-		address, setAddress,
-		dateOfBirth, setDateOfBirth,
-	} = formState;
-
 	return (
 		<>
-			{/* Personal Information Modal */}
-			<Modal
+			{/* Personal Information Bottom Sheet */}
+			<PersonalInfoSheet
 				visible={isPersonalInfoModalOpen}
-				animationType="slide"
-				transparent={true}
-				onRequestClose={() => setIsPersonalInfoModalOpen(false)}
-			>
-				<View style={styles.modalOverlay}>
-					<View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-						<View style={styles.modalHeader}>
-							<Text style={[styles.modalTitle, { color: colors.text }]}>
-								Personal Information
-							</Text>
-							<Pressable onPress={() => setIsPersonalInfoModalOpen(false)}>
-								<Ionicons name="close" size={24} color={colors.text} />
-							</Pressable>
-						</View>
-						<ScrollView style={styles.modalBody}>
-							<ProfileField
-								label="Full Name"
-								value={fullName}
-								onChange={setFullName}
-								iconName="person-outline"
-							/>
-							<ProfileField
-								label="Username"
-								value={username}
-								onChange={setUsername}
-								iconName="at-outline"
-							/>
-							<ProfileField
-								label="Gender"
-								value={gender}
-								onChange={setGender}
-								iconName="transgender-outline"
-							/>
-							<ProfileField
-								label="Email Address"
-								value={email}
-								onChange={setEmail}
-								iconName="mail-outline"
-								keyboardType="email-address"
-							/>
-							<ProfileField
-								label="Phone Number"
-								value={phone}
-								onChange={setPhone}
-								iconName="call-outline"
-								keyboardType="phone-pad"
-							/>
-							<ProfileField
-								label="Address"
-								value={address}
-								onChange={setAddress}
-								iconName="location-outline"
-							/>
-							<ProfileField
-								label="Date of Birth"
-								value={dateOfBirth}
-								onChange={setDateOfBirth}
-								iconName="calendar-outline"
-							/>
-						</ScrollView>
-						<View style={styles.modalFooter}>
-							<Pressable
-								style={[styles.modalButton, { backgroundColor: COLORS.brandPrimary }]}
-								onPress={async () => {
-									await saveProfile();
-									setIsPersonalInfoModalOpen(false);
-								}}
-							>
-								<Text style={styles.modalButtonText}>Save</Text>
-							</Pressable>
-						</View>
-					</View>
-				</View>
-			</Modal>
+				onClose={() => setIsPersonalInfoModalOpen(false)}
+				formState={formState}
+				saveProfile={saveProfile}
+				isDarkMode={colors.text === "#FFFFFF"}
+			/>
 
 			{/* Delete Account Modal */}
 			<Modal

@@ -101,15 +101,13 @@ export default function InputModal({
                       style={styles.closeButton}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <View style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 12,
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <Ionicons name="close" size={18} color={colors.text} />
+                      <View style={[
+                        styles.closeIcon,
+                        {
+                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                        }
+                      ]}>
+                        <Ionicons name="close" size={20} color={colors.text} />
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -185,10 +183,10 @@ const styles = StyleSheet.create({
   centeredContainer: {
     flex: 1,
     justifyContent: "center",
-    padding: 20,
+    padding: 12,
   },
   modalContent: {
-    borderRadius: 36, // Manifesto: Primary Artifact (Extreme Squircle)
+    borderRadius: 32, // PULLBACK NOTE: Increased from 24 to 32 for more roundness
     width: "100%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 20 },
@@ -196,42 +194,52 @@ const styles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 24,
     overflow: "hidden",
-    borderWidth: 0, // Manifesto: Border-Free
+    borderWidth: 0,
+    borderCurve: Platform.OS === "ios" ? "continuous" : undefined,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 8,
-    borderBottomWidth: 0, // Manifesto: Border-Free
+    paddingHorizontal: 12, // PULLBACK NOTE: Reduced from 16 to 12
+    paddingTop: 12, // PULLBACK NOTE: Reduced from 16 to 12
+    paddingBottom: 2, // PULLBACK NOTE: Reduced from 4 to 2
+    borderBottomWidth: 0,
   },
   title: {
-    fontSize: 12,
-    fontWeight: "900", // Manifesto: Action Text
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    fontSize: 16, // PULLBACK NOTE: Increased from 12 for larger heading
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: 'capitalize',
     opacity: 0.7
   },
   closeButton: {
     padding: 4,
   },
+  closeIcon: {
+    width: 36, // PULLBACK NOTE: Increased from 28 for larger close button
+    height: 36, // PULLBACK NOTE: Increased from 28 for larger close button
+    borderRadius: 18, // PULLBACK NOTE: Circle shape (half of width/height)
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderCurve: Platform.OS === "ios" ? "continuous" : undefined,
+  },
   body: {
-    padding: 24,
+    padding: 12, // PULLBACK NOTE: Reduced from 16 to 12
   },
   footer: {
     flexDirection: "row",
-    padding: 24,
-    borderTopWidth: 0, // Manifesto: Border-Free
-    gap: 16,
+    padding: 12, // PULLBACK NOTE: Reduced from 16 to 12
+    borderTopWidth: 0,
+    gap: 8, // PULLBACK NOTE: Reduced from 12 to 8
   },
   button: {
     flex: 1,
-    height: 56, // Manifesto: Larger touch target
-    borderRadius: 20, // Manifesto: Card-in-Card
+    height: 44, // PULLBACK NOTE: Reduced from 48 to 44
+    borderRadius: 14, // PULLBACK NOTE: Reduced from 16 to 14 for more squircle
     alignItems: "center",
     justifyContent: "center",
+    borderCurve: Platform.OS === "ios" ? "continuous" : undefined,
   },
   secondaryButton: {
     backgroundColor: "transparent",
@@ -240,8 +248,8 @@ const styles = StyleSheet.create({
     // Style handled inline for dynamic props
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: "800", // Manifesto: Action Text
+    fontSize: 14, // PULLBACK NOTE: Reduced from 15 to 14
+    fontWeight: "800",
     letterSpacing: 0.5,
   },
 });
