@@ -27,6 +27,8 @@ export default function MiniProfileShortcutGroup({ rows, colors, layout }) {
 }
 
 function MiniProfileShortcutRow({ row, isLast, colors, layout }) {
+	const hasBadge = row.badge !== null && row.badge !== undefined && row.badge !== "";
+
 	return (
 		<Pressable
 			onPress={row.onPress}
@@ -79,7 +81,7 @@ function MiniProfileShortcutRow({ row, isLast, colors, layout }) {
 					{row.label}
 				</Text>
 				<View style={styles.rowRight}>
-					{row.badge && (
+					{hasBadge && (
 						<View
 							style={[
 								styles.badge,
@@ -102,7 +104,7 @@ function MiniProfileShortcutRow({ row, isLast, colors, layout }) {
 								]}
 								numberOfLines={1}
 							>
-								{row.badge}
+								{String(row.badge)}
 							</Text>
 						</View>
 					)}

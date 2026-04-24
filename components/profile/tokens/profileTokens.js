@@ -1,0 +1,110 @@
+import { COLORS } from "../../../constants/colors";
+
+// PULLBACK NOTE: Profile-specific design tokens
+// Following /map module pattern for centralized design values
+// REASON: Single source of truth for profile styling, easier maintenance
+
+export const PROFILE_COLORS = {
+	// Hero section
+	HERO: {
+		IMAGE_BORDER_DARK: "rgba(255,255,255,0.1)",
+		IMAGE_BORDER_LIGHT: "rgba(0,0,0,0.05)",
+		CAMERA_BORDER_DARK: "#0B0F1A",
+		CAMERA_BORDER_LIGHT: "#FFFFFF",
+	},
+	
+	// ID badge
+	ID_BADGE: {
+		BG_DARK: "rgba(255,255,255,0.08)",
+		BG_LIGHT: "rgba(0,0,0,0.05)",
+	},
+	
+	// Insurance badge
+	INSURANCE_BADGE: {
+		BG_DARK: "rgba(134,16,14,0.15)",
+		BG_LIGHT: "rgba(134,16,14,0.08)",
+		TEXT: COLORS.brandPrimary,
+	},
+	
+	// Modals
+	MODAL: {
+		OVERLAY: "rgba(0, 0, 0, 0.5)",
+		SHADOW_COLOR: "#000",
+		SHADOW_OFFSET: { width: 0, height: 4 },
+		SHADOW_OPACITY: 0.15,
+		SHADOW_RADIUS: 12,
+		ELEVATION: 8,
+		BORDER_COLOR: "rgba(0, 0, 0, 0.1)",
+		BORDER_RADIUS: 24,
+		SMALL_BORDER_RADIUS: 16,
+	},
+	
+	// Buttons
+	BUTTON: {
+		PRIMARY: COLORS.brandPrimary,
+		DANGER: COLORS.error,
+	},
+};
+
+export const PROFILE_SPACING = {
+	HERO_PADDING_BOTTOM: 32,
+	HERO_NAME_MARGIN_TOP: 20,
+	HERO_EMAIL_MARGIN_TOP: 6,
+	ID_BADGE_MARGIN_TOP: 12,
+	INSURANCE_BADGE_MARGIN_TOP: 8,
+	ACTION_LIST_PADDING_HORIZONTAL: 12,
+	ACTION_GROUP_GAP: 16,
+	DELETE_ACCOUNT_SPACING: 32,
+	MODAL_PADDING: 20,
+	MODAL_GAP: 8,
+};
+
+export const PROFILE_SIZES = {
+	HERO_IMAGE: 120,
+	HERO_IMAGE_BORDER_RADIUS: 60,
+	CAMERA_BUTTON: 36,
+	CAMERA_BUTTON_BORDER_RADIUS: 18,
+	CAMERA_ICON: 18,
+	ID_BADGE_BORDER_RADIUS: 20,
+	ID_BADGE_ICON: 14,
+	INSURANCE_BADGE_BORDER_RADIUS: 20,
+	INSURANCE_BADGE_ICON: 14,
+	MODAL_BUTTON_PADDING: 16,
+	MODAL_BUTTON_BORDER_RADIUS: 16,
+};
+
+export const PROFILE_TYPOGRAPHY = {
+	HERO_NAME: {
+		SIZE: 26,
+		WEIGHT: "900",
+		LETTER_SPACING: -1.0,
+	},
+	HERO_EMAIL: {
+		SIZE: 15,
+		LETTER_SPACING: -0.3,
+	},
+	ID_BADGE: {
+		SIZE: 13,
+		WEIGHT: "600",
+		LETTER_SPACING: -0.2,
+	},
+	INSURANCE_BADGE: {
+		SIZE: 13,
+		WEIGHT: "700",
+		LETTER_SPACING: -0.2,
+	},
+	MODAL_TITLE: {
+		SIZE: 20,
+		WEIGHT: "900",
+		LETTER_SPACING: -0.5,
+	},
+	MODAL_TEXT: {
+		SIZE: 15,
+		LINE_HEIGHT: 22,
+	},
+	MODAL_BUTTON: {
+		SIZE: 16,
+		WEIGHT: "900",
+		LETTER_SPACING: -0.5,
+	},
+};
