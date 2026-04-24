@@ -23,11 +23,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import HeaderBackButton from "../components/navigation/HeaderBackButton";
-import ContactCard from "../components/emergency/ContactCard";
+import ContactCard, { ContactGroup, SelectionToolbar, ContactsLoadingState, ContactsEmptyState } from "../components/emergency/ContactCard";
 import { useEmergencyContactsForm } from "../hooks/emergency/useEmergencyContactsForm";
 import InputModal from "../components/ui/InputModal";
 import Input from "../components/form/Input";
 import PhoneInputField from "../components/register/PhoneInputField";
+import {
+	getMiniProfileColors,
+	getMiniProfileLayout,
+} from "../components/emergency/miniProfile/miniProfile.model";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -43,6 +47,9 @@ export default function EmergencyContactsScreen() {
 	const { registerFAB, unregisterFAB } = useFAB();
 	const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
+
+	const miniProfileColors = getMiniProfileColors(isDarkMode);
+	const layout = getMiniProfileLayout({});
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
@@ -161,63 +168,12 @@ export default function EmergencyContactsScreen() {
 		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
 			{/* Selection Toolbar */}
 			{selectedContacts.size > 0 && (
-				<Animated.View 
-					style={{
-						position: 'absolute',
-						top: STACK_TOP_PADDING + 60,
-						left: 12,
-						right: 12,
-						zIndex: 1000,
-						backgroundColor: isDarkMode ? '#0B0F1A' : '#FFFFFF',
-						borderRadius: 24,
-						padding: 16,
-						flexDirection: 'row',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						shadowColor: COLORS.brandPrimary,
-						shadowOpacity: 0.15,
-						shadowOffset: { width: 0, height: 8 },
-						shadowRadius: 16,
-						elevation: 8,
-						borderColor: COLORS.brandPrimary + '40',
-						borderWidth: 1,
-					}}
-				>
-					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-						<Ionicons name="checkmark-circle" size={24} color={COLORS.brandPrimary} />
-						<Text style={{ fontSize: 16, fontWeight: '800', color: isDarkMode ? '#FFFFFF' : '#0F172A' }}>
-							{selectedContacts.size} selected
-						</Text>
-					</View>
-					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-						<TouchableOpacity
-							onPress={clearSelection}
-							style={{
-								paddingHorizontal: 12,
-								paddingVertical: 8,
-								borderRadius: 16,
-								backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#F1F5F9',
-							}}
-						>
-							<Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#FFFFFF' : '#0F172A' }}>
-								Clear
-							</Text>
-						</TouchableOpacity>
-						<TouchableOpacity
-							onPress={handleBulkDelete}
-							style={{
-								paddingHorizontal: 12,
-								paddingVertical: 8,
-								borderRadius: 16,
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							}}
-						>
-							<Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.error }}>
-								Delete
-							</Text>
-						</TouchableOpacity>
-					</View>
-				</Animated.View>
+				<SelectionToolbar
+					selectedCount={selectedContacts.size}
+					onClear={clearSelection}
+					onDelete={handleBulkDelete}
+					isDarkMode={isDarkMode}
+				/>
 			)}
 
 			<Animated.ScrollView
@@ -233,69 +189,57 @@ export default function EmergencyContactsScreen() {
 					transform: [{ translateY: slideAnim }],
 				}}
 			>
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-					}}
-				>
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.title, { color: colors.text }]}>
-							iVisit Emergency Network
-						</Text>
-						<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-							Add family members, caregivers, and key contacts. This powers your iVisit emergency response system and enables fast coordination during medical situations.
-						</Text>
-					</View>
-
-					
-					{isContactsLoading ? (
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<View
-								style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-							>
-								<ActivityIndicator color={COLORS.brandPrimary} />
-								<Text style={{ color: colors.textMuted, fontWeight: "500" }}>
-									Loading contacts...
-								</Text>
-							</View>
-						</View>
-					) : null}
-
-					{emptyState ? (
-						<View style={[styles.card, { backgroundColor: colors.card }]}>
-							<Text style={[styles.title, { color: colors.text }]}>
-								No contacts yet
-							</Text>
-							<Text style={[styles.subtitle, { color: colors.textMuted }]}>
-								Add at least one trusted contact for faster emergency
-								coordination.
-							</Text>
-						</View>
-					) : null}
-				</Animated.View>
-
-				{contacts.map((c, index) => (
+				{isContactsLoading ? (
 					<Animated.View
-						key={String(c?.id)}
 						style={{
 							opacity: fadeAnim,
 							transform: [{ translateY: slideAnim }],
 							paddingHorizontal: 12,
-							marginTop: index === 0 ? 20 : 12,
+							marginBottom: 16,
 						}}
 					>
-						<ContactCard 
-							contact={c} 
-							isDarkMode={isDarkMode} 
-							onEdit={openEdit} 
-							onDelete={handleDelete}
-							isSelected={selectedContacts.has(c?.id)}
-							onToggleSelect={handleToggleSelect}
-						/>
+						<ContactsLoadingState isDarkMode={isDarkMode} />
 					</Animated.View>
-				))}
+				) : null}
+
+				{emptyState ? (
+					<Animated.View
+						style={{
+							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
+							paddingHorizontal: 12,
+							marginBottom: 16,
+						}}
+					>
+						<ContactsEmptyState isDarkMode={isDarkMode} />
+					</Animated.View>
+				) : null}
+
+				{contacts && contacts.length > 0 && (
+					<Animated.View
+						style={{
+							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
+							paddingHorizontal: 12,
+							marginBottom: 16,
+						}}
+					>
+						<ContactGroup isDarkMode={isDarkMode}>
+							{contacts.map((c, index) => (
+								<ContactCard
+									key={String(c?.id)}
+									contact={c}
+									isDarkMode={isDarkMode}
+									onEdit={openEdit}
+									onDelete={handleDelete}
+									isSelected={selectedContacts.has(c?.id)}
+									onToggleSelect={handleToggleSelect}
+									isLast={index === contacts.length - 1}
+								/>
+							))}
+						</ContactGroup>
+					</Animated.View>
+				)}
 			</Animated.ScrollView>
 
             <InputModal
