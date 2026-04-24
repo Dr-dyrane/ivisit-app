@@ -8,6 +8,10 @@ Related audit:
 
 - [MAP_FLOW_SURGICAL_AUDIT_V1.md](./MAP_FLOW_SURGICAL_AUDIT_V1.md)
 
+Parallel track for stack-owned screens (Profile, Settings, Emergency Contact, Payment):
+
+- [STACK_SCREENS_PASS_V1.md](./STACK_SCREENS_PASS_V1.md)
+
 ## Execution Status
 
 - Pass 1: complete
