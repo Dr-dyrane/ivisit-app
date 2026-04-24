@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useVisits } from "../../../contexts/VisitsContext";
 import useResponsiveSurfaceMetrics from "../../../hooks/ui/useResponsiveSurfaceMetrics";
@@ -133,7 +133,7 @@ function HistorySkeletonGroup({ theme, rowMetrics, containerRadius, rows = 3 }) 
 						{index < rows - 1 ? (
 							<View
 								style={{
-									height: 1,
+									height: StyleSheet.hairlineWidth,
 									backgroundColor: theme.hairlineDivider,
 									marginLeft: theme.rowPaddingX + rowMetrics.orbSize + rowMetrics.gap,
 								}}

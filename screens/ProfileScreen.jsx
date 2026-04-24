@@ -39,6 +39,7 @@ import {
 	navigateToEmergencyContacts,
 	navigateToMedicalProfile,
 	navigateToPayment,
+	navigateToInsurance,
 } from "../utils/navigationHelpers";
 
 const ProfileScreen = () => {
@@ -189,7 +190,7 @@ const ProfileScreen = () => {
 			resetHeader();
 			setHeaderState({
 				title: "Profile",
-				subtitle: "YOUR ACCOUNT",
+				subtitle: "Account",
 				icon: <Ionicons name="person" size={26} color="#FFFFFF" />,
 				backgroundColor: COLORS.brandPrimary,
 				badge: null,
@@ -382,15 +383,14 @@ const ProfileScreen = () => {
 					>
 						<Text
 							style={{
-								fontSize: 10,
-								fontWeight: "800",
-								color: colors.textMuted,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.text,
 								marginBottom: 16,
-								letterSpacing: 1.5,
-								textTransform: "uppercase",
+								letterSpacing: -0.3,
 							}}
 						>
-							PERSONAL INFORMATION
+							Personal Information
 						</Text>
 
 						<ProfileField
@@ -450,15 +450,14 @@ const ProfileScreen = () => {
 					>
 						<Text
 							style={{
-								fontSize: 10,
-								fontWeight: "800",
-								color: colors.textMuted,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.text,
 								marginBottom: 16,
-								letterSpacing: 1.5,
-								textTransform: "uppercase",
+								letterSpacing: -0.3,
 							}}
 						>
-							EMERGENCY CONTACTS
+							Emergency Contacts
 						</Text>
 
 						{emergencyContacts && emergencyContacts.length > 0 ? (
@@ -470,9 +469,9 @@ const ProfileScreen = () => {
 									flexDirection: "row",
 									alignItems: "center",
 									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 4 },
-									shadowOpacity: isDarkMode ? 0 : 0.03,
-									shadowRadius: 10,
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: isDarkMode ? 0 : 0.01,
+									shadowRadius: 6,
 								}}
 								onPress={() => {
 									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -540,9 +539,9 @@ const ProfileScreen = () => {
 									flexDirection: "row",
 									alignItems: "center",
 									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 4 },
-									shadowOpacity: isDarkMode ? 0 : 0.03,
-									shadowRadius: 10,
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: isDarkMode ? 0 : 0.01,
+									shadowRadius: 6,
 								}}
 								onPress={() => {
 									Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -612,15 +611,14 @@ const ProfileScreen = () => {
 					>
 						<Text
 							style={{
-								fontSize: 10,
-								fontWeight: "800",
-								color: colors.textMuted,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.text,
 								marginBottom: 16,
-								letterSpacing: 1.5,
-								textTransform: "uppercase",
+								letterSpacing: -0.3,
 							}}
 						>
-							MEDICAL HISTORY
+							Health Information
 						</Text>
 
 						<View
@@ -629,9 +627,9 @@ const ProfileScreen = () => {
 								borderRadius: 36,
 								padding: 24,
 								shadowColor: "#000",
-								shadowOffset: { width: 0, height: 4 },
-								shadowOpacity: isDarkMode ? 0 : 0.03,
-								shadowRadius: 10,
+								shadowOffset: { width: 0, height: 2 },
+								shadowOpacity: isDarkMode ? 0 : 0.01,
+								shadowRadius: 6,
 							}}
 						>
 							<Text
@@ -734,114 +732,31 @@ const ProfileScreen = () => {
 						</View>
 					</Animated.View>
 
-					{/* Payments & Billing Section */}
+					{/* Coverage Section */}
 					<Animated.View
 						style={{
 							opacity: fadeAnim,
+							transform: [{ translateY: slideAnim }],
 							paddingHorizontal: 12,
 							marginTop: 32,
 						}}
 					>
 						<Text
 							style={{
-								fontSize: 10,
-								fontWeight: "800",
-								color: colors.textMuted,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.text,
 								marginBottom: 16,
-								letterSpacing: 1.5,
-								textTransform: "uppercase",
+								letterSpacing: -0.3,
 							}}
 						>
-							PAYMENTS & BILLING
+							Coverage
 						</Text>
-						<Pressable
-							onPress={() => {
-								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								navigateToPayment({ router });
-							}}
-							style={{
-								backgroundColor: colors.card,
-								borderRadius: 36,
-								padding: 20,
-								flexDirection: "row",
-								alignItems: "center",
-								shadowColor: "#000",
-								shadowOffset: { width: 0, height: 4 },
-								shadowOpacity: isDarkMode ? 0 : 0.03,
-								shadowRadius: 10,
-							}}
-						>
-							<View
-								style={{
-									backgroundColor: COLORS.brandPrimary,
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="card" size={26} color="#FFFFFF" />
-							</View>
-							<View style={{ flex: 1 }}>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Payments & Billing
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-									}}
-								>
-									Manage cards & history
-								</Text>
-							</View>
-							<View
-								style={{
-									width: 36,
-									height: 36,
-									borderRadius: 14,
-									backgroundColor: isDarkMode
-										? "rgba(255,255,255,0.025)"
-										: "rgba(0,0,0,0.025)",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
-								<Ionicons
-									name="chevron-forward"
-									size={16}
-									color={colors.textMuted}
-								/>
-							</View>
-						</Pressable>
-					</Animated.View>
 
-					{/* Password/Security Section */}
-					<Animated.View
-						style={{
-							opacity: fadeAnim,
-							paddingHorizontal: 12,
-							marginTop: 32,
-						}}
-					>
 						<Pressable
 							onPress={() => {
 								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-								if (user?.hasPassword) {
-									router.push("/(user)/(stacks)/change-password");
-								} else {
-									router.push("/(user)/(stacks)/create-password");
-								}
+								navigateToInsurance({ router });
 							}}
 							style={{
 								backgroundColor: colors.card,
@@ -850,15 +765,14 @@ const ProfileScreen = () => {
 								flexDirection: "row",
 								alignItems: "center",
 								shadowColor: "#000",
-								shadowOffset: { width: 0, height: 4 },
-								shadowOpacity: isDarkMode ? 0 : 0.03,
-								shadowRadius: 10,
-								marginBottom: 14,
+								shadowOffset: { width: 0, height: 2 },
+								shadowOpacity: isDarkMode ? 0 : 0.01,
+								shadowRadius: 6,
 							}}
 						>
 							<View
 								style={{
-									backgroundColor: COLORS.brandPrimary,
+									backgroundColor: user?.hasInsurance ? COLORS.brandPrimary : "#D1D5DB",
 									width: 56,
 									height: 56,
 									borderRadius: 14,
@@ -867,7 +781,7 @@ const ProfileScreen = () => {
 									marginRight: 16,
 								}}
 							>
-								<Ionicons name="lock-closed" size={26} color="#FFFFFF" />
+								<Ionicons name="shield-checkmark" size={26} color="#FFFFFF" />
 							</View>
 							<View style={{ flex: 1 }}>
 								<Text
@@ -878,7 +792,7 @@ const ProfileScreen = () => {
 										letterSpacing: -1.0,
 									}}
 								>
-									{user?.hasPassword ? "Change Password" : "Create Password"}
+									{user?.hasInsurance ? "Insurance Active" : "Add Insurance"}
 								</Text>
 								<Text
 									style={{
@@ -887,9 +801,7 @@ const ProfileScreen = () => {
 										marginTop: 2,
 									}}
 								>
-									{user?.hasPassword
-										? "Update your password anytime"
-										: "Add password login to your account"}
+									{user?.hasInsurance ? "Manage your coverage" : "Get covered for emergencies"}
 								</Text>
 							</View>
 							<View
@@ -924,15 +836,14 @@ const ProfileScreen = () => {
 					>
 						<Text
 							style={{
-								fontSize: 10,
-								fontWeight: "800",
-								color: COLORS.error,
+								fontSize: 13,
+								fontWeight: "600",
+								color: colors.text,
 								marginBottom: 16,
-								letterSpacing: 1.5,
-								textTransform: "uppercase",
+								letterSpacing: -0.3,
 							}}
 						>
-							DANGER ZONE
+							Delete Account
 						</Text>
 
 						<Pressable

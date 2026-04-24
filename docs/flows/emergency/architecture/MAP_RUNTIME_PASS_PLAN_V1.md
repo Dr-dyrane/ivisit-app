@@ -22,7 +22,7 @@ Related audit:
 - Pass 10: complete
 - Pass 11: complete
 - Pass 12: complete
-- Pass 13: pending
+- Pass 13: complete
 - Pass 14: pending
 - Pass 15: pending
 

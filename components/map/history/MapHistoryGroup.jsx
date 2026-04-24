@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MapHistoryRow from "./MapHistoryRow";
 import { historyGroupStyles } from "./history.styles";
@@ -130,7 +130,7 @@ export default function MapHistoryGroup({
 						{index < items.length - 1 ? (
 							<View
 								style={{
-									height: 1,
+									height: StyleSheet.hairlineWidth,
 									backgroundColor: theme.hairlineDivider,
 									marginLeft: hairlineLeftInset,
 								}}

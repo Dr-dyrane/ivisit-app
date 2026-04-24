@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import {
 	View,
 	Text,
@@ -25,8 +25,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { ThemeMode } from "../contexts/ThemeContext";
 import { usePreferences } from "../contexts/PreferencesContext";
 import {
-	navigateToNotifications,
 	navigateToPayment,
+	navigateToHelpSupport,
+	navigateToChangePassword,
+	navigateToCreatePassword,
 } from "../utils/navigationHelpers";
 import * as Haptics from "expo-haptics";
 
@@ -39,7 +41,7 @@ export default function SettingsScreen() {
 		useTabBarVisibility();
 	const { handleScroll: handleHeaderScroll, resetHeader } =
 		useScrollAwareHeader();
-	const { user } = useAuth();
+	const { user, logout } = useAuth();
 	const { preferences, updatePreferences } = usePreferences();
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
@@ -97,14 +99,6 @@ export default function SettingsScreen() {
 		card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
 	};
 
-	const passwordRoute = useMemo(() => {
-		// Only go to create-password if explicitly false (meaning we checked and they don't have one)
-		// If undefined/null, we might still be loading, but defaulting to change-password is safer 
-		// to avoid showing "Create" to someone who has one.
-		// However, based on our new logic, user.hasPassword should be accurate.
-		return user?.hasPassword ? "/(user)/(stacks)/change-password" : "/(user)/(stacks)/create-password";
-	}, [user?.hasPassword]);
-
 	const togglePreference = useCallback(
 		async (key) => {
 			if (!preferences) return;
@@ -113,6 +107,14 @@ export default function SettingsScreen() {
 		},
 		[preferences, updatePreferences]
 	);
+
+	const handleLogout = async () => {
+		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+		const result = await logout();
+		if (result.success) {
+			router.replace("/(auth)");
+		}
+	};
 
 	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
 	const bottomPadding = tabBarHeight + 20;
@@ -129,6 +131,117 @@ export default function SettingsScreen() {
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
+				{/* APP BEHAVIOR Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						APP BEHAVIOR
+					</Text>
+
+					{/* Theme Toggle */}
+					<TouchableOpacity
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							setTheme(isDarkMode ? ThemeMode.LIGHT : ThemeMode.DARK);
+						}}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+							<View
+								style={{
+									width: 56,
+									height: 56,
+									borderRadius: 14,
+									backgroundColor: COLORS.brandPrimary,
+									alignItems: "center",
+									justifyContent: "center",
+									marginRight: 16,
+								}}
+							>
+								<Ionicons
+									name={isDarkMode ? "moon" : "sunny"}
+									size={26}
+									color="#FFFFFF"
+								/>
+							</View>
+							<View>
+								<Text
+									style={{
+										fontSize: 19,
+										fontWeight: "900",
+										color: colors.text,
+										letterSpacing: -1.0,
+									}}
+								>
+									{isDarkMode ? "Dark Mode" : "Light Mode"}
+								</Text>
+								<Text
+									style={{
+										fontSize: 14,
+										color: colors.textMuted,
+										marginTop: 2,
+										fontWeight: "500",
+									}}
+								>
+									Tap to toggle theme
+								</Text>
+							</View>
+						</View>
+						<View
+							style={{
+								width: 52,
+								height: 30,
+								borderRadius: 15,
+								backgroundColor: isDarkMode ? COLORS.brandPrimary : "#D1D5DB",
+								justifyContent: "center",
+							}}
+						>
+							<View
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 12,
+									backgroundColor: "#FFFFFF",
+									position: "absolute",
+									left: isDarkMode ? 25 : 3,
+									shadowColor: "#000",
+									shadowOffset: { width: 0, height: 2 },
+									shadowOpacity: 0.15,
+									shadowRadius: 3,
+									elevation: 3,
+								}}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
+
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
@@ -681,7 +794,14 @@ export default function SettingsScreen() {
 						ACCOUNT SECURITY
 					</Text>
 					<TouchableOpacity
-						onPress={() => router.push(passwordRoute)}
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							if (user?.hasPassword) {
+								navigateToChangePassword({ router });
+							} else {
+								navigateToCreatePassword({ router });
+							}
+						}}
 						style={{
 							flexDirection: "row",
 							alignItems: "center",
@@ -837,6 +957,247 @@ export default function SettingsScreen() {
 								size={18}
 								color={colors.textMuted}
 							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
+
+				{/* SUPPORT Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						SUPPORT
+					</Text>
+					<TouchableOpacity
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							navigateToHelpSupport({ router });
+						}}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							marginBottom: 12,
+							backgroundColor: colors.card,
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 14,
+								backgroundColor: COLORS.brandPrimary,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="help-circle" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -1.0,
+								}}
+							>
+								Help Center
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+									fontWeight: "500",
+								}}
+							>
+								FAQs and guides
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 40,
+								height: 40,
+								borderRadius: 14,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.05)"
+									: "rgba(0,0,0,0.03)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={18}
+								color={colors.textMuted}
+							/>
+						</View>
+					</TouchableOpacity>
+
+					<TouchableOpacity
+						onPress={() => {
+							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+							navigateToHelpSupport({ router });
+						}}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							backgroundColor: colors.card,
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 14,
+								backgroundColor: COLORS.brandPrimary,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="chatbubble-ellipses" size={26} color="#FFFFFF" />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: colors.text,
+									letterSpacing: -1.0,
+								}}
+							>
+								Contact Support
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+									fontWeight: "500",
+								}}
+							>
+								Get help from our team
+							</Text>
+						</View>
+						<View
+							style={{
+								width: 40,
+								height: 40,
+								borderRadius: 14,
+								backgroundColor: isDarkMode
+									? "rgba(255,255,255,0.05)"
+									: "rgba(0,0,0,0.03)",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Ionicons
+								name="chevron-forward"
+								size={18}
+								color={colors.textMuted}
+							/>
+						</View>
+					</TouchableOpacity>
+				</Animated.View>
+
+				{/* ACCOUNT Section */}
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 24,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 10,
+							fontWeight: "800",
+							color: colors.textMuted,
+							marginBottom: 16,
+							letterSpacing: 1.5,
+							textTransform: "uppercase",
+						}}
+					>
+						ACCOUNT
+					</Text>
+
+					<TouchableOpacity
+						onPress={handleLogout}
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							padding: 20,
+							backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
+							borderRadius: 36,
+							shadowColor: "#000",
+							shadowOffset: { width: 0, height: 4 },
+							shadowOpacity: isDarkMode ? 0 : 0.03,
+							shadowRadius: 10,
+						}}
+					>
+						<View
+							style={{
+								width: 56,
+								height: 56,
+								borderRadius: 14,
+								backgroundColor: COLORS.error,
+								alignItems: "center",
+								justifyContent: "center",
+								marginRight: 16,
+							}}
+						>
+							<Ionicons name="log-out" size={26} color="#FFFFFF" />
+						</View>
+						<View>
+							<Text
+								style={{
+									fontSize: 19,
+									fontWeight: "900",
+									color: COLORS.error,
+									letterSpacing: -1.0,
+								}}
+							>
+								Log Out
+							</Text>
+							<Text
+								style={{
+									fontSize: 14,
+									color: colors.textMuted,
+									marginTop: 2,
+									fontWeight: "500",
+								}}
+							>
+								Sign out of your account
+							</Text>
 						</View>
 					</TouchableOpacity>
 				</Animated.View>
