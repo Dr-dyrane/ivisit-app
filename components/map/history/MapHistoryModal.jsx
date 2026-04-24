@@ -23,6 +23,7 @@ import {
 	filterHistoryItemsByKey,
 } from "./history.presentation";
 import { historyModalStyles } from "./history.styles";
+import { MAP_SHEET_SNAP_STATES } from "../core/mapSheet.constants";
 
 /**
  * FilterChip — matches hospital list's specialtyPill voice exactly:
@@ -276,6 +277,7 @@ export default function MapHistoryModal({
 			onClose={onClose}
 			title={HISTORY_MODAL_COPY.withHistory}
 			headerLayout="leading"
+			defaultSnapState={MAP_SHEET_SNAP_STATES.EXPANDED}
 			minHeightRatio={0.82}
 			scrollEnabled={false}
 			contentContainerStyle={historyModalStyles.content}
