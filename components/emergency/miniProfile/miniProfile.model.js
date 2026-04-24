@@ -34,8 +34,8 @@ export function getMiniProfileColors(isDarkMode) {
 		divider: isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(15,23,42,0.09)",
 		badge: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)",
 		badgeText: isDarkMode ? "#D9E2F1" : "#475569",
-		dangerBg: isDarkMode ? "rgba(239,68,68,0.11)" : "rgba(15,23,42,0.05)",
-		dangerText: isDarkMode ? "#FCA5A5" : "#64748B",
+		dangerBg: isDarkMode ? "rgba(239,68,68,0.11)" : "rgba(239,68,68,0.08)",
+		dangerText: isDarkMode ? "#FCA5A5" : "#EF4444",
 		pressBg: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
 	};
 }
@@ -66,6 +66,10 @@ export function getMiniProfileTones(isDarkMode) {
 		map: {
 			bg: isDarkMode ? "rgba(251,146,60,0.16)" : "rgba(251,146,60,0.12)",
 			icon: isDarkMode ? "#FDBA74" : "#EA580C",
+		},
+		destructive: {
+			bg: isDarkMode ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.08)",
+			icon: isDarkMode ? "#FCA5A5" : "#EF4444",
 		},
 	};
 }
