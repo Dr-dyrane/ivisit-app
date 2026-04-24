@@ -15,6 +15,7 @@ import { getHeaderBehavior } from "../../constants/header";
 export default function UserLayout() {
 	const segments = useSegments();
 	const isTabsIndex = segments?.[0] === "(user)" && segments?.[1] === "(tabs)" && segments?.[2] === "index";
+	const isStackRoute = segments?.[0] === "(user)" && segments?.[1] === "(stacks)";
 
 	useEffect(() => {
 		appMigrationsService.run().catch(() => { });
@@ -22,7 +23,10 @@ export default function UserLayout() {
 
 	return (
 		<UserProviders>
-			<WebAppShell variant="app" surfaceMode={isTabsIndex ? "none" : "surface"}>
+			<WebAppShell
+				variant="app"
+				surfaceMode={isTabsIndex || isStackRoute ? "none" : "surface"}
+			>
 				<View style={styles.container}>
 					<UserHeaderWrapper />
 
