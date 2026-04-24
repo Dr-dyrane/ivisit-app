@@ -93,3 +93,22 @@ Target:
 
 - remove pre-dispatch sibling modal surfaces from `MapScreen.jsx`
 - keep only true non-core bridge surfaces if product still requires them
+
+## Phase 10
+
+Stack route containerization cleanup.
+
+Target:
+
+- remove shell surface containment for stack pages that should own the viewport
+- keep route shell ownership, stack layout padding, and screen padding as separate concerns
+- audit stack pages for double top padding and trapped desktop widths after shell opt-out
+- move dense inline forms and secondary editing into sheets, modals, or panels
+- make wide-screen stack routes behave like internal surfaces on top of a full-canvas route, not centered pages inside a page
+
+Done when:
+
+- stack routes that are viewport-first no longer inherit `WebAppShell` surface containment
+- shell opt-out does not silently rely on screen-level padding hacks
+- at least one stack page is converted from inline dense layout to panel/sheet progressive disclosure
+- the rollout order is explicit: shell wrapper, then stack layout padding, then screen internals

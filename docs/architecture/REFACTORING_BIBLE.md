@@ -63,6 +63,23 @@ We prioritize:
     *   **Validation**: Centralized in `utils/validation.js`.
     *   **Pure Functions**: Input -> Output. Easy to unit test.
 
+### 5. Route Container Ownership
+*   **Role**: Defines which layer owns the viewport and which layer only renders inside it.
+*   **Location**: route layouts, stack layouts, screen shells
+*   **Rules**:
+    *   A route must explicitly choose between **shell containment** and **viewport ownership**.
+    *   Full-canvas, map-adjacent, and panel-led routes must opt out of shell surface wrappers.
+    *   Stack layouts must not add global padding that fights the screen's own header or panel geometry.
+    *   Screen-level horizontal padding is not a substitute for route-level layout ownership.
+    *   Forms should not dominate stack pages inline; move dense editing into sheets, modals, or panels for progressive disclosure.
+    *   Wide-screen behavior must be owned by the route or screen shell, not by accidental nested containers.
+    *   When a page feels trapped on desktop, audit in this order:
+        1. shell wrapper
+        2. stack layout padding
+        3. screen container padding
+        4. internal panel max width
+    *   A stack page should behave like `/map` when it is a viewport-first experience: full canvas first, internal surfaces second.
+
 ---
 
 ## 4. The Commandments (The Apple Way)
@@ -80,6 +97,12 @@ We prioritize:
     *   "// Debouncing this input to prevent API spam on every keystroke"
 5.  **Centralized Validation**:
     *   Never write a regex in a component. Import it from `utils/validation.js`.
+6.  **Container Ownership Must Be Explicit**:
+    *   Do not let route shell, stack layout, and screen padding all compete to control width and insets.
+    *   If a route owns the viewport, parent surface wrappers must be disabled.
+7.  **Progressive Disclosure Over Inline Density**:
+    *   Long stack pages should not become form walls.
+    *   Move editing, advanced controls, and secondary management into sheets, modals, and panels.
 
 ---
 

@@ -69,7 +69,7 @@ export const styles = StyleSheet.create({
 		fontWeight: "500",
 	},
 	hairline: {
-		height: 1,
+		height: StyleSheet.hairlineWidth,
 		marginLeft: 0,
 	},
 	doneButton: {
