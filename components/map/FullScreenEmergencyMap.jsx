@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
 	retryButtonText: {
 		color: "#FFFFFF",
 		fontSize: 14,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	statusBarBlur: {
 		position: "absolute",
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
 	},
 	hospitalLabelText: {
 		fontSize: 9,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	// Web fallback styles
 	webMapFallback: {
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
 	},
 	webMapText: {
 		fontSize: 24,
-		fontWeight: "bold",
+		fontWeight: "700",
 		marginTop: 12,
 	},
 	webMapSubtext: {
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
 	},
 	selectedHospitalName: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontWeight: "500",
 		textAlign: "center",
 	},
 	selectedHospitalDistance: {

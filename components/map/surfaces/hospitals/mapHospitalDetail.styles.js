@@ -279,7 +279,7 @@ export const styles = StyleSheet.create({
 	placeStatLabel: {
 		fontSize: 10,
 		lineHeight: 12,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	placeStatValueRow: {
 		flexDirection: "row",
@@ -412,7 +412,7 @@ export const styles = StyleSheet.create({
 	serviceTopPillTextCompact: {
 		fontSize: 10,
 		lineHeight: 12,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	serviceTopPillSkeleton: {
 		width: 72,
@@ -457,7 +457,7 @@ export const styles = StyleSheet.create({
 	serviceTitle: {
 		fontSize: 17,
 		lineHeight: 21,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	serviceTitleCompact: {
 		fontSize: 15,
@@ -566,7 +566,7 @@ export const styles = StyleSheet.create({
 	inlinePrimaryText: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "800",
+		fontWeight: "700",
 		color: "#FFFFFF",
 	},
 });

@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
 
   // Question title — caller provides fontSize and lineHeight inline
   title: {
-    fontWeight: "900",
+    fontWeight: "700",
     letterSpacing: -0.7,
     textAlign: "center",
   },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: "800",
+    fontWeight: "700",
   },
 
   // Inline feedback text (error or success), below the OTP row if present

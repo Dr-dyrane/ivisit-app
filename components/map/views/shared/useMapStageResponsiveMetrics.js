@@ -15,8 +15,8 @@ export default function useMapStageResponsiveMetrics({
 				? Math.min(width || 393, 430)
 				: Math.min(width || 393, 520);
 		const viewportHeight = Math.max(height || 852, 640);
-		const titleWeight = Platform.OS === "web" ? "700" : "800";
-		const mediumWeight = Platform.OS === "web" ? "500" : "600";
+		const titleWeight = "700";
+		const mediumWeight = "500";
 		const compactWeight = Platform.OS === "web" ? "400" : "500";
 
 		const topHorizontal = round(clamp(baseWidth * 0.034, 12, 18));

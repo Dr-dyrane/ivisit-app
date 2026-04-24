@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
 	collapsedTitle: {
 		fontSize: 16,
 		lineHeight: 19,
-		fontWeight: "800",
+		fontWeight: "700",
 		textAlign: "center",
 	},
 	collapsedSubtitle: {

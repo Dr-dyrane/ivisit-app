@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
 	sectionTitle: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	resultGroup: {
 		overflow: "hidden",
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
 	resultTitle: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	resultSubtitle: {
 		marginTop: 3,

@@ -95,7 +95,7 @@ export default StyleSheet.create({
 	headerAssistiveLabel: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 		marginTop: 8,
 	},
 	switchRow: {
@@ -209,7 +209,7 @@ export default StyleSheet.create({
 	sectionLabel: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 		marginBottom: 12,
 	},
 	optionList: {

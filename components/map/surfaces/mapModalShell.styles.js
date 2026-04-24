@@ -51,7 +51,7 @@ export const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 21,
 		lineHeight: 24,
-		fontWeight: "800",
+		fontWeight: "700",
 		textAlign: "center",
 		marginHorizontal: 12,
 	},

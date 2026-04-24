@@ -7,7 +7,6 @@ import {
 	ScrollView,
 	StyleSheet,
 	Platform,
-	TouchableOpacity,
 	Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +30,12 @@ import {
 	navigateToCreatePassword,
 } from "../utils/navigationHelpers";
 import * as Haptics from "expo-haptics";
+import {
+	SettingsCard,
+	SettingsToggle,
+	SettingsChevron,
+	SettingsGroup,
+} from "../components/settings/SettingsCard";
 
 export default function SettingsScreen() {
 	const router = useRouter();
@@ -131,115 +136,174 @@ export default function SettingsScreen() {
 				scrollEventThrottle={16}
 				onScroll={handleScroll}
 			>
-				{/* APP BEHAVIOR Section */}
 				<Animated.View
 					style={{
 						opacity: fadeAnim,
 						transform: [{ translateY: slideAnim }],
 						paddingHorizontal: 12,
-						marginBottom: 24,
+						marginBottom: 16,
 					}}
 				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						APP BEHAVIOR
-					</Text>
-
-					{/* Theme Toggle */}
-					<TouchableOpacity
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							setTheme(isDarkMode ? ThemeMode.LIGHT : ThemeMode.DARK);
-						}}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons
-									name={isDarkMode ? "moon" : "sunny"}
-									size={26}
-									color="#FFFFFF"
-								/>
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									{isDarkMode ? "Dark Mode" : "Light Mode"}
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									Tap to toggle theme
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: isDarkMode ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
+					<SettingsGroup>
+						<SettingsCard
+							iconName={isDarkMode ? "moon" : "sunny"}
+							title={isDarkMode ? "Dark Mode" : "Light Mode"}
+							tone="system"
+							isLast={true}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								setTheme(isDarkMode ? ThemeMode.LIGHT : ThemeMode.DARK);
 							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: isDarkMode ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
+							rightElement={<SettingsToggle value={isDarkMode} />}
+						/>
+					</SettingsGroup>
+				</Animated.View>
+
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 16,
+					}}
+				>
+					<SettingsGroup>
+						<SettingsCard
+							iconName="notifications"
+							title="All Notifications"
+							tone="system"
+							onPress={() => togglePreference("notificationsEnabled")}
+							disabled={!preferences}
+							rightElement={<SettingsToggle value={preferences?.notificationsEnabled} />}
+						/>
+
+						<SettingsCard
+							iconName="calendar"
+							title="Appointment Reminders"
+							tone="care"
+							onPress={() => togglePreference("appointmentReminders")}
+							disabled={!preferences || !preferences.notificationsEnabled}
+							rightElement={<SettingsToggle value={preferences?.appointmentReminders} />}
+						/>
+
+						<SettingsCard
+							iconName="medical"
+							title="Emergency Updates"
+							tone="care"
+							onPress={() => togglePreference("emergencyUpdates")}
+							disabled={!preferences || !preferences.notificationsEnabled}
+							rightElement={<SettingsToggle value={preferences?.emergencyUpdates} />}
+						/>
+
+						<SettingsCard
+							iconName="volume-high"
+							title="Notification Sounds"
+							tone="system"
+							isLast={true}
+							onPress={() => togglePreference("notificationSoundsEnabled")}
+							disabled={!preferences}
+							rightElement={<SettingsToggle value={preferences?.notificationSoundsEnabled} />}
+						/>
+					</SettingsGroup>
+				</Animated.View>
+
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 16,
+					}}
+				>
+					<SettingsGroup>
+						<SettingsCard
+							iconName="document-text"
+							title="Share Medical Profile"
+							tone="profile"
+							onPress={() => togglePreference("privacyShareMedicalProfile")}
+							disabled={!preferences}
+							rightElement={<SettingsToggle value={preferences?.privacyShareMedicalProfile} />}
+						/>
+
+						<SettingsCard
+							iconName="people"
+							title="Share Emergency Contacts"
+							tone="contacts"
+							isLast={true}
+							onPress={() => togglePreference("privacyShareEmergencyContacts")}
+							disabled={!preferences}
+							rightElement={<SettingsToggle value={preferences?.privacyShareEmergencyContacts} />}
+						/>
+					</SettingsGroup>
+				</Animated.View>
+
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 16,
+					}}
+				>
+					<SettingsGroup>
+						<SettingsCard
+							iconName="lock-closed"
+							title={user?.hasPassword ? "Change Password" : "Create Password"}
+							tone="profile"
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								if (user?.hasPassword) {
+									navigateToChangePassword({ router });
+								} else {
+									navigateToCreatePassword({ router });
+								}
+							}}
+							rightElement={<SettingsChevron isDarkMode={isDarkMode} />}
+						/>
+
+						<SettingsCard
+							iconName="card"
+							title="Manage Payments"
+							tone="payment"
+							isLast={true}
+							onPress={() => navigateToPayment({ router })}
+							rightElement={<SettingsChevron isDarkMode={isDarkMode} />}
+						/>
+					</SettingsGroup>
+				</Animated.View>
+
+				<Animated.View
+					style={{
+						opacity: fadeAnim,
+						transform: [{ translateY: slideAnim }],
+						paddingHorizontal: 12,
+						marginBottom: 16,
+					}}
+				>
+					<SettingsGroup>
+						<SettingsCard
+							iconName="help-circle"
+							title="Help Center"
+							tone="system"
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								navigateToHelpSupport({ router });
+							}}
+							rightElement={<SettingsChevron isDarkMode={isDarkMode} />}
+						/>
+
+						<SettingsCard
+							iconName="chatbubble-ellipses"
+							title="Contact Support"
+							tone="system"
+							isLast={true}
+							onPress={() => {
+								Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+								navigateToHelpSupport({ router });
+							}}
+							rightElement={<SettingsChevron isDarkMode={isDarkMode} />}
+						/>
+					</SettingsGroup>
 				</Animated.View>
 
 				<Animated.View
@@ -250,956 +314,16 @@ export default function SettingsScreen() {
 						marginBottom: 24,
 					}}
 				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						NOTIFICATIONS
-					</Text>
-					<TouchableOpacity
-						onPress={() => togglePreference("notificationsEnabled")}
-						disabled={!preferences}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="notifications" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									All Notifications
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									Receive all app alerts
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.notificationsEnabled ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.notificationsEnabled ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => togglePreference("appointmentReminders")}
-						disabled={!preferences || !preferences.notificationsEnabled}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="calendar" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Appointment Reminders
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									Before scheduled visits
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.appointmentReminders ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.appointmentReminders ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => togglePreference("emergencyUpdates")}
-						disabled={!preferences || !preferences.notificationsEnabled}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="medical" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Emergency Updates
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									Critical SOS notifications
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.emergencyUpdates ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.emergencyUpdates ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => togglePreference("notificationSoundsEnabled")}
-						disabled={!preferences}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-							opacity: !preferences || !preferences.notificationsEnabled ? 0.5 : 1,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="volume-high" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Notification Sounds
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									Play sound for alerts
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.notificationSoundsEnabled ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.notificationSoundsEnabled ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
-
-				{/* PRIVACY Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						PRIVACY
-					</Text>
-					<TouchableOpacity
-						onPress={() => togglePreference("privacyShareMedicalProfile")}
-						disabled={!preferences}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="document-text" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Share Medical Profile
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									In SOS requests only
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.privacyShareMedicalProfile ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.privacyShareMedicalProfile ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => togglePreference("privacyShareEmergencyContacts")}
-						disabled={!preferences}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-							<View
-								style={{
-									width: 56,
-									height: 56,
-									borderRadius: 14,
-									backgroundColor: COLORS.brandPrimary,
-									alignItems: "center",
-									justifyContent: "center",
-									marginRight: 16,
-								}}
-							>
-								<Ionicons name="people" size={26} color="#FFFFFF" />
-							</View>
-							<View>
-								<Text
-									style={{
-										fontSize: 19,
-										fontWeight: "900",
-										color: colors.text,
-										letterSpacing: -1.0,
-									}}
-								>
-									Share Emergency Contacts
-								</Text>
-								<Text
-									style={{
-										fontSize: 14,
-										color: colors.textMuted,
-										marginTop: 2,
-										fontWeight: "500",
-									}}
-								>
-									In SOS requests only
-								</Text>
-							</View>
-						</View>
-						<View
-							style={{
-								width: 52,
-								height: 30,
-								borderRadius: 15,
-								backgroundColor: preferences?.privacyShareEmergencyContacts ? COLORS.brandPrimary : "#D1D5DB",
-								justifyContent: "center",
-							}}
-						>
-							<View
-								style={{
-									width: 24,
-									height: 24,
-									borderRadius: 12,
-									backgroundColor: "#FFFFFF",
-									position: "absolute",
-									left: preferences?.privacyShareEmergencyContacts ? 25 : 3,
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: 2 },
-									shadowOpacity: 0.15,
-									shadowRadius: 3,
-									elevation: 3,
-								}}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
-
-				{/* ACCOUNT SECURITY Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						ACCOUNT SECURITY
-					</Text>
-					<TouchableOpacity
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							if (user?.hasPassword) {
-								navigateToChangePassword({ router });
-							} else {
-								navigateToCreatePassword({ router });
-							}
-						}}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.brandPrimary,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="lock-closed" size={26} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -1.0,
-								}}
-							>
-								{user?.hasPassword ? "Change Password" : "Create Password"}
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-									fontWeight: "500",
-								}}
-							>
-								{user?.hasPassword ? "Update your password" : "Secure your account"}
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: 14,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.05)"
-									: "rgba(0,0,0,0.03)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={colors.textMuted}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
-
-				{/* PAYMENTS & BILLING Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						PAYMENTS & BILLING
-					</Text>
-					<TouchableOpacity
-						onPress={() => navigateToPayment({ router })}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.brandPrimary,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="card" size={26} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -1.0,
-								}}
-							>
-								Manage Payments
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-									fontWeight: "500",
-								}}
-							>
-								Cards, Billing & Wallet
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: 14,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.05)"
-									: "rgba(0,0,0,0.03)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={colors.textMuted}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
-
-				{/* SUPPORT Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						SUPPORT
-					</Text>
-					<TouchableOpacity
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							navigateToHelpSupport({ router });
-						}}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							marginBottom: 12,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.brandPrimary,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="help-circle" size={26} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -1.0,
-								}}
-							>
-								Help Center
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-									fontWeight: "500",
-								}}
-							>
-								FAQs and guides
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: 14,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.05)"
-									: "rgba(0,0,0,0.03)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={colors.textMuted}
-							/>
-						</View>
-					</TouchableOpacity>
-
-					<TouchableOpacity
-						onPress={() => {
-							Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-							navigateToHelpSupport({ router });
-						}}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							backgroundColor: colors.card,
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.brandPrimary,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="chatbubble-ellipses" size={26} color="#FFFFFF" />
-						</View>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: colors.text,
-									letterSpacing: -1.0,
-								}}
-							>
-								Contact Support
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-									fontWeight: "500",
-								}}
-							>
-								Get help from our team
-							</Text>
-						</View>
-						<View
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: 14,
-								backgroundColor: isDarkMode
-									? "rgba(255,255,255,0.05)"
-									: "rgba(0,0,0,0.03)",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Ionicons
-								name="chevron-forward"
-								size={18}
-								color={colors.textMuted}
-							/>
-						</View>
-					</TouchableOpacity>
-				</Animated.View>
-
-				{/* ACCOUNT Section */}
-				<Animated.View
-					style={{
-						opacity: fadeAnim,
-						transform: [{ translateY: slideAnim }],
-						paddingHorizontal: 12,
-						marginBottom: 24,
-					}}
-				>
-					<Text
-						style={{
-							fontSize: 10,
-							fontWeight: "800",
-							color: colors.textMuted,
-							marginBottom: 16,
-							letterSpacing: 1.5,
-							textTransform: "uppercase",
-						}}
-					>
-						ACCOUNT
-					</Text>
-
-					<TouchableOpacity
-						onPress={handleLogout}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							padding: 20,
-							backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
-							borderRadius: 36,
-							shadowColor: "#000",
-							shadowOffset: { width: 0, height: 4 },
-							shadowOpacity: isDarkMode ? 0 : 0.03,
-							shadowRadius: 10,
-						}}
-					>
-						<View
-							style={{
-								width: 56,
-								height: 56,
-								borderRadius: 14,
-								backgroundColor: COLORS.error,
-								alignItems: "center",
-								justifyContent: "center",
-								marginRight: 16,
-							}}
-						>
-							<Ionicons name="log-out" size={26} color="#FFFFFF" />
-						</View>
-						<View>
-							<Text
-								style={{
-									fontSize: 19,
-									fontWeight: "900",
-									color: COLORS.error,
-									letterSpacing: -1.0,
-								}}
-							>
-								Log Out
-							</Text>
-							<Text
-								style={{
-									fontSize: 14,
-									color: colors.textMuted,
-									marginTop: 2,
-									fontWeight: "500",
-								}}
-							>
-								Sign out of your account
-							</Text>
-						</View>
-					</TouchableOpacity>
+					<SettingsGroup>
+						<SettingsCard
+							iconName="log-out"
+							title="Log Out"
+							tone="destructive"
+							destructive={true}
+							isLast={true}
+							onPress={handleLogout}
+						/>
+					</SettingsGroup>
 				</Animated.View>
 			</ScrollView>
 		</LinearGradient >

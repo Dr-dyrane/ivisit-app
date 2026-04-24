@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   dividerLabel: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "600",
+    fontWeight: "500",
     letterSpacing: 0.3,
   },
 

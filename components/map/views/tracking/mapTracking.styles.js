@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
 	teamHeroRightText: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.1,
 	},
 	teamHeroStatePill: {
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		fontSize: 17,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.22,
 	},
 	teamHeroSubtitle: {
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
 	metricLabel: {
 		fontSize: 10,
 		lineHeight: 13,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.08,
 	},
 	metricValue: {
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
 	stopLabel: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.08,
 	},
 	stopTitle: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
 	cancelCtaText: {
 		fontSize: 17,
 		lineHeight: 21,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.24,
 	},
 	utilityButton: {
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
 	detailHeader: {
 		fontSize: 15,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.16,
 	},
 	detailHeaderRow: {
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
 	detailRatingValueText: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	detailList: {
 		marginTop: 12,
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 		textAlign: "right",
 	},
 	emptyCard: {

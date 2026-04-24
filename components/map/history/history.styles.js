@@ -26,7 +26,7 @@ export const historyRowStyles = StyleSheet.create({
 		minWidth: 0,
 	},
 	title: {
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	subtitle: {
 		fontWeight: "500",
@@ -285,7 +285,7 @@ export const historyDetailsStyles = StyleSheet.create({
 	},
 	detailValue: {
 		marginTop: 4,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	actionRow: {
 		flexDirection: "row",
@@ -293,7 +293,7 @@ export const historyDetailsStyles = StyleSheet.create({
 		gap: 14,
 	},
 	actionLabel: {
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	preparationList: {
 		marginTop: 14,

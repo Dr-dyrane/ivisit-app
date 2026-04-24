@@ -2,24 +2,24 @@ import { Platform, StyleSheet } from "react-native";
 import { COLORS } from "../../../../constants/colors";
 
 const TITLE_TEXT = Platform.select({
-	ios: { fontSize: 27, lineHeight: 31, fontWeight: "800", letterSpacing: -0.65 },
-	android: { fontSize: 27, lineHeight: 31, fontWeight: "800", letterSpacing: -0.65 },
+	ios: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
+	android: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
 	web: { fontSize: 25, lineHeight: 29, fontWeight: "700", letterSpacing: -0.45 },
-	default: { fontSize: 27, lineHeight: 31, fontWeight: "800", letterSpacing: -0.65 },
+	default: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
 });
 
 const HERO_TITLE_TEXT = Platform.select({
-	ios: { fontSize: 22, lineHeight: 26, fontWeight: "800", letterSpacing: -0.45 },
-	android: { fontSize: 22, lineHeight: 26, fontWeight: "800", letterSpacing: -0.45 },
+	ios: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
+	android: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
 	web: { fontSize: 21, lineHeight: 25, fontWeight: "700", letterSpacing: -0.3 },
-	default: { fontSize: 22, lineHeight: 26, fontWeight: "800", letterSpacing: -0.45 },
+	default: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
 });
 
 const HOSPITAL_TITLE_TEXT = Platform.select({
-	ios: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
-	android: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
+	ios: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
+	android: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
 	web: { fontSize: 18, lineHeight: 22, fontWeight: "700", letterSpacing: -0.2 },
-	default: { fontSize: 19, lineHeight: 23, fontWeight: "800", letterSpacing: -0.32 },
+	default: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
 });
 
 const styles = StyleSheet.create({
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
 	heroSummary: {
 		fontSize: 14,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	heroMetaRow: {
 		flexDirection: "row",
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
 	routeStopTitle: {
 		fontSize: Platform.OS === "web" ? 15 : 16,
 		lineHeight: Platform.OS === "web" ? 18 : 19,
-		fontWeight: Platform.OS === "web" ? "500" : "600",
+		fontWeight: Platform.OS === "web" ? "500" : "500",
 		letterSpacing: -0.18,
 		marginBottom: 1,
 	},
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
 	routeMetricPrimary: {
 		fontSize: Platform.OS === "web" ? 15 : 16,
 		lineHeight: Platform.OS === "web" ? 19 : 20,
-		fontWeight: Platform.OS === "web" ? "700" : "800",
+		fontWeight: Platform.OS === "web" ? "700" : "700",
 		textAlign: "right",
 	},
 	routeMetricSecondary: {
@@ -398,14 +398,14 @@ const styles = StyleSheet.create({
 	emptyTitle: {
 		fontSize: 20,
 		lineHeight: 24,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.35,
 		marginBottom: 6,
 	},
 	emptyBody: {
 		fontSize: 14,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	footerDock: {
 		paddingHorizontal: 12,

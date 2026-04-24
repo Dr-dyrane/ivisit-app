@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
 	skipAllText: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: 0.14,
 	},
 	avatarOrb: {
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
 		marginTop: 12,
 		fontSize: 28,
 		lineHeight: 32,
-		fontWeight: "900",
+		fontWeight: "700",
 		letterSpacing: -0.6,
 		textAlign: "center",
 		maxWidth: 340,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
 	priorityText: {
 		fontSize: 12,
 		lineHeight: 14,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	optionsGrid: {
 		marginTop: 24,
@@ -146,13 +146,13 @@ const styles = StyleSheet.create({
 	optionLabel: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "800",
+		fontWeight: "700",
 		flex: 1,
 	},
 	optionLabelCompact: {
 		fontSize: 16,
 		lineHeight: 18,
-		fontWeight: "900",
+		fontWeight: "700",
 		textAlign: "center",
 		flex: 0,
 	},
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
 	secondaryButtonText: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	primaryButton: {
 		flex: 1.16,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
 	primaryButtonText: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "900",
+		fontWeight: "700",
 		color: "#FFFFFF",
 	},
 });

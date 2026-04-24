@@ -96,7 +96,7 @@ export const styles = StyleSheet.create({
 	rowTitle: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		flexShrink: 1,
 	},
 	recommendedBadge: {
@@ -186,6 +186,6 @@ export const styles = StyleSheet.create({
 	changeLocationText: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 });

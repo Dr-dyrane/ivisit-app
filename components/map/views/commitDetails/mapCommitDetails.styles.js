@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "600",
+    fontWeight: "500",
     textAlign: "center",
   },
   topSlotAction: {
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   phoneCountryDial: {
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: -0.1,
   },
 });

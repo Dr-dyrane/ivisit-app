@@ -33,7 +33,7 @@ export const styles = StyleSheet.create({
 	modeChipLabel: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	section: {
 		gap: 12,
@@ -41,7 +41,7 @@ export const styles = StyleSheet.create({
 	sectionTitle: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	chipWrap: {
 		flexDirection: "row",
@@ -120,7 +120,7 @@ export const styles = StyleSheet.create({
 	resultTitle: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		flexShrink: 1,
 	},
 	resultBadge: {
@@ -132,7 +132,7 @@ export const styles = StyleSheet.create({
 	resultBadgeText: {
 		fontSize: 10,
 		lineHeight: 12,
-		fontWeight: "800",
+		fontWeight: "700",
 		color: COLORS.brandPrimary,
 		textTransform: "uppercase",
 		letterSpacing: 0.4,
@@ -171,7 +171,7 @@ export const styles = StyleSheet.create({
 	emptyTitle: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 		textAlign: "center",
 	},
 	emptyBody: {

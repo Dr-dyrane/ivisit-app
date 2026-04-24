@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
 	searchText: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	bodyScrollContent: {
 		paddingHorizontal: 16,

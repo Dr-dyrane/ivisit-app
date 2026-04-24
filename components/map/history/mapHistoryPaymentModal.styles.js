@@ -31,7 +31,7 @@ export const styles = StyleSheet.create({
 	amount: {
 		fontSize: 32,
 		lineHeight: 36,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	status: {
 		fontSize: 13,
@@ -51,7 +51,7 @@ export const styles = StyleSheet.create({
 	rowLabel: {
 		fontSize: 12,
 		lineHeight: 16,
-		fontWeight: "600",
+		fontWeight: "500",
 		textTransform: "uppercase",
 		letterSpacing: 0.2,
 		flexShrink: 0,
@@ -60,13 +60,13 @@ export const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 14,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 		textAlign: "right",
 	},
 	rowValueMono: {
 		fontSize: 11,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	hairline: {
 		height: 1,

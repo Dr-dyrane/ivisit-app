@@ -721,7 +721,7 @@ const buildMarkerContent = ({
     label.style.borderRadius = '999px';
     label.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     label.style.fontSize = selected ? '14px' : '12px';
-    label.style.fontWeight = selected ? '800' : '700';
+    label.style.fontWeight = selected ? '700' : '500';
     label.style.lineHeight = '1.1';
     label.style.whiteSpace = 'nowrap';
     label.style.overflow = 'hidden';
@@ -764,7 +764,7 @@ const buildMarkerContent = ({
     glyph.textContent = '+';
     glyph.style.color = '#FFFFFF';
     glyph.style.fontSize = selected ? '15px' : '13px';
-    glyph.style.fontWeight = '900';
+    glyph.style.fontWeight = '700';
     glyph.style.transform = 'translateY(-1px)';
 
     pin.appendChild(glyph);

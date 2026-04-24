@@ -169,13 +169,13 @@ export const styles = StyleSheet.create({
 	loadingEyebrow: {
 		fontSize: 11,
 		lineHeight: 14,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.1,
 	},
 	loadingTitle: {
 		fontSize: 26,
 		lineHeight: 30,
-		fontWeight: "900",
+		fontWeight: "700",
 		letterSpacing: -0.8,
 	},
 	loadingMessage: {
@@ -207,7 +207,7 @@ export const styles = StyleSheet.create({
 	statusChipText: {
 		fontSize: 12,
 		lineHeight: 14,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	searchRow: {
 		height: 52,

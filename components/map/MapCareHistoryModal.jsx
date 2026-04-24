@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	bladeTitle: {
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	bladeSubtext: {
 		fontWeight: "400",

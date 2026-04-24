@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
 	collapsedTitle: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	collapsedSubtitle: {
 		marginTop: 1,

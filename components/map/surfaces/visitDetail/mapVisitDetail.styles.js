@@ -124,13 +124,13 @@ export const styles = StyleSheet.create({
 		color: "#F8FAFC",
 		fontSize: 28,
 		lineHeight: 32,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	heroSubtitle: {
 		color: "rgba(248,250,252,0.94)",
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	heroSupportLine: {
 		color: "rgba(226,232,240,0.95)",
@@ -214,7 +214,7 @@ export const styles = StyleSheet.create({
 	routeMetricText: {
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	routeStatusText: {
 		fontSize: 12,
@@ -241,7 +241,7 @@ export const styles = StyleSheet.create({
 	routePillText: {
 		fontSize: 13,
 		lineHeight: 16,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	routeStops: {
 		gap: 16,
@@ -292,7 +292,7 @@ export const styles = StyleSheet.create({
 	routeStopTitle: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 		marginTop: 2,
 	},
 	routeStopSubtitle: {
@@ -569,7 +569,7 @@ export const styles = StyleSheet.create({
 	placeStatLabel: {
 		fontSize: 10,
 		lineHeight: 12,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	placeStatValueRow: {
 		flexDirection: "row",

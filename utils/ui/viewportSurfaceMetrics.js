@@ -24,7 +24,7 @@ export function getViewportSurfaceMetrics({
 	const modalRadius = round(clamp(wideWidth * 0.074, 26, 36));
 	const chipRadius = round(clamp(wideWidth * 0.038, 14, 18));
 	const orbRadius = round(clamp(wideWidth * 0.11, 22, 56));
-	const titleWeight = isWeb ? "700" : "800";
+	const titleWeight = "700";
 	const bodyWeight = isWeb ? "400" : "500";
 	const primaryButtonHeight = round(clamp(safeHeight * (isWide ? 0.068 : 0.06), 50, isWide ? 68 : 60));
 	const secondaryButtonHeight = round(clamp(primaryButtonHeight - 4, 46, 62));

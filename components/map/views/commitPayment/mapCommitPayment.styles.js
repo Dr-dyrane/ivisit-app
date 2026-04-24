@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
 	heroHeaderTitle: {
 		fontSize: 22,
 		lineHeight: 27,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.5,
 	},
 	heroHeaderSubtitle: {
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
 	heroPrimaryActionLabel: {
 		fontSize: 11,
 		lineHeight: 14,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: 0.35,
 		textTransform: "uppercase",
 	},
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
 	heroPrimaryActionValue: {
 		fontSize: 24,
 		lineHeight: 28,
-		fontWeight: "900",
+		fontWeight: "700",
 		letterSpacing: -0.72,
 	},
 	heroPrimaryActionSkeletonWrap: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		fontSize: 11,
 		lineHeight: 14,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	heroSummaryList: {
 		gap: 12,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
 	heroSummaryTitle: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.28,
 	},
 	heroSummarySubtitle: {
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
 	selectorTitle: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.28,
 	},
 	selectorDescription: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
 		minWidth: 0,
 		fontSize: 15,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.18,
 	},
 	paymentChangePill: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
 	paymentChangeText: {
 		fontSize: 13,
 		lineHeight: 17,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.08,
 	},
 	breakdownCard: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
 	breakdownTitle: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.2,
 	},
 	breakdownList: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	breakdownRowValue: {
 		fontSize: 14,
@@ -342,12 +342,12 @@ const styles = StyleSheet.create({
 	breakdownTotalLabel: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	breakdownTotalValue: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.2,
 	},
 	breakdownSkeletonTitle: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
 	infoGroupLabel: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	infoGroupValue: {
 		flexShrink: 1,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
 	actionGroupLabel: {
 		fontSize: 17,
 		lineHeight: 21,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	actionGroupSubtitle: {
 		marginTop: 3,
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		fontSize: 17,
 		lineHeight: 20,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.22,
 	},
 	paymentHeroSubtitle: {
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
 		color: "#FFFFFF",
 		fontSize: 12,
 		lineHeight: 15,
-		fontWeight: "600",
+		fontWeight: "500",
 		letterSpacing: -0.1,
 	},
 	paymentHeroSkeleton: {
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
 		marginTop: 16,
 		fontSize: 22,
 		lineHeight: 26,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.52,
 		textAlign: "center",
 	},
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
 		marginTop: 2,
 		fontSize: 13,
 		lineHeight: 18,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	footerDock: {
 		paddingHorizontal: 14,

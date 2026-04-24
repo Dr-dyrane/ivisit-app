@@ -64,7 +64,7 @@ export default StyleSheet.create({
 	sidebarHeaderTitle: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: -0.3,
 	},
 	sidebarHeaderSubtitle: {
@@ -94,7 +94,7 @@ export default StyleSheet.create({
 	searchText: {
 		fontSize: 15,
 		lineHeight: 19,
-		fontWeight: "600",
+		fontWeight: "500",
 	},
 	bodyScrollContent: {
 		paddingBottom: 6,
@@ -251,7 +251,7 @@ export default StyleSheet.create({
 		marginTop: 4,
 		fontSize: 17,
 		lineHeight: 21,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	intentStatusMeta: {
 		marginTop: 4,
@@ -315,7 +315,7 @@ export default StyleSheet.create({
 	summaryHeroBadgeText: {
 		fontSize: 11,
 		lineHeight: 14,
-		fontWeight: "800",
+		fontWeight: "700",
 		letterSpacing: 0.4,
 		textTransform: "uppercase",
 	},
@@ -332,7 +332,7 @@ export default StyleSheet.create({
 	summaryHeroTitle: {
 		fontSize: 26,
 		lineHeight: 30,
-		fontWeight: "900",
+		fontWeight: "700",
 		letterSpacing: -0.7,
 	},
 	summaryHeroMeta: {
@@ -366,7 +366,7 @@ export default StyleSheet.create({
 		marginTop: 6,
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	summaryHeroFooter: {
 		flexDirection: "row",
@@ -386,12 +386,12 @@ export default StyleSheet.create({
 	summaryHeroActionText: {
 		fontSize: 14,
 		lineHeight: 18,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	summaryHeroHint: {
 		fontSize: 12,
 		lineHeight: 16,
-		fontWeight: "600",
+		fontWeight: "500",
 		flex: 1,
 		textAlign: "right",
 	},
@@ -490,7 +490,7 @@ export default StyleSheet.create({
 		marginTop: 4,
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	hospitalMeta: {
 		marginTop: 4,
@@ -511,7 +511,7 @@ export default StyleSheet.create({
 	sectionLabel: {
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	intentSectionHeader: {
 		flexDirection: "row",
@@ -593,7 +593,7 @@ export default StyleSheet.create({
 	careLabel: {
 		fontSize: 15,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		textAlign: "center",
 	},
 	careSubtext: {
@@ -773,7 +773,7 @@ export default StyleSheet.create({
 		marginTop: 16,
 		fontSize: 16,
 		lineHeight: 20,
-		fontWeight: "800",
+		fontWeight: "700",
 		color: "#FFFFFF",
 	},
 	intentCardSubtext: {
@@ -801,7 +801,7 @@ export default StyleSheet.create({
 	expandedSectionTitle: {
 		fontSize: 18,
 		lineHeight: 22,
-		fontWeight: "800",
+		fontWeight: "700",
 		color: "#F8FAFC",
 	},
 	expandedSectionSubtext: {
@@ -862,7 +862,7 @@ export default StyleSheet.create({
 	featuredTitle: {
 		fontSize: 17,
 		lineHeight: 21,
-		fontWeight: "800",
+		fontWeight: "700",
 	},
 	featuredMeta: {
 		marginTop: 3,
