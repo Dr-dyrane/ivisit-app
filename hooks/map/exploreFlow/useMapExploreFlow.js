@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -17,10 +16,6 @@ import { useGlobalLocation } from "../../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../../contexts/EmergencyContext";
 import { useVisits } from "../../../contexts/VisitsContext";
 import { coverageModeService } from "../../../services/coverageModeService";
-import {
-  buildHeaderLocationModel,
-  toEmergencyLocation,
-} from "../../../utils/map/mapLocationPresentation";
 import {
   MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
@@ -34,15 +29,12 @@ import {
   buildBedDecisionSourcePayload,
 } from "../../../components/map/core/mapSheetFlowPayloads";
 import { buildMapOverlayHeaderLayoutInsets } from "../../../components/map/core/mapOverlayHeaderLayout";
-import {
-  getMapViewportSurfaceConfig,
-  getMapViewportVariant,
-  isSidebarMapVariant,
-} from "../../../components/map/core/mapViewportConfig";
+import { useMapViewport } from "./useMapViewport";
+import { useMapLocation } from "./useMapLocation";
+import { useMapHospitalSelection } from "./useMapHospitalSelection";
 import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
 import { HEADER_MODES } from "../../../constants/header";
 import { COLORS } from "../../../constants/colors";
-import { hasMeaningfulLocationChange } from "./mapExploreFlow.helpers";
 import {
   buildAmbulanceDecisionSheetView,
   buildBedDecisionSheetView,
@@ -61,16 +53,7 @@ import {
   buildTrackingSheetView,
   resolveMapFlowHospital,
 } from "./mapExploreFlow.transitions";
-import {
-  getDiscoveredHospitals,
-  getFeaturedHospitals,
-  getNearbyBedHospitals,
-  getNearbyHospitalCount,
-  getNearestHospital,
-  getNearestHospitalMeta,
-  getRecentVisits,
-  getTotalAvailableBeds,
-} from "./mapExploreFlow.derived";
+import { getRecentVisits } from "./mapExploreFlow.derived";
 import { buildMapLoadingState } from "./mapExploreFlow.loading";
 import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
@@ -215,29 +198,7 @@ export function useMapExploreFlow() {
   const lastTrackingRequestKeyRef = useRef(null);
   const [trackingHeaderNowMs, setTrackingHeaderNowMs] = useState(Date.now());
   const { isDarkMode } = useTheme();
-  const { width, height } = useWindowDimensions();
-  const viewportVariant = useMemo(
-    () => getMapViewportVariant({ platform: Platform.OS, width }),
-    [width],
-  );
-  const surfaceConfig = useMemo(
-    () => getMapViewportSurfaceConfig(viewportVariant),
-    [viewportVariant],
-  );
-  const usesSidebarLayout = useMemo(
-    () => isSidebarMapVariant(viewportVariant),
-    [viewportVariant],
-  );
-  const sidebarWidth = useMemo(
-    () =>
-      usesSidebarLayout
-        ? Math.min(
-            surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-            Math.max(320, width - 48),
-          )
-        : 0,
-    [surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
-  );
+  const { width, height, viewportVariant, surfaceConfig, usesSidebarLayout, sidebarWidth } = useMapViewport();
   const {
     resetHeader,
     lockHeaderHidden,
@@ -342,47 +303,26 @@ export function useMapExploreFlow() {
     setRuntimeSlice,
   } = flowActions;
 
-  const activeLocation =
-    manualLocation?.location ||
-    emergencyUserLocation ||
-    globalUserLocation ||
-    null;
-  const currentLocationDetails = buildHeaderLocationModel(
-    manualLocation || {
-      primaryText: locationLabel || "Current location",
-      secondaryText: locationLabelDetail || "",
-      location: activeLocation,
-    },
-  );
+  const { activeLocation, currentLocationDetails, loadingBackgroundImageUri, handleSearchLocation, handleUseCurrentLocation } = useMapLocation({
+    globalUserLocation,
+    locationLabel,
+    locationLabelDetail,
+    refreshLocation,
+    emergencyUserLocation,
+    setUserLocation,
+    manualLocation,
+    setManualLocation,
+    setSheetPhase,
+    setMapReadiness,
+    setHasCompletedInitialMapLoad,
+    isDarkMode,
+    width,
+    height,
+  });
   const isSignedIn = Boolean(user?.isLoggedIn || user?.id);
   const profileImageSource = user?.imageUri
     ? { uri: user.imageUri }
     : require("../../../assets/profile.jpg");
-  const loadingBackgroundImageUri = useMemo(() => {
-    const token = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
-    const latitude = Number(
-      activeLocation?.latitude ?? activeLocation?.coords?.latitude,
-    );
-    const longitude = Number(
-      activeLocation?.longitude ?? activeLocation?.coords?.longitude,
-    );
-
-    if (!token || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return null;
-    }
-
-    const styleId = isDarkMode ? "navigation-night-v1" : "light-v11";
-    const imageWidth = Math.max(
-      360,
-      Math.min(1280, Math.round((width || 390) * 1.4)),
-    );
-    const imageHeight = Math.max(
-      720,
-      Math.min(1600, Math.round((height || 844) * 1.3)),
-    );
-
-    return `https://api.mapbox.com/styles/v1/mapbox/${styleId}/static/${longitude.toFixed(5)},${latitude.toFixed(5)},13.2,0,0/${imageWidth}x${imageHeight}?logo=false&attribution=false&access_token=${encodeURIComponent(token)}`;
-  }, [activeLocation, height, isDarkMode, width]);
   const needsCoverageExpansion =
     coverageModeService.needsDemoSupport(coverageStatus);
   const shouldBootstrapDemoCoverage = coverageModeService.shouldBootstrapDemo({
@@ -390,12 +330,6 @@ export function useMapExploreFlow() {
     nearbyCoverageCounts,
     hasDemoHospitalsNearby,
   });
-  const discoveredHospitals = useMemo(() => {
-    return getDiscoveredHospitals(allHospitals, hospitals);
-  }, [allHospitals, hospitals]);
-  const nearestHospital = useMemo(() => {
-    return getNearestHospital(selectedHospital, discoveredHospitals);
-  }, [discoveredHospitals, selectedHospital]);
   const defaultExploreSnapState = usesSidebarLayout
     ? MAP_SHEET_SNAP_STATES.EXPANDED
     : MAP_SHEET_SNAP_STATES.HALF;
@@ -441,69 +375,27 @@ export function useMapExploreFlow() {
     ]),
   );
 
-  useEffect(() => {
-    if (manualLocation?.location) {
-      setUserLocation((current) => {
-        const nextLocation = toEmergencyLocation(manualLocation.location);
-        if (!nextLocation) return current;
-        if (
-          Number(current?.latitude) === nextLocation.latitude &&
-          Number(current?.longitude) === nextLocation.longitude
-        ) {
-          return current;
-        }
-        return nextLocation;
-      });
-      return;
-    }
-
-    if (!globalUserLocation?.latitude || !globalUserLocation?.longitude) {
-      return;
-    }
-
-    setUserLocation((current) => {
-      const nextLocation = toEmergencyLocation(globalUserLocation);
-      if (!nextLocation) return current;
-      if (
-        Number(current?.latitude) === nextLocation.latitude &&
-        Number(current?.longitude) === nextLocation.longitude
-      ) {
-        return current;
-      }
-      return nextLocation;
-    });
-  }, [
-    globalUserLocation?.latitude,
-    globalUserLocation?.longitude,
-    manualLocation?.location,
-    setUserLocation,
-  ]);
-
-  useEffect(() => {
-    if (!Array.isArray(discoveredHospitals) || discoveredHospitals.length === 0)
-      return;
-    if (
-      selectedHospitalId &&
-      discoveredHospitals.some(
-        (hospital) => hospital?.id === selectedHospitalId,
-      )
-    ) {
-      return;
-    }
-    if (discoveredHospitals[0]?.id) {
-      selectHospital(discoveredHospitals[0].id);
-    }
-  }, [discoveredHospitals, selectHospital, selectedHospitalId]);
-
-  const promoteHospitalSelection = useCallback(
-    (hospital) => {
-      if (!hospital?.id) return hospital || null;
-      selectHospital(hospital.id);
-      setFeaturedHospital(hospital);
-      return hospital;
-    },
-    [selectHospital, setFeaturedHospital],
-  );
+  const {
+    discoveredHospitals,
+    nearestHospital,
+    nearestHospitalMeta,
+    nearbyHospitalCount,
+    totalAvailableBeds,
+    nearbyBedHospitals,
+    featuredHospitals,
+    promoteHospitalSelection,
+    handleOpenFeaturedHospital: handleOpenFeaturedHospitalBase,
+    handleCycleFeaturedHospital,
+    handleMapHospitalPress,
+  } = useMapHospitalSelection({
+    hospitals,
+    allHospitals,
+    selectedHospital,
+    selectedHospitalId,
+    selectHospital,
+    setFeaturedHospital,
+    featuredHospital,
+  });
 
   useEffect(() => {
     const isRestorableCommitPhase =
@@ -547,28 +439,7 @@ export function useMapExploreFlow() {
     sheetPhase,
   ]);
 
-  const nearestHospitalMeta = useMemo(
-    () => getNearestHospitalMeta(nearestHospital),
-    [nearestHospital],
-  );
-
-  const nearbyHospitalCount = useMemo(
-    () => getNearbyHospitalCount(discoveredHospitals),
-    [discoveredHospitals],
-  );
-  const totalAvailableBeds = useMemo(
-    () => getTotalAvailableBeds(discoveredHospitals),
-    [discoveredHospitals],
-  );
-  const nearbyBedHospitals = useMemo(
-    () => getNearbyBedHospitals(discoveredHospitals),
-    [discoveredHospitals],
-  );
   const recentVisits = useMemo(() => getRecentVisits(visits), [visits]);
-  const featuredHospitals = useMemo(
-    () => getFeaturedHospitals(discoveredHospitals),
-    [discoveredHospitals],
-  );
   const activeMapRequest = useMemo(
     () =>
       buildActiveMapRequestModel({
@@ -923,6 +794,43 @@ export function useMapExploreFlow() {
     sheetPayload?.sourcePayload,
     sheetPayload?.sourceSnapState,
   ]);
+
+  const handleSelectHospital = useCallback(
+    (hospital) => {
+      const nextHospitalId = hospital?.id || null;
+      const nextCareIntent =
+        sheetPayload?.sourcePayload?.careIntent === "both" ? "both" : "bed";
+      const savedTransportHospitalId =
+        sheetPayload?.sourcePayload?.savedTransport?.hospitalId || null;
+
+      // Transport pricing and availability are hospital-scoped, so step 2 cannot
+      // keep showing a saved ambulance choice after the user switches hospitals.
+      if (
+        sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION &&
+        nextCareIntent === "both" &&
+        nextHospitalId &&
+        savedTransportHospitalId !== nextHospitalId
+      ) {
+        openAmbulanceDecision(hospital);
+        return;
+      }
+
+      if (hospital?.id) {
+        selectHospital(hospital.id);
+        setFeaturedHospital(hospital);
+      }
+      closeHospitalList();
+    },
+    [
+      closeHospitalList,
+      openAmbulanceDecision,
+      selectHospital,
+      setFeaturedHospital,
+      sheetPayload?.sourcePhase,
+      sheetPayload?.sourcePayload?.careIntent,
+      sheetPayload?.sourcePayload?.savedTransport?.hospitalId,
+    ],
+  );
 
   const openHospitalDetail = useCallback(
     (hospital) => {
@@ -1362,106 +1270,6 @@ export function useMapExploreFlow() {
     closeServiceDetail();
   }, [closeServiceDetail, setHospitalServiceSelection, sheetPayload]);
 
-  const handleSearchLocation = useCallback(
-    (nextLocation) => {
-      if (!nextLocation?.location) return;
-      const locationChanged = hasMeaningfulLocationChange(
-        activeLocation,
-        nextLocation.location,
-      );
-      if (locationChanged) {
-        setHasCompletedInitialMapLoad(false);
-      }
-      setManualLocation(nextLocation);
-      setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
-      if (locationChanged) {
-        setMapReadiness({
-          mapReady: false,
-          routeReady: false,
-          isCalculatingRoute: false,
-        });
-      }
-    },
-    [
-      activeLocation,
-      setHasCompletedInitialMapLoad,
-      setManualLocation,
-      setMapReadiness,
-      setSheetPhase,
-    ],
-  );
-
-  const handleUseCurrentLocation = useCallback(async () => {
-    const fallbackCurrentLocation =
-      globalUserLocation || emergencyUserLocation || null;
-    const locationChanged = manualLocation?.location
-      ? hasMeaningfulLocationChange(
-          manualLocation.location,
-          fallbackCurrentLocation,
-        )
-      : false;
-
-    if (locationChanged) {
-      setHasCompletedInitialMapLoad(false);
-    }
-    setManualLocation(null);
-    setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
-    if (locationChanged) {
-      setMapReadiness({
-        mapReady: false,
-        routeReady: false,
-        isCalculatingRoute: false,
-      });
-    }
-    await refreshLocation?.();
-  }, [
-    emergencyUserLocation,
-    globalUserLocation,
-    manualLocation?.location,
-    refreshLocation,
-    setHasCompletedInitialMapLoad,
-    setManualLocation,
-    setMapReadiness,
-    setSheetPhase,
-  ]);
-
-  const handleSelectHospital = useCallback(
-    (hospital) => {
-      const nextHospitalId = hospital?.id || null;
-      const nextCareIntent =
-        sheetPayload?.sourcePayload?.careIntent === "both" ? "both" : "bed";
-      const savedTransportHospitalId =
-        sheetPayload?.sourcePayload?.savedTransport?.hospitalId || null;
-
-      // Transport pricing and availability are hospital-scoped, so step 2 cannot
-      // keep showing a saved ambulance choice after the user switches hospitals.
-      if (
-        sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION &&
-        nextCareIntent === "both" &&
-        nextHospitalId &&
-        savedTransportHospitalId !== nextHospitalId
-      ) {
-        openAmbulanceDecision(hospital);
-        return;
-      }
-
-      if (hospital?.id) {
-        selectHospital(hospital.id);
-        setFeaturedHospital(hospital);
-      }
-      closeHospitalList();
-    },
-    [
-      closeHospitalList,
-      openAmbulanceDecision,
-      selectHospital,
-      setFeaturedHospital,
-      sheetPayload?.sourcePhase,
-      sheetPayload?.sourcePayload?.careIntent,
-      sheetPayload?.sourcePayload?.savedTransport?.hospitalId,
-    ],
-  );
-
   const handleChooseCare = useCallback(
     (mode) => {
       setSelectedCare(mode);
@@ -1482,49 +1290,10 @@ export function useMapExploreFlow() {
 
   const handleOpenFeaturedHospital = useCallback(
     (hospital) => {
-      if (hospital?.id) {
-        selectHospital(hospital.id);
-      }
+      handleOpenFeaturedHospitalBase(hospital);
       openHospitalDetail(hospital || null);
     },
-    [openHospitalDetail, selectHospital],
-  );
-
-  const handleCycleFeaturedHospital = useCallback(() => {
-    const pool = Array.isArray(discoveredHospitals)
-      ? discoveredHospitals.filter((entry) => entry?.id)
-      : [];
-    if (pool.length < 2) return;
-
-    const currentId =
-      featuredHospital?.id ??
-      selectedHospital?.id ??
-      nearestHospital?.id ??
-      pool[0]?.id ??
-      null;
-    const currentIndex = pool.findIndex((entry) => entry?.id === currentId);
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % pool.length : 0;
-    const nextHospital = pool[nextIndex] ?? null;
-    if (!nextHospital?.id) return;
-
-    selectHospital(nextHospital.id);
-    setFeaturedHospital(nextHospital);
-  }, [
-    discoveredHospitals,
-    featuredHospital?.id,
-    nearestHospital?.id,
-    selectedHospital?.id,
-    selectHospital,
-    setFeaturedHospital,
-  ]);
-
-  const handleMapHospitalPress = useCallback(
-    (hospital) => {
-      if (hospital?.id) {
-        selectHospital(hospital.id);
-      }
-    },
-    [selectHospital],
+    [handleOpenFeaturedHospitalBase, openHospitalDetail],
   );
 
   const handleOpenProfile = useCallback(() => {
