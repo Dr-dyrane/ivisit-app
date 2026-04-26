@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Planned — DO NOT START until exploreFlow modularization is verified stable  
+**Status**: Phase 5c complete — tracking subtree decoupled from EmergencyContext raw fields  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -172,9 +172,14 @@ COMPLETING
 - `useEmergency()` API surface stays unchanged — consumers never know what changes underneath
 
 **Sub-pass plan**:
-- **5a** — Migrate raw string comparisons to `TripState` constants (non-breaking, mechanical)
-- **5b** — Migrate heavy consumers to use `isActive`, `isArrived`, `hasActiveTrip` from `useEmergency()`
-- **5c** — Strip raw `activeAmbulanceTrip`, `activeBedBooking` from context value once all consumers migrated
+- **5a** ✅ COMPLETE — Migrate raw string comparisons to `TripState` constants (non-breaking, mechanical)
+- **5b** ✅ COMPLETE — Migrate heavy consumers to use `isActive`, `isArrived`, `hasActiveTrip` from `useEmergency()`
+- **5c** ✅ COMPLETE (`ddd655b`) — Strip `useEmergency()` from tracking subtree; raw trips now flow via `activeMapRequest.raw.*`
+  - `MapTrackingStageBase`: removed `useEmergency()`, raw trip data from `activeMapRequest.raw`, actions as props
+  - `MapSheetOrchestrator`: added `tracking*` prop interface, threads to `MapTrackingOrchestrator`
+  - `useMapExploreFlow`: exposes action callbacks + lifecycle flags for prop-drilling
+  - `MapScreen`: passes `trackingXxx` props down to `MapSheetOrchestrator`
+  - Context value strip deferred: `EmergencyRequestModal` + commit controllers still consumers → 5d
 - **5d** — Retire `EmergencyContext.jsx` shell, replace with direct store + machine reads
 
 **Do last — after all 4 layers above are stable and verified in production.**
