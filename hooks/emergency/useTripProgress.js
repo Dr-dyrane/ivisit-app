@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 
 const toTimestampMs = (value) => {
 	if (Number.isFinite(value)) return Number(value);
@@ -66,8 +67,8 @@ export const useTripProgress = ({
 
 	const computedStatus = useMemo(() => {
 		const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
-		if (status === "completed") return "Complete";
-		if (status === "arrived") return "Arrived";
+		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
+		if (status === EmergencyRequestStatus.ARRIVED) return "Arrived";
 		if (!Number.isFinite(tripProgress)) return "En Route";
 		if (tripProgress >= 1) return "Arrived";
 		if (tripProgress < 0.2) return "Dispatched";

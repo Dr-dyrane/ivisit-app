@@ -4,6 +4,7 @@ import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
+import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
 import { useBedBookingProgress } from "../../../hooks/emergency/useBedBookingProgress";
 import { navigateToRequestAmbulance } from "../../../utils/navigationHelpers";
 import TriageIntakeModal from "../triage/TriageIntakeModal";
@@ -164,8 +165,8 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 		setTriageDraft(initialTriageDraft);
 	}, [triageRequestId, initialTriageDraft]);
 
-	const isPending = activeBedBooking?.status === "pending_approval";
-	const displayStatus = isPending ? "Awaiting Approval" : (activeBedBooking?.status === "arrived" ? "Occupied" : (bedStatus || "Confirmed"));
+	const isPending = activeBedBooking?.status === EmergencyRequestStatus.PENDING_APPROVAL;
+	const displayStatus = isPending ? "Awaiting Approval" : (activeBedBooking?.status === EmergencyRequestStatus.ARRIVED ? "Occupied" : (bedStatus || "Confirmed"));
 	const isReady = bedStatus === "Ready" && !isPending;
 
 	return (
@@ -192,8 +193,8 @@ export const BedBookingSummaryCard = ({ activeBedBooking, hasOtherActiveVisit, a
 					hospitalsForTriage: Array.isArray(allHospitals) ? allHospitals : [],
 					initialTriageDraft,
 				}}
-				showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== "arrived" && !isPending}
-				showComplete={activeBedBooking?.status === "arrived" && !isPending}
+				showMarkOccupied={bedStatus === "Ready" && activeBedBooking?.status !== EmergencyRequestStatus.ARRIVED && !isPending}
+				showComplete={activeBedBooking?.status === EmergencyRequestStatus.ARRIVED && !isPending}
 				onCancelBedBooking={() => {
 					setBusyAction('cancel');
 					onCancelBedBooking().finally(() => setBusyAction(null));

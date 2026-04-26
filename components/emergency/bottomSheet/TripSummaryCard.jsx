@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { COLORS } from "../../../constants/colors";
+import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
 import { useTripProgress } from "../../../hooks/emergency/useTripProgress";
 import { navigateToBookBed } from "../../../utils/navigationHelpers";
 import TriageIntakeModal from "../triage/TriageIntakeModal";
@@ -249,7 +250,7 @@ export const TripSummaryCard = ({
 		return phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : null;
 	}, [tripHospital?.phone]);
 
-	const isPending = activeAmbulanceTrip?.status === "pending_approval";
+	const isPending = activeAmbulanceTrip?.status === EmergencyRequestStatus.PENDING_APPROVAL;
 	const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
 	const telemetryAgeLabel = ambulanceTelemetryHealth?.ageLabel ?? null;
 	const telemetryStatusLabel =
@@ -260,7 +261,7 @@ export const TripSummaryCard = ({
 				: null;
 	const displayStatus = isPending
 		? "Confirming request"
-		: (activeAmbulanceTrip?.status === "arrived"
+		: (activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED
 			? "Help has arrived"
 			: (telemetryState === "lost"
 				? "Location update needed"
@@ -337,8 +338,8 @@ export const TripSummaryCard = ({
 					hospitalsForTriage: Array.isArray(allHospitals) ? allHospitals : [],
 					initialTriageDraft,
 				}}
-				showMarkArrived={canAdvanceTripStatus && computedStatus === "Arrived" && activeAmbulanceTrip?.status !== "arrived" && !isPending}
-				showComplete={activeAmbulanceTrip?.status === "arrived" && !isPending}
+				showMarkArrived={canAdvanceTripStatus && computedStatus === "Arrived" && activeAmbulanceTrip?.status !== EmergencyRequestStatus.ARRIVED && !isPending}
+				showComplete={activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED && !isPending}
 				onCancelAmbulanceTrip={onCancelAmbulanceTrip}
 				onMarkAmbulanceArrived={() => {
 					setBusyAction('arrived');

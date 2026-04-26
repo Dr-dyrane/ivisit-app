@@ -166,7 +166,7 @@ export function buildTrackingViewState({
         : "normal";
   const secondaryTrackingLabel =
     activeAmbulanceTrip?.requestId && activeBedBooking?.requestId
-      ? activeBedBooking?.status === "arrived"
+      ? activeBedBooking?.status === EmergencyRequestStatus.ARRIVED
         ? "Bed ready"
         : "Bed reserved"
       : null;

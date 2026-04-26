@@ -454,9 +454,9 @@ const EmergencyScreen = () => {
 				headerNowMs
 			);
 			const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
-			const title = status === "arrived" ? "Help has arrived" : "Help is on the way";
+			const title = status === EmergencyRequestStatus.ARRIVED ? "Help has arrived" : "Help is on the way";
 			const subtitleBase =
-				status === "pending_approval"
+				status === EmergencyRequestStatus.PENDING_APPROVAL
 					? "Confirming payment"
 					: telemetryHeaderSubtitle || (etaLabel ? `ETA ${etaLabel}` : "Responder en route");
 			const subtitle = hospitalLabel ? `${subtitleBase} · ${hospitalLabel}` : subtitleBase;
@@ -480,9 +480,9 @@ const EmergencyScreen = () => {
 				headerNowMs
 			);
 			const status = String(activeBedBooking?.status ?? "").toLowerCase();
-			const title = status === "arrived" ? "Bed is ready" : "Bed reservation active";
+			const title = status === EmergencyRequestStatus.ARRIVED ? "Bed is ready" : "Bed reservation active";
 			const subtitleBase =
-				status === "pending_approval"
+				status === EmergencyRequestStatus.PENDING_APPROVAL
 					? "Confirming payment"
 					: etaLabel
 						? `Ready in ${etaLabel}`
