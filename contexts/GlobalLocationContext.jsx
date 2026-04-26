@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
-import googlePlacesService from "../services/googlePlacesService";
 import mapboxService from "../services/mapboxService";
 
 // Location configuration constants
@@ -221,24 +220,6 @@ export function GlobalLocationProvider({ children }) {
 
 			if (!nextPlace) {
 				nextPlace = await reverseGeocodeWithOpenStreetMap(normalizedLocation);
-			}
-
-			if (!nextPlace) {
-				try {
-					const formattedAddress = await googlePlacesService.reverseGeocode(
-						normalizedLocation.latitude,
-						normalizedLocation.longitude,
-					);
-					if (typeof formattedAddress === "string" && formattedAddress.trim()) {
-						nextPlace = buildPlaceModelFromFormattedAddress(
-							formattedAddress,
-							normalizedLocation,
-							"google",
-						);
-					}
-				} catch (_googleError) {
-					// Fall through to friendly final fallback below.
-				}
 			}
 
 			if (!nextPlace) {

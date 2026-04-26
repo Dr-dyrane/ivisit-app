@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { COLORS } from "../../../../constants/colors";
 import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
-import googlePlacesService from "../../../../services/googlePlacesService";
+import mapboxService from "../../../../services/mapboxService";
 import MapModalShell from "../MapModalShell";
 
 const squircle = (radius) => ({
@@ -13,29 +13,18 @@ const squircle = (radius) => ({
 	borderCurve: "continuous",
 });
 
-function mapGeocodeResult(result) {
-	const location = result?.geometry?.location;
-	const components = Array.isArray(result?.address_components) ? result.address_components : [];
-	const pick = (type) =>
-		components.find((item) => item.types?.includes(type))?.long_name || null;
-	const streetNumber = pick("street_number");
-	const route = pick("route");
-	const locality =
-		pick("locality") || pick("sublocality") || pick("administrative_area_level_2");
-	const region = pick("administrative_area_level_1");
-	const primaryText =
-		[streetNumber, route].filter(Boolean).join(" ").trim() ||
-		result?.formatted_address ||
-		"Selected location";
-	const secondaryText =
-		[locality, region].filter(Boolean).join(", ").trim() ||
-		result?.formatted_address ||
-		"";
+function mapMapboxSuggestion(suggestion) {
+	if (!suggestion) return null;
 
 	return {
-		primaryText,
-		secondaryText,
-		location: location ? { latitude: location.lat, longitude: location.lng } : null,
+		primaryText: suggestion.primaryText || suggestion.name || "Selected location",
+		secondaryText: suggestion.secondaryText || suggestion.address || "",
+		location: suggestion.location || {
+			latitude: suggestion.latitude,
+			longitude: suggestion.longitude,
+		},
+		placeId: suggestion.placeId || suggestion.mapbox_id,
+		source: suggestion.source || "mapbox",
 	};
 }
 
@@ -210,22 +199,14 @@ export default function MapLocationModal({
 			setResolvingPlaceId(suggestion.placeId);
 
 			try {
-				const readyMapped = mapSuggestionToLocation(suggestion);
-				const mapped = readyMapped
-					? readyMapped
-					: mapGeocodeResult(
-						await googlePlacesService.getPlaceDetails(suggestion.placeId, {
-							sessionToken: sessionTokenRef.current,
-						}),
-					);
-
-				if (!mapped.location) {
+				// Mapbox suggestions already include location data
+				const mapped = mapSuggestionToLocation(suggestion) || mapMapboxSuggestion(suggestion);
+				if (!mapped?.location) {
 					throw new Error("Location not found");
 				}
-
 				onSelectLocation?.(mapped);
 				handleDismiss();
-			} catch (_error) {
+			} catch (searchError) {
 				setError("We couldn't use that address yet.");
 			} finally {
 				setResolvingPlaceId(null);
@@ -264,10 +245,10 @@ export default function MapLocationModal({
 			setError(null);
 
 			try {
-				const nextSuggestions = await googlePlacesService.searchAddressSuggestions(trimmed, {
-					location: currentLocation,
-					sessionToken: sessionTokenRef.current,
-				});
+				const nextSuggestions = await mapboxService.suggestAddresses(
+					trimmed,
+					currentLocation,
+				);
 
 				if (requestIdRef.current !== requestId) return;
 				setSuggestions(nextSuggestions);

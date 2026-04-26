@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import googlePlacesService from './googlePlacesService';
 import mapboxService from './mapboxService';
 
 class HospitalImportService {
@@ -238,23 +237,8 @@ class HospitalImportService {
       const errors = [];
 
       try {
-        let hospitals = [];
-        const useMapbox = !googlePlacesService.apiKey || !!mapboxService.accessToken;
-
-        if (useMapbox) {
-          console.log('Using Mapbox for hospital discovery...');
-          hospitals = await mapboxService.searchNearbyHospitals(lat, lng, radius / 1000);
-        } else {
-          console.log('Using Google Places for hospital discovery...');
-          hospitals = await googlePlacesService.batchImportHospitals(
-            lat,
-            lng,
-            radius,
-            (progress) => {
-              console.log(`Import progress: ${progress.progress.toFixed(1)}% - ${progress.hospital}`);
-            }
-          );
-        }
+        console.log('Using Mapbox for hospital discovery...');
+        const hospitals = await mapboxService.searchNearbyHospitals(lat, lng, radius / 1000);
 
         totalFound = hospitals.length;
 

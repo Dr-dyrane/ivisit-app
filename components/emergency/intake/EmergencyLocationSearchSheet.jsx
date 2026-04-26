@@ -19,7 +19,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import { useAndroidKeyboardAwareModal } from "../../../hooks/ui/useAndroidKeyboardAwareModal";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import { COLORS } from "../../../constants/colors";
-import googlePlacesService from "../../../services/googlePlacesService";
+import mapboxService from "../../../services/mapboxService";
 
 function mapGeocodeResult(result) {
 	const location = result?.geometry?.location;
@@ -50,6 +50,21 @@ function mapGeocodeResult(result) {
 		location: location
 			? { latitude: location.lat, longitude: location.lng }
 			: null,
+	};
+}
+
+function mapMapboxResult(result) {
+	if (!result?.location || typeof result.location.latitude !== "number") {
+		return null;
+	}
+
+	return {
+		primaryText: result.primaryText || result.formattedAddress || "Selected location",
+		secondaryText: result.secondaryText || "",
+		location: result.location,
+		formattedAddress: result.formattedAddress || result.primaryText || "",
+		placeId: result.placeId,
+		source: "mapbox",
 	};
 }
 
@@ -263,14 +278,15 @@ export default function EmergencyLocationSearchSheet({
 			setResolvingPlaceId(suggestion.placeId);
 
 			try {
-				const readyMapped = mapSuggestionToLocation(suggestion);
-				const mapped = readyMapped
-					? readyMapped
-					: mapGeocodeResult(
-						await googlePlacesService.getPlaceDetails(suggestion.placeId, {
-							sessionToken: sessionTokenRef.current,
-						}),
-					);
+				// Mapbox suggestions already include location data
+				const mapped = mapSuggestionToLocation(suggestion) || {
+					primaryText: suggestion.primaryText || suggestion.name,
+					secondaryText: suggestion.secondaryText || suggestion.address,
+					location: suggestion.location || { latitude: suggestion.latitude, longitude: suggestion.longitude },
+					formattedAddress: suggestion.formattedAddress || suggestion.full_address,
+					placeId: suggestion.placeId || suggestion.mapbox_id,
+					source: suggestion.source || "mapbox",
+				};
 				if (!mapped.location) {
 					throw new Error("Location not found");
 				}
@@ -386,12 +402,9 @@ export default function EmergencyLocationSearchSheet({
 			setError(null);
 
 			try {
-				const nextSuggestions = await googlePlacesService.searchAddressSuggestions(
+				const nextSuggestions = await mapboxService.suggestAddresses(
 					trimmed,
-					{
-						location: currentLocation,
-						sessionToken: sessionTokenRef.current,
-					},
+					currentLocation,
 				);
 
 				if (requestIdRef.current !== requestId) {

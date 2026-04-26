@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useSearch } from "../../../../contexts/SearchContext";
-import googlePlacesService from "../../../../services/googlePlacesService";
+import mapboxService from "../../../../services/mapboxService";
 import {
 	buildHospitalMeta,
 	buildHospitalSubtitle,
 	buildLocalPopularSearches,
 	buildTrendingSubtitle,
 	humanizeQueryLabel,
-	mapGeocodeResult,
 	mapSuggestionToLocation,
 	MAP_SEARCH_SHEET_MODES,
 	normalizeText,
@@ -107,10 +106,7 @@ export function useMapSearchSheetModel({
 			setLocationError(null);
 
 			try {
-				const nextSuggestions = await googlePlacesService.searchAddressSuggestions(trimmedQuery, {
-					location: locationBias,
-					sessionToken: sessionTokenRef.current,
-				});
+				const nextSuggestions = await mapboxService.suggestAddresses(trimmedQuery, locationBias);
 
 				if (requestIdRef.current !== requestId) return;
 				setLocationSuggestions(Array.isArray(nextSuggestions) ? nextSuggestions : []);
@@ -224,13 +220,8 @@ export function useMapSearchSheetModel({
 
 			try {
 				const readyMapped = mapSuggestionToLocation(suggestion);
-				const mapped = readyMapped
-					? readyMapped
-					: mapGeocodeResult(
-						await googlePlacesService.getPlaceDetails(suggestion.placeId, {
-							sessionToken: sessionTokenRef.current,
-						}),
-					);
+				// Mapbox suggestions already include location data
+				const mapped = readyMapped || mapSuggestionToLocation(suggestion);
 
 				if (!mapped.location) {
 					throw new Error("Location not found");
