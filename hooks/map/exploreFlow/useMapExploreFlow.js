@@ -5,6 +5,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useGlobalLocation } from "../../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../../contexts/EmergencyContext";
+import { useEmergencyTripStore } from "../../../stores/emergencyTripStore";
 import { useVisits } from "../../../contexts/VisitsContext";
 import { coverageModeService } from "../../../services/coverageModeService";
 import {
@@ -77,25 +78,29 @@ export function useMapExploreFlow() {
     nearbyCoverageCounts,
     hasDemoHospitalsNearby,
     hasComfortableNearbyCoverage,
-    activeAmbulanceTrip,
     ambulanceTelemetryHealth,
-    activeBedBooking,
-    pendingApproval,
-    commitFlow,
-    setCommitFlow,
-    clearCommitFlow,
-    patchActiveAmbulanceTrip,
     // PULLBACK NOTE: Phase 5c — expose action callbacks so MapScreen can prop-drill to tracking subtree
     // OLD: MapTrackingStageBase called useEmergency() directly for these
     // NEW: flow through useMapExploreFlow return → MapScreen → MapSheetOrchestrator → MapTrackingStageBase
     stopAmbulanceTrip,
     stopBedBooking,
-    setPendingApproval,
     setAmbulanceTripStatus,
     setBedBookingStatus,
     isArrived,
     isPendingApproval,
   } = useEmergency();
+
+  // PULLBACK NOTE: Phase 5e — raw trip reads + trip actions moved off EmergencyContext
+  // OLD: destructured from useEmergency() — all context subscribers re-rendered on every trip update
+  // NEW: surgical store selectors — scoped re-renders only
+  const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
+  const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
+  const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+  const commitFlow = useEmergencyTripStore((s) => s.commitFlow);
+  const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
+  const patchActiveAmbulanceTrip = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
+  const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
+  const clearCommitFlow = useEmergencyTripStore((s) => s.clearCommitFlow);
 
   const { state: flowState, actions: flowActions } = useMapExploreFlowStore({
     usesSidebarLayout,
