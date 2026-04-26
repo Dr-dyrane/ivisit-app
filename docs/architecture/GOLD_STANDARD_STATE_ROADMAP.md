@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 5d complete — raw trip objects stripped from EmergencyContext value  
+**Status**: Phase 5e complete — EmergencyContext value now broadcasts zero raw trip data  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -185,12 +185,14 @@ COMPLETING
   - `useMapCommitPaymentController`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
   - `EmergencyRequestModal`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
   - `setPendingApproval`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking` retained in context value — `useMapExploreFlow` still reads them → 5e
-- **5e** — Migrate `useMapExploreFlow` raw trip reads off `EmergencyContext`
-  - **Scope**: `useMapExploreFlow` still destructures `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip`, `commitFlow`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` from `useEmergency()`
-  - **What moves to store**: `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip`, `commitFlow`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` → `useEmergencyTripStore()` selectors
-  - **What stays in context**: `stopAmbulanceTrip`, `stopBedBooking`, `setAmbulanceTripStatus`, `setBedBookingStatus`, `isArrived`, `isPendingApproval`, all hospital/UI fields
-  - **Context value strip**: remove `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval`, `commitFlow`, `setCommitFlow` from useMemo value + deps
-  - **After 5e**: `EmergencyContext` value broadcasts zero raw trip data — only XState lifecycle flags, actions (start/stop/set*Status), hospital/UI state
+- **5e** ✅ COMPLETE (`d18139b`) — Migrate `useMapExploreFlow` raw trip reads off `EmergencyContext`
+  - `useMapExploreFlow`: `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `commitFlow`, `patchActiveAmbulanceTrip`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` → `useEmergencyTripStore()` selectors
+  - `EmergencyContext` value: removed `commitFlow`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval`, `setCommitFlow`, `clearCommitFlow`
+  - `EmergencyContext` now broadcasts **zero raw trip data** — only XState lifecycle flags, start/stop actions, hospital/UI state
+  - `useMapCommitDetailsController` still reads `setCommitFlow` from context → 5f
+- **5f** — Migrate `useMapCommitDetailsController` `setCommitFlow` off context
+  - **Scope**: 1 field (`setCommitFlow`) → `useEmergencyTripStore((s) => s.setCommitFlow)` selector
+  - **After 5f**: no remaining active-path consumer reads any trip field from `useEmergency()`
 
 **Do last — after all 4 layers above are stable and verified in production.**
 
