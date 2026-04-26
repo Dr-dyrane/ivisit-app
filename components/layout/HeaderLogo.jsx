@@ -11,8 +11,8 @@ const HeaderLogo = () => {
 			// Go back to the previous screen
 			router.back();
 		} else {
-			// The public welcome surface is mounted at the auth root.
-			router.push("/");
+			// Navigate to map screen instead of root
+			router.push("/(auth)/map");
 		}
 	};
 	return (

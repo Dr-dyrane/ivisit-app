@@ -232,7 +232,7 @@ export function usePaymentScreenModel() {
           [
             {
               text: 'Track Now',
-              onPress: () => router.push(`/emergency/${emergencyRequestId || 'last'}`)
+              onPress: () => router.push('/(auth)/map')
             }
           ]
         );
