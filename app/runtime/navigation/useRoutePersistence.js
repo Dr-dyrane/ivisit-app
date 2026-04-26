@@ -7,6 +7,9 @@ import { usePathname } from "expo-router";
 import { database, StorageKeys } from "../../../database";
 import { normalizeStoredPublicRoute } from "./deepLinkHelpers";
 
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 // LEGACY: This key is checked for migration purposes
 const LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
 

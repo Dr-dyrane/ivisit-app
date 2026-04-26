@@ -32,6 +32,9 @@ import { useAuthRouting } from "./navigation/useAuthRouting";
  * - Deep link parsing
  * - OTA modal logic (extracted to OTAModalLayer)
  */
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 export function RootNavigator() {
 	const { isDarkMode } = useTheme();
 

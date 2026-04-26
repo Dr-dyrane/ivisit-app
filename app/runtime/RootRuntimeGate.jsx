@@ -16,6 +16,9 @@ let isSplashPrevented = false;
  * - Schema reload
  * - Emergency trip store hydration (Metro reload safety)
  */
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 export function RootRuntimeGate({ children }) {
 	const [isReady, setIsReady] = useState(false);
 

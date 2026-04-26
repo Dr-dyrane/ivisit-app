@@ -10,7 +10,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { database, StorageKeys } from "../../database";
 import { normalizeEmergencyState } from "../../utils/domainNormalize";
 import { areRuntimeStateValuesEqual, resolveStateUpdate } from "../../utils/emergencyContextHelpers";
-import { EmergencyMode } from "../../contexts/EmergencyContext";
+// PULLBACK NOTE: Moved import source to break circular dep with EmergencyContext
+// OLD: import { EmergencyMode } from "../../contexts/EmergencyContext"
+// NEW: import { EmergencyMode } from "../../constants/emergency"
+import { EmergencyMode } from "../../constants/emergency";
 
 export function useEmergencyTripState() {
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);

@@ -8,13 +8,12 @@ import {
 	useEmergencyHospitalSync,
 	useEmergencyActions,
 } from '../hooks/emergency';
+// PULLBACK NOTE: EmergencyMode moved to constants/emergency.js to break circular dep
+// OLD: Defined inline here
+// NEW: Imported from constants, re-exported for backward compat
+export { EmergencyMode } from '../constants/emergency';
 
 const EmergencyContext = createContext();
-
-export const EmergencyMode = {
-	EMERGENCY: "emergency",
-	BOOKING: "booking",
-};
 
 export function EmergencyProvider({ children }) {
 	const { userLocation, setUserLocation, userLocationRef, parseEtaToSeconds } =

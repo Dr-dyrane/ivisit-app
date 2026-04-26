@@ -28,6 +28,9 @@ import ThemeToggle from "../../components/ThemeToggle";
  * 6. Children (the app)
  * 7. ThemeToggle (floating)
  */
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 export function RootProviders({ children }) {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>

@@ -12,7 +12,10 @@ import { useHospitals } from "./useHospitals";
 import { useAmbulances } from "./useAmbulances";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { SPECIALTIES } from "../../constants/hospitals";
-import { EmergencyMode } from "../../contexts/EmergencyContext";
+// PULLBACK NOTE: Moved import source to break circular dep with EmergencyContext
+// OLD: import { EmergencyMode } from "../../contexts/EmergencyContext"
+// NEW: import { EmergencyMode } from "../../constants/emergency"
+import { EmergencyMode } from "../../constants/emergency";
 import { enrichHospitalsWithServiceTypes, normalizeCoordinate } from "../../utils/emergencyContextHelpers";
 import { isValidCoordinate } from "../../utils/mapUtils";
 import {

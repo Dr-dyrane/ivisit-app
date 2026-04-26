@@ -10,6 +10,9 @@ import { useEffect } from "react";
 import { usePathname } from "expo-router";
 import { isNormalizedPublicRouteActive } from "./deepLinkHelpers";
 
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 /**
  * useAuthRouting - Startup route coordination only
  *

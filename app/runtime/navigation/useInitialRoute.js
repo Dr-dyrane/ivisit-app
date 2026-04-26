@@ -12,6 +12,9 @@ import {
 } from "./deepLinkHelpers";
 import { readStoredAuthReturnRoute, readStoredPublicRoute, writeStoredPublicRoute } from "./useRoutePersistence";
 
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 /**
  * useInitialRoute - Handles deep links and initial route hydration
  *

@@ -1,3 +1,11 @@
+// PULLBACK NOTE: Moved from EmergencyContext.jsx to break circular dep
+// OLD: EmergencyMode defined in contexts/EmergencyContext.jsx
+// NEW: Defined here; EmergencyContext re-exports for backward compat
+export const EmergencyMode = {
+  EMERGENCY: "emergency",
+  BOOKING: "booking",
+};
+
 export const AMBULANCE_STATUSES = {
   en_route: { label: "En Route", color: "#F59E0B" },
   dispatched: { label: "Dispatched", color: "#3B82F6" },

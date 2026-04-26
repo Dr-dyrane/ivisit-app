@@ -4,6 +4,9 @@
 
 import * as Linking from "expo-linking";
 
+// Required by Expo Router (all files in app/ must have a default export)
+export default null;
+
 /**
  * Extract public auth route from deep link URL
  * @param {string} url - The URL to parse
