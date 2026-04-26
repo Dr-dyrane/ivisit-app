@@ -15,28 +15,17 @@ import {
 import {
   buildActiveMapRequestModel,
 } from "../../../components/map/core/mapActiveRequestModel";
-import {
-  buildAmbulanceDecisionSourcePayload,
-  buildBedDecisionSourcePayload,
-} from "../../../components/map/core/mapSheetFlowPayloads";
 import { useMapViewport } from "./useMapViewport";
 import { useMapLocation } from "./useMapLocation";
 import { useMapHospitalSelection } from "./useMapHospitalSelection";
 import { useMapTrackingHeader } from "./useMapTrackingHeader";
 import { useMapCommitFlow } from "./useMapCommitFlow";
-import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
+import { useMapSheetNavigation } from "./useMapSheetNavigation";
 import { HEADER_MODES } from "../../../constants/header";
 import {
-  buildAmbulanceDecisionSheetView,
-  buildBedDecisionSheetView,
   buildExploreIntentSheetView,
-  buildHospitalDetailSheetView,
-  buildVisitDetailSheetView,
-  buildHospitalListSheetView,
-  buildSearchSheetView,
   buildServiceDetailSheetView,
   buildSourceReturnSheetView,
-  buildTrackingOrExploreReturnSheetView,
   buildTrackingSheetView,
   resolveMapFlowHospital,
 } from "./mapExploreFlow.transitions";
@@ -364,95 +353,38 @@ export function useMapExploreFlow() {
     trackingRequestKey,
   ]);
 
-  const openSearchSheet = useCallback(
-    (nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
-      setSearchSheetMode(nextMode);
-      setSheetView(buildSearchSheetView());
-    },
-    [setSearchSheetMode, setSheetView],
-  );
-
-  const closeSearchSheet = useCallback(() => {
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
-
-  const openHospitalList = useCallback(() => {
-    setSheetView(buildHospitalListSheetView());
-  }, [setSheetView]);
-
-  const openAmbulanceDecision = useCallback(
-    (nextHospital = null, payload = null) => {
-      promoteHospitalSelection(
-        resolveMapFlowHospital({
-          preferredHospital: nextHospital,
-          hospitals: discoveredHospitals,
-          fallbacks: [selectedHospital, featuredHospital, nearestHospital],
-        }),
-      );
-
-      setSheetView(
-        buildAmbulanceDecisionSheetView({
-          defaultSnapState: defaultExploreSnapState,
-          payload,
-        }),
-      );
-    },
-    [
-      defaultExploreSnapState,
-      discoveredHospitals,
-      featuredHospital,
-      nearestHospital,
-      promoteHospitalSelection,
-      selectedHospital,
-      setSheetView,
-    ],
-  );
-
-  const openAmbulanceHospitalList = useCallback(() => {
-    setSheetView(
-      buildHospitalListSheetView({
-        sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
-        sourceSnapState: sheetSnapState || defaultExploreSnapState,
-        sourcePayload: buildAmbulanceDecisionSourcePayload({
-          payload: sheetPayload,
-        }),
-      }),
-    );
-  }, [
-    defaultExploreSnapState,
-    setSheetView,
+  const {
+    openSearchSheet,
+    closeSearchSheet,
+    openHospitalList,
+    openAmbulanceDecision,
+    openAmbulanceHospitalList,
+    openBedDecision,
+    openBedHospitalList,
+    closeHospitalList,
+    handleSelectHospital,
+    openHospitalDetail,
+    closeHospitalDetail,
+    openVisitDetail,
+    closeVisitDetail,
+    closeAmbulanceDecision,
+    closeBedDecision,
+  } = useMapSheetNavigation({
     sheetPayload,
     sheetSnapState,
-  ]);
-
-  const openBedDecision = useCallback(
-    (nextHospital = null, careIntent = "bed", payload = null) => {
-      promoteHospitalSelection(
-        resolveMapFlowHospital({
-          preferredHospital: nextHospital,
-          hospitals: discoveredHospitals,
-          fallbacks: [selectedHospital, featuredHospital, nearestHospital],
-        }),
-      );
-
-      setSheetView(
-        buildBedDecisionSheetView({
-          defaultSnapState: defaultExploreSnapState,
-          careIntent,
-          payload,
-        }),
-      );
-    },
-    [
-      defaultExploreSnapState,
-      discoveredHospitals,
-      featuredHospital,
-      nearestHospital,
-      promoteHospitalSelection,
-      selectedHospital,
-      setSheetView,
-    ],
-  );
+    defaultExploreSnapState,
+    usesSidebarLayout,
+    discoveredHospitals,
+    selectedHospital,
+    featuredHospital,
+    nearestHospital,
+    promoteHospitalSelection,
+    clearCommitFlow,
+    selectHospital,
+    setFeaturedHospital,
+    setSearchSheetMode,
+    setSheetView,
+  });
 
   const {
     suppressCommitRestoreRef,
@@ -482,151 +414,6 @@ export function useMapExploreFlow() {
     setSheetView,
     openTracking,
   });
-
-  const openBedHospitalList = useCallback(() => {
-    setSheetView(
-      buildHospitalListSheetView({
-        sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
-        sourceSnapState: sheetSnapState || defaultExploreSnapState,
-        sourcePayload: buildBedDecisionSourcePayload({
-          careIntent: sheetPayload?.careIntent === "both" ? "both" : "bed",
-          savedTransport:
-            sheetPayload?.careIntent === "both"
-              ? sheetPayload?.savedTransport || null
-              : null,
-          payload: sheetPayload,
-        }),
-      }),
-    );
-  }, [
-    defaultExploreSnapState,
-    setSheetView,
-    sheetPayload?.careIntent,
-    sheetSnapState,
-  ]);
-
-  const closeHospitalList = useCallback(() => {
-    if (
-      sheetPayload?.sourcePhase === MAP_SHEET_PHASES.AMBULANCE_DECISION ||
-      sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION
-    ) {
-      setSheetView(
-        buildSourceReturnSheetView({
-          payload: sheetPayload,
-          fallbackPhase: sheetPayload?.sourcePhase,
-          fallbackSnapState: defaultExploreSnapState,
-          fallbackPayload: null,
-        }),
-      );
-      return;
-    }
-
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [
-    defaultExploreSnapState,
-    setSheetView,
-    sheetPayload?.sourcePhase,
-    sheetPayload?.sourcePayload,
-    sheetPayload?.sourceSnapState,
-  ]);
-
-  const handleSelectHospital = useCallback(
-    (hospital) => {
-      const nextHospitalId = hospital?.id || null;
-      const nextCareIntent =
-        sheetPayload?.sourcePayload?.careIntent === "both" ? "both" : "bed";
-      const savedTransportHospitalId =
-        sheetPayload?.sourcePayload?.savedTransport?.hospitalId || null;
-
-      // Transport pricing and availability are hospital-scoped, so step 2 cannot
-      // keep showing a saved ambulance choice after the user switches hospitals.
-      if (
-        sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION &&
-        nextCareIntent === "both" &&
-        nextHospitalId &&
-        savedTransportHospitalId !== nextHospitalId
-      ) {
-        openAmbulanceDecision(hospital);
-        return;
-      }
-
-      if (hospital?.id) {
-        selectHospital(hospital.id);
-        setFeaturedHospital(hospital);
-      }
-      closeHospitalList();
-    },
-    [
-      closeHospitalList,
-      openAmbulanceDecision,
-      selectHospital,
-      setFeaturedHospital,
-      sheetPayload?.sourcePhase,
-      sheetPayload?.sourcePayload?.careIntent,
-      sheetPayload?.sourcePayload?.savedTransport?.hospitalId,
-    ],
-  );
-
-  const openHospitalDetail = useCallback(
-    (hospital) => {
-      if (hospital) {
-        setFeaturedHospital(hospital);
-      }
-      setSheetView(buildHospitalDetailSheetView({ usesSidebarLayout }));
-    },
-    [setFeaturedHospital, setSheetView, usesSidebarLayout],
-  );
-
-  const closeHospitalDetail = useCallback(() => {
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
-
-  const openVisitDetail = useCallback(
-    (historyItem) => {
-      setSheetView(
-        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null }),
-      );
-    },
-    [setSheetView, usesSidebarLayout],
-  );
-
-  const closeVisitDetail = useCallback(() => {
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
-
-  const closeAmbulanceDecision = useCallback(() => {
-    clearCommitFlow();
-    setSheetView(
-      buildTrackingOrExploreReturnSheetView({
-        payload: sheetPayload,
-        defaultExploreSnapState,
-      }),
-    );
-  }, [
-    clearCommitFlow,
-    defaultExploreSnapState,
-    setSheetView,
-    sheetPayload?.sourcePayload,
-    sheetPayload?.sourcePhase,
-    sheetPayload?.sourceSnapState,
-  ]);
-
-  const closeBedDecision = useCallback(() => {
-    clearCommitFlow();
-    setSheetView(
-      buildTrackingOrExploreReturnSheetView({
-        payload: sheetPayload,
-        defaultExploreSnapState,
-      }),
-    );
-  }, [
-    clearCommitFlow,
-    defaultExploreSnapState,
-    setSheetView,
-    sheetPayload?.sourcePayload,
-    sheetPayload?.sourcePhase,
-    sheetPayload?.sourceSnapState,
-  ]);
 
   const closeTracking = useCallback(() => {
     trackingDismissedRef.current = true;
