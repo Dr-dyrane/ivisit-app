@@ -7,6 +7,7 @@ import {
 	useEmergencyCoverageMode,
 	useEmergencyHospitalSync,
 	useEmergencyActions,
+	useTripLifecycle,
 } from '../hooks/emergency';
 // PULLBACK NOTE: EmergencyMode moved to constants/emergency.js to break circular dep
 // OLD: Defined inline here
@@ -79,6 +80,19 @@ export function EmergencyProvider({ children }) {
 		hospitals,
 		syncActiveTripsFromServer,
 	});
+
+	// PULLBACK NOTE: Phase 4 — mount XState trip lifecycle machine
+	// OLD: trip lifecycle derived ad-hoc from status strings scattered across codebase
+	// NEW: explicit states, legal transitions only, DevTools observable
+	// additive only — existing consumers unaffected, use tripState/isActive etc. going forward
+	const {
+		tripState, tripLifecycleSnapshot, send: sendTripEvent,
+		isIdle, isPendingApproval, isActive, isArrived,
+		isCompleting, isCompleted, isCancelled,
+		isRatingPending, hasActiveTrip,
+		submitTrip, approveTrip, arriveTrip, completeTrip,
+		cancelTrip, resetTrip, dismissRating,
+	} = useTripLifecycle();
 
 	const {
 		ambulanceTelemetryHealth,
@@ -153,6 +167,27 @@ export function EmergencyProvider({ children }) {
 			setCommitFlow,
 			setCoverageMode,
 			clearCommitFlow: () => setCommitFlow(null),
+
+			// PULLBACK NOTE: Phase 4 — XState lifecycle (additive, no consumer changes required)
+			tripState,
+			tripLifecycleSnapshot,
+			sendTripEvent,
+			isIdle,
+			isPendingApproval,
+			isActive,
+			isArrived,
+			isCompleting,
+			isCompleted,
+			isCancelled,
+			isRatingPending,
+			hasActiveTrip,
+			submitTrip,
+			approveTrip,
+			arriveTrip,
+			completeTrip,
+			cancelTrip,
+			resetTrip,
+			dismissRating,
 		}),
 		[
 			filteredHospitals, visibleHospitals, specialties,
@@ -171,6 +206,12 @@ export function EmergencyProvider({ children }) {
 			setBedBookingStatus, patchActiveBedBooking, updateHospitals,
 			refreshHospitals, setUserLocation, setPendingApproval,
 			patchPendingApproval, setCommitFlow, setCoverageMode,
+			tripState, tripLifecycleSnapshot, sendTripEvent,
+			isIdle, isPendingApproval, isActive, isArrived,
+			isCompleting, isCompleted, isCancelled,
+			isRatingPending, hasActiveTrip,
+			submitTrip, approveTrip, arriveTrip, completeTrip,
+			cancelTrip, resetTrip, dismissRating,
 		]
 	);
 
