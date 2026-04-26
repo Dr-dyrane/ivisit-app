@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 5c complete — tracking subtree decoupled from EmergencyContext raw fields  
+**Status**: Phase 5d complete — raw trip objects stripped from EmergencyContext value  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -180,7 +180,21 @@ COMPLETING
   - `useMapExploreFlow`: exposes action callbacks + lifecycle flags for prop-drilling
   - `MapScreen`: passes `trackingXxx` props down to `MapSheetOrchestrator`
   - Context value strip deferred: `EmergencyRequestModal` + commit controllers still consumers → 5d
-- **5d** — Retire `EmergencyContext.jsx` shell, replace with direct store + machine reads
+- **5d** ✅ COMPLETE (`6ea20f8`) — Strip `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchPendingApproval` from `EmergencyContext` useMemo value + deps
+  - `useMapCommitTriageController`: raw trips + patch* → `useEmergencyTripStore()` selectors
+  - `useMapCommitPaymentController`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
+  - `EmergencyRequestModal`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
+  - `setPendingApproval`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking` retained in context value — `useMapExploreFlow` still reads them → 5e
+- **5e** — Migrate `useMapExploreFlow` raw trip reads off `EmergencyContext`
+  - **Scope**: `useMapExploreFlow` still destructures `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip`, `commitFlow`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` from `useEmergency()`
+  - **What changes**: move those 8 fields to direct `useEmergencyTripStore()` selectors inside `useMapExploreFlow`
+  - **What stays in context**: `stopAmbulanceTrip`, `stopBedBooking`, `setAmbulanceTripStatus`, `setBedBookingStatus`, `isArrived`, `isPendingApproval` (XState lifecycle — still correct in context), hospital/UI fields
+  - **After 5e**: `EmergencyContext` value no longer broadcasts any raw trip data — only actions, XState lifecycle flags, and hospital/UI state
+  - **Then**: strip `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval` from context value + deps
+- **Phase 6** — Retire `EmergencyContext.jsx` shell entirely
+  - Remaining `useEmergency()` callers (`useMapExploreFlow` and others) migrate to direct store + machine reads
+  - `EmergencyContext.jsx` provider removed from tree
+  - **Do last — after 5e verified in production.**
 
 **Do last — after all 4 layers above are stable and verified in production.**
 
