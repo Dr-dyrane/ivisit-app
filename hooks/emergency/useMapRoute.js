@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from "react";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
-import { calculateDistance, decodeGooglePolyline } from "../../utils/mapUtils";
+import { calculateDistance } from "../../utils/mapUtils";
 import { ROUTE_CONFIG } from "../../constants/mapConfig";
 import { isEmergencyDebugEnabled } from "../../utils/emergencyDebug";
+import mapboxService from "../../services/mapboxService";
 
 export const useMapRoute = () => {
 	const emergencyDebugEnabled = isEmergencyDebugEnabled();
@@ -102,143 +102,63 @@ export const useMapRoute = () => {
 		].join(":");
 	}, []);
 
-	const getGoogleApiKey = useCallback(() => {
-		return (
-			process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-			process.env.GOOGLE_MAPS_API_KEY ||
-			Constants?.expoConfig?.extra?.googleMapsApiKey ||
-			null
-		);
-	}, []);
-
-	const getGoogleRoute = useCallback(async ({ origin, destination }) => {
-		const googleApiKey = getGoogleApiKey();
-
-		if (!googleApiKey) {
-			console.warn(
-				"[useMapRoute] Google API key not available (set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY for Expo, or provide expo.extra.googleMapsApiKey)"
-			);
-			return null;
-		}
-
-		if (isBrowserRuntime) {
-			try {
-				const mapsApi = await new Promise((resolve) => {
-					const getMaps = () =>
-						typeof window !== "undefined" && window.google?.maps
-							? window.google.maps
-							: null;
-
-					const readyMaps = getMaps();
-					if (readyMaps) {
-						resolve(readyMaps);
-						return;
-					}
-
-					const startedAt = Date.now();
-					const timer = setInterval(() => {
-						const nextMaps = getMaps();
-						if (nextMaps || Date.now() - startedAt >= 4500) {
-							clearInterval(timer);
-							resolve(nextMaps || null);
-						}
-					}, 120);
-				});
-
-				if (!mapsApi) {
-					return null;
-				}
-
-				const routesModule = typeof mapsApi.importLibrary === "function"
-					? await mapsApi.importLibrary("routes").catch(() => mapsApi)
-					: mapsApi;
-				const DirectionsServiceClass =
-					routesModule?.DirectionsService || mapsApi.DirectionsService;
-				const travelMode = mapsApi.TravelMode?.DRIVING || "DRIVING";
-				const trafficModel = mapsApi.TrafficModel?.BEST_GUESS || "BEST_GUESS";
-
-				if (typeof DirectionsServiceClass !== "function") {
-					return null;
-				}
-
-				const directionsService = new DirectionsServiceClass();
-				const request = {
-					origin: { lat: Number(origin.latitude), lng: Number(origin.longitude) },
-					destination: { lat: Number(destination.latitude), lng: Number(destination.longitude) },
-					travelMode,
-					drivingOptions: {
-						departureTime: new Date(),
-						trafficModel,
-					},
-					provideRouteAlternatives: false,
-				};
-
-				const result = await Promise.race([
-					new Promise((resolve, reject) => {
-						directionsService.route(request, (response, status) => {
-							if (status === "OK" || status === mapsApi.DirectionsStatus?.OK) {
-								resolve(response);
-								return;
-							}
-							reject(new Error(`Directions status: ${status}`));
-						});
-					}),
-					new Promise((_, reject) =>
-						setTimeout(() => reject(new Error("Timeout")), 4500),
-					),
-				]);
-
-				const route = result?.routes?.[0];
-				const leg = route?.legs?.[0];
-				const path = Array.isArray(route?.overview_path) ? route.overview_path : [];
-				const coords = path
-					.map((point) => ({
-						latitude:
-							typeof point?.lat === "function" ? point.lat() : Number(point?.lat),
-						longitude:
-							typeof point?.lng === "function" ? point.lng() : Number(point?.lng),
-					}))
-					.filter(
-						(point) =>
-							Number.isFinite(point.latitude) && Number.isFinite(point.longitude),
-					);
-
-				const durationSec =
-					leg?.duration_in_traffic?.value ?? leg?.duration?.value ?? null;
-				const distanceMeters = leg?.distance?.value ?? null;
-
-				if (coords.length >= 2) {
-					return { coordinates: coords, durationSec, distanceMeters, isFallback: false };
-				}
-			} catch (err) {
-				console.warn("[useMapRoute] Web Google route failed:", err);
-			}
-
+	// Mapbox Directions API v5 - free tier: 100,000 requests/month
+	const getMapboxRoute = useCallback(async ({ origin, destination }) => {
+		const accessToken = mapboxService.accessToken;
+		if (!accessToken) {
+			console.warn("[useMapRoute] Mapbox access token not available");
 			return null;
 		}
 
 		try {
-			const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&departure_time=now&traffic_model=best_guess&key=${googleApiKey}`;
+			// Mapbox Directions v5 API with driving profile
+			const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?geometries=geojson&overview=full&access_token=${accessToken}`;
 
-			const json = await fetchJsonWithTimeout(url);
+			const controller = typeof AbortController === "function" ? new AbortController() : null;
+			const timeoutMs = Platform.OS === "web" ? 4500 : ROUTE_CONFIG.ROUTE_FETCH_TIMEOUT;
+			const timeoutId = setTimeout(() => controller?.abort?.(), timeoutMs);
+
+			const response = await fetch(url, {
+				signal: controller?.signal,
+				headers: { Accept: "application/json" },
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response?.ok) {
+				throw new Error(`HTTP ${response?.status || "unknown"}`);
+			}
+
+			const json = await response.json();
 			const route = json?.routes?.[0];
-			const poly = route?.overview_polyline?.points;
-			const coords = decodeGooglePolyline(poly);
-			const leg = route?.legs?.[0];
+			const geometry = route?.geometry;
 
-			const durationSec =
-				leg?.duration_in_traffic?.value ?? leg?.duration?.value ?? null;
-			const distanceMeters = leg?.distance?.value ?? null;
+			if (geometry?.type === "LineString" && Array.isArray(geometry.coordinates)) {
+				const coords = geometry.coordinates.map(([lon, lat]) => ({
+					latitude: lat,
+					longitude: lon,
+				}));
 
-			if (coords.length >= 2) {
-				return { coordinates: coords, durationSec, distanceMeters };
+				if (coords.length >= 2) {
+					return {
+						coordinates: coords,
+						durationSec: route?.duration ?? null,
+						distanceMeters: route?.distance ?? null,
+						isFallback: false,
+					};
+				}
 			}
 		} catch (err) {
-			console.error("[useMapRoute] Google route failed:", err);
+			if (err?.message === "Timeout" || err?.name === "AbortError") {
+				console.warn("[useMapRoute] Mapbox route timed out, falling back to OSRM");
+			} else {
+				console.error("[useMapRoute] Mapbox route failed:", err);
+			}
 		}
 
 		return null;
-	}, [fetchJsonWithTimeout, getGoogleApiKey, isBrowserRuntime]);
+	}, []);
+
 
 	const getOSRMRoute = useCallback(async ({ origin, destination }) => {
 		if (isBrowserRuntime) {
@@ -346,15 +266,12 @@ export const useMapRoute = () => {
 
 			try {
 				let result = null;
-				const routeOrder = isBrowserRuntime
-					? ["GOOGLE"]
-					: ROUTE_CONFIG.PRIMARY_ROUTE_API === "GOOGLE"
-						? ["GOOGLE", "OSRM"]
-						: ["OSRM", "GOOGLE"];
+				// Mapbox primary (100k free/month), OSRM fallback (free), direct line last resort
+				const routeOrder = ["MAPBOX", "OSRM"];
 
 				for (const api of routeOrder) {
-					if (api === "GOOGLE") {
-						result = await getGoogleRoute({ origin, destination });
+					if (api === "MAPBOX") {
+						result = await getMapboxRoute({ origin, destination });
 					} else {
 						result = await getOSRMRoute({ origin, destination });
 					}
@@ -365,7 +282,7 @@ export const useMapRoute = () => {
 
 					if (emergencyDebugEnabled) {
 						console.log(
-							`[useMapRoute] ${api} route failed, trying next API if available`
+							`[useMapRoute] ${api} route failed, trying fallback`
 						);
 					}
 				}
@@ -374,7 +291,7 @@ export const useMapRoute = () => {
 					result = getFallbackRoute({
 						origin,
 						destination,
-						reason: isBrowserRuntime ? "browser_route_fallback" : "route_api_unavailable",
+						reason: "route_api_unavailable",
 					});
 				}
 
@@ -395,7 +312,7 @@ export const useMapRoute = () => {
 				}
 			}
 		},
-		[buildRouteKey, emergencyDebugEnabled, getFallbackRoute, getGoogleRoute, getOSRMRoute, isBrowserRuntime]
+		[buildRouteKey, emergencyDebugEnabled, getFallbackRoute, getMapboxRoute, getOSRMRoute]
 	);
 
 	const clearRoute = useCallback(() => {
