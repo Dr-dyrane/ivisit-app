@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 5e complete — EmergencyContext value now broadcasts zero raw trip data  
+**Status**: Phase 5f complete — no active-path consumer reads any trip field from EmergencyContext  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -190,9 +190,10 @@ COMPLETING
   - `EmergencyContext` value: removed `commitFlow`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval`, `setCommitFlow`, `clearCommitFlow`
   - `EmergencyContext` now broadcasts **zero raw trip data** — only XState lifecycle flags, start/stop actions, hospital/UI state
   - `useMapCommitDetailsController` still reads `setCommitFlow` from context → 5f
-- **5f** — Migrate `useMapCommitDetailsController` `setCommitFlow` off context
-  - **Scope**: 1 field (`setCommitFlow`) → `useEmergencyTripStore((s) => s.setCommitFlow)` selector
-  - **After 5f**: no remaining active-path consumer reads any trip field from `useEmergency()`
+- **5f** ✅ COMPLETE — Migrate `useMapCommitDetailsController` `setCommitFlow` off context
+  - 1 field (`setCommitFlow`) → `useEmergencyTripStore((s) => s.setCommitFlow)` selector
+  - `useEmergency()` import fully removed from `useMapCommitDetailsController`
+  - **No remaining active-path consumer reads any trip field from `useEmergency()`**
 
 **Do last — after all 4 layers above are stable and verified in production.**
 

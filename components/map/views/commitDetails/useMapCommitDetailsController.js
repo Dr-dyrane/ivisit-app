@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
-import { useEmergency } from "../../../../contexts/EmergencyContext";
+// PULLBACK NOTE: Phase 5f — setCommitFlow moved off EmergencyContext
+// OLD: useEmergency() for setCommitFlow — caused context-wide re-renders on every trip update
+// NEW: direct useEmergencyTripStore() selector — scoped re-render only
+import { useEmergencyTripStore } from "../../../../stores/emergencyTripStore";
 import useCountryDetection from "../../../../hooks/validators/useCountryDetection";
 import usePhoneValidation from "../../../../hooks/validators/usePhoneValidation";
 import { authService } from "../../../../services/authService";
@@ -30,7 +33,7 @@ export default function useMapCommitDetailsController({
 	onConfirm,
 }) {
 	const { user, syncUserData } = useAuth();
-	const { setCommitFlow } = useEmergency();
+	const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
 	const {
 		country: phoneCountry,
 		setCountry: setPhoneCountry,
