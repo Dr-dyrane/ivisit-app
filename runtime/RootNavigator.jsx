@@ -9,7 +9,7 @@
 import React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useTheme } from "../../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { useInitialRoute } from "./navigation/useInitialRoute";
 import { OTAModalLayer } from "./OTAModalLayer";
 import { useRoutePersistence } from "./navigation/useRoutePersistence";
@@ -32,9 +32,6 @@ import { useAuthRouting } from "./navigation/useAuthRouting";
  * - Deep link parsing
  * - OTA modal logic (extracted to OTAModalLayer)
  */
-// Required by Expo Router (all files in app/ must have a default export)
-export default null;
-
 export function RootNavigator() {
 	const { isDarkMode } = useTheme();
 

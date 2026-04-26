@@ -1,9 +1,12 @@
 // app/_layout.js
 import "../polyfills";
 import * as WebBrowser from "expo-web-browser";
-import { RootRuntimeGate } from "./runtime/RootRuntimeGate";
-import { RootProviders } from "./runtime/RootProviders";
-import { RootNavigator } from "./runtime/RootNavigator";
+// PULLBACK NOTE: runtime/ moved out of app/ — Expo Router treats all app/ files as routes
+// OLD: import from "./runtime/..."
+// NEW: import from "../runtime/..."
+import { RootRuntimeGate } from "../runtime/RootRuntimeGate";
+import { RootProviders } from "../runtime/RootProviders";
+import { RootNavigator } from "../runtime/RootNavigator";
 
 WebBrowser.maybeCompleteAuthSession();
 

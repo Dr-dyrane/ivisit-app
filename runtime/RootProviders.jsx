@@ -6,10 +6,10 @@
 import React from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AppProviders } from "../../providers/AppProviders";
-import { GlobalLocationProvider } from "../../contexts/GlobalLocationContext";
-import GlobalErrorBoundary from "../../components/GlobalErrorBoundary";
-import ThemeToggle from "../../components/ThemeToggle";
+import { AppProviders } from "../providers/AppProviders";
+import { GlobalLocationProvider } from "../contexts/GlobalLocationContext";
+import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
+import ThemeToggle from "../components/ThemeToggle";
 
 /**
  * RootProviders - Pure provider composition
@@ -28,9 +28,6 @@ import ThemeToggle from "../../components/ThemeToggle";
  * 6. Children (the app)
  * 7. ThemeToggle (floating)
  */
-// Required by Expo Router (all files in app/ must have a default export)
-export default null;
-
 export function RootProviders({ children }) {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>

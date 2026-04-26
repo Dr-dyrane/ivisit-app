@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
-import { appMigrationsService } from "../../services/appMigrationsService";
+import { appMigrationsService } from "../services/appMigrationsService";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
 let isSplashPrevented = false;
@@ -16,9 +16,6 @@ let isSplashPrevented = false;
  * - Schema reload
  * - Emergency trip store hydration (Metro reload safety)
  */
-// Required by Expo Router (all files in app/ must have a default export)
-export default null;
-
 export function RootRuntimeGate({ children }) {
 	const [isReady, setIsReady] = useState(false);
 

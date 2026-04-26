@@ -4,8 +4,8 @@
 // NEW: Dedicated OTA modal layer for separation of concerns
 
 import React from "react";
-import { useOTAUpdates } from "../../hooks/useOTAUpdates";
-import UpdateAvailableModal from "../../components/ui/UpdateAvailableModal";
+import { useOTAUpdates } from "../hooks/useOTAUpdates";
+import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
 
 /**
  * OTAModalLayer - Over-the-Air update modal presentation layer
@@ -17,9 +17,6 @@ import UpdateAvailableModal from "../../components/ui/UpdateAvailableModal";
  * NOTE: This component is rendered at root level (inside RootNavigator)
  * to ensure modals appear above all navigation content.
  */
-// Required by Expo Router (all files in app/ must have a default export)
-export default null;
-
 export function OTAModalLayer() {
 	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
 

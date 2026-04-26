@@ -5,9 +5,6 @@
 
 import { useState, useEffect } from "react";
 
-// Required by Expo Router (all files in app/ must have a default export)
-export default null;
-
 // Global state for runtime readiness (outside React for persistence across re-renders)
 let globalRuntimeReady = false;
 const listeners = new Set();
