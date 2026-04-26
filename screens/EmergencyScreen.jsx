@@ -1,3 +1,20 @@
+/**
+ * @deprecated EmergencyScreen is LEGACY and no longer part of the active request cycle.
+ *
+ * The request lifecycle (ambulance dispatch, bed booking, tracking, rating) is owned entirely
+ * by MapScreen via useMapExploreFlow → MapSheetOrchestrator → MapTrackingStageBase.
+ *
+ * Route audit (confirmed no layout entry points):
+ *   - app/(user)/index.js           → MapScreen ✅
+ *   - app/(user)/(tabs)/index.js    → MapScreen ✅
+ *   - app/(auth)/map.js             → MapScreen ✅
+ *   - app/(user)/(stacks)/_layout.js → only routes emergency/request-ambulance,
+ *                                      emergency/book-bed, emergency-contacts (separate screens)
+ *   - EmergencyScreen has ZERO Expo Router entry points.
+ *
+ * DO NOT add new features here. DO NOT redirect users here.
+ * Safe to delete once Phase 5d of the Gold Standard State Roadmap is complete.
+ */
 "use client";
 
 import { useRef, useCallback, useMemo, useState, useEffect } from "react";

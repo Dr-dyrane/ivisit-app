@@ -413,6 +413,19 @@ export default function ScrollAwareHeader({
 	const resolvedRightInset = Number.isFinite(Number(layoutInsets?.rightInset))
 		? Number(layoutInsets.rightInset)
 		: 12;
+	// PULLBACK NOTE: sidebar-aware header container positioning
+	// OLD: container always left:0/right:0, full leftInset applied as padding (double-offset in sidebar)
+	// NEW: containerLeft/Right shift the container so island anchors right of sidebar panel;
+	//      paddingLeft/Right only carry the island's own side inset (not the sidebar offset)
+	const containerLeft = Number.isFinite(Number(layoutInsets?.containerLeft))
+		? Number(layoutInsets.containerLeft)
+		: 0;
+	const containerRight = Number.isFinite(Number(layoutInsets?.containerRight))
+		? Number(layoutInsets.containerRight)
+		: 0;
+	const isSidebarPositioned = containerLeft > 0;
+	const islandPaddingLeft = isSidebarPositioned ? resolvedRightInset : resolvedLeftInset;
+	const islandPaddingRight = resolvedRightInset;
 
 	return (
 		<Animated.View
@@ -421,8 +434,10 @@ export default function ScrollAwareHeader({
 				{
 					opacity: headerOpacity,
 					paddingTop: insets.top + resolvedTopInset,
-					paddingLeft: resolvedLeftInset,
-					paddingRight: resolvedRightInset,
+					paddingLeft: islandPaddingLeft,
+					paddingRight: islandPaddingRight,
+					left: containerLeft,
+					right: containerRight,
 				},
 			]}
 		>

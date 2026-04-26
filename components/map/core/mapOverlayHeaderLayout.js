@@ -83,5 +83,10 @@ export function buildMapOverlayHeaderLayoutInsets(options = {}) {
 		topInset: frame.topInset,
 		leftInset: frame.leftInset,
 		rightInset: frame.rightInset,
+		// PULLBACK NOTE: Phase — expose containerLeft for sidebar-aware header positioning
+		// OLD: container always left:0/right:0, layoutInsets only used as padding
+		// NEW: containerLeft shifts the container itself so header island stays right of sidebar
+		containerLeft: options.usesSidebarLayout ? frame.leftInset : 0,
+		containerRight: 0,
 	};
 }
