@@ -125,7 +125,8 @@ export const trackingVisibleAtom = atom((get) =>
 
 ---
 
-### Phase 4 — XState for trip lifecycle (Gold Standard)
+### Phase 4 — XState for trip lifecycle ✅ COMPLETE
+**Commit**: `7c898f7`  
 **Priority**: High value, lower urgency  
 **Effort**: High  
 **Risk**: Medium — well-defined contract, eliminates entire bug classes  
