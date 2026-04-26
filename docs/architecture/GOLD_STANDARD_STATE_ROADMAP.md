@@ -41,6 +41,23 @@ Server Truth  →  Local Cache  →  UI Projection  →  Trip Lifecycle
 
 ---
 
+## Pre-Implementation Baseline
+
+**Pre-gold-standard commit hash**: `0303a6e`  
+`refactor(map): complete exploreFlow modularization — Passes 10-16 + docs`
+
+This is the clean, stable state before any state migration begins.  
+Restore or diff at any time:
+```bash
+# View any file at this baseline
+git show 0303a6e:<path_to_file>
+
+# Diff current vs pre-migration baseline
+git diff 0303a6e -- <path_to_file>
+```
+
+---
+
 ## Migration Phases
 
 ### RULE: Never combine phases. Complete + verify one before starting next.
