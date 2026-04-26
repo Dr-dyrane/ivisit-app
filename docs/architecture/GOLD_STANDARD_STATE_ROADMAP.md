@@ -187,16 +187,77 @@ COMPLETING
   - `setPendingApproval`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking` retained in context value — `useMapExploreFlow` still reads them → 5e
 - **5e** — Migrate `useMapExploreFlow` raw trip reads off `EmergencyContext`
   - **Scope**: `useMapExploreFlow` still destructures `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip`, `commitFlow`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` from `useEmergency()`
-  - **What changes**: move those 8 fields to direct `useEmergencyTripStore()` selectors inside `useMapExploreFlow`
-  - **What stays in context**: `stopAmbulanceTrip`, `stopBedBooking`, `setAmbulanceTripStatus`, `setBedBookingStatus`, `isArrived`, `isPendingApproval` (XState lifecycle — still correct in context), hospital/UI fields
-  - **After 5e**: `EmergencyContext` value no longer broadcasts any raw trip data — only actions, XState lifecycle flags, and hospital/UI state
-  - **Then**: strip `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval` from context value + deps
-- **Phase 6** — Retire `EmergencyContext.jsx` shell entirely
-  - Remaining `useEmergency()` callers (`useMapExploreFlow` and others) migrate to direct store + machine reads
-  - `EmergencyContext.jsx` provider removed from tree
-  - **Do last — after 5e verified in production.**
+  - **What moves to store**: `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip`, `commitFlow`, `setCommitFlow`, `clearCommitFlow`, `setPendingApproval` → `useEmergencyTripStore()` selectors
+  - **What stays in context**: `stopAmbulanceTrip`, `stopBedBooking`, `setAmbulanceTripStatus`, `setBedBookingStatus`, `isArrived`, `isPendingApproval`, all hospital/UI fields
+  - **Context value strip**: remove `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, `setPendingApproval`, `commitFlow`, `setCommitFlow` from useMemo value + deps
+  - **After 5e**: `EmergencyContext` value broadcasts zero raw trip data — only XState lifecycle flags, actions (start/stop/set*Status), hospital/UI state
 
 **Do last — after all 4 layers above are stable and verified in production.**
+
+---
+
+## Full Consumer Map — Remaining `useEmergency()` Callers
+
+> Audited post-Phase-5d. Each file's reads categorised: ✅ safe in context | 🔴 raw trip (needs migration)
+
+### `hooks/map/exploreFlow/useMapExploreFlow.js` → Phase 5e target
+| Field | Category | Action |
+|---|---|---|
+| `activeAmbulanceTrip` | 🔴 raw trip | → store |
+| `activeBedBooking` | 🔴 raw trip | → store |
+| `pendingApproval` | 🔴 raw trip | → store |
+| `commitFlow` | 🔴 raw trip | → store |
+| `patchActiveAmbulanceTrip` | 🔴 raw trip action | → store |
+| `setCommitFlow` / `clearCommitFlow` | 🔴 raw trip action | → store |
+| `setPendingApproval` | 🔴 raw trip action | → store |
+| `ambulanceTelemetryHealth` | ✅ derived | stays |
+| `stopAmbulanceTrip` / `stopBedBooking` | ✅ action | stays |
+| `setAmbulanceTripStatus` / `setBedBookingStatus` | ✅ action | stays |
+| `isArrived` / `isPendingApproval` | ✅ XState flag | stays |
+| hospitals / UI fields | ✅ context-owned | stays |
+
+### `components/map/views/commitDetails/useMapCommitDetailsController.js` → Phase 5e or 5f
+| Field | Category | Action |
+|---|---|---|
+| `setCommitFlow` | 🔴 raw trip action | → store (after 5e strips it from context) |
+
+### Screens — all safe in context (no raw trip reads)
+| File | Reads from `useEmergency()` | Status |
+|---|---|---|
+| `screens/SearchScreen.jsx` | `specialties`, `selectedSpecialty`, `selectSpecialty` | ✅ stays |
+| `screens/WelcomeScreen.jsx` | `setUserLocation`, `refreshHospitals`, `userLocation` | ✅ stays |
+| `screens/RequestAmbulanceScreen.jsx` | coverage/mode fields only | ✅ stays |
+| `screens/NotificationsScreen.jsx` | `setMode` | ✅ stays |
+| `screens/NotificationDetailsScreen.jsx` | `setMode` | ✅ stays |
+| `screens/MoreScreen.jsx` | coverage/mode fields only | ✅ stays |
+| `screens/MapEntryLoadingScreen.jsx` | `refreshHospitals`, `effectiveDemoModeEnabled` | ✅ stays |
+| `screens/EmergencyScreen.jsx` | coverage/mode fields, no raw trips | ✅ stays |
+| `screens/BookBedRequestScreen.jsx` | `clearSelectedHospital`, `setMode`, `effectiveDemoModeEnabled` | ✅ stays |
+| `screens/MapScreen.jsx` | reads from `useMapExploreFlow()` only | ✅ stays |
+
+### Hooks — all safe in context (no raw trip reads)
+| File | Reads | Status |
+|---|---|---|
+| `hooks/visits/useBookVisit.js` | `allHospitals`, `effectiveDemoModeEnabled` | ✅ stays |
+| `hooks/search/useSearchRanking.js` | `allHospitals`, `setMode`, `selectedSpecialty` | ✅ stays |
+| `hooks/emergency/useHospitalSelection.js` | `mode` | ✅ stays |
+
+### Components — already migrated
+| File | Status |
+|---|---|
+| `components/emergency/EmergencyRequestModal.jsx` | ✅ Phase 5d complete |
+| `components/map/views/commitTriage/useMapCommitTriageController.js` | ✅ Phase 5d complete |
+| `components/map/views/commitPayment/useMapCommitPaymentController.js` | ✅ Phase 5d complete |
+| `components/map/views/tracking/MapTrackingStageBase.jsx` | ✅ Phase 5c complete |
+
+---
+
+## Phase 6 — Retire `EmergencyContext.jsx` shell
+- After Phase 5e: context value contains zero raw trip data
+- Remaining `useEmergency()` callers all read only context-owned fields (hospitals, mode, coverage, XState flags, actions)
+- Phase 6 scope: migrate those callers to direct store/machine reads, remove `EmergencyContext.Provider` from tree
+- **Gate**: Phase 5e must be verified in production first
+- **Complexity**: High — 10+ screen-level consumers, but all reads are safe/small
 
 ---
 
