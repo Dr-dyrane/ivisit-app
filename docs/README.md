@@ -45,6 +45,45 @@ If docs disagree, resolve in this order:
 
 When in doubt, `rules.json` wins.
 
+---
+
+## Rules & Standards Hub
+
+### **Primary System Rules**
+
+| Document | Purpose | Authority |
+|----------|---------|-----------|
+| [`rules.json`](./rules.json) | Locked v2.0 system rules, product doctrine, HIG compliance | **Tiebreaker** |
+| [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md) | Product blueprint and architectural vision | Locked |
+| [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md) | Active sprint checkpoint and current priorities | Mutable |
+
+### **Code & Development Standards**
+
+| Document | Location | Purpose |
+|----------|----------|---------|
+| **Code Standards** | [../.agent/workflows/code-standards.md](../.agent/workflows/code-standards.md) | Named exports, barrel imports, 6-step audit protocol |
+| **DB Update Protocol** | [../.agent/workflows/db-update.md](../.agent/workflows/db-update.md) | Database migration and certification workflow |
+
+### **Architecture Compliance Rules**
+
+**File Size Ranges (Target → Max):**
+
+| File Type | Target | Max | Notes |
+|-----------|--------|-----|-------|
+| Route/Layout | 20–100 | 150 | Composition only |
+| Screen files | 250–400 | 500 | Assemble hooks + layout |
+| UI Components | 80–250 | 350 | Single surface |
+| Complex Features | 150–300 | 450 | | 
+| Hooks | 80–200 | 300 | Single behavior |
+| Controllers | 150–300 | 400 | Orchestration only |
+| State files | 30–150 | 250 | Atoms/reducers |
+| Services | 100–300 | 500 | Business logic |
+| Utils/Helpers | 30–150 | 200 | |
+
+**Escalation Thresholds:**
+- >800 lines → Flag for refactor
+- >1000 lines → Architectural violation (unless generated)
+
 ## Start Here
 
 ### Doctrine
@@ -85,6 +124,7 @@ When in doubt, `rules.json` wins.
 - [`audit/RISK_STATUS_2026-04-23.md`](./audit/RISK_STATUS_2026-04-23.md) — R1-R10 resolution tracker
 - [`audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md`](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - [`audit/ivisit_full_system_reconstruction_report_2026-03-02.md`](./audit/ivisit_full_system_reconstruction_report_2026-03-02.md)
+- [`audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md`](./audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md) — Map/Search Revamp Pass Plan
 
 ## Supabase
 
@@ -97,10 +137,35 @@ All schema, RPC, and migration conventions live under `supabase/docs/`:
 - [`../supabase/docs/CONTRIBUTING.md`](../supabase/docs/CONTRIBUTING.md)
 - [`../supabase/docs/TESTING.md`](../supabase/docs/TESTING.md)
 
-## Documentation Maintenance
+## Documentation Maintenance Rules
 
-- Follow the routing rules above when adding a new doc.
-- Update workflow and flow maps first when runtime paths change; keep deep-dive docs in sync afterward.
-- Prefer map-and-link updates over duplicating long prose across files.
-- When a doc is superseded, move it to `archive/` with a banner pointing to its replacement.
-- Do not introduce new top-level files at `docs/` root; all non-doctrine files belong in a role folder.
+### **Adding New Documents**
+
+1. **Route by Role**: Follow the Folder Roles table above when adding a new doc.
+2. **Update Maps First**: When runtime paths change, update workflow/flow maps first; keep deep-dive docs in sync afterward.
+3. **Prefer Links**: Use map-and-link updates over duplicating long prose across files.
+4. **No Root Clutter**: Do not introduce new top-level files at `docs/` root; all non-doctrine files belong in a role folder.
+
+### **Archival Protocol**
+
+- When a doc is superseded, **move it** to `docs/archive/<historical|legacy_specs>/`
+- Add an **Archival Notice** banner pointing to its replacement
+- Update `INDEX.md` to mark as archived
+- Preserve historical context for audit trails
+
+### **Git Workflow for Docs**
+
+| Change Type | Branch Pattern | Notes |
+|-------------|---------------|-------|
+| New audit/checkpoint | `docs/audit-[date]` | Include date in branch |
+| Flow map updates | `docs/flow-[domain]` | Domain-specific updates |
+| Archival cleanup | `docs/archive-[batch]` | Batch archival operations |
+| INDEX updates | `docs/index-sync` | Navigation sync only |
+
+### **Quality Gates**
+
+- [ ] Document follows routing rules (correct folder)
+- [ ] Links are valid and not broken
+- [ ] Authority order is respected (no conflicts with `rules.json`)
+- [ ] Superseded docs are archived with notice
+- [ ] INDEX.md is updated with new entry
