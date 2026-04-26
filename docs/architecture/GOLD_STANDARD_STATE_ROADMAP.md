@@ -234,9 +234,9 @@ COMPLETING
 | `screens/NotificationDetailsScreen.jsx` | `setMode` | ✅ stays |
 | `screens/MoreScreen.jsx` | coverage/mode fields only | ✅ stays |
 | `screens/MapEntryLoadingScreen.jsx` | `refreshHospitals`, `effectiveDemoModeEnabled` | ✅ stays |
-| `screens/EmergencyScreen.jsx` | coverage/mode fields, no raw trips | ✅ stays |
+| `screens/EmergencyScreen.jsx` | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip` + coverage/mode | ⚠️ DEPRECATED — zero router entry points, dead code, safe to delete post-5f |
 | `screens/BookBedRequestScreen.jsx` | `clearSelectedHospital`, `setMode`, `effectiveDemoModeEnabled` | ✅ stays |
-| `screens/MapScreen.jsx` | reads from `useMapExploreFlow()` only | ✅ stays |
+| `screens/MapScreen.jsx` | reads from `useMapExploreFlow()` only — zero direct `useEmergency()` calls | ⚠️ 1,434 lines — architectural violation (mandate: 500), decomposition required |
 
 ### Hooks — all safe in context (no raw trip reads)
 | File | Reads | Status |
@@ -256,11 +256,19 @@ COMPLETING
 ---
 
 ## Phase 6 — Retire `EmergencyContext.jsx` shell
-- After Phase 5e: context value contains zero raw trip data
-- Remaining `useEmergency()` callers all read only context-owned fields (hospitals, mode, coverage, XState flags, actions)
-- Phase 6 scope: migrate those callers to direct store/machine reads, remove `EmergencyContext.Provider` from tree
-- **Gate**: Phase 5e must be verified in production first
-- **Complexity**: High — 10+ screen-level consumers, but all reads are safe/small
+- After Phase 5f: context value contains zero raw trip data, no active-path consumer reads trip fields
+- Remaining `useEmergency()` callers all read context-owned fields: `mode`, `hospitals`, `coverage`, `specialties`, `userLocation`, XState actions
+- **Gate**: Phases 5a–5f verified in production + `EmergencyScreen.jsx` deleted (dead code cleanup)
+- **Complexity**: High — requires new dedicated stores/contexts for `mode`, `hospitals`, `coverage` before shell can be removed
+- **Phase 6 pre-work**: design store split (hospitalStore, coverageStore, modeStore or equivalent) as a separate scoping pass
+- **Do not start Phase 6 until pre-work is scoped and approved**
+
+## MapScreen Decomposition — Parallel Track (not Phase 6)
+- `MapScreen.jsx` is **1,434 lines** — architectural violation (mandate: max 500 for screen files)
+- No direct `useEmergency()` calls — all data flows via `useMapExploreFlow()`
+- Decomposition scope: extract inline logic into sub-hooks/controllers (rating, history, route reconciliation, tracking timeline)
+- **Gate**: independent of Phase 6 — can be scoped and executed separately
+- **Stash warning**: stash attempted this via `hooks/map/shell/` (14 files) bundled with everything else — do NOT repeat that pattern. Scope as its own dedicated phase.
 
 ---
 
