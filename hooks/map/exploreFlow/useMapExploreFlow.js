@@ -22,6 +22,7 @@ import { useMapTrackingHeader } from "./useMapTrackingHeader";
 import { useMapCommitFlow } from "./useMapCommitFlow";
 import { useMapSheetNavigation } from "./useMapSheetNavigation";
 import { useMapServiceDetail } from "./useMapServiceDetail";
+import { useMapLoadingState } from "./useMapLoadingState";
 import { HEADER_MODES } from "../../../constants/header";
 import {
   buildExploreIntentSheetView,
@@ -29,7 +30,6 @@ import {
   resolveMapFlowHospital,
 } from "./mapExploreFlow.transitions";
 import { getRecentVisits } from "./mapExploreFlow.derived";
-import { buildMapLoadingState } from "./mapExploreFlow.loading";
 import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
 import { useMapExploreFlowStore } from "../state/mapExploreFlow.store";
@@ -533,65 +533,30 @@ export function useMapExploreFlow() {
     }, [setAuthModalVisible, setGuestProfileVisible]),
   });
 
-  const hasActiveLocation = Boolean(
-    activeLocation?.latitude && activeLocation?.longitude,
-  );
-  const hasResolvedProviders =
-    Array.isArray(discoveredHospitals) && discoveredHospitals.length > 0;
-  const expectsRoute = Boolean(
-    activeLocation?.latitude &&
-    activeLocation?.longitude &&
-    nearestHospital?.id,
-  );
-  const isMapFrameReady = hasActiveLocation && mapReadiness.mapReady;
-  const isBackgroundCoverageLoading =
-    needsCoverageExpansion && (isLoadingHospitals || isBootstrappingDemo);
-  const isBackgroundRouteLoading =
-    expectsRoute &&
-    (mapReadiness.isCalculatingRoute || !mapReadiness.routeReady);
-  const isMapSurfaceReady = isMapFrameReady;
-
-  useEffect(() => {
-    if (isMapFrameReady && !hasCompletedInitialMapLoad) {
-      setHasCompletedInitialMapLoad(true);
-    }
-  }, [
-    hasCompletedInitialMapLoad,
-    isMapFrameReady,
-    setHasCompletedInitialMapLoad,
-  ]);
-
-  const shouldShowMapLoadingOverlay = !hasCompletedInitialMapLoad;
-  const mapLoadingState = useMemo(() => {
-    return buildMapLoadingState({
-      coverageModePreferenceLoaded,
-      expectsRoute,
-      hasActiveLocation,
-      hasResolvedProviders,
-      isBackgroundCoverageLoading,
-      isBackgroundRouteLoading,
-      isBootstrappingDemo,
-      isLoadingHospitals,
-      isLoadingLocation,
-      isResolvingPlaceName,
-      mapReadiness,
-      shouldShowMapLoadingOverlay,
-    });
-  }, [
-    coverageModePreferenceLoaded,
+  const {
     hasActiveLocation,
-    hasCompletedInitialMapLoad,
     hasResolvedProviders,
+    expectsRoute,
+    isMapFrameReady,
+    isMapSurfaceReady,
     isBackgroundCoverageLoading,
     isBackgroundRouteLoading,
-    isBootstrappingDemo,
+    shouldShowMapLoadingOverlay,
+    mapLoadingState,
+  } = useMapLoadingState({
+    activeLocation,
+    nearestHospital,
+    discoveredHospitals,
+    mapReadiness,
+    needsCoverageExpansion,
     isLoadingHospitals,
+    isBootstrappingDemo,
+    coverageModePreferenceLoaded,
     isLoadingLocation,
     isResolvingPlaceName,
-    mapReadiness,
-    expectsRoute,
-    shouldShowMapLoadingOverlay,
-  ]);
+    hasCompletedInitialMapLoad,
+    setHasCompletedInitialMapLoad,
+  });
 
   return {
     activeLocation,
