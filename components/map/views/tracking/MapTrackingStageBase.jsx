@@ -55,6 +55,11 @@ export default function MapTrackingStageBase({
 		setPendingApproval,
 		stopAmbulanceTrip,
 		stopBedBooking,
+		// PULLBACK NOTE: Phase 5b — lifecycle flags from XState machine (additive)
+		// OLD: useMapTrackingRuntime derived isArrived/isPending from raw ?.status strings
+		// NEW: machine flags passed in, runtime uses them directly
+		isArrived,
+		isPendingApproval,
 	} = useEmergency();
 	const { updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { setRequestStatus } = useEmergencyRequests();
@@ -130,6 +135,8 @@ export default function MapTrackingStageBase({
 		setBedBookingStatus,
 		stopAmbulanceTrip,
 		stopBedBooking,
+		isArrived,
+		isPendingApproval,
 	});
 
 	const canToggleSnapState =

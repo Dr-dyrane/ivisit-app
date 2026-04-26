@@ -25,6 +25,11 @@ export function useMapTrackingRuntime({
 	ambulanceTelemetryHealth,
 	activeBedBooking,
 	pendingApproval,
+	// PULLBACK NOTE: Phase 5b — XState lifecycle flags (optional, fall back to raw status)
+	// OLD: canMarkArrived/canComplete derived from activeAmbulanceTrip?.status comparisons
+	// NEW: isArrived/isPendingApproval passed from context, machine is source of truth
+	isArrived: isArrivedProp,
+	isPendingApproval: isPendingApprovalProp,
 	isDarkMode,
 	setRequestStatus,
 	cancelVisit,
@@ -133,6 +138,11 @@ export function useMapTrackingRuntime({
 		nowMs,
 	});
 
+	// PULLBACK NOTE: Phase 5b — prefer machine flags over raw status string assembly
+	// OLD: resolvedStatus = String(activeAmbulanceTrip?.status || ...).toLowerCase()
+	// NEW: machine flags used for boolean decisions; resolvedStatus kept for display/derived
+	const isArrived = isArrivedProp ?? (activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED || activeBedBooking?.status === EmergencyRequestStatus.ARRIVED);
+	const isPendingApproval = isPendingApprovalProp ?? (activeAmbulanceTrip?.status === EmergencyRequestStatus.PENDING_APPROVAL || activeBedBooking?.status === EmergencyRequestStatus.PENDING_APPROVAL || !!pendingApproval?.requestId);
 	const resolvedStatus = String(
 		(activeAmbulanceTrip?.status ||
 			activeBedBooking?.status ||
@@ -196,22 +206,21 @@ export function useMapTrackingRuntime({
 		return Math.max(0, Math.min(1, ambulanceTripProgress));
 	}, [ambulanceTripProgress, resolvedStatus, viewState.trackingKind]);
 
+	// PULLBACK NOTE: Phase 5b — use machine isArrived flag instead of raw status
 	const canMarkArrived =
 		viewState.trackingKind === "ambulance" &&
 		(activeMapRequest?.canConfirmArrival || ambulanceComputedStatus === "Arrived") &&
-		activeAmbulanceTrip?.status !== EmergencyRequestStatus.ARRIVED;
+		!isArrived;
 	const canCompleteAmbulance =
 		viewState.trackingKind === "ambulance" &&
-		(activeMapRequest?.canCompleteAmbulance ||
-			activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED);
+		(activeMapRequest?.canCompleteAmbulance || isArrived);
 	const canCheckInBed =
 		viewState.trackingKind === "bed" &&
 		bedStatus === "Ready" &&
-		activeBedBooking?.status !== EmergencyRequestStatus.ARRIVED;
+		!isArrived;
 	const canCompleteBed =
 		viewState.trackingKind === "bed" &&
-		(activeMapRequest?.canCompleteBed ||
-			activeBedBooking?.status === EmergencyRequestStatus.ARRIVED);
+		(activeMapRequest?.canCompleteBed || isArrived);
 	const shouldPromoteTriage =
 		Boolean(pendingApproval?.requestId) && (!triageHasData || !triageIsComplete);
 
