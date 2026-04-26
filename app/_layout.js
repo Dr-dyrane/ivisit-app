@@ -1,8 +1,11 @@
 // app/_layout.js
 import "../polyfills";
+import * as WebBrowser from "expo-web-browser";
 import { RootRuntimeGate } from "./runtime/RootRuntimeGate";
 import { RootProviders } from "./runtime/RootProviders";
 import { RootNavigator } from "./runtime/RootNavigator";
+
+WebBrowser.maybeCompleteAuthSession();
 
 /**
  * Root Layout - Composition Only

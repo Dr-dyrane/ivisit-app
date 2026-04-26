@@ -1,4 +1,7 @@
 // app/(user)/_layout.js
+// PULLBACK NOTE: Pass 3 - Added auth guards to enforce authentication + profile completion
+// OLD: No auth guards, relied on RootNavigator runtime redirects
+// NEW: Route group layout owns auth enforcement (unauthenticated → /(auth), incomplete → /complete-profile)
 
 import { View, StyleSheet } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -19,10 +22,10 @@ import { authService } from "../../services/authService";
 // NEW: Plain container matching root/stack pattern for full viewport control
 // REASON: Map and stack layouts handle their own viewport; web should not be constrained
 
-export default function UserLayout() {
-	const segments = useSegments();
-	const router = useRouter();
+function UserStackScreens() {
 	const { user, loading } = useAuth();
+	const router = useRouter();
+	const segments = useSegments();
 	const isTabsIndex = segments?.[0] === "(user)" && segments?.[1] === "(tabs)" && segments?.[2] === "index";
 	const isStackRoute = segments?.[0] === "(user)" && segments?.[1] === "(stacks)";
 	const onCompleteProfile =
@@ -30,12 +33,9 @@ export default function UserLayout() {
 		segments?.[1] === "(stacks)" &&
 		segments?.[2] === "complete-profile";
 
-	useEffect(() => {
-		appMigrationsService.run().catch(() => { });
-	}, []);
-
 	// Auth guards: enforce authentication and profile completion
 	useEffect(() => {
+		// Don't redirect while auth is still loading
 		if (loading) return;
 
 		// Not authenticated → redirect to auth entry
@@ -130,3 +130,5 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 });
+
+export default UserStackScreens;
