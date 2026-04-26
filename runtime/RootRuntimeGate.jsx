@@ -3,6 +3,10 @@ import React, { useState, useEffect } from "react";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { appMigrationsService } from "../services/appMigrationsService";
+// PULLBACK NOTE: Phase 6a — hydrate modeStore on startup before app renders
+// OLD: mode was hydrated inside EmergencyContext on mount (deferred, race-prone)
+// NEW: hydrateModeStore() runs in prepare() — deterministic, before first render
+import { hydrateModeStore } from "../stores/modeStore";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
 let isSplashPrevented = false;
@@ -33,6 +37,9 @@ export function RootRuntimeGate({ children }) {
 
 				// Run migrations and schema reload on startup
 				await appMigrationsService.run();
+
+				// Phase 6a — hydrate Zustand stores before first render
+				await hydrateModeStore();
 
 				if (isMounted) setIsReady(true);
 			} catch (err) {

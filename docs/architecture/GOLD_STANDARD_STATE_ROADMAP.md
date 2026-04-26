@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 5f complete — no active-path consumer reads any trip field from EmergencyContext  
+**Status**: Phase 6a complete — `useModeStore` created + hydrated at startup, Phase 6b next  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -258,10 +258,30 @@ COMPLETING
 ## Phase 6 — Retire `EmergencyContext.jsx` shell
 - After Phase 5f: context value contains zero raw trip data, no active-path consumer reads trip fields
 - Remaining `useEmergency()` callers all read context-owned fields: `mode`, `hospitals`, `coverage`, `specialties`, `userLocation`, XState actions
-- **Gate**: Phases 5a–5f verified in production + `EmergencyScreen.jsx` deleted (dead code cleanup)
-- **Complexity**: High — requires new dedicated stores/contexts for `mode`, `hospitals`, `coverage` before shell can be removed
-- **Phase 6 pre-work**: design store split (hospitalStore, coverageStore, modeStore or equivalent) as a separate scoping pass
-- **Do not start Phase 6 until pre-work is scoped and approved**
+- **Architecture**: Zustand stores (not atoms) for persistent client state, TanStack Query for server state
+- **Gate**: Phases 5a–5f verified in production
+
+### 6a ✅ COMPLETE — Create `useModeStore` (Zustand) + hydration integration
+- Store: `stores/modeStore.js` — `mode`, `serviceType`, `viewMode`, `selectedSpecialty`
+- Persistence: `MODE_PREFERENCES` storage key (database abstraction)
+- Pattern: equality-guarded setters, immer middleware, follows `emergencyTripStore.js` structure
+- Hydration: `hydrateModeStore()` wired into `runtime/RootRuntimeGate.jsx` `prepare()` — deterministic, before first render
+- Stash audit: stash `@{0}` contained same files — no additional logic to adopt
+
+### 6b — Create `useCoverageStore` + `useLocationStore`
+- Coverage mode preferences, effective coverage, demo mode
+- User location (last known, with geolocation permissions)
+
+### 6c — Consumer migration (one screen at a time)
+- `SearchScreen` (pilot — simplest)
+- `WelcomeScreen`, `RequestAmbulanceScreen`, `NotificationsScreen`, `MoreScreen`, `MapEntryLoadingScreen`, `BookBedRequestScreen`
+
+### 6d — Shell retirement
+- Delete `EmergencyContext.jsx`
+- Remove `EmergencyContextProvider` from app tree
+
+### 6e — Dead code cleanup
+- Delete `EmergencyScreen.jsx` (zero router entry points, confirmed deprecated)
 
 ## MapScreen Decomposition — Parallel Track (not Phase 6)
 - `MapScreen.jsx` is **1,434 lines** — architectural violation (mandate: max 500 for screen files)
