@@ -1,70 +1,32 @@
 // hooks/map/exploreFlow/useMapHospitalSelection.js
-// PULLBACK NOTE: Extracted from useMapExploreFlow.js
-// Owns: hospital derived state, auto-selection effect, hospital interaction handlers
+// PULLBACK NOTE: Pass 14a — stripped duplicate hospital memos
+// OLD: computed discoveredHospitals, nearestHospital, featuredHospitals etc. internally
+// NEW: accepts them as props from useMapDerivedData (single source of truth)
+// Owns: auto-select effect + promoteHospitalSelection + handleOpenFeaturedHospital
+//        + handleCycleFeaturedHospital + handleMapHospitalPress
 
-import { useCallback, useEffect, useMemo } from "react";
-import {
-  getDiscoveredHospitals,
-  getFeaturedHospitals,
-  getNearbyBedHospitals,
-  getNearbyHospitalCount,
-  getNearestHospital,
-  getNearestHospitalMeta,
-  getTotalAvailableBeds,
-} from "./mapExploreFlow.derived";
-import { resolveMapFlowHospital } from "./mapExploreFlow.transitions";
+import { useCallback, useEffect } from "react";
 
 /**
  * useMapHospitalSelection
  *
- * Derives hospital lists, nearest hospital, and counts.
  * Manages auto-selection of first hospital when list loads.
  * Provides hospital promotion, cycling, map press and featured hospital handlers.
+ * Derived hospital lists (discoveredHospitals, nearestHospital, etc.) are owned
+ * by useMapDerivedData and passed in as props — no duplication.
  */
 export function useMapHospitalSelection({
-  hospitals,
-  allHospitals,
+  // PULLBACK NOTE: Pass 14a — these were computed here before, now passed from useMapDerivedData
+  discoveredHospitals,
+  nearestHospital,
   selectedHospital,
   selectedHospitalId,
   selectHospital,
   setFeaturedHospital,
   featuredHospital,
 }) {
-  const discoveredHospitals = useMemo(
-    () => getDiscoveredHospitals(allHospitals, hospitals),
-    [allHospitals, hospitals],
-  );
-
-  const nearestHospital = useMemo(
-    () => getNearestHospital(selectedHospital, discoveredHospitals),
-    [discoveredHospitals, selectedHospital],
-  );
-
-  const nearestHospitalMeta = useMemo(
-    () => getNearestHospitalMeta(nearestHospital),
-    [nearestHospital],
-  );
-
-  const nearbyHospitalCount = useMemo(
-    () => getNearbyHospitalCount(discoveredHospitals),
-    [discoveredHospitals],
-  );
-
-  const totalAvailableBeds = useMemo(
-    () => getTotalAvailableBeds(discoveredHospitals),
-    [discoveredHospitals],
-  );
-
-  const nearbyBedHospitals = useMemo(
-    () => getNearbyBedHospitals(discoveredHospitals),
-    [discoveredHospitals],
-  );
-
-  const featuredHospitals = useMemo(
-    () => getFeaturedHospitals(discoveredHospitals),
-    [discoveredHospitals],
-  );
-
+  // Auto-select the first hospital when the list first populates
+  // or when the previously selected hospital leaves the discovered list
   useEffect(() => {
     if (!Array.isArray(discoveredHospitals) || discoveredHospitals.length === 0)
       return;
@@ -136,13 +98,6 @@ export function useMapHospitalSelection({
   );
 
   return {
-    discoveredHospitals,
-    nearestHospital,
-    nearestHospitalMeta,
-    nearbyHospitalCount,
-    totalAvailableBeds,
-    nearbyBedHospitals,
-    featuredHospitals,
     promoteHospitalSelection,
     handleOpenFeaturedHospital,
     handleCycleFeaturedHospital,

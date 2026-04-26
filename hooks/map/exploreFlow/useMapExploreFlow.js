@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -9,12 +8,8 @@ import { useEmergency } from "../../../contexts/EmergencyContext";
 import { useVisits } from "../../../contexts/VisitsContext";
 import { coverageModeService } from "../../../services/coverageModeService";
 import {
-  MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
-import {
-  buildActiveMapRequestModel,
-} from "../../../components/map/core/mapActiveRequestModel";
 import { useMapViewport } from "./useMapViewport";
 import { useMapLocation } from "./useMapLocation";
 import { useMapHospitalSelection } from "./useMapHospitalSelection";
@@ -23,13 +18,12 @@ import { useMapCommitFlow } from "./useMapCommitFlow";
 import { useMapSheetNavigation } from "./useMapSheetNavigation";
 import { useMapServiceDetail } from "./useMapServiceDetail";
 import { useMapLoadingState } from "./useMapLoadingState";
-import { HEADER_MODES } from "../../../constants/header";
-import {
-  buildExploreIntentSheetView,
-  buildTrackingSheetView,
-  resolveMapFlowHospital,
-} from "./mapExploreFlow.transitions";
-import { getRecentVisits } from "./mapExploreFlow.derived";
+import { useMapTracking } from "./useMapTracking";
+import { useMapDerivedData } from "./useMapDerivedData";
+import { useMapComputedBooleans } from "./useMapComputedBooleans";
+import { useMapCallbacks } from "./useMapCallbacks";
+import { useMapUserData } from "./useMapUserData";
+import { useMapEffects } from "./useMapEffects";
 import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
 import { useMapExploreFlowStore } from "../state/mapExploreFlow.store";
@@ -48,8 +42,6 @@ import {
 } from "../state/mapExploreFlow.selectors";
 
 export function useMapExploreFlow() {
-  const trackingDismissedRef = useRef(false);
-  const lastTrackingRequestKeyRef = useRef(null);
   const { isDarkMode } = useTheme();
   const { width, height, viewportVariant, surfaceConfig, usesSidebarLayout, sidebarWidth } = useMapViewport();
   const {
@@ -156,7 +148,7 @@ export function useMapExploreFlow() {
     setRuntimeSlice,
   } = flowActions;
 
-  const { activeLocation, currentLocationDetails, loadingBackgroundImageUri, handleSearchLocation, handleUseCurrentLocation } = useMapLocation({
+  const { activeLocation, currentLocationDetails, loadingBackgroundImageUri, handleSearchLocation, handleUseCurrentLocation, } = useMapLocation({
     globalUserLocation,
     locationLabel,
     locationLabelDetail,
@@ -172,10 +164,10 @@ export function useMapExploreFlow() {
     width,
     height,
   });
-  const isSignedIn = Boolean(user?.isLoggedIn || user?.id);
-  const profileImageSource = user?.imageUri
-    ? { uri: user.imageUri }
-    : require("../../../assets/profile.jpg");
+  // Pass 14c: user display data extracted to useMapUserData
+  // OLD: isSignedIn + profileImageSource derived inline
+  // NEW: owned by useMapUserData
+  const { isSignedIn, profileImageSource } = useMapUserData({ user });
   const needsCoverageExpansion =
     coverageModeService.needsDemoSupport(coverageStatus);
   const shouldBootstrapDemoCoverage = coverageModeService.shouldBootstrapDemo({
@@ -199,34 +191,23 @@ export function useMapExploreFlow() {
     userId: user?.id,
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      resetHeader();
-      resetHeaderState();
-      lockHeaderHidden();
-      setHeaderState({
-        mode: HEADER_MODES.HIDDEN,
-        hidden: true,
-        scrollAware: false,
-        layoutInsets: null,
-      });
-      resetExplorePresentation();
-      return () => {
-        unlockHeaderHidden();
-        forceHeaderVisible();
-        resetHeader();
-        resetHeaderState();
-      };
-    }, [
-      forceHeaderVisible,
-      lockHeaderHidden,
-      resetHeader,
-      resetHeaderState,
-      resetExplorePresentation,
-      setHeaderState,
-      unlockHeaderHidden,
-    ]),
-  );
+  // Pass 15: navigation lifecycle effects extracted to useMapEffects
+  // OLD: useFocusEffect block inline in orchestrator
+  // NEW: owned by useMapEffects
+  useMapEffects({
+    resetHeader,
+    resetHeaderState,
+    lockHeaderHidden,
+    unlockHeaderHidden,
+    forceHeaderVisible,
+    setHeaderState,
+    resetExplorePresentation,
+  });
+
+  // Pass 12: derived data — runs first so discoveredHospitals/nearestHospital
+  // can be passed down to useMapHospitalSelection (Pass 14a: single source of truth)
+  // nowMs seeded via stable ref; updated by useMapTracking after first render.
+  const nowMsRef = useRef(Date.now());
 
   const {
     discoveredHospitals,
@@ -236,13 +217,34 @@ export function useMapExploreFlow() {
     totalAvailableBeds,
     nearbyBedHospitals,
     featuredHospitals,
+    recentVisits,
+    activeMapRequest,
+  } = useMapDerivedData({
+    allHospitals,
+    hospitals,
+    selectedHospital,
+    activeAmbulanceTrip,
+    activeBedBooking,
+    pendingApproval,
+    ambulanceTelemetryHealth,
+    sheetPayload,
+    featuredHospital,
+    currentLocationDetails,
+    nowMs: nowMsRef.current,
+    visits,
+  });
+
+  // Pass 14a: receives discoveredHospitals + nearestHospital from useMapDerivedData
+  // OLD: computed them internally (duplicate memos)
+  // NEW: props-driven — single source of truth from useMapDerivedData
+  const {
     promoteHospitalSelection,
     handleOpenFeaturedHospital: handleOpenFeaturedHospitalBase,
     handleCycleFeaturedHospital,
     handleMapHospitalPress,
   } = useMapHospitalSelection({
-    hospitals,
-    allHospitals,
+    discoveredHospitals,
+    nearestHospital,
     selectedHospital,
     selectedHospitalId,
     selectHospital,
@@ -250,107 +252,28 @@ export function useMapExploreFlow() {
     featuredHospital,
   });
 
-  const recentVisits = useMemo(() => getRecentVisits(visits), [visits]);
-  const activeMapRequest = useMemo(
-    () =>
-      buildActiveMapRequestModel({
-        activeAmbulanceTrip,
-        activeBedBooking,
-        pendingApproval,
-        ambulanceTelemetryHealth,
-        hospitals: discoveredHospitals,
-        allHospitals,
-        payload: sheetPayload,
-        preferredHospital: sheetPayload?.hospital || null,
-        fallbackHospital: featuredHospital,
-        nearestHospital,
-        currentLocationDetails,
-        nowMs: trackingHeaderNowMs,
-      }),
-    [
-      activeAmbulanceTrip,
-      activeBedBooking,
-      allHospitals,
-      ambulanceTelemetryHealth,
-      currentLocationDetails,
-      discoveredHospitals,
-      featuredHospital,
-      nearestHospital,
-      pendingApproval,
-      sheetPayload,
-      trackingHeaderNowMs,
-    ],
-  );
   const trackingRequestKey = activeMapRequest.requestId;
 
-  useEffect(() => {
-    if (lastTrackingRequestKeyRef.current !== trackingRequestKey) {
-      trackingDismissedRef.current = false;
-      lastTrackingRequestKeyRef.current = trackingRequestKey;
-    }
-  }, [trackingRequestKey]);
-
-  const openTracking = useCallback(() => {
-    const trackedHospital = promoteHospitalSelection(
-      resolveMapFlowHospital({
-        preferredHospital: activeMapRequest.hospital || sheetPayload?.hospital,
-        preferredHospitalId:
-          activeMapRequest.hospitalId ||
-          sheetPayload?.hospital?.id ||
-          featuredHospital?.id ||
-          nearestHospital?.id ||
-          null,
-        hospitals: discoveredHospitals,
-        fallbacks: [featuredHospital, nearestHospital],
-      }),
-    );
-
-    setSheetView(
-      buildTrackingSheetView({
-        hospital: trackedHospital,
-        usesSidebarLayout,
-      }),
-    );
-  }, [
-    activeMapRequest.hospital,
-    activeMapRequest.hospitalId,
+  // Pass 11: tracking sheet lifecycle + shared clock
+  const { nowMs, openTracking, closeTracking } = useMapTracking({
+    trackingRequestKey,
+    sheetPhase,
+    sheetPayload,
+    defaultExploreSnapState,
+    usesSidebarLayout,
     discoveredHospitals,
     featuredHospital,
     nearestHospital,
+    activeMapRequest,
     promoteHospitalSelection,
     setSheetView,
-    sheetPayload?.hospital,
-    usesSidebarLayout,
-  ]);
+  });
 
+  // Keep ref in sync so activeMapRequest re-memos on next render with live clock
   useEffect(() => {
-    if (!trackingRequestKey) {
-      if (sheetPhase === MAP_SHEET_PHASES.TRACKING) {
-        setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-      }
-      return;
-    }
+    nowMsRef.current = nowMs;
+  }, [nowMs]);
 
-    if (
-      trackingDismissedRef.current ||
-      sheetPhase === MAP_SHEET_PHASES.TRACKING ||
-      sheetPhase === MAP_SHEET_PHASES.COMMIT_DETAILS ||
-      sheetPhase === MAP_SHEET_PHASES.COMMIT_TRIAGE ||
-      sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
-    ) {
-      return;
-    }
-
-    if (sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT) {
-      openTracking();
-    }
-  }, [
-    defaultExploreSnapState,
-    openTracking,
-    setSheetView,
-    sheetPhase,
-    trackingRequestKey,
-  ]);
 
   const {
     openSearchSheet,
@@ -414,11 +337,6 @@ export function useMapExploreFlow() {
     openTracking,
   });
 
-  const closeTracking = useCallback(() => {
-    trackingDismissedRef.current = true;
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
-
   const hasActiveMapModal =
     profileModalVisible ||
     guestProfileVisible ||
@@ -427,7 +345,6 @@ export function useMapExploreFlow() {
     authModalVisible;
 
   const {
-    trackingHeaderNowMs,
     trackingHeaderVisible,
     trackingHeaderOcclusionHeight,
     clearTrackingHeaderActionRequest,
@@ -451,6 +368,7 @@ export function useMapExploreFlow() {
     lockHeaderHidden,
     unlockHeaderHidden,
     forceHeaderVisible,
+    nowMs,
     setHeaderState,
     setRuntimeSlice,
   });
@@ -472,58 +390,27 @@ export function useMapExploreFlow() {
     setHospitalServiceSelectionValue,
   });
 
-  const handleChooseCare = useCallback(
-    (mode) => {
-      setSelectedCare(mode);
-      if (mode === "ambulance") {
-        openAmbulanceDecision();
-        return;
-      }
-      if (mode === "bed") {
-        openBedDecision(null, "bed");
-        return;
-      }
-      if (mode === "both") {
-        openAmbulanceDecision();
-      }
-    },
-    [openAmbulanceDecision, openBedDecision, setSelectedCare],
-  );
-
-  const handleOpenFeaturedHospital = useCallback(
-    (hospital) => {
-      handleOpenFeaturedHospitalBase(hospital);
-      openHospitalDetail(hospital || null);
-    },
-    [handleOpenFeaturedHospitalBase, openHospitalDetail],
-  );
-
-  const handleOpenProfile = useCallback(() => {
-    if (isSignedIn) {
-      setProfileModalVisible(true);
-      return;
-    }
-    setGuestProfileVisible(true);
-  }, [isSignedIn, setGuestProfileVisible, setProfileModalVisible]);
-
-  const handleMapReadinessChange = useCallback(
-    (nextState) => {
-      const next = {
-        mapReady: Boolean(nextState?.mapReady),
-        routeReady: Boolean(nextState?.routeReady),
-        isCalculatingRoute: Boolean(nextState?.isCalculatingRoute),
-      };
-      if (
-        mapReadiness.mapReady === next.mapReady &&
-        mapReadiness.routeReady === next.routeReady &&
-        mapReadiness.isCalculatingRoute === next.isCalculatingRoute
-      ) {
-        return;
-      }
-      setMapReadiness(next);
-    },
-    [mapReadiness, setMapReadiness],
-  );
+  // Pass 14b: UI callbacks extracted to useMapCallbacks
+  // OLD: handleChooseCare, handleOpenFeaturedHospital, handleOpenProfile,
+  //       handleMapReadinessChange declared inline
+  // NEW: owned by useMapCallbacks
+  const {
+    handleChooseCare,
+    handleOpenFeaturedHospital,
+    handleOpenProfile,
+    handleMapReadinessChange,
+  } = useMapCallbacks({
+    isSignedIn,
+    mapReadiness,
+    handleOpenFeaturedHospitalBase,
+    openAmbulanceDecision,
+    openBedDecision,
+    openHospitalDetail,
+    setMapReadiness,
+    setProfileModalVisible,
+    setGuestProfileVisible,
+    setSelectedCare,
+  });
 
   useMapExploreGuestProfileFab({
     guestProfileVisible,
@@ -541,9 +428,17 @@ export function useMapExploreFlow() {
     isMapSurfaceReady,
     isBackgroundCoverageLoading,
     isBackgroundRouteLoading,
-    shouldShowMapLoadingOverlay,
-    mapLoadingState,
-  } = useMapLoadingState({
+  } = useMapComputedBooleans({
+    activeLocation,
+    discoveredHospitals,
+    nearestHospital,
+    mapReadiness,
+    needsCoverageExpansion,
+    isLoadingHospitals,
+    isBootstrappingDemo,
+  });
+
+  const { shouldShowMapLoadingOverlay, mapLoadingState } = useMapLoadingState({
     activeLocation,
     nearestHospital,
     discoveredHospitals,

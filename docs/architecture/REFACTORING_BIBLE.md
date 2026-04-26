@@ -1,7 +1,7 @@
 # Refactoring Bible: The "Apple Way" Architecture
 
 **Status**: Active / In Progress
-**Date**: 2026-02-10
+**Date**: 2026-02-10 — Last Updated: 2026-04-26
 **Goal**: Create a codebase that is readable, scalable, modular, and principled. We aim for "The Apple Way": clean user experience, efficient memory usage, and structured complexity that feels simple to the user.
 
 ---
@@ -90,7 +90,7 @@ We prioritize:
     *   Avoid anonymous functions in props (causes re-renders).
     *   Clean up listeners and timers in `useEffect` return functions.
 3.  **Business Logic is Forbidden in JSX**:
-    *   *Bad*: `{data.filter(x => x.active).map(...)}`
+    *   *Bad*: `{data.filter(x => x.active).map(...)}` 
     *   *Good*: `{activeItems.map(...)}` (filtering happens in the Hook with `useMemo`).
 4.  **Inline Docs are Mandatory**:
     *   Explain *why*, not just *what*.
@@ -103,6 +103,11 @@ We prioritize:
 7.  **Progressive Disclosure Over Inline Density**:
     *   Long stack pages should not become form walls.
     *   Move editing, advanced controls, and secondary management into sheets, modals, and panels.
+8.  **Every Pass Has a Git Checkpoint**:
+    *   Record the monolith baseline hash before the first pass — restore it at any time with `git show <hash>:<file>`.
+    *   Commit after each complete pass (never mid-pass), with a structured message logging what changed and the line count delta.
+    *   Compare against any stash prior art before closing the pass — never drop logic silently.
+    *   Full protocol in `docs/REFACTORING_GUARDRAILS.md` §13–14.
 
 ---
 
@@ -121,5 +126,20 @@ We prioritize:
 ### Phase 3: Profile & Emergency (Ongoing)
 - [x] Emergency Contacts decomposed.
 - [ ] ProfileScreen UI decomposition.
+
+### Phase 4: Map Explore Flow Hook Modularization (Complete — 2026-04-26)
+- [x] `useMapExploreFlow.js`: 1,638 lines → 557 lines (−66%)
+- [x] 18 specialized hooks extracted (Passes 1–16)
+- [x] Monolith baseline hash: `754a4c6` — restorable at any time
+- [x] Barrel `index.js` created for all exploreFlow hooks
+- [x] Full record: `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md`
+
+### Phase 5: Gold Standard State Migration (Planned)
+- [ ] Phase 1: Zustand + persist for trip state
+- [ ] Phase 2: TanStack Query for hospitals + server sync
+- [ ] Phase 3: Jotai atoms for map UI state
+- [ ] Phase 4: XState for trip lifecycle
+- [ ] Phase 5: Retire EmergencyContext
+- Full roadmap: `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md`
 
 ---

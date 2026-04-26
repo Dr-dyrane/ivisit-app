@@ -1011,9 +1011,16 @@ export default function useMapVisitDetailModel({
 
 	const canCancel = Boolean(historyItem?.canCancel);
 
-	// PULLBACK NOTE: Add collapsed action and distance label for COLLAPSED snap state
-	// OLD: No collapsed state support
-	// NEW: Build collapsed action and distance label for collapsed row
+	// Derive action capabilities
+	const hasCoordinates = Boolean(
+		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
+	);
+	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
+	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
+	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
+	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
+	const canRevisit = Boolean(historyItem?.canBookAgain && typeof onBookAgain === "function");
+
 	const collapsedAction = useMemo(
 		() =>
 			buildVisitCollapsedAction({
@@ -1039,16 +1046,6 @@ export default function useMapVisitDetailModel({
 			}),
 		[whenValue, historyItem?.status],
 	);
-
-	// Derive action capabilities
-	const hasCoordinates = Boolean(
-		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
-	);
-	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
-	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
-	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
-	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
-	const canRevisit = Boolean(historyItem?.canBookAgain && typeof onBookAgain === "function");
 
 	// Reference ID for display
 	const referenceId = useMemo(() => {

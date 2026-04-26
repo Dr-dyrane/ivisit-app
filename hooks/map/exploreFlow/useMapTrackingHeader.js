@@ -3,7 +3,7 @@
 // Owns: tracking header visibility, session, layout insets, left/right components,
 //       header state effect, 1-second timer, header action request machinery
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Easing,
@@ -169,21 +169,11 @@ export function useMapTrackingHeader({
   lockHeaderHidden,
   unlockHeaderHidden,
   forceHeaderVisible,
-  setHeaderState,
+  nowMs,
   setRuntimeSlice,
+  setHeaderState,
 }) {
-  const [trackingHeaderNowMs, setTrackingHeaderNowMs] = useState(Date.now());
-
-  useEffect(() => {
-    if (!trackingVisible || !trackingRequestKey) {
-      return undefined;
-    }
-    setTrackingHeaderNowMs(Date.now());
-    const intervalId = setInterval(() => {
-      setTrackingHeaderNowMs(Date.now());
-    }, 1000);
-    return () => clearInterval(intervalId);
-  }, [trackingRequestKey, trackingVisible]);
+  const trackingHeaderNowMs = nowMs;
 
   const trackingHeaderOwnsCurrentPhase =
     sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||

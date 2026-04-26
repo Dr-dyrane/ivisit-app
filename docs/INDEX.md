@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-04-25
+Last Updated: 2026-04-26
 
 ## Quick Rules Reference
 
@@ -57,6 +57,8 @@ docs/
   architecture/
     EMERGENCY_STATE_REFACTOR.md
     REFACTORING_BIBLE.md
+    MAP_EXPLORE_FLOW_MODULARIZATION.md
+    GOLD_STANDARD_STATE_ROADMAP.md
     overview/
       ARCHITECTURE.md
     roadmap/
@@ -101,6 +103,8 @@ docs/
 - Emergency flow doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Emergency state refactor: [architecture/EMERGENCY_STATE_REFACTOR.md](./architecture/EMERGENCY_STATE_REFACTOR.md)
+- **Map explore flow modularization (2026-04-26):** [architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md](./architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md)
+- **Gold standard state migration roadmap:** [architecture/GOLD_STANDARD_STATE_ROADMAP.md](./architecture/GOLD_STANDARD_STATE_ROADMAP.md)
 - Metro routing fixes: [platform/METRO_ROUTING_FIXES.md](./platform/METRO_ROUTING_FIXES.md)
 - _layout runtime audit: [audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md](./audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md)
 - _layout pass plan: [audit/LAYOUT_SHELL_PASS_PLAN_2026-04-24.md](./audit/LAYOUT_SHELL_PASS_PLAN_2026-04-24.md)

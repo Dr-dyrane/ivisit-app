@@ -324,5 +324,83 @@ EmergencyContext.jsx (original: 1,756 lines)
 
 ---
 
+## 13. Git Checkpoint Protocol (Every Pass)
+
+Every modularization pass must be bookended by git checkpoints. This is non-negotiable.
+
+### Step 1 — Record the monolith baseline hash
+Before the first pass on any file, find and record the last commit where it was a monolith:
+```bash
+git log --oneline --follow hooks/map/exploreFlow/useMapExploreFlow.js | Select-Object -Last 5
+git show <hash>:<path_to_file> | Measure-Object -Line   # confirm line count
+```
+Record this in `docs/architecture/<MODULE>_MODULARIZATION.md` under **Git Reference**.
+
+### Step 2 — Restore the monolith at any time
+```bash
+# Read the monolith without checking out
+git show <monolith_hash>:<path_to_file>
+
+# Diff monolith vs current
+git diff <monolith_hash> -- <path_to_file>
+
+# Save to temp file for side-by-side
+git show <monolith_hash>:<path_to_file> > /tmp/<file>.monolith.js
+```
+
+### Step 3 — Commit after each complete pass (not mid-pass)
+Structured commit message format:
+```
+refactor(<domain>): Pass N — <hook name> extraction
+
+- What was extracted
+- What was removed from orchestrator  
+- Any bug fixes applied (TDZ, duplication, etc.)
+- Orchestrator line count before → after
+```
+**Never commit without explicit user permission.**
+
+### Step 4 — Update the modularization doc
+After committing, update the pass log table in `docs/architecture/<MODULE>_MODULARIZATION.md`:
+- New hash recorded
+- Pass logged with line count change
+- Any deferred issues noted
+
+---
+
+## 14. Stash Comparison Protocol
+
+Whenever a git stash exists with prior art on the module being modularized, compare it before completing the pass.
+
+### Check what the stash has
+```bash
+git stash list
+git show stash@{0}:<path_to_relevant_file>
+git diff stash@{0} -- <path_to_current_file>
+```
+
+### What to look for
+- Any callback or effect in the stash not present in the current version → add with PULLBACK NOTE
+- Any derived value the stash computed that we haven't accounted for → evaluate and adopt or document why not
+- Any prop the stash passed that we dropped → confirm intentional or restore
+
+### Stash adoption rules
+- **Never apply stash wholesale** — the stash may have broken features while attempting improvements
+- **Adopt logic, not files** — copy specific functions/patterns, not entire files
+- **Flag problematic stash deps** — anything depending on `EmergencyContextAdapter`, `emergencyTripStore`, or Jotai atoms belongs to the gold standard migration sprint, not modularization passes
+- **Document every stash adoption** with a PULLBACK NOTE citing the stash
+
+### Reference: known stash files (ivisit-app)
+| Stash file | What it contains | Sprint |
+|---|---|---|
+| `stores/emergencyTripStore.js` | Zustand trip state | Gold Standard Phase 1 |
+| `hooks/emergency/useHospitalsQuery.ts` | TanStack Query hospitals | Gold Standard Phase 2 |
+| `atoms/mapFlowAtoms.js` | Jotai map UI atoms | Gold Standard Phase 3 |
+| `contexts/EmergencyContextAdapter.jsx` | Context adapter | Gold Standard Phase 5 |
+
+See `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` for full migration plan.
+
+---
+
 **Last Updated**: 2026-04-26  
 **Applies To**: All hooks, contexts, components, and screen files in ivisit-app
