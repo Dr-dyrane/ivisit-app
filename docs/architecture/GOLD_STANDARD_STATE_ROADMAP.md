@@ -162,14 +162,22 @@ COMPLETING
 ### Phase 5 — Retire EmergencyContext
 **Priority**: Final cleanup  
 **Effort**: High  
-**Risk**: High — ~30+ consumer components  
+**Risk**: High — 19 direct consumers, 75 raw status string comparisons across 23 app files  
 
-**What changes**:
-- `useEmergency()` calls replaced with direct store/query/atom reads
-- `EmergencyContext.jsx` and `EmergencyProvider` retired
-- `EmergencyContextAdapter.jsx` (from stash) used as bridge during transition
+**Audit findings** (recorded `dcad33c`):
+- 19 files call `useEmergency()` directly
+- 75 raw `activeAmbulanceTrip?.status === 'in_progress'` etc. comparisons in app code
+- Heaviest consumers: `EmergencyScreen.jsx`, `useMapExploreFlow.js`, `useMapTrackingRuntime.js`, `PaymentScreenComponents.jsx`
+- `EmergencyContext.jsx` itself is already lean (190 lines) — all plumbing delegated to sub-hooks
+- `useEmergency()` API surface stays unchanged — consumers never know what changes underneath
 
-**Do last — after all 4 layers above are stable and verified.**
+**Sub-pass plan**:
+- **5a** — Migrate raw string comparisons to `TripState` constants (non-breaking, mechanical)
+- **5b** — Migrate heavy consumers to use `isActive`, `isArrived`, `hasActiveTrip` from `useEmergency()`
+- **5c** — Strip raw `activeAmbulanceTrip`, `activeBedBooking` from context value once all consumers migrated
+- **5d** — Retire `EmergencyContext.jsx` shell, replace with direct store + machine reads
+
+**Do last — after all 4 layers above are stable and verified in production.**
 
 ---
 
