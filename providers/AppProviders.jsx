@@ -16,6 +16,8 @@ import ToastProvider from "../contexts/ToastContext";
 import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 import { FABProvider } from "../contexts/FABContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { Provider as JotaiProvider } from "jotai";
+import { QueryProvider } from "./QueryProvider";
 
 /**
  * AppProviders
@@ -25,10 +27,12 @@ import { StripeProvider } from "@stripe/stripe-react-native";
  * Wraps the application with all necessary context providers.
  * Order matters:
  * 1. AuthProvider (Top level state)
- * 2. OTAUpdatesProvider (Shared update state - NEW)
- * 3. ThemeProvider (UI Theming)
- * 4. UnifiedScrollProvider (Synchronized scroll animations)
- * 5. Feature Providers (TabBar, Headers, Search, Emergency, EmergencyUI, FAB, Toast)
+ * 2. QueryProvider (TanStack Query client)
+ * 3. JotaiProvider (Jotai atom store)
+ * 4. OTAUpdatesProvider (Shared update state)
+ * 5. ThemeProvider (UI Theming)
+ * 6. UnifiedScrollProvider (Synchronized scroll animations)
+ * 7. Feature Providers (TabBar, Headers, Search, Emergency, EmergencyUI, FAB, Toast)
  */
 export const AppProviders = ({ children }) => {
 	return (
@@ -37,35 +41,41 @@ export const AppProviders = ({ children }) => {
 			merchantIdentifier="merchant.com.ivisit" // Required for Apple Pay
 		>
 			<AuthProvider>
-				<OTAUpdatesProvider>
-					<ThemeProvider>
-						<PreferencesProvider>
-							<ToastProvider>
-								<UnifiedScrollProvider>
-									<TabBarVisibilityProvider>
-										<ScrollAwareHeaderProvider>
-											<HeaderStateProvider>
-												<NotificationsProvider>
-													<VisitsProvider>
-														<SearchProvider>
-															<EmergencyProvider>
-																<EmergencyUIProvider>
-																	<FABProvider>
-																		<HelpSupportProvider>{children}</HelpSupportProvider>
-																	</FABProvider>
-																</EmergencyUIProvider>
-															</EmergencyProvider>
-														</SearchProvider>
-													</VisitsProvider>
-												</NotificationsProvider>
-											</HeaderStateProvider>
-										</ScrollAwareHeaderProvider>
-									</TabBarVisibilityProvider>
-								</UnifiedScrollProvider>
-							</ToastProvider>
-						</PreferencesProvider>
-					</ThemeProvider>
-				</OTAUpdatesProvider>
+				<QueryProvider>
+					<JotaiProvider>
+						<OTAUpdatesProvider>
+							<ThemeProvider>
+								<PreferencesProvider>
+									<ToastProvider>
+										<UnifiedScrollProvider>
+											<TabBarVisibilityProvider>
+												<ScrollAwareHeaderProvider>
+													<HeaderStateProvider>
+														<NotificationsProvider>
+															<VisitsProvider>
+																<SearchProvider>
+																	<EmergencyProvider>
+																		<EmergencyUIProvider>
+																			<FABProvider>
+																				<HelpSupportProvider>
+																					{children}
+																				</HelpSupportProvider>
+																			</FABProvider>
+																		</EmergencyUIProvider>
+																	</EmergencyProvider>
+																</SearchProvider>
+															</VisitsProvider>
+														</NotificationsProvider>
+													</HeaderStateProvider>
+												</ScrollAwareHeaderProvider>
+											</TabBarVisibilityProvider>
+										</UnifiedScrollProvider>
+									</ToastProvider>
+								</PreferencesProvider>
+							</ThemeProvider>
+						</OTAUpdatesProvider>
+					</JotaiProvider>
+				</QueryProvider>
 			</AuthProvider>
 		</StripeProvider>
 	);

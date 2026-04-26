@@ -188,5 +188,141 @@ grep -r "from.*contexts/" components/ --include="*.jsx"
 
 ---
 
+## 11. Safe Modularization Methodology (The "No Silent Drop" Protocol)
+
+This is the exact process used to decompose `EmergencyContext.jsx` (1,756 lines → 189 lines) without breaking any consumer or dropping any logic.
+
+### Phase 0 — Audit Before Touching
+1. Count lines and flag files >500 lines as monolith candidates
+2. Read the entire file top-to-bottom, categorizing every block:
+   - Pure helpers / constants → `utils/`
+   - Server fetch logic → hook (TanStack Query candidate)
+   - Persistent state → hook (Zustand candidate)
+   - Ephemeral UI state → hook (Jotai candidate)
+   - Realtime subscriptions → dedicated hook
+   - Actions / mutations → dedicated hook
+3. List every key in the context value object — this is the **contract**. Nothing leaves that list.
+4. List every consumer file that calls `useContext` / the custom hook. These are regression targets.
+
+### Phase 1 — Extract Pure Helpers First (Zero Risk)
+Move stateless functions and constants out before touching any hooks.
+- Destination: `utils/<domain>Helpers.js`
+- Rule: if it has no `useState`, `useEffect`, or closure over context state → it's a pure helper
+- Import the helpers back immediately — confirm file still runs before continuing
+
+### Phase 2 — Decompose Into Specialized Hooks (One at a Time)
+For each responsibility area, create one hook. Commit or checkpoint after each.
+
+| Hook | Owns |
+|---|---|
+| `useEmergencyLocationSync` | `userLocation`, `userLocationRef`, `parseEtaToSeconds` |
+| `useEmergencyTripState` | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `commitFlow`, mode/filter UI state, hydration, persistence, stable setters |
+| `useEmergencyServerSync` | `syncActiveTripsFromServer`, ambulance hydration, in-flight guard |
+| `useEmergencyRealtime` | All Supabase subscriptions (emergency_requests, ambulance_location, hospital_beds), event gate logic |
+| `useEmergencyCoverageMode` | Coverage mode prefs, demo slug, `effectiveCoverageMode`, `setCoverageMode`, `nearbyCoverageCounts` |
+| `useEmergencyHospitalSync` | Hospital fetch, distance/ETA localization, filtering, sorting, specialties, `refetchHospitals` |
+| `useEmergencyActions` | `startAmbulanceTrip`, `stopAmbulanceTrip`, `startBedBooking`, `stopBedBooking`, demo heartbeat, telemetry ticker |
+
+### Phase 3 — Handle Circular Dependencies Explicitly
+When hook A needs data from hook B but B also needs something from A:
+
+**Pattern used (hospital ↔ coverage circular dep):**
+1. Run hook B first (coverage) with `hospitals: null` (safe default)
+2. Run hook A second (hospital sync) — it reads coverage outputs which are reactive
+3. In the provider, use a `useState` bridge: `const [hospitalsBridge, setHospitalsBridge] = useState(null)`
+4. `useEffect(() => { setHospitalsBridge(hospitals); }, [hospitals])` — feeds A's output back to B on next render
+5. For function passing (e.g. `refetchHospitals`): use `useRef` + a setter exposed by the hook, wire via `useEffect`
+
+**Never:** create a hook that imports another sibling hook. Composition belongs in the provider only.
+
+### Phase 4 — Build the Thin Provider Shell
+The provider must be **composition only**:
+- Call hooks in dependency order (dependencies first)
+- Bridge any circular deps via local `useState`
+- Build `useMemo` value with **100% of the original contract keys** — verify against your Phase 0 list
+- No logic, no effects that belong in hooks
+
+### Phase 5 — Contract Verification
+Before merging:
+1. Compare new context value object keys against the original line-by-line
+2. Grep every consumer file — confirm every destructured key is present in the new value
+3. Line count: provider shell ≤200 lines, each hook ≤500 lines, each utils file ≤200 lines
+
+### Phase 6 — Barrel Export
+Add `hooks/<domain>/index.js` exporting all new hooks.
+Update provider to use barrel imports.
+
+---
+
+## 12. EmergencyContext Decomposition Map (Reference Implementation)
+
+```
+EmergencyContext.jsx (original: 1,756 lines)
+│
+├── utils/emergencyContextHelpers.js (166 lines)
+│   └── parseTimestampMs, areRuntimeStateValuesEqual, resolveStateUpdate,
+│       formatTelemetryAge, deriveAmbulanceTelemetryHealth,
+│       normalizeCoordinate, normalizeRouteCoordinates,
+│       interpolateRoutePosition, enrichHospitalsWithServiceTypes
+│
+├── hooks/emergency/useEmergencyLocationSync.js (60 lines)
+│   └── userLocation, setUserLocation, userLocationRef, parseEtaToSeconds
+│
+├── hooks/emergency/useEmergencyTripState.js (221 lines)
+│   └── activeAmbulanceTrip, activeBedBooking, pendingApproval, commitFlow
+│       mode, serviceType, selectedSpecialty, viewMode, selectedHospitalId
+│       stable setters (equality-guarded), refs, hydration, persistence
+│       patch helpers, UI actions (toggleMode, selectHospital, etc.)
+│
+├── hooks/emergency/useEmergencyServerSync.js (288 lines)
+│   └── syncActiveTripsFromServer, ambulance detail hydration, in-flight guard
+│
+├── hooks/emergency/useEmergencyRealtime.js (294 lines)
+│   └── emergency_requests subscription, ambulance_location subscription,
+│       hospital_beds subscription, event gate (shouldApplyAmbulanceEvent),
+│       resetAmbulanceEventVersion, handleRealtimeStatus, live GPS watch
+│
+├── hooks/emergency/useEmergencyCoverageMode.js (216 lines)
+│   └── coverageModePreference, coverageModePreferenceLoaded,
+│       effectiveCoverageMode, effectiveDemoModeEnabled, coverageStatus,
+│       nearbyCoverageCounts, demoOwnerSlug, forceDemoFetch,
+│       setCoverageMode (with bootstrap + refetch), setRefetchHospitals
+│       CIRCULAR DEP RECEIVER: accepts hospitals prop + refetchHospitals ref
+│
+├── hooks/emergency/useEmergencyHospitalSync.js (229 lines)
+│   └── hospitals, filteredHospitals, visibleHospitals, availableHospitals,
+│       specialties, selectedHospital, isLoadingHospitals, activeAmbulances,
+│       refetchHospitals, updateHospitals, refreshHospitals,
+│       getActiveAmbulanceDemoHospital
+│       CIRCULAR DEP PROVIDER: produces hospitals + refetchHospitals for coverage
+│
+├── hooks/emergency/useEmergencyActions.js (203 lines)
+│   └── startAmbulanceTrip, stopAmbulanceTrip, setAmbulanceTripStatus,
+│       startBedBooking, stopBedBooking, setBedBookingStatus,
+│       ambulanceTelemetryHealth, demo responder heartbeat, telemetry ticker
+│
+└── contexts/EmergencyContext.jsx (189 lines) ← THIN SHELL ONLY
+    └── Composes all hooks, resolves circular dep via hospitalsBridge state,
+        builds useMemo value (100% contract superset), exports useEmergency()
+```
+
+**Original contract (all keys preserved in new shell):**
+`hospitals`, `allHospitals`, `filteredHospitals`, `specialties`, `selectedHospitalId`,
+`selectedHospital`, `mode`, `userLocation`, `activeAmbulanceTrip`, `ambulanceTelemetryHealth`,
+`activeBedBooking`, `serviceType`, `selectedSpecialty`, `viewMode`, `pendingApproval`,
+`commitFlow`, `isLoadingHospitals`, `hasActiveFilters`, `coverageMode`, `coverageModePreference`,
+`coverageModePreferenceLoaded`, `coverageStatus`, `nearbyCoverageCounts`, `effectiveDemoModeEnabled`,
+`isLiveOnlyAvailable`, `hasDemoHospitalsNearby`, `hasComfortableDemoCoverage`,
+`hasComfortableNearbyCoverage`, `coverageModeOperation`, `selectHospital`, `clearSelectedHospital`,
+`toggleMode`, `setMode`, `toggleViewMode`, `selectSpecialty`, `selectServiceType`, `resetFilters`,
+`startAmbulanceTrip`, `stopAmbulanceTrip`, `setAmbulanceTripStatus`, `patchActiveAmbulanceTrip`,
+`startBedBooking`, `stopBedBooking`, `setBedBookingStatus`, `patchActiveBedBooking`,
+`updateHospitals`, `refreshHospitals`, `setUserLocation`, `setPendingApproval`,
+`patchPendingApproval`, `setCommitFlow`, `setCoverageMode`, `clearCommitFlow`
+
+**Consumers verified (19 files):** All destructured keys confirmed present post-refactor.
+
+---
+
 **Last Updated**: 2026-04-26  
 **Applies To**: All hooks, contexts, components, and screen files in ivisit-app
