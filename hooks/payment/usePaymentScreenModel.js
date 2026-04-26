@@ -4,6 +4,10 @@ import { Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { paymentService } from '../../services/paymentService';
 import { insuranceService } from '../../services/insuranceService';
+// PULLBACK NOTE: Phase 2 — import useInvalidateActiveTrip to fix payment→tracking timing
+// OLD: navigation happened immediately with stale state — syncActiveTripsFromServer not awaited
+// NEW: invalidate TanStack Query cache before nav — deterministic refetch triggers store update
+import { useInvalidateActiveTrip } from '../emergency';
 
 const readParamString = (value) => {
   if (Array.isArray(value)) {
@@ -15,6 +19,8 @@ const readParamString = (value) => {
 export function usePaymentScreenModel() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  // PULLBACK NOTE: Phase 2 — invalidateActiveTrip replaces awaiting syncActiveTripsFromServer
+  const invalidateActiveTrip = useInvalidateActiveTrip();
 
   // Mode Detection
   const transactionIdParam = readParamString(params.transactionId);
@@ -232,7 +238,13 @@ export function usePaymentScreenModel() {
           [
             {
               text: 'Track Now',
-              onPress: () => router.push('/(auth)/map')
+              onPress: () => {
+                // PULLBACK NOTE: Phase 2 — invalidate cache so map screen gets fresh trip state
+                // OLD: router.push('/(auth)/map') — stale state, tracking never triggered
+                // NEW: invalidate → refetch fires → Zustand store updated → trackingRequestKey changes
+                invalidateActiveTrip();
+                router.push('/(auth)/map');
+              }
             }
           ]
         );
