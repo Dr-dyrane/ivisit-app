@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import * as Linking from "expo-linking";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useOTAUpdates } from "../../hooks/useOTAUpdates";
@@ -10,55 +9,14 @@ import UpdateAvailableModal from "../../components/ui/UpdateAvailableModal";
 import { isProfileComplete, shouldDeferProfileCompletion } from "../../utils/profileCompletion";
 import { authService } from "../../services/authService";
 import { database, StorageKeys } from "../../database";
+import {
+	getPublicAuthRouteFromUrl,
+	normalizeStoredPublicRoute,
+	isNormalizedPublicRouteActive,
+	isBaseAppUrl,
+} from "./navigation/deepLinkHelpers";
 
 const LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
-
-// Helper: Get public route from deep link URL
-function getPublicAuthRouteFromUrl(url) {
-	if (typeof url !== "string" || !url) return null;
-	try {
-		const parsed = Linking.parse(url);
-		const normalizedPath = String(parsed?.path || "")
-			.replace(/^--\//, "")
-			.replace(/^\/+|\/+$/g, "");
-		if (normalizedPath === "map-loading") return "/(auth)/map";
-		if (normalizedPath === "map") return "/(auth)/map";
-		if (normalizedPath === "request-help") return "/(auth)/map";
-	} catch (error) {
-		console.warn("[DeepLink] Parse error:", error?.message);
-	}
-	if (url.includes("/map-loading")) return "/(auth)/map";
-	if (url.includes("/map")) return "/(auth)/map";
-	if (url.includes("/request-help")) return "/(auth)/map";
-	return null;
-}
-
-// Helper: Normalize stored route
-function normalizeStoredPublicRoute(pathname) {
-	if (pathname === "/(auth)/map" || pathname === "/(auth)/map-loading") {
-		return "/(auth)/map";
-	}
-	if (pathname === "/(auth)/request-help") return "/(auth)/map";
-	if (pathname === "/map" || pathname === "/map-loading") return "/(auth)/map";
-	if (pathname === "/request-help") return "/(auth)/map";
-	return null;
-}
-
-function isNormalizedPublicRouteActive(pathname, targetRoute) {
-	return normalizeStoredPublicRoute(pathname) === targetRoute;
-}
-
-function isBaseAppUrl(url) {
-	if (typeof url !== "string" || !url) return false;
-	const isRootDevUrl = url.includes(":8081") && !url.includes("?") && !url.includes("#");
-	return (
-		url === Linking.createURL("/") ||
-		url === Linking.createURL("") ||
-		url === "ivisit://" ||
-		url.endsWith("/--") ||
-		isRootDevUrl
-	);
-}
 
 async function readStoredPublicRoute() {
 	const [storedRoute, legacyStoredRoute] = await Promise.all([

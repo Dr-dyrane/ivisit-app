@@ -1,7 +1,7 @@
 // app/(user)/_layout.js
 
 import { View, StyleSheet } from "react-native";
-import { Stack, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { UserProviders } from "../../providers/UserProviders";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
@@ -10,6 +10,9 @@ import { useScrollAwareHeader } from "../../contexts/ScrollAwareHeaderContext";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { appMigrationsService } from "../../services/appMigrationsService";
 import { getHeaderBehavior } from "../../constants/header";
+import { useAuth } from "../../contexts/AuthContext";
+import { isProfileComplete, shouldDeferProfileCompletion } from "../../utils/profileCompletion";
+import { authService } from "../../services/authService";
 
 // PULLBACK NOTE: Remove WebAppShell wrapper to eliminate viewport constraint on web
 // OLD: WebAppShell with surfaceMode handling constrains viewport on web
@@ -18,12 +21,45 @@ import { getHeaderBehavior } from "../../constants/header";
 
 export default function UserLayout() {
 	const segments = useSegments();
+	const router = useRouter();
+	const { user, loading } = useAuth();
 	const isTabsIndex = segments?.[0] === "(user)" && segments?.[1] === "(tabs)" && segments?.[2] === "index";
 	const isStackRoute = segments?.[0] === "(user)" && segments?.[1] === "(stacks)";
+	const onCompleteProfile =
+		segments?.[0] === "(user)" &&
+		segments?.[1] === "(stacks)" &&
+		segments?.[2] === "complete-profile";
 
 	useEffect(() => {
 		appMigrationsService.run().catch(() => { });
 	}, []);
+
+	// Auth guards: enforce authentication and profile completion
+	useEffect(() => {
+		if (loading) return;
+
+		// Not authenticated → redirect to auth entry
+		if (!user.isAuthenticated) {
+			router.replace("/(auth)");
+			return;
+		}
+
+		const deferProfileCompletion = shouldDeferProfileCompletion(user);
+		const profileComplete = isProfileComplete(user);
+
+		// Incomplete profile → redirect to complete-profile (unless already there or deferred)
+		if (!profileComplete && !onCompleteProfile && !deferProfileCompletion) {
+			router.replace("/(user)/(stacks)/complete-profile");
+			return;
+		}
+
+		// Clear deferred flag once profile is complete
+		if (profileComplete && deferProfileCompletion) {
+			authService.clearEmergencyProfileCompletionDeferred().catch((error) => {
+				console.warn("[UserLayout] Failed to clear deferred profile completion flag:", error);
+			});
+		}
+	}, [loading, onCompleteProfile, router, segments, user]);
 
 	return (
 		<UserProviders>
