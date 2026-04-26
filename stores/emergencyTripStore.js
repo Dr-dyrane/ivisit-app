@@ -1,6 +1,21 @@
+// stores/emergencyTripStore.js
+// PULLBACK NOTE: Phase 1 — Gold Standard State Migration
+// OLD: trip state lived in useState inside useEmergencyTripState (in-memory, lost on Metro restart)
+// NEW: owned here in Zustand — persisted via database abstraction, survives app kill/Metro restart
+// EmergencyContext still wraps this — zero consumer blast radius
+
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// PULLBACK NOTE: Phase 1 — use database abstraction, not raw AsyncStorage
+// OLD: import AsyncStorage from '@react-native-async-storage/async-storage'
+// NEW: import { database, StorageKeys } from '../database'
+import { database, StorageKeys } from '../database';
+import { normalizeEmergencyState } from '../utils/domainNormalize';
+import { areRuntimeStateValuesEqual } from '../utils/emergencyContextHelpers';
+
+// Storage key — reuses same key as useEmergencyTripState for seamless migration
+// PULLBACK NOTE: StorageKeys.EMERGENCY_STATE maps to the same key previously used
+const STORAGE_KEY = StorageKeys.EMERGENCY_STATE;
 
 // Trip state shape
 const createInitialTripState = () => ({
@@ -15,9 +30,6 @@ const createInitialEventGate = () => ({
   ambulance: { requestKey: null, versionMs: 0 },
   bed: { requestKey: null, versionMs: 0 },
 });
-
-// Storage key for emergency trip state
-const STORAGE_KEY = 'emergency_trip_state';
 
 // Hydration state (outside store for synchronous access)
 let hydrationPromise = null;
@@ -37,28 +49,37 @@ export const useEmergencyTripStore = create(
     lastSyncAt: null,
     hydrated: false,
     
-    // CRUD Actions
-    setActiveAmbulanceTrip: (trip) => {
+    // CRUD Actions — equality-guarded to match useEmergencyTripState stable setter behaviour
+    // PULLBACK NOTE: Phase 1 — added areRuntimeStateValuesEqual guard (same as useEmergencyTripState)
+    setActiveAmbulanceTrip: (nextValueOrUpdater) => {
       set((state) => {
-        state.activeAmbulanceTrip = trip;
+        const prev = state.activeAmbulanceTrip;
+        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        if (!areRuntimeStateValuesEqual(next, prev)) state.activeAmbulanceTrip = next;
       });
     },
-    
-    setActiveBedBooking: (booking) => {
+
+    setActiveBedBooking: (nextValueOrUpdater) => {
       set((state) => {
-        state.activeBedBooking = booking;
+        const prev = state.activeBedBooking;
+        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        if (!areRuntimeStateValuesEqual(next, prev)) state.activeBedBooking = next;
       });
     },
-    
-    setPendingApproval: (pending) => {
+
+    setPendingApproval: (nextValueOrUpdater) => {
       set((state) => {
-        state.pendingApproval = pending;
+        const prev = state.pendingApproval;
+        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        if (!areRuntimeStateValuesEqual(next, prev)) state.pendingApproval = next;
       });
     },
-    
-    setCommitFlow: (flow) => {
+
+    setCommitFlow: (nextValueOrUpdater) => {
       set((state) => {
-        state.commitFlow = flow;
+        const prev = state.commitFlow;
+        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        if (!areRuntimeStateValuesEqual(next, prev)) state.commitFlow = next;
       });
     },
     
@@ -189,24 +210,20 @@ export const useEmergencyTripStore = create(
     },
     
     // Initialize from storage (called on app boot)
+    // PULLBACK NOTE: Phase 1 — database.read replaces AsyncStorage.getItem + JSON.parse
+    // OLD: AsyncStorage.getItem(STORAGE_KEY) + JSON.parse
+    // NEW: database.read(STORAGE_KEY, null) — normalizeEmergencyState applied on result
     initFromStorage: async () => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
+        const storedState = await database.read(STORAGE_KEY, null);
+        if (storedState && typeof storedState === 'object') {
+          const normalized = normalizeEmergencyState(storedState);
           set((state) => {
-            if (parsed.activeAmbulanceTrip !== undefined) {
-              state.activeAmbulanceTrip = parsed.activeAmbulanceTrip;
-            }
-            if (parsed.activeBedBooking !== undefined) {
-              state.activeBedBooking = parsed.activeBedBooking;
-            }
-            if (parsed.pendingApproval !== undefined) {
-              state.pendingApproval = parsed.pendingApproval;
-            }
-            if (parsed.eventGates) {
-              state.eventGates = parsed.eventGates;
-            }
+            if (normalized.activeAmbulanceTrip?.requestId) state.activeAmbulanceTrip = normalized.activeAmbulanceTrip;
+            if (normalized.activeBedBooking?.requestId) state.activeBedBooking = normalized.activeBedBooking;
+            if (normalized.pendingApproval?.requestId) state.pendingApproval = normalized.pendingApproval;
+            if (normalized.commitFlow?.phase) state.commitFlow = normalized.commitFlow;
+            if (storedState.eventGates) state.eventGates = storedState.eventGates;
           });
         }
         set((state) => { state.hydrated = true; });
@@ -219,18 +236,22 @@ export const useEmergencyTripStore = create(
         hydrationListeners.forEach(cb => cb(true));
       }
     },
-    
+
     // Persist to storage (called when state changes)
+    // PULLBACK NOTE: Phase 1 — database.write replaces AsyncStorage.setItem + JSON.stringify
+    // OLD: AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toStore))
+    // NEW: database.write(STORAGE_KEY, toStore) — normalizeEmergencyState applied before write
     persistToStorage: async () => {
       try {
         const state = get();
-        const toStore = {
+        const toStore = normalizeEmergencyState({
           activeAmbulanceTrip: state.activeAmbulanceTrip,
           activeBedBooking: state.activeBedBooking,
           pendingApproval: state.pendingApproval,
+          commitFlow: state.commitFlow,
           eventGates: state.eventGates,
-        };
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+        });
+        await database.write(STORAGE_KEY, toStore);
       } catch (err) {
         console.warn('[emergencyTripStore] Persistence error:', err);
       }
@@ -280,22 +301,21 @@ function shouldApplyTripEvent(gateState, trip, record, fallbackMs) {
   };
 }
 
-// Subscribe to state changes and persist to storage
+// Subscribe to state changes and auto-persist
+// PULLBACK NOTE: Phase 1 — database.write replaces AsyncStorage.setItem
 useEmergencyTripStore.subscribe(
   (state) => ({
     activeAmbulanceTrip: state.activeAmbulanceTrip,
     activeBedBooking: state.activeBedBooking,
     pendingApproval: state.pendingApproval,
+    commitFlow: state.commitFlow,
     eventGates: state.eventGates,
   }),
   (persistedState) => {
-    // Only persist if hydrated (avoid persisting initial empty state)
     if (isHydrated) {
-      try {
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
-      } catch (err) {
+      database.write(STORAGE_KEY, normalizeEmergencyState(persistedState)).catch((err) => {
         console.warn('[emergencyTripStore] Auto-persist error:', err);
-      }
+      });
     }
   }
 );

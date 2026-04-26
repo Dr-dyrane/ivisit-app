@@ -1,156 +1,93 @@
 /**
  * useEmergencyTripState.js
  *
- * Owns: activeAmbulanceTrip, activeBedBooking, pendingApproval, commitFlow,
- *       mode, serviceType, selectedSpecialty, viewMode, selectedHospitalId.
- * Handles: hydration from local DB, persistence on change, stable ref sync.
+ * PULLBACK NOTE: Phase 1 — Gold Standard State Migration
+ * OLD: trip state (activeAmbulanceTrip, activeBedBooking, pendingApproval, commitFlow)
+ *      lived in useState — lost on Metro restart, timing issues on payment→tracking
+ * NEW: trip state reads/writes to useEmergencyTripStore (Zustand + database persist)
+ *      UI-only state (mode, serviceType, selectedSpecialty, viewMode, selectedHospitalId)
+ *      stays local — no blast radius change for consumers.
+ *
+ * Return contract: 100% identical to before — zero consumer changes required.
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { database, StorageKeys } from "../../database";
-import { normalizeEmergencyState } from "../../utils/domainNormalize";
-import { areRuntimeStateValuesEqual, resolveStateUpdate } from "../../utils/emergencyContextHelpers";
-// PULLBACK NOTE: Moved import source to break circular dep with EmergencyContext
-// OLD: import { EmergencyMode } from "../../contexts/EmergencyContext"
-// NEW: import { EmergencyMode } from "../../constants/emergency"
 import { EmergencyMode } from "../../constants/emergency";
+import {
+	useEmergencyTripStore,
+} from "../../stores/emergencyTripStore";
 
 export function useEmergencyTripState() {
+	// UI-only state — stays local (not persisted, not shared)
 	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
 	const [serviceType, setServiceType] = useState(null);
 	const [selectedSpecialty, setSelectedSpecialty] = useState(null);
 	const [viewMode, setViewMode] = useState("map");
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
 
-	const [activeAmbulanceTrip, setActiveAmbulanceTripRaw] = useState(null);
-	const [activeBedBooking, setActiveBedBookingRaw] = useState(null);
-	const [pendingApproval, setPendingApprovalRaw] = useState(null);
-	const [commitFlow, setCommitFlowRaw] = useState(null);
+	// Trip state — now sourced from Zustand store (persisted, survives Metro restart)
+	// PULLBACK NOTE: Phase 1 — useState replaced with store selectors
+	// OLD: const [activeAmbulanceTrip, setActiveAmbulanceTripRaw] = useState(null)
+	// NEW: const activeAmbulanceTrip = useEmergencyTripStore(s => s.activeAmbulanceTrip)
+	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
+	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
+	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+	const commitFlow = useEmergencyTripStore((s) => s.commitFlow);
 
-	const emergencyStateHydratedRef = useRef(false);
-	const emergencyStatePersistSignatureRef = useRef("");
+	const setActiveAmbulanceTrip = useEmergencyTripStore((s) => s.setActiveAmbulanceTrip);
+	const setActiveBedBooking = useEmergencyTripStore((s) => s.setActiveBedBooking);
+	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
+	const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
+	const patchActiveAmbulanceTripStore = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
+	const patchActiveBedBookingStore = useEmergencyTripStore((s) => s.patchActiveBedBooking);
+	const patchPendingApprovalStore = useEmergencyTripStore((s) => s.patchPendingApproval);
+	const setAmbulanceTripStatusStore = useEmergencyTripStore((s) => s.setAmbulanceTripStatus);
+	const setBedBookingStatusStore = useEmergencyTripStore((s) => s.setBedBookingStatus);
+	const initFromStorage = useEmergencyTripStore((s) => s.initFromStorage);
+	const hydrated = useEmergencyTripStore((s) => s.hydrated);
+
+	// Stable refs for hooks that read without triggering re-renders
 	const activeAmbulanceTripRef = useRef(activeAmbulanceTrip);
 	const activeBedBookingRef = useRef(activeBedBooking);
-	const pendingApprovalRef = useRef(pendingApproval);
-	const commitFlowRef = useRef(commitFlow);
 
-	// Keep refs in sync
 	useEffect(() => { activeAmbulanceTripRef.current = activeAmbulanceTrip; }, [activeAmbulanceTrip]);
 	useEffect(() => { activeBedBookingRef.current = activeBedBooking; }, [activeBedBooking]);
-	useEffect(() => { pendingApprovalRef.current = pendingApproval; }, [pendingApproval]);
-	useEffect(() => { commitFlowRef.current = commitFlow; }, [commitFlow]);
 
-	// Stable setters with equality guard
-	const setActiveAmbulanceTrip = useCallback((nextValueOrUpdater) => {
-		setActiveAmbulanceTripRaw((prev) => {
-			const next = resolveStateUpdate(prev, nextValueOrUpdater);
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, []);
+	// Hydrate store from database on mount (once)
+	// PULLBACK NOTE: Phase 1 — replaces inline hydrate() useEffect
+	// OLD: read database directly, set local useState
+	// NEW: delegate to store.initFromStorage (idempotent, guarded internally)
+	useEffect(() => {
+		if (!hydrated) {
+			void initFromStorage();
+		}
+	}, [hydrated, initFromStorage]);
 
-	const setActiveBedBooking = useCallback((nextValueOrUpdater) => {
-		setActiveBedBookingRaw((prev) => {
-			const next = resolveStateUpdate(prev, nextValueOrUpdater);
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, []);
-
-	const setPendingApproval = useCallback((nextValueOrUpdater) => {
-		setPendingApprovalRaw((prev) => {
-			const next = resolveStateUpdate(prev, nextValueOrUpdater);
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, []);
-
-	const setCommitFlow = useCallback((nextValueOrUpdater) => {
-		setCommitFlowRaw((prev) => {
-			const next = resolveStateUpdate(prev, nextValueOrUpdater);
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, []);
-
-	// Patch helpers
+	// Patch helpers — delegate to store, maintain same call signature
 	const patchActiveAmbulanceTrip = useCallback((updates) => {
 		if (!updates || typeof updates !== "object") return;
-		setActiveAmbulanceTrip((prev) => {
-			if (!prev) return prev;
-			const nextAssigned =
-				updates.assignedAmbulance && typeof updates.assignedAmbulance === "object"
-					? { ...(prev.assignedAmbulance || {}), ...updates.assignedAmbulance }
-					: prev.assignedAmbulance;
-			return { ...prev, ...updates, assignedAmbulance: nextAssigned };
-		});
-	}, [setActiveAmbulanceTrip]);
+		patchActiveAmbulanceTripStore(updates);
+	}, [patchActiveAmbulanceTripStore]);
 
 	const patchActiveBedBooking = useCallback((updates) => {
 		if (!updates || typeof updates !== "object") return;
-		setActiveBedBooking((prev) => {
-			if (!prev) return prev;
-			const next = { ...prev, ...updates };
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, [setActiveBedBooking]);
+		patchActiveBedBookingStore(updates);
+	}, [patchActiveBedBookingStore]);
 
 	const patchPendingApproval = useCallback((updates) => {
 		if (!updates || typeof updates !== "object") return;
-		setPendingApproval((prev) => {
-			if (!prev) return prev;
-			const next = { ...prev, ...updates };
-			return areRuntimeStateValuesEqual(next, prev) ? prev : next;
-		});
-	}, [setPendingApproval]);
+		patchPendingApprovalStore(updates);
+	}, [patchPendingApprovalStore]);
 
-	// Hydrate from local DB on mount
-	useEffect(() => {
-		if (emergencyStateHydratedRef.current) return undefined;
-		let cancelled = false;
+	const setAmbulanceTripStatus = useCallback((status) => {
+		setAmbulanceTripStatusStore(status);
+	}, [setAmbulanceTripStatusStore]);
 
-		const hydrate = async () => {
-			try {
-				const storedState = await database.read(StorageKeys.EMERGENCY_STATE, null);
-				if (cancelled || !storedState || typeof storedState !== "object") return;
+	const setBedBookingStatus = useCallback((status) => {
+		setBedBookingStatusStore(status);
+	}, [setBedBookingStatusStore]);
 
-				const normalized = normalizeEmergencyState(storedState);
-
-				if (!activeAmbulanceTripRef.current?.requestId && normalized.activeAmbulanceTrip?.requestId) {
-					setActiveAmbulanceTripRaw(normalized.activeAmbulanceTrip);
-				}
-				if (!activeBedBookingRef.current?.requestId && normalized.activeBedBooking?.requestId) {
-					setActiveBedBookingRaw(normalized.activeBedBooking);
-				}
-				if (!pendingApprovalRef.current?.requestId && normalized.pendingApproval?.requestId) {
-					setPendingApprovalRaw(normalized.pendingApproval);
-				}
-				if (!commitFlowRef.current?.phase && normalized.commitFlow?.phase) {
-					setCommitFlowRaw(normalized.commitFlow);
-				}
-				if (normalized.mode && normalized.mode !== mode) {
-					setMode(normalized.mode);
-				}
-			} catch (error) {
-				console.warn("[useEmergencyTripState] Failed to hydrate:", error);
-			} finally {
-				if (!cancelled) emergencyStateHydratedRef.current = true;
-			}
-		};
-
-		void hydrate();
-		return () => { cancelled = true; };
-	}, [mode]);
-
-	// Persist on change (after hydration)
-	useEffect(() => {
-		if (!emergencyStateHydratedRef.current) return;
-		const normalized = normalizeEmergencyState({ mode, activeAmbulanceTrip, activeBedBooking, pendingApproval, commitFlow });
-		const sig = JSON.stringify(normalized);
-		if (sig === emergencyStatePersistSignatureRef.current) return;
-		emergencyStatePersistSignatureRef.current = sig;
-		database.write(StorageKeys.EMERGENCY_STATE, normalized).catch((error) => {
-			console.warn("[useEmergencyTripState] Failed to persist:", error);
-		});
-	}, [activeAmbulanceTrip, activeBedBooking, commitFlow, mode, pendingApproval]);
-
-	// UI derived
+	// UI actions — local state only
 	const toggleMode = useCallback(() => {
 		setMode((prev) =>
 			prev === EmergencyMode.EMERGENCY ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY
@@ -164,20 +101,6 @@ export function useEmergencyTripState() {
 	const selectServiceType = useCallback((type) => { setServiceType(type ? type.toLowerCase() : null); setSelectedHospitalId(null); }, []);
 	const toggleViewMode = useCallback(() => setViewMode((prev) => prev === "map" ? "list" : "map"), []);
 	const resetFilters = useCallback(() => { setServiceType(null); setSelectedSpecialty(null); setSelectedHospitalId(null); }, []);
-
-	const setAmbulanceTripStatus = useCallback((status) => {
-		setActiveAmbulanceTrip((prev) => {
-			if (!prev) return prev;
-			return { ...prev, status };
-		});
-	}, [setActiveAmbulanceTrip]);
-
-	const setBedBookingStatus = useCallback((status) => {
-		setActiveBedBooking((prev) => {
-			if (!prev) return prev;
-			return { ...prev, status };
-		});
-	}, [setActiveBedBooking]);
 
 	const hasActiveFilters = useMemo(() => {
 		if (mode === EmergencyMode.EMERGENCY) return serviceType !== null;
