@@ -96,3 +96,14 @@ export function useStopTripMutation() {
     },
   });
 }
+
+/**
+ * useInvalidateActiveTrip
+ *
+ * Returns a stable function that invalidates the activeTrip query cache.
+ * Call this after payment completion to trigger an immediate deterministic refetch.
+ */
+export function useInvalidateActiveTrip() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: [ACTIVE_TRIP_KEY] });
+}
