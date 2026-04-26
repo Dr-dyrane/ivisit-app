@@ -281,7 +281,7 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
             const { data: uuidRequests, error: uuidLookupError } = await supabase
                 .from("emergency_requests")
                 .select(
-                    "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,payment_method,estimated_arrival,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_type,bed_number"
+                    "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number"
                 )
                 .in("id", requestUuidKeys);
             if (uuidLookupError) {
@@ -295,7 +295,7 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
             const { data: displayRequests, error: displayLookupError } = await supabase
                 .from("emergency_requests")
                 .select(
-                    "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,payment_method,estimated_arrival,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_type,bed_number"
+                    "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number"
                 )
                 .in("display_id", requestDisplayKeys);
             if (displayLookupError) {
@@ -325,11 +325,8 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
                 service_type: row?.service_type ?? requestRow?.service_type ?? null,
                 total_cost: row?.total_cost ?? requestRow?.total_cost ?? null,
                 payment_status: row?.payment_status ?? requestRow?.payment_status ?? null,
-                payment_method: row?.payment_method ?? requestRow?.payment_method ?? null,
-                payment_method_id:
-                    row?.payment_method_id ?? null,
-                estimated_arrival:
-                    row?.estimated_arrival ?? requestRow?.estimated_arrival ?? null,
+                payment_method_id: row?.payment_method_id ?? null,
+                estimated_arrival: row?.estimated_arrival ?? null,
                 responder_name: row?.responder_name ?? requestRow?.responder_name ?? null,
                 responder_vehicle_type:
                     row?.responder_vehicle_type ??
@@ -342,7 +339,6 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
                 patient_location:
                     row?.patient_location ?? requestRow?.patient_location ?? null,
                 ambulance_type: row?.ambulance_type ?? requestRow?.ambulance_type ?? null,
-                bed_type: row?.bed_type ?? requestRow?.bed_type ?? null,
                 bed_number: row?.bed_number ?? requestRow?.bed_number ?? null,
             };
         });

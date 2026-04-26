@@ -164,7 +164,7 @@ const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
     status: r.status,
     totalCost: r.total_cost,
     paymentStatus: r.payment_status,
-    paymentMethodId: r.payment_method_id ?? r.payment_method ?? null,
+    paymentMethodId: r.payment_method_id ?? null,
     patient: r.patient_snapshot,
     patient_snapshot: r.patient_snapshot,
     shared: r.shared_data_snapshot,
