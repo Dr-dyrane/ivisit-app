@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo } from "react";
 import { Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
-import { useEmergency } from "../../../../contexts/EmergencyContext";
+// PULLBACK NOTE: Phase 5c — useEmergency() removed from MapTrackingStageBase
+// OLD: imported EmergencyContext for raw trip data + action callbacks
+// NEW: raw trip data sourced from activeMapRequest.raw; action callbacks are props
 import { useVisits } from "../../../../contexts/VisitsContext";
 import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRequests";
 import MapSheetShell from "../../MapSheetShell";
@@ -41,26 +43,27 @@ export default function MapTrackingStageBase({
 	onAddBedFromTracking,
 	onAddAmbulanceFromTracking,
 	onSnapStateChange,
+	// PULLBACK NOTE: Phase 5c — new props replacing useEmergency() context reads
+	// OLD: destructured from useEmergency() inside component
+	// NEW: passed as props from MapScreen → MapSheetOrchestrator → MapTrackingOrchestrator
+	hospitals = [],
+	allHospitals = [],
+	ambulanceTelemetryHealth = null,
+	setAmbulanceTripStatus,
+	setBedBookingStatus,
+	setPendingApproval,
+	stopAmbulanceTrip,
+	stopBedBooking,
+	isArrived = false,
+	isPendingApproval = false,
 }) {
 	const { isDarkMode } = useTheme();
-	const {
-		hospitals = [],
-		allHospitals = [],
-		activeAmbulanceTrip,
-		ambulanceTelemetryHealth,
-		activeBedBooking,
-		pendingApproval,
-		setAmbulanceTripStatus,
-		setBedBookingStatus,
-		setPendingApproval,
-		stopAmbulanceTrip,
-		stopBedBooking,
-		// PULLBACK NOTE: Phase 5b — lifecycle flags from XState machine (additive)
-		// OLD: useMapTrackingRuntime derived isArrived/isPending from raw ?.status strings
-		// NEW: machine flags passed in, runtime uses them directly
-		isArrived,
-		isPendingApproval,
-	} = useEmergency();
+	// PULLBACK NOTE: Phase 5c — raw trip objects now sourced from activeMapRequest.raw
+	// OLD: destructured directly from useEmergency() — redundant second context read
+	// NEW: extracted from activeMapRequest.raw (same data, already flowing as prop)
+	const activeAmbulanceTrip = activeMapRequest?.raw?.activeAmbulanceTrip ?? null;
+	const activeBedBooking = activeMapRequest?.raw?.activeBedBooking ?? null;
+	const pendingApproval = activeMapRequest?.raw?.pendingApproval ?? null;
 	const { updateVisit, cancelVisit, completeVisit } = useVisits();
 	const { setRequestStatus } = useEmergencyRequests();
 	const {

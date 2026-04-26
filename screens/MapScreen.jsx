@@ -148,6 +148,17 @@ export default function MapScreen() {
     trackingHeaderOcclusionHeight,
     trackingHeaderActionRequest,
     clearTrackingHeaderActionRequest,
+    // PULLBACK NOTE: Phase 5c — prop-drill tracking actions to MapTrackingStageBase
+    // OLD: MapTrackingStageBase called useEmergency() directly
+    // NEW: sourced here, passed as trackingXxx props to MapSheetOrchestrator
+    allHospitals,
+    stopAmbulanceTrip,
+    stopBedBooking,
+    setPendingApproval,
+    setAmbulanceTripStatus,
+    setBedBookingStatus,
+    isArrived,
+    isPendingApproval,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
   const viewportVariant = useMemo(
     () => getMapViewportVariant({ platform: Platform.OS, width }),
@@ -1424,6 +1435,16 @@ export default function MapScreen() {
           trackingRouteInfo={trackingRouteInfo}
           trackingHeaderActionRequest={trackingHeaderActionRequest}
           onConsumeTrackingHeaderActionRequest={clearTrackingHeaderActionRequest}
+          trackingHospitals={discoveredHospitals}
+          trackingAllHospitals={allHospitals}
+          trackingAmbulanceTelemetryHealth={ambulanceTelemetryHealth}
+          trackingSetAmbulanceTripStatus={setAmbulanceTripStatus}
+          trackingSetBedBookingStatus={setBedBookingStatus}
+          trackingSetPendingApproval={setPendingApproval}
+          trackingStopAmbulanceTrip={stopAmbulanceTrip}
+          trackingStopBedBooking={stopBedBooking}
+          trackingIsArrived={isArrived}
+          trackingIsPendingApproval={isPendingApproval}
           currentLocation={currentLocationDetails}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}

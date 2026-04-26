@@ -97,6 +97,19 @@ export default function MapSheetOrchestrator({
 	trackingRouteInfo = null,
 	trackingHeaderActionRequest = null,
 	onConsumeTrackingHeaderActionRequest = () => {},
+	// PULLBACK NOTE: Phase 5c — tracking action props threaded from MapScreen
+	// OLD: MapTrackingStageBase called useEmergency() directly for these
+	// NEW: passed as props down the chain, context no longer read in tracking subtree
+	trackingHospitals = [],
+	trackingAllHospitals = [],
+	trackingAmbulanceTelemetryHealth = null,
+	trackingSetAmbulanceTripStatus,
+	trackingSetBedBookingStatus,
+	trackingSetPendingApproval,
+	trackingStopAmbulanceTrip,
+	trackingStopBedBooking,
+	trackingIsArrived = false,
+	trackingIsPendingApproval = false,
 	serviceSelectionsByHospital = {},
 	onUseHospital = undefined,
 	profileImageSource,
@@ -322,6 +335,16 @@ export default function MapSheetOrchestrator({
 						onAddAmbulanceFromTracking={onAddAmbulanceFromTracking}
 						onClose={onCloseTracking}
 						onSnapStateChange={onSnapStateChange}
+						hospitals={trackingHospitals}
+						allHospitals={trackingAllHospitals}
+						ambulanceTelemetryHealth={trackingAmbulanceTelemetryHealth}
+						setAmbulanceTripStatus={trackingSetAmbulanceTripStatus}
+						setBedBookingStatus={trackingSetBedBookingStatus}
+						setPendingApproval={trackingSetPendingApproval}
+						stopAmbulanceTrip={trackingStopAmbulanceTrip}
+						stopBedBooking={trackingStopBedBooking}
+						isArrived={trackingIsArrived}
+						isPendingApproval={trackingIsPendingApproval}
 					/>
 				</MapPhaseTransitionView>
 			);

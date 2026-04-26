@@ -85,6 +85,16 @@ export function useMapExploreFlow() {
     setCommitFlow,
     clearCommitFlow,
     patchActiveAmbulanceTrip,
+    // PULLBACK NOTE: Phase 5c — expose action callbacks so MapScreen can prop-drill to tracking subtree
+    // OLD: MapTrackingStageBase called useEmergency() directly for these
+    // NEW: flow through useMapExploreFlow return → MapScreen → MapSheetOrchestrator → MapTrackingStageBase
+    stopAmbulanceTrip,
+    stopBedBooking,
+    setPendingApproval,
+    setAmbulanceTripStatus,
+    setBedBookingStatus,
+    isArrived,
+    isPendingApproval,
   } = useEmergency();
 
   const { state: flowState, actions: flowActions } = useMapExploreFlowStore({
@@ -553,5 +563,14 @@ export function useMapExploreFlow() {
     trackingHeaderOcclusionHeight,
     trackingHeaderActionRequest,
     clearTrackingHeaderActionRequest,
+    // PULLBACK NOTE: Phase 5c — tracking action callbacks for prop-drilling to MapTrackingStageBase
+    allHospitals,
+    stopAmbulanceTrip,
+    stopBedBooking,
+    setPendingApproval,
+    setAmbulanceTripStatus,
+    setBedBookingStatus,
+    isArrived,
+    isPendingApproval,
   };
 }
