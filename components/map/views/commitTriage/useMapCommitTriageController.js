@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing } from "react-native";
 import * as Haptics from "expo-haptics";
+// PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
+// OLD: useEmergency() for activeAmbulanceTrip/activeBedBooking/pendingApproval/patch*
+// NEW: direct useEmergencyTripStore() selectors — context no longer re-broadcasts raw trips
 import { useEmergency } from "../../../../contexts/EmergencyContext";
+import { useEmergencyTripStore } from "../../../../stores/emergencyTripStore";
 import { useEmergencyContacts } from "../../../../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../../../../hooks/user/useMedicalProfile";
 import { emergencyRequestsService } from "../../../../services/emergencyRequestsService";
@@ -32,13 +36,16 @@ export default function useMapCommitTriageController({
 		setCommitFlow,
 		hospitals,
 		selectedSpecialty,
-		activeAmbulanceTrip,
-		activeBedBooking,
-		pendingApproval,
-		patchActiveAmbulanceTrip,
-		patchActiveBedBooking,
-		patchPendingApproval,
 	} = useEmergency();
+	// PULLBACK NOTE: Phase 5d — raw trip objects sourced from Zustand store directly
+	// OLD: destructured from useEmergency() — caused context re-render on every trip update
+	// NEW: surgical store selectors — only re-renders when specific field changes
+	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
+	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
+	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+	const patchActiveAmbulanceTrip = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
+	const patchActiveBedBooking = useEmergencyTripStore((s) => s.patchActiveBedBooking);
+	const patchPendingApproval = useEmergencyTripStore((s) => s.patchPendingApproval);
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 

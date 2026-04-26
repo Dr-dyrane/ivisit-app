@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
+// PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
+// OLD: useEmergency() for activeAmbulanceTrip/activeBedBooking/pendingApproval/setPendingApproval
+// NEW: direct useEmergencyTripStore() selectors
 import { useEmergency } from "../../../../contexts/EmergencyContext";
+import { useEmergencyTripStore } from "../../../../stores/emergencyTripStore";
 import { usePreferences } from "../../../../contexts/PreferencesContext";
 import { useToast } from "../../../../contexts/ToastContext";
 import { useEmergencyContacts } from "../../../../hooks/emergency/useEmergencyContacts";
@@ -66,16 +70,19 @@ export function useMapCommitPaymentController({
 	const {
 		hospitals,
 		selectedSpecialty,
-		activeAmbulanceTrip,
-		activeBedBooking,
-		pendingApproval,
 		startAmbulanceTrip,
 		startBedBooking,
 		clearSelectedHospital,
 		effectiveDemoModeEnabled,
-		setPendingApproval,
 		clearCommitFlow,
 	} = useEmergency();
+	// PULLBACK NOTE: Phase 5d — raw trip objects + setPendingApproval from Zustand store directly
+	// OLD: destructured from useEmergency() — context re-rendered all subscribers on every trip update
+	// NEW: surgical store selectors — scoped re-renders only
+	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
+	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
+	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
 
 	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
 		createRequest,

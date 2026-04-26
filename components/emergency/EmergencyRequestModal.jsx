@@ -28,7 +28,11 @@ import { supabase } from "../../services/supabase";
 import { hospitalsService } from "../../services/hospitalsService";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import HeaderBackButton from "../navigation/HeaderBackButton";
+// PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
+// OLD: useEmergency() for pendingApproval/setPendingApproval/activeAmbulanceTrip
+// NEW: direct useEmergencyTripStore() selectors
 import { useEmergency } from "../../contexts/EmergencyContext";
+import { useEmergencyTripStore } from "../../stores/emergencyTripStore";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSocialAuth } from "../../hooks/auth";
 import TriageIntakeModal from "./triage/TriageIntakeModal";
@@ -316,12 +320,15 @@ const EmergencyRequestModal = React.memo(({
 
 	// Cash approval gate state (Managed by context for persistence)
 	const {
-		pendingApproval,
-		setPendingApproval,
-		activeAmbulanceTrip,
 		allHospitals,
 		effectiveDemoModeEnabled,
 	} = useEmergency();
+	// PULLBACK NOTE: Phase 5d — raw trip objects + setPendingApproval from Zustand store directly
+	// OLD: destructured from useEmergency() — all context subscribers re-rendered on every approval update
+	// NEW: surgical store selectors — scoped re-renders only
+	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
+	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
 	const resolvedRequestHospital = useMemo(() => {
 		if (!requestHospital?.id) return requestHospital;
 		return (
