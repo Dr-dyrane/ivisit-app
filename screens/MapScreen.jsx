@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtom } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
@@ -55,6 +56,13 @@ import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
 import { paymentService } from "../services/paymentService";
 import { selectHistoryItemByAnyKey } from "../hooks/visits/useVisitHistorySelectors";
+import {
+  ratingRecoveryVersionAtom,
+  ratingRecoveryClaimsAtom,
+  recoveredRatingStateAtom,
+  selectedHistoryVisitKeyAtom,
+  historyRatingStateAtom,
+} from "../atoms/mapScreenAtoms";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -169,11 +177,13 @@ export default function MapScreen() {
   // PULLBACK NOTE: VD-C3 (EC-VD-2) — track origin of visit detail open so closeHistoryVisitDetails
   // can restore the correct surface (history modal vs direct tap).
   const visitDetailReturnTargetRef = useRef(null);
-  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
-  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
-  const [recoveredRatingState, setRecoveredRatingState] = useState(null);
-  const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useState(null);
-  const [historyRatingState, setHistoryRatingState] = useState(null);
+  // PULLBACK NOTE: VD-D — migrate ephemeral UI state from useState → Jotai atoms (L5).
+  // Atoms were already defined in mapScreenAtoms.js; this completes the wiring.
+  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useAtom(ratingRecoveryVersionAtom);
+  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useAtom(ratingRecoveryClaimsAtom);
+  const [recoveredRatingState, setRecoveredRatingState] = useAtom(recoveredRatingStateAtom);
+  const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useAtom(selectedHistoryVisitKeyAtom);
+  const [historyRatingState, setHistoryRatingState] = useAtom(historyRatingStateAtom);
   const [historyPaymentState, setHistoryPaymentState] = useState({
     visible: false,
     loading: false,
