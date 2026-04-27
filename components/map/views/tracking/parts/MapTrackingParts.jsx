@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useReducedMotion } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { COLORS } from "../../../../../constants/colors";
 import MapHeaderIconButton from "../../shared/MapHeaderIconButton";
@@ -86,6 +87,12 @@ export function MapTrackingTopSlot({
   const visualProgress = triageComplete
     ? 1
     : Math.max(1 / TRACKING_TRIAGE_STEP_FLOOR, clampedProgress);
+  // PULLBACK NOTE: Phase G — G-5 (Reduced motion).
+  // OLD: ring fill animated, and the ring breathed on a 3.2s loop indefinitely.
+  // NEW: with Reduce Motion enabled, the ring snaps to its target progress and
+  //      the breathing loop never starts — VoiceOver / motion-sensitive users
+  //      see a calm, static ring.
+  const reducedMotion = useReducedMotion();
   const ringProgress = useRef(new Animated.Value(visualProgress)).current;
   const breathProgress = useRef(new Animated.Value(0)).current;
   const ringSize = 38;
@@ -95,15 +102,19 @@ export function MapTrackingTopSlot({
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
   useEffect(() => {
+    if (reducedMotion) {
+      ringProgress.setValue(visualProgress);
+      return;
+    }
     Animated.timing(ringProgress, {
       toValue: visualProgress,
       duration: 420,
       useNativeDriver: false,
     }).start();
-  }, [ringProgress, visualProgress]);
+  }, [reducedMotion, ringProgress, visualProgress]);
 
   useEffect(() => {
-    if (triageComplete) {
+    if (reducedMotion || triageComplete) {
       breathProgress.setValue(0);
       return undefined;
     }
@@ -123,7 +134,7 @@ export function MapTrackingTopSlot({
     );
     animation.start();
     return () => animation.stop();
-  }, [breathProgress, triageComplete]);
+  }, [breathProgress, reducedMotion, triageComplete]);
 
   const ringDashOffset = ringProgress.interpolate({
     inputRange: [0, 1],
@@ -198,9 +209,17 @@ export function MapTrackingTopSlot({
         )}
       </View>
       <View style={styles.topSlotCopy}>
-        {/* PULLBACK NOTE: Phase 8 — Animated.Text uses status-aware titleTextColor; chevron stays on original titleColor */}
+        {/* PULLBACK NOTE: Phase G — G-4 (Dynamic Type support).
+            Title and subtitle keep `numberOfLines={1}` for HIG layout fidelity but
+            opt into `adjustsFontSizeToFit` so large accessibility-text users see
+            graceful shrinkage instead of truncated ellipses. Capped by
+            `maxFontSizeMultiplier` so the sheet header never exceeds its slot. */}
         <Animated.Text
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          allowFontScaling
+          maxFontSizeMultiplier={1.6}
           style={[
             styles.topSlotTitle,
             { color: titleTextColor || titleColor },
@@ -212,6 +231,10 @@ export function MapTrackingTopSlot({
         {subtitle ? (
           <Text
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
             style={[styles.topSlotSubtitle, { color: mutedColor }]}
           >
             {subtitle}

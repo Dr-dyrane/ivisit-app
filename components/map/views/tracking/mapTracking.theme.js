@@ -87,14 +87,21 @@ export function buildTrackingThemeTokens({
 	const teamHeroSurface = isDarkMode
 		? "rgba(15,23,42,0.72)"
 		: "rgba(255,255,255,0.9)";
+	// PULLBACK NOTE: Phase G — G-2 (Status palette refinement).
+	// OLD: ambulance hero progress fill was iVisit-red tinted, signalling "alarm"
+	//      throughout the entire normal trip even when nothing was wrong.
+	// NEW: ambulance + bed both use the calm `accent` (sky) tint during normal
+	//      operation. Red is reserved for `critical` / `warning` telemetry tones
+	//      handled by `teamHeroWarningProgressColor` below — so the user only
+	//      sees red when something actually warrants attention.
 	const teamHeroProgressColor =
 		trackingKind === "bed"
 			? isDarkMode
 				? "rgba(56,189,248,0.30)"
 				: "rgba(37,99,235,0.14)"
 			: isDarkMode
-				? "rgba(180,35,24,0.38)"
-				: "rgba(180,35,24,0.20)";
+				? "rgba(56,189,248,0.30)"
+				: "rgba(14,165,233,0.18)";
 	const teamHeroWarningSurface =
 		telemetryHeroTone === "critical"
 			? isDarkMode

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Animated, Text, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import { useTheme } from "../../../../contexts/ThemeContext";
 // PULLBACK NOTE: Phase 5c — useEmergency() removed from MapTrackingStageBase
 // OLD: imported EmergencyContext for raw trip data + action callbacks
@@ -163,33 +164,44 @@ export default function MapTrackingStageBase({
 	});
 
 	// Sheet title animation
+	// PULLBACK NOTE: Phase G — G-5 (Reduced motion).
+	// OLD: title always faded + translated in on each new status phase.
+	// NEW: respects the OS-level Reduce Motion accessibility flag — when on,
+	//      we skip the animation, snap directly to the resolved values, and
+	//      mark the title as animated so the controller does not re-trigger.
+	const reducedMotion = useReducedMotion();
 	const titleOpacityAnim = useRef(new Animated.Value(0)).current;
 	const titleTranslateAnim = useRef(new Animated.Value(-10)).current;
 
 	useEffect(() => {
-		if (shouldAnimateTitle) {
-			// Reset animation values
-			titleOpacityAnim.setValue(0);
-			titleTranslateAnim.setValue(-10);
-
-			// Run animation
-			Animated.parallel([
-				Animated.timing(titleOpacityAnim, {
-					toValue: 1,
-					duration: 420,
-					useNativeDriver: true,
-				}),
-				Animated.spring(titleTranslateAnim, {
-					toValue: 0,
-					friction: 8,
-					tension: 40,
-					useNativeDriver: true,
-				}),
-			]).start(() => {
-				markTitleAnimated();
-			});
+		if (!shouldAnimateTitle) return;
+		if (reducedMotion) {
+			titleOpacityAnim.setValue(1);
+			titleTranslateAnim.setValue(0);
+			markTitleAnimated();
+			return;
 		}
-	}, [shouldAnimateTitle, titleOpacityAnim, titleTranslateAnim, markTitleAnimated]);
+		// Reset animation values
+		titleOpacityAnim.setValue(0);
+		titleTranslateAnim.setValue(-10);
+
+		// Run animation
+		Animated.parallel([
+			Animated.timing(titleOpacityAnim, {
+				toValue: 1,
+				duration: 420,
+				useNativeDriver: true,
+			}),
+			Animated.spring(titleTranslateAnim, {
+				toValue: 0,
+				friction: 8,
+				tension: 40,
+				useNativeDriver: true,
+			}),
+		]).start(() => {
+			markTitleAnimated();
+		});
+	}, [shouldAnimateTitle, reducedMotion, titleOpacityAnim, titleTranslateAnim, markTitleAnimated]);
 
 	const canToggleSnapState =
 		presentationMode === "sheet" &&

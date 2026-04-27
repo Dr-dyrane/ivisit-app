@@ -276,74 +276,77 @@ export const hasSheetTitleAnimatedAtom = persistedTrackingAtom(
 );
 
 /**
- * Current sheet title color based on tracking status
- * Updates dynamically for status changes
+ * Sheet title color override.
+ *
+ * PULLBACK NOTE: Phase G — G-1 (Reduce status channels).
+ * OLD: cycled red → yellow → green based on `statusPhase` (extra cognitive
+ *      channel; competed with the hero progress fill for the user's eye).
+ * NEW: returns `null` so `MapTrackingTopSlot` falls back to the neutral
+ *      `themeTokens.titleColor`. Status is communicated via the hero progress
+ *      fill alone — Apple HIG single-channel discipline. Title fade-in
+ *      animation (`hasSheetTitleAnimatedAtom`) is preserved.
  */
-export const sheetTitleColorAtom = atom((get) => {
-  const statusPhase = get(trackingStatusPhaseAtom);
-  const isDarkMode = get(mapThemeAtom); // Will be created if not exists
-
-  // Status-based colors (maintaining theme contrast)
-  const colors = {
-    en_route: isDarkMode ? "#F87171" : "#DC2626", // Red
-    approaching: isDarkMode ? "#FBBF24" : "#D97706", // Yellow/Orange
-    arrived: isDarkMode ? "#34D399" : "#059669", // Green
-    completed: isDarkMode ? "#6B7280" : "#9CA3AF", // Gray
-  };
-
-  return colors[statusPhase] || colors.en_route;
-});
+export const sheetTitleColorAtom = atom(() => null);
 
 /**
- * Hero underlay gradient colors based on tracking progress
- * Red → Yellow → Green gradient for status visualization
+ * Hero underlay gradient colors driven by tracking phase.
+ *
+ * PULLBACK NOTE: Phase G — G-2 (Status palette refinement).
+ * OLD: red → yellow → green progression on every trip; red was the dominant
+ *      colour for any in-progress request, which read as "alarm" rather than
+ *      "in progress" and conflicted with the brand's emergency-red usage.
+ * NEW: two-state palette — `accent` (cool blue) for en-route + approaching,
+ *      `success` (green) for arrived + completed. Red is reserved for
+ *      `critical` (telemetry-lost, cancellation) which is handled separately
+ *      by `telemetryHeroTone` in `mapTracking.theme.js`.
+ *
+ * Returns 3-stop arrays `[start, mid, end]` for `LinearGradient` consumers.
  */
+const HERO_GRADIENT_ACCENT = ["#0EA5E9", "#38BDF8", "#7DD3FC"]; // sky-500 → 400 → 300
+const HERO_GRADIENT_SUCCESS = ["#059669", "#10B981", "#34D399"]; // emerald-600 → 500 → 400
+
 export const heroUnderlayGradientAtom = atom((get) => {
-  const progress = get(trackingProgressValueAtom);
   const statusPhase = get(trackingStatusPhaseAtom);
-
-  // Base gradient stops
   if (statusPhase === "arrived" || statusPhase === "completed") {
-    return ["#10B981", "#34D399", "#6EE7B7"]; // Green gradient
+    return HERO_GRADIENT_SUCCESS;
   }
-
-  if (progress < 0.33) {
-    return ["#DC2626", "#EF4444", "#F87171"]; // Red gradient (early)
-  } else if (progress < 0.66) {
-    return ["#D97706", "#F59E0B", "#FBBF24"]; // Yellow/Orange gradient (mid)
-  } else {
-    return ["#059669", "#10B981", "#34D399"]; // Green gradient (late)
-  }
+  return HERO_GRADIENT_ACCENT;
 });
 
 /**
- * Derived atom for CTA group theme (muted except arrival)
+ * Derived atom for CTA group theme (muted except arrival).
+ *
+ * PULLBACK NOTE: Phase G — G-2 (Status palette refinement).
+ * OLD: status pill colors cycled red (`en_route`) → amber (`approaching`) →
+ *      green (`arrived`). Red on every active trip == false alarm.
+ * NEW: `en_route` + `approaching` share the calm `accent` (sky) palette;
+ *      `arrived` keeps `success` (emerald). Red is no longer used for
+ *      in-progress trips. Arrival CTA continues to "pop" green; non-arrival
+ *      CTAs stay muted to keep the eye on the progress fill.
  */
 export const trackingCtaThemeAtom = atom((get) => {
   const statusPhase = get(trackingStatusPhaseAtom);
   const isDarkMode = get(mapThemeAtom);
+
+  const isArrivedPhase = statusPhase === "arrived" || statusPhase === "completed";
 
   return {
     // Non-arrival CTAs: muted theme
     mutedBg: isDarkMode ? "rgba(75, 85, 99, 0.4)" : "rgba(229, 231, 235, 0.6)",
     mutedText: isDarkMode ? "#9CA3AF" : "#6B7280",
 
-    // Arrival CTA: obvious green
+    // Arrival CTA: HIG-success green
     arrivalBg: statusPhase === "arrived" ? "#10B981" : "#059669",
     arrivalText: "#FFFFFF",
     arrivalGlow: statusPhase === "arrived",
 
-    // Status pill (if shown): should match status
-    statusBg: statusPhase === "en_route"
-      ? "#FEE2E2"
-      : statusPhase === "approaching"
-        ? "#FEF3C7"
-        : "#D1FAE5",
-    statusText: statusPhase === "en_route"
-      ? "#991B1B"
-      : statusPhase === "approaching"
-        ? "#92400E"
-        : "#065F46",
+    // Status pill — accent (in-progress) vs success (arrived); never red.
+    statusBg: isArrivedPhase
+      ? (isDarkMode ? "rgba(16,185,129,0.18)" : "#D1FAE5")
+      : (isDarkMode ? "rgba(56,189,248,0.18)" : "#E0F2FE"),
+    statusText: isArrivedPhase
+      ? (isDarkMode ? "#34D399" : "#065F46")
+      : (isDarkMode ? "#7DD3FC" : "#075985"),
   };
 });
 

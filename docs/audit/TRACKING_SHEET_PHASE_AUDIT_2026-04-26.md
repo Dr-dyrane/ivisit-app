@@ -344,7 +344,7 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 | D | Auto-recovery | Low | C | ✅ Complete (verified — Pass C effect serves as second runner) |
 | E | History resume routing | Low | A | ✅ Complete (call-site gating in `handleSelectHistoryItem`) |
 | F | Documentation | None | B–E | ✅ Complete (canonical decision diagram in `GOLD_STANDARD_STATE_ROADMAP.md`) |
-| **G** | **Apple HIG polish** | **Low** | **B–E (UX after correctness)** | 🔜 Next |
+| G | Apple HIG polish | Low | B–E (UX after correctness) | ✅ Complete |
 
 **Rule**: Correctness passes (B–E) before polish (G). A broken sheet that looks good is still broken.
 
@@ -368,9 +368,32 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
   `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` ("Tracking Sheet Phase — Canonical
   Decision Diagram" section). Inputs, rules, cross-cutting renderers, and history routing
   documented.
+- **Pass G — Apple HIG polish.** All seven sub-passes complete:
+  - **G-1** — `sheetTitleColorAtom` returns `null`; title falls back to neutral
+    `themeTokens.titleColor`. Single-channel status discipline restored.
+  - **G-2** — `heroUnderlayGradientAtom` and `trackingCtaThemeAtom` rebuilt around
+    `accent` (sky) + `success` (emerald). `mapTracking.theme.js` `teamHeroProgressColor`
+    for ambulance switched from iVisit-red tint to accent tint. Red reserved for
+    `critical`/`warning` telemetry tones.
+  - **G-3** — Verified: `MapHeaderIconButton` defaults `hitSlop=10` around 38pt visual
+    button → effective 58×58pt tap area. HIG ≥44pt satisfied.
+  - **G-4** — `MapTrackingTopSlot` title + subtitle gain `adjustsFontSizeToFit`,
+    `minimumFontScale`, `allowFontScaling`, `maxFontSizeMultiplier` for graceful Dynamic
+    Type scaling without truncation.
+  - **G-5** — `useReducedMotion` from `react-native-reanimated` wired into both the
+    title fade-in (`MapTrackingStageBase.jsx`) and the triage ring breathing loop +
+    progress-fill timing (`MapTrackingParts.jsx`). Reduce-Motion users see static surfaces.
+  - **G-6** — Contrast spot-check passed AA across all new accent/success/pill pairs in
+    light + dark modes; red (telemetry-critical) pairs already AA-verified via
+    `getToneColors` in `mapTracking.presentation.js`.
+  - **G-7** — Verified: medium detent renders title + subtitle + hero (with ETA in
+    `rightMeta`) + mid-action group + bottom action — full primary task without
+    scrolling. Large detent additionally reveals route + details cards (progressive
+    disclosure parity with Apple Maps directions sheet).
 
 ## Next Action
 
-**Pass G — Apple HIG polish.** Begin with G-1 + G-2 (status channel reduction + palette
-refinement): neutralize sheet title color, replace red-yellow-green with accent + success,
-reserve red exclusively for critical/emergency states.
+Tracking sheet phase audit complete. All correctness (B–F) and polish (G) passes shipped.
+Future regressions in this surface should be tracked in
+`docs/architecture/TRACKING_SHEET_LEARNINGS.md` (defect classes 2.1–2.12) which now
+serves as the canonical playbook.
