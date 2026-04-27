@@ -294,26 +294,26 @@ COMPLETING
 - `BookBedRequestScreen` — `setMode` migratable but same service field blockers
 - **Decision**: all 3 migrate transparently via `EmergencyContextAdapter` shim in 6d — no partial churn
 
-### 6d ⏳ IN PROGRESS — Wire existing EmergencyContext internals to Zustand stores
+### 6d ✅ COMPLETE (`42933ab`) — Wire existing EmergencyContext internals to Zustand stores
 - **Stash adapter rejected**: stash `EmergencyContextAdapter.jsx` → `useEmergencyHospitals` → `useCoverageMode` (❌ REJECTED). Wholesale adoption would reintroduce rejected pattern.
 - **Approach**: wire Zustand stores into the existing hook layer, not above it — `useEmergency()` signature unchanged, zero consumer blast radius
 
-#### 6d-1 ⏳ `useEmergencyTripState` — mode/serviceType/selectedSpecialty/viewMode → `useModeStore`
+#### 6d-1 ✅ `useEmergencyTripState` — mode/serviceType/selectedSpecialty/viewMode → `useModeStore`
 - All 4 `useState` calls replaced with `useModeStore` selectors
 - `toggleMode`, `selectSpecialty`, `selectServiceType`, `toggleViewMode`, `resetFilters` updated to call store setters directly (no functional updaters needed)
 - `selectedHospitalId` remains local `useState` — ephemeral UI selection, not persisted
 
-#### 6d-2 ⏳ `useEmergencyLocationSync` — `userLocation`/`setUserLocation` → `useLocationStore`
+#### 6d-2 ✅ `useEmergencyLocationSync` — `userLocation`/`setUserLocation` → `useLocationStore`
 - `useState(null)` replaced with `useLocationStore` selector
 - Functional updater pattern `setUserLocation((current) => ...)` replaced with `useLocationStore.getState()` read + direct `setUserLocation(value)` call
 - Resolves `WelcomeScreen` blocker
 
-#### 6d-3 ⏳ `WelcomeScreen` — now fully off `useEmergency()` for location fields
+#### 6d-3 ✅ `WelcomeScreen` — now fully off `useEmergency()` for location fields
 - `setUserLocation` + `emergencyUserLocation` → `useLocationStore`
 - `refreshHospitals` remains on `useEmergency()` — server action
 
-### 6e — Dead code cleanup
-- Delete `EmergencyScreen.jsx` (zero router entry points, confirmed deprecated)
+### 6e ⏳ Dead code cleanup
+- `EmergencyScreen.jsx` deleted — 1,482 lines, zero router entry points, zero source imports confirmed
 
 ## MapScreen Decomposition — Parallel Track (not Phase 6)
 - `MapScreen.jsx` is **1,434 lines** — architectural violation (mandate: max 500 for screen files)
