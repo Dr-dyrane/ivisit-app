@@ -1,3 +1,6 @@
+// @deprecated Phase 7b — zero live consumers. SearchScreen uses SpecialtySelector instead.
+// Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
+// Recovery: git checkout HEAD -- components/emergency/ServiceTypeSelector.jsx
 import React, { useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";

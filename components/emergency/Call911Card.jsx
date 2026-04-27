@@ -1,3 +1,5 @@
+// @deprecated Phase 7b — zero live consumers. Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
+// Recovery: git checkout HEAD -- components/emergency/Call911Card.jsx
 import React from "react";
 import { View, Text, Pressable, StyleSheet, Platform, Linking } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";

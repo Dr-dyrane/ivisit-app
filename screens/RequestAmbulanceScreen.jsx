@@ -1,4 +1,8 @@
 "use client";
+// @deprecated Phase 7a — RequestAmbulanceScreen is superseded by MapSheetOrchestrator commit flow.
+// Router entry still live as fallback. Do NOT delete until MapScreen commit flow is proven stable.
+// EmergencyRequestModal (2,926 lines) and intake/ cluster deprecate with this screen.
+// Recovery: git checkout HEAD -- screens/RequestAmbulanceScreen.jsx
 
 import { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, Animated, Platform } from "react-native";

@@ -1,3 +1,6 @@
+// @deprecated Phase 7b — zero live consumers. Only imported by HospitalCard (also deprecated).
+// Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
+// Recovery: git checkout HEAD -- components/emergency/HospitalDetailView.jsx
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";

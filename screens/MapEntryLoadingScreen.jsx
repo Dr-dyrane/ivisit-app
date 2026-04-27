@@ -1,3 +1,5 @@
+// @deprecated Phase 7a — MapEntryLoadingScreen is superseded by MapExploreLoadingOverlay inside MapScreen.
+// Confirm router entry before deleting. Recovery: git checkout HEAD -- screens/MapEntryLoadingScreen.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";

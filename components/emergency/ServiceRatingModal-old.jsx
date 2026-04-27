@@ -1,3 +1,5 @@
+// @deprecated Phase 7b — superseded by ServiceRatingModal.jsx. Zero consumers. Safe to delete.
+// Recovery: git checkout HEAD -- components/emergency/ServiceRatingModal-old.jsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
 	Modal,

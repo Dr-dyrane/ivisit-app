@@ -426,6 +426,72 @@ Use stash files as reference only — do not apply wholesale.
 
 ---
 
+## Phase 7 — Deprecation Register
+
+> **Rule**: Do NOT delete. Mark deprecated in-file with a `@deprecated` header comment.  
+> Files are kept for quick reference and git recovery. Deletion only after MapScreen decomposition confirms zero live usage.
+
+---
+
+### 7a — Screens deprecated (router entry still exists but surface is superseded)
+
+| File | Lines | Superseded By | Status |
+|---|---|---|---|
+| `screens/MoreScreen.jsx` | 1,492 | `MiniProfileModal` + `(user)/(stacks)/*` direct nav | ⚠️ DEPRECATED — router entry `app/(user)/(stacks)/more.js` still live, mark in-file |
+| `screens/RequestAmbulanceScreen.jsx` | 802 | `MapSheetOrchestrator` commit flow | ⚠️ DEPRECATED — still routed from stacks, mark in-file |
+| `screens/BookBedRequestScreen.jsx` | ~400 | `MapSheetOrchestrator` bed decision flow | ⚠️ DEPRECATED — still routed from stacks, mark in-file |
+| `screens/MapEntryLoadingScreen.jsx` | ~80 | `MapExploreLoadingOverlay` inside MapScreen | ⚠️ DEPRECATED — confirm router entry before marking |
+
+---
+
+### 7b — Components deprecated (exclusively owned by deprecated screens)
+
+#### Owned by `RequestAmbulanceScreen` / `BookBedRequestScreen`
+
+| File | Notes |
+|---|---|
+| `components/emergency/EmergencyRequestModal.jsx` | **2,926 lines** — entire legacy request modal. Used only by `RequestAmbulanceScreen` + `BookBedRequestScreen`. Map sheet flow replaces it entirely. |
+| `components/emergency/requestModal/*` | All sub-components of `EmergencyRequestModal` (12 files) |
+| `components/emergency/triage/*` | `TriageIntakeModal` and helpers — owned by `EmergencyRequestModal` |
+| `components/emergency/RequestAmbulanceFAB.jsx` | No live import found outside deprecated screens |
+| `components/emergency/emergencyFlowContent.js` | Only imported by `EmergencyRequestModal` + `EmergencyIOSMobileIntakeView` |
+
+#### Owned by `EmergencyScreen` (deleted in 6e) or no live consumers
+
+| File | Notes |
+|---|---|
+| `components/emergency/HospitalDetailView.jsx` | No live import — only imported by itself (self-ref) |
+| `components/emergency/HospitalCard.jsx` | Only imported by `HospitalDetailView` (also deprecated) |
+| `components/emergency/Call911Card.jsx` | No live import found |
+| `components/emergency/ServiceTypeSelector.jsx` | No live import found — `SearchScreen` uses `SpecialtySelector`, not this |
+| `components/emergency/EmergencyMapContainer.jsx` | Only used inside `EmergencyIOSMobileIntakeView` (intake flow) |
+| `components/emergency/ServiceRatingModal-old.jsx` | Old file — superseded by `ServiceRatingModal.jsx` |
+
+#### Still live — DO NOT deprecate
+
+| File | Notes |
+|---|---|
+| `components/emergency/MiniProfileModal.jsx` | ✅ LIVE — used in `MapScreen` as MoreScreen replacement |
+| `components/emergency/ServiceRatingModal.jsx` | ✅ LIVE — used in `MapScreen` (history + recovered rating) |
+| `components/emergency/SpecialtySelector.jsx` | ✅ LIVE — used in `SearchScreen` + `SuggestiveContent` |
+| `components/emergency/EmergencySearchBar.jsx` | ✅ LIVE — used in `SearchScreen` |
+| `components/emergency/ContactCard.jsx` | ✅ LIVE — used in `EmergencyContactsScreen` |
+| `components/emergency/CoverageDisclaimerModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating |
+| `components/emergency/DemoBootstrapModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating |
+| `components/emergency/intake/*` | ⚠️ REVIEW — owned by `RequestAmbulanceScreen` intake flow, deprecates with it |
+
+---
+
+### 7c — Cleanup order (follow MapScreen decomposition passes)
+
+1. After each MapScreen pass confirms zero regression → mark that pass's displaced component deprecated
+2. `MoreScreen` → mark deprecated after `MiniProfileModal` covers all nav entry points
+3. `RequestAmbulanceScreen` + `BookBedRequestScreen` → mark deprecated after map sheet commit flow is proven stable
+4. `EmergencyRequestModal` cluster → mark deprecated with `RequestAmbulanceScreen`
+5. Orphaned leaf components (HospitalDetailView, Call911Card, etc.) → delete, not just deprecate — no consumers, no value in keeping
+
+---
+
 ## Related Docs
 
 - `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md` — completed hook extraction
