@@ -563,8 +563,85 @@ Use stash files as reference only — do not apply wholesale.
 
 ---
 
+## Tracking Sheet Phase — Canonical Decision Diagram
+
+**Purpose**: Single source of truth for "what sheet phase should be active" as a function of the
+5-layer state. Use this when reasoning about any tracking-related auto-open / auto-close defect.
+
+### Inputs (in priority order)
+
+| # | Input | Layer | Source |
+|---|---|---|---|
+| 1 | `hasActiveTrip` | XState | `useTripLifecycle()` — canonical "are we tracking?" |
+| 2 | `isRatingPending` | XState | `useTripLifecycle()` — completion → rate gate |
+| 3 | `trackingRequestKey` | Zustand | `activeMapRequest.requestId` — identity for hospital resolution |
+| 4 | `sheetPhase` | Jotai | `mapSheetPhaseAtom` — current sheet (EXPLORE_INTENT / TRACKING / COMMIT_*) |
+| 5 | `trackingDismissedRef` | React ref | User explicitly closed tracking sheet for this request |
+| 6 | History selection | Call site | `handleSelectHistoryItem(historyItem)` |
+| 7 | Payment commit | Call site | `useMapCommitFlow.finishCommitPayment()` |
+
+### Decision rules (evaluated each render)
+
+```
+IF !hasActiveTrip OR !trackingRequestKey:
+    IF sheetPhase == TRACKING: revert → EXPLORE_INTENT
+    ELSE: leave sheetPhase unchanged
+    (rating modal may still render — driven by trackingRatingStateAtom)
+
+ELSE IF sheetPhase IN { COMMIT_DETAILS, COMMIT_TRIAGE, COMMIT_PAYMENT }:
+    leave sheetPhase unchanged (commit flow owns the sheet)
+
+ELSE IF sheetPhase == TRACKING:
+    leave sheetPhase unchanged
+
+ELSE IF sheetPhase == EXPLORE_INTENT AND prevSheetPhase WAS COMMIT_*:
+    openTracking()                    # forced auto-open after payment
+
+ELSE IF sheetPhase == EXPLORE_INTENT AND !trackingDismissedRef:
+    openTracking()                    # cold-start auto-open
+
+ELSE:
+    leave sheetPhase unchanged
+```
+
+Implemented in `@hooks/map/exploreFlow/useMapTracking.js` (Pass C — XState gate).
+
+### Cross-cutting renderers (NOT gated on sheetPhase)
+
+| Renderer | Gating signal | Location |
+|---|---|---|
+| In-flow rating modal | `trackingRatingStateAtom.visible` (persisted) | `MapScreen` root |
+| Recovered rating modal | `recoveredRatingState` | `MapScreen` root |
+| History rating modal | `historyRatingState` | `MapScreen` root |
+
+These survive sheet phase transitions by mounting at `MapScreen` root, not inside
+`MapTrackingStageBase` (Pass B — rating modal lift).
+
+### History "Resume tracking" routing
+
+`handleSelectHistoryItem` (`@screens/MapScreen.jsx`) gates resume on:
+```
+matchesActiveEmergencyRequest =
+    sourceKind == "emergency" &&
+    historyItem.requestId in activeHistoryRequestKeys
+```
+- Match → `openTracking()`
+- Mismatch → `openVisitDetail(historyItem)`
+
+This prevents the auto-revert race where `openTracking` would fire for a stale request
+and `useMapTracking`'s effect would immediately revert to EXPLORE_INTENT (Pass E).
+
+### Tracking-Sheet-Phase Audit
+
+See `docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md` for the full audit, defect
+classes, and pass-by-pass implementation plan.
+
+---
+
 ## Related Docs
 
 - `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md` — completed hook extraction
 - `docs/architecture/REFACTORING_BIBLE.md` — overall refactoring principles
 - `docs/architecture/roadmap/IMPLEMENTATION_ROADMAP.md` — product roadmap
+- `docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md` — tracking sheet audit + pass plan
+- `docs/architecture/TRACKING_SHEET_LEARNINGS.md` — cross-cutting defect classes from tracking audit

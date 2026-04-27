@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from "react";
-import { Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { Animated, Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 // PULLBACK NOTE: Phase 5c — useEmergency() removed from MapTrackingStageBase
 // OLD: imported EmergencyContext for raw trip data + action callbacks
@@ -14,7 +14,6 @@ import sheetStageStyles from "../shared/mapSheetStage.styles";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import useMapStageResponsiveMetrics from "../shared/useMapStageResponsiveMetrics";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
-import { ServiceRatingModal } from "../../../emergency/ServiceRatingModal";
 import { joinDisplayParts, toTitleCaseLabel } from "./mapTracking.presentation";
 import {
 	MapTrackingTopSlot,
@@ -26,6 +25,7 @@ import {
 } from "./parts/MapTrackingParts";
 import useMapTrackingController from "./useMapTrackingController";
 import useMapTrackingRuntime from "./useMapTrackingRuntime";
+import { useMapTrackingStatus } from "../../../../hooks/map/exploreFlow/useMapTrackingStatus";
 import { buildTrackingThemeTokens } from "./mapTracking.theme";
 import styles from "./mapTracking.styles";
 
@@ -142,6 +142,55 @@ export default function MapTrackingStageBase({
 		isPendingApproval,
 	});
 
+	// PULLBACK NOTE: Phase 8 — 5-layer state management for tracking visualization
+	// OLD: Status visualization logic scattered in components
+	// NEW: Centralized Jotai atoms + hook for ephemeral UI state
+	const {
+		statusPhase,
+		shouldAnimateTitle,
+		titleColor: dynamicTitleColor,
+		heroGradient,
+		ctaTheme,
+		markTitleAnimated,
+	} = useMapTrackingStatus({
+		trackingKind,
+		activeAmbulanceTrip,
+		activeBedBooking,
+		isArrived,
+		isPendingApproval,
+		ambulanceTripProgress,
+		nowMs: Date.now(),
+	});
+
+	// Sheet title animation
+	const titleOpacityAnim = useRef(new Animated.Value(0)).current;
+	const titleTranslateAnim = useRef(new Animated.Value(-10)).current;
+
+	useEffect(() => {
+		if (shouldAnimateTitle) {
+			// Reset animation values
+			titleOpacityAnim.setValue(0);
+			titleTranslateAnim.setValue(-10);
+
+			// Run animation
+			Animated.parallel([
+				Animated.timing(titleOpacityAnim, {
+					toValue: 1,
+					duration: 420,
+					useNativeDriver: true,
+				}),
+				Animated.spring(titleTranslateAnim, {
+					toValue: 0,
+					friction: 8,
+					tension: 40,
+					useNativeDriver: true,
+				}),
+			]).start(() => {
+				markTitleAnimated();
+			});
+		}
+	}, [shouldAnimateTitle, titleOpacityAnim, titleTranslateAnim, markTitleAnimated]);
+
 	const canToggleSnapState =
 		presentationMode === "sheet" &&
 		(snapState === MAP_SHEET_SNAP_STATES.HALF ||
@@ -212,10 +261,8 @@ export default function MapTrackingStageBase({
 		trackingDetailRows,
 		midActions,
 		bottomAction,
-		ratingState,
-		closeRating,
-		skipRating,
-		submitRating,
+		// PULLBACK NOTE: Phase 8 — Pass B: rating modal lifted to MapScreen
+		// closeRating/skipRating/submitRating no longer consumed here
 	} = useMapTrackingController({
 		activeAmbulanceTrip,
 		activeBedBooking,
@@ -330,6 +377,7 @@ export default function MapTrackingStageBase({
 
 	const trackingPrimaryContent = (
 		<>
+			{/* PULLBACK NOTE: Phase 8 — Use existing TrackingTeamHeroCard progress fill (no duplicate underlay) */}
 			<TrackingTeamHeroCard
 				title={trackingKind === "bed" ? serviceLabel : responderName || "Driver assigned"}
 				subtitle={
@@ -342,9 +390,10 @@ export default function MapTrackingStageBase({
 						? responderSafetyMeta || crewCountLabel
 						: formattedBedRemaining || null
 				}
-				stateLabel={telemetryWarningLabel}
-				statePillBackgroundColor={telemetryWarningLabel ? toneColors.surface : null}
-				stateTextColor={telemetryWarningLabel ? toneColors.text : null}
+				// PULLBACK NOTE: Phase 8 — Removed state pill that displaced right component
+				stateLabel={null}
+				statePillBackgroundColor={null}
+				stateTextColor={null}
 				progressValue={
 					trackingKind === "ambulance"
 						? ambulanceTripProgress
@@ -360,33 +409,52 @@ export default function MapTrackingStageBase({
 			/>
 
 			{midActions.length ? (
+				// PULLBACK NOTE: Phase 8 — Restored original bg; only animate icon/text colors on arrival
 				<View
 					style={[
 						styles.ctaGroupCard,
 						{ backgroundColor: themeTokens.secondaryCtaSurface },
 					]}
 				>
-					{midActions.map((action, index) => (
-						<TrackingCtaButton
-							key={`mid-${action.key}`}
-							action={action}
-							isGrouped
-							isDarkMode={isDarkMode}
-							showDivider={index < midActions.length - 1}
-							iconColor={
-								action.tone === "bed"
-									? themeTokens.bedCareBlueColor
-									: action.tone === "share"
-										? themeTokens.shareActionColor
-										: action.tone === "transport"
-											? themeTokens.transportActionColor
+					{midActions.map((action, index) => {
+						// PULLBACK NOTE: Phase 8 — On arrival, mute siblings; pop the confirm-arrival CTA
+						const isArrivedPhase = statusPhase === "arrived";
+						const isArrivalAction = action.key === "arrived";
+						const baseIconColor =
+							action.tone === "bed"
+								? themeTokens.bedCareBlueColor
+								: action.tone === "share"
+									? themeTokens.shareActionColor
+									: action.tone === "transport"
+										? themeTokens.transportActionColor
 										: action.tone === "state"
 											? themeTokens.triageActionIconColor
-											: themeTokens.infoActionColor
-							}
-							labelColor={themeTokens.titleColor}
-						/>
-					))}
+											: themeTokens.infoActionColor;
+
+						const iconColor = isArrivedPhase
+							? isArrivalAction
+								? ctaTheme.arrivalBg // Pop green on arrival
+								: ctaTheme.mutedText // Mute siblings
+							: baseIconColor;
+
+						const labelColor = isArrivedPhase
+							? isArrivalAction
+								? ctaTheme.arrivalBg
+								: ctaTheme.mutedText
+							: themeTokens.titleColor;
+
+						return (
+							<TrackingCtaButton
+								key={`mid-${action.key}`}
+								action={action}
+								isGrouped
+								isDarkMode={isDarkMode}
+								showDivider={index < midActions.length - 1}
+								iconColor={iconColor}
+								labelColor={labelColor}
+							/>
+						);
+					})}
 				</View>
 			) : null}
 		</>
@@ -426,10 +494,13 @@ export default function MapTrackingStageBase({
 				allowedSnapStates={allowedSnapStates}
 				topSlot={
 					<View style={topSlotContainerStyle}>
+						{/* PULLBACK NOTE: Phase 8 — Sheet title with animated status color */}
 						<MapTrackingTopSlot
 							title={trackingKind === "idle" ? "Tracking" : sheetTitleDisplay}
 							subtitle={trackingKind === "idle" ? hospitalName : sheetSubtitle}
+							// PULLBACK NOTE: Phase 8 — Original color for chevron/icons; dynamic only for animated title text
 							titleColor={themeTokens.titleColor}
+							titleTextColor={dynamicTitleColor}
 							mutedColor={themeTokens.mutedColor}
 							actionSurfaceColor={themeTokens.actionSurfaceColor}
 							triageSurfaceColor={themeTokens.triageActionSurface}
@@ -449,6 +520,10 @@ export default function MapTrackingStageBase({
 									? "Collapse tracking sheet"
 									: "Expand tracking sheet"
 							}
+							titleAnimatedStyle={{
+								opacity: titleOpacityAnim,
+								transform: [{ translateY: titleTranslateAnim }],
+							}}
 						/>
 					</View>
 				}
@@ -488,19 +563,8 @@ export default function MapTrackingStageBase({
 					{body}
 				</MapStageBodyScroll>
 			</MapSheetShell>
-
-			<ServiceRatingModal
-				visible={ratingState.visible}
-				serviceType={ratingState.serviceType || "visit"}
-				title={ratingState.title || "Rate your visit"}
-				subtitle={ratingState.subtitle}
-				serviceDetails={ratingState.serviceDetails}
-				onClose={closeRating}
-				onSkip={skipRating}
-				onSubmit={submitRating}
-				surfaceVariant="map"
-				preferDrawerPresentation={isSidebarPresentation}
-			/>
+			{/* PULLBACK NOTE: Phase 8 — Pass B: ServiceRatingModal lifted to MapScreen */}
+			{/* See @screens/MapScreen.jsx and @hooks/map/exploreFlow/useTrackingRatingFlow.js */}
 		</>
 	);
 }

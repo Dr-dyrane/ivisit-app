@@ -16,6 +16,28 @@ const toStringId = (value, fallbackPrefix) => {
 	return `${fallbackPrefix}_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
 };
 
+// Coerce a startedAt value (number ms, numeric string, or ISO date string) to ms.
+// Returns null if the value is unparseable, allowing callers to decide on a default.
+// PULLBACK NOTE: Tracking sheet — fixes Metro-reload progress reset bug.
+// OLD: normalizeEmergencyState replaced any non-finite startedAt with Date.now(),
+//      which clobbered ISO-string startedAt values from server payloads on every
+//      auto-persist, causing trip progress to restart from 0 on Metro reload.
+// NEW: accept ISO strings; only fall back to "now" when truly missing.
+const coerceStartedAtMs = (value) => {
+	if (Number.isFinite(value)) return Number(value);
+	if (typeof value === "string" && value.trim()) {
+		const numeric = Number(value);
+		if (Number.isFinite(numeric)) return numeric;
+		const parsed = Date.parse(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	if (value instanceof Date) {
+		const t = value.getTime();
+		if (Number.isFinite(t)) return t;
+	}
+	return null;
+};
+
 const dedupeByIdKeepNewest = (items, getId, getTimestampMs) => {
 	const map = new Map();
 	for (const item of items) {
@@ -135,7 +157,7 @@ export const normalizeEmergencyState = (raw) => {
 					: typeof trip.requestId === "number"
 						? String(trip.requestId)
 						: null,
-			startedAt: Number.isFinite(trip.startedAt) ? trip.startedAt : Date.now(),
+			startedAt: coerceStartedAtMs(trip.startedAt) ?? Date.now(),
 		};
 	};
 
@@ -159,7 +181,7 @@ export const normalizeEmergencyState = (raw) => {
 						: booking.requestId
 							? String(booking.requestId)
 							: null,
-			startedAt: Number.isFinite(booking.startedAt) ? booking.startedAt : Date.now(),
+			startedAt: coerceStartedAtMs(booking.startedAt) ?? Date.now(),
 		};
 	};
 

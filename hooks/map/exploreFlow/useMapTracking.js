@@ -19,11 +19,19 @@ import { useMapTrackingTimer } from "./useMapTrackingTimer";
  * Manages tracking sheet visibility and auto-open logic.
  * - Owns trackingDismissedRef and lastTrackingRequestKeyRef
  * - Opens/closes the tracking sheet
- * - Auto-opens when trackingRequestKey appears and sheet is EXPLORE_INTENT
+ * - Auto-opens when trackingRequestKey appears, hasActiveTrip is true,
+ *   and sheet is EXPLORE_INTENT
  * - Provides nowMs via shared broadcast timer (no per-hook interval)
+ *
+ * PULLBACK NOTE: Phase 8 — Pass C
+ * Auto-open is gated on BOTH trackingRequestKey (Zustand identity) AND
+ * hasActiveTrip (XState lifecycle). This prevents Zustand-truthy-but-XState-idle
+ * races during cleanup, where the requestId still exists but the trip machine
+ * is already in IDLE/COMPLETED.
  */
 export function useMapTracking({
   trackingRequestKey,
+  hasActiveTrip,
   sheetPhase,
   sheetPayload,
   defaultExploreSnapState,
@@ -98,7 +106,12 @@ export function useMapTracking({
 
     prevSheetPhaseRef.current = sheetPhase;
 
-    if (!trackingRequestKey) {
+    // PULLBACK NOTE: Phase 8 — Pass C: XState gate
+    // Treat trip as inactive if EITHER Zustand identity is missing OR
+    // XState lifecycle says no active trip. Closes the race during cleanup.
+    const isTripActive = Boolean(trackingRequestKey) && hasActiveTrip;
+
+    if (!isTripActive) {
       if (sheetPhase === MAP_SHEET_PHASES.TRACKING) {
         setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
       }
@@ -123,6 +136,7 @@ export function useMapTracking({
     }
   }, [
     defaultExploreSnapState,
+    hasActiveTrip,
     openTracking,
     setSheetView,
     sheetPhase,

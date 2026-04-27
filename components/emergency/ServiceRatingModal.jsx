@@ -5,31 +5,33 @@
  * Clean, minimal design following app's no-border rule and theme system
  */
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-	Modal,
 	View,
 	Text,
 	Pressable,
-	Animated,
-	Dimensions,
 	TextInput,
 	KeyboardAvoidingView,
 	Keyboard,
 	Platform,
 	ScrollView,
+	Dimensions,
 	useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import { paymentService } from "../../services/paymentService";
 import MapModalShell from "../map/surfaces/MapModalShell";
 
+// PULLBACK NOTE: Phase 8 — MapModalShell is the canonical responsive shell across all viewports
+// OLD: Two paths — legacy bottom-sheet (mobile-only) and map shell (responsive)
+// NEW: Single path through MapModalShell. Responsive across mobile/tablet/foldable/desktop
+// via useResponsiveSurfaceMetrics. ESC, click-outside, drawer/sheet adapt automatically.
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TIP_PRESETS = [0, 5, 10, 20];
+const IS_WEB = Platform.OS === "web";
 const squircle = (radius) => ({
 	borderRadius: radius,
 	borderCurve: "continuous",
@@ -44,7 +46,8 @@ export function ServiceRatingModal({
 	onClose,
 	onSkip,
 	onSubmit,
-	surfaceVariant = "legacy",
+	// PULLBACK NOTE: Phase 8 — "map" is now the default; "legacy" branch removed
+	surfaceVariant = "map",
 	preferDrawerPresentation = false,
 }) {
 	const { isDarkMode } = useTheme();
@@ -65,9 +68,6 @@ export function ServiceRatingModal({
 			maxHeightPercentage: 0.9
 		});
 
-	const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-	const fadeAnim = useRef(new Animated.Value(0)).current;
-
 	useEffect(() => {
 		if (!visible) return;
 		setRating(0);
@@ -76,20 +76,7 @@ export function ServiceRatingModal({
 		setCustomTip("");
 		setIsCustomTip(false);
 		setIsActionPending(false);
-		Animated.parallel([
-			Animated.spring(slideAnim, {
-				toValue: 0,
-				tension: 70,
-				friction: 12,
-				useNativeDriver: true,
-			}),
-			Animated.timing(fadeAnim, {
-				toValue: 1,
-				duration: 220,
-				useNativeDriver: true,
-			}),
-		]).start();
-	}, [fadeAnim, slideAnim, visible]);
+	}, [visible]);
 
 	useEffect(() => {
 		if (!visible) return undefined;
@@ -126,19 +113,6 @@ export function ServiceRatingModal({
 		card: isDarkMode ? COLORS.bgDarkAlt : "#EEF2F6",
 		accent: COLORS.brandPrimary,
 	}), [isDarkMode]);
-	const sheetStyle = useMemo(
-		() => ({
-			transform: [{ translateY: slideAnim }],
-			backgroundColor: colors.bg,
-			height: modalHeight,
-			paddingHorizontal: 24,
-			paddingTop: 16,
-			borderTopLeftRadius: 40,
-			borderTopRightRadius: 40,
-			borderCurve: "continuous",
-		}),
-		[colors.bg, modalHeight, slideAnim],
-	);
 	const secondaryActionStyle = useMemo(
 		() => ({
 			backgroundColor: isDarkMode ? "rgba(255,255,255,0.10)" : "#E9EEF5",
@@ -185,7 +159,6 @@ export function ServiceRatingModal({
 
 	const isWalletShortForTip =
 		currentTipAmount > 0 && currentTipAmount > Number(walletBalance || 0);
-	const shouldUseMapShell = surfaceVariant === "map";
 	const mapShellMaxHeightRatio = useMemo(() => {
 		if (!Number.isFinite(windowHeight) || windowHeight <= 0) {
 			return 0.9;
@@ -195,19 +168,8 @@ export function ServiceRatingModal({
 
 	const close = useCallback(() => {
 		Keyboard.dismiss();
-		Animated.parallel([
-			Animated.timing(slideAnim, {
-				toValue: SCREEN_HEIGHT,
-				duration: 300,
-				useNativeDriver: true,
-			}),
-			Animated.timing(fadeAnim, {
-				toValue: 0,
-				duration: 250,
-				useNativeDriver: true,
-			}),
-		]).start(() => onClose?.());
-	}, [fadeAnim, onClose, slideAnim]);
+		onClose?.();
+	}, [onClose]);
 
 	const handleSkip = useCallback(async () => {
 		if (isActionPending) return;
@@ -290,6 +252,19 @@ export function ServiceRatingModal({
 		}
 		void handleSkip();
 	}, [handleSkip, isActionPending, keyboardHeight]);
+
+	// PULLBACK NOTE: Phase 8 — Web ESC key support (HIG-equivalent: dismiss on Escape)
+	useEffect(() => {
+		if (!IS_WEB || !visible || typeof window === "undefined") return undefined;
+		const onKeyDown = (event) => {
+			if (event.key === "Escape" && !isActionPending) {
+				event.preventDefault();
+				void handleSkip();
+			}
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [handleSkip, isActionPending, visible]);
 
 	const ratingBody = (
 		<>
@@ -599,111 +574,36 @@ export function ServiceRatingModal({
 		</>
 	);
 
-	if (shouldUseMapShell) {
-		return (
-			<MapModalShell
-				visible={visible}
-				onClose={handleShellClose}
-				title={null}
-				enableSnapDetents={false}
-				matchExpandedSheetHeight={false}
-				minHeightRatio={0.62}
-				maxHeightRatio={mapShellMaxHeightRatio}
-				presentationModeOverride={
-					preferDrawerPresentation ? "left-drawer" : "bottom-sheet"
-				}
-				scrollEnabled={false}
-				contentContainerStyle={{
-					flex: 1,
-					paddingHorizontal: 24,
-					paddingTop: 8,
-					paddingBottom: 24,
-				}}
-			>
-				<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
-					<ScrollView
-						{...getScrollViewProps()}
-						showsVerticalScrollIndicator={false}
-						contentContainerStyle={{ paddingBottom: 40 }}
-						keyboardShouldPersistTaps="handled"
-					>
-						{ratingBody}
-					</ScrollView>
-				</KeyboardAvoidingView>
-			</MapModalShell>
-		);
-	}
-
 	return (
-		<Modal visible={visible} transparent animationType="none" onRequestClose={handleSkip}>
-			<View
-				className="flex-1 justify-end"
-				style={{ paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
-			>
-				<Animated.View
-					style={{ opacity: fadeAnim }}
-					className="absolute inset-0 bg-black/50"
+		<MapModalShell
+			visible={visible}
+			onClose={handleShellClose}
+			title={null}
+			enableSnapDetents={false}
+			matchExpandedSheetHeight={false}
+			minHeightRatio={0.62}
+			maxHeightRatio={mapShellMaxHeightRatio}
+			presentationModeOverride={
+				preferDrawerPresentation ? "left-drawer" : "bottom-sheet"
+			}
+			scrollEnabled={false}
+			contentContainerStyle={{
+				flex: 1,
+				paddingHorizontal: 24,
+				paddingTop: 8,
+				paddingBottom: 24,
+			}}
+		>
+			<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
+				<ScrollView
+					{...getScrollViewProps()}
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={{ paddingBottom: 40 }}
+					keyboardShouldPersistTaps="handled"
 				>
-					<Pressable
-						className="flex-1"
-						onPress={() => {
-							if (isActionPending) return;
-							if (keyboardHeight > 0) {
-								Keyboard.dismiss();
-								return;
-							}
-							void handleSkip();
-						}}
-					/>
-					{Platform.OS === "ios" ? (
-						<BlurView
-							intensity={20}
-							tint={isDarkMode ? "dark" : "light"}
-							style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-						/>
-					) : (
-						// Android fallback: solid surface to avoid blur-smudge artifacts
-						<View
-							style={{
-								position: 'absolute',
-								top: 0,
-								left: 0,
-								right: 0,
-								bottom: 0,
-								backgroundColor: isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLight,
-							}}
-						/>
-					)}
-				</Animated.View>
-
-				<Animated.View
-					style={sheetStyle}
-				>
-					{/* Handle */}
-					<View
-						className="self-center mb-8"
-						style={{
-							width: 48,
-							height: 6,
-							backgroundColor: isDarkMode
-								? "rgba(255,255,255,0.18)"
-								: "rgba(15,23,42,0.12)",
-							borderRadius: 999,
-						}}
-					/>
-
-					<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
-						<ScrollView
-							{...getScrollViewProps()}
-							showsVerticalScrollIndicator={false}
-							contentContainerStyle={{ paddingBottom: 40 }}
-							keyboardShouldPersistTaps="handled"
-						>
-							{ratingBody}
-						</ScrollView>
-					</KeyboardAvoidingView>
-				</Animated.View>
-			</View>
-		</Modal>
+					{ratingBody}
+				</ScrollView>
+			</KeyboardAvoidingView>
+		</MapModalShell>
 	);
 }

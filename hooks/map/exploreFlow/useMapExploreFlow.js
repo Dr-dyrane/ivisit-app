@@ -88,6 +88,10 @@ export function useMapExploreFlow() {
     setBedBookingStatus,
     isArrived,
     isPendingApproval,
+    // PULLBACK NOTE: Phase 8 — Pass C: XState gate for auto-open
+    // hasActiveTrip = isPendingApproval || isActive || isArrived || isCompleting
+    // Used to defend against Zustand-truthy-but-XState-idle race during cleanup
+    hasActiveTrip,
   } = useEmergency();
 
   // PULLBACK NOTE: Phase 5e — raw trip reads + trip actions moved off EmergencyContext
@@ -270,8 +274,10 @@ export function useMapExploreFlow() {
   const trackingRequestKey = activeMapRequest.requestId;
 
   // Pass 11: tracking sheet lifecycle + shared clock
+  // PULLBACK NOTE: Phase 8 — Pass C: hasActiveTrip is the XState gate for auto-open
   const { nowMs, openTracking, closeTracking } = useMapTracking({
     trackingRequestKey,
+    hasActiveTrip,
     sheetPhase,
     sheetPayload,
     defaultExploreSnapState,

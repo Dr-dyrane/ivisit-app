@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share } from "react-native";
+import { useAtom } from "jotai";
 import { useToast } from "../../../../contexts/ToastContext";
+import { trackingRatingStateAtom } from "../../../../atoms/mapScreenAtoms";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
@@ -22,6 +24,9 @@ import {
   resolveTrackingHeaderActionHandler,
 } from "./mapTracking.model";
 
+// PULLBACK NOTE: Phase 8 — Rating state now uses Jotai atom for persistence
+// OLD: const [ratingState, setRatingState] = useState(INITIAL_RATING_STATE)
+// NEW: const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom)
 const INITIAL_RATING_STATE = {
   visible: false,
   visitId: null,
@@ -82,7 +87,8 @@ export function useMapTrackingController({
 }) {
   const { showToast } = useToast();
   const [busyAction, setBusyAction] = useState(null);
-  const [ratingState, setRatingState] = useState(INITIAL_RATING_STATE);
+  // PULLBACK NOTE: Phase 8 — Jotai atom for cross-phase rating state persistence
+  const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
     activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||

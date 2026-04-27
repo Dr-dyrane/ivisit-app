@@ -19,7 +19,7 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { supabase } from "../../services/supabase";
 import { emergencyRequestsService } from "../../services/emergencyRequestsService";
 import { ambulanceService } from "../../services/ambulanceService";
@@ -160,12 +160,14 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 	const setActiveAmbulanceTrip = useEmergencyTripStore((s) => s.setActiveAmbulanceTrip);
 	const setActiveBedBooking = useEmergencyTripStore((s) => s.setActiveBedBooking);
 	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
-	const activeAmbulanceTripRef = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
-	const activeBedBookingRef = useRef(null);
-
-	// Keep bedBooking ref in sync for normalization (preserve fields across fetches)
-	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
-	useEffect(() => { activeBedBookingRef.current = activeBedBooking; }, [activeBedBooking]);
+	// PULLBACK NOTE: Tracking sheet — Metro reload progress reset bug fix.
+	// OLD: previous trip snapshots were captured via `useEmergencyTripStore((s) => s.activeAmbulanceTrip)`
+	//      and closed over in the queryFn. On cold start the queryFn fires before
+	//      Zustand hydration completes, so previousTrip = null → preservedStartedAtMs = null
+	//      → startedAt = Date.now() → setActiveAmbulanceTrip clobbers the hydrated startedAt
+	//      → trip progress resets to 0 on every Metro reload.
+	// NEW: read previous trip imperatively inside queryFn via store.getState() so the
+	//      query always observes the post-hydration value. Same fix applied to bedBooking.
 
 	const query = useQuery({
 		queryKey: ACTIVE_TRIP_QUERY_KEY,
@@ -189,9 +191,15 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			);
 			const pendingMatch = activeRequests.find((r) => r?.status === "pending_approval");
 
+			// Read previous snapshots imperatively from the store at fetch time.
+			// This avoids capturing pre-hydration React state in the queryFn closure.
+			const storeState = useEmergencyTripStore.getState();
+			const previousAmbulanceTrip = storeState.activeAmbulanceTrip;
+			const previousBedBooking = storeState.activeBedBooking;
+
 			// Build normalized ambulance trip — preserves ETA/route from previous snapshot
 			const ambulanceTrip = activeAmbulance
-				? await buildAmbulanceTripSnapshot(activeAmbulance, activeAmbulanceTripRef, parseEtaToSeconds)
+				? await buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip, parseEtaToSeconds)
 				: null;
 
 			// Build normalized bed booking
@@ -215,7 +223,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 							estimatedWait: activeBed.estimatedArrival ?? null,
 							estimatedArrival: activeBed.estimatedArrival ?? null,
 						},
-						activeBedBookingRef.current,
+						previousBedBooking,
 					)
 				: null;
 

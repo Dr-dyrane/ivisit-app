@@ -17,6 +17,39 @@ import { areRuntimeStateValuesEqual } from '../utils/emergencyContextHelpers';
 // PULLBACK NOTE: StorageKeys.EMERGENCY_STATE maps to the same key previously used
 const STORAGE_KEY = StorageKeys.EMERGENCY_STATE;
 
+// PULLBACK NOTE: Tracking sheet — startedAt preservation invariant.
+// Returns a trip-like object (or null) where `startedAt` is preserved from the
+// previous value when (a) both refer to the same requestId, and (b) the next
+// value's `startedAt` is missing/non-finite. Falls through unchanged otherwise.
+// Identifies "same trip" by requestId or id (loose-string compare to absorb
+// number/string drift across server payloads).
+const sameTripIdentity = (a, b) => {
+  if (!a || !b) return false;
+  const aReq = a.requestId != null ? String(a.requestId) : null;
+  const bReq = b.requestId != null ? String(b.requestId) : null;
+  if (aReq && bReq && aReq === bReq) return true;
+  const aId = a.id != null ? String(a.id) : null;
+  const bId = b.id != null ? String(b.id) : null;
+  if (aId && bId && aId === bId) return true;
+  return false;
+};
+
+// `startedAt` is an immutable real-world moment for a given trip identity
+// (requestId/id). Once it's set, any later writer targeting the same trip
+// MUST keep the original value — even when the "new" value is also a finite
+// timestamp (e.g. a later `Date.now()` from a rebuilt snapshot). Without this,
+// Metro reloads race between hydration and server merges, and a fresh
+// `Date.now()` from the query's fallback path ends up replacing the persisted
+// start time, visually resetting trip progress.
+const preserveTripStartedAt = (prev, next) => {
+  if (!next) return next;
+  if (!prev) return next;
+  if (!sameTripIdentity(prev, next)) return next;
+  if (!Number.isFinite(prev.startedAt)) return next;
+  if (prev.startedAt === next.startedAt) return next;
+  return { ...next, startedAt: prev.startedAt };
+};
+
 // Trip state shape
 const createInitialTripState = () => ({
   activeAmbulanceTrip: null,
@@ -51,10 +84,18 @@ export const useEmergencyTripStore = create(
     
     // CRUD Actions — equality-guarded to match useEmergencyTripState stable setter behaviour
     // PULLBACK NOTE: Phase 1 — added areRuntimeStateValuesEqual guard (same as useEmergencyTripState)
+    // PULLBACK NOTE: Tracking sheet — preserve `startedAt` invariant.
+    //   Multiple writers (TanStack queryFn, hydration, realtime patches) can replace
+    //   the trip object. If the new value targets the SAME requestId but lacks a
+    //   finite `startedAt`, the old `startedAt` is kept. This protects against the
+    //   cold-start race where the first server fetch arrives before hydration and
+    //   reports `startedAt = null` (or a fresh Date.now()) — which would otherwise
+    //   reset trip progress on every Metro reload.
     setActiveAmbulanceTrip: (nextValueOrUpdater) => {
       set((state) => {
         const prev = state.activeAmbulanceTrip;
-        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        const raw = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        const next = preserveTripStartedAt(prev, raw);
         if (!areRuntimeStateValuesEqual(next, prev)) state.activeAmbulanceTrip = next;
       });
     },
@@ -62,7 +103,8 @@ export const useEmergencyTripStore = create(
     setActiveBedBooking: (nextValueOrUpdater) => {
       set((state) => {
         const prev = state.activeBedBooking;
-        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        const raw = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
+        const next = preserveTripStartedAt(prev, raw);
         if (!areRuntimeStateValuesEqual(next, prev)) state.activeBedBooking = next;
       });
     },
@@ -83,24 +125,26 @@ export const useEmergencyTripStore = create(
       });
     },
     
-    // Patch methods (partial updates)
+    // Patch methods (partial updates) — also preserve startedAt invariant.
     patchActiveAmbulanceTrip: (updates) => {
       set((state) => {
         if (!state.activeAmbulanceTrip) return;
-        state.activeAmbulanceTrip = {
+        const merged = {
           ...state.activeAmbulanceTrip,
           ...updates,
           assignedAmbulance: updates.assignedAmbulance
             ? { ...state.activeAmbulanceTrip.assignedAmbulance, ...updates.assignedAmbulance }
             : state.activeAmbulanceTrip.assignedAmbulance,
         };
+        state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, merged);
       });
     },
     
     patchActiveBedBooking: (updates) => {
       set((state) => {
         if (!state.activeBedBooking) return;
-        state.activeBedBooking = { ...state.activeBedBooking, ...updates };
+        const merged = { ...state.activeBedBooking, ...updates };
+        state.activeBedBooking = preserveTripStartedAt(state.activeBedBooking, merged);
       });
     },
     
@@ -199,11 +243,16 @@ export const useEmergencyTripStore = create(
       });
     },
     
-    // Hydration helper
+    // Hydration helper — also routes through preserveTripStartedAt so any
+    // legacy server-sync path can't reset the immutable trip start moment.
     hydrateFromServer: (activeAmbulance, activeBed, pending) => {
       set((state) => {
-        if (activeAmbulance !== undefined) state.activeAmbulanceTrip = activeAmbulance;
-        if (activeBed !== undefined) state.activeBedBooking = activeBed;
+        if (activeAmbulance !== undefined) {
+          state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, activeAmbulance);
+        }
+        if (activeBed !== undefined) {
+          state.activeBedBooking = preserveTripStartedAt(state.activeBedBooking, activeBed);
+        }
         if (pending !== undefined) state.pendingApproval = pending;
         state.lastSyncAt = Date.now();
       });
@@ -301,24 +350,40 @@ function shouldApplyTripEvent(gateState, trip, record, fallbackMs) {
   };
 }
 
-// Subscribe to state changes and auto-persist
-// PULLBACK NOTE: Phase 1 — database.write replaces AsyncStorage.setItem
-useEmergencyTripStore.subscribe(
-  (state) => ({
+// Subscribe to state changes and auto-persist.
+// PULLBACK NOTE: Tracking sheet — Metro reload progress reset bug fix.
+// OLD: `subscribe(selector, listener)` two-arg form requires the
+//      `subscribeWithSelector` middleware in Zustand v5. This store only composes
+//      `immer`, so the two-arg form silently treated the selector as the listener
+//      and dropped the persist callback. Result: activeAmbulanceTrip was NEVER
+//      written to storage → every Metro reload restarted progress from zero.
+// NEW: single-listener `subscribe(listener)` with manual change detection on the
+//      fields we actually persist. Works without extra middleware.
+let lastPersistedSnapshot = null;
+useEmergencyTripStore.subscribe((state) => {
+  if (!isHydrated) return;
+  const snapshot = {
     activeAmbulanceTrip: state.activeAmbulanceTrip,
     activeBedBooking: state.activeBedBooking,
     pendingApproval: state.pendingApproval,
     commitFlow: state.commitFlow,
     eventGates: state.eventGates,
-  }),
-  (persistedState) => {
-    if (isHydrated) {
-      database.write(STORAGE_KEY, normalizeEmergencyState(persistedState)).catch((err) => {
-        console.warn('[emergencyTripStore] Auto-persist error:', err);
-      });
-    }
+  };
+  if (
+    lastPersistedSnapshot &&
+    lastPersistedSnapshot.activeAmbulanceTrip === snapshot.activeAmbulanceTrip &&
+    lastPersistedSnapshot.activeBedBooking === snapshot.activeBedBooking &&
+    lastPersistedSnapshot.pendingApproval === snapshot.pendingApproval &&
+    lastPersistedSnapshot.commitFlow === snapshot.commitFlow &&
+    lastPersistedSnapshot.eventGates === snapshot.eventGates
+  ) {
+    return;
   }
-);
+  lastPersistedSnapshot = snapshot;
+  database.write(STORAGE_KEY, normalizeEmergencyState(snapshot)).catch((err) => {
+    console.warn('[emergencyTripStore] Auto-persist error:', err);
+  });
+});
 
 /**
  * Hook to check if store is hydrated from storage

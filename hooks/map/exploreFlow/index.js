@@ -13,6 +13,7 @@ export { useMapComputedBooleans } from "./useMapComputedBooleans";
 export { useMapTracking } from "./useMapTracking";
 export { useMapTrackingTimer } from "./useMapTrackingTimer";
 export { useMapTrackingHeader } from "./useMapTrackingHeader";
+export { useMapTrackingStatus } from "./useMapTrackingStatus";
 export { useMapSheetNavigation } from "./useMapSheetNavigation";
 export { useMapCommitFlow } from "./useMapCommitFlow";
 export { useMapServiceDetail } from "./useMapServiceDetail";

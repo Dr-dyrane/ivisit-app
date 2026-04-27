@@ -78,6 +78,9 @@ export function MapTrackingTopSlot({
   showToggle = true,
   toggleIconName = "chevron-up",
   toggleAccessibilityLabel = "Toggle tracking sheet size",
+  titleAnimatedStyle = null,
+  // PULLBACK NOTE: Phase 8 — Separate text color from chevron/icon color
+  titleTextColor = null,
 }) {
   const clampedProgress = Math.max(0, Math.min(1, Number(triageProgress) || 0));
   const visualProgress = triageComplete
@@ -195,9 +198,17 @@ export function MapTrackingTopSlot({
         )}
       </View>
       <View style={styles.topSlotCopy}>
-        <Text numberOfLines={1} style={[styles.topSlotTitle, { color: titleColor }]}>
+        {/* PULLBACK NOTE: Phase 8 — Animated.Text uses status-aware titleTextColor; chevron stays on original titleColor */}
+        <Animated.Text
+          numberOfLines={1}
+          style={[
+            styles.topSlotTitle,
+            { color: titleTextColor || titleColor },
+            titleAnimatedStyle,
+          ]}
+        >
           {title}
-        </Text>
+        </Animated.Text>
         {subtitle ? (
           <Text
             numberOfLines={1}

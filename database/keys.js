@@ -120,6 +120,9 @@ export const StorageKeys = {
 	CONTACT_INPUT_MEMORY: `${DB_PREFIX}contact_input_memory`,
 	TRACKING_RATING_RECOVERY: `${DB_PREFIX}tracking_rating_recovery`,
 
+	/** Tracking visualization state — Phase 8 (status phase, progress, animation flag, in-flow rating) */
+	TRACKING_VISUALIZATION: `${DB_PREFIX}tracking_visualization`,
+
 	MIGRATION_VERSION: `${DB_PREFIX}migration_version`,
 };
 
@@ -168,6 +171,7 @@ export const SingletonKeys = [
 	StorageKeys.PROFILE_COMPLETION_DEFERRED,
 	StorageKeys.CONTACT_INPUT_MEMORY,
 	StorageKeys.TRACKING_RATING_RECOVERY,
+	StorageKeys.TRACKING_VISUALIZATION,
 	StorageKeys.MIGRATION_VERSION,
 ];
 

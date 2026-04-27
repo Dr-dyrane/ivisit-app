@@ -7,9 +7,13 @@ export function formatMapClockArrival(remainingSeconds, nowMs = Date.now()) {
 	const safeRemainingSeconds = toFiniteNumber(remainingSeconds);
 	if (!Number.isFinite(safeRemainingSeconds)) return "--";
 	const arrivalDate = new Date(nowMs + safeRemainingSeconds * 1000);
+	// PULLBACK NOTE: Phase 8 — Removed AM/PM from arrival time
+	// OLD: hour: "numeric" (12-hour with AM/PM)
+	// NEW: hour12: false (24-hour format, cleaner)
 	return arrivalDate.toLocaleTimeString([], {
-		hour: "numeric",
+		hour: "2-digit",
 		minute: "2-digit",
+		hour12: false,
 	});
 }
 

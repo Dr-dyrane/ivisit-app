@@ -317,24 +317,9 @@ export default function ScrollAwareHeader({
 				)}
 
 				<View style={styles.activeSessionTrailing}>
-					{resolvedSession.statusLabel ? (
-						<View
-							style={[
-								styles.sessionStatusPill,
-								{
-									backgroundColor: sessionStatusTokens.backgroundColor,
-									borderColor: sessionStatusTokens.borderColor,
-								},
-							]}
-						>
-							<Text
-								numberOfLines={1}
-								style={[styles.sessionStatusText, { color: sessionStatusTokens.textColor }]}
-							>
-								{resolvedSession.statusLabel}
-							</Text>
-						</View>
-					) : null}
+					{/* PULLBACK NOTE: Phase 8 — Removed status pill that displaced right component during tracking sheet phase */}
+					{/* OLD: <View style={styles.sessionStatusPill}>...{resolvedSession.statusLabel}...</View> */}
+					{/* NEW: Status now communicated via sheet title color animation + hero gradient underlay */}
 
 					{resolvedRight ? (
 						<View style={styles.activeSessionRightAccessory}>{resolvedRight}</View>

@@ -24,6 +24,8 @@ import { useVisits } from "../contexts/VisitsContext";
 import { useFABActions } from "../contexts/FABContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import { useMapShell } from "../hooks/map/shell/useMapShell";
+// PULLBACK NOTE: Phase 8 — Pass B: in-flow rating modal lifted to MapScreen
+import { useTrackingRatingFlow } from "../hooks/map/exploreFlow/useTrackingRatingFlow";
 // getMapViewportVariant/getMapViewportSurfaceConfig/isSidebarMapVariant — moved to useMapShell
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
 
@@ -1147,6 +1149,20 @@ export default function MapScreen() {
     );
   }, [cancelVisit, selectedHistoryVisit, showToast]);
 
+  // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
+  // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
+  const {
+    ratingState: trackingRatingState,
+    closeRating: closeTrackingRating,
+    skipRating: skipTrackingRating,
+    submitRating: submitTrackingRating,
+  } = useTrackingRatingFlow({
+    updateVisit,
+    showToast,
+    stopAmbulanceTrip,
+    stopBedBooking,
+  });
+
   const handleSkipHistoryRating = useCallback(async () => {
     const resolution = await resolveTrackingRatingSkip({
       visitId: historyRatingState?.visitId,
@@ -1495,6 +1511,21 @@ export default function MapScreen() {
         onClose={closeRecoveredRating}
         onSkip={handleSkipRecoveredRating}
         onSubmit={handleSubmitRecoveredRating}
+        surfaceVariant="map"
+        preferDrawerPresentation={usesSidebarLayout}
+      />
+
+      {/* PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal */}
+      {/* Lifted from MapTrackingStageBase so it survives sheet phase transitions */}
+      <ServiceRatingModal
+        visible={Boolean(trackingRatingState?.visible)}
+        serviceType={trackingRatingState?.serviceType || "visit"}
+        title={trackingRatingState?.title || "Rate your visit"}
+        subtitle={trackingRatingState?.subtitle || null}
+        serviceDetails={trackingRatingState?.serviceDetails || null}
+        onClose={closeTrackingRating}
+        onSkip={skipTrackingRating}
+        onSubmit={submitTrackingRating}
         surfaceVariant="map"
         preferDrawerPresentation={usesSidebarLayout}
       />
