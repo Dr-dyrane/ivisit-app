@@ -318,7 +318,7 @@ COMPLETING
 - 1,482 lines deleted — zero router entry points, zero source imports confirmed
 - **Recovery**: `git show 5d83a7a~1:screens/EmergencyScreen.jsx`
 
-#### 6e-2 (see commit below) EmergencyBottomSheet cluster — orphaned by EmergencyScreen deletion
+#### 6e-2 (`7f260f8`) EmergencyBottomSheet cluster — orphaned by EmergencyScreen deletion
 All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `MapSheetOrchestrator` — confirmed independent.
 
 **Components deleted:**
