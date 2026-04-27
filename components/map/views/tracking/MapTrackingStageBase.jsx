@@ -387,22 +387,54 @@ export default function MapTrackingStageBase({
 		</>
 	) : null;
 
+	// PULLBACK NOTE: Phase G — Hero card stage-aware data.
+	// OLD: title fell back to "Driver assigned" placeholder for any ambulance state
+	//      without a responder, including pending-approval and pre-dispatch — which
+	//      gave the impression a driver had been assigned when none had. rightMeta
+	//      showed plate/crew but never the ETA, so the user had to expand the sheet
+	//      to see remaining time.
+	// NEW: stage-keyed labels:
+	//   - pending  → title "Awaiting approval", subtitle service label, meta "Pending"
+	//   - ambulance no driver → title "Finding driver" (active state, not assigned)
+	//   - ambulance + driver → title responder name (existing behaviour)
+	//   - bed → title service label (existing behaviour)
+	// rightMeta on ambulance now prefers ETA when known so the medium detent shows
+	// the trip's most actionable signal at a glance (HIG single-focal-point rule).
+	const heroHasResolvedEta = Boolean(
+		etaLabel && etaLabel !== "Pending" && etaLabel !== "—"
+	);
+	const heroTitle =
+		trackingKind === "pending"
+			? "Awaiting approval"
+			: trackingKind === "bed"
+				? serviceLabel
+				: responderName || "Finding driver";
+	const heroSubtitle =
+		trackingKind === "bed"
+			? joinDisplayParts([hospitalName, secondaryTrackingLabel])
+			: toTitleCaseLabel(serviceLabel);
+	const heroRightMeta =
+		trackingKind === "pending"
+			? "Pending"
+			: trackingKind === "bed"
+				? formattedBedRemaining || null
+				: heroHasResolvedEta
+					? etaLabel
+					: responderSafetyMeta || crewCountLabel || null;
+	const heroAvatarIcon =
+		trackingKind === "pending"
+			? "hourglass-outline"
+			: trackingKind === "bed"
+				? "bed"
+				: "person";
+
 	const trackingPrimaryContent = (
 		<>
-			{/* PULLBACK NOTE: Phase 8 — Use existing TrackingTeamHeroCard progress fill (no duplicate underlay) */}
+			{/* PULLBACK NOTE: Phase G — single hero card surfaces stage-keyed copy + ETA */}
 			<TrackingTeamHeroCard
-				title={trackingKind === "bed" ? serviceLabel : responderName || "Driver assigned"}
-				subtitle={
-					trackingKind === "bed"
-						? joinDisplayParts([hospitalName, secondaryTrackingLabel])
-						: toTitleCaseLabel(serviceLabel)
-				}
-				rightMeta={
-					trackingKind === "ambulance"
-						? responderSafetyMeta || crewCountLabel
-						: formattedBedRemaining || null
-				}
-				// PULLBACK NOTE: Phase 8 — Removed state pill that displaced right component
+				title={heroTitle}
+				subtitle={heroSubtitle}
+				rightMeta={heroRightMeta}
 				stateLabel={null}
 				statePillBackgroundColor={null}
 				stateTextColor={null}
@@ -413,7 +445,7 @@ export default function MapTrackingStageBase({
 							? bedProgress
 							: 0
 				}
-				avatarIcon={trackingKind === "bed" ? "bed" : "person"}
+				avatarIcon={heroAvatarIcon}
 				backgroundColor={themeTokens.teamHeroWarningSurface}
 				progressColor={themeTokens.teamHeroWarningProgressColor}
 				titleColor={themeTokens.titleColor}

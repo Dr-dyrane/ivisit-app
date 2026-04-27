@@ -122,12 +122,16 @@ export function buildTrackingThemeTokens({
 					? "rgba(251,191,36,0.20)"
 					: "rgba(251,191,36,0.14)"
 				: teamHeroProgressColor;
-	// PULLBACK NOTE: Update secondary CTA surface to use iVisit red token like hospital details
-	// OLD: Neutral white/transparent surface
-	// NEW: iVisit red tinted surface for secondary CTAs
+	// PULLBACK NOTE: Phase G — visual hierarchy correction.
+	// OLD: red brand-tinted surface competed with the (now calm) hero card and
+	//      pulled the eye away from the primary progress channel. The CTA group
+	//      read as a second hero, breaking Apple HIG single-focal-point discipline.
+	// NEW: near-transparent neutral elevation surface — sits quietly beneath the
+	//      hero card so the user's eye flows hero → CTA group → bottom action
+	//      without colour whiplash.
 	const secondaryCtaSurface = isDarkMode
-		? "rgba(180,35,24,0.12)"
-		: "rgba(180,35,24,0.08)";
+		? "rgba(255,255,255,0.04)"
+		: "rgba(15,23,42,0.04)";
 	const stopIconSurface = isDarkMode
 		? "rgba(255,255,255,0.07)"
 		: "rgba(248,250,252,0.92)";
