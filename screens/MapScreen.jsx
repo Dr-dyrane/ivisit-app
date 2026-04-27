@@ -377,6 +377,8 @@ export default function MapScreen() {
         Boolean(activeMapRequest?.hasActiveRequest) &&
         wantsResumeAction &&
         matchesActiveEmergencyRequest;
+      // PULLBACK NOTE: VD-A diagnostic — log canResume discrepancy between visit status and live Zustand (defect VD-1)
+      console.log('[VD-A][MapScreen] handleSelectHistoryItem | requestId=', historyItem.requestId ?? null, '| visitCanResume=', historyItem.canResume ?? false, '| canResumeLiveRequest=', canResumeLiveRequest, '| hasActiveRequest=', activeMapRequest?.hasActiveRequest ?? false, '| matchesActive=', matchesActiveEmergencyRequest);
 
       if (canResumeLiveRequest) {
         openTracking?.();
@@ -946,6 +948,8 @@ export default function MapScreen() {
   ]);
 
   useEffect(() => {
+    // PULLBACK NOTE: VD-A diagnostic — log recovery rating trigger (defect VD-7: non-deterministic claims load)
+    console.log('[VD-A][MapScreen] recoveredRating effect | pendingVisitId=', pendingRecoveredRatingVisit?.id ?? null, '| claimsCount=', Object.keys(ratingRecoveryClaims).length, '| alreadyVisible=', recoveredRatingState?.visible ?? false);
     if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
     const nextState = buildRecoveredTrackingRatingState(
       pendingRecoveredRatingVisit,
@@ -1047,13 +1051,16 @@ export default function MapScreen() {
   );
 
   const handleResumeHistoryRequest = useCallback(() => {
+    // PULLBACK NOTE: VD-A diagnostic — log Zustand state at resume tap (defect VD-6: no hasActiveTrip guard)
+    console.log('[VD-A][MapScreen] handleResumeHistoryRequest | hasActiveRequest=', activeMapRequest?.hasActiveRequest ?? false, '| selectedHistoryVisitKey=', selectedHistoryVisitKey ?? null);
     closeHistoryVisitDetails();
     openTracking?.();
-  }, [closeHistoryVisitDetails, openTracking]);
+  }, [activeMapRequest?.hasActiveRequest, closeHistoryVisitDetails, openTracking, selectedHistoryVisitKey]);
 
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
-
+    // PULLBACK NOTE: VD-A diagnostic — history rating path (defect VD-2: parallel path, no updateVisit write)
+    console.log('[VD-A][MapScreen] handleRateHistoryVisit | visitId=', selectedHistoryVisit.id, '| requestType=', selectedHistoryVisit.requestType ?? null);
     setHistoryRatingState({
       visible: true,
       visitId: selectedHistoryVisit.id,
