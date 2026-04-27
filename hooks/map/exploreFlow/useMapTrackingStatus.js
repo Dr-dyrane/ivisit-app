@@ -9,7 +9,7 @@
 //   4. XState (trip lifecycle machine)
 //   5. Jotai (ephemeral UI state - THIS FILE)
 
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   trackingStatusPhaseAtom,
@@ -20,6 +20,7 @@ import {
   trackingCtaThemeAtom,
 } from "../../../atoms/mapScreenAtoms";
 import { useTripProgress } from "../../emergency/useTripProgress";
+import { useToast } from "../../../contexts/ToastContext";
 
 // Status transition thresholds (progress 0-1)
 const STATUS_THRESHOLDS = {
@@ -70,10 +71,15 @@ export function useMapTrackingStatus({
   ambulanceTripProgress,
   nowMs,
 }) {
+  const { showToast } = useToast();
+
   // Jotai atoms (5th layer - ephemeral UI state)
   const [statusPhase, setStatusPhase] = useAtom(trackingStatusPhaseAtom);
   const [progressValue, setProgressValue] = useAtom(trackingProgressValueAtom);
   const [hasAnimated, setHasAnimated] = useAtom(hasSheetTitleAnimatedAtom);
+
+  // Ref: suppress arrival toast on remount when already arrived; reset on any non-arrived phase
+  const hasFiredArrivedToastRef = useRef(statusPhase === "arrived");
 
   // Derived atoms
   const titleColor = useAtomValue(sheetTitleColorAtom);
@@ -133,8 +139,16 @@ export function useMapTrackingStatus({
     if (nextStatusPhase !== statusPhase) {
       setStatusPhase(nextStatusPhase);
       setHasAnimated(false); // Reset animation flag for new status
+
+      if (nextStatusPhase === "arrived" && !hasFiredArrivedToastRef.current) {
+        hasFiredArrivedToastRef.current = true;
+        showToast("Your driver has arrived", "success");
+      }
+      if (nextStatusPhase !== "arrived") {
+        hasFiredArrivedToastRef.current = false;
+      }
     }
-  }, [nextStatusPhase, statusPhase, setStatusPhase, setHasAnimated]);
+  }, [nextStatusPhase, statusPhase, setStatusPhase, setHasAnimated, showToast]);
 
   // Sync progress value
   useEffect(() => {
