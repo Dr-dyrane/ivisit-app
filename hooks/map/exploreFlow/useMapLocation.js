@@ -47,10 +47,14 @@ export function useMapLocation({
   width,
   height,
 }) {
+  const hasValidCoords = (loc) =>
+    loc &&
+    Number.isFinite(Number(loc.latitude)) &&
+    Number.isFinite(Number(loc.longitude));
   const activeLocation =
-    manualLocation?.location ||
-    emergencyUserLocation ||
-    globalUserLocation ||
+    (hasValidCoords(manualLocation?.location) && manualLocation.location) ||
+    (hasValidCoords(emergencyUserLocation) && emergencyUserLocation) ||
+    (hasValidCoords(globalUserLocation) && globalUserLocation) ||
     null;
 
   const currentLocationDetails = buildHeaderLocationModel(

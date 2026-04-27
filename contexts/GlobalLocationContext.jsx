@@ -218,8 +218,12 @@ export function GlobalLocationProvider({ children }) {
 				}
 			}
 		} catch (err) {
-			console.error("[GlobalLocationContext] Permission request failed:", err);
-			setLocationError(err.message);
+			console.error("[GlobalLocationContext] Permission request failed — using fallback:", err?.message ?? err);
+			const fallbackData = { ...DEFAULT_APP_COORDINATES };
+			setUserLocation(fallbackData);
+			setLastUpdated(Date.now());
+			void resolveLocationDetails(fallbackData);
+			setLocationError(null);
 		} finally {
 			setIsLoadingLocation(false);
 			isRequestingPermission.current = false;

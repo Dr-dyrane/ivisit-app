@@ -32,6 +32,12 @@ export const AuthProvider = ({ children }) => {
 			// Use database layer with proper keys
 			const storedToken = await database.read(StorageKeys.AUTH_TOKEN, null);
 			if (storedToken) {
+				// Seed from cache immediately so auth guard never fires on a stale loading=false state
+				const cachedUser = await database.read(StorageKeys.CURRENT_USER, null);
+				if (cachedUser) {
+					setUser(cachedUser);
+					setToken(storedToken);
+				}
 				const { data: userData } = await authService.getCurrentUser();
 
 				if (userData) {

@@ -771,7 +771,7 @@ export default function EmergencyLocationPreviewMap({
 	]);
 
 	useEffect(() => {
-		if (isMapReady || !hasLocation) {
+		if (isMapReady) {
 			return undefined;
 		}
 
@@ -780,7 +780,7 @@ export default function EmergencyLocationPreviewMap({
 		}, isWeb ? 1200 : 900);
 
 		return () => clearTimeout(fallbackTimeout);
-	}, [hasLocation, isMapReady, isWeb]);
+	}, [isMapReady, isWeb]);
 
 	useEffect(() => {
 		if (!isMapReady) {

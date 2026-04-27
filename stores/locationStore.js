@@ -27,21 +27,36 @@ export const useLocationStore = create(
     hydrated: false,
 
     // Actions — equality-guarded
+    // PULLBACK NOTE: Phase 6d follow-up — coordinate-validity guard
+    // OLD: accepted any object as nextLocation; partial/empty objects masked downstream sources
+    // NEW: only accept objects with finite latitude/longitude; otherwise store null
     setUserLocation: (nextLocation) => {
       set((state) => {
+        const lat = Number(nextLocation?.latitude);
+        const lng = Number(nextLocation?.longitude);
+        const isValid =
+          nextLocation && Number.isFinite(lat) && Number.isFinite(lng);
+        const normalized = isValid ? nextLocation : null;
         const prev = state.userLocation;
         const changed =
-          !prev ||
-          prev.latitude !== nextLocation?.latitude ||
-          prev.longitude !== nextLocation?.longitude;
-        if (changed) state.userLocation = nextLocation;
+          (!prev && normalized) ||
+          (prev && !normalized) ||
+          (prev && normalized &&
+            (prev.latitude !== normalized.latitude ||
+              prev.longitude !== normalized.longitude));
+        if (changed) state.userLocation = normalized;
       });
     },
 
     patchUserLocation: (patch) => {
       set((state) => {
         if (!state.userLocation) {
-          state.userLocation = patch;
+          // Only seed from a patch that has valid coordinates; otherwise keep null.
+          const lat = Number(patch?.latitude);
+          const lng = Number(patch?.longitude);
+          if (patch && Number.isFinite(lat) && Number.isFinite(lng)) {
+            state.userLocation = patch;
+          }
         } else {
           Object.assign(state.userLocation, patch);
         }
