@@ -50,7 +50,7 @@ These were deleted in the stash — already cleaned up in recovery branch.
 | `atoms/commitAtoms.ts` | A | ⏳ PENDING | Ephemeral commit UI state — review for 6c |
 | `atoms/emergencyAtoms.js` | A | ❌ REJECTED | Trip state atoms superseded by emergencyTripStore; mode atoms superseded by useModeStore — DELETE in 6e |
 | `atoms/mapFlowAtoms.js` | A | ✅ PULLED | Sheet phase, search, viewport — canonical ephemeral UI atoms, keep |
-| `atoms/mapScreenAtoms.js` | A | ⏳ PENDING | May overlap mapFlowAtoms — review before 6b |
+| `atoms/mapScreenAtoms.js` | A | ✅ PULLED — MapScreen decomp | rating/history/trackingRoute atoms — no overlap with mapFlowAtoms (owns sheet/search/viewport) |
 | `atoms/paymentAtoms.ts` | A | ⏳ PENDING | Ephemeral payment UI state — review for 6c |
 | `atoms/searchAtoms.ts` | A | ⏳ PENDING | Ephemeral search UI state — review for 6c |
 
@@ -142,20 +142,20 @@ These were deleted in the stash — already cleaned up in recovery branch.
 
 | File | Stash Op | Status | Notes |
 |---|---|---|---|
-| `hooks/map/shell/index.js` | A | ❌ REJECTED | Shell pattern rejected — see roadmap stash warning |
-| `hooks/map/shell/useMapCommitHandlers.ts` | A | ⚠️ REVIEW | Commit handlers — may have useful logic for MapScreen decomp |
-| `hooks/map/shell/useMapDecisionHandlers.js` | A | ⚠️ REVIEW | Decision handlers — MapScreen decomp candidate |
-| `hooks/map/shell/useMapDerivedState.ts` | A | ⚠️ REVIEW | Derived state — MapScreen decomp candidate |
-| `hooks/map/shell/useMapHistoryFlow.js` | A | ⚠️ REVIEW | History flow — MapScreen decomp candidate |
+| `hooks/map/shell/index.js` | A | ❌ REJECTED | Shell barrel rejected |
+| `hooks/map/shell/useMapCommitHandlers.ts` | A | ⚠️ REVIEW | Commit handlers — MapScreen decomp Pass 3 |
+| `hooks/map/shell/useMapDecisionHandlers.js` | A | ⚠️ REVIEW | Decision handlers — MapScreen decomp Pass 3 |
+| `hooks/map/shell/useMapDerivedState.ts` | A | ⚠️ REVIEW | Derived state — review for overlap |
+| `hooks/map/shell/useMapHistoryFlow.js` | A | ⚠️ REVIEW — NEXT | History + rating recovery — MapScreen decomp Pass 2 |
 | `hooks/map/shell/useMapHospitalResolution.ts` | A | ⚠️ REVIEW | Hospital resolution — MapScreen decomp candidate |
 | `hooks/map/shell/useMapMarkerState.ts` | A | ⚠️ REVIEW | Marker state — MapScreen decomp candidate |
 | `hooks/map/shell/useMapModals.js` | A | ⚠️ REVIEW | Modals — MapScreen decomp candidate |
 | `hooks/map/shell/useMapProfileActions.ts` | A | ⚠️ REVIEW | Profile actions — MapScreen decomp candidate |
 | `hooks/map/shell/useMapScreenEffects.js` | A | ⚠️ REVIEW | Screen effects — MapScreen decomp candidate |
-| `hooks/map/shell/useMapShell.js` | A | ❌ REJECTED | Monolithic shell hook — exact pattern we're avoiding |
+| `hooks/map/shell/useMapShell.js` | A | ✅ PULLED — MapScreen decomp Pass 1 | Viewport/layout/hasActiveMapModal extracted from MapScreen.jsx |
 | `hooks/map/shell/useMapTrackingActions.ts` | A | ⚠️ REVIEW | Tracking actions — MapScreen decomp candidate |
 | `hooks/map/shell/useMapTrackingState.js` | A | ⚠️ REVIEW | Tracking state — MapScreen decomp candidate |
-| `hooks/map/shell/useMapTrackingSync.ts` | A | ⚠️ REVIEW | Tracking sync — MapScreen decomp candidate |
+| `hooks/map/shell/useMapTrackingSync.ts` | A | ⚠️ REVIEW — Pass 4 | Route reconciliation — MapScreen decomp Pass 4 |
 
 ---
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Platform, StyleSheet, View } from "react-native";
+import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
@@ -9,7 +9,6 @@ import { ServiceRatingModal } from "../components/emergency/ServiceRatingModal";
 import MapSheetOrchestrator, {
   MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
-  getMapSheetHeight,
 } from "../components/map/core/MapSheetOrchestrator";
 import { buildBedDecisionSourcePayload } from "../components/map/core/mapSheetFlowPayloads";
 import { MAP_ACTIVE_REQUEST_KINDS } from "../components/map/core/mapActiveRequestModel";
@@ -24,11 +23,8 @@ import { useToast } from "../contexts/ToastContext";
 import { useVisits } from "../contexts/VisitsContext";
 import { useFABActions } from "../contexts/FABContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
-import {
-  getMapViewportSurfaceConfig,
-  getMapViewportVariant,
-  isSidebarMapVariant,
-} from "../components/map/core/mapViewportConfig";
+import { useMapShell } from "../hooks/map/shell/useMapShell";
+// getMapViewportVariant/getMapViewportSurfaceConfig/isSidebarMapVariant — moved to useMapShell
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
 
 import {
@@ -160,41 +156,11 @@ export default function MapScreen() {
     isArrived,
     isPendingApproval,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
-  const viewportVariant = useMemo(
-    () => getMapViewportVariant({ platform: Platform.OS, width }),
-    [width],
-  );
-  const surfaceConfig = useMemo(
-    () => getMapViewportSurfaceConfig(viewportVariant),
-    [viewportVariant],
-  );
-  const usesSidebarLayout = isSidebarMapVariant(viewportVariant);
-  const renderedSnapState = usesSidebarLayout
-    ? MAP_SHEET_SNAP_STATES.EXPANDED
-    : sheetSnapState;
-  const bottomSheetHeight = useMemo(
-    () =>
-      usesSidebarLayout ? 0 : getMapSheetHeight(height, renderedSnapState),
-    [height, renderedSnapState, usesSidebarLayout],
-  );
-  const sidebarWidth = useMemo(
-    () =>
-      usesSidebarLayout
-        ? Math.min(
-            surfaceConfig.sidebarMaxWidth || Math.max(400, width * 0.36),
-            Math.max(320, width - 48),
-          )
-        : 0,
-    [surfaceConfig.sidebarMaxWidth, usesSidebarLayout, width],
-  );
-  const sidebarOcclusionWidth = useMemo(
-    () =>
-      usesSidebarLayout
-        ? sidebarWidth +
-          Math.max(0, Number(surfaceConfig.sidebarOuterInset || 0))
-        : 0,
-    [sidebarWidth, surfaceConfig.sidebarOuterInset, usesSidebarLayout],
-  );
+
+  // PULLBACK NOTE: MapScreen decomposition Pass 1 — shell-level derivations extracted
+  // OLD: viewportVariant/surfaceConfig/usesSidebarLayout/renderedSnapState/bottomSheetHeight/
+  //      sidebarWidth/sidebarOcclusionWidth/activeHistoryRequestKeys/hasActiveMapModal all inline
+  // NEW: useMapShell owns all shell derivations; MapScreen passes raw values, destructures results
   const handledRecoveredRatingVisitIdsRef = useRef(new Set());
   const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
@@ -208,21 +174,38 @@ export default function MapScreen() {
   });
   const historyPaymentRequestVersionRef = useRef(0);
 
+  const {
+    viewportVariant,
+    surfaceConfig,
+    usesSidebarLayout,
+    renderedSnapState,
+    bottomSheetHeight,
+    sidebarWidth,
+    sidebarOcclusionWidth,
+    activeHistoryRequestKeys,
+    hasActiveMapModal,
+  } = useMapShell({
+    width,
+    height,
+    sheetSnapState,
+    activeMapRequest,
+    activeAmbulanceTrip,
+    activeBedBooking,
+    pendingApproval,
+    profileModalVisible,
+    guestProfileVisible,
+    careHistoryVisible,
+    recentVisitsVisible,
+    authModalVisible,
+    mapLoadingState,
+    historyPaymentState,
+    historyRatingState,
+    recoveredRatingState,
+  });
+
   // Visit details live in the VISIT_DETAIL sheet phase now (not a modal).
   const historyVisitDetailsVisible =
     sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
-
-  const hasActiveMapModal =
-
-    profileModalVisible ||
-    guestProfileVisible ||
-    careHistoryVisible ||
-    recentVisitsVisible ||
-    historyPaymentState.visible ||
-    Boolean(historyRatingState?.visible) ||
-    authModalVisible ||
-    Boolean(recoveredRatingState?.visible) ||
-    mapLoadingState?.visible;
 
 
   useEffect(() => {
@@ -263,32 +246,7 @@ export default function MapScreen() {
     () => selectHistoryItemByAnyKey(visits, selectedHistoryVisitKey),
     [selectedHistoryVisitKey, visits],
   );
-  const activeHistoryRequestKeys = useMemo(() => {
-    return new Set(
-      [
-        activeMapRequest?.requestId,
-        activeMapRequest?.id,
-        activeMapRequest?.record?.displayId,
-        activeAmbulanceTrip?.displayId,
-        activeBedBooking?.displayId,
-        pendingApproval?.displayId,
-      ]
-        .filter(
-          (value) =>
-            value !== null &&
-            value !== undefined &&
-            String(value).trim().length > 0,
-        )
-        .map((value) => String(value)),
-    );
-  }, [
-    activeAmbulanceTrip?.displayId,
-    activeBedBooking?.displayId,
-    activeMapRequest?.id,
-    activeMapRequest?.record?.displayId,
-    activeMapRequest?.requestId,
-    pendingApproval?.displayId,
-  ]);
+  // activeHistoryRequestKeys now derived in useMapShell
 
   const closeHistoryVisitDetails = useCallback(() => {
     setSelectedHistoryVisitKey(null);
