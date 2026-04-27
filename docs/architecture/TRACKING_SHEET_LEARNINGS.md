@@ -382,6 +382,49 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 
 ---
 
+### 2.13 Cascading `useEffect` loading state churn
+
+**Pattern**: A loading flag (`isRefreshing`) is reset to `true` by multiple independent `useEffect` hooks whose dependencies overlap. Hook A depends on value X. Hook B sets X as a side effect. Hook A re-fires when B completes — not because the user did anything, but because B changed its input.
+
+**Symptoms**:
+- "The sheet loads 2–4 times before showing content."
+- Loading skeleton re-appears after user has already seen data.
+- Perceived performance is worse than actual network time.
+
+**Diagnosis**: Find all `useEffect` hooks that call `setLoading(true)` or `setReady(false)`. Trace each dependency. Ask: "can any other `useEffect` in this file write a value in this dep array?" If yes, the effect will chain-fire.
+
+**Fix recipe**:
+1. Assign each data concern its own TanStack Query. Queries are independently cached and do not re-fetch because another query completed.
+2. If two queries produce values that feed into each other, use `useQuery` with `enabled: Boolean(dep)` — the second waits for the first, but does not re-run the first.
+3. Never put a derived computed value in a `useEffect` dependency array if that value is also set by another `useEffect` in the same hook. Extract it to TanStack Query or a stable `useMemo`.
+4. Loading UI must gate on `isLoading && !data` (first load only). Once data is present, show it — even while a background refetch runs.
+
+**Concrete site**: `useMapCommitPaymentController.js` — `refreshPaymentMethodSnapshot` re-fires because `totalCostValue` (set by `loadCost` effect) is in its `useCallback` dep array. Fix: adopt `usePaymentMethodsQuery` + `usePaymentCostCalculation` from stash (⏳ PENDING in STASH_AUDIT.md).
+
+---
+
+### 2.14 Terminal intermediate states must be visually locked and non-dismissible
+
+**Pattern**: A submission flow has a state (e.g. `WAITING_APPROVAL`, `FINALIZING_DISPATCH`) that is logically committed from the user's perspective but is still processing server-side. The UI does not visually distinguish this from a recoverable "try again" state — the CTA is re-tappable and the form looks idle.
+
+**Symptoms**:
+- User re-taps CTA during approval wait → silently dismisses the sheet.
+- User sees an idle-looking form while a server action is pending.
+- Retry creates duplicate server records.
+- `finally` block resets `isSubmitting = false` at the moment of early `return`, making the CTA appear pressable while `submissionState.kind` is `WAITING_APPROVAL`.
+
+**Diagnosis**: Map every non-`IDLE` state in the submission machine to one of: `RECOVERABLE` (can retry), `COMMITTED` (cannot dismiss), `TERMINAL` (show result, auto-dismiss). For each `COMMITTED` state: is the CTA locked? Is dismissal blocked? If user can tap again, what does that action do?
+
+**Fix recipe**:
+1. In `isCommitPaymentDismissibleState`, remove `WAITING_APPROVAL` from the dismissible list. It is a committed server action.
+2. Add `WAITING_APPROVAL` to the CTA disabled derivation: `isPaymentMethodSnapshotPending || submissionState.kind === WAITING_APPROVAL`.
+3. Remove the parallel `isSubmitting` boolean — use `submissionState.kind` as the **single source of truth** for all busy/disabled state. `isSubmitting` and `submissionState.kind` diverge during the window between line 492 (`setIsSubmitting(true)`) and the first `setTransactionState` call, causing a frame where `isIdleState = true` but `isSubmitting = true`.
+4. Keep `isSubmitting = true` for the entire approval wait window — set to `false` only on `DISPATCHED`, `FAILED`, or `PAYMENT_DECLINED`.
+
+**Concrete site**: `useMapCommitPaymentController.js` — `WAITING_APPROVAL` listed as dismissible in `isCommitPaymentDismissibleState`. `finally` block resets `isSubmitting = false` at the moment of the `return` on the approval path. Fix: PT-C pass (pre-tracking audit).
+
+---
+
 ## 6. Update This Document
 
 Every future pass that uncovers a new defect class should append to this file. This is the canonical record of "lessons we paid for."
