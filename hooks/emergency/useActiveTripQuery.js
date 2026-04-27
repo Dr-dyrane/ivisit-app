@@ -121,6 +121,15 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
 		etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
 		etaSource,
 		startedAt,
+		// PULLBACK NOTE: Tracking sheet — preserve responder identity across server merges.
+		// OLD: `name` and `phone` were assigned from `activeAmbulance.*` directly, with no
+		//      fallback to the previous snapshot. When the server emitted a partial payload
+		//      (e.g. responderLocation present but responderName absent), the merge wrote
+		//      `name: undefined` and the hero card fell back to the "Driver assigned"
+		//      placeholder even though the responder identity was already persisted.
+		// NEW: `name` and `phone` join `type`/`plate`/`location`/`heading` in chaining
+		//      `||` fallbacks: server → previous snapshot → fullAmbulance → null. Once the
+		//      driver is identified, partial server updates can never erase that identity.
 		assignedAmbulance: hasResponderIdentity
 			? {
 					...fullAmbulance,
@@ -128,8 +137,16 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
 					id: activeAmbulance.ambulanceId || "ems_001",
 					type: activeAmbulance.responderVehicleType || fullAmbulance?.type || "Ambulance",
 					plate: activeAmbulance.responderVehiclePlate || fullAmbulance?.vehicleNumber,
-					name: activeAmbulance.responderName,
-					phone: activeAmbulance.responderPhone,
+					name:
+						activeAmbulance.responderName ||
+						previousAmbulanceTrip?.assignedAmbulance?.name ||
+						fullAmbulance?.name ||
+						null,
+					phone:
+						activeAmbulance.responderPhone ||
+						previousAmbulanceTrip?.assignedAmbulance?.phone ||
+						fullAmbulance?.phone ||
+						null,
 					location:
 						loc || fullAmbulance?.location ||
 						previousAmbulanceTrip?.assignedAmbulance?.location || null,
