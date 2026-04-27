@@ -1,3 +1,4 @@
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
 // PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
@@ -22,6 +23,14 @@ import {
 	normalizeApiErrorMessage,
 	waitForMinimumPending,
 } from "../../../../utils/ui/apiInteractionFeedback";
+import {
+	estimatedCostAtom,
+	isLoadingCostAtom,
+	isSubmittingPaymentAtom,
+	paymentErrorMessageAtom,
+	paymentInfoMessageAtom,
+	paymentSubmissionStateAtom,
+} from "../../../../atoms/paymentAtoms";
 import { MAP_COMMIT_PAYMENT_COPY } from "./mapCommitPayment.content";
 import {
 	buildAmbulanceCommitRequest,
@@ -110,8 +119,20 @@ export function useMapCommitPaymentController({
 		onRequestComplete: () => {},
 	});
 
+	// PULLBACK NOTE: PT-D — wire controller to paymentAtoms (Jotai L5)
+	// OLD: useState for every piece — no persistence across sheet remount, no layer compliance
+	// NEW: atoms own submission state, cost state, feedback strings — survive collapse/remount
+	const [submissionState, setSubmissionState] = useAtom(paymentSubmissionStateAtom);
+	const [isSubmitting, setIsSubmitting] = useAtom(isSubmittingPaymentAtom);
+	const [errorMessage, setErrorMessage] = useAtom(paymentErrorMessageAtom);
+	const [infoMessage, setInfoMessage] = useAtom(paymentInfoMessageAtom);
+	const [estimatedCost, setEstimatedCost] = useAtom(estimatedCostAtom);
+	const [isLoadingCost, setIsLoadingCost] = useAtom(isLoadingCostAtom);
+
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+	// PULLBACK NOTE: PT-D (violation 3) — selectedPaymentMethodRef assigned inline; useEffect sync removed
 	const selectedPaymentMethodRef = useRef(null);
+	selectedPaymentMethodRef.current = selectedPaymentMethod;
 	const paymentMethodsRefreshRef = useRef(0);
 	// PULLBACK NOTE: PT-B — totalCostValueRef breaks the refreshPaymentMethodSnapshot → totalCostValue
 	// closure dep chain that caused 2–4 reload churn (defect PT-1, class 2.13).
@@ -133,26 +154,27 @@ export function useMapCommitPaymentController({
 	const autoApprovalTimeoutRef = useRef(null);
 	const isMountedRef = useRef(true);
 	// PULLBACK NOTE: PT-C — awaitingApprovalRef tracks whether we are in the WAITING_APPROVAL window
-	// OLD: isSubmitting reset to false in finally’s return path, making CTA re-pressable during approval wait
+	// OLD: isSubmitting reset to false in finally's return path, making CTA re-pressable during approval wait
 	// NEW: ref prevents isSubmitting reset until approval resolves (DISPATCHED/FAILED/PAYMENT_DECLINED)
 	const awaitingApprovalRef = useRef(false);
 	const [isRefreshingPaymentMethods, setIsRefreshingPaymentMethods] = useState(false);
 	const [paymentMethodsSnapshotReady, setPaymentMethodsSnapshotReady] = useState(false);
 	const [paymentMethodsRefreshKey, setPaymentMethodsRefreshKey] = useState(0);
-	const [estimatedCost, setEstimatedCost] = useState(() =>
-		normalizeCommitPaymentCost(
-			payload?.pricingSnapshot || null,
-			hasRoomSelection ? room : transport,
-			selectionHeaderLabel,
-		),
-	);
-	const [isLoadingCost, setIsLoadingCost] = useState(false);
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [errorMessage, setErrorMessage] = useState("");
-	const [infoMessage, setInfoMessage] = useState("");
-	const [submissionState, setSubmissionState] = useState({
-		...createCommitPaymentSubmissionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE),
-	});
+
+	// PULLBACK NOTE: PT-D — seed estimatedCost atom from pricingSnapshot on first mount if atom is empty
+	// Runs synchronously before first render paint; no effect needed
+	const _seedCost = useMemo(() => {
+		if (estimatedCost === null && payload?.pricingSnapshot) {
+			const seeded = normalizeCommitPaymentCost(
+				payload.pricingSnapshot,
+				hasRoomSelection ? room : transport,
+				selectionHeaderLabel,
+			);
+			if (seeded) setEstimatedCost(seeded);
+		}
+		return null;
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
 	// PULLBACK NOTE: PT-B — keep ref in sync with state for use inside refreshPaymentMethodSnapshot
@@ -162,10 +184,9 @@ export function useMapCommitPaymentController({
 		: null;
 
 	useEffect(() => {
-		selectedPaymentMethodRef.current = selectedPaymentMethod;
-	}, [selectedPaymentMethod]);
-
-	useEffect(() => {
+		// PULLBACK NOTE: PT-D — seed submissionState atom with correct controller shape on mount
+		// atom default shape differs from createCommitPaymentSubmissionState (display/dismissible vs displayId/requestId)
+		setSubmissionState(createCommitPaymentSubmissionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE));
 		return () => {
 			isMountedRef.current = false;
 			submitLockRef.current = false;
@@ -173,7 +194,14 @@ export function useMapCommitPaymentController({
 				clearTimeout(autoApprovalTimeoutRef.current);
 				autoApprovalTimeoutRef.current = null;
 			}
+			// PULLBACK NOTE: PT-D — reset ephemeral atoms on unmount so stale state does not bleed
+			// into next sheet open. WAITING_APPROVAL and above are intentionally NOT reset here
+			// (awaitingApprovalRef guards the CTA; atom persists through collapse for remount lock).
+			setErrorMessage("");
+			setInfoMessage("");
+			setIsLoadingCost(false);
 		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const setTransactionState = useCallback((kind, meta = {}) => {
