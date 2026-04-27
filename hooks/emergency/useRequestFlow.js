@@ -638,10 +638,10 @@ export const useRequestFlow = (props) => {
 			}
 
 			try {
-				await updateVisit?.(visitId, {
-					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.CONFIRMED,
-					lifecycleUpdatedAt: nowIso,
-				});
+				// PULLBACK NOTE: PT-G — removed duplicate updateVisit(CONFIRMED) that was immediately
+				// overwritten by MONITORING in the same try block (silent drop — CONFIRMED never observable)
+				// OLD: CONFIRMED → MONITORING (two writes; first is invisible to all subscribers)
+				// NEW: write MONITORING directly — correct terminal state for an accepted dispatch
 				await updateVisit?.(visitId, {
 					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
 					lifecycleUpdatedAt: nowIso,
@@ -651,13 +651,15 @@ export const useRequestFlow = (props) => {
 
 			if (request.serviceType === "ambulance") {
 				const routeEtaSeconds = request?.etaSeconds ?? currentRoute?.durationSec ?? currentRoute?.duration ?? null;
+				// PULLBACK NOTE: PT-G — null guard on fallbackEtaLabel: show 'En route' instead of blank
+				// when no etaSeconds or estimatedArrival is available on dispatch
 				const fallbackEtaLabel =
 					request?.estimatedArrival ??
 					(Number.isFinite(routeEtaSeconds)
 						? (routeEtaSeconds < 60
 							? `${Math.max(1, Math.round(routeEtaSeconds))}s`
 							: `${Math.max(1, Math.round(routeEtaSeconds / 60))} min`)
-						: null);
+						: 'En route');
 				startAmbulanceTrip({
 					hospitalId,
 					requestId: visitId,
