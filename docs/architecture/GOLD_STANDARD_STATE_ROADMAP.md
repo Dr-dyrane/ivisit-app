@@ -312,8 +312,35 @@ COMPLETING
 - `setUserLocation` + `emergencyUserLocation` → `useLocationStore`
 - `refreshHospitals` remains on `useEmergency()` — server action
 
-### 6e ✅ COMPLETE (`5d83a7a`) Dead code cleanup
-- `EmergencyScreen.jsx` deleted — 1,482 lines, zero router entry points, zero source imports confirmed
+### 6e ✅ COMPLETE — Dead code cleanup
+
+#### 6e-1 (`5d83a7a`) `screens/EmergencyScreen.jsx`
+- 1,482 lines deleted — zero router entry points, zero source imports confirmed
+- **Recovery**: `git show 5d83a7a~1:screens/EmergencyScreen.jsx`
+
+#### 6e-2 (see commit below) EmergencyBottomSheet cluster — orphaned by EmergencyScreen deletion
+All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `MapSheetOrchestrator` — confirmed independent.
+
+**Components deleted:**
+- `components/emergency/EmergencyBottomSheet.jsx` — main sheet host (~540 lines)
+- `components/emergency/BottomSheetController.jsx` — ref-forwarding wrapper
+- `components/emergency/bottomSheet/EmergencySheetHandle.jsx`
+- `components/emergency/bottomSheet/EmergencySheetBackground.jsx`
+- `components/emergency/bottomSheet/EmergencySheetTopRow.jsx`
+- `components/emergency/bottomSheet/EmergencySheetFilters.jsx`
+- `components/emergency/bottomSheet/EmergencySheetSectionHeader.jsx`
+- `components/emergency/bottomSheet/EmergencySheetHospitalList.jsx`
+- `components/emergency/bottomSheet/TripSummaryCard.jsx`
+- `components/emergency/bottomSheet/BedBookingSummaryCard.jsx`
+- `components/emergency/bottomSheet/ActiveVisitsSwitcher.jsx`
+
+**Hooks deleted:**
+- `hooks/emergency/useBottomSheetSnap.js`
+- `hooks/emergency/useBottomSheetScroll.js`
+- `hooks/emergency/useBottomSheetSearch.js`
+- `hooks/emergency/useEmergencySheetController.js`
+
+**Recovery**: `git show <6e-2 hash>^` to browse all deleted files, or `git checkout <6e-2 hash>~ -- <path>` to restore any individual file
 
 ## MapScreen Decomposition — Parallel Track (not Phase 6)
 - `MapScreen.jsx` is **1,434 lines** — architectural violation (mandate: max 500 for screen files)
