@@ -1,9 +1,5 @@
 // components/emergency/ServiceRatingModal.jsx
-
-/**
- * ServiceRatingModal - Apple-inspired redesign
- * Clean, minimal design following app's no-border rule and theme system
- */
+// Refactored to use StyleSheet instead of Tailwind for web responsiveness
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
@@ -16,42 +12,33 @@ import {
 	Platform,
 	ScrollView,
 	Dimensions,
-	useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
+import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
 import { paymentService } from "../../services/paymentService";
 import MapModalShell from "../map/surfaces/MapModalShell";
+import { styles, getServiceRatingModalResponsiveStyles } from "./serviceRatingModal.styles";
 
-// PULLBACK NOTE: Phase 8 — MapModalShell is the canonical responsive shell across all viewports
-// OLD: Two paths — legacy bottom-sheet (mobile-only) and map shell (responsive)
-// NEW: Single path through MapModalShell. Responsive across mobile/tablet/foldable/desktop
-// via useResponsiveSurfaceMetrics. ESC, click-outside, drawer/sheet adapt automatically.
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TIP_PRESETS = [0, 5, 10, 20];
 const IS_WEB = Platform.OS === "web";
-const squircle = (radius) => ({
-	borderRadius: radius,
-	borderCurve: "continuous",
-});
 
 export function ServiceRatingModal({
 	visible,
-	serviceType = "visit", // "ambulance", "bed", "visit"
+	serviceType = "visit",
 	title = "Rate your service",
 	subtitle = null,
-	serviceDetails = null, // { provider, hospital, duration, etc. }
+	serviceDetails = null,
 	onClose,
 	onSkip,
 	onSubmit,
-	// PULLBACK NOTE: Phase 8 — "map" is now the default; "legacy" branch removed
 	surfaceVariant = "map",
 	preferDrawerPresentation = false,
 }) {
 	const { isDarkMode } = useTheme();
-	const { height: windowHeight } = useWindowDimensions();
 	const [rating, setRating] = useState(0);
 	const [comment, setComment] = useState("");
 	const [selectedTip, setSelectedTip] = useState(0);
@@ -62,10 +49,19 @@ export function ServiceRatingModal({
 	const [walletLoading, setWalletLoading] = useState(false);
 	const [isActionPending, setIsActionPending] = useState(false);
 
+	// Get responsive viewport metrics
+	const viewportMetrics = useResponsiveSurfaceMetrics({
+		presentationMode: preferDrawerPresentation ? "modal" : "sheet",
+	});
+	const responsiveStyles = useMemo(
+		() => getServiceRatingModalResponsiveStyles(viewportMetrics),
+		[viewportMetrics]
+	);
+
 	const { modalHeight, keyboardHeight, getKeyboardAvoidingViewProps, getScrollViewProps } =
 		useAndroidKeyboardAwareModal({
 			defaultHeight: SCREEN_HEIGHT,
-			maxHeightPercentage: 0.9
+			maxHeightPercentage: 0.9,
 		});
 
 	useEffect(() => {
@@ -106,13 +102,17 @@ export function ServiceRatingModal({
 		};
 	}, [visible]);
 
-	const colors = useMemo(() => ({
-		bg: isDarkMode ? COLORS.bgDark : "#FCFDFE",
-		text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
-		subtext: isDarkMode ? COLORS.textMutedDark : "#667085",
-		card: isDarkMode ? COLORS.bgDarkAlt : "#EEF2F6",
-		accent: COLORS.brandPrimary,
-	}), [isDarkMode]);
+	const colors = useMemo(
+		() => ({
+			bg: isDarkMode ? COLORS.bgDark : "#FCFDFE",
+			text: isDarkMode ? COLORS.textLight : COLORS.textPrimary,
+			subtext: isDarkMode ? COLORS.textMutedDark : "#667085",
+			card: isDarkMode ? COLORS.bgDarkAlt : "#EEF2F6",
+			accent: COLORS.brandPrimary,
+		}),
+		[isDarkMode]
+	);
+
 	const secondaryActionStyle = useMemo(
 		() => ({
 			backgroundColor: isDarkMode ? "rgba(255,255,255,0.10)" : "#E9EEF5",
@@ -121,18 +121,18 @@ export function ServiceRatingModal({
 			shadowRadius: 18,
 			shadowOffset: { width: 0, height: 10 },
 			elevation: 4,
-			...squircle(28),
 		}),
-		[colors.card, isDarkMode],
+		[isDarkMode]
 	);
+
 	const disabledPrimaryActionStyle = useMemo(
 		() => ({
 			backgroundColor: isDarkMode ? "rgba(255,255,255,0.12)" : "#E9EEF5",
 			opacity: 1,
-			...squircle(28),
 		}),
-		[isDarkMode],
+		[isDarkMode]
 	);
+
 	const enabledPrimaryActionStyle = useMemo(
 		() => ({
 			backgroundColor: colors.accent,
@@ -142,13 +142,14 @@ export function ServiceRatingModal({
 			shadowRadius: 22,
 			shadowOffset: { width: 0, height: 12 },
 			elevation: 8,
-			...squircle(28),
 		}),
-		[colors.accent, isDarkMode],
+		[colors.accent, isDarkMode]
 	);
 
 	const currentTipAmount = useMemo(() => {
-		const normalizedCustomTip = Number.parseFloat(String(customTip || "").replace(/[^0-9.]/g, ""));
+		const normalizedCustomTip = Number.parseFloat(
+			String(customTip || "").replace(/[^0-9.]/g, "")
+		);
 		if (isCustomTip) {
 			return Number.isFinite(normalizedCustomTip)
 				? Math.max(0, Math.round(normalizedCustomTip * 100) / 100)
@@ -159,12 +160,13 @@ export function ServiceRatingModal({
 
 	const isWalletShortForTip =
 		currentTipAmount > 0 && currentTipAmount > Number(walletBalance || 0);
+
 	const mapShellMaxHeightRatio = useMemo(() => {
-		if (!Number.isFinite(windowHeight) || windowHeight <= 0) {
+		if (!Number.isFinite(modalHeight) || modalHeight <= 0) {
 			return 0.9;
 		}
-		return Math.max(0.56, Math.min(0.92, modalHeight / windowHeight));
-	}, [modalHeight, windowHeight]);
+		return Math.max(0.56, Math.min(0.92, modalHeight / SCREEN_HEIGHT));
+	}, [modalHeight]);
 
 	const close = useCallback(() => {
 		Keyboard.dismiss();
@@ -219,28 +221,40 @@ export function ServiceRatingModal({
 
 	const getServiceIcon = () => {
 		switch (serviceType) {
-			case "ambulance": return "medical";
-			case "bed": return "bed";
-			default: return "calendar";
+			case "ambulance":
+				return "medical";
+			case "bed":
+				return "bed";
+			default:
+				return "calendar";
 		}
 	};
 
 	const getServiceTypeLabel = () => {
 		switch (serviceType) {
-			case "ambulance": return "emergency response";
-			case "bed": return "hospital stay";
-			default: return "visit";
+			case "ambulance":
+				return "emergency response";
+			case "bed":
+				return "hospital stay";
+			default:
+				return "visit";
 		}
 	};
 
 	const getRatingText = () => {
 		switch (rating) {
-			case 5: return "Excellent!";
-			case 4: return "Good";
-			case 3: return "Okay";
-			case 2: return "Poor";
-			case 1: return "Very Poor";
-			default: return "";
+			case 5:
+				return "Excellent!";
+			case 4:
+				return "Good";
+			case 3:
+				return "Okay";
+			case 2:
+				return "Poor";
+			case 1:
+				return "Very Poor";
+			default:
+				return "";
 		}
 	};
 
@@ -253,7 +267,7 @@ export function ServiceRatingModal({
 		void handleSkip();
 	}, [handleSkip, isActionPending, keyboardHeight]);
 
-	// PULLBACK NOTE: Phase 8 — Web ESC key support (HIG-equivalent: dismiss on Escape)
+	// Web ESC key support
 	useEffect(() => {
 		if (!IS_WEB || !visible || typeof window === "undefined") return undefined;
 		const onKeyDown = (event) => {
@@ -269,30 +283,32 @@ export function ServiceRatingModal({
 	const ratingBody = (
 		<>
 			{/* Header */}
-			<View className="items-center mb-8">
+			<View style={[styles.header, responsiveStyles.header]}>
 				<View
-					className="w-16 h-16 items-center justify-center mb-4"
-					style={{
-						backgroundColor: `${colors.accent}15`,
-						...squircle(24),
-					}}
+					style={[
+						styles.iconContainer,
+						responsiveStyles.iconContainer,
+						{ backgroundColor: `${colors.accent}15` },
+					]}
 				>
 					<Ionicons name={getServiceIcon()} size={32} color={colors.accent} />
 				</View>
 				<Text
-					className="text-3xl text-center mb-2"
-					style={{
-						color: colors.text,
-						fontWeight: "700",
-						letterSpacing: -0.7,
-					}}
+					style={[
+						styles.title,
+						responsiveStyles.title,
+						{ color: colors.text },
+					]}
 				>
 					{title}
 				</Text>
 				{subtitle && (
 					<Text
-						className="text-base text-center"
-						style={{ color: colors.subtext }}
+						style={[
+							styles.subtitle,
+							responsiveStyles.subtitle,
+							{ color: colors.subtext },
+						]}
 					>
 						{subtitle}
 					</Text>
@@ -302,40 +318,64 @@ export function ServiceRatingModal({
 			{/* Service Details */}
 			{serviceDetails && (
 				<View
-					className="p-4 mb-6"
-					style={{
-						backgroundColor: colors.card,
-						...squircle(24),
-					}}
+					style={[
+						styles.serviceDetailsCard,
+						responsiveStyles.serviceDetailsCard,
+						{ backgroundColor: colors.card },
+					]}
 				>
 					{serviceDetails.provider && (
-						<View className="flex-row items-center mb-3">
-							<Ionicons name="person" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+						<View style={styles.serviceDetailRow}>
+							<Ionicons
+								name="person"
+								size={16}
+								color={colors.subtext}
+								style={styles.serviceDetailIcon}
+							/>
 							<Text
-								className="text-base font-medium"
-								style={{ color: colors.text }}
+								style={[
+									styles.serviceDetailText,
+									responsiveStyles.serviceDetailText,
+									{ color: colors.text },
+								]}
 							>
 								{serviceDetails.provider}
 							</Text>
 						</View>
 					)}
 					{serviceDetails.hospital && (
-						<View className="flex-row items-center mb-3">
-							<Ionicons name="business" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+						<View style={styles.serviceDetailRow}>
+							<Ionicons
+								name="business"
+								size={16}
+								color={colors.subtext}
+								style={styles.serviceDetailIcon}
+							/>
 							<Text
-								className="text-base font-medium"
-								style={{ color: colors.text }}
+								style={[
+									styles.serviceDetailText,
+									responsiveStyles.serviceDetailText,
+									{ color: colors.text },
+								]}
 							>
 								{serviceDetails.hospital}
 							</Text>
 						</View>
 					)}
 					{serviceDetails.duration && (
-						<View className="flex-row items-center">
-							<Ionicons name="time" size={16} color={colors.subtext} style={{ marginRight: 12 }} />
+						<View style={[styles.serviceDetailRow, styles.serviceDetailRowLast]}>
+							<Ionicons
+								name="time"
+								size={16}
+								color={colors.subtext}
+								style={styles.serviceDetailIcon}
+							/>
 							<Text
-								className="text-base font-medium"
-								style={{ color: colors.text }}
+								style={[
+									styles.serviceDetailText,
+									responsiveStyles.serviceDetailText,
+									{ color: colors.text },
+								]}
 							>
 								{serviceDetails.duration}
 							</Text>
@@ -345,16 +385,19 @@ export function ServiceRatingModal({
 			)}
 
 			{/* Rating Section */}
-			<View className="mb-6">
+			<View style={[styles.ratingSection, responsiveStyles.ratingSection]}>
 				<Text
-					className="text-lg font-semibold text-center mb-6"
-					style={{ color: colors.text }}
+					style={[
+						styles.ratingPrompt,
+						responsiveStyles.ratingPrompt,
+						{ color: colors.text },
+					]}
 				>
 					How was your {getServiceTypeLabel()}?
 				</Text>
 
 				{/* Stars */}
-				<View className="flex-row justify-center mb-4">
+				<View style={[styles.starsContainer, responsiveStyles.starsContainer]}>
 					{stars.map((star) => {
 						const isActive = star <= rating;
 						return (
@@ -364,8 +407,11 @@ export function ServiceRatingModal({
 									Keyboard.dismiss();
 									setRating(star);
 								}}
-								className="p-2"
-								style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+								style={({ pressed }) => [
+									styles.starButton,
+									responsiveStyles.starButton,
+									{ opacity: pressed ? 0.7 : 1 },
+								]}
 							>
 								<Ionicons
 									name={isActive ? "star" : "star-outline"}
@@ -380,8 +426,11 @@ export function ServiceRatingModal({
 				{/* Rating Text */}
 				{rating > 0 && (
 					<Text
-						className="text-center text-lg font-medium mb-2"
-						style={{ color: colors.accent }}
+						style={[
+							styles.ratingText,
+							responsiveStyles.ratingText,
+							{ color: colors.accent },
+						]}
 					>
 						{getRatingText()}
 					</Text>
@@ -389,10 +438,13 @@ export function ServiceRatingModal({
 			</View>
 
 			{/* Feedback Section */}
-			<View className="mb-8">
+			<View style={[styles.feedbackSection, responsiveStyles.feedbackSection]}>
 				<Text
-					className="text-base font-medium mb-3"
-					style={{ color: colors.text }}
+					style={[
+						styles.feedbackLabel,
+						responsiveStyles.feedbackLabel,
+						{ color: colors.text },
+					]}
 				>
 					Add a note
 				</Text>
@@ -401,34 +453,37 @@ export function ServiceRatingModal({
 					onChangeText={setComment}
 					placeholder="Add a note"
 					placeholderTextColor={colors.subtext}
-					className="p-4 text-base"
-					style={{
-						color: colors.text,
-						backgroundColor: colors.card,
-						height: 100,
-						textAlignVertical: 'top',
-						...squircle(22),
-					}}
+					style={[
+						styles.feedbackInput,
+						responsiveStyles.feedbackInput,
+						{ color: colors.text, backgroundColor: colors.card },
+					]}
 					multiline
 				/>
 			</View>
 
 			{/* Tip Section */}
-			<View className="mb-8">
+			<View style={[styles.tipSection, responsiveStyles.tipSection]}>
 				<Text
-					className="text-base font-medium mb-2"
-					style={{ color: colors.text }}
+					style={[
+						styles.tipLabel,
+						responsiveStyles.tipLabel,
+						{ color: colors.text },
+					]}
 				>
 					Add a tip (optional)
 				</Text>
 				<Text
-					className="text-sm mb-4"
-					style={{ color: colors.subtext }}
+					style={[
+						styles.tipDescription,
+						responsiveStyles.tipDescription,
+						{ color: colors.subtext },
+					]}
 				>
 					Tips are charged from your wallet balance.
 				</Text>
 
-				<View className="flex-row flex-wrap mb-4" style={{ gap: 10 }}>
+				<View style={[styles.tipButtonsRow, responsiveStyles.tipButtonsRow]}>
 					{TIP_PRESETS.map((amount) => {
 						const isActive = !isCustomTip && selectedTip === amount;
 						return (
@@ -438,15 +493,22 @@ export function ServiceRatingModal({
 									setIsCustomTip(false);
 									setSelectedTip(amount);
 								}}
-								className="px-4 py-2"
-								style={{
-									backgroundColor: isActive ? `${colors.accent}20` : colors.card,
-									...squircle(18),
-								}}
+								style={[
+									styles.tipButton,
+									responsiveStyles.tipButton,
+									{
+										backgroundColor: isActive
+											? `${colors.accent}20`
+											: colors.card,
+									},
+								]}
 							>
 								<Text
-									className="text-sm font-semibold"
-									style={{ color: isActive ? colors.accent : colors.text }}
+									style={[
+										styles.tipButtonText,
+										responsiveStyles.tipButtonText,
+										{ color: isActive ? colors.accent : colors.text },
+									]}
 								>
 									{amount === 0 ? "No tip" : `$${amount}`}
 								</Text>
@@ -459,15 +521,22 @@ export function ServiceRatingModal({
 							setIsCustomTip(true);
 							setSelectedTip(0);
 						}}
-						className="px-4 py-2"
-						style={{
-							backgroundColor: isCustomTip ? `${colors.accent}20` : colors.card,
-							...squircle(18),
-						}}
+						style={[
+							styles.tipButton,
+							responsiveStyles.tipButton,
+							{
+								backgroundColor: isCustomTip
+									? `${colors.accent}20`
+									: colors.card,
+							},
+						]}
 					>
 						<Text
-							className="text-sm font-semibold"
-							style={{ color: isCustomTip ? colors.accent : colors.text }}
+							style={[
+								styles.tipButtonText,
+								responsiveStyles.tipButtonText,
+								{ color: isCustomTip ? colors.accent : colors.text },
+							]}
 						>
 							Custom
 						</Text>
@@ -481,18 +550,20 @@ export function ServiceRatingModal({
 						placeholder="Enter tip amount"
 						placeholderTextColor={colors.subtext}
 						keyboardType="decimal-pad"
-						className="px-4 py-3 text-base mb-3"
-						style={{
-							color: colors.text,
-							backgroundColor: colors.card,
-							...squircle(20),
-						}}
+						style={[
+							styles.tipCustomInput,
+							responsiveStyles.tipCustomInput,
+							{ color: colors.text, backgroundColor: colors.card },
+						]}
 					/>
 				)}
 
 				<Text
-					className="text-sm"
-					style={{ color: colors.subtext }}
+					style={[
+						styles.walletBalance,
+						responsiveStyles.walletBalance,
+						{ color: colors.subtext },
+					]}
 				>
 					{walletLoading
 						? "Checking wallet balance..."
@@ -500,14 +571,20 @@ export function ServiceRatingModal({
 				</Text>
 
 				{isWalletShortForTip ? (
-					<Text className="text-sm mt-2" style={{ color: "#F59E0B" }}>
+					<Text
+						style={[
+							styles.walletShortWarning,
+							responsiveStyles.walletShortWarning,
+							{ color: "#F59E0B" },
+						]}
+					>
 						Wallet is low. You can still continue and choose cash or card fallback next.
 					</Text>
 				) : null}
 			</View>
 
 			{/* Actions */}
-			<View className="flex-row gap-3">
+			<View style={[styles.actionsContainer, responsiveStyles.actionsContainer]}>
 				<Pressable
 					onPress={() => {
 						if (isActionPending) return;
@@ -518,18 +595,24 @@ export function ServiceRatingModal({
 						void handleSkip();
 					}}
 					disabled={isActionPending}
-					className="flex-1"
 					style={({ pressed }) => [
+						styles.actionButton,
 						pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
 					]}
 				>
 					<View
-						className="h-14 items-center justify-center"
-						style={secondaryActionStyle}
+						style={[
+							styles.actionButtonInner,
+							responsiveStyles.actionButtonInner,
+							secondaryActionStyle,
+						]}
 					>
 						<Text
-							className="text-base"
-							style={{ color: colors.text, fontWeight: "600" }}
+							style={[
+								styles.actionButtonText,
+								responsiveStyles.actionButtonText,
+								{ color: colors.text },
+							]}
 						>
 							{isActionPending ? "Saving..." : "Skip"}
 						</Text>
@@ -541,30 +624,33 @@ export function ServiceRatingModal({
 						void handleSubmit();
 					}}
 					disabled={rating < 1 || isActionPending}
-					className="flex-1"
 					style={({ pressed }) => [
+						styles.actionButton,
 						pressed && rating >= 1 && !isActionPending
 							? { opacity: 0.96, transform: [{ scale: 0.988 }] }
 							: null,
 					]}
 				>
 					<View
-						className="h-14 items-center justify-center"
-						style={
+						style={[
+							styles.actionButtonInner,
+							responsiveStyles.actionButtonInner,
 							rating >= 1 && !isActionPending
 								? enabledPrimaryActionStyle
-								: disabledPrimaryActionStyle
-						}
+								: disabledPrimaryActionStyle,
+						]}
 					>
 						<Text
-							className="text-base"
-							style={{
-								color:
-									rating >= 1 && !isActionPending
-										? COLORS.bgLight
-										: colors.text,
-								fontWeight: "600",
-							}}
+							style={[
+								styles.actionButtonText,
+								responsiveStyles.actionButtonText,
+								{
+									color:
+										rating >= 1 && !isActionPending
+											? COLORS.bgLight
+											: colors.text,
+								},
+							]}
 						>
 							{isActionPending ? "Saving..." : "Submit"}
 						</Text>
