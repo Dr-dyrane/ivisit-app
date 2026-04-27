@@ -153,61 +153,75 @@ const shouldDisableExtendedColumns = (err) => {
 };
 
 const mapToDb = (item) => {
-    const db = { ...item };
-    if (item.hospitalId !== undefined) db.hospital_id = item.hospitalId;
-    if (item.hospitalName !== undefined) db.hospital_name = item.hospitalName;
-    if (item.hospital !== undefined && item.hospitalName === undefined) db.hospital_name = toFlatName(item.hospital);
-    if (item.doctorName !== undefined) db.doctor_name = item.doctorName;
-    if (item.doctor !== undefined && item.doctorName === undefined) db.doctor_name = toFlatName(item.doctor);
-    if (item.roomNumber !== undefined) db.room_number = item.roomNumber;
-    if (item.estimatedDuration !== undefined) db.estimated_duration = item.estimatedDuration;
-    if (item.requestId !== undefined) db.request_id = item.requestId;
-    if (item.doctorImage !== undefined) db.doctor_image = item.doctorImage;
-    if (item.insuranceCovered !== undefined) db.insurance_covered = item.insuranceCovered;
-    if (item.nextVisit !== undefined) db.next_visit = item.nextVisit;
-    if (item.meetingLink !== undefined) db.meeting_link = item.meetingLink;
-    if (item.lifecycleState !== undefined) db.lifecycle_state = item.lifecycleState;
-    if (item.lifecycleUpdatedAt !== undefined) db.lifecycle_updated_at = item.lifecycleUpdatedAt;
-    if (item.rating !== undefined) db.rating = item.rating;
-    if (item.ratingComment !== undefined) db.rating_comment = item.ratingComment;
-    if (item.ratedAt !== undefined) db.rated_at = item.ratedAt;
-    if (item.tipAmount !== undefined) db.tip_amount = item.tipAmount;
-    if (item.tipCurrency !== undefined) db.tip_currency = item.tipCurrency;
-    if (item.tippedAt !== undefined) db.tipped_at = item.tippedAt;
-    if (item.tipPaymentId !== undefined) db.tip_payment_id = item.tipPaymentId;
+    // Explicit allowlist — only emit columns that exist in the visits table.
+    // Spread-then-delete is permanently fragile: any unknown field from any caller
+    // leaks to Supabase and causes PGRST204. Allowlist prevents that structurally.
+    // Fields NOT in the table (doctor_image, address, image, phone, cost, etc.) are
+    // simply never included regardless of what callers put on the object.
+    const db = {};
 
-    // Remove camelCase keys
-    delete db.hospitalId;
-    delete db.hospital;
-    delete db.hospitalName;
-    delete db.doctor;
-    delete db.doctorName;
-    delete db.roomNumber;
-    delete db.estimatedDuration;
-    delete db.requestId;
-    delete db.createdAt;
-    delete db.updatedAt;
-    delete db.doctorImage;
-    delete db.insuranceCovered;
-    delete db.nextVisit;
-    delete db.visitId;
-    delete db.meetingLink;
-    delete db.lifecycleState;
-    delete db.lifecycleUpdatedAt;
-    delete db.rating;
-    delete db.ratingComment;
-    delete db.ratedAt;
-    delete db.tipAmount;
-    delete db.tipCurrency;
-    delete db.tippedAt;
-    delete db.tipPaymentId;
-    // Remove client-only display fields that have no visits table column.
-    // address is resolved via hospital join (_hospital_address_resolved on read).
-    // image/phone/cost are presentation-layer only — not persisted on the visit row.
-    delete db.address;
-    delete db.image;
-    delete db.phone;
-    delete db.cost;
+    // Identity
+    if (item.id !== undefined) db.id = item.id;
+    if (item.user_id !== undefined) db.user_id = item.user_id;
+
+    // Hospital — prefer explicit snake_case; fall back to camelCase variants
+    const hospitalName = item.hospital_name ?? item.hospitalName ?? (item.hospital !== undefined ? toFlatName(item.hospital) : undefined);
+    if (hospitalName !== undefined) db.hospital_name = hospitalName;
+    const hospitalId = item.hospital_id ?? item.hospitalId;
+    if (hospitalId !== undefined) db.hospital_id = hospitalId;
+    if (item.hospital_image !== undefined) db.hospital_image = item.hospital_image;
+
+    // Clinician — prefer explicit snake_case; fall back to camelCase variants
+    const doctorName = item.doctor_name ?? item.doctorName ?? (item.doctor !== undefined ? toFlatName(item.doctor) : undefined);
+    if (doctorName !== undefined) db.doctor_name = doctorName;
+
+    // Visit metadata
+    if (item.specialty !== undefined) db.specialty = item.specialty;
+    if (item.type !== undefined) db.type = item.type;
+    if (item.status !== undefined) db.status = item.status;
+    if (item.date !== undefined) db.date = item.date;
+    if (item.time !== undefined) db.time = item.time;
+    if (item.notes !== undefined) db.notes = item.notes;
+    if (item.latitude !== undefined) db.latitude = item.latitude;
+    if (item.longitude !== undefined) db.longitude = item.longitude;
+
+    // Logistics
+    const roomNumber = item.room_number ?? item.roomNumber;
+    if (roomNumber !== undefined) db.room_number = roomNumber;
+    const estimatedDuration = item.estimated_duration ?? item.estimatedDuration;
+    if (estimatedDuration !== undefined) db.estimated_duration = estimatedDuration;
+    const requestId = item.request_id ?? item.requestId;
+    if (requestId !== undefined) db.request_id = requestId;
+    const meetingLink = item.meeting_link ?? item.meetingLink;
+    if (meetingLink !== undefined) db.meeting_link = meetingLink;
+    const insuranceCovered = item.insurance_covered ?? item.insuranceCovered;
+    if (insuranceCovered !== undefined) db.insurance_covered = insuranceCovered;
+    const nextVisit = item.next_visit ?? item.nextVisit;
+    if (nextVisit !== undefined) db.next_visit = nextVisit;
+    if (item.display_id !== undefined) db.display_id = item.display_id;
+
+    // Lifecycle (extended emergency columns — may be stripped by stripExtendedEmergencyColumns)
+    const lifecycleState = item.lifecycle_state ?? item.lifecycleState;
+    if (lifecycleState !== undefined) db.lifecycle_state = lifecycleState;
+    const lifecycleUpdatedAt = item.lifecycle_updated_at ?? item.lifecycleUpdatedAt;
+    if (lifecycleUpdatedAt !== undefined) db.lifecycle_updated_at = lifecycleUpdatedAt;
+
+    // Rating (extended emergency columns)
+    if (item.rating !== undefined) db.rating = item.rating;
+    const ratingComment = item.rating_comment ?? item.ratingComment;
+    if (ratingComment !== undefined) db.rating_comment = ratingComment;
+    const ratedAt = item.rated_at ?? item.ratedAt;
+    if (ratedAt !== undefined) db.rated_at = ratedAt;
+
+    // Tip (extended emergency columns)
+    const tipAmount = item.tip_amount ?? item.tipAmount;
+    if (tipAmount !== undefined) db.tip_amount = tipAmount;
+    const tipCurrency = item.tip_currency ?? item.tipCurrency;
+    if (tipCurrency !== undefined) db.tip_currency = tipCurrency;
+    const tippedAt = item.tipped_at ?? item.tippedAt;
+    if (tippedAt !== undefined) db.tipped_at = tippedAt;
+    const tipPaymentId = item.tip_payment_id ?? item.tipPaymentId;
+    if (tipPaymentId !== undefined) db.tip_payment_id = tipPaymentId;
 
     return db;
 };
