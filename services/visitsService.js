@@ -201,6 +201,13 @@ const mapToDb = (item) => {
     delete db.tipCurrency;
     delete db.tippedAt;
     delete db.tipPaymentId;
+    // Remove client-only display fields that have no visits table column.
+    // address is resolved via hospital join (_hospital_address_resolved on read).
+    // image/phone/cost are presentation-layer only — not persisted on the visit row.
+    delete db.address;
+    delete db.image;
+    delete db.phone;
+    delete db.cost;
 
     return db;
 };
