@@ -238,11 +238,11 @@ export function usePaymentScreenModel() {
           [
             {
               text: 'Track Now',
-              onPress: () => {
-                // PULLBACK NOTE: Phase 2 — invalidate cache so map screen gets fresh trip state
-                // OLD: router.push('/(auth)/map') — stale state, tracking never triggered
-                // NEW: invalidate → refetch fires → Zustand store updated → trackingRequestKey changes
-                invalidateActiveTrip();
+              onPress: async () => {
+                // PULLBACK NOTE: PT-F — await invalidateActiveTrip before nav (defect: race on legacy payment route)
+                // OLD: invalidateActiveTrip() fire-and-forget → router.push immediately → map mounts before refetch resolves
+                // NEW: await invalidation so query refetch is in-flight before map screen mounts → trackingRequestKey present
+                await invalidateActiveTrip();
                 router.push('/(auth)/map');
               }
             }
