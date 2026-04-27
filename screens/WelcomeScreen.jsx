@@ -4,7 +4,11 @@ import { WELCOME_COPY } from "../components/welcome/welcomeContent";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useGlobalLocation } from "../contexts/GlobalLocationContext";
+// PULLBACK NOTE: Phase 6d — WelcomeScreen: setUserLocation/userLocation/refreshHospitals migrated
+// OLD: all three from useEmergency() — context-wide re-render on any field change
+// NEW: setUserLocation/userLocation from useLocationStore; refreshHospitals stays on useEmergency()
 import { useEmergency } from "../contexts/EmergencyContext";
+import { useLocationStore } from "../stores/locationStore";
 import WelcomeScreenOrchestrator from "../components/welcome/WelcomeScreenOrchestrator";
 
 const WelcomeScreen = () => {
@@ -13,11 +17,9 @@ const WelcomeScreen = () => {
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
 	const { userLocation } = useGlobalLocation();
-	const {
-		setUserLocation,
-		refreshHospitals,
-		userLocation: emergencyUserLocation,
-	} = useEmergency();
+	const { refreshHospitals } = useEmergency();
+	const emergencyUserLocation = useLocationStore((s) => s.userLocation);
+	const setUserLocationStore = useLocationStore((s) => s.setUserLocation);
 	const hasPrewarmedEmergencyRef = useRef(false);
 	const awaitingEmergencyLocationSyncRef = useRef(false);
 
@@ -36,25 +38,24 @@ const WelcomeScreen = () => {
 			return;
 		}
 
-		setUserLocation((current) => {
-			const sameCoordinate =
-				Number(current?.latitude) === Number(userLocation.latitude) &&
-				Number(current?.longitude) === Number(userLocation.longitude);
+		const current = useLocationStore.getState().userLocation;
+		const sameCoordinate =
+			Number(current?.latitude) === Number(userLocation.latitude) &&
+			Number(current?.longitude) === Number(userLocation.longitude);
 
-			if (sameCoordinate) {
-				awaitingEmergencyLocationSyncRef.current = false;
-				return current;
-			}
+		if (sameCoordinate) {
+			awaitingEmergencyLocationSyncRef.current = false;
+			return;
+		}
 
-			awaitingEmergencyLocationSyncRef.current = true;
-			return {
-				latitude: Number(userLocation.latitude),
-				longitude: Number(userLocation.longitude),
-				latitudeDelta: Number(current?.latitudeDelta) || 0.04,
-				longitudeDelta: Number(current?.longitudeDelta) || 0.04,
-			};
+		awaitingEmergencyLocationSyncRef.current = true;
+		setUserLocationStore({
+			latitude: Number(userLocation.latitude),
+			longitude: Number(userLocation.longitude),
+			latitudeDelta: Number(current?.latitudeDelta) || 0.04,
+			longitudeDelta: Number(current?.longitudeDelta) || 0.04,
 		});
-	}, [setUserLocation, userLocation?.latitude, userLocation?.longitude]);
+	}, [setUserLocationStore, userLocation?.latitude, userLocation?.longitude]);
 
 	useEffect(() => {
 		if (hasPrewarmedEmergencyRef.current) {

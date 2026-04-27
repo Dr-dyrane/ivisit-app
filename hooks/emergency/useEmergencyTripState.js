@@ -16,13 +16,24 @@ import { EmergencyMode } from "../../constants/emergency";
 import {
 	useEmergencyTripStore,
 } from "../../stores/emergencyTripStore";
+// PULLBACK NOTE: Phase 6d — wire mode/serviceType/selectedSpecialty/viewMode off useState to useModeStore
+// OLD: local useState in this hook — reset on Metro reload, caused context-wide re-renders on every change
+// NEW: useModeStore selectors — surgical subscriptions, survives Metro reload, persisted via hydration
+import { useModeStore } from "../../stores/modeStore";
 
 export function useEmergencyTripState() {
-	// UI-only state — stays local (not persisted, not shared)
-	const [mode, setMode] = useState(EmergencyMode.EMERGENCY);
-	const [serviceType, setServiceType] = useState(null);
-	const [selectedSpecialty, setSelectedSpecialty] = useState(null);
-	const [viewMode, setViewMode] = useState("map");
+	// PULLBACK NOTE: Phase 6d — mode/serviceType/selectedSpecialty/viewMode sourced from useModeStore
+	// OLD: useState(EmergencyMode.EMERGENCY) / useState(null) / useState(null) / useState('map')
+	// NEW: Zustand store selectors — surgical re-renders, survives Metro reload
+	const mode = useModeStore((s) => s.mode);
+	const setMode = useModeStore((s) => s.setMode);
+	const serviceType = useModeStore((s) => s.serviceType);
+	const setServiceType = useModeStore((s) => s.setServiceType);
+	const selectedSpecialty = useModeStore((s) => s.selectedSpecialty);
+	const setSelectedSpecialty = useModeStore((s) => s.setSelectedSpecialty);
+	const viewMode = useModeStore((s) => s.viewMode);
+	const setViewMode = useModeStore((s) => s.setViewMode);
+	// selectedHospitalId remains local — ephemeral UI selection, not persisted
 	const [selectedHospitalId, setSelectedHospitalId] = useState(null);
 
 	// Trip state — now sourced from Zustand store (persisted, survives Metro restart)
@@ -87,20 +98,18 @@ export function useEmergencyTripState() {
 		setBedBookingStatusStore(status);
 	}, [setBedBookingStatusStore]);
 
-	// UI actions — local state only
+	// UI actions — delegate to store, maintain same call signature
 	const toggleMode = useCallback(() => {
-		setMode((prev) =>
-			prev === EmergencyMode.EMERGENCY ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY
-		);
+		setMode(mode === EmergencyMode.EMERGENCY ? EmergencyMode.BOOKING : EmergencyMode.EMERGENCY);
 		setSelectedHospitalId(null);
-	}, []);
+	}, [mode, setMode]);
 
 	const selectHospital = useCallback((hospitalId) => setSelectedHospitalId(hospitalId), []);
 	const clearSelectedHospital = useCallback(() => setSelectedHospitalId(null), []);
-	const selectSpecialty = useCallback((specialty) => { setSelectedSpecialty(specialty); setSelectedHospitalId(null); }, []);
-	const selectServiceType = useCallback((type) => { setServiceType(type ? type.toLowerCase() : null); setSelectedHospitalId(null); }, []);
-	const toggleViewMode = useCallback(() => setViewMode((prev) => prev === "map" ? "list" : "map"), []);
-	const resetFilters = useCallback(() => { setServiceType(null); setSelectedSpecialty(null); setSelectedHospitalId(null); }, []);
+	const selectSpecialty = useCallback((specialty) => { setSelectedSpecialty(specialty); setSelectedHospitalId(null); }, [setSelectedSpecialty]);
+	const selectServiceType = useCallback((type) => { setServiceType(type ? type.toLowerCase() : null); setSelectedHospitalId(null); }, [setServiceType]);
+	const toggleViewMode = useCallback(() => setViewMode(viewMode === "map" ? "list" : "map"), [viewMode, setViewMode]);
+	const resetFilters = useCallback(() => { setServiceType(null); setSelectedSpecialty(null); setSelectedHospitalId(null); }, [setServiceType, setSelectedSpecialty]);
 
 	const hasActiveFilters = useMemo(() => {
 		if (mode === EmergencyMode.EMERGENCY) return serviceType !== null;

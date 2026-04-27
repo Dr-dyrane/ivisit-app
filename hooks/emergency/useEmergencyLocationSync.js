@@ -5,13 +5,18 @@
  * Also exposes parseEtaToSeconds (pure util used by server sync + actions).
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useGlobalLocation } from "../../contexts/GlobalLocationContext";
 import { DEFAULT_APP_REGION } from "../../constants/locationDefaults";
+// PULLBACK NOTE: Phase 6d — userLocation off useState to useLocationStore
+// OLD: local useState(null) — reset on Metro reload, functional updater pattern
+// NEW: useLocationStore selector — persisted, survives Metro reload
+import { useLocationStore } from "../../stores/locationStore";
 
 export function useEmergencyLocationSync() {
 	const { userLocation: globalUserLocation } = useGlobalLocation();
-	const [userLocation, setUserLocation] = useState(null);
+	const userLocation = useLocationStore((s) => s.userLocation);
+	const setUserLocation = useLocationStore((s) => s.setUserLocation);
 	const userLocationRef = useRef(userLocation);
 
 	useEffect(() => {
@@ -19,23 +24,26 @@ export function useEmergencyLocationSync() {
 	}, [userLocation]);
 
 	// Seed from global location once — never overwrite a user-set location
+	// PULLBACK NOTE: Phase 6d — functional updater replaced with direct read+write
+	// OLD: setUserLocation((current) => { ... return newValue })
+	// NEW: read current from store, guard, then call setUserLocation(newValue)
 	useEffect(() => {
 		const latitude = Number(globalUserLocation?.latitude);
 		const longitude = Number(globalUserLocation?.longitude);
 		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
-		setUserLocation((current) => {
-			const currentLat = Number(current?.latitude);
-			const currentLng = Number(current?.longitude);
-			if (Number.isFinite(currentLat) && Number.isFinite(currentLng)) return current;
-			return {
-				latitude,
-				longitude,
-				latitudeDelta: Number(current?.latitudeDelta) || DEFAULT_APP_REGION.latitudeDelta,
-				longitudeDelta: Number(current?.longitudeDelta) || DEFAULT_APP_REGION.longitudeDelta,
-			};
+		const current = useLocationStore.getState().userLocation;
+		const currentLat = Number(current?.latitude);
+		const currentLng = Number(current?.longitude);
+		if (Number.isFinite(currentLat) && Number.isFinite(currentLng)) return;
+
+		setUserLocation({
+			latitude,
+			longitude,
+			latitudeDelta: Number(current?.latitudeDelta) || DEFAULT_APP_REGION.latitudeDelta,
+			longitudeDelta: Number(current?.longitudeDelta) || DEFAULT_APP_REGION.longitudeDelta,
 		});
-	}, [globalUserLocation?.latitude, globalUserLocation?.longitude]);
+	}, [globalUserLocation?.latitude, globalUserLocation?.longitude, setUserLocation]);
 
 	const parseEtaToSeconds = useCallback((eta) => {
 		if (eta === null || eta === undefined) return null;

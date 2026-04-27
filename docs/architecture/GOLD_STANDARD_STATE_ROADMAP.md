@@ -281,7 +281,7 @@ COMPLETING
 - `allHospitals`, `specialties` remain on `useEmergency()` — server state, separate migration
 - Pattern: surgical `useModeStore((s) => s.x)` selectors, no context blast radius
 
-#### 6c-2 ⏳ NotificationsScreen
+#### 6c-2 ✅ COMPLETE (`96a43a5`) NotificationsScreen
 - `setMode` → `useModeStore((s) => s.setMode)` — `useEmergency()` import fully removed
 
 #### Blocked screens — context-owned computed/service fields, not raw store fields
@@ -294,11 +294,23 @@ COMPLETING
 - `BookBedRequestScreen` — `setMode` migratable but same service field blockers
 - **Decision**: all 3 migrate transparently via `EmergencyContextAdapter` shim in 6d — no partial churn
 
-### 6d — Shell retirement via EmergencyContextAdapter
-- Install stash `EmergencyContextAdapter.jsx` as the new `EmergencyContextProvider` — reads from Zustand stores internally
-- `useEmergency()` hook is re-exported from the adapter — zero consumer changes needed
-- All blocked screens (`RequestAmbulanceScreen`, `MapEntryLoadingScreen`, `BookBedRequestScreen`, `WelcomeScreen`, `MoreScreen`) migrate transparently
-- Remove original `EmergencyContext.jsx` provider wiring once adapter verified
+### 6d ⏳ IN PROGRESS — Wire existing EmergencyContext internals to Zustand stores
+- **Stash adapter rejected**: stash `EmergencyContextAdapter.jsx` → `useEmergencyHospitals` → `useCoverageMode` (❌ REJECTED). Wholesale adoption would reintroduce rejected pattern.
+- **Approach**: wire Zustand stores into the existing hook layer, not above it — `useEmergency()` signature unchanged, zero consumer blast radius
+
+#### 6d-1 ⏳ `useEmergencyTripState` — mode/serviceType/selectedSpecialty/viewMode → `useModeStore`
+- All 4 `useState` calls replaced with `useModeStore` selectors
+- `toggleMode`, `selectSpecialty`, `selectServiceType`, `toggleViewMode`, `resetFilters` updated to call store setters directly (no functional updaters needed)
+- `selectedHospitalId` remains local `useState` — ephemeral UI selection, not persisted
+
+#### 6d-2 ⏳ `useEmergencyLocationSync` — `userLocation`/`setUserLocation` → `useLocationStore`
+- `useState(null)` replaced with `useLocationStore` selector
+- Functional updater pattern `setUserLocation((current) => ...)` replaced with `useLocationStore.getState()` read + direct `setUserLocation(value)` call
+- Resolves `WelcomeScreen` blocker
+
+#### 6d-3 ⏳ `WelcomeScreen` — now fully off `useEmergency()` for location fields
+- `setUserLocation` + `emergencyUserLocation` → `useLocationStore`
+- `refreshHospitals` remains on `useEmergency()` — server action
 
 ### 6e — Dead code cleanup
 - Delete `EmergencyScreen.jsx` (zero router entry points, confirmed deprecated)
