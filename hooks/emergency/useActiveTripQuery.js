@@ -289,10 +289,107 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 	// Auto-sync query result → Zustand store
 	// PULLBACK NOTE: Phase 2 — replaces useEffect in useEmergencyServerSync that
 	// called setActiveAmbulanceTrip/setActiveBedBooking/setPendingApproval directly
+	// PULLBACK NOTE: Tracking sheet — defender against query-overwrite race.
+	// The query may return with incomplete assignedAmbulance (e.g., responderLocation
+	// present but responderName absent) while the store already has the full identity
+	// from a previous server event or from payment completion. We must never overwrite
+	// good data with incomplete data.
+	//
+	// PULLBACK NOTE: Terminal state preservation — query filters by isActiveStatus
+	// which excludes COMPLETED/CANCELLED. When a trip completes, query returns null
+	// which would wipe the hero card data before rating. We preserve terminal-state
+	// trips in the store until an explicit stopAmbulanceTrip() is called.
+	const isTerminalStatus = (status) =>
+		status === "completed" ||
+		status === "cancelled" ||
+		status === "COMPLETED" ||
+		status === "CANCELLED";
+
 	useEffect(() => {
 		if (!query.data) return;
-		setActiveAmbulanceTrip(query.data.ambulanceTrip);
-		setActiveBedBooking(query.data.bedBooking);
+
+		const storeState = useEmergencyTripStore.getState();
+
+		// DIAGNOSTIC LOGS — Track sync behavior
+		const logPrefix = `[ActiveTripQuery.Sync ${Date.now().toString(36).slice(-4)}]`;
+		const queryTrip = query.data.ambulanceTrip;
+		const storeTrip = storeState.activeAmbulanceTrip;
+
+		console.log(`${logPrefix} Query trip:`, queryTrip
+			? { requestId: queryTrip.requestId, status: queryTrip.status, hasAssignedAmbulance: !!queryTrip.assignedAmbulance, assignedName: queryTrip.assignedAmbulance?.name }
+			: null);
+		console.log(`${logPrefix} Store trip:`, storeTrip
+			? { requestId: storeTrip.requestId, status: storeTrip.status, hasAssignedAmbulance: !!storeTrip.assignedAmbulance, assignedName: storeTrip.assignedAmbulance?.name }
+			: null);
+
+		// Merge helper: preserve responder identity if query data is incomplete
+		const mergeAmbulanceTrip = (queryTrip) => {
+			// If query returns null but store has a terminal-state trip, preserve it
+			// This prevents the hero card from wiping when completing a trip
+			if (!queryTrip) {
+				const storeTrip = storeState.activeAmbulanceTrip;
+				if (storeTrip && isTerminalStatus(storeTrip.status)) {
+					console.log(`${logPrefix} PRESERVING terminal store trip (query is null)`);
+					return storeTrip;
+				}
+				console.log(`${logPrefix} Accepting null (no store trip or not terminal)`);
+				return queryTrip;
+			}
+
+			const storeTrip = storeState.activeAmbulanceTrip;
+			// If same trip identity and store has assignedAmbulance but query doesn't (or has incomplete)
+			const sameTrip = storeTrip && queryTrip.requestId && storeTrip.requestId === queryTrip.requestId;
+			console.log(`${logPrefix} Same trip check:`, { sameTrip: !!sameTrip, storeReq: storeTrip?.requestId, queryReq: queryTrip.requestId });
+			if (!sameTrip) {
+				console.log(`${logPrefix} Different trip — accepting query data`);
+				return queryTrip;
+			}
+
+			const storeAssigned = storeTrip?.assignedAmbulance;
+			const queryAssigned = queryTrip?.assignedAmbulance;
+			const needsMerge = storeAssigned && (!queryAssigned || (!queryAssigned.name && storeAssigned.name));
+			console.log(`${logPrefix} Merge check:`, { needsMerge: !!needsMerge, storeName: storeAssigned?.name, queryName: queryAssigned?.name });
+
+			// If store has name/phone but query doesn't, merge store's identity into query result
+			if (needsMerge) {
+				console.log(`${logPrefix} MERGING responder identity from store into query`);
+				return {
+					...queryTrip,
+					assignedAmbulance: {
+						...(queryAssigned || {}),
+						name: queryAssigned?.name || storeAssigned.name || null,
+						phone: queryAssigned?.phone || storeAssigned.phone || null,
+						// Also preserve other identity fields if missing in query
+						type: queryAssigned?.type || storeAssigned.type || null,
+						plate: queryAssigned?.plate || storeAssigned.plate || null,
+						id: queryAssigned?.id || storeAssigned.id || null,
+					},
+				};
+			}
+			console.log(`${logPrefix} No merge needed — accepting query data`);
+			return queryTrip;
+		};
+
+		// Same logic for bed bookings
+		const mergeBedBooking = (queryBooking) => {
+			if (!queryBooking) {
+				const storeBooking = storeState.activeBedBooking;
+				if (storeBooking && isTerminalStatus(storeBooking.status)) {
+					console.log(`${logPrefix} PRESERVING terminal store bed booking`);
+					return storeBooking;
+				}
+				return queryBooking;
+			}
+			return queryBooking;
+		};
+
+		const finalTrip = mergeAmbulanceTrip(query.data.ambulanceTrip);
+		console.log(`${logPrefix} Final trip to sync:`, finalTrip
+			? { requestId: finalTrip.requestId, assignedName: finalTrip.assignedAmbulance?.name }
+			: null);
+
+		setActiveAmbulanceTrip(finalTrip);
+		setActiveBedBooking(mergeBedBooking(query.data.bedBooking));
 		setPendingApproval(query.data.pending);
 	}, [query.data, setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval]);
 

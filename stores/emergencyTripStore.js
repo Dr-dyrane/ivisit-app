@@ -96,6 +96,14 @@ export const useEmergencyTripStore = create(
         const prev = state.activeAmbulanceTrip;
         const raw = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
         const next = preserveTripStartedAt(prev, raw);
+
+        // DIAGNOSTIC LOG
+        const logPrefix = `[TripStore.setActiveAmbulanceTrip ${Date.now().toString(36).slice(-4)}]`;
+        console.log(`${logPrefix} prev:`, prev?.requestId, prev?.status, prev?.assignedAmbulance?.name);
+        console.log(`${logPrefix} raw:`, raw?.requestId, raw?.status, raw?.assignedAmbulance?.name);
+        console.log(`${logPrefix} next:`, next?.requestId, next?.status, next?.assignedAmbulance?.name);
+        console.log(`${logPrefix} willUpdate:`, !areRuntimeStateValuesEqual(next, prev));
+
         if (!areRuntimeStateValuesEqual(next, prev)) state.activeAmbulanceTrip = next;
       });
     },

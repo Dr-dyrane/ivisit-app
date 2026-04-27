@@ -131,6 +131,16 @@ export function useEmergencyActions({
 	const startAmbulanceTrip = useCallback(
 		(trip) => {
 			if (!trip?.hospitalId) return;
+
+			// DIAGNOSTIC LOG
+			const logPrefix = `[EmergencyActions.startAmbulanceTrip ${Date.now().toString(36).slice(-4)}]`;
+			console.log(`${logPrefix} Called with:`, {
+				requestId: trip?.requestId,
+				status: trip?.status,
+				assignedAmbulanceName: trip?.assignedAmbulance?.name,
+				stack: new Error().stack?.split('\n').slice(1, 4).join(' | ')
+			});
+
 			const etaSeconds = Number.isFinite(trip?.etaSeconds)
 				? trip.etaSeconds
 				: parseEtaToSeconds(trip?.estimatedArrival);
@@ -148,6 +158,8 @@ export function useEmergencyActions({
 				trip?.triageSnapshot ?? trip?.triage ??
 				(trip?.triageCheckin ? { signals: { userCheckin: trip.triageCheckin } } : null);
 			const triageCheckin = trip?.triageCheckin ?? triageSnapshot?.signals?.userCheckin ?? null;
+
+			console.log(`${logPrefix} Setting trip with assignedAmbulance.name:`, assignedAmbulance?.name);
 
 			setActiveAmbulanceTrip({
 				id: trip.id ?? null,
@@ -179,6 +191,10 @@ export function useEmergencyActions({
 	);
 
 	const stopAmbulanceTrip = useCallback(() => {
+		// DIAGNOSTIC LOG
+		const logPrefix = `[EmergencyActions.stopAmbulanceTrip ${Date.now().toString(36).slice(-4)}]`;
+		console.log(`${logPrefix} Called`, new Error().stack?.split('\n').slice(1, 4).join(' | '));
+
 		resetAmbulanceEventVersion();
 		setActiveAmbulanceTrip(null);
 	}, [resetAmbulanceEventVersion, setActiveAmbulanceTrip]);
