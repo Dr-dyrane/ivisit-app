@@ -47,7 +47,8 @@ export function ServiceRatingModal({
 	const [walletBalance, setWalletBalance] = useState(0);
 	const [walletCurrency, setWalletCurrency] = useState("USD");
 	const [walletLoading, setWalletLoading] = useState(false);
-	const [isActionPending, setIsActionPending] = useState(false);
+	const [isSkipPending, setIsSkipPending] = useState(false);
+	const [isSubmitPending, setIsSubmitPending] = useState(false);
 
 	// Get responsive viewport metrics
 	const viewportMetrics = useResponsiveSurfaceMetrics({
@@ -71,7 +72,8 @@ export function ServiceRatingModal({
 		setSelectedTip(0);
 		setCustomTip("");
 		setIsCustomTip(false);
-		setIsActionPending(false);
+		setIsSkipPending(false);
+		setIsSubmitPending(false);
 	}, [visible]);
 
 	useEffect(() => {
@@ -174,8 +176,8 @@ export function ServiceRatingModal({
 	}, [onClose]);
 
 	const handleSkip = useCallback(async () => {
-		if (isActionPending) return;
-		setIsActionPending(true);
+		if (isSkipPending || isSubmitPending) return;
+		setIsSkipPending(true);
 		try {
 			const result = await onSkip?.();
 			if (result === false) return;
@@ -183,14 +185,14 @@ export function ServiceRatingModal({
 		} catch (error) {
 			console.warn("[ServiceRatingModal] Skip failed:", error);
 		} finally {
-			setIsActionPending(false);
+			setIsSkipPending(false);
 		}
-	}, [close, isActionPending, onSkip]);
+	}, [close, isSkipPending, isSubmitPending, onSkip]);
 
 	const handleSubmit = useCallback(async () => {
 		if (rating < 1) return;
-		if (isActionPending) return;
-		setIsActionPending(true);
+		if (isSkipPending || isSubmitPending) return;
+		setIsSubmitPending(true);
 		try {
 			const result = await onSubmit?.({
 				rating,
@@ -204,13 +206,14 @@ export function ServiceRatingModal({
 		} catch (error) {
 			console.warn("[ServiceRatingModal] Submit failed:", error);
 		} finally {
-			setIsActionPending(false);
+			setIsSubmitPending(false);
 		}
 	}, [
 		close,
 		comment,
 		currentTipAmount,
-		isActionPending,
+		isSkipPending,
+		isSubmitPending,
 		onSubmit,
 		rating,
 		serviceType,
@@ -259,26 +262,26 @@ export function ServiceRatingModal({
 	};
 
 	const handleShellClose = useCallback(() => {
-		if (isActionPending) return;
+		if (isSkipPending || isSubmitPending) return;
 		if (keyboardHeight > 0) {
 			Keyboard.dismiss();
 			return;
 		}
 		void handleSkip();
-	}, [handleSkip, isActionPending, keyboardHeight]);
+	}, [handleSkip, isSkipPending, isSubmitPending, keyboardHeight]);
 
 	// Web ESC key support
 	useEffect(() => {
 		if (!IS_WEB || !visible || typeof window === "undefined") return undefined;
 		const onKeyDown = (event) => {
-			if (event.key === "Escape" && !isActionPending) {
+			if (event.key === "Escape" && !isSkipPending && !isSubmitPending) {
 				event.preventDefault();
 				void handleSkip();
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [handleSkip, isActionPending, visible]);
+	}, [handleSkip, isSkipPending, isSubmitPending, visible]);
 
 	const ratingBody = (
 		<>
@@ -587,17 +590,17 @@ export function ServiceRatingModal({
 			<View style={[styles.actionsContainer, responsiveStyles.actionsContainer]}>
 				<Pressable
 					onPress={() => {
-						if (isActionPending) return;
+						if (isSkipPending || isSubmitPending) return;
 						if (keyboardHeight > 0) {
 							Keyboard.dismiss();
 							return;
 						}
 						void handleSkip();
 					}}
-					disabled={isActionPending}
+					disabled={isSkipPending || isSubmitPending}
 					style={({ pressed }) => [
 						styles.actionButton,
-						pressed ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
+						pressed && !isSkipPending ? { opacity: 0.94, transform: [{ scale: 0.988 }] } : null,
 					]}
 				>
 					<View
@@ -614,7 +617,7 @@ export function ServiceRatingModal({
 								{ color: colors.text },
 							]}
 						>
-							{isActionPending ? "Saving..." : "Skip"}
+							{isSkipPending ? "Skipping..." : "Skip"}
 						</Text>
 					</View>
 				</Pressable>
@@ -623,10 +626,10 @@ export function ServiceRatingModal({
 					onPress={() => {
 						void handleSubmit();
 					}}
-					disabled={rating < 1 || isActionPending}
+					disabled={rating < 1 || isSkipPending || isSubmitPending}
 					style={({ pressed }) => [
 						styles.actionButton,
-						pressed && rating >= 1 && !isActionPending
+						pressed && rating >= 1 && !isSubmitPending
 							? { opacity: 0.96, transform: [{ scale: 0.988 }] }
 							: null,
 					]}
@@ -635,7 +638,7 @@ export function ServiceRatingModal({
 						style={[
 							styles.actionButtonInner,
 							responsiveStyles.actionButtonInner,
-							rating >= 1 && !isActionPending
+							rating >= 1 && !isSubmitPending
 								? enabledPrimaryActionStyle
 								: disabledPrimaryActionStyle,
 						]}
@@ -646,13 +649,13 @@ export function ServiceRatingModal({
 								responsiveStyles.actionButtonText,
 								{
 									color:
-										rating >= 1 && !isActionPending
+										rating >= 1 && !isSubmitPending
 											? COLORS.bgLight
 											: colors.text,
 								},
 							]}
 						>
-							{isActionPending ? "Saving..." : "Submit"}
+							{isSubmitPending ? "Saving..." : "Submit"}
 						</Text>
 					</View>
 				</Pressable>

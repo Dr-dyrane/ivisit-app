@@ -356,11 +356,7 @@ export default function MapVisitDetailBody({
 	const bodyContent = (
 		<>
 			{placeActions?.length > 0 ? (
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={bodyStyles.placeActionRow}
-				>
+				<View style={bodyStyles.placeActionRow}>
 					{placeActions.map((item) => (
 						<Pressable
 							key={item.key}
@@ -368,7 +364,7 @@ export default function MapVisitDetailBody({
 							disabled={item.disabled || !item.onPress}
 							accessibilityRole="button"
 							accessibilityLabel={item.accessibilityLabel}
-							style={bodyStyles.placeActionPressableScroll}
+							style={bodyStyles.placeActionPressable}
 						>
 							{({ pressed }) => (
 								<View
@@ -409,11 +405,15 @@ export default function MapVisitDetailBody({
 								)}
 						</Pressable>
 					))}
-				</ScrollView>
+				</View>
 			) : null}
 
 			{placeStats?.length > 0 ? (
-				<View style={bodyStyles.placeStatsCard}>
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={bodyStyles.placeStatsCardScroll}
+				>
 					{placeStats.map((item, index) => {
 						return (
 							<View key={`${item.label}-${index}`} style={bodyStyles.placeStatItem}>
@@ -433,7 +433,7 @@ export default function MapVisitDetailBody({
 							</View>
 						);
 					})}
-				</View>
+				</ScrollView>
 			) : null}
 
 			{journey ? (

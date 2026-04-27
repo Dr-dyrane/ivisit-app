@@ -521,9 +521,6 @@ export const styles = StyleSheet.create({
 		flex: 1,
 		minWidth: 0,
 	},
-	placeActionPressableScroll: {
-		minWidth: 72,
-	},
 	placeActionButton: {
 		minHeight: 42,
 		paddingHorizontal: 7,
@@ -563,6 +560,15 @@ export const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 		gap: 22,
+	},
+	placeStatsCardScroll: {
+		marginTop: 8,
+		marginBottom: 10,
+		flexDirection: "row",
+		width: "100%",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 16,
 	},
 	placeStatItem: {
 		alignItems: "center",
