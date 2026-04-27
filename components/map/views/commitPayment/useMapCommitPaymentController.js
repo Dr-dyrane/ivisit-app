@@ -113,9 +113,29 @@ export function useMapCommitPaymentController({
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 	const selectedPaymentMethodRef = useRef(null);
 	const paymentMethodsRefreshRef = useRef(0);
+	// PULLBACK NOTE: PT-B — totalCostValueRef breaks the refreshPaymentMethodSnapshot → totalCostValue
+	// closure dep chain that caused 2–4 reload churn (defect PT-1, class 2.13).
+	// OLD: totalCostValue in useCallback dep array → new fn ref → useEffect re-fires refresh on every cost update
+	// NEW: ref always current → useCallback stable → no extra refresh on cost change
+	const totalCostValueRef = useRef(null);
+	// PULLBACK NOTE: PT-B2 — stable refs for loadCost effect; prevents re-fire on prop object identity churn
+	// OLD: hospital, currentLocation, room, transport as direct deps → new object ref every render → loadCost re-fires → isLoadingCost flicker
+	// NEW: refs always current; effect deps are scalar IDs only
+	const hospitalRef = useRef(hospital);
+	hospitalRef.current = hospital;
+	const currentLocationRef = useRef(currentLocation);
+	currentLocationRef.current = currentLocation;
+	const roomRef = useRef(room);
+	roomRef.current = room;
+	const transportRef = useRef(transport);
+	transportRef.current = transport;
 	const submitLockRef = useRef(false);
 	const autoApprovalTimeoutRef = useRef(null);
 	const isMountedRef = useRef(true);
+	// PULLBACK NOTE: PT-C — awaitingApprovalRef tracks whether we are in the WAITING_APPROVAL window
+	// OLD: isSubmitting reset to false in finally’s return path, making CTA re-pressable during approval wait
+	// NEW: ref prevents isSubmitting reset until approval resolves (DISPATCHED/FAILED/PAYMENT_DECLINED)
+	const awaitingApprovalRef = useRef(false);
 	const [isRefreshingPaymentMethods, setIsRefreshingPaymentMethods] = useState(false);
 	const [paymentMethodsSnapshotReady, setPaymentMethodsSnapshotReady] = useState(false);
 	const [paymentMethodsRefreshKey, setPaymentMethodsRefreshKey] = useState(0);
@@ -135,6 +155,8 @@ export function useMapCommitPaymentController({
 	});
 
 	const totalCostValue = estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
+	// PULLBACK NOTE: PT-B — keep ref in sync with state for use inside refreshPaymentMethodSnapshot
+	totalCostValueRef.current = totalCostValue;
 	const totalCostLabel = Number.isFinite(totalCostValue)
 		? `$${Number(totalCostValue).toFixed(2)}`
 		: null;
@@ -156,6 +178,8 @@ export function useMapCommitPaymentController({
 
 	const setTransactionState = useCallback((kind, meta = {}) => {
 		if (!isMountedRef.current) return;
+		// PULLBACK NOTE: PT-A diagnostic — log every submissionState transition
+		console.log('[PT-A][CommitPayment] submissionState →', kind, meta);
 		setSubmissionState(createCommitPaymentSubmissionState(kind, meta));
 	}, []);
 
@@ -174,6 +198,8 @@ export function useMapCommitPaymentController({
 			paymentMethodsRefreshRef.current = refreshId;
 			setIsRefreshingPaymentMethods(true);
 			setPaymentMethodsSnapshotReady(false);
+			// PULLBACK NOTE: PT-A diagnostic — log every refresh trigger with caller tag
+			console.log('[PT-A][CommitPayment] refreshPaymentMethodSnapshot fired refreshId=', refreshId, '| preferredMethod=', preferredMethod?.id ?? null);
 
 			try {
 				if (!user?.id) {
@@ -190,7 +216,10 @@ export function useMapCommitPaymentController({
 				]);
 				if (paymentMethodsRefreshRef.current !== refreshId) return;
 
-				const checkoutTotal = Number(totalCostValue || 0);
+				// PULLBACK NOTE: PT-B — read cost from ref (always current) instead of closed-over state value
+				// OLD: const checkoutTotal = Number(totalCostValue || 0);
+				// NEW: read from ref — stable callback, no dep on totalCostValue
+				const checkoutTotal = Number(totalCostValueRef.current || 0);
 				const walletBalance = Number(wallet?.balance || 0);
 				const walletMethod = {
 					id: "wallet_internal",
@@ -270,11 +299,13 @@ export function useMapCommitPaymentController({
 			}
 		},
 		[
+			// PULLBACK NOTE: PT-B — totalCostValue removed from deps (now read from totalCostValueRef inside callback)
+			// OLD: demoCashOnly, hospital?.id, hospital?.organizationId, hospital?.organization_id, totalCostValue, user?.id
+			// NEW: totalCostValue removed — ref is always current, no stale closure, no churn
 			demoCashOnly,
 			hospital?.id,
 			hospital?.organizationId,
 			hospital?.organization_id,
-			totalCostValue,
 			user?.id,
 		],
 	);
@@ -288,7 +319,13 @@ export function useMapCommitPaymentController({
 		let cancelled = false;
 
 		const loadCost = async () => {
-			if (!hospital?.id) return;
+			// PULLBACK NOTE: PT-B2 — read from refs inside effect (always current, no stale closure)
+			const h = hospitalRef.current;
+			const loc = currentLocationRef.current;
+			const r = roomRef.current;
+			const t = transportRef.current;
+
+			if (!h?.id) return;
 
 			setIsLoadingCost(true);
 			setErrorMessage("");
@@ -297,25 +334,25 @@ export function useMapCommitPaymentController({
 			try {
 				let checkoutCost = null;
 				if (!isCombinedFlow && !isBedFlow) {
-					const distanceKm = buildCommitPaymentDistanceKm(hospital, currentLocation);
+					const distanceKm = buildCommitPaymentDistanceKm(h, loc);
 					const nextCost = await serviceCostService.calculateEmergencyCost("ambulance", {
 						distance: distanceKm,
-						hospitalId: hospital.id,
+						hospitalId: h.id,
 						ambulanceType:
-							transport?.service_type ||
-							transport?.serviceType ||
-							transport?.tierKey ||
+							t?.service_type ||
+							t?.serviceType ||
+							t?.tierKey ||
 							null,
 					});
 					if (cancelled) return;
 					checkoutCost = await augmentEmergencyCostForCheckout(nextCost, {
-						hospitalId: hospital.id,
+						hospitalId: h.id,
 						serviceType: "ambulance",
 					});
 				} else if (isBedFlow) {
 					const roomAmount =
-						parseCommitPaymentAmount(room?.priceText) ??
-						parseCommitPaymentAmount(room?.price);
+						parseCommitPaymentAmount(r?.priceText) ??
+						parseCommitPaymentAmount(r?.price);
 					const baseCost =
 						payload?.pricingSnapshot ||
 						(Number.isFinite(roomAmount)
@@ -332,17 +369,17 @@ export function useMapCommitPaymentController({
 							: null);
 					checkoutCost = baseCost
 						? await augmentEmergencyCostForCheckout(baseCost, {
-								hospitalId: hospital.id,
+								hospitalId: h.id,
 								serviceType: "bed",
 						  })
 						: null;
 				} else {
 					const transportAmount =
-						parseCommitPaymentAmount(transport?.priceText) ??
-						parseCommitPaymentAmount(transport?.price);
+						parseCommitPaymentAmount(t?.priceText) ??
+						parseCommitPaymentAmount(t?.price);
 					const roomAmount =
-						parseCommitPaymentAmount(room?.priceText) ??
-						parseCommitPaymentAmount(room?.price);
+						parseCommitPaymentAmount(r?.priceText) ??
+						parseCommitPaymentAmount(r?.price);
 					const combinedBreakdown = [
 						Number.isFinite(transportAmount)
 							? {
@@ -372,7 +409,7 @@ export function useMapCommitPaymentController({
 							: null;
 					checkoutCost = baseCost
 						? await augmentEmergencyCostForCheckout(baseCost, {
-								hospitalId: hospital.id,
+								hospitalId: h.id,
 								serviceType: "ambulance",
 						  })
 						: null;
@@ -380,7 +417,7 @@ export function useMapCommitPaymentController({
 				if (cancelled) return;
 				const normalized = normalizeCommitPaymentCost(
 					checkoutCost,
-					isBedFlow ? room : transport || room,
+					isBedFlow ? r : t || r,
 					selectionHeaderLabel,
 				);
 				setEstimatedCost(normalized);
@@ -395,7 +432,7 @@ export function useMapCommitPaymentController({
 					currentCost ||
 						normalizeCommitPaymentCost(
 							null,
-							isBedFlow ? room : transport || room,
+							isBedFlow ? roomRef.current : transportRef.current || roomRef.current,
 							selectionHeaderLabel,
 						),
 				);
@@ -411,17 +448,22 @@ export function useMapCommitPaymentController({
 			cancelled = true;
 		};
 	}, [
-		currentLocation,
-		hospital,
+		// PULLBACK NOTE: PT-B2 — scalar IDs only; object refs (hospital, transport, room, currentLocation) replaced with refs above
+		// OLD: currentLocation, hospital, room, transport — unstable object references → re-fires on every parent render
+		// NEW: hospital?.id, transport?.id, room?.id, currentLocation lat/lng scalars → stable identity checks
+		hospital?.id,
+		transport?.id,
+		transport?.service_type,
+		room?.id,
 		isBedFlow,
 		isCombinedFlow,
 		payload?.pricingSnapshot,
 		paymentUnsupportedMessage,
-		room,
 		roomTitle,
 		selectionHeaderLabel,
-		transport,
 		transportTitle,
+		currentLocation?.latitude,
+		currentLocation?.longitude,
 	]);
 
 	const clearFeedback = useCallback(() => {
@@ -431,12 +473,13 @@ export function useMapCommitPaymentController({
 
 	const handlePaymentMethodSelect = useCallback(
 		(method) => {
+			// PULLBACK NOTE: PT-B — removed refreshPaymentMethodSnapshot call on method select (defect PT-8)
+			// OLD: setPaymentMethodsSnapshotReady(false); void refreshPaymentMethodSnapshot({ preferredMethod: method });
+			// NEW: set state only — wallet/cash eligibility already evaluated in loaded snapshot; no refetch needed
 			setSelectedPaymentMethod(method);
 			setErrorMessage("");
-			setPaymentMethodsSnapshotReady(false);
-			void refreshPaymentMethodSnapshot({ preferredMethod: method });
 		},
-		[refreshPaymentMethodSnapshot],
+		[],
 	);
 
 	const isIdleState = isCommitPaymentIdleState(submissionState);
@@ -490,6 +533,8 @@ export function useMapCommitPaymentController({
 			submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
 
 		setIsSubmitting(true);
+		// PULLBACK NOTE: PT-A diagnostic — isSubmitting=true fired; submissionState.kind is still IDLE here (sync gap window opens)
+		console.log('[PT-A][CommitPayment] handleSubmit — isSubmitting=true | submissionState.kind=IDLE (gap window open)');
 		setErrorMessage("");
 		setInfoMessage("");
 		const pendingStartedAt = Date.now();
@@ -558,6 +603,8 @@ export function useMapCommitPaymentController({
 					hospital,
 				});
 				setPendingApproval?.(pendingApprovalState);
+				// PULLBACK NOTE: PT-C — set awaitingApprovalRef before setTransactionState so finally block sees it immediately
+				awaitingApprovalRef.current = true;
 				setTransactionState(
 					MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL,
 					transactionRequestIds,
@@ -582,6 +629,7 @@ export function useMapCommitPaymentController({
 							)
 							.then(() => handleRequestComplete(completionPayload))
 							.then(() => {
+								awaitingApprovalRef.current = false;
 								setPendingApproval?.(null);
 								setTransactionState(
 									MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
@@ -598,12 +646,16 @@ export function useMapCommitPaymentController({
 								}, 800);
 							})
 							.catch((error) => {
+								awaitingApprovalRef.current = false;
 								const nextMessage = normalizeApiErrorMessage(
 									error?.message,
 									"Hospital approval is still pending.",
 								);
-								setErrorMessage(nextMessage);
-								showToast(nextMessage, "error");
+								if (isMountedRef.current) {
+									setIsSubmitting(false);
+									setErrorMessage(nextMessage);
+									showToast(nextMessage, "error");
+								}
 							});
 					}, 2600);
 				}
@@ -757,7 +809,12 @@ export function useMapCommitPaymentController({
 			showToast(nextMessage, "error");
 		} finally {
 			submitLockRef.current = false;
-			if (isMountedRef.current) {
+			// PULLBACK NOTE: PT-A diagnostic — finally block; awaitingApprovalRef guards isSubmitting reset
+			console.log('[PT-A][CommitPayment] finally | awaitingApproval=', awaitingApprovalRef.current, '| submissionState.kind=', submissionState.kind);
+			// PULLBACK NOTE: PT-C — skip isSubmitting reset while WAITING_APPROVAL window is open
+			// OLD: always setIsSubmitting(false) in finally
+			// NEW: skip reset if awaitingApprovalRef.current — reset happens in .then()/.catch() when approval resolves
+			if (isMountedRef.current && !awaitingApprovalRef.current) {
 				setIsSubmitting(false);
 			}
 		}

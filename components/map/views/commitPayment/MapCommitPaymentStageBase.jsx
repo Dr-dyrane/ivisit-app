@@ -419,9 +419,12 @@ export default function MapCommitPaymentStageBase({
 		submissionState.kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE ? (
 			<View style={styles.sectionStack}>
 				<MapCommitPaymentHeroBlade
-					title={isLoadingCost ? "Total" : totalCostLabel || "Total"}
+					// PULLBACK NOTE: PT-B2 — show stale cost label while recalculating; only blank on first load (no prior cost)
+					// OLD: title blanked and rightMeta hidden whenever isLoadingCost=true → flicker on every re-render
+					// NEW: keep showing last known values; skeleton only when there is genuinely no cost yet
+					title={totalCostLabel || "Total"}
 					subtitle={paymentHeroSubtitle}
-					rightMeta={isLoadingCost ? null : paymentHeroMeta.label}
+					rightMeta={paymentHeroMeta.label}
 					rightMetaIcon={paymentHeroMeta.icon}
 					gradientColors={paymentHeroGradientColors}
 					metaSurfaceColor={heroMetaSurfaceColor}
@@ -431,7 +434,7 @@ export default function MapCommitPaymentStageBase({
 					glowColor={heroGlowColor}
 					titleColor="#FFFFFF"
 					mutedColor="rgba(255,255,255,0.76)"
-					loading={isLoadingCost}
+					loading={isLoadingCost && !totalCostLabel}
 				/>
 
 				<MapCommitPaymentActionGroupCard

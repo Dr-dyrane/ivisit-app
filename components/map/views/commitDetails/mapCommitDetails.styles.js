@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
   topSlot: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
+    paddingHorizontal: 0,
     paddingBottom: 0,
     paddingTop: 0,
     marginTop: Platform.OS === "android" ? -6 : 0,
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
   },
   topSlotTitle: {
     fontSize: 17,

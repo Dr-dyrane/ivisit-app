@@ -57,8 +57,10 @@ export function isCommitPaymentIdleState(submissionState) {
 
 export function isCommitPaymentDismissibleState(submissionState, { isSubmitting = false } = {}) {
 	const kind = submissionState?.kind;
+	// PULLBACK NOTE: PT-C — WAITING_APPROVAL removed from dismissible states (defect PT-6, class 2.14)
+	// OLD: WAITING_APPROVAL || DISPATCHED || (FINALIZING_DISPATCH && !isSubmitting)
+	// NEW: WAITING_APPROVAL is a committed server action — non-dismissible, CTA must stay locked
 	return (
-		kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL ||
 		kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED ||
 		(kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH && !isSubmitting)
 	);

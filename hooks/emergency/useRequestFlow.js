@@ -602,6 +602,8 @@ export const useRequestFlow = (props) => {
 			}
 
 			if (!canStartRequest(request.serviceType)) {
+				// PULLBACK NOTE: PT-A diagnostic — ALREADY_ACTIVE in handleRequestComplete is expected when server-sync beats the auto-approval timeout (EC-3 verified clean)
+				console.info('[PT-A][RequestFlow] handleRequestComplete blocked: ALREADY_ACTIVE (trip may be server-synced) | serviceType=', request.serviceType);
 				return blockResult("ALREADY_ACTIVE", { serviceType: request.serviceType });
 			}
 

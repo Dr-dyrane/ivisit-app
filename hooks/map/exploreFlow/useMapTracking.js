@@ -110,6 +110,8 @@ export function useMapTracking({
     // Treat trip as inactive if EITHER Zustand identity is missing OR
     // XState lifecycle says no active trip. Closes the race during cleanup.
     const isTripActive = Boolean(trackingRequestKey) && hasActiveTrip;
+    // PULLBACK NOTE: PT-A diagnostic — log gate state at every auto-open effect run
+    console.log('[PT-A][MapTracking] auto-open effect | isTripActive=', isTripActive, '| trackingRequestKey=', trackingRequestKey ?? null, '| hasActiveTrip=', hasActiveTrip, '| sheetPhase=', sheetPhase);
 
     if (!isTripActive) {
       if (sheetPhase === MAP_SHEET_PHASES.TRACKING) {
