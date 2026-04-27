@@ -261,21 +261,27 @@ COMPLETING
 - **Architecture**: Zustand stores (not atoms) for persistent client state, TanStack Query for server state
 - **Gate**: Phases 5a–5f verified in production
 
-### 6a ✅ COMPLETE — Create `useModeStore` (Zustand) + hydration integration
+### 6a ✅ COMPLETE (`bd9fa38`) — Create `useModeStore` (Zustand) + hydration integration
 - Store: `stores/modeStore.js` — `mode`, `serviceType`, `viewMode`, `selectedSpecialty`
 - Persistence: `MODE_PREFERENCES` storage key (database abstraction)
 - Pattern: equality-guarded setters, immer middleware, follows `emergencyTripStore.js` structure
 - Hydration: `hydrateModeStore()` wired into `runtime/RootRuntimeGate.jsx` `prepare()` — deterministic, before first render
 - Stash audit: stash `@{0}` contained same files — no additional logic to adopt
 
-### 6b ✅ COMPLETE — Create `useCoverageStore` + `useLocationStore`
+### 6b ✅ COMPLETE (`cca3647`) — Create `useCoverageStore` + `useLocationStore`
 - `stores/coverageStore.js` — `coverageModePreference`, `demoOwnerSlug`, `coverageModeOperation`, `forceDemoFetch`
 - `stores/locationStore.js` — `userLocation`, `locationPermission`, `isTrackingLocation`
 - Both hydrated in `RootRuntimeGate.jsx` via `Promise.all` — parallel, deterministic
 - Stash audit: `useCoverageMode.js` (useState pattern) rejected; `useEmergencyLocationSync.js` GPS logic noted for consumer migration
 
 ### 6c — Consumer migration (one screen at a time)
-- `SearchScreen` (pilot — simplest)
+
+#### 6c-1 ⏳ SearchScreen (pilot)
+- `mode`, `setMode`, `selectedSpecialty`, `selectSpecialty` → `useModeStore` direct selectors
+- `allHospitals`, `specialties` remain on `useEmergency()` — server state, separate migration
+- Pattern: surgical `useModeStore((s) => s.x)` selectors, no context blast radius
+
+#### Remaining screens
 - `WelcomeScreen`, `RequestAmbulanceScreen`, `NotificationsScreen`, `MoreScreen`, `MapEntryLoadingScreen`, `BookBedRequestScreen`
 
 ### 6d — Shell retirement
@@ -303,6 +309,26 @@ COMPLETING
 5. **All state transitions logged/observable via DevTools**
 6. **PULLBACK NOTE comments on every change** — clear OLD/NEW for rollback
 7. **No blast radius** — each phase has zero or minimal consumer changes until Phase 5
+8. **Never commit without explicit user permission** — stage → show summary → await "commit"
+9. **Always add commit hash to roadmap doc** as part of phase deliverable
+
+### File Line Count Rules (Apple HIG Architecture Standards)
+Flag any file exceeding its target — mandatory refactor above max:
+
+| File type | Target | Max | Violation threshold |
+|---|---|---|---|
+| Route / Layout | 20–100 | 150 | >150 → flag |
+| Screen | 250–400 | 500 | >500 → flag, >800 → mandatory refactor |
+| UI Component | 80–250 | 350 | >350 → flag |
+| Complex Feature Component | 150–300 | 450 | >450 → flag |
+| Hook | 80–200 | 300 | >300 → flag |
+| Controller | 150–300 | 400 | >400 → flag |
+| State file (store/atom) | 30–150 | 250 | >250 → flag |
+| Service | 100–300 | 500 | >500 → flag |
+| Utils / helpers | 30–150 | 200 | >200 → flag |
+
+> **Hard rules**: >800 lines → mandatory refactor candidate. >1000 lines → architectural violation (unless generated).  
+> Never judge by line count alone — flag **responsibility leakage** too.
 
 ---
 

@@ -21,7 +21,12 @@ import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useSearch } from "../contexts/SearchContext";
+// PULLBACK NOTE: Phase 6c — SearchScreen pilot consumer migration
+// OLD: mode, setMode, selectedSpecialty, selectSpecialty read from useEmergency() (EmergencyContext)
+// NEW: read directly from useModeStore — surgical subscription, no context re-render blast
+// allHospitals, specialties remain on useEmergency() — server state, separate migration
 import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
+import { useModeStore } from "../stores/modeStore";
 
 // Hooks
 import { useSearchRanking } from "../hooks/search/useSearchRanking";
@@ -46,14 +51,11 @@ export default function SearchScreen() {
     const { setHeaderState } = useHeaderState();
     const { handleScroll: handleTabBarScroll, resetTabBar } = useTabBarVisibility();
     const { handleScroll: handleHeaderScroll, resetHeader } = useScrollAwareHeader();
-    const {
-        allHospitals,
-        mode,
-        setMode,
-        specialties,
-        selectedSpecialty,
-        selectSpecialty,
-    } = useEmergency();
+    const { allHospitals, specialties } = useEmergency();
+    const mode = useModeStore((s) => s.mode);
+    const setMode = useModeStore((s) => s.setMode);
+    const selectedSpecialty = useModeStore((s) => s.selectedSpecialty);
+    const selectSpecialty = useModeStore((s) => s.setSelectedSpecialty);
     const { query, setSearchQuery, recentQueries, commitQuery } = useSearch();
 
     // --- Custom Hooks ---
