@@ -1016,8 +1016,6 @@ export default function useMapVisitDetailModel({
 		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
 	);
 	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
-	// PULLBACK NOTE: VD-A diagnostic — log canResume from visit status only (defect VD-1: stale after trip cleanup)
-	if (__DEV__) console.log('[VD-A][VisitDetailModel] canResume=', canResume, '| historyItem.canResume=', historyItem?.canResume ?? false, '| status=', historyItem?.status ?? null, '| requestId=', historyItem?.requestId ?? null);
 	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
 	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
 	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");

@@ -583,5 +583,7 @@ export function useMapExploreFlow() {
     setBedBookingStatus,
     isArrived,
     isPendingApproval,
+    // PULLBACK NOTE: VD-C1 — expose XState gate for handleResumeHistoryRequest guard (defect VD-6)
+    hasActiveTrip,
   };
 }

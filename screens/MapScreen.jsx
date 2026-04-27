@@ -158,6 +158,7 @@ export default function MapScreen() {
     setBedBookingStatus,
     isArrived,
     isPendingApproval,
+    hasActiveTrip,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
 
   // PULLBACK NOTE: MapScreen decomposition Pass 1 — shell-level derivations extracted
@@ -165,6 +166,9 @@ export default function MapScreen() {
   //      sidebarWidth/sidebarOcclusionWidth/activeHistoryRequestKeys/hasActiveMapModal all inline
   // NEW: useMapShell owns all shell derivations; MapScreen passes raw values, destructures results
   const handledRecoveredRatingVisitIdsRef = useRef(new Set());
+  // PULLBACK NOTE: VD-C3 (EC-VD-2) — track origin of visit detail open so closeHistoryVisitDetails
+  // can restore the correct surface (history modal vs direct tap).
+  const visitDetailReturnTargetRef = useRef(null);
   const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useState(0);
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useState({});
   const [recoveredRatingState, setRecoveredRatingState] = useState(null);
@@ -252,9 +256,16 @@ export default function MapScreen() {
   // activeHistoryRequestKeys now derived in useMapShell
 
   const closeHistoryVisitDetails = useCallback(() => {
+    const returnTarget = visitDetailReturnTargetRef.current;
+    visitDetailReturnTargetRef.current = null;
     setSelectedHistoryVisitKey(null);
     closeVisitDetail?.();
-  }, [closeVisitDetail]);
+    // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
+    // If opened from history modal, re-show it so user returns to their list context.
+    if (returnTarget === "history_modal") {
+      setRecentVisitsVisible(true);
+    }
+  }, [closeVisitDetail, setRecentVisitsVisible]);
   const closeHistoryRating = useCallback(() => {
     setHistoryRatingState(null);
   }, []);
@@ -354,6 +365,8 @@ export default function MapScreen() {
     (historyItem) => {
       if (!historyItem) return;
 
+      // PULLBACK NOTE: VD-C3 — record that visit detail was opened from history modal
+      visitDetailReturnTargetRef.current = "history_modal";
       setRecentVisitsVisible(false);
       const historyKeys = [
         historyItem.requestId,
@@ -378,9 +391,6 @@ export default function MapScreen() {
         Boolean(activeMapRequest?.hasActiveRequest) &&
         wantsResumeAction &&
         matchesActiveEmergencyRequest;
-      // PULLBACK NOTE: VD-A diagnostic — log canResume discrepancy between visit status and live Zustand (defect VD-1)
-      console.log('[VD-A][MapScreen] handleSelectHistoryItem | requestId=', historyItem.requestId ?? null, '| visitCanResume=', historyItem.canResume ?? false, '| canResumeLiveRequest=', canResumeLiveRequest, '| hasActiveRequest=', activeMapRequest?.hasActiveRequest ?? false, '| matchesActive=', matchesActiveEmergencyRequest);
-
       if (canResumeLiveRequest) {
         openTracking?.();
         return;
@@ -955,8 +965,6 @@ export default function MapScreen() {
   ]);
 
   useEffect(() => {
-    // PULLBACK NOTE: VD-A diagnostic — log recovery rating trigger (defect VD-7: non-deterministic claims load)
-    console.log('[VD-A][MapScreen] recoveredRating effect | pendingVisitId=', pendingRecoveredRatingVisit?.id ?? null, '| claimsCount=', Object.keys(ratingRecoveryClaims).length, '| alreadyVisible=', recoveredRatingState?.visible ?? false);
     if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
     const nextState = buildRecoveredTrackingRatingState(
       pendingRecoveredRatingVisit,
@@ -1058,16 +1066,19 @@ export default function MapScreen() {
   );
 
   const handleResumeHistoryRequest = useCallback(() => {
-    // PULLBACK NOTE: VD-A diagnostic — log Zustand state at resume tap (defect VD-6: no hasActiveTrip guard)
-    console.log('[VD-A][MapScreen] handleResumeHistoryRequest | hasActiveRequest=', activeMapRequest?.hasActiveRequest ?? false, '| selectedHistoryVisitKey=', selectedHistoryVisitKey ?? null);
+    // PULLBACK NOTE: VD-C1 (defect VD-6) — guard with XState hasActiveTrip before opening tracking.
+    // Without this, tapping 'Track' on a visit whose trip was already cleaned up from Zustand
+    // would call openTracking() on a ghost trip and leave the sheet stuck on TRACKING with no data.
+    if (!hasActiveTrip) {
+      showToast("This trip is no longer active.", "info");
+      return;
+    }
     closeHistoryVisitDetails();
     openTracking?.();
-  }, [activeMapRequest?.hasActiveRequest, closeHistoryVisitDetails, openTracking, selectedHistoryVisitKey]);
+  }, [closeHistoryVisitDetails, hasActiveTrip, openTracking, showToast]);
 
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
-    // PULLBACK NOTE: VD-A diagnostic — history rating path (defect VD-2: parallel path, no updateVisit write)
-    console.log('[VD-A][MapScreen] handleRateHistoryVisit | visitId=', selectedHistoryVisit.id, '| requestType=', selectedHistoryVisit.requestType ?? null);
     setHistoryRatingState({
       visible: true,
       visitId: selectedHistoryVisit.id,

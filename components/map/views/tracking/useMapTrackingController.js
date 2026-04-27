@@ -184,8 +184,6 @@ export function useMapTrackingController({
       activeAmbulanceTrip?.assignedAmbulance?.name ||
       activeAmbulanceTrip?.assignedAmbulance?.crew?.[0] ||
       "Emergency services";
-    // PULLBACK NOTE: VD-A diagnostic — log ambulance completion entry (defect VD-1, VD-2, VD-6)
-    console.log('[VD-A][TrackingCtrl] handleCompleteAmbulanceWithRating | visitId=', visitId ?? null, '| hospitalTitle=', hospitalTitle ?? null);
     if (!visitId) return;
     const completionResult = await runBusyAction("complete", () =>
       onCompleteAmbulanceTrip?.({ deferCleanup: true }),
@@ -223,8 +221,6 @@ export function useMapTrackingController({
   const handleCompleteBedWithRating = useCallback(async () => {
     const visitId = activeBedBooking?.id ?? activeBedBooking?.requestId ?? null;
     const hospitalTitle = activeBedBooking?.hospitalName || hospitalName;
-    // PULLBACK NOTE: VD-A diagnostic — log bed completion entry (defect VD-1, VD-2)
-    console.log('[VD-A][TrackingCtrl] handleCompleteBedWithRating | visitId=', visitId ?? null, '| hospitalTitle=', hospitalTitle ?? null);
     if (!visitId) return;
     const completionResult = await runBusyAction("complete", () =>
       onCompleteBedBooking?.({ deferCleanup: true }),
