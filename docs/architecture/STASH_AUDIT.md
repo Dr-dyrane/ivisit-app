@@ -60,7 +60,7 @@ These were deleted in the stash — already cleaned up in recovery branch.
 | File | Stash Op | Status | Notes |
 |---|---|---|---|
 | `contexts/EmergencyContext.jsx` | M | ⏳ PENDING | Still live — retirement target Phase 6d |
-| `contexts/EmergencyContextAdapter.jsx` | A | ⚠️ REVIEW | Stash added adapter shim — may be useful for Phase 6c consumer migration |
+| `contexts/EmergencyContextAdapter.jsx` | A | ⚠️ REVIEW — Phase 6d | Adapter shim confirmed useful — install as new EmergencyContextProvider in 6d; re-exports useEmergency() from Zustand stores |
 | `contexts/EmergencyContextProviders.jsx` | A | ⚠️ REVIEW | Provider split — review before Phase 6d |
 | `contexts/GlobalLocationContext.jsx` | M | ✅ PULLED | Already updated in recovery |
 

@@ -21,7 +21,11 @@ import { useNotifications } from "../contexts/NotificationsContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
-import { useEmergency, EmergencyMode } from "../contexts/EmergencyContext";
+// PULLBACK NOTE: Phase 6c-2 — NotificationsScreen consumer migration
+// OLD: setMode read from useEmergency() (EmergencyContext — context-wide re-render blast)
+// NEW: setMode read directly from useModeStore — surgical subscription
+import { EmergencyMode } from "../contexts/EmergencyContext";
+import { useModeStore } from "../stores/modeStore";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,7 +50,7 @@ const NotificationsScreen = () => {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 	const fadeAnim = useRef(new Animated.Value(1)).current;
-	const { setMode } = useEmergency();
+	const setMode = useModeStore((s) => s.setMode);
 
 	const {
 		filteredNotifications,

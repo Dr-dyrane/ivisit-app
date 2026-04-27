@@ -261,7 +261,7 @@ COMPLETING
 - **Architecture**: Zustand stores (not atoms) for persistent client state, TanStack Query for server state
 - **Gate**: Phases 5a–5f verified in production
 
-### 6a ✅ COMPLETE (`bd9fa38`) — Create `useModeStore` (Zustand) + hydration integration
+### 6a ✅ COMPLETE (`bd9fa38`, fix `923f931`) — Create `useModeStore` (Zustand) + hydration integration
 - Store: `stores/modeStore.js` — `mode`, `serviceType`, `viewMode`, `selectedSpecialty`
 - Persistence: `MODE_PREFERENCES` storage key (database abstraction)
 - Pattern: equality-guarded setters, immer middleware, follows `emergencyTripStore.js` structure
@@ -281,12 +281,24 @@ COMPLETING
 - `allHospitals`, `specialties` remain on `useEmergency()` — server state, separate migration
 - Pattern: surgical `useModeStore((s) => s.x)` selectors, no context blast radius
 
-#### Remaining screens
-- `WelcomeScreen`, `RequestAmbulanceScreen`, `NotificationsScreen`, `MoreScreen`, `MapEntryLoadingScreen`, `BookBedRequestScreen`
+#### 6c-2 ⏳ NotificationsScreen
+- `setMode` → `useModeStore((s) => s.setMode)` — `useEmergency()` import fully removed
 
-### 6d — Shell retirement
-- Delete `EmergencyContext.jsx`
-- Remove `EmergencyContextProvider` from app tree
+#### Blocked screens — context-owned computed/service fields, not raw store fields
+- `WelcomeScreen` — `setUserLocation` uses functional updater `(current) => newValue`; needs store API extension or Phase 6d resolution
+- `MoreScreen` — `coverageMode` (resolved effective mode), `setCoverageMode` (async service action), `coverageStatus`/`isLiveOnlyAvailable`/`hasComfortableDemoCoverage` (server-derived) — all context-level, migrate in 6d
+
+#### 6c complete — remaining screens deferred to 6d
+- `RequestAmbulanceScreen` — `setMode` migratable but 8 other context service fields block partial migration
+- `MapEntryLoadingScreen` — `coverageModePreferenceLoaded` migratable but `effectiveDemoModeEnabled`, `refreshHospitals`, `setUserLocation` block partial migration
+- `BookBedRequestScreen` — `setMode` migratable but same service field blockers
+- **Decision**: all 3 migrate transparently via `EmergencyContextAdapter` shim in 6d — no partial churn
+
+### 6d — Shell retirement via EmergencyContextAdapter
+- Install stash `EmergencyContextAdapter.jsx` as the new `EmergencyContextProvider` — reads from Zustand stores internally
+- `useEmergency()` hook is re-exported from the adapter — zero consumer changes needed
+- All blocked screens (`RequestAmbulanceScreen`, `MapEntryLoadingScreen`, `BookBedRequestScreen`, `WelcomeScreen`, `MoreScreen`) migrate transparently
+- Remove original `EmergencyContext.jsx` provider wiring once adapter verified
 
 ### 6e — Dead code cleanup
 - Delete `EmergencyScreen.jsx` (zero router entry points, confirmed deprecated)
