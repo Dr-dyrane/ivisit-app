@@ -276,7 +276,7 @@ COMPLETING
 
 ### 6c — Consumer migration (one screen at a time)
 
-#### 6c-1 ⏳ SearchScreen (pilot)
+#### 6c-1 ✅ COMPLETE (`3821ee3`) SearchScreen (pilot)
 - `mode`, `setMode`, `selectedSpecialty`, `selectSpecialty` → `useModeStore` direct selectors
 - `allHospitals`, `specialties` remain on `useEmergency()` — server state, separate migration
 - Pattern: surgical `useModeStore((s) => s.x)` selectors, no context blast radius
@@ -311,6 +311,7 @@ COMPLETING
 7. **No blast radius** — each phase has zero or minimal consumer changes until Phase 5
 8. **Never commit without explicit user permission** — stage → show summary → await "commit"
 9. **Always add commit hash to roadmap doc** as part of phase deliverable
+10. **Before writing any new store/service** — verify exact API methods from an existing working file (`emergencyTripStore.js` is canonical). Database API is `.read/.write`, not `.get/.set`
 
 ### File Line Count Rules (Apple HIG Architecture Standards)
 Flag any file exceeding its target — mandatory refactor above max:

@@ -73,7 +73,7 @@ export const useLocationStore = create(
     hydrate: async () => {
       if (hydrationPromise) return hydrationPromise;
 
-      hydrationPromise = database.get(STORAGE_KEY).then((saved) => {
+      hydrationPromise = database.read(STORAGE_KEY).then((saved) => {
         if (saved) {
           set((state) => {
             state.userLocation = saved.userLocation ?? state.userLocation;
@@ -94,7 +94,7 @@ export const useLocationStore = create(
 // Persistence — persist last known location + permission (not tracking flag)
 useLocationStore.subscribe((state) => {
   if (!state.hydrated) return;
-  database.set(STORAGE_KEY, {
+  database.write(STORAGE_KEY, {
     userLocation: state.userLocation,
     locationPermission: state.locationPermission,
   });

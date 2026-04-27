@@ -79,7 +79,7 @@ export const useModeStore = create(
     hydrate: async () => {
       if (hydrationPromise) return hydrationPromise;
 
-      hydrationPromise = database.get(STORAGE_KEY).then((saved) => {
+      hydrationPromise = database.read(STORAGE_KEY).then((saved) => {
         if (saved) {
           set((state) => {
             state.mode = saved.mode ?? state.mode;
@@ -102,7 +102,7 @@ export const useModeStore = create(
 // Persistence subscription — only persist fields that should survive app restart
 useModeStore.subscribe((state) => {
   if (!state.hydrated) return; // Don't persist during hydration
-  database.set(STORAGE_KEY, {
+  database.write(STORAGE_KEY, {
     mode: state.mode,
     // serviceType, viewMode, selectedSpecialty are ephemeral — don't persist
   });

@@ -74,7 +74,7 @@ export const useCoverageStore = create(
     hydrate: async () => {
       if (hydrationPromise) return hydrationPromise;
 
-      hydrationPromise = database.get(STORAGE_KEY).then((saved) => {
+      hydrationPromise = database.read(STORAGE_KEY).then((saved) => {
         if (saved) {
           set((state) => {
             state.coverageModePreference = saved.coverageModePreference ?? state.coverageModePreference;
@@ -95,7 +95,7 @@ export const useCoverageStore = create(
 // Persistence — only persist preference + slug, not ephemeral operation state
 useCoverageStore.subscribe((state) => {
   if (!state.hydrated) return;
-  database.set(STORAGE_KEY, {
+  database.write(STORAGE_KEY, {
     coverageModePreference: state.coverageModePreference,
     demoOwnerSlug: state.demoOwnerSlug,
   });
