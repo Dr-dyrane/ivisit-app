@@ -26,6 +26,39 @@ import {
   deleteTrackingRatingRecoveryClaim,
 } from "../../../components/map/views/tracking/mapTracking.rating";
 
+const normalizeHistoryServiceType = (requestType) => {
+  if (requestType === "ambulance") return "ambulance";
+  if (requestType === "bed") return "bed";
+  return "visit";
+};
+
+const buildHistoryVisitRatingState = (historyItem) => {
+  if (!historyItem?.id) return null;
+  const serviceType = normalizeHistoryServiceType(historyItem.requestType);
+  const title =
+    serviceType === "ambulance"
+      ? "Rate your transport"
+      : serviceType === "bed"
+        ? "Rate your stay"
+        : "Rate your visit";
+  return {
+    visible: true,
+    visitId: historyItem.id,
+    completeKind: null,
+    completionCommitted: true,
+    serviceType,
+    title,
+    subtitle: historyItem.facilityName ? `For ${historyItem.facilityName}` : null,
+    serviceDetails: {
+      hospital: historyItem.facilityName || null,
+      provider:
+        historyItem.doctorName ||
+        historyItem.actorName ||
+        (serviceType === "ambulance" ? "Emergency services" : "Care team"),
+    },
+  };
+};
+
 /**
  * useTrackingRatingFlow
  *
@@ -51,6 +84,7 @@ export function useTrackingRatingFlow({
   stopAmbulanceTrip,
   stopBedBooking,
   onAfterResolution,
+  onAfterSubmit,
 }) {
   const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
 
@@ -147,10 +181,14 @@ export function useTrackingRatingFlow({
       finalizeCompletedTracking(completeKind);
       // PULLBACK NOTE: VD-B4 — 5th layer refetch after submit
       onAfterResolution?.();
+      // PULLBACK NOTE: VD-2 — notify caller with visitId so screen-level side effects
+      // (e.g. re-open visit detail) can be applied without leaking state into this hook.
+      onAfterSubmit?.({ visitId });
       return true;
     },
     [
       onAfterResolution,
+      onAfterSubmit,
       finalizeCompletedTracking,
       ratingState?.completeKind,
       ratingState?.serviceDetails?.hospital,
@@ -162,11 +200,24 @@ export function useTrackingRatingFlow({
     ],
   );
 
+  // PULLBACK NOTE: VD-2 — entrypoint for history visit detail "Rate" CTA.
+  // Uses the same trackingRatingStateAtom + modal renderer as in-flow completions.
+  // completionCommitted: true (trip already done), completeKind: null (no Zustand cleanup needed).
+  const openRatingForVisit = useCallback(
+    (historyItem) => {
+      const nextState = buildHistoryVisitRatingState(historyItem);
+      if (!nextState) return;
+      setRatingState(nextState);
+    },
+    [setRatingState],
+  );
+
   return {
     ratingState,
     closeRating,
     skipRating,
     submitRating,
+    openRatingForVisit,
   };
 }
 

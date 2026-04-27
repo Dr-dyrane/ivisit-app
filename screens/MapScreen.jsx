@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
@@ -61,7 +61,7 @@ import {
   ratingRecoveryClaimsAtom,
   recoveredRatingStateAtom,
   selectedHistoryVisitKeyAtom,
-  historyRatingStateAtom,
+  trackingRatingStateAtom,
 } from "../atoms/mapScreenAtoms";
 
 export default function MapScreen() {
@@ -183,13 +183,15 @@ export default function MapScreen() {
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useAtom(ratingRecoveryClaimsAtom);
   const [recoveredRatingState, setRecoveredRatingState] = useAtom(recoveredRatingStateAtom);
   const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useAtom(selectedHistoryVisitKeyAtom);
-  const [historyRatingState, setHistoryRatingState] = useAtom(historyRatingStateAtom);
   const [historyPaymentState, setHistoryPaymentState] = useState({
     visible: false,
     loading: false,
     paymentRecord: null,
   });
   const historyPaymentRequestVersionRef = useRef(0);
+  // PULLBACK NOTE: VD-2 — read atom directly here so useMapShell gets the modal-open
+  // signal without requiring useTrackingRatingFlow to be called above the shell.
+  const trackingRatingStateForShell = useAtomValue(trackingRatingStateAtom);
 
   const {
     viewportVariant,
@@ -216,7 +218,7 @@ export default function MapScreen() {
     authModalVisible,
     mapLoadingState,
     historyPaymentState,
-    historyRatingState,
+    historyRatingState: trackingRatingStateForShell,
     recoveredRatingState,
   });
 
@@ -276,9 +278,6 @@ export default function MapScreen() {
       setRecentVisitsVisible(true);
     }
   }, [closeVisitDetail, setRecentVisitsVisible]);
-  const closeHistoryRating = useCallback(() => {
-    setHistoryRatingState(null);
-  }, []);
   const closeHistoryPaymentDetails = useCallback(() => {
     historyPaymentRequestVersionRef.current += 1;
     setHistoryPaymentState({
@@ -1089,34 +1088,11 @@ export default function MapScreen() {
 
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
-    setHistoryRatingState({
-      visible: true,
-      visitId: selectedHistoryVisit.id,
-      serviceType:
-        selectedHistoryVisit.requestType === "visit"
-          ? "visit"
-          : selectedHistoryVisit.requestType,
-      title:
-        selectedHistoryVisit.requestType === "ambulance"
-          ? "Rate your transport"
-          : selectedHistoryVisit.requestType === "bed"
-            ? "Rate your stay"
-            : "Rate your visit",
-      subtitle: selectedHistoryVisit.facilityName
-        ? `For ${selectedHistoryVisit.facilityName}`
-        : null,
-      serviceDetails: {
-        hospital: selectedHistoryVisit.facilityName || null,
-        provider:
-          selectedHistoryVisit.doctorName ||
-          selectedHistoryVisit.actorName ||
-          (selectedHistoryVisit.requestType === "ambulance"
-            ? "Emergency services"
-            : "Care team"),
-      },
-    });
+    // PULLBACK NOTE: VD-2 — consolidated into single rating path via openRatingForVisit.
+    // completionCommitted: true so neither skipRating nor submitRating tries to stop a trip.
+    openRatingForVisit(selectedHistoryVisit);
     closeHistoryVisitDetails();
-  }, [closeHistoryVisitDetails, selectedHistoryVisit]);
+  }, [closeHistoryVisitDetails, openRatingForVisit, selectedHistoryVisit]);
 
   const handleCallHistoryClinic = useCallback(() => {
     const phone = selectedHistoryVisit?.contactPhone;
@@ -1186,99 +1162,27 @@ export default function MapScreen() {
 
   // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
   // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
+  // PULLBACK NOTE: VD-2 — openRatingForVisit added: history visit detail "Rate" CTA now
+  // routes into the same atom + modal + handlers as the in-flow path.
   const {
     ratingState: trackingRatingState,
     closeRating: closeTrackingRating,
     skipRating: skipTrackingRating,
     submitRating: submitTrackingRating,
+    openRatingForVisit,
   } = useTrackingRatingFlow({
     updateVisit,
     showToast,
     stopAmbulanceTrip,
     stopBedBooking,
     onAfterResolution: refreshVisits,
+    onAfterSubmit: useCallback(({ visitId }) => {
+      if (!visitId || !selectedHistoryVisitKey) return;
+      const updatedItem = visits.find((v) => v.id === visitId || v.requestId === visitId);
+      if (updatedItem) openVisitDetail?.(updatedItem);
+    }, [openVisitDetail, selectedHistoryVisitKey, visits]),
   });
 
-  const handleSkipHistoryRating = useCallback(async () => {
-    const resolution = await resolveTrackingRatingSkip({
-      visitId: historyRatingState?.visitId,
-      updateVisit,
-    });
-    if (!resolution.ok) {
-      showToast("Could not close rating right now.", "error");
-      return false;
-    }
-    // PULLBACK NOTE: VD-B4 — 5th layer: refetch visits from Supabase after skip so
-    // the visit detail sheet reflects the updated lifecycleState immediately.
-    refreshVisits?.();
-    closeHistoryRating();
-    const toast = buildTrackingResolutionToast({
-      action: "skipped",
-      serviceType: historyRatingState?.serviceType || "visit",
-      hospitalTitle: historyRatingState?.serviceDetails?.hospital ?? null,
-    });
-    showToast(toast.message, toast.level);
-    return true;
-  }, [
-    closeHistoryRating,
-    historyRatingState?.serviceDetails?.hospital,
-    historyRatingState?.serviceType,
-    historyRatingState?.visitId,
-    refreshVisits,
-    showToast,
-    updateVisit,
-  ]);
-
-  const handleSubmitHistoryRating = useCallback(
-    async ({ rating, comment, tipAmount, tipCurrency }) => {
-      const visitId = historyRatingState?.visitId;
-      const resolution = await resolveTrackingRatingSubmit({
-        visitId,
-        rating,
-        comment,
-        tipAmount,
-        tipCurrency,
-        updateVisit,
-      });
-      if (!resolution.ok) {
-        showToast("Could not save your rating right now.", "error");
-        return false;
-      }
-      // PULLBACK NOTE: VD-B4 — 5th layer: refetch from Supabase after submit so
-      // the visit detail sheet reflects rating + lifecycleState=RATED.
-      refreshVisits?.();
-      closeHistoryRating();
-      // PULLBACK NOTE: VD-B1 — re-open visit detail after rating so user returns
-      // to the updated detail sheet instead of landing on EXPLORE_INTENT.
-      if (visitId && selectedHistoryVisitKey) {
-        const updatedItem = visits.find((v) =>
-          v.id === visitId || v.requestId === visitId,
-        );
-        if (updatedItem) openVisitDetail?.(updatedItem);
-      }
-      const toast = buildTrackingResolutionToast({
-        action: "rated",
-        serviceType: historyRatingState?.serviceType || "visit",
-        hospitalTitle: historyRatingState?.serviceDetails?.hospital ?? null,
-        tipAmount,
-        tipError: resolution.tipError,
-      });
-      showToast(toast.message, toast.level);
-      return true;
-    },
-    [
-      closeHistoryRating,
-      historyRatingState?.serviceDetails?.hospital,
-      historyRatingState?.serviceType,
-      historyRatingState?.visitId,
-      openVisitDetail,
-      refreshVisits,
-      selectedHistoryVisitKey,
-      showToast,
-      updateVisit,
-      visits,
-    ],
-  );
 
   const trackingRouteCoordinates = useMemo(
     () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
@@ -1541,19 +1445,6 @@ export default function MapScreen() {
         loading={historyPaymentState.loading}
         paymentRecord={historyPaymentState.paymentRecord}
         onClose={closeHistoryPaymentDetails}
-      />
-
-      <ServiceRatingModal
-        visible={Boolean(historyRatingState?.visible)}
-        serviceType={historyRatingState?.serviceType || "visit"}
-        title={historyRatingState?.title || "Rate your visit"}
-        subtitle={historyRatingState?.subtitle || null}
-        serviceDetails={historyRatingState?.serviceDetails || null}
-        onClose={closeHistoryRating}
-        onSkip={handleSkipHistoryRating}
-        onSubmit={handleSubmitHistoryRating}
-        surfaceVariant="map"
-        preferDrawerPresentation={usesSidebarLayout}
       />
 
       <ServiceRatingModal
