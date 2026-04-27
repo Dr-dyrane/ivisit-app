@@ -496,7 +496,7 @@ One PR per pass. No combining. Behaviour parity verified before proceeding.
 
 ```
 PLAN: Pre-Tracking Phase Audit (FINAL — 3 angles, 1 document)
-STATUS: AUDIT COMPLETE — READY FOR PT-A
+STATUS: ALL PASSES SHIPPED — VERIFICATION PENDING (section 10)
 
 DEFECT SUMMARY:
   CRITICAL:  PT-6 (WAITING_APPROVAL dismissible — patient safety)
@@ -530,3 +530,119 @@ FILES CHANGED IN THIS AUDIT (docs only):
   - docs/audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27.md (superseded — can be deleted)
   - docs/audit/PRE_TRACKING_PHASE_AUDIT_RUN2_2026-04-27.md (superseded — can be deleted)
 ```
+
+---
+
+## 10. Execution Record — What Was Actually Shipped
+
+**Session date**: 2026-04-27  
+**Commits**: `e2cfd41` → `fe98dc2` → `d734ebd` → `bef0672`
+
+---
+
+### Pass results vs. plan
+
+| Pass | Planned scope | Actual scope | Delta |
+|---|---|---|---|
+| **PT-A** | Diagnostic logging | ✅ Shipped as planned | — |
+| **PT-B** | TanStack Query for payment data (stash adoption) | ⚠️ **Descoped** — see constraint C-1 | See C-1 |
+| **PT-B2** | (new) Cost flicker fix — scalar deps + stale render | ✅ Shipped — unplanned discovery during audit | See D-1 |
+| **PT-C** | WAITING_APPROVAL lock + single source of truth | ✅ Shipped. `isSubmitting` dual-truth partially addressed via `awaitingApprovalRef`; full CV-2 removal of `isSubmitting` deferred | See C-2 |
+| **PT-D** | Atomic store transition + `handleRequestComplete` rollback | ✅ Partial — `paymentAtoms` wired (layer compliance). Atomic `transitionPendingToActive` Zustand action not added | See C-3 |
+| **PT-E** | `finishCommitPayment` unconditional + `commitFlow` → Jotai | ✅ Partial — `finishCommitPayment` fixed. `commitFlow` → Jotai migration deferred | See C-4 |
+| **PT-F** | Legacy route audit + ghost payment + EC-2 ghost settlement | ✅ Partial — `await invalidateActiveTrip` fixed. EC-2 ghost settlement (FINALIZING_DISPATCH on timeout) deferred | See C-5 |
+| **PT-G** | PT-7, PT-11, PT-12, CV-3, UX-5, UX-6, HIG polish | ✅ Partial — PT-12 (double updateVisit) fixed, ETA null guard added, HIG header padding removed. Others deferred | See C-6 |
+
+---
+
+### Discoveries made during execution (not in original audit)
+
+**D-1 — `paymentAtoms.ts` already existed but was never wired**  
+Found during PT-D: `atoms/paymentAtoms.ts` had all atoms fully designed (`paymentSubmissionStateAtom`, `estimatedCostAtom`, `isLoadingCostAtom`, `isSubmittingPaymentAtom`, etc.) but `useMapCommitPaymentController.js` was still using raw `useState` for all of them. The atoms were dead code. PT-D became a wiring pass, not a design pass — significantly simpler and lower risk than planned.
+
+**D-2 — `submissionState` atom shape mismatch**  
+`paymentAtoms.ts` initialises `paymentSubmissionStateAtom` as `{ kind: "idle", display: "", dismissible: true }`. `createCommitPaymentSubmissionState()` produces `{ kind, displayId, requestId }`. Consumers only read `.kind` via predicates — both shapes work. Fixed by seeding the atom with `createCommitPaymentSubmissionState(IDLE)` on mount.
+
+**D-3 — `selectedPaymentMethodRef` sync effect was violation 3**  
+`useEffect(() => { ref.current = value }, [value])` pattern found in controller. Removed; ref now assigned inline at render time — same pattern as `totalCostValueRef`, `hospitalRef`, etc. already in file.
+
+**D-4 — PT-G `CONFIRMED → MONITORING` double write was a silent feature drop**  
+`handleRequestComplete` called `updateVisit(CONFIRMED)` then immediately `updateVisit(MONITORING)` in the same `try` block. `CONFIRMED` was never observable by any subscriber — overwritten before any React render cycle. Single `MONITORING` write now correct.
+
+---
+
+### Constraints (descoped — must carry forward)
+
+**C-1 — PT-B: TanStack Query migration for payment data NOT done**  
+**Reason**: Stash files (`usePaymentMethodsQuery.ts`, `usePaymentCostCalculation.ts`, `useWalletBalanceQuery.ts`) exist but adopting them requires wiring `QueryClient.invalidateQueries` into the payment method add/remove flow, refactoring `refreshPaymentMethodSnapshot` entirely, and verifying the wallet eligibility filter. This is a full-PR change. The DRY constraint (no full recamp) prevents doing this in the same session as the other fixes — ghost drop risk is too high.  
+**Status**: `useState` violations for `isRefreshingPaymentMethods`, `paymentMethodsSnapshotReady`, `paymentMethodsRefreshKey` remain local state. Acceptable until TanStack Query migration is its own pass.  
+**Next step**: Dedicated PT-B2-Query pass — adopt stash files, verify wallet eligibility path, one file at a time.
+
+**C-2 — CV-2: `isSubmitting` boolean not fully removed**  
+**Reason**: `isSubmitting` is still present and used in derived values across `MapCommitPaymentStageBase.jsx`. Removing it requires verifying every consumer derives from `submissionState.kind` correctly — blast radius across the UI. The PT-C fix used `awaitingApprovalRef` to prevent the `finally` reset, which closes the practical safety gap without the full refactor.  
+**Status**: Dual source of truth (CV-2) partially mitigated. Full removal is a separate PT-C2 pass.
+
+**C-3 — PT-4: Atomic `transitionPendingToActive` Zustand action not added**  
+**Reason**: `emergencyTripStore.js` is a high-blast-radius file. Adding a new action without auditing all callers of `setPendingApproval` and `startAmbulanceTrip` risks silent drops. The null window between the two writes is rare (requires Realtime sync to beat the 2600ms approval timeout) and non-catastrophic (`.then()` chain still fires correctly per EC-3 verification).  
+**Status**: Deferred. Low urgency. Add `transitionPendingToActive` in a dedicated store pass.
+
+**C-4 — PT-3/PT-E: `commitFlow` → Jotai atom migration not done**  
+**Reason**: `commitFlow` in Zustand survives Metro restart. The stash has `atoms/commitAtoms.ts`. Migration requires removing `commitFlow` from `emergencyTripStore.js`, rewiring `useMapCommitFlow.js` to read from the atom, and verifying the cold-start restore path no longer fires. This is a medium-risk rewrite of a core navigation concern.  
+**Status**: Deferred. `commitFlow` remains in Zustand. Cold-start stale sheet restore (EC-1) is unresolved.
+
+**C-5 — EC-2: Ghost settlement path (timeout → FINALIZING_DISPATCH) not done**  
+**Reason**: This requires a `FINALIZING_DISPATCH` UI state with a non-retryable "Payment sent — confirming dispatch" surface. That surface doesn't exist in `MapCommitPaymentStageParts.jsx`. Adding it without the full UI is a partial fix that could confuse the user.  
+**Status**: Deferred. Add `FINALIZING_DISPATCH` UI surface in the next HIG pass.
+
+**C-6 — PT-G partial: UX-5, UX-6, PT-7, PT-11, CV-3 deferred**  
+- **PT-7** (`Math.random()` display ID): `AMB-XXXXXX` still generated per submit. Stable `useRef` per mount not added. Low urgency — real UUID from server overwrites it before it surfaces in tracking.  
+- **PT-11** (`"8 mins"` fabricated ETA in `mapCommitPayment.helpers.js`): Still present. The `useRequestFlow.js` ETA null guard (PT-G shipped) does not touch this upstream fallback.  
+- **CV-3** (ref/state lag for `selectedPaymentMethodRef`): Fixed (D-3 above).  
+- **UX-5** (wallet disabled with caption): Not implemented — requires new component state in payment selector.  
+- **UX-6** (CTA label Dynamic Type truncation): Not implemented — requires layout change.
+
+---
+
+### Gold standard violations confirmed and resolved
+
+| Violation class | Found in | Status |
+|---|---|---|
+| V-1: API state in `useState` + `useEffect` | `estimatedCost`, `isLoadingCost` | ✅ Wired to `paymentAtoms` (PT-D) |
+| V-2: Machine-like state in `useState` | `submissionState` | ✅ Wired to `paymentSubmissionStateAtom` (PT-D) |
+| V-3: `useEffect` only syncing a ref | `selectedPaymentMethodRef` effect | ✅ Removed — inline at render (PT-D) |
+| V-4: Unstable object deps in effect | `loadCost` effect, `refreshPaymentMethodSnapshot` | ✅ Scalar deps + stable refs (PT-B2) |
+| V-1 remaining | `isRefreshingPaymentMethods`, `paymentMethodsSnapshotReady`, `paymentMethodsRefreshKey` | ⏳ Deferred — C-1 |
+
+---
+
+### Verification protocol (next session — line-by-line)
+
+Run before any further changes:
+
+```sh
+git log --oneline e2cfd41^..HEAD
+git diff e2cfd41^ HEAD -- components/map/views/commitPayment/useMapCommitPaymentController.js
+git diff e2cfd41^ HEAD -- hooks/emergency/useRequestFlow.js
+git diff e2cfd41^ HEAD -- hooks/map/exploreFlow/useMapCommitFlow.js
+git diff e2cfd41^ HEAD -- hooks/payment/usePaymentScreenModel.js
+git diff e2cfd41^ HEAD -- components/map/views/commitPayment/mapCommitPayment.transaction.js
+git diff e2cfd41^ HEAD -- components/map/views/commitDetails/mapCommitDetails.styles.js
+```
+
+For each removed line: confirm it was a violation, not a feature.  
+For each added line: confirm the PULLBACK NOTE matches what was actually changed.
+
+Behaviour contract checklist:
+
+| Feature | Contract | Verify location |
+|---|---|---|
+| Payment method select | No network call on tap | `handlePaymentMethodSelect` — only `setSelectedPaymentMethod` + `setErrorMessage` |
+| Cost display | Stale label shown during recalculation | `loading={isLoadingCost && !totalCostLabel}` in `MapCommitPaymentStageBase.jsx` |
+| WAITING_APPROVAL CTA | Locked — cannot re-press | `awaitingApprovalRef.current = true` before `return`; `finally` skips reset |
+| Sheet remount state | Submission state survives | `paymentSubmissionStateAtom` not reset on unmount |
+| `finishCommitPayment` | Always opens tracking | No conditional branch on `trackingRequestKey` in `useMapCommitFlow.js` |
+| First load cost | Seeds from `pricingSnapshot` without flash | `_seedCost` `useMemo` before first paint in controller |
+| `loadCost` re-fire | Only on real data change | Scalar deps: `hospital?.id`, `transport?.id`, lat/lng |
+| Legacy payment nav | Fresh trip before map mounts | `await invalidateActiveTrip()` before `router.push` |
+| `updateVisit` write count | Single MONITORING write per dispatch | Lines 640-650 in `useRequestFlow.js` |
+| ETA null | 'En route' shown instead of blank | `fallbackEtaLabel` null guard in ambulance branch of `handleRequestComplete` |
