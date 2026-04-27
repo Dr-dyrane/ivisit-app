@@ -675,16 +675,14 @@ export function ServiceRatingModal({
 			scrollEnabled={false}
 			contentContainerStyle={{
 				flex: 1,
-				paddingHorizontal: 24,
 				paddingTop: 8,
-				paddingBottom: 24,
 			}}
 		>
 			<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 				<ScrollView
 					{...getScrollViewProps()}
 					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{ paddingBottom: 40 }}
+					contentContainerStyle={{ paddingBottom: 8 }}
 					keyboardShouldPersistTaps="handled"
 				>
 					{ratingBody}
