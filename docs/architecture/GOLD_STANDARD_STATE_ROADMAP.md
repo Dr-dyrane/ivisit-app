@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 6b complete — `useCoverageStore` + `useLocationStore` created, Phase 6c next  
+**Status**: Phase 6 COMPLETE — EmergencyContext retired  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -312,7 +312,7 @@ COMPLETING
 - `setUserLocation` + `emergencyUserLocation` → `useLocationStore`
 - `refreshHospitals` remains on `useEmergency()` — server action
 
-### 6e ⏳ Dead code cleanup
+### 6e ✅ COMPLETE (`5d83a7a`) Dead code cleanup
 - `EmergencyScreen.jsx` deleted — 1,482 lines, zero router entry points, zero source imports confirmed
 
 ## MapScreen Decomposition — Parallel Track (not Phase 6)
