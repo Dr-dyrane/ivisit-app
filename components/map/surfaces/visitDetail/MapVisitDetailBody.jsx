@@ -6,6 +6,7 @@ import {
 	PanResponder,
 	Platform,
 	Pressable,
+	ScrollView,
 	StyleSheet,
 	Text,
 	UIManager,
@@ -355,7 +356,11 @@ export default function MapVisitDetailBody({
 	const bodyContent = (
 		<>
 			{placeActions?.length > 0 ? (
-				<View style={bodyStyles.placeActionRow}>
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={bodyStyles.placeActionRow}
+				>
 					{placeActions.map((item) => (
 						<Pressable
 							key={item.key}
@@ -363,7 +368,7 @@ export default function MapVisitDetailBody({
 							disabled={item.disabled || !item.onPress}
 							accessibilityRole="button"
 							accessibilityLabel={item.accessibilityLabel}
-							style={bodyStyles.placeActionPressable}
+							style={bodyStyles.placeActionPressableScroll}
 						>
 							{({ pressed }) => (
 								<View
@@ -401,10 +406,10 @@ export default function MapVisitDetailBody({
 										{item.label}
 									</Text>
 								</View>
-							)}
+								)}
 						</Pressable>
 					))}
-				</View>
+				</ScrollView>
 			) : null}
 
 			{placeStats?.length > 0 ? (

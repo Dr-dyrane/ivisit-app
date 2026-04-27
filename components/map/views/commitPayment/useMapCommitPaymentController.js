@@ -206,8 +206,6 @@ export function useMapCommitPaymentController({
 
 	const setTransactionState = useCallback((kind, meta = {}) => {
 		if (!isMountedRef.current) return;
-		// PULLBACK NOTE: PT-A diagnostic — log every submissionState transition
-		console.log('[PT-A][CommitPayment] submissionState →', kind, meta);
 		setSubmissionState(createCommitPaymentSubmissionState(kind, meta));
 	}, []);
 
@@ -226,8 +224,6 @@ export function useMapCommitPaymentController({
 			paymentMethodsRefreshRef.current = refreshId;
 			setIsRefreshingPaymentMethods(true);
 			setPaymentMethodsSnapshotReady(false);
-			// PULLBACK NOTE: PT-A diagnostic — log every refresh trigger with caller tag
-			console.log('[PT-A][CommitPayment] refreshPaymentMethodSnapshot fired refreshId=', refreshId, '| preferredMethod=', preferredMethod?.id ?? null);
 
 			try {
 				if (!user?.id) {
@@ -561,8 +557,6 @@ export function useMapCommitPaymentController({
 			submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
 
 		setIsSubmitting(true);
-		// PULLBACK NOTE: PT-A diagnostic — isSubmitting=true fired; submissionState.kind is still IDLE here (sync gap window opens)
-		console.log('[PT-A][CommitPayment] handleSubmit — isSubmitting=true | submissionState.kind=IDLE (gap window open)');
 		setErrorMessage("");
 		setInfoMessage("");
 		const pendingStartedAt = Date.now();
@@ -837,8 +831,6 @@ export function useMapCommitPaymentController({
 			showToast(nextMessage, "error");
 		} finally {
 			submitLockRef.current = false;
-			// PULLBACK NOTE: PT-A diagnostic — finally block; awaitingApprovalRef guards isSubmitting reset
-			console.log('[PT-A][CommitPayment] finally | awaitingApproval=', awaitingApprovalRef.current, '| submissionState.kind=', submissionState.kind);
 			// PULLBACK NOTE: PT-C — skip isSubmitting reset while WAITING_APPROVAL window is open
 			// OLD: always setIsSubmitting(false) in finally
 			// NEW: skip reset if awaitingApprovalRef.current — reset happens in .then()/.catch() when approval resolves

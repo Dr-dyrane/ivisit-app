@@ -521,6 +521,9 @@ export const styles = StyleSheet.create({
 		flex: 1,
 		minWidth: 0,
 	},
+	placeActionPressableScroll: {
+		minWidth: 72,
+	},
 	placeActionButton: {
 		minHeight: 42,
 		paddingHorizontal: 7,

@@ -48,6 +48,7 @@ import {
   readTrackingRatingRecoveryClaims,
   resolveTrackingRatingSkip,
   resolveTrackingRatingSubmit,
+  purgeStaleTrackingRatingClaims,
 } from "../components/map/views/tracking/mapTracking.rating";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
@@ -60,7 +61,7 @@ export default function MapScreen() {
   const { isDarkMode } = useTheme();
   const { showToast } = useToast();
   const { logout, user } = useAuth();
-  const { visits = [], updateVisit, cancelVisit } = useVisits();
+  const { visits = [], updateVisit, cancelVisit, refreshVisits } = useVisits();
   const { registerFAB, unregisterFAB } = useFABActions();
   const { width, height, browserInsetTop, browserInsetBottom } =
     useAuthViewport();
@@ -909,7 +910,12 @@ export default function MapScreen() {
     let cancelled = false;
 
     const loadClaims = async () => {
-      const nextClaims = await readTrackingRatingRecoveryClaims();
+      // PULLBACK NOTE: VD-B3 — purge stale claims (5th layer: Supabase truth)
+      // visits whose lifecycleState is no longer RATING_PENDING are removed from
+      // AsyncStorage so they never surface a recovery modal again.
+      const nextClaims = visits.length > 0
+        ? await purgeStaleTrackingRatingClaims(visits)
+        : await readTrackingRatingRecoveryClaims();
       if (!cancelled) {
         setRatingRecoveryClaims(nextClaims);
       }
@@ -923,6 +929,7 @@ export default function MapScreen() {
     activeMapRequest?.hasActiveRequest,
     handledRecoveredRatingVersion,
     sheetPhase,
+    visits,
   ]);
 
   const pendingRecoveredRatingVisit = useMemo(() => {
@@ -1168,6 +1175,7 @@ export default function MapScreen() {
     showToast,
     stopAmbulanceTrip,
     stopBedBooking,
+    onAfterResolution: refreshVisits,
   });
 
   const handleSkipHistoryRating = useCallback(async () => {
@@ -1179,7 +1187,9 @@ export default function MapScreen() {
       showToast("Could not close rating right now.", "error");
       return false;
     }
-
+    // PULLBACK NOTE: VD-B4 — 5th layer: refetch visits from Supabase after skip so
+    // the visit detail sheet reflects the updated lifecycleState immediately.
+    refreshVisits?.();
     closeHistoryRating();
     const toast = buildTrackingResolutionToast({
       action: "skipped",
@@ -1193,14 +1203,16 @@ export default function MapScreen() {
     historyRatingState?.serviceDetails?.hospital,
     historyRatingState?.serviceType,
     historyRatingState?.visitId,
+    refreshVisits,
     showToast,
     updateVisit,
   ]);
 
   const handleSubmitHistoryRating = useCallback(
     async ({ rating, comment, tipAmount, tipCurrency }) => {
+      const visitId = historyRatingState?.visitId;
       const resolution = await resolveTrackingRatingSubmit({
-        visitId: historyRatingState?.visitId,
+        visitId,
         rating,
         comment,
         tipAmount,
@@ -1211,8 +1223,18 @@ export default function MapScreen() {
         showToast("Could not save your rating right now.", "error");
         return false;
       }
-
+      // PULLBACK NOTE: VD-B4 — 5th layer: refetch from Supabase after submit so
+      // the visit detail sheet reflects rating + lifecycleState=RATED.
+      refreshVisits?.();
       closeHistoryRating();
+      // PULLBACK NOTE: VD-B1 — re-open visit detail after rating so user returns
+      // to the updated detail sheet instead of landing on EXPLORE_INTENT.
+      if (visitId && selectedHistoryVisitKey) {
+        const updatedItem = visits.find((v) =>
+          v.id === visitId || v.requestId === visitId,
+        );
+        if (updatedItem) openVisitDetail?.(updatedItem);
+      }
       const toast = buildTrackingResolutionToast({
         action: "rated",
         serviceType: historyRatingState?.serviceType || "visit",
@@ -1228,8 +1250,12 @@ export default function MapScreen() {
       historyRatingState?.serviceDetails?.hospital,
       historyRatingState?.serviceType,
       historyRatingState?.visitId,
+      openVisitDetail,
+      refreshVisits,
+      selectedHistoryVisitKey,
       showToast,
       updateVisit,
+      visits,
     ],
   );
 

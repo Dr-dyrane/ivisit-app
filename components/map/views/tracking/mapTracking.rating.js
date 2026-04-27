@@ -248,6 +248,55 @@ export function buildTrackingResolutionToast({
 	};
 }
 
+/**
+ * purgeStaleTrackingRatingClaims
+ *
+ * 5th layer (Supabase truth) — cross-checks every persisted recovery claim
+ * against the current visits array. Removes any claim whose visit lifecycle is
+ * no longer RATING_PENDING (already RATED, POST_COMPLETION, COMPLETED, or
+ * CANCELLED). Should be called once after visits load to flush accumulated
+ * stale claims from previous sessions where rating was submitted but the
+ * deleteRecoveryClaim write was lost (app kill, network error, etc).
+ *
+ * @param {Array} visits - normalized visit objects from useVisits()
+ * @returns {Promise<Object>} remaining claims after purge
+ */
+export async function purgeStaleTrackingRatingClaims(visits) {
+	if (!Array.isArray(visits) || visits.length === 0) return {};
+	const currentClaims = await readTrackingRatingRecoveryClaims();
+	const claimIds = Object.keys(currentClaims);
+	if (claimIds.length === 0) return {};
+
+	const terminalStates = new Set([
+		EMERGENCY_VISIT_LIFECYCLE.RATED,
+		EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
+		EMERGENCY_VISIT_LIFECYCLE.COMPLETED,
+		EMERGENCY_VISIT_LIFECYCLE.CLEARED,
+		EMERGENCY_VISIT_LIFECYCLE.CANCELLED,
+	]);
+
+	const staleIds = claimIds.filter((claimId) => {
+		const visit = visits.find((v) => {
+			const keys = getTrackingRatingVisitKeys(v);
+			return keys.includes(claimId);
+		});
+		if (!visit) return false;
+		const state = String(visit?.lifecycleState ?? "").toLowerCase();
+		return terminalStates.has(state);
+	});
+
+	if (staleIds.length === 0) return currentClaims;
+
+	const nextClaims = { ...currentClaims };
+	staleIds.forEach((id) => delete nextClaims[id]);
+	try {
+		await database.write(StorageKeys.TRACKING_RATING_RECOVERY, nextClaims);
+	} catch (_error) {
+		// Non-fatal — stale claims are harmless, they just won't surface a modal
+	}
+	return nextClaims;
+}
+
 export async function resolveTrackingRatingSkip({
 	visitId,
 	updateVisit,

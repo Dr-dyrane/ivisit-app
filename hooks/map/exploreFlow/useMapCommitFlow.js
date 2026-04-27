@@ -275,8 +275,6 @@ export function useMapCommitFlow({
 
   const finishCommitPayment = useCallback(() => {
     suppressCommitRestoreRef.current = true;
-    // PULLBACK NOTE: PT-A diagnostic — log trackingRequestKey at finishCommitPayment call time
-    console.log('[PT-A][CommitFlow] finishCommitPayment | trackingRequestKey=', trackingRequestKey ?? null);
     clearCommitFlow();
     // PULLBACK NOTE: PT-E — always call openTracking() from a payment success path (defect PT-2)
     // OLD: if (trackingRequestKey) { openTracking(); return; } → falls through to explore intent when Zustand write has not yet propagated

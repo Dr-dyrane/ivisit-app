@@ -50,6 +50,7 @@ export function useTrackingRatingFlow({
   showToast,
   stopAmbulanceTrip,
   stopBedBooking,
+  onAfterResolution,
 }) {
   const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
 
@@ -90,6 +91,8 @@ export function useTrackingRatingFlow({
     const hospitalTitle = ratingState?.serviceDetails?.hospital ?? null;
     setRatingState(INITIAL_TRACKING_RATING_STATE);
     finalizeCompletedTracking(completeKind);
+    // PULLBACK NOTE: VD-B4 — 5th layer refetch after skip
+    onAfterResolution?.();
     const skipToast = buildTrackingResolutionToast({
       action: "skipped",
       serviceType,
@@ -98,6 +101,7 @@ export function useTrackingRatingFlow({
     showToast?.(skipToast.message, skipToast.level);
     return true;
   }, [
+    onAfterResolution,
     finalizeCompletedTracking,
     ratingState?.completeKind,
     ratingState?.serviceDetails?.hospital,
@@ -141,9 +145,12 @@ export function useTrackingRatingFlow({
       showToast?.(successToast.message, successToast.level);
       setRatingState(INITIAL_TRACKING_RATING_STATE);
       finalizeCompletedTracking(completeKind);
+      // PULLBACK NOTE: VD-B4 — 5th layer refetch after submit
+      onAfterResolution?.();
       return true;
     },
     [
+      onAfterResolution,
       finalizeCompletedTracking,
       ratingState?.completeKind,
       ratingState?.serviceDetails?.hospital,
