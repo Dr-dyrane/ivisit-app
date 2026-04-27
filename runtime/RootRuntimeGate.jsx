@@ -7,6 +7,11 @@ import { appMigrationsService } from "../services/appMigrationsService";
 // OLD: mode was hydrated inside EmergencyContext on mount (deferred, race-prone)
 // NEW: hydrateModeStore() runs in prepare() — deterministic, before first render
 import { hydrateModeStore } from "../stores/modeStore";
+// PULLBACK NOTE: Phase 6b — hydrate coverageStore + locationStore on startup
+// OLD: coverageMode/userLocation hydrated inside EmergencyContext useEffect (deferred, race-prone)
+// NEW: both run in prepare() — deterministic, before first render
+import { hydrateCoverageStore } from "../stores/coverageStore";
+import { hydrateLocationStore } from "../stores/locationStore";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
 let isSplashPrevented = false;
@@ -38,8 +43,12 @@ export function RootRuntimeGate({ children }) {
 				// Run migrations and schema reload on startup
 				await appMigrationsService.run();
 
-				// Phase 6a — hydrate Zustand stores before first render
-				await hydrateModeStore();
+				// Phase 6a/6b — hydrate Zustand stores before first render
+				await Promise.all([
+					hydrateModeStore(),
+					hydrateCoverageStore(),
+					hydrateLocationStore(),
+				]);
 
 				if (isMounted) setIsReady(true);
 			} catch (err) {

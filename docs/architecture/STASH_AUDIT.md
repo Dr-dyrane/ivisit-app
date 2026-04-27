@@ -84,12 +84,12 @@ These were deleted in the stash — already cleaned up in recovery branch.
 | `hooks/emergency/index.js` | A | ✅ PULLED | Barrel export |
 | `hooks/emergency/useActiveTripQuery.ts` | A | ✅ PULLED — bug fix | Missing useInvalidateActiveTrip added |
 | `hooks/emergency/useAmbulanceAnimation.js` | M | ✅ PULLED | |
-| `hooks/emergency/useCoverageMode.js` | A | ⚠️ REVIEW | Coverage mode logic — relevant to Phase 6b |
+| `hooks/emergency/useCoverageMode.js` | A | ❌ REJECTED | useState-based hook — pattern rejected; useCoverageStore (Zustand) implemented instead |
 | `hooks/emergency/useDemoResponderHeartbeat.js` | A | ⚠️ REVIEW | Demo mode — relevant to Phase 6b |
 | `hooks/emergency/useEmergencyHospitals.js` | A | ⚠️ REVIEW | Hospital query wrapper — relevant to Phase 6b |
 | `hooks/emergency/useEmergencyJotai.js` | A | ❌ REJECTED | Jotai bridge for emergency state — superseded by Zustand stores |
 | `hooks/emergency/useEmergencyLifecycle.js` | A | ⚠️ REVIEW | XState lifecycle — review before Phase 6c |
-| `hooks/emergency/useEmergencyLocationSync.js` | A | ⚠️ REVIEW | Location sync — relevant to Phase 6b useLocationStore |
+| `hooks/emergency/useEmergencyLocationSync.js` | A | ⚠️ REVIEW — Phase 6c | GPS watchPosition + server sync logic is solid; adopt when migrating GPS consumers off EmergencyContext |
 | `hooks/emergency/useEmergencyRealtime.js` | A | ⚠️ REVIEW | Realtime subscriptions extracted — review before 6c |
 | `hooks/emergency/useEmergencyRequestActions.js` | A | ⚠️ REVIEW | Request actions extracted — review before 6c |
 | `hooks/emergency/useEmergencyServerSync.js` | A | ⚠️ REVIEW | Server sync extracted — replaces syncActiveTripsFromServer |
@@ -294,13 +294,10 @@ These were deleted in the stash — already cleaned up in recovery branch.
 
 ## Phase-gated Review Queue
 
-### Phase 6b (Coverage + Location stores)
-- `hooks/emergency/useCoverageMode.js` ⚠️
-- `hooks/emergency/useEmergencyLocationSync.js` ⚠️
-- `hooks/emergency/useHospitalDiscovery.js` ⚠️
-- `hooks/emergency/useEmergencyHospitals.js` ⚠️
-- `hooks/emergency/useDemoResponderHeartbeat.js` ⚠️
-- `docs/architecture/EMERGENCY_STATE_REFACTOR.md` ⚠️
+### Phase 6b ✅ COMPLETE
+- `hooks/emergency/useCoverageMode.js` ❌ REJECTED (useState pattern)
+- `hooks/emergency/useEmergencyLocationSync.js` → deferred to 6c (GPS consumer migration)
+- `docs/architecture/EMERGENCY_STATE_REFACTOR.md` ✅ READ — EmergencyContextAdapter pattern noted for 6c
 
 ### Phase 6c (Consumer migration)
 - `atoms/commitAtoms.ts`, `paymentAtoms.ts`, `searchAtoms.ts` ⏳

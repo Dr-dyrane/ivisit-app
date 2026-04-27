@@ -1,6 +1,6 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 6a complete — `useModeStore` created + hydrated at startup, Phase 6b next  
+**Status**: Phase 6b complete — `useCoverageStore` + `useLocationStore` created, Phase 6c next  
 **Documented**: 2026-04-26  
 **Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
@@ -268,9 +268,11 @@ COMPLETING
 - Hydration: `hydrateModeStore()` wired into `runtime/RootRuntimeGate.jsx` `prepare()` — deterministic, before first render
 - Stash audit: stash `@{0}` contained same files — no additional logic to adopt
 
-### 6b — Create `useCoverageStore` + `useLocationStore`
-- Coverage mode preferences, effective coverage, demo mode
-- User location (last known, with geolocation permissions)
+### 6b ✅ COMPLETE — Create `useCoverageStore` + `useLocationStore`
+- `stores/coverageStore.js` — `coverageModePreference`, `demoOwnerSlug`, `coverageModeOperation`, `forceDemoFetch`
+- `stores/locationStore.js` — `userLocation`, `locationPermission`, `isTrackingLocation`
+- Both hydrated in `RootRuntimeGate.jsx` via `Promise.all` — parallel, deterministic
+- Stash audit: `useCoverageMode.js` (useState pattern) rejected; `useEmergencyLocationSync.js` GPS logic noted for consumer migration
 
 ### 6c — Consumer migration (one screen at a time)
 - `SearchScreen` (pilot — simplest)

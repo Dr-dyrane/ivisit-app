@@ -73,6 +73,12 @@ export const StorageKeys = {
 	/** Mode preferences (emergency/booking, service type) — Phase 6a */
 	MODE_PREFERENCES: `${DB_PREFIX}mode_preferences`,
 
+	/** Coverage mode preference (demo/live) — Phase 6b */
+	COVERAGE_PREFERENCES: `${DB_PREFIX}coverage_preferences`,
+
+	/** Last known user location cache — Phase 6b */
+	LOCATION_CACHE: `${DB_PREFIX}location_cache`,
+
 	/** Insurance policies */
 	INSURANCE_POLICIES: `${DB_PREFIX}insurance_policies`,
 
@@ -151,6 +157,8 @@ export const SingletonKeys = [
 	StorageKeys.MEDICAL_PROFILE,
 	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.MODE_PREFERENCES,
+	StorageKeys.COVERAGE_PREFERENCES,
+	StorageKeys.LOCATION_CACHE,
 	StorageKeys.CURRENT_PAYMENT,
 	StorageKeys.PAYMENT_PREFERENCES,
 	StorageKeys.DEFAULT_PAYMENT_METHOD,
