@@ -4,6 +4,8 @@
 // Recovery: git checkout HEAD~1 -- screens/MapScreen.jsx && rm hooks/map/shell/useMapShell.js
 
 import { useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { historyPaymentStateAtom, recoveredRatingStateAtom } from "../../../atoms/mapScreenAtoms";
 import { Platform } from "react-native";
 import {
   getMapViewportVariant,
@@ -35,10 +37,10 @@ export function useMapShell({
   recentVisitsVisible,
   authModalVisible,
   mapLoadingState,
-  historyPaymentState,
   historyRatingState,
-  recoveredRatingState,
 }) {
+  const historyPaymentState = useAtomValue(historyPaymentStateAtom);
+  const recoveredRatingState = useAtomValue(recoveredRatingStateAtom);
   const viewportVariant = useMemo(
     () => getMapViewportVariant({ platform: Platform.OS, width }),
     [width],

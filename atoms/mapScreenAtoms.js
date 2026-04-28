@@ -149,6 +149,16 @@ export const selectedHistoryVisitKeyAtom = atom(null);
  */
 export const historyRatingStateAtom = atom(null);
 
+/**
+ * History payment modal state — promoted from useState in useMapHistoryFlow
+ * so useMapShell can read .visible without a call-order dependency
+ */
+export const historyPaymentStateAtom = atom({
+  visible: false,
+  loading: false,
+  paymentRecord: null,
+});
+
 // =============================================================================
 // TRACKING ROUTE STATE
 // =============================================================================

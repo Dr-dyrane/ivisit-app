@@ -22,7 +22,7 @@
 //   - useTrackingRatingFlow — stays in MapScreen (in-flow rating + openRatingForVisit)
 //   - handleBookVisitFromCare — stays in MapScreen (care-history surface, not visit-detail)
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, Linking } from "react-native";
 import { useAtom } from "jotai";
 import { paymentService } from "../../../services/paymentService";
@@ -43,6 +43,7 @@ import {
   ratingRecoveryClaimsAtom,
   recoveredRatingStateAtom,
   selectedHistoryVisitKeyAtom,
+  historyPaymentStateAtom,
 } from "../../../atoms/mapScreenAtoms";
 
 /**
@@ -103,12 +104,8 @@ export function useMapHistoryFlow({
   const [recoveredRatingState, setRecoveredRatingState] = useAtom(recoveredRatingStateAtom);
   const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useAtom(selectedHistoryVisitKeyAtom);
 
-  // --- Local state ---
-  const [historyPaymentState, setHistoryPaymentState] = useState({
-    visible: false,
-    loading: false,
-    paymentRecord: null,
-  });
+  // --- Local state (promoted to atom for call-order independence) ---
+  const [historyPaymentState, setHistoryPaymentState] = useAtom(historyPaymentStateAtom);
 
   // --- Derived ---
   const selectedHistoryVisit = useMemo(

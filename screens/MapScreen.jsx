@@ -181,9 +181,7 @@ export default function MapScreen() {
     recentVisitsVisible,
     authModalVisible,
     mapLoadingState,
-    historyPaymentState,
     historyRatingState: trackingRatingStateForShell,
-    recoveredRatingState,
   });
 
   const {
