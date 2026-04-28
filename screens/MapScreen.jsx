@@ -192,6 +192,7 @@ export default function MapScreen() {
     recoveredRatingState,
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
+    historyFocusedHospital,
     // Handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,
@@ -225,7 +226,7 @@ export default function MapScreen() {
     sheetPhase,
     hasActiveMapModal,
     hasActiveTrip,
-    historyFocusedHospital,
+    discoveredHospitals,
     router,
   });
 
@@ -335,41 +336,6 @@ export default function MapScreen() {
     if (hasTransportSelection) return "ambulance";
     return null;
   }, [sheetPhase, sheetPayload?.transport]);
-
-  const historyFocusedHospital = useMemo(() => {
-    if (!historyVisitDetailsVisible || !selectedHistoryVisit) return null;
-
-    const byId = selectedHistoryVisit.hospitalId
-      ? discoveredHospitals.find((item) => item?.id === selectedHistoryVisit.hospitalId)
-      : null;
-    if (byId) return byId;
-
-    const byName = selectedHistoryVisit.facilityName
-      ? discoveredHospitals.find(
-          (item) =>
-            String(item?.name || "").trim().toLowerCase() ===
-            String(selectedHistoryVisit.facilityName || "").trim().toLowerCase(),
-        )
-      : null;
-    if (byName) return byName;
-
-    if (selectedHistoryVisit.facilityCoordinate) {
-      return {
-        id:
-          selectedHistoryVisit.hospitalId ||
-          selectedHistoryVisit.requestId ||
-          selectedHistoryVisit.id,
-        name: selectedHistoryVisit.facilityName || "Care facility",
-        address: selectedHistoryVisit.facilityAddress || null,
-        image: selectedHistoryVisit.heroImageUrl || null,
-        coordinates: selectedHistoryVisit.facilityCoordinate,
-        latitude: selectedHistoryVisit.facilityCoordinate.latitude,
-        longitude: selectedHistoryVisit.facilityCoordinate.longitude,
-      };
-    }
-
-    return null;
-  }, [discoveredHospitals, historyVisitDetailsVisible, selectedHistoryVisit]);
 
   const mapHospitals = useMemo(() => {
     if (!historyFocusedHospital) return discoveredHospitals;

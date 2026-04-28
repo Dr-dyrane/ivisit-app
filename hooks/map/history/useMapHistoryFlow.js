@@ -68,7 +68,7 @@ import {
  * @param {string}   params.sheetPhase
  * @param {boolean}  params.hasActiveMapModal
  * @param {boolean}  params.hasActiveTrip
- * @param {Object|null} params.historyFocusedHospital
+ * @param {Array}     params.discoveredHospitals
  * @param {Object}   params.router
  */
 export function useMapHistoryFlow({
@@ -88,7 +88,7 @@ export function useMapHistoryFlow({
   sheetPhase,
   hasActiveMapModal,
   hasActiveTrip,
-  historyFocusedHospital,
+  discoveredHospitals,
   router,
 }) {
   // --- Refs ---
@@ -309,6 +309,42 @@ export function useMapHistoryFlow({
 
   const historyVisitDetailsVisible = sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
 
+  // --- Derived: historyFocusedHospital (lives here so selectedHistoryVisit + historyVisitDetailsVisible are in scope) ---
+  const historyFocusedHospital = useMemo(() => {
+    if (!historyVisitDetailsVisible || !selectedHistoryVisit) return null;
+
+    const byId = selectedHistoryVisit.hospitalId
+      ? (discoveredHospitals || []).find((item) => item?.id === selectedHistoryVisit.hospitalId)
+      : null;
+    if (byId) return byId;
+
+    const byName = selectedHistoryVisit.facilityName
+      ? (discoveredHospitals || []).find(
+          (item) =>
+            String(item?.name || "").trim().toLowerCase() ===
+            String(selectedHistoryVisit.facilityName || "").trim().toLowerCase(),
+        )
+      : null;
+    if (byName) return byName;
+
+    if (selectedHistoryVisit.facilityCoordinate) {
+      return {
+        id:
+          selectedHistoryVisit.hospitalId ||
+          selectedHistoryVisit.requestId ||
+          selectedHistoryVisit.id,
+        name: selectedHistoryVisit.facilityName || "Care facility",
+        address: selectedHistoryVisit.facilityAddress || null,
+        image: selectedHistoryVisit.heroImageUrl || null,
+        coordinates: selectedHistoryVisit.facilityCoordinate,
+        latitude: selectedHistoryVisit.facilityCoordinate.latitude,
+        longitude: selectedHistoryVisit.facilityCoordinate.longitude,
+      };
+    }
+
+    return null;
+  }, [discoveredHospitals, historyVisitDetailsVisible, selectedHistoryVisit]);
+
   useEffect(() => {
     if (!historyVisitDetailsVisible) return;
     if (selectedHistoryVisit) return;
@@ -460,6 +496,7 @@ export function useMapHistoryFlow({
     recoveredRatingState,
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
+    historyFocusedHospital,
     // History detail handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,
