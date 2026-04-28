@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtom } from "jotai";
+import { helpSupportSubjectAtom, helpSupportMessageAtom } from "../atoms/uiEphemeral.atoms";
 import {
 	View,
 	Text,
@@ -46,8 +48,9 @@ export default function HelpSupportScreen() {
 	const [expandedFaq, setExpandedFaq] = useState({});
 	const [expandedTicket, setExpandedTicket] = useState({});
 	const [isModalVisible, setIsModalVisible] = useState(false);
-	const [subject, setSubject] = useState("");
-	const [message, setMessage] = useState("");
+	// PULLBACK NOTE: Pass 6 sweep-local-state — OLD: useState("") — draft lost on nav away NEW: Jotai atoms
+	const [subject, setSubject] = useAtom(helpSupportSubjectAtom);
+	const [message, setMessage] = useAtom(helpSupportMessageAtom);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);

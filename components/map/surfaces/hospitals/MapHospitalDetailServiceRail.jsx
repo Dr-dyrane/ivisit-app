@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
+import { useAtom } from "jotai";
+import { mapHospitalServiceUncontrolledIdAtom } from "../../../../atoms/mapFlowAtoms";
 import { Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -91,7 +93,8 @@ export default function MapHospitalDetailServiceRail({
 	showDetailAffordance = true,
 	onOpenDetails = null,
 }) {
-	const [uncontrolledSelectedId, setUncontrolledSelectedId] = useState(null);
+	// PULLBACK NOTE: Pass 6 sweep-local-state — OLD: useState(null) — lost if hospital detail sheet remounts mid-commit NEW: Jotai atom
+	const [uncontrolledSelectedId, setUncontrolledSelectedId] = useAtom(mapHospitalServiceUncontrolledIdAtom);
 	if (!Array.isArray(items) || items.length === 0) return null;
 	const selectionEnabled =
 		typeof selectionEnabledProp === "boolean" ? selectionEnabledProp : compact;

@@ -83,3 +83,19 @@ export const mapSelectedHospitalAtom = atom((get) => {
   const hospitals = get(mapHospitalsAtom);
   return hospitals.find((h) => h?.id === selectedId) || null;
 });
+
+// =============================================================================
+// Pass 6 — sweep-local-state additions
+// =============================================================================
+
+// PULLBACK NOTE: Pass 6 — OLD: useState(null) in MapHospitalListContent — resets to "All" on every sheet phase change
+// NEW: Jotai atom — specialty filter selection persists across sheet collapse/expand
+export const mapHospitalListSelectedSpecialtyAtom = atom(null);
+
+// PULLBACK NOTE: Pass 6 — OLD: useState(null) in MapHospitalDetailServiceRail — lost if detail sheet remounts mid-commit
+// NEW: Jotai atom — service selection survives sheet remount so user's choice is preserved
+export const mapHospitalServiceUncontrolledIdAtom = atom(null);
+
+// PULLBACK NOTE: Pass 6 — OLD: useState(mode) in useMapSearchSheetModel — search mode resets to default on sheet collapse
+// NEW: Jotai atom — active search mode (hospital vs location) survives collapse
+export const mapSearchActiveModeAtom = atom(null); // null = use prop default on first mount

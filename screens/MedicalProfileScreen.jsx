@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtom } from "jotai";
+import { medicalProfileLocalAtom, medicalProfileHasChangesAtom } from "../atoms/uiEphemeral.atoms";
 import {
 	View,
 	Text,
@@ -60,10 +62,14 @@ export default function MedicalProfileScreen() {
 	const fadeAnim = useRef(new Animated.Value(0)).current;
 	const slideAnim = useRef(new Animated.Value(30)).current;
 
+	// PULLBACK NOTE: Pass 6 TDZ fix — useMedicalProfile must be declared BEFORE handleSave closure captures updateProfile
+	const { profile, isLoading, updateProfile } = useMedicalProfile();
+
 	// State for debounced changes to prevent FAB flickering
-	const [stableHasChanges, setStableHasChanges] = useState(false);
+	// PULLBACK NOTE: Pass 6 sweep-local-state — OLD: useState — edits lost on remount NEW: Jotai atoms
+	const [stableHasChanges, setStableHasChanges] = useAtom(medicalProfileHasChangesAtom);
+	const [localProfile, setLocalProfile] = useAtom(medicalProfileLocalAtom);
 	const [isSaving, setIsSaving] = useState(false);
-	const [localProfile, setLocalProfile] = useState({});
 	const debouncedHasChanges = useRef(false);
 
 	// Event handlers
@@ -150,7 +156,6 @@ export default function MedicalProfileScreen() {
 	const bottomPadding = tabBarHeight + 20;
 	const topPadding = STACK_TOP_PADDING;
 
-	const { profile, isLoading, updateProfile } = useMedicalProfile();
 	// We need a local state to handle editing form, syncing from profile when loaded
 
 	useEffect(() => {

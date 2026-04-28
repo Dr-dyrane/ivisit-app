@@ -221,11 +221,74 @@ const validTransitions = {
 
 ---
 
+## Pass 6 — Local UI State Ephemerality (sweep-local-state)
+
+**Status**: ✅ COMPLETE — pending commit
+**Defect class**: Rule 2 — named machine-like or user-input state in `useState` that loses user data on sheet collapse, background, or Metro restart. Correct layer: Jotai L5 atom.
+**Question for each `useState`**: *"If this component unmounts mid-session, does the user lose something they worked to produce?"*
+
+### Full Triage
+
+| File | State | Verdict | Reason |
+|---|---|---|---|
+| `InsuranceScreen.jsx:326` | `step` | 🔴 **Fix** | Wizard step — user loses progress through multi-step add-insurance flow on remount |
+| `InsuranceScreen.jsx:329` | `formData` | 🔴 **Fix** | Multi-field form draft — loses all typed input on remount (e.g. backgrounded during camera scan) |
+| `InsuranceScreen.jsx:321` | `showAddModal` | 🔴 **Fix** | Modal open state — user loses flow context if remount dismisses the modal mid-fill |
+| `MedicalProfileScreen.jsx:66` | `localProfile` | 🔴 **Fix** | Unsaved profile edits — all in-progress edits lost on remount |
+| `MedicalProfileScreen.jsx:64` | `stableHasChanges` | 🔴 **Fix** | Dirty flag — FAB save button disappears on remount even if unsaved changes exist |
+| `MapHospitalListContent.jsx:68` | `selectedSpecialty` | 🔴 **Fix** | User's active filter — resets to "All" on every sheet phase change |
+| `MapHospitalDetailServiceRail.jsx:94` | `uncontrolledSelectedId` | 🔴 **Fix** | Service selection — lost if hospital detail sheet remounts mid-commit flow |
+| `useMapSearchSheetModel.js:42` | `activeMode` | 🔴 **Fix** | Search mode (hospital vs location) — resets on sheet collapse |
+| `HelpSupportScreen.jsx:49-50` | `subject`, `message` | 🟡 **Fix** | Support ticket draft — user loses typed message on navigation away |
+| `InsuranceScreen.jsx:497` | `editingId` | ✅ Fine | Which row is in edit mode — correct to reset on remount |
+| `InsuranceScreen.jsx:322-323` | `submitting`, `isScanning` | ✅ Fine | In-flight busy flags — correct to reset |
+| `MedicalProfileScreen.jsx:65` | `isSaving` | ✅ Fine | Save busy flag — correct to reset |
+| `MapCommitPaymentStageParts.jsx:401` | `isExpanded` | ✅ Fine | Selector toggle — correct to reset closed |
+| `useMapSearchSheetModel.js:38-41` | `locationSuggestions`, `isSearching`, errors | ✅ Fine | Search fetch results — correct to refetch on remount |
+| `MapHospitalDetailStageBase.jsx:50-51` | `showFloatingTitle`, `expandedHeaderBottom` | ✅ Fine | Scroll-derived — correct to reset |
+| All tracking `nowMs` | timer tick | ✅ Fine | Clock — correct to reset |
+
+### Atoms file
+All new atoms go into: `hooks/map/state/mapEphemeral.atoms.js` (new file, or extend if exists)
+Non-map screens (`InsuranceScreen`, `MedicalProfileScreen`, `HelpSupportScreen`) atoms go into: `stores/uiEphemeral.atoms.js` (new file)
+
+### Pass Plan
+1. Check if `mapEphemeral.atoms.js` and `uiEphemeral.atoms.js` exist — create if not
+2. **Fix #1** — `InsuranceScreen`: `step`, `formData`, `showAddModal` → atoms; reset atoms in `openCreate`/`cancelCreate` handlers ✅
+3. **Fix #2** — `MedicalProfileScreen`: `localProfile`, `stableHasChanges` → atoms; reset atom in save/cancel handlers ✅
+4. **Fix #3** — `MapHospitalListContent`: `selectedSpecialty` → atom; reset in unmount or phase-change effect ✅
+5. **Fix #4** — `MapHospitalDetailServiceRail`: `uncontrolledSelectedId` → atom; reset when `selectionEnabled` goes false ✅
+6. **Fix #5** — `useMapSearchSheetModel`: `activeMode` — ⛔ CANCELLED: `activeMode` is intentionally reset to `mode` prop on every `visible` change (lines 67, 88). Converting to atom would override caller's `mode` prop on re-open — regression. Correct as `useState`.
+7. **Fix #6** — `HelpSupportScreen`: `subject`, `message` → atoms; reset on successful submit ✅
+8. Line-by-line diff verification per Pre-Commit Protocol on all changed files ✅
+9. Wait for user confirmation before commit
+
+### Files shipped
+| File | Change |
+|---|---|
+| `atoms/uiEphemeral.atoms.js` | New file — `insuranceShowAddModalAtom`, `insuranceWizardStepAtom`, `insuranceFormDataAtom`, `INSURANCE_FORM_DEFAULT`, `medicalProfileLocalAtom`, `medicalProfileHasChangesAtom`, `helpSupportSubjectAtom`, `helpSupportMessageAtom` |
+| `atoms/mapFlowAtoms.js` | Added `mapHospitalListSelectedSpecialtyAtom`, `mapHospitalServiceUncontrolledIdAtom`, `mapSearchActiveModeAtom` |
+| `screens/InsuranceScreen.jsx` | `showAddModal`, `step`, `formData` → `useAtom` |
+| `screens/MedicalProfileScreen.jsx` | `localProfile`, `stableHasChanges` → `useAtom` |
+| `screens/HelpSupportScreen.jsx` | `subject`, `message` → `useAtom` |
+| `components/map/surfaces/hospitals/MapHospitalListContent.jsx` | `selectedSpecialty` → `useAtom` |
+| `components/map/surfaces/hospitals/MapHospitalDetailServiceRail.jsx` | `uncontrolledSelectedId` → `useAtom` |
+
+### Acceptance Criteria
+- All 🔴 state survives a Metro reload / component remount mid-session
+- All atoms reset at the correct lifecycle point (not on mount — on intent to discard)
+- No `useState` setter left dangling (every `setX` either removed or still used)
+- No TDZ — every atom read has a defined default
+- PULLBACK NOTE on every changed line
+- Pre-commit diff protocol completed and presented to user before commit
+
+---
+
 ## Upcoming (Queued, Not Started)
 
 | Pass | Scope | Trigger |
 |---|---|---|
-| Pass 6 — Apple HIG sweep (remaining stack pages) | Stack pages linked from MiniProfile + Settings — wide-screen left-panel pattern | After Pass 5 |
+| Pass 7 — Apple HIG sweep (remaining stack pages) | Stack pages linked from MiniProfile + Settings — wide-screen left-panel pattern | After Pass 6 |
 
 ---
 

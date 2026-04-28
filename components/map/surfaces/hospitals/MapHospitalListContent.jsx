@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
+import { useAtom } from "jotai";
+import { mapHospitalListSelectedSpecialtyAtom } from "../../../../atoms/mapFlowAtoms";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import {
 	FontAwesome5,
@@ -65,7 +67,8 @@ export default function MapHospitalListContent({
 	isLoading = false,
 }) {
 	const { isDarkMode } = useTheme();
-	const [selectedSpecialty, setSelectedSpecialty] = useState(null);
+	// PULLBACK NOTE: Pass 6 sweep-local-state — OLD: useState(null) — resets to "All" on sheet phase change NEW: Jotai atom
+	const [selectedSpecialty, setSelectedSpecialty] = useAtom(mapHospitalListSelectedSpecialtyAtom);
 	const hasHospitals = Array.isArray(hospitals) && hospitals.length > 0;
 	const titleColor = isDarkMode ? "#F8FAFC" : "#111827";
 	const helperColor = isDarkMode ? "#94A3B8" : "#667085";

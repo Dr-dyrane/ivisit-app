@@ -1,6 +1,13 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAtom } from "jotai";
+import {
+	insuranceShowAddModalAtom,
+	insuranceWizardStepAtom,
+	insuranceFormDataAtom,
+	INSURANCE_FORM_DEFAULT,
+} from "../atoms/uiEphemeral.atoms";
 import { useQuery } from "@tanstack/react-query";
 import {
 	View,
@@ -318,40 +325,23 @@ export default function InsuranceScreen() {
 		queryFn: () => insuranceService.list(),
 		staleTime: 30 * 1000,
 	});
-	const [showAddModal, setShowAddModal] = useState(false);
+
+	// PULLBACK NOTE: Pass 6 sweep-local-state — OLD: useState(false/0/{}) — lost on remount mid-wizard NEW: Jotai atoms
+	const [showAddModal, setShowAddModal] = useAtom(insuranceShowAddModalAtom);
+	const [step, setStep] = useAtom(insuranceWizardStepAtom);
+	const [formData, setFormData] = useAtom(insuranceFormDataAtom);
 	const [submitting, setSubmitting] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
-
-	// Focus Flow State
-	const [step, setStep] = useState(0);
-
-	// Form State
-	const [formData, setFormData] = useState({
-		provider_name: "",
-		policy_number: "",
-		group_number: "",
-		policy_holder_name: "",
-		front_image_url: "",
-		back_image_url: ""
-	});
 
 	const backButton = useCallback(() => <HeaderBackButton />, []);
 
 	const openCreate = useCallback(() => {
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-		setFormData({
-			provider_name: "",
-			policy_number: "",
-			group_number: "",
-			policy_holder_name: "",
-			front_image_url: "",
-			back_image_url: ""
-		});
+		setFormData({ ...INSURANCE_FORM_DEFAULT });
 		setStep(0);
 		setShowAddModal(true);
-	}, []);
+	}, [setFormData, setStep, setShowAddModal]);
 
-	// FAB Registration
 	useFocusEffect(
 		useCallback(() => {
 			registerFAB('insurance-add', {
@@ -372,8 +362,6 @@ export default function InsuranceScreen() {
 			};
 		}, [registerFAB, unregisterFAB, openCreate])
 	);
-
-
 
 	useFocusEffect(
 		useCallback(() => {
