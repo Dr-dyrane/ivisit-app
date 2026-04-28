@@ -154,37 +154,28 @@ const shouldDisableExtendedColumns = (err) => {
 
 const mapToDb = (item) => {
     // Explicit allowlist — only emit columns that exist in the visits table.
-    // Spread-then-delete is permanently fragile: any unknown field from any caller
-    // leaks to Supabase and causes PGRST204. Allowlist prevents that structurally.
-    // Column set verified against migrations: 20260219000300_logistics.sql (base)
-    // + 20260218060000_consolidated_schema.sql (added address, phone, image, cost,
-    //   doctor_image, room_number, estimated_duration, meeting_link, insurance_covered,
-    //   next_visit, hospital_image, latitude, longitude via ADD COLUMN IF NOT EXISTS).
-    // Fields truly absent from the table (e.g. camelCase intermediaries like hospitalId,
-    // display-computed values like facilityAddress) are never emitted.
+    // Source of truth: supabase/migrations/20260219000300_logistics.sql (pillar owner).
+    // All columns here are defined in that CREATE TABLE. Per CONTRIBUTING.md the pillar
+    // file is the canonical home — no fix migrations, no add-column patches.
     const db = {};
 
     // Identity
     if (item.id !== undefined) db.id = item.id;
     if (item.user_id !== undefined) db.user_id = item.user_id;
 
-    // Hospital — prefer explicit snake_case; fall back to camelCase variants
+    // Hospital snapshot
     const hospitalName = item.hospital_name ?? item.hospitalName ?? (item.hospital !== undefined ? toFlatName(item.hospital) : undefined);
     if (hospitalName !== undefined) db.hospital_name = hospitalName;
     const hospitalId = item.hospital_id ?? item.hospitalId;
     if (hospitalId !== undefined) db.hospital_id = hospitalId;
-    // hospital_image, address, phone, image: real DB columns written by sync_emergency_to_visit trigger.
-    // App can also write them directly on booking.
     if (item.hospital_image !== undefined) db.hospital_image = item.hospital_image;
     if (item.address !== undefined) db.address = item.address;
     if (item.phone !== undefined) db.phone = item.phone;
     if (item.image !== undefined) db.image = item.image;
-    if (item.cost !== undefined) db.cost = item.cost;
 
-    // Clinician — prefer explicit snake_case; fall back to camelCase variants
+    // Clinician snapshot
     const doctorName = item.doctor_name ?? item.doctorName ?? (item.doctor !== undefined ? toFlatName(item.doctor) : undefined);
     if (doctorName !== undefined) db.doctor_name = doctorName;
-    // doctor_image: real DB column (added by consolidated schema migration)
     const doctorImage = item.doctor_image ?? item.doctorImage;
     if (doctorImage !== undefined) db.doctor_image = doctorImage;
 
@@ -195,22 +186,27 @@ const mapToDb = (item) => {
     if (item.date !== undefined) db.date = item.date;
     if (item.time !== undefined) db.time = item.time;
     if (item.notes !== undefined) db.notes = item.notes;
-    if (item.latitude !== undefined) db.latitude = item.latitude;
-    if (item.longitude !== undefined) db.longitude = item.longitude;
+    if (item.cost !== undefined) db.cost = item.cost;
 
-    // Logistics
+    // Booking details
     const roomNumber = item.room_number ?? item.roomNumber;
     if (roomNumber !== undefined) db.room_number = roomNumber;
     const estimatedDuration = item.estimated_duration ?? item.estimatedDuration;
     if (estimatedDuration !== undefined) db.estimated_duration = estimatedDuration;
-    const requestId = item.request_id ?? item.requestId;
-    if (requestId !== undefined) db.request_id = requestId;
     const meetingLink = item.meeting_link ?? item.meetingLink;
     if (meetingLink !== undefined) db.meeting_link = meetingLink;
     const insuranceCovered = item.insurance_covered ?? item.insuranceCovered;
     if (insuranceCovered !== undefined) db.insurance_covered = insuranceCovered;
     const nextVisit = item.next_visit ?? item.nextVisit;
     if (nextVisit !== undefined) db.next_visit = nextVisit;
+
+    // Patient location at booking time
+    if (item.latitude !== undefined) db.latitude = item.latitude;
+    if (item.longitude !== undefined) db.longitude = item.longitude;
+
+    // Logistics
+    const requestId = item.request_id ?? item.requestId;
+    if (requestId !== undefined) db.request_id = requestId;
     if (item.display_id !== undefined) db.display_id = item.display_id;
 
     // Lifecycle (extended emergency columns — may be stripped by stripExtendedEmergencyColumns)

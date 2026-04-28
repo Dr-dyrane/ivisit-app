@@ -1086,6 +1086,29 @@ export default function MapScreen() {
     openTracking?.();
   }, [closeHistoryVisitDetails, hasActiveTrip, openTracking, showToast]);
 
+  // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
+  // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
+  // PULLBACK NOTE: VD-2 — openRatingForVisit added: history visit detail "Rate" CTA now
+  // routes into the same atom + modal + handlers as the in-flow path.
+  const {
+    ratingState: trackingRatingState,
+    closeRating: closeTrackingRating,
+    skipRating: skipTrackingRating,
+    submitRating: submitTrackingRating,
+    openRatingForVisit,
+  } = useTrackingRatingFlow({
+    updateVisit,
+    showToast,
+    stopAmbulanceTrip,
+    stopBedBooking,
+    onAfterResolution: refreshVisits,
+    onAfterSubmit: useCallback(({ visitId }) => {
+      if (!visitId || !selectedHistoryVisitKey) return;
+      const updatedItem = visits.find((v) => v.id === visitId || v.requestId === visitId);
+      if (updatedItem) openVisitDetail?.(updatedItem);
+    }, [openVisitDetail, selectedHistoryVisitKey, visits]),
+  });
+
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
     // PULLBACK NOTE: VD-2 — consolidated into single rating path via openRatingForVisit.
@@ -1159,30 +1182,6 @@ export default function MapScreen() {
       ],
     );
   }, [cancelVisit, selectedHistoryVisit, showToast]);
-
-  // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
-  // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
-  // PULLBACK NOTE: VD-2 — openRatingForVisit added: history visit detail "Rate" CTA now
-  // routes into the same atom + modal + handlers as the in-flow path.
-  const {
-    ratingState: trackingRatingState,
-    closeRating: closeTrackingRating,
-    skipRating: skipTrackingRating,
-    submitRating: submitTrackingRating,
-    openRatingForVisit,
-  } = useTrackingRatingFlow({
-    updateVisit,
-    showToast,
-    stopAmbulanceTrip,
-    stopBedBooking,
-    onAfterResolution: refreshVisits,
-    onAfterSubmit: useCallback(({ visitId }) => {
-      if (!visitId || !selectedHistoryVisitKey) return;
-      const updatedItem = visits.find((v) => v.id === visitId || v.requestId === visitId);
-      if (updatedItem) openVisitDetail?.(updatedItem);
-    }, [openVisitDetail, selectedHistoryVisitKey, visits]),
-  });
-
 
   const trackingRouteCoordinates = useMemo(
     () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
