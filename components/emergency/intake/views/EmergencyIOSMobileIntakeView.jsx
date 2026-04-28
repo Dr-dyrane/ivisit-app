@@ -1,3 +1,5 @@
+// @deprecated Phase 7a — legacy intake view consumed only by EmergencyIntakeOrchestrator → RequestAmbulanceScreen (deprecated).
+// Not part of MapSheetOrchestrator commit flow. Safe to delete when RequestAmbulanceScreen is removed.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,

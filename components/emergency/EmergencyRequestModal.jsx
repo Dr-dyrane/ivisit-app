@@ -1,3 +1,4 @@
+// @deprecated Phase 7b — zero live consumers. Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Platform, StyleSheet } from "react-native";
 import { BlurView } from 'expo-blur';
