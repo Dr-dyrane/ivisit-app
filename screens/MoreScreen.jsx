@@ -1,6 +1,9 @@
-// @deprecated Phase 7a — MoreScreen is superseded by MiniProfileModal (in MapScreen) + direct stack navigation.
-// Router entry app/(user)/(stacks)/more.js still live for fallback. Do NOT delete until MiniProfileModal
-// covers all nav entry points. Recovery: git checkout HEAD -- screens/MoreScreen.jsx
+// ⚠️ DEPRECATED — Phase 7a
+// MoreScreen is superseded by MiniProfileModal (in MapScreen) + direct stack navigation.
+// Router entry app/(user)/(stacks)/more.js still live for fallback.
+// Do NOT delete until MiniProfileModal covers all nav entry points.
+// Recovery: git checkout HEAD -- screens/MoreScreen.jsx
+export const DEPRECATED_FILE = "MoreScreen — Phase 7a — use MiniProfileModal";
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import {
 	View,

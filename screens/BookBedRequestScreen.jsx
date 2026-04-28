@@ -1,7 +1,9 @@
 "use client";
-// @deprecated Phase 7a — BookBedRequestScreen is superseded by MapSheetOrchestrator bed decision flow.
+// ⚠️ DEPRECATED — Phase 7a
+// BookBedRequestScreen is superseded by MapSheetOrchestrator bed decision flow.
 // Router entry still live as fallback. Do NOT delete until MapScreen bed flow is proven stable.
 // Recovery: git checkout HEAD -- screens/BookBedRequestScreen.jsx
+export const DEPRECATED_FILE = "BookBedRequestScreen — Phase 7a — use MapSheetOrchestrator bed decision flow";
 
 import { useRef, useMemo, useCallback, useEffect } from "react";
 import { View, StyleSheet, Animated, Platform } from "react-native";

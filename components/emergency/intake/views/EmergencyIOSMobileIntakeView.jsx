@@ -1,5 +1,7 @@
-// @deprecated Phase 7a — legacy intake view consumed only by EmergencyIntakeOrchestrator → RequestAmbulanceScreen (deprecated).
+// ⚠️ DEPRECATED — Phase 7a
+// Legacy intake view consumed only by EmergencyIntakeOrchestrator → RequestAmbulanceScreen (deprecated).
 // Not part of MapSheetOrchestrator commit flow. Safe to delete when RequestAmbulanceScreen is removed.
+export const DEPRECATED_FILE = "EmergencyIOSMobileIntakeView — Phase 7a — deprecated with RequestAmbulanceScreen";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,

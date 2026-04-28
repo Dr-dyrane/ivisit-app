@@ -1,4 +1,6 @@
-// @deprecated Phase 7b — zero live consumers. Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
+// ⚠️ DEPRECATED — Phase 7b
+// Zero live consumers. Owned by EmergencyScreen cluster (deleted Phase 6e). Safe to delete.
+export const DEPRECATED_FILE = "EmergencyRequestModal — Phase 7b — use service selection map sheet phase";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator, Platform, StyleSheet } from "react-native";
 import { BlurView } from 'expo-blur';
