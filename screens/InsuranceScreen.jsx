@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
 	View,
 	Text,
@@ -309,9 +310,14 @@ export default function InsuranceScreen() {
 		card: isDarkMode ? "#0B0F1A" : "#FFFFFF",
 	};
 
-	const [policies, setPolicies] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [refreshing, setRefreshing] = useState(false);
+	// PULLBACK NOTE: Pass 2 L2 violation fix
+	// OLD: useState([]) + useCallback fetchPolicies + useFocusEffect trigger
+	// NEW: TanStack Query - cached, background-refetch, loading/refreshing from query state
+	const { data: policies = [], isLoading: loading, isFetching: refreshing, refetch: refetchPolicies } = useQuery({
+		queryKey: ["insurancePolicies"],
+		queryFn: () => insuranceService.list(),
+		staleTime: 30 * 1000,
+	});
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
@@ -367,17 +373,7 @@ export default function InsuranceScreen() {
 		}, [registerFAB, unregisterFAB, openCreate])
 	);
 
-	const fetchPolicies = useCallback(async () => {
-		try {
-			const data = await insuranceService.list();
-			setPolicies(data);
-		} catch (error) {
-			console.error("Failed to fetch policies:", error);
-		} finally {
-			setLoading(false);
-			setRefreshing(false);
-		}
-	}, []);
+
 
 	useFocusEffect(
 		useCallback(() => {
@@ -394,8 +390,8 @@ export default function InsuranceScreen() {
 				rightComponent: null, // Removed right component as per request to rely on FAB
 				scrollAware: false,
 			});
-			fetchPolicies();
-		}, [backButton, resetHeader, resetTabBar, setHeaderState, fetchPolicies])
+			void refetchPolicies();
+		}, [backButton, resetHeader, resetTabBar, setHeaderState])
 	);
 	const canSave = () => {
 		if (step === 0) return formData.provider_name.trim().length >= 3;
@@ -434,7 +430,9 @@ export default function InsuranceScreen() {
 		}
 	};
 
-	const [shakeAnim] = useState(new Animated.Value(0));
+	// PULLBACK NOTE: Pass 2 — OLD: useState(new Animated.Value) — no setter used, Animated.Value is mutable  NEW: useRef
+	const shakeAnimRef = useRef(new Animated.Value(0));
+	const shakeAnim = shakeAnimRef.current;
 
 	const shake = () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -517,7 +515,7 @@ export default function InsuranceScreen() {
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 			await insuranceService.setDefault(id);
-			await fetchPolicies();
+			void refetchPolicies();
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 		} catch (error) {
 			Alert.alert("Error", "Failed to set default policy.");
@@ -560,7 +558,7 @@ export default function InsuranceScreen() {
 							Haptics.notificationAsync(
 								Haptics.NotificationFeedbackType.Success
 							);
-							await fetchPolicies();
+							void refetchPolicies();
 						} catch (error) {
 							Alert.alert("Error", error.message || "Failed to delete policy.");
 						}
@@ -714,7 +712,7 @@ export default function InsuranceScreen() {
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			}
 
-			await fetchPolicies();
+			void refetchPolicies();
 			setShowAddModal(false);
 			setFormData({
 				provider_name: "",
@@ -786,10 +784,7 @@ export default function InsuranceScreen() {
 				refreshControl={
 					<RefreshControl
 						refreshing={refreshing}
-						onRefresh={() => {
-							setRefreshing(true);
-							fetchPolicies();
-						}}
+						onRefresh={() => { void refetchPolicies(); }}
 						tintColor={colors.text}
 					/>
 				}
