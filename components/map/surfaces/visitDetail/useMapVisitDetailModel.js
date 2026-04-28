@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import buildHistoryThemeTokens from "../../history/history.theme";
 import { HISTORY_DETAILS_COPY } from "../../history/history.content";
 import { getHospitalHeroSource } from "../../mapHospitalImage";
-import { paymentService } from "../../../../services/paymentService";
-import { hospitalsService } from "../../../../services/hospitalsService";
 import { buildHeroBadges as buildHospitalHeroBadges } from "../hospitals/mapHospitalDetail.helpers";
 import {
 	resolveClinicianLabel,
@@ -16,397 +14,34 @@ import {
 	resolveTypeValue,
 	resolveWhenValue,
 } from "../../history/history.presentation";
-
-const REQUEST_TYPES = Object.freeze({
-	AMBULANCE: "ambulance",
-	BED: "bed",
-	VISIT: "visit",
-});
-
-const toText = (value) => (typeof value === "string" ? value.trim() : "");
-
-const toFiniteNumber = (value) => {
-	if (typeof value === "string") {
-		const normalized = value.replace(/[^0-9.-]/g, "");
-		if (!normalized) return null;
-		const numeric = Number(normalized);
-		return Number.isFinite(numeric) ? numeric : null;
-	}
-	const numeric = Number(value);
-	return Number.isFinite(numeric) ? numeric : null;
-};
-
-const normalizeRatingValue = (value) => {
-	const numeric = toFiniteNumber(value);
-	if (numeric == null) return 0;
-	return Math.max(0, Math.min(5, numeric));
-};
-
-const formatRatingDisplay = (value) => normalizeRatingValue(value).toFixed(1);
-
-const pickText = (...values) => {
-	for (const value of values) {
-		const text = toText(value);
-		if (text) return text;
-	}
-	return null;
-};
-
-const uniqueTextList = (values) => {
-	const seen = new Set();
-	return (Array.isArray(values) ? values : []).filter((value) => {
-		const text = toText(value);
-		if (!text) return false;
-		const key = text.toLowerCase();
-		if (seen.has(key)) return false;
-		seen.add(key);
-		return true;
-	});
-};
-
-const joinParts = (parts, separator = " / ") => {
-	const resolved = (Array.isArray(parts) ? parts : [])
-		.map((part) => toText(part))
-		.filter(Boolean);
-	return resolved.length ? resolved.join(separator) : null;
-};
-
-const withoutDuplicates = (...values) => uniqueTextList(values);
-
-const toTitleCase = (value) => {
-	const normalized = toText(value).replace(/[_-]+/g, " ");
-	if (!normalized) return null;
-	return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
-};
-
-const toCurrencyLabel = (value) => {
-	const numeric = toFiniteNumber(value);
-	if (numeric != null) return `$${numeric.toFixed(2)}`;
-	const text = toText(value);
-	return text || null;
-};
-
-// PULLBACK NOTE: Add URL validation to prevent network errors
-// OLD: Return { uri: text } for any non-empty string
-// NEW: Only return { uri: ... } for valid URLs
-const isValidUrl = (string) => {
-	if (typeof string !== "string" || string.trim().length === 0) return false;
-	try {
-		const url = new URL(string.trim());
-		return url.protocol === "http:" || url.protocol === "https:";
-	} catch {
-		return false;
-	}
-};
-
-const resolveMediaSource = (...values) => {
-	for (const value of values) {
-		if (typeof value === "number") return value;
-		if (value && typeof value === "object" && value.uri) return value;
-		const text = toText(value);
-		if (text && isValidUrl(text)) return { uri: text };
-	}
-	return null;
-};
-
-const readRawField = (raw, ...keys) => {
-	for (const key of keys) {
-		if (raw && raw[key] != null) return raw[key];
-	}
-	return null;
-};
-
-// Render a timestamp as a friendly, glanceable label for the mid-snap stats
-// row. Same-day buckets read as "Today / Yesterday / Tomorrow, 10:30 AM";
-// near-term days collapse to "in 3 days" / "3 days ago"; everything else
-// drops back to a short locale date with time.
-const formatHumanWhen = (ms) => {
-	const numeric = Number(ms);
-	if (!Number.isFinite(numeric)) return null;
-	const date = new Date(numeric);
-	if (Number.isNaN(date.getTime())) return null;
-	const now = new Date();
-	const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-	const dayMs = 24 * 60 * 60 * 1000;
-	const todayStart = startOf(now);
-	const targetStart = startOf(date);
-	const dayDiff = Math.round((targetStart - todayStart) / dayMs);
-	let timePart = null;
-	try {
-		timePart = new Intl.DateTimeFormat(undefined, {
-			hour: "numeric",
-			minute: "2-digit",
-		}).format(date);
-	} catch (_error) {
-		timePart = null;
-	}
-	if (dayDiff === 0) return timePart ? `Today, ${timePart}` : "Today";
-	if (dayDiff === -1) return timePart ? `Yesterday, ${timePart}` : "Yesterday";
-	if (dayDiff === 1) return timePart ? `Tomorrow, ${timePart}` : "Tomorrow";
-	if (dayDiff < 0 && dayDiff >= -6) return `${Math.abs(dayDiff)} days ago`;
-	if (dayDiff > 0 && dayDiff <= 6) return `In ${dayDiff} days`;
-	try {
-		const sameYear = date.getFullYear() === now.getFullYear();
-		const datePart = new Intl.DateTimeFormat(undefined, {
-			weekday: "short",
-			day: "numeric",
-			month: "short",
-			...(sameYear ? {} : { year: "numeric" }),
-		}).format(date);
-		return timePart ? `${datePart}, ${timePart}` : datePart;
-	} catch (_error) {
-		return date.toLocaleString();
-	}
-};
-
-const resolveVehicleLabel = (_historyItem, raw) => {
-	const vehicleType = resolveHistoryServiceLabel({
-		requestType: REQUEST_TYPES.AMBULANCE,
-		value:
-			readRawField(raw, "responderVehicleType", "responder_vehicle_type") ||
-			readRawField(raw, "ambulanceType", "ambulance_type"),
-		fallbackLabel: null,
-	});
-	const plate = pickText(
-		readRawField(raw, "responderVehiclePlate", "responder_vehicle_plate"),
-		readRawField(raw, "ambulanceId", "ambulance_id"),
-	);
-	return joinParts([vehicleType, plate]);
-};
-
-const resolveJourneyProgress = (status) => {
-	switch (String(status || "").toLowerCase()) {
-		case "completed":
-		case "rating_pending":
-			return 1;
-		case "active":
-			return 0.72;
-		case "confirmed":
-			return 0.38;
-		case "pending":
-			return 0.2;
-		default:
-			return 0.56;
-	}
-};
-
-const resolveBedLabel = (raw) => {
-	return resolveHistoryServiceLabel({
-		requestType: REQUEST_TYPES.BED,
-		value: readRawField(raw, "bedType", "bed_type"),
-		fallbackLabel: null,
-	});
-};
-
-// PULLBACK NOTE: Fix collapsed action to always show primary CTA (never null)
-// OLD: Return null if no action available (hides left button)
-// NEW: Always return directions as fallback (matches mid-snap behavior)
-const buildVisitCollapsedAction = ({
-	canResume,
-	onResume,
-	canRate,
-	onRateVisit,
-	canDirections,
-	onGetDirections,
-	canRevisit,
-	onBookAgain,
-	status,
-	requestType,
-}) => {
-	const isCancelled = status === "cancelled";
-	const isRatingPending = status === "rating_pending";
-	const showTrack = canResume;
-
-	// Primary action priority matches placeActions
-	if (showTrack) {
-		return {
-			onPress: onResume,
-			icon: requestType === REQUEST_TYPES.BED ? "bed-outline" : "navigate-outline",
-			iconType: "ion",
-			primary: true,
-			accessibilityLabel: "Resume tracking",
-		};
-	}
-	if (isRatingPending && canRate) {
-		return {
-			onPress: onRateVisit,
-			icon: "star-outline",
-			iconType: "ion",
-			primary: true,
-			accessibilityLabel: "Rate visit",
-		};
-	}
-	if (canDirections) {
-		return {
-			onPress: onGetDirections,
-			icon: "navigate-outline",
-			iconType: "ion",
-			primary: false,
-			accessibilityLabel: "Get directions",
-		};
-	}
-	if (canRevisit) {
-		return {
-			onPress: onBookAgain,
-			icon: "calendar-plus",
-			iconType: "ion",
-			primary: false,
-			accessibilityLabel: "Book again",
-		};
-	}
-	// Fallback to directions even if cancelled (matches mid-snap behavior)
-	if (onGetDirections) {
-		return {
-			onPress: onGetDirections,
-			icon: "navigate-outline",
-			iconType: "ion",
-			primary: false,
-			accessibilityLabel: "Get directions",
-		};
-	}
-	return null;
-};
-
-const buildVisitCollapsedDistanceLabel = ({ whenValue, status }) => {
-	if (status === "active") return "Active now";
-	if (status === "pending") return "Pending";
-	if (status === "confirmed") return "Upcoming";
-	if (whenValue) return whenValue;
-	return "Visit";
-};
-
-const resolvePaymentMethodLabel = (raw) => {
-	const directLabel = pickText(
-		readRawField(raw, "paymentMethodLabel"),
-		readRawField(raw, "paymentMethod", "payment_method"),
-	);
-	if (directLabel) {
-		const normalized = directLabel.toLowerCase();
-		if (normalized.includes("cash")) return "Cash";
-		if (normalized.includes("wallet")) return "iVisit balance";
-		if (normalized.includes("card")) return "Card on file";
-		return toTitleCase(directLabel);
-	}
-
-	const paymentMethodId = pickText(
-		readRawField(raw, "paymentMethodId", "payment_method_id"),
-	);
-	if (!paymentMethodId) return null;
-	if (paymentMethodId.toLowerCase().includes("cash")) return "Cash";
-	if (paymentMethodId.toLowerCase().includes("wallet")) return "iVisit balance";
-	return "Method on file";
-};
-
-const resolvePaymentTotalLabel = (historyItem, raw) => {
-	const numericCandidates = [
-		readRawField(raw, "userAmount", "user_amount"),
-		readRawField(raw, "totalAmount", "total_amount"),
-		readRawField(raw, "amount"),
-		readRawField(raw, "totalCost", "total_cost"),
-		historyItem?.paymentSummary,
-	];
-	const positiveCandidate = numericCandidates.find((value) => {
-		const numeric = toFiniteNumber(value);
-		return numeric != null && Math.abs(numeric) > 0;
-	});
-	if (positiveCandidate != null) {
-		return toCurrencyLabel(positiveCandidate);
-	}
-
-	const textCandidate = numericCandidates.find((value) => {
-		const text = toText(value).replace(/,/g, "");
-		if (!text) return false;
-		return !/^\$?0(?:\.0+)?$/.test(text);
-	});
-	if (textCandidate != null) {
-		return toCurrencyLabel(textCandidate);
-	}
-
-	const hasLinkedPayment =
-		Boolean(historyItem?.paymentId) ||
-		Boolean(readRawField(raw, "paymentStatus", "payment_status"));
-	if (hasLinkedPayment) return null;
-
-	const hasZeroCandidate = numericCandidates.some((value) => toFiniteNumber(value) === 0);
-	return hasZeroCandidate ? "$0.00" : null;
-};
-
-const buildJourney = (historyItem, raw, whenValue) => {
-	if (historyItem?.requestType !== REQUEST_TYPES.AMBULANCE) return null;
-	if (!historyItem?.facilityName) return null;
-	const destinationTitle =
-		pickText(
-			readRawField(
-				raw,
-				"pickupLabel",
-				"pickup_label",
-				"pickupAddress",
-				"pickup_address",
-				"patientAddress",
-				"patient_address",
-			),
-		) || "Your location";
-	return {
-		whenLabel:
-			pickText(readRawField(raw, "estimatedArrival", "estimated_arrival")) || whenValue,
-		statusLabel: historyItem?.statusLabel || null,
-		serviceLabel: resolveTypeValue(historyItem),
-		requestLabel: historyItem?.displayId || historyItem?.requestId || null,
-		progressValue: resolveJourneyProgress(historyItem?.status),
-		trackingKind: historyItem?.requestType,
-		originLabel: "Hospital",
-		originTitle: historyItem.facilityName,
-		originSubtitle: resolveFacilityLine(historyItem),
-		destinationLabel: "Pickup",
-		destinationTitle,
-		destinationSubtitle:
-			destinationTitle === "Your location" ? "Pickup destination" : "Patient destination",
-	};
-};
-
-const buildTriageRows = (raw) => {
-	const rows = [];
-	const triageProgress = readRawField(raw, "triageProgress", "triage_progress", "progress");
-	const answeredCount = toFiniteNumber(
-		triageProgress?.answeredSteps ??
-			triageProgress?.answeredCount ??
-			triageProgress?.completedSteps,
-	);
-	const totalSteps = toFiniteNumber(triageProgress?.totalSteps);
-	if (answeredCount != null && totalSteps != null && totalSteps > 0) {
-		rows.push({
-			key: "triageProgress",
-			label: HISTORY_DETAILS_COPY.detailLabels.triageProgress,
-			value: `${answeredCount}/${totalSteps}`,
-			icon: "pulse-outline",
-		});
-	}
-
-	const urgency = pickText(
-		triageProgress?.severityBand,
-		triageProgress?.urgency,
-		readRawField(raw, "triageSnapshot", "triage_snapshot", "triage")?.severityBand,
-	);
-	if (urgency) {
-		rows.push({
-			key: "triageUrgency",
-			label: HISTORY_DETAILS_COPY.detailLabels.triageUrgency,
-			value: toTitleCase(urgency),
-			icon: "alert-circle-outline",
-		});
-	}
-
-	return rows;
-};
-
-const filterMeaningfulRows = (rows) =>
-	rows.filter((row) => {
-		if (!row) return false;
-		if (row.kind === "rating") {
-			return true;
-		}
-		return row.value != null && String(row.value).trim();
-	});
+import {
+	REQUEST_TYPES,
+	toText,
+	toFiniteNumber,
+	normalizeRatingValue,
+	formatRatingDisplay,
+	pickText,
+	uniqueTextList,
+	joinParts,
+	withoutDuplicates,
+	toTitleCase,
+	resolveMediaSource,
+	readRawField,
+	formatHumanWhen,
+	filterMeaningfulRows,
+} from "./visitDetail.helpers";
+import {
+	resolveVehicleLabel,
+	resolveBedLabel,
+	buildVisitCollapsedAction,
+	buildVisitCollapsedDistanceLabel,
+	resolvePaymentMethodLabel,
+	resolvePaymentTotalLabel,
+	buildJourney,
+	buildTriageRows,
+} from "./visitDetail.builders";
+import { useHospitalDetailQuery } from "../../../../hooks/visits/useHospitalDetailQuery";
+import { usePaymentHistoryEntryQuery } from "../../../../hooks/visits/usePaymentHistoryEntryQuery";
 
 export default function useMapVisitDetailModel({
 	historyItem,
@@ -508,33 +143,10 @@ export default function useMapVisitDetailModel({
 		};
 	}, [historyItem, modalTitle]);
 
-	// Hydrate the hospital row that backs this visit so the hero can render
-	// facility-level pills (Verified / Emergency level / service type) the same
-	// way MapHospitalDetailBody does. Cached per hospitalId; cleared on switch.
+	// VD-D (VD-4): replaced useState+useEffect fetch with TanStack Query.
+	// Hydrate the hospital row for hero facility pills. Cached per hospitalId.
 	const hospitalId = historyItem?.hospitalId || null;
-	const [hospitalDetails, setHospitalDetails] = useState(null);
-	const hospitalLookupKeyRef = useRef(null);
-	useEffect(() => {
-		if (hospitalLookupKeyRef.current !== hospitalId) {
-			hospitalLookupKeyRef.current = hospitalId;
-			setHospitalDetails(null);
-		}
-		if (!hospitalId) return undefined;
-		let cancelled = false;
-		(async () => {
-			try {
-				const record = await hospitalsService.getById(hospitalId);
-				if (cancelled) return;
-				if (hospitalLookupKeyRef.current !== hospitalId) return;
-				if (record) setHospitalDetails(record);
-			} catch (_error) {
-				// Silent — hero falls back to visit-derived badges only.
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [hospitalId]);
+	const { data: hospitalDetails = null } = useHospitalDetailQuery(hospitalId);
 
 	const hero = useMemo(() => {
 		if (!historyItem) return null;
@@ -817,56 +429,14 @@ export default function useMapVisitDetailModel({
 	// to the same lookup the payment-details modal makes
 	// (paymentService.getPaymentHistoryEntry) so both the stat row and the
 	// payment-details section carry the authoritative amount.
-	const paymentLookupKey = useMemo(
-		() => historyItem?.paymentId || historyItem?.requestId || null,
-		[historyItem?.paymentId, historyItem?.requestId],
-	);
-	const [fetchedPriceLabel, setFetchedPriceLabel] = useState(null);
-	const fetchedPriceKeyRef = useRef(null);
-	useEffect(() => {
-		if (paymentLookupKey !== fetchedPriceKeyRef.current) {
-			fetchedPriceKeyRef.current = paymentLookupKey;
-			setFetchedPriceLabel(null);
-		}
-		if (!paymentLookupKey) return undefined;
-		const localAmount = toFiniteNumber(localPaymentTotalLabel);
-		const hasUsableLocal = localAmount != null && Math.abs(localAmount) > 0;
-		if (hasUsableLocal) return undefined;
-		let cancelled = false;
-		(async () => {
-			try {
-				const entry = await paymentService.getPaymentHistoryEntry({
-					transactionId: historyItem?.paymentId || null,
-					requestId: historyItem?.requestId || null,
-				});
-				if (cancelled) return;
-				if (fetchedPriceKeyRef.current !== paymentLookupKey) return;
-				const label = toCurrencyLabel(entry?.amount);
-				const numeric = toFiniteNumber(label);
-				if (label && numeric != null && Math.abs(numeric) > 0) {
-					setFetchedPriceLabel(label);
-				}
-			} catch (_error) {
-				// Silent — payment row simply keeps the placeholder.
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [
+	// VD-D (VD-4): replaced useState+useEffect fetch with TanStack Query.
+	const paymentLookupKey = historyItem?.paymentId || historyItem?.requestId || null;
+	const { effectivePaymentTotalLabel } = usePaymentHistoryEntryQuery({
 		paymentLookupKey,
+		paymentId: historyItem?.paymentId || null,
+		requestId: historyItem?.requestId || null,
 		localPaymentTotalLabel,
-		historyItem?.paymentId,
-		historyItem?.requestId,
-	]);
-
-	// Effective total: local first, fetched fallback when local is empty/$0.00.
-	const effectivePaymentTotalLabel = useMemo(() => {
-		const localAmount = toFiniteNumber(localPaymentTotalLabel);
-		const localUsable = localAmount != null && Math.abs(localAmount) > 0;
-		if (localUsable) return localPaymentTotalLabel;
-		return fetchedPriceLabel || localPaymentTotalLabel || null;
-	}, [localPaymentTotalLabel, fetchedPriceLabel]);
+	});
 
 	const paymentRows = useMemo(() => {
 		if (!historyItem) return [];
