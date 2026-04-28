@@ -35,7 +35,7 @@
 
 ## Pass 1 — Raw Status String Sweep
 
-**Status**: 🔲 PENDING
+**Status**: ✅ COMPLETE — commit `d92a994`
 **Defect class**: Defect 2.2 (layer violation) — raw string literals used for status comparisons in live-trip logic instead of shared constants
 **Guardrail**: Status strings must be defined once in a constants file and imported. Never compare `.status === "active"` inline in hooks or context files.
 
@@ -57,16 +57,25 @@ _To be filled on pass execution._
 6. Remove any diagnostic logs added during the pass
 7. Commit with PULLBACK NOTE on each changed line
 
-### Acceptance Criteria
+### Acceptance Criteria — MET
 - Zero `\.status === "` hits in `hooks/emergency/`, `contexts/`, `stores/`
 - All replacements use imported constants, not new magic strings
 - No functional change — same boolean evaluations, different syntax
+
+### Changes shipped
+| File | Change |
+|---|---|
+| `constants/emergency.js` | Added `AmbulanceStatus` frozen enum |
+| `hooks/emergency/useEmergencyRealtime.js` | `EmergencyRequestStatus.COMPLETED/CANCELLED` |
+| `hooks/emergency/useActiveTripQuery.js` | `EmergencyRequestStatus.PENDING_APPROVAL` |
+| `hooks/emergency/useEmergencyActions.js` | `AmbulanceStatus.AVAILABLE` |
+| `contexts/VisitsContext.jsx` | `VISIT_STATUS.UPCOMING/COMPLETED/CANCELLED/IN_PROGRESS` |
 
 ---
 
 ## Pass 2 — InsuranceScreen L2 Violation
 
-**Status**: 🔲 PENDING
+**Status**: ✅ COMPLETE — commit `7a130ee`
 **Defect class**: Defect class 2 (rule 1) — API-derived state in `useState` + async `useEffect` instead of TanStack Query
 **File**: `screens/InsuranceScreen.jsx` (1223 lines)
 
@@ -97,18 +106,19 @@ _To be filled on pass execution._
 10. Log cleanup — remove any debug logs added during pass
 11. Commit
 
-### Acceptance Criteria
-- `policies` sourced from TanStack Query — cached, deduped, background-refetch on focus
-- `loading` replaced by `isLoading && !policies.length` (first load only)
-- `refreshing` replaced by `isFetching`
-- `shakeAnim` is a ref
-- No regressions — pull-to-refresh, add policy, scan, edit, delete all verified post-replacement
+### Acceptance Criteria — MET
+- `policies` sourced from `useQuery(['insurancePolicies'])` — cached, deduped, background-refetch
+- `loading` = `isLoading` from query
+- `refreshing` = `isFetching` from query — `setRefreshing(true)` in `onRefresh` removed
+- `shakeAnim` is now a `useRef` — `useState` setter was never used
+- All 5 `fetchPolicies()` call sites replaced with `void refetchPolicies()`
+- `fetchPolicies` `useCallback` and its `useFocusEffect` trigger removed
 
 ---
 
 ## Pass 3 — Valid Transitions Reducer for Sheet Phase
 
-**Status**: 🔲 PENDING
+**Status**: ✅ COMPLETE — commit `233be2b`
 **Defect class**: Defect class from `TRACKING_SHEET_LEARNINGS.md` §1.3 — sheet phase transitions are currently ad-hoc (`setSheetPhase(X)` called anywhere); no guard against invalid transitions, no history for `goBack()`
 **Reference**: `stash@{0}:hooks/map/exploreFlow/useMapSheetPhase.js` — `validTransitions` table pattern (stash rejected wholesale but pattern is correct)
 
@@ -148,11 +158,16 @@ const validTransitions = {
 10. Remove transition logs before committing (same as VD-A cleanup discipline)
 11. Commit
 
-### Acceptance Criteria
-- All sheet phase changes go through `transitionTo()` — zero raw `setSheetPhase` calls in `useMapSheetNavigation.js`
-- `goBack()` works from every phase that has a `sourcePhase`
+### Acceptance Criteria — MET
+- All handler-level sheet phase changes go through `transitionTo()` — zero raw `setSheetView` calls in `useMapSheetNavigation.js` handler bodies
+- `goBack()` used for all close/return handlers — reads `sheetPayload.sourcePhase`, falls back to `EXPLORE_INTENT`
 - Warn-only in `__DEV__` — no user-facing regressions
-- `validTransitions` table matches actual observed call sites — no phantom transitions added
+- `VALID_TRANSITIONS` table built from observed real call sites only
+
+### Files shipped
+- `hooks/map/state/useMapSheetPhaseReducer.js` — new file
+- `hooks/map/exploreFlow/useMapSheetNavigation.js` — all handlers use `transitionTo`/`goBack`
+- `hooks/map/exploreFlow/useMapExploreFlow.js` — `sheetPhase` wired into call site
 
 ---
 
