@@ -1016,6 +1016,17 @@ export default function useMapVisitDetailModel({
 		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
 	);
 	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
+	// VD-A: log canResume at model build — detect stale visit status vs live trip
+	if (__DEV__) {
+		console.log("[VD-A][useMapVisitDetailModel] canResume", {
+			canResume,
+			historyItemCanResume: historyItem?.canResume,
+			status: historyItem?.status,
+			lifecycleState: historyItem?.lifecycleState,
+			requestId: historyItem?.requestId,
+			hasOnResume: typeof onResume === "function",
+		});
+	}
 	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
 	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
 	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");

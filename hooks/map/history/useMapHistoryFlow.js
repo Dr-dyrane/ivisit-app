@@ -254,6 +254,30 @@ export function useMapHistoryFlow({
         wantsResumeAction &&
         matchesActiveEmergencyRequest;
 
+      // VD-A: log canResume discrepancy — visit status vs live Zustand trip state
+      if (__DEV__) {
+        const visitCanResume = historyItem?.canResume ?? historyItem?.primaryAction === "resume_tracking";
+        if (visitCanResume && !canResumeLiveRequest) {
+          console.warn(
+            "[VD-A][handleSelectHistoryItem] DISCREPANCY — visit.canResume=true but canResumeLiveRequest=false.",
+            {
+              requestId: historyItem.requestId,
+              primaryAction: historyItem.primaryAction,
+              hasActiveRequest: activeMapRequest?.hasActiveRequest,
+              matchesActiveEmergencyRequest,
+              historyItemStatus: historyItem.status,
+            }
+          );
+        }
+        console.log("[VD-A][handleSelectHistoryItem]", {
+          requestId: historyItem.requestId,
+          canResumeLiveRequest,
+          visitCanResume,
+          sheetPhase,
+          selectedHistoryVisitKey,
+        });
+      }
+
       if (canResumeLiveRequest) {
         openTracking?.();
         return;
@@ -396,6 +420,15 @@ export function useMapHistoryFlow({
   ]);
 
   useEffect(() => {
+    // VD-A: log recovered rating trigger
+    if (__DEV__) {
+      console.log("[VD-A][recoveredRating] trigger check", {
+        pendingVisitId: pendingRecoveredRatingVisit?.id ?? null,
+        pendingVisitStatus: pendingRecoveredRatingVisit?.status ?? null,
+        recoveredRatingVisible: recoveredRatingState?.visible ?? false,
+        ratingClaimCount: Object.keys(ratingRecoveryClaims ?? {}).length,
+      });
+    }
     if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
     const nextState = buildRecoveredTrackingRatingState(
       pendingRecoveredRatingVisit,
