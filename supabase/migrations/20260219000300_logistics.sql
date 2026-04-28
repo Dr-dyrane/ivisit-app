@@ -42,14 +42,23 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     specialty TEXT,
     ambulance_type TEXT,
     bed_number TEXT,
+    bed_count TEXT,
+    bed_type TEXT,
     patient_snapshot JSONB DEFAULT '{}',
-    
+    shared_data_snapshot JSONB,
+
+    -- Payment
+    payment_method_id TEXT,
+    payment_id UUID,
+
     -- Real-time tracking
     pickup_location GEOMETRY(POINT, 4326),
     destination_location GEOMETRY(POINT, 4326),
     patient_location GEOMETRY(POINT, 4326),
     responder_location GEOMETRY(POINT, 4326),
     responder_heading DOUBLE PRECISION,
+    patient_heading DOUBLE PRECISION,
+    estimated_arrival TEXT,
     
     -- Responder snapshot
     responder_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -64,6 +73,11 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     
     -- Costs
     total_cost NUMERIC DEFAULT 0,
+    confirmed_cost NUMERIC,
+    base_cost NUMERIC,
+    distance_surcharge NUMERIC,
+    urgency_surcharge NUMERIC,
+    cost_breakdown JSONB,
     display_id TEXT UNIQUE,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -129,8 +143,18 @@ CREATE TABLE IF NOT EXISTS public.visits (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL,
+    -- Hospital snapshot (denormalised from hospitals join for offline/history display)
     hospital_name TEXT,
+    hospital TEXT,                             -- legacy alias for hospital_name (mapFromDb reads both)
+    hospital_image TEXT,
+    address TEXT,
+    phone TEXT,
+    image TEXT,                                -- alias for hospital_image used by legacy triggers
+    -- Clinician snapshot
     doctor_name TEXT,
+    doctor TEXT,                               -- legacy alias for doctor_name (mapFromDb reads both)
+    doctor_image TEXT,
+    -- Visit metadata
     specialty TEXT,
     date TEXT,
     time TEXT,
@@ -138,11 +162,24 @@ CREATE TABLE IF NOT EXISTS public.visits (
     status TEXT DEFAULT 'upcoming',
     notes TEXT,
     cost TEXT,
+    summary TEXT,
+    preparation TEXT[],
+    prescriptions TEXT[],
+    -- Booking details
+    room_number TEXT,
+    estimated_duration TEXT,
+    meeting_link TEXT,
+    insurance_covered BOOLEAN DEFAULT TRUE,
+    next_visit TEXT,
+    -- Patient location at time of booking
+    latitude NUMERIC,
+    longitude NUMERIC,
+    -- Financial
     tip_amount NUMERIC DEFAULT 0,
     tip_currency TEXT DEFAULT 'USD',
     tipped_at TIMESTAMPTZ,
     tip_payment_id UUID,
-    -- Lifecycle & Rating (recovered from legacy)
+    -- Lifecycle & Rating
     lifecycle_state TEXT,
     lifecycle_updated_at TIMESTAMPTZ DEFAULT NOW(),
     rating SMALLINT,
@@ -165,13 +202,43 @@ CREATE TRIGGER stamp_req_display_id BEFORE INSERT ON public.emergency_requests F
 CREATE TRIGGER stamp_visit_display_id BEFORE INSERT ON public.visits FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 
 -- Concurrency Guards: max 1 active request per service type per user
-CREATE UNIQUE INDEX IF NOT EXISTS emergency_requests_one_active_bed_per_user_idx
-ON public.emergency_requests (user_id)
-WHERE service_type = 'bed' AND status IN ('in_progress', 'accepted', 'arrived');
+-- PULLBACK NOTE: Absorbed 20260423000100_active_request_concurrency_guard.sql into pillar per CONTRIBUTING.md
+-- OLD: covered only in_progress/accepted/arrived
+-- NEW: also covers pending_approval (request is active as soon as user submits)
+DO $$
+DECLARE
+    v_duplicate RECORD;
+BEGIN
+    SELECT user_id, service_type, COUNT(*) AS active_count
+    INTO v_duplicate
+    FROM public.emergency_requests
+    WHERE user_id IS NOT NULL
+      AND service_type IN ('ambulance', 'bed')
+      AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived')
+    GROUP BY user_id, service_type
+    HAVING COUNT(*) > 1
+    LIMIT 1;
 
-CREATE UNIQUE INDEX IF NOT EXISTS emergency_requests_one_active_ambulance_per_user_idx
+    IF FOUND THEN
+        RAISE EXCEPTION
+            'Cannot install active request guard: user % has % active % requests. Resolve duplicates first.',
+            v_duplicate.user_id,
+            v_duplicate.active_count,
+            v_duplicate.service_type;
+    END IF;
+END $$;
+
+DROP INDEX IF EXISTS public.emergency_requests_one_active_ambulance_per_user_idx;
+CREATE UNIQUE INDEX emergency_requests_one_active_ambulance_per_user_idx
 ON public.emergency_requests (user_id)
-WHERE service_type = 'ambulance' AND status IN ('in_progress', 'accepted', 'arrived');
+WHERE service_type = 'ambulance'
+  AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived');
+
+DROP INDEX IF EXISTS public.emergency_requests_one_active_bed_per_user_idx;
+CREATE UNIQUE INDEX emergency_requests_one_active_bed_per_user_idx
+ON public.emergency_requests (user_id)
+WHERE service_type = 'bed'
+  AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived');
 
 -- 📍 Real-time Tracking RPC Functions
 -- Part of Master System Improvement Plan - Phase 2 Important System Enhancements

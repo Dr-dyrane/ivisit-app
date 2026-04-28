@@ -14,8 +14,9 @@
 - `20260219000800` - Emergency Logic (Atomic Operations)
 - `20260219000900` - Automations (Cross-Table Hooks)
 
-### 🔄 Pending Deployment
-- `20260219010000` - Core RPC Functions (Awaiting npx supabase db push)
+### ✅ Absorbed into Pillars (April 2026)
+- `20260412050000_hospital_media_pipeline` → **`0002_org_structure` Section 6** — hospital_media table + image_source/confidence/attribution/synced_at columns on hospitals
+- `20260423000100_active_request_concurrency_guard` → **`0003_logistics` concurrency block** — unique index now covers pending_approval + in_progress/accepted/arrived
 
 ---
 

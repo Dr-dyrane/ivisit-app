@@ -159,6 +159,9 @@ DECLARE
     v_visit_status TEXT;
     v_lifecycle_state TEXT;
     v_doctor_name TEXT;
+    v_hospital_address TEXT;
+    v_hospital_phone TEXT;
+    v_hospital_image TEXT;
 BEGIN
     IF NEW.status IS DISTINCT FROM OLD.status
        OR NEW.total_cost IS DISTINCT FROM OLD.total_cost
@@ -193,11 +196,23 @@ BEGIN
         FROM public.doctors d
         WHERE d.id = NEW.assigned_doctor_id;
 
+        SELECT
+            COALESCE(h.google_address, h.address),
+            COALESCE(h.google_phone, h.phone),
+            h.image
+        INTO v_hospital_address, v_hospital_phone, v_hospital_image
+        FROM public.hospitals h
+        WHERE h.id = NEW.hospital_id;
+
         UPDATE public.visits
         SET
             user_id = COALESCE(NEW.user_id, user_id),
             hospital_id = COALESCE(NEW.hospital_id, hospital_id),
             hospital_name = COALESCE(NEW.hospital_name, hospital_name),
+            hospital_image = COALESCE(v_hospital_image, hospital_image),
+            address = COALESCE(v_hospital_address, address),
+            phone = COALESCE(v_hospital_phone, phone),
+            image = COALESCE(v_hospital_image, image),
             doctor_name = COALESCE(v_doctor_name, doctor_name),
             specialty = COALESCE(NEW.specialty, specialty),
             type = COALESCE(NEW.service_type, type),

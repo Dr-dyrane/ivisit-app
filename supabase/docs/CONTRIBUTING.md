@@ -12,12 +12,13 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 - **Run tests** before and after schema changes.
 - **Sync to console** after any migration change via `node supabase/scripts/sync_to_console.js`.
 - **Repair Remote History** — After deleting local fix migrations, use `npx supabase migration repair --status reverted <timestamp>` to untrack them from the remote database history without affecting data.
+- **DB Push network note** — `npx supabase db push` uses a direct IPv6 connection to port 5432. If this times out on your network, use the **Session Pooler** URL from the Supabase dashboard: `npx supabase db push --db-url "postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"`
 
 ### The 11 Modules
 1. `0000_infra` — Extensions, utilities
 2. `0001_identity` — Profiles, preferences, medical
-3. `0002_org_structure` — Hospitals, doctors
-4. `0003_logistics` — Ambulances, emergency requests
+3. `0002_org_structure` — Hospitals, doctors, hospital_media pipeline
+4. `0003_logistics` — Ambulances, emergency requests, visits, concurrency guards
 5. `0004_finance` — Wallets, payments, insurance
 6. `0005_ops_content` — Notifications, support, CMS
 7. `0006_analytics` — Activity logs, search trends
@@ -25,6 +26,11 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 9. `0008_emergency_logic` — Atomic operations
 10. `0009_automations` — Cross-table hooks
 11. `0100_core_rpcs` — Location services, RPCs
+
+> **Absorbed migrations (April 2026):**
+> - `20260412050000_hospital_media_pipeline` → integrated into `0002_org_structure` (Section 6)
+> - `20260423000100_active_request_concurrency_guard` → integrated into `0003_logistics` (concurrency guard block)
+> - Remote history for both repaired via `migration repair --status reverted`
 
 ### Example
 ❌ `20260219011000_fix_display_ids.sql`
