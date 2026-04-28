@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
+import { useLocationStore } from "../stores/locationStore";
 import mapboxService from "../services/mapboxService";
 import {
 	normalizeLocationCoordinates,
@@ -13,6 +14,17 @@ import {
 	buildPlaceModelFromFormattedAddress,
 	buildPlaceModelFromNativePlace,
 } from "../utils/locationHelpers";
+
+// PULLBACK NOTE: Location fallback priority: GPS → Zustand persisted last-known → DEFAULT_APP_COORDINATES
+// OLD: all GPS failures fell straight to hardcoded Lagos coords
+// NEW: check locationStore.userLocation first (persisted across sessions); hardcoded only on true cold install
+const getLocationFallback = () => {
+  const stored = useLocationStore.getState().userLocation;
+  const lat = Number(stored?.latitude);
+  const lng = Number(stored?.longitude);
+  if (stored && Number.isFinite(lat) && Number.isFinite(lng)) return stored;
+  return { ...DEFAULT_APP_COORDINATES };
+};
 
 // Location configuration constants
 const LOCATION_CONFIG = {
@@ -166,7 +178,7 @@ export function GlobalLocationProvider({ children }) {
 					void resolveLocationDetails(locationData);
 				} catch (locationErr) {
 					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
-					const fallbackData = { ...DEFAULT_APP_COORDINATES };
+					const fallbackData = getLocationFallback();
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
 					void resolveLocationDetails(fallbackData);
@@ -195,22 +207,19 @@ export function GlobalLocationProvider({ children }) {
 							latitude: location.coords.latitude,
 							longitude: location.coords.longitude,
 						};
-
 						setUserLocation(locationData);
 						setLastUpdated(Date.now());
 						void resolveLocationDetails(locationData);
 					} catch (locationErr) {
 						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
-						// 🔴 REVERT POINT: Context Fallback
-						// NEW: Use standard coordinate if GPS fails
-						const fallbackData = { ...DEFAULT_APP_COORDINATES };
+						const fallbackData = getLocationFallback();
 						setUserLocation(fallbackData);
 						setLastUpdated(Date.now());
 						void resolveLocationDetails(fallbackData);
-						setLocationError(null); // Clear error since we have a fallback
+						setLocationError(null);
 					}
 				} else {
-					const fallbackData = { ...DEFAULT_APP_COORDINATES };
+					const fallbackData = getLocationFallback();
 					setUserLocation(fallbackData);
 					setLastUpdated(Date.now());
 					void resolveLocationDetails(fallbackData);
@@ -219,18 +228,17 @@ export function GlobalLocationProvider({ children }) {
 			}
 		} catch (err) {
 			console.error("[GlobalLocationContext] Permission request failed — using fallback:", err?.message ?? err);
-			const fallbackData = { ...DEFAULT_APP_COORDINATES };
+			const fallbackData = getLocationFallback();
 			setUserLocation(fallbackData);
 			setLastUpdated(Date.now());
 			void resolveLocationDetails(fallbackData);
 			setLocationError(null);
 		} finally {
-			setIsLoadingLocation(false);
 			isRequestingPermission.current = false;
+			setIsLoadingLocation(false);
 		}
 	}, [resolveLocationDetails]);
 
-	// Initialize location on mount
 	useEffect(() => {
 		if (isInitialized.current) {
 			return;

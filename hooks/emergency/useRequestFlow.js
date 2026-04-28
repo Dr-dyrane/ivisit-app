@@ -21,6 +21,18 @@ import {
 	DEFAULT_APP_COORDINATES,
 	toPointWkt,
 } from "../../constants/locationDefaults";
+import { useLocationStore } from "../../stores/locationStore";
+
+// PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
+// OLD: GPS failure in request flow → hardcoded Lagos coords
+// NEW: use persisted last-known location first; Lagos only on true cold install
+const getRequestLocationFallback = () => {
+  const stored = useLocationStore.getState().userLocation;
+  const lat = Number(stored?.latitude);
+  const lng = Number(stored?.longitude);
+  if (stored && Number.isFinite(lat) && Number.isFinite(lng)) return stored;
+  return { ...DEFAULT_APP_COORDINATES };
+};
 
 const toFiniteNumber = (value) => {
 	const n = Number(value);
@@ -297,8 +309,10 @@ export const useRequestFlow = (props) => {
 						patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
 					} catch (locationError) {
 						console.warn('[useRequestFlow] Could not get user location:', locationError);
-						liveUserLocation = { ...DEFAULT_APP_COORDINATES };
-						patientLocation = toPointWkt(DEFAULT_APP_COORDINATES);
+						// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+						const fallback = getRequestLocationFallback();
+						liveUserLocation = fallback;
+						patientLocation = toPointWkt(fallback);
 					}
 				}
 
@@ -761,7 +775,8 @@ export const useRequestFlow = (props) => {
 				};
 			} catch (locationError) {
 				console.warn('[useRequestFlow] Quick emergency location failed, using fallback:', locationError);
-				userLocation = { ...DEFAULT_APP_COORDINATES };
+				// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+				userLocation = getRequestLocationFallback();
 			}
 
 			// Auto-select best hospital

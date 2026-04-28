@@ -3,6 +3,18 @@ import { hospitalsService } from "../../services/hospitalsService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import * as Location from "expo-location";
 import { DEFAULT_APP_COORDINATES } from "../../constants/locationDefaults";
+import { useLocationStore } from "../../stores/locationStore";
+
+// PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
+// OLD: permission denied / GPS error → hardcoded Lagos coords
+// NEW: use persisted last-known location first; Lagos only on true cold install
+const getHospitalLocationFallback = () => {
+  const stored = useLocationStore.getState().userLocation;
+  const lat = Number(stored?.latitude);
+  const lng = Number(stored?.longitude);
+  if (stored && Number.isFinite(lat) && Number.isFinite(lng)) return stored;
+  return { ...DEFAULT_APP_COORDINATES };
+};
 
 /**
  * Calculate relevance score for hospitals based on distance, rating, and availability
@@ -279,7 +291,8 @@ export function useHospitals(options = {}) {
 
 				if (status !== 'granted') {
 					console.warn('[useHospitals] Location permission denied, using fallback');
-					location = { ...DEFAULT_APP_COORDINATES };
+					// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+					location = getHospitalLocationFallback();
 				} else {
 					const currentLocation = await Location.getCurrentPositionAsync({
 						accuracy: Location.Accuracy.Balanced
@@ -295,10 +308,8 @@ export function useHospitals(options = {}) {
 				}
 			} catch (err) {
 				console.error("[useHospitals] Location error (falling back):", err);
-				// 🔴 REVERT POINT: Graceful Fallback
-				// PREVIOUS: if (isMounted) setError(err);
-				// NEW: Fallback to default location so app isn't broken
-				const fallbackLocation = { ...DEFAULT_APP_COORDINATES };
+				// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+				const fallbackLocation = getHospitalLocationFallback();
 				if (isMounted) {
 					setResolvedLocation(fallbackLocation);
 				}
