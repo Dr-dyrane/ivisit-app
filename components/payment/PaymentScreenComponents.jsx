@@ -111,6 +111,61 @@ export function PaymentSummarySection({ cost, isDarkMode }) {
 	);
 }
 
+// ServiceReceiptCard - Merged service cost summary for the checkout left island
+// Combines PaymentIdentitySection + PaymentSummarySection into one compact surface.
+// Designed specifically for the MD+ sidebar island where vertical space is shared.
+export function ServiceReceiptCard({ cost, insuranceApplied, isDarkMode }) {
+	const colors = {
+		text: isDarkMode ? "#FFFFFF" : "#0F172A",
+		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+		separator: isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+	};
+
+	return (
+		<View style={{ gap: 0 }}>
+			{/* Amount hero */}
+			<View style={{ alignItems: 'center', paddingVertical: 20, gap: 6 }}>
+				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.textMuted }}>
+					Total Due
+				</Text>
+				<Text style={{ fontSize: 40, fontWeight: '800', letterSpacing: -2, color: colors.text }}>
+					${cost.totalCost.toFixed(2)}
+				</Text>
+				{insuranceApplied && (
+					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(134,16,14,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderCurve: 'continuous' }}>
+						<Ionicons name="shield-checkmark" size={12} color={COLORS.brandPrimary} />
+						<Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.brandPrimary }}>Insurance Applied</Text>
+					</View>
+				)}
+			</View>
+
+			{/* Separator */}
+			<View style={{ height: 1, backgroundColor: colors.separator, marginHorizontal: 4 }} />
+
+			{/* Breakdown rows */}
+			<View style={{ paddingTop: 16, paddingBottom: 8, gap: 10 }}>
+				{cost.breakdown.map((item, idx) => (
+					<View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+						<View style={{ flex: 1 }}>
+							<Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{item.name}</Text>
+							{item.type === 'fee' && (
+								<Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>Processing fee</Text>
+							)}
+						</View>
+						<Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>${item.cost.toFixed(2)}</Text>
+					</View>
+				))}
+			</View>
+
+			{/* Assurance footer */}
+			<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 12, paddingBottom: 4 }}>
+				<Ionicons name="lock-closed" size={10} color={colors.textMuted} />
+				<Text style={{ fontSize: 10, fontWeight: '500', color: colors.textMuted }}>PCI-DSS · Secure & Encrypted</Text>
+			</View>
+		</View>
+	);
+}
+
 // PaymentHistoryList - Transaction history ledger (shows last 3)
 // PULLBACK NOTE: Extracted from PaymentScreen for reusability
 // OLD: Inline history in PaymentScreen showing all transactions
@@ -228,8 +283,13 @@ export function PaymentHistoryList({ paymentHistory, onTransactionPress, refresh
 				</View>
 			) : (
 				<View style={[styles.emptyLedger, { backgroundColor: colors.card }]}>
-					<Ionicons name="receipt-outline" size={32} color={colors.textMuted} />
-					<Text style={[styles.emptyText, { color: colors.textMuted }]}>No recent transactions</Text>
+					<View style={{ width: 56, height: 56, borderRadius: 28, borderCurve: 'continuous', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center' }}>
+						<Ionicons name="receipt-outline" size={26} color={colors.textMuted} />
+					</View>
+					<Text style={[styles.emptyText, { color: colors.text, fontWeight: '600', fontSize: 15 }]}>No payments yet</Text>
+					<Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 4, lineHeight: 18, maxWidth: 200 }}>
+						Your payments will appear here after your first visit.
+					</Text>
 				</View>
 			)}
 		</View>

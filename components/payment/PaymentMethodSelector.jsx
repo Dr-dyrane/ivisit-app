@@ -3,7 +3,7 @@
  * Uber-like payment method selection interface
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -168,6 +168,22 @@ const PaymentMethodSelector = ({
     }
   };
 
+  const scaleAnims = useRef({}).current;
+
+  const getScaleAnim = useCallback((id) => {
+    if (!scaleAnims[id]) scaleAnims[id] = new Animated.Value(1);
+    return scaleAnims[id];
+  }, [scaleAnims]);
+
+  const springSelect = useCallback((id) => {
+    const anim = getScaleAnim(id);
+    Animated.sequence([
+      Animated.spring(anim, { toValue: 0.97, friction: 10, tension: 200, useNativeDriver: true }),
+      Animated.spring(anim, { toValue: 1.02, friction: 8, tension: 120, useNativeDriver: true }),
+      Animated.spring(anim, { toValue: 1.0, friction: 7, tension: 80, useNativeDriver: true }),
+    ]).start();
+  }, [getScaleAnim]);
+
   const handleDeleteMethod = async (method) => {
     Alert.alert(
       "Remove Card",
@@ -221,12 +237,15 @@ const PaymentMethodSelector = ({
             ? (demoCashOnly ? unavailableCopy : cardCheckoutCopy)
             : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);
 
+    const scaleAnim = getScaleAnim(method.id);
+
     return (
-      <View key={method.id} style={styles.methodWrapper}>
+      <Animated.View key={method.id} style={[styles.methodWrapper, { transform: [{ scale: scaleAnim }] }]}>
         <TouchableOpacity
-          activeOpacity={0.8}
+          activeOpacity={0.9}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            springSelect(method.id);
             onMethodSelect(method);
             if (isManagementMode) {
               handleSetDefault(method);
@@ -279,7 +298,7 @@ const PaymentMethodSelector = ({
             )
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
 

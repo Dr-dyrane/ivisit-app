@@ -17,6 +17,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderState } from "../contexts/HeaderStateContext";
+import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { getHeaderBehavior } from "../constants/header";
 import {
 	getMapViewportVariant,
@@ -46,6 +47,7 @@ export default function ThemeToggle({ showLabel = true }) {
 	const { isDarkMode, toggleTheme } = useTheme();
 	const pathname = usePathname();
 	const { headerState } = useHeaderState();
+	const { headerOpacity } = useScrollAwareHeader();
 	const insets = useSafeAreaInsets();
 	const { width } = useWindowDimensions();
 	const isAndroid = Platform.OS === "android";
@@ -67,6 +69,9 @@ export default function ThemeToggle({ showLabel = true }) {
 	// Component states
 	const [mounted, setMounted] = useState(false);
 	const [expanded, setExpanded] = useState(false);
+	const [headerIsVisible, setHeaderIsVisible] = useState(
+		() => (headerOpacity?.__getValue?.() ?? 1) > 0.05,
+	);
 
 	// Animation refs
 	const heightAnim = useRef(new Animated.Value(shellSize)).current;
@@ -88,11 +93,20 @@ export default function ThemeToggle({ showLabel = true }) {
 		: isWeb
 			? 94
 			: insets.top + 8 + 80 + 6;
-	const shouldReserveHeaderOffset = !isWelcomeRoute && (hasActiveHeader || usesMapSidebar);
+	const shouldReserveHeaderOffset = !isWelcomeRoute && ((hasActiveHeader && headerIsVisible) || usesMapSidebar);
 	const targetTop = shouldReserveHeaderOffset ? headerAwareTop : defaultTop;
 	// ------------------------
 	// Lifecycle Effects
 	// ------------------------
+
+	// Track live header opacity to react to scroll-driven header show/hide
+	useEffect(() => {
+		if (!headerOpacity) return;
+		const id = headerOpacity.addListener(({ value }) => {
+			setHeaderIsVisible(value > 0.05);
+		});
+		return () => headerOpacity.removeListener(id);
+	}, [headerOpacity]);
 
 	// Initial mount delay
 	useEffect(() => {
