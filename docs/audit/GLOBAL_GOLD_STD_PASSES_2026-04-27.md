@@ -171,12 +171,61 @@ const validTransitions = {
 
 ---
 
+## ✅ Pass 4 — Modal Renderer Audit (sweep-modal)
+
+**Scope**: All live modal render sites — check for modals inside conditionally-mounted parents that could lose state on phase change
+
+### Findings
+| Component | Status | Notes |
+|---|---|---|
+| `ServiceRatingModal` (tracking) | ✅ Clean | Already lifted to MapScreen root in Pass B |
+| `ServiceRatingModal` (recovered) | ✅ Clean | Rendered at MapScreen root |
+| `MapModalShell`-based modals (History, Care, Guest, Profile) | ✅ Clean | All at MapScreen root, `shouldRender` latch |
+| `useMapCommitDetailsController` draft state | ✅ Clean | Persisted via `setCommitFlow` (Zustand L3) + re-seeds from `sheetPayload` on mount |
+| `useMapCommitTriageController` draft state | ✅ Clean | Seeds from `payload?.triageDraft` + `payload?.activeStep` on mount |
+| `EmergencyLocationSearchSheet` | ℹ️ Legacy island | No live consumer — entirely in deprecated cluster |
+| `CoverageDisclaimerModal`, `DemoBootstrapModal`, `TriageIntakeModal` | ℹ️ Orphaned | Imported only from deprecated `EmergencyRequestModal` |
+
+**Verdict**: Live codebase is clean. Persist/restore loop via Zustand `commitFlow` correctly preserves form state across sheet phase transitions. No structural remount defects in non-deprecated code.
+
+---
+
+## ✅ Pass 5 — Apple HIG Sweep — Commit + History Screens (sweep-hig)
+
+**Scope**: Payment/triage/details commit stage parts + history filter chips — tap targets, Dynamic Type, hitSlop
+
+### Tap Target Fixes (≥44pt minimum)
+| File | Style | Old | Fix |
+|---|---|---|---|
+| `mapCommitPayment.styles.js` | `paymentChangePill` | `minHeight: 38` | `minHeight: 44` |
+| `mapCommitPayment.styles.js` | `statusSecondaryAction` | `paddingVertical: 8` (~33pt) | `paddingVertical: 13` |
+| `mapCommitTriage.styles.js` | `skipAllButton` | `paddingVertical: 8` (~31pt) | `paddingVertical: 14` |
+| `mapCommitTriage.styles.js` | `showMoreButton` | `paddingVertical: 8` (~29pt) | `paddingVertical: 14` |
+| `mapCommitDetails.styles.js` | `phoneCountryChip` | `minHeight: 36` | `minHeight: 44` |
+| `history.styles.js` | `filterChip` | `paddingVertical: 8` (~32pt) | `paddingVertical: 14` |
+
+### hitSlop Additions
+| File | Pressable | hitSlop |
+|---|---|---|
+| `MapCommitPaymentStageParts.jsx` | Collapse payment methods pill | 8 |
+| `MapCommitTriageStageParts.jsx` | Skip All button | 8 |
+| `MapCommitTriageStageParts.jsx` | Show More Symptoms button | 8 |
+| `MapCommitDetailsStageParts.jsx` | Phone country chip | 8 |
+
+### Dynamic Type (`allowFontScaling`)
+- `MapCommitPaymentStageParts.jsx`: heroHeaderTitle, heroHeaderSubtitle, heroAction labels, breakdownTitle, actionGroup labels, status title/description, paymentHero title/subtitle, infoGroup values
+
+### Notes
+- `topSlotCloseButton` (38pt): compensated by `MapHeaderIconButton` default `hitSlop=10` → 58pt effective. No layout change needed.
+- No Reanimated animations in parts files → `useReducedMotion` not applicable here (applies to `StageBase` level)
+
+---
+
 ## Upcoming (Queued, Not Started)
 
 | Pass | Scope | Trigger |
 |---|---|---|
-| Pass 4 — Payment Screen HIG | `MapCommitPaymentStageBase` + `MapCommitPaymentStageParts` — wide/md left-panel layout, tap targets ≥44pt, Dynamic Type, reduced motion | After Pass 3 |
-| Pass 5 — Apple HIG sweep (remaining stack pages) | Stack pages linked from MiniProfile + Settings — wide-screen left-panel pattern per payment screen | After Pass 4 |
+| Pass 6 — Apple HIG sweep (remaining stack pages) | Stack pages linked from MiniProfile + Settings — wide-screen left-panel pattern | After Pass 5 |
 
 ---
 
@@ -190,3 +239,31 @@ const validTransitions = {
 6. **Log cleanup before commit** — diagnostic logs added during a pass are removed before the pass commit
 7. **One pass at a time** — do not bundle passes into a single commit
 8. **Warn-only guards in `__DEV__`** — never ship blocking assertions to production paths
+
+---
+
+## Pre-Commit Verification Protocol (MANDATORY — every pass)
+
+Before ANY commit, for EVERY file edited in the pass:
+
+### Step 1 — `git diff --stat`
+Run `git diff --stat` and confirm the insertion/deletion counts are proportionate to the intended change. Unexpectedly large deletions = STOP.
+
+### Step 2 — Per-file diff review
+Run `git diff <file>` for each changed file. For every deleted line (`-`), confirm it is either:
+- **Reformatted** — same content, different whitespace/line breaks (verify the `+` counterpart exists)
+- **Intentionally removed** — explicitly called out in the pass plan
+
+If any deleted line cannot be accounted for → STOP, investigate, restore before proceeding.
+
+### Step 3 — Undefined reference check
+For every function, variable, or import that appears in `+` lines:
+- Confirm it is defined in the same file, or correctly imported
+- Confirm nothing in `-` lines was the sole definition of something still referenced
+
+### Step 4 — Wait for user confirmation
+**Cascade never runs `git commit` or `git push`.** After completing Steps 1–3, present the verified diff summary to the user and wait for explicit "commit" instruction.
+
+### Lessons encoded (from this sprint)
+- `multi_edit` on large files with non-unique anchors (bare `}`) can silently drop code blocks between two matched positions → always use the most specific surrounding context as anchor
+- Wrong barrel import (`components/map/MapSheetOrchestrator` vs `components/map/core/MapSheetOrchestrator`) produces `undefined` on destructure with no import error — only crashes at `.property` access — always verify re-export list of barrel files before importing from them

@@ -18,6 +18,7 @@ function MapCommitPhoneCountryChip({
     <Pressable
       disabled={countryLoading}
       onPress={onPress}
+      hitSlop={8}
       style={({ pressed }) => [
         styles.phoneCountryChip,
         pressed && !countryLoading ? styles.phoneCountryChipPressed : null,

@@ -41,6 +41,7 @@ export function MapCommitTriageHeroBlock({
 				<Text style={[styles.progressText, { color: mutedColor }]}>{progressLabel}</Text>
 				<Pressable
 					onPress={onSkipAll}
+					hitSlop={8}
 					style={[styles.skipAllButton, { backgroundColor: secondarySurfaceColor }]}
 				>
 					<Text style={[styles.skipAllText, { color: titleColor }]}>
@@ -241,6 +242,7 @@ export function MapCommitTriageOptionsStep({
 			{activeStep.id === "chiefComplaint" && !showExtendedComplaints ? (
 				<Pressable
 					onPress={onShowMoreSymptoms}
+					hitSlop={8}
 					style={[styles.showMoreButton, { borderColor: `${accentColor}40` }]}
 				>
 					<Ionicons name="add-circle-outline" size={14} color={accentColor} />

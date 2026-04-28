@@ -113,13 +113,14 @@ export const historyModalStyles = StyleSheet.create({
 		paddingHorizontal: 2,
 		paddingVertical: 2,
 	},
+	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: paddingVertical 8 (tap target ~32pt) NEW: 14 (≥44pt)
 	filterChip: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
 		paddingLeft: 10,
 		paddingRight: 10,
-		paddingVertical: 8,
+		paddingVertical: 14,
 		borderRadius: 18,
 		borderCurve: "continuous",
 	},

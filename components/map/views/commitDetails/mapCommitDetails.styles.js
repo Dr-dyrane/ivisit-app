@@ -60,8 +60,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Phone step: country chip ──────────────────────────────────────────────
+  // PULLBACK NOTE: Pass 4 HIG sweep — OLD: minHeight 36 (below 44pt) NEW: 44pt minimum tap target
   phoneCountryChip: {
-    minHeight: 36,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,

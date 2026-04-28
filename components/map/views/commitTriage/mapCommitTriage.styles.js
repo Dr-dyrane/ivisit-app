@@ -33,9 +33,10 @@ const styles = StyleSheet.create({
 		letterSpacing: 0.2,
 		textTransform: "uppercase",
 	},
+	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: paddingVertical 8 (tap target ~31pt) NEW: 14 (≥44pt)
 	skipAllButton: {
 		paddingHorizontal: 12,
-		paddingVertical: 8,
+		paddingVertical: 14,
 		borderRadius: 999,
 		borderCurve: "continuous",
 	},
@@ -156,10 +157,11 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		flex: 0,
 	},
+	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: paddingVertical 8 (tap target ~29pt) NEW: 14 (≥44pt)
 	showMoreButton: {
 		marginTop: 14,
 		alignSelf: "center",
-		paddingVertical: 8,
+		paddingVertical: 14,
 		paddingHorizontal: 12,
 		borderRadius: 999,
 		borderCurve: "continuous",

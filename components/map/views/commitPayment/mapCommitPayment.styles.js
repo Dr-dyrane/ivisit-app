@@ -281,8 +281,9 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		letterSpacing: -0.18,
 	},
+	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: minHeight 38 (below 44pt) NEW: 44pt minimum tap target
 	paymentChangePill: {
-		minHeight: 38,
+		minHeight: 44,
 		paddingHorizontal: 15,
 		alignItems: "center",
 		justifyContent: "center",
@@ -609,10 +610,11 @@ const styles = StyleSheet.create({
 	statusPrimaryAction: {
 		width: "100%",
 	},
+	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: paddingVertical 8 (tap target ~33pt) NEW: 13 (≥44pt)
 	statusSecondaryAction: {
 		alignSelf: "center",
 		paddingHorizontal: 14,
-		paddingVertical: 8,
+		paddingVertical: 13,
 		...squircle(18),
 	},
 	statusSecondaryActionPressed: {
