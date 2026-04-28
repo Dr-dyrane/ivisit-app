@@ -295,35 +295,6 @@ export default function MapScreen() {
     }
   }, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
-  // PULLBACK NOTE: Pass 3 — decision handlers extracted to useMapDecisionHandlers
-  const {
-    handleUseHospital,
-    handleConfirmAmbulanceDecision,
-    handleConfirmCommitDetails,
-    handleConfirmBedDecision,
-    handleConfirmCommitTriage,
-    handleOpenCommitTriageFromTracking,
-    handleAddBedFromTracking,
-    handleAddAmbulanceFromTracking,
-  } = useMapDecisionHandlers({
-    user,
-    selectedCare,
-    sheetPayload,
-    sheetSnapState,
-    featuredHospital,
-    nearestHospital,
-    mapFocusedHospital,
-    renderedSnapState,
-    activeMapRequest,
-    activeBedBooking,
-    openAmbulanceDecision,
-    openBedDecision,
-    openCommitDetails,
-    openCommitTriage,
-    openCommitPayment,
-    closeCommitTriage,
-  });
-
   const paymentPreviewKind = useMemo(() => {
     if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
     const hasTransportSelection = Boolean(
@@ -389,6 +360,36 @@ export default function MapScreen() {
     () => getDestinationCoordinate(mapFocusedHospital),
     [mapFocusedHospital],
   );
+
+  // PULLBACK NOTE: Pass 3 — decision handlers extracted to useMapDecisionHandlers
+  // Placed after mapFocusedHospital (line above) which it depends on
+  const {
+    handleUseHospital,
+    handleConfirmAmbulanceDecision,
+    handleConfirmCommitDetails,
+    handleConfirmBedDecision,
+    handleConfirmCommitTriage,
+    handleOpenCommitTriageFromTracking,
+    handleAddBedFromTracking,
+    handleAddAmbulanceFromTracking,
+  } = useMapDecisionHandlers({
+    user,
+    selectedCare,
+    sheetPayload,
+    sheetSnapState,
+    featuredHospital,
+    nearestHospital,
+    mapFocusedHospital,
+    renderedSnapState,
+    activeMapRequest,
+    activeBedBooking,
+    openAmbulanceDecision,
+    openBedDecision,
+    openCommitDetails,
+    openCommitTriage,
+    openCommitPayment,
+    closeCommitTriage,
+  });
 
   const mapServiceMarkerKind = useMemo(() => {
     if (historyVisitDetailsVisible) {
