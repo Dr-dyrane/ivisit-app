@@ -145,6 +145,12 @@ const TABLET_SURFACE_CONFIG = {
 	modalMaxHeightRatio: 0.82,
 	headerTopInset: 14,
 	headerSideInset: 24,
+	// PULLBACK NOTE: Pass 7 — sidebar layout pattern (mirrors map)
+	overlayLayout: "left-sidebar",
+	sidebarMaxWidth: 380,
+	sidebarOuterInset: 16,
+	overlaySheetSideInset: 16,
+	overlaySheetMaxWidth: 380,
 };
 
 const DESKTOP_SURFACE_CONFIG = {
@@ -157,6 +163,12 @@ const DESKTOP_SURFACE_CONFIG = {
 	modalMaxHeightRatio: 0.78,
 	headerTopInset: 18,
 	headerSideInset: 32,
+	// PULLBACK NOTE: Pass 7 — sidebar layout pattern (mirrors map)
+	overlayLayout: "left-sidebar",
+	sidebarMaxWidth: 420,
+	sidebarOuterInset: 24,
+	overlaySheetSideInset: 24,
+	overlaySheetMaxWidth: 420,
 };
 
 const WIDE_DESKTOP_SURFACE_CONFIG = {

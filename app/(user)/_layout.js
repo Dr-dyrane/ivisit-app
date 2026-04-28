@@ -121,6 +121,7 @@ function UserHeaderWrapper() {
 			scrollAware={scrollAware}
 			mode={resolvedHeader.mode}
 			session={resolvedHeader.session}
+			layoutInsets={resolvedHeader.layoutInsets}
 		/>
 	);
 }

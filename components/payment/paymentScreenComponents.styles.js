@@ -9,6 +9,7 @@ import { COLORS } from "../../constants/colors";
 const styles = StyleSheet.create({
 	balanceCardWrapper: {
 		borderRadius: 32,
+		borderCurve: "continuous",
 		overflow: "hidden",
 		height: 180,
 		shadowColor: "#000",
@@ -46,6 +47,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 12,
+		borderCurve: "continuous",
 	},
 	currencyText: {
 		fontSize: 12,
@@ -64,6 +66,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 10,
 		borderRadius: 20,
+		borderCurve: "continuous",
 	},
 	topUpText: {
 		fontSize: 14,
@@ -72,6 +75,7 @@ const styles = StyleSheet.create({
 	},
 	section: {
 		borderRadius: 24,
+		borderCurve: "continuous",
 		padding: 20,
 	},
 	sectionTitle: {
@@ -134,6 +138,7 @@ const styles = StyleSheet.create({
 	},
 	ledgerList: {
 		borderRadius: 24,
+		borderCurve: "continuous",
 		overflow: "hidden",
 	},
 	ledgerItem: {
@@ -147,13 +152,13 @@ const styles = StyleSheet.create({
 		borderRadius: 4,
 	},
 	ledgerDivider: {
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: "rgba(0,0,0,0.05)",
+		// borders removed (iVisit rule); separation via vertical rhythm
 	},
 	typeIcon: {
 		width: 36,
 		height: 36,
 		borderRadius: 18,
+		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 	},
@@ -175,6 +180,7 @@ const styles = StyleSheet.create({
 	},
 	emptyLedger: {
 		borderRadius: 24,
+		borderCurve: "continuous",
 		padding: 32,
 		alignItems: "center",
 	},
@@ -228,6 +234,7 @@ const styles = StyleSheet.create({
 	},
 	glowCard: {
 		borderRadius: 32,
+		borderCurve: "continuous",
 		padding: 24,
 		alignItems: "center",
 		justifyContent: "center",
@@ -260,6 +267,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 12,
+		borderCurve: "continuous",
 	},
 	insuranceBadgeText: {
 		fontSize: 12,
@@ -346,6 +354,7 @@ const styles = StyleSheet.create({
 	},
 	historyModalCard: {
 		borderRadius: 32,
+		borderCurve: "continuous",
 		padding: 0,
 		height: "85%",
 	},
@@ -364,14 +373,14 @@ const styles = StyleSheet.create({
 		width: 32,
 		height: 32,
 		borderRadius: 16,
+		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 	},
 	filterContainer: {
 		paddingHorizontal: 20,
 		paddingBottom: 16,
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: "rgba(0,0,0,0.05)",
+		// borders removed (iVisit rule)
 	},
 	filterScroll: {
 		gap: 8,
@@ -383,6 +392,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingVertical: 8,
 		borderRadius: 20,
+		borderCurve: "continuous",
 	},
 	filterChipActive: {
 		backgroundColor: "rgba(134, 16, 14, 0.1)",
@@ -425,8 +435,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	historyDivider: {
-		borderBottomWidth: StyleSheet.hairlineWidth,
-		borderBottomColor: "rgba(0,0,0,0.05)",
+		// borders removed (iVisit rule); separation via vertical rhythm
 	},
 	historyEmptyState: {
 		alignItems: "center",
@@ -447,6 +456,7 @@ const styles = StyleSheet.create({
 	},
 	receiptCard: {
 		borderRadius: 32,
+		borderCurve: "continuous",
 		padding: 24,
 		marginBottom: 0,
 	},
@@ -466,6 +476,7 @@ const styles = StyleSheet.create({
 		width: 64,
 		height: 64,
 		borderRadius: 32,
+		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 		marginBottom: 16,
@@ -501,6 +512,7 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.brandPrimary,
 		padding: 16,
 		borderRadius: 16,
+		borderCurve: "continuous",
 		alignItems: "center",
 	},
 	doneButtonText: {
@@ -528,6 +540,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 		padding: 18,
 		borderRadius: 16,
+		borderCurve: "continuous",
 	},
 	payButtonText: {
 		fontSize: 16,

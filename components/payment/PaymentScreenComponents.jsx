@@ -259,12 +259,15 @@ export function PaymentHistoryModal({ visible, paymentHistory, onTransactionPres
 		[viewportVariant],
 	);
 
+	const isCenteredModal = surfaceConfig.modalPresentationMode === "centered-modal";
+
 	const ModalOverlayContainer = Platform.OS === "ios" ? BlurView : View;
 	const modalOverlayProps = Platform.OS === "ios"
 		? { intensity: isDarkMode ? 60 : 80, tint: isDarkMode ? "dark" : "light" }
 		: {};
 	const modalOverlayStyle = [
 		styles.modalOverlay,
+		isCenteredModal && { justifyContent: "center", alignItems: "center", padding: 24 },
 		Platform.OS === "android" && {
 			backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.86)" : "rgba(255, 255, 255, 0.84)",
 		},
@@ -376,10 +379,14 @@ export function PaymentHistoryModal({ visible, paymentHistory, onTransactionPres
 	};
 
 	return (
-		<Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+		<Modal visible={visible} transparent animationType={isCenteredModal ? "fade" : "slide"} onRequestClose={onClose}>
 			<ModalOverlayContainer {...modalOverlayProps} style={modalOverlayStyle}>
 				<Pressable style={styles.modalBackdrop} onPress={onClose} />
-				<View style={[styles.historyModalCard, { backgroundColor: colors.card, maxWidth: surfaceConfig.modalMaxWidth, width: '100%', alignSelf: 'center' }]}>
+				<View style={[
+					styles.historyModalCard,
+					{ backgroundColor: colors.card, maxWidth: surfaceConfig.modalMaxWidth, width: '100%', alignSelf: 'center' },
+					isCenteredModal && { height: undefined, maxHeight: '85%' },
+				]}>
 				<View style={styles.modalGrabber} />
 
 				{/* Header */}
@@ -508,12 +515,15 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 		[viewportVariant],
 	);
 
+	const isCenteredModal = surfaceConfig.modalPresentationMode === "centered-modal";
+
 	const ModalOverlayContainer = isIOS ? BlurView : View;
 	const modalOverlayProps = isIOS
 		? { intensity: tokens.blurIntensity + 10, tint: tokens.blurTint }
 		: {};
 	const modalOverlayStyle = [
 		styles.modalOverlay,
+		isCenteredModal && { justifyContent: "center", alignItems: "center", padding: 24 },
 		!isIOS && {
 			backgroundColor: isDarkMode ? "rgba(15, 23, 42, 0.86)" : "rgba(255, 255, 255, 0.84)",
 		},
@@ -541,7 +551,7 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 	const presetAmounts = [50, 100, 200, 500];
 
 	return (
-		<Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+		<Modal visible={visible} transparent animationType={isCenteredModal ? "fade" : "slide"} onRequestClose={handleClose}>
 			<ModalOverlayContainer {...modalOverlayProps} style={modalOverlayStyle}>
 				<Pressable style={styles.modalBackdrop} onPress={handleClose} />
 

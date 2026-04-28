@@ -4,7 +4,7 @@ export const styles = StyleSheet.create({
 	root: {
 		...StyleSheet.absoluteFillObject,
 		justifyContent: "flex-end",
-		zIndex: 220,
+		zIndex: 10001, // above ScrollAwareHeader (9999) so detail sheets stack on top
 	},
 	backdrop: {
 		...StyleSheet.absoluteFillObject,

@@ -236,8 +236,6 @@ const PaymentMethodSelector = ({
             styles.methodCard,
             {
               backgroundColor: colors.cardBg,
-              borderColor: isSelected ? colors.activeRing : 'rgba(255,255,255,0.05)',
-              borderWidth: 1,
               opacity: isUnavailable ? 0.6 : 1
             }
           ]}
@@ -347,7 +345,7 @@ const PaymentMethodSelector = ({
         {showAddButton && !(simulatePayments && demoCashOnly) && (
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.addCard, { borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }]}
+            style={[styles.addCard, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setShowAddModal(true);
@@ -390,6 +388,7 @@ const styles = StyleSheet.create({
   methodSkeletonCard: {
     minHeight: 80,
     borderRadius: 24,
+    borderCurve: 'continuous',
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,6 +398,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
+    borderCurve: 'continuous',
   },
   methodSkeletonCopy: {
     flex: 1,
@@ -414,6 +414,7 @@ const styles = StyleSheet.create({
   },
   methodCard: {
     borderRadius: 24,
+    borderCurve: 'continuous',
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -428,6 +429,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -458,6 +460,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    borderCurve: 'continuous',
   },
   defaultText: {
     color: '#22C55E',
@@ -469,6 +472,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(239, 68, 68, 0.05)',
@@ -476,8 +480,7 @@ const styles = StyleSheet.create({
   addCard: {
     padding: 24,
     borderRadius: 24,
-    borderWidth: 1,
-    borderStyle: 'dashed',
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,

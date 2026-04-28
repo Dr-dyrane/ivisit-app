@@ -182,9 +182,10 @@ SET balance = balance + ivisit_deduction_amount;
 5. **Receipt**: Simple confirmation
 
 ### **Key Components**
-- **PaymentScreen**: Main payment interface
+- **PaymentScreenOrchestrator**: Phase/variant chooser (entry point)
+- **PaymentStageBase**: Shell, motion, sidebar layout owner
+- **PaymentManagementVariant / PaymentCheckoutVariant**: Mode-specific composition
 - **PaymentMethodSelector**: Card management
-- **SimplifiedPaymentScreen**: Uber-like experience
 - **paymentService.js**: Fee calculation logic
 
 ### **Environment Variables**
