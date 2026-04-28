@@ -599,19 +599,6 @@ export default function useMapVisitDetailModel({
 	const canResume = Boolean(
 		historyItem?.canResume && typeof onResume === "function" && matchesLiveRequest,
 	);
-	// VD-A: log canResume at model build — detect stale visit status vs live trip
-	if (__DEV__) {
-		console.log("[VD-A][useMapVisitDetailModel] canResume", {
-			canResume,
-			historyItemCanResume: historyItem?.canResume,
-			matchesLiveRequest,
-			status: historyItem?.status,
-			lifecycleState: historyItem?.lifecycleState,
-			requestId: historyItem?.requestId,
-			activeRequestId: activeMapRequest?.requestId,
-			hasOnResume: typeof onResume === "function",
-		});
-	}
 	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
 	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
 	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
