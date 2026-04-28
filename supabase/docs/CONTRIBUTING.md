@@ -13,6 +13,8 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 - **Sync to console** after any migration change via `node supabase/scripts/sync_to_console.js`.
 - **Repair Remote History** — After deleting local fix migrations, use `npx supabase migration repair --status reverted <timestamp>` to untrack them from the remote database history without affecting data.
 - **DB Push network note** — `npx supabase db push` uses a direct IPv6 connection to port 5432. If this times out on your network, use the **Session Pooler** URL from the Supabase dashboard: `npx supabase db push --db-url "postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"`
+- **Pillar edit → live DB** — `db push` only runs *untracked* migrations. Editing an already-applied pillar file does NOT re-apply it. To land the SQL on the live DB without Docker: use `psql` directly via the Session Pooler URL, or run the statement in the Supabase Dashboard SQL Editor. `db diff` and `db dump` both require Docker — unavailable without Docker Desktop.
+- **CLI verify without Docker** — after a dashboard SQL run, confirm the column landed by checking `db push` reports "Remote database is up to date" with no drift warnings, or use `npx supabase db pull` to regenerate the remote schema diff.
 
 ### The 11 Modules
 1. `0000_infra` — Extensions, utilities
