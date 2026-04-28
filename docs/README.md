@@ -114,6 +114,14 @@ When in doubt, `rules.json` wins.
 
 - [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md)
 - [`architecture/REFACTORING_BIBLE.md`](./architecture/REFACTORING_BIBLE.md)
+- [`architecture/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/GOLD_STANDARD_STATE_ROADMAP.md) — 5-layer state migration roadmap
+- [`architecture/TRACKING_SHEET_LEARNINGS.md`](./architecture/TRACKING_SHEET_LEARNINGS.md) — defect classes 2.1–2.16, heuristics, process lessons
+- [`architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md`](./architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md)
+- [`architecture/EMERGENCY_STATE_REFACTOR.md`](./architecture/EMERGENCY_STATE_REFACTOR.md)
+- [`architecture/STASH_AUDIT.md`](./architecture/STASH_AUDIT.md)
+- [`architecture/STORES_README.md`](./architecture/STORES_README.md) — global state store inventory
+- [`architecture/METRO_ROUTING_FIXES.md`](./architecture/METRO_ROUTING_FIXES.md) — platform idiosyncrasies
+- [`architecture/ZERO_COST_MAPBOX_MIGRATION.md`](./architecture/ZERO_COST_MAPBOX_MIGRATION.md) — Mapbox zero-cost migration strategy
 - [`architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md`](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md)
 - [`console/WEB_DASHBOARD_SPEC.md`](./console/WEB_DASHBOARD_SPEC.md) — `ivisit-console` implementation spec
 - [`deployment/VERCEL_WEB_DEPLOYMENT.md`](./deployment/VERCEL_WEB_DEPLOYMENT.md)
@@ -121,10 +129,33 @@ When in doubt, `rules.json` wins.
 
 ## Audit
 
+### Active
+- [`audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md`](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) — ✅ ALL PASSES COMPLETE (VD-A through VD-G)
+- [`audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) — ✅ ALL PASSES COMPLETE (A–G)
+- [`audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md`](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md) — Pre-tracking phase constraint audit
 - [`audit/RISK_STATUS_2026-04-23.md`](./audit/RISK_STATUS_2026-04-23.md) — R1-R10 resolution tracker
+- [`audit/TEMPORAL_DEAD_ZONE_FIXES.md`](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)
+- [`audit/AUDIT_CHECKLIST.md`](./audit/AUDIT_CHECKLIST.md)
+
+### Orchestrator Refactor (2026-04-25)
+- [`audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md`](./audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md) ← START HERE
+- [`audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md`](./audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md)
+- [`audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md`](./audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md)
+- [`audit/FINAL_MIGRATION_SUMMARY.md`](./audit/FINAL_MIGRATION_SUMMARY.md)
+- [`audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md`](./audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md)
+- [`audit/REAUDIT_2026-04-25.md`](./audit/REAUDIT_2026-04-25.md)
+- [`audit/UNIFIED_MODULARIZATION_PASS_PLAN.md`](./audit/UNIFIED_MODULARIZATION_PASS_PLAN.md)
+- [`audit/PERFORMANCE_STABILITY_MODULARIZATION.md`](./audit/PERFORMANCE_STABILITY_MODULARIZATION.md)
+
+### Emergency Flow (2026-04-24)
+- [`audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md`](./audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md)
+- [`audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md`](./audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md)
+- [`audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md`](./audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md)
+- [`audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md`](./audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md)
+
+### Historical Artifacts (2026-03-02)
 - [`audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md`](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - [`audit/ivisit_full_system_reconstruction_report_2026-03-02.md`](./audit/ivisit_full_system_reconstruction_report_2026-03-02.md)
-- [`audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md`](./audit/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md) — Map/Search Revamp Pass Plan
 
 ## Supabase
 
