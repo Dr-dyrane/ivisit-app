@@ -6,6 +6,18 @@ export const EmergencyMode = {
   BOOKING: "booking",
 };
 
+// PULLBACK NOTE: Pass 1 raw-status sweep — NEW: string enum for comparisons; AMBULANCE_STATUSES remains for label/color display only
+export const AmbulanceStatus = Object.freeze({
+  AVAILABLE: "available",
+  EN_ROUTE: "en_route",
+  DISPATCHED: "dispatched",
+  ARRIVING: "arriving",
+  ON_SCENE: "on_scene",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+  RETURNING: "returning",
+});
+
 export const AMBULANCE_STATUSES = {
   en_route: { label: "En Route", color: "#F59E0B" },
   dispatched: { label: "Dispatched", color: "#3B82F6" },

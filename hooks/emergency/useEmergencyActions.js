@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AmbulanceStatus } from "../../constants/emergency";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
 import {
 	AMBULANCE_LIVE_TRACK_STATUSES,
@@ -148,7 +149,8 @@ export function useEmergencyActions({
 				trip?.assignedAmbulance && typeof trip.assignedAmbulance === "object" ? trip.assignedAmbulance : null;
 			const byId = trip?.ambulanceId ? activeAmbulances.find((a) => a?.id === trip.ambulanceId) ?? null : null;
 			const byHospital = trip?.hospitalName ? activeAmbulances.find((a) => a?.hospital === trip.hospitalName) ?? null : null;
-			const fallback = activeAmbulances.find((a) => a?.status === "available") ?? activeAmbulances[0] ?? null;
+			// PULLBACK NOTE: Pass 1 raw-status sweep — OLD: "available" inline  NEW: AmbulanceStatus.AVAILABLE
+			const fallback = activeAmbulances.find((a) => a?.status === AmbulanceStatus.AVAILABLE) ?? activeAmbulances[0] ?? null;
 			const discoveredAssigned = byId ?? byHospital ?? fallback;
 			const assignedAmbulance = explicitAssigned
 				? { ...(discoveredAssigned || {}), ...explicitAssigned }

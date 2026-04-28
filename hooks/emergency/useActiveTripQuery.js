@@ -21,7 +21,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "../../services/supabase";
-import { emergencyRequestsService } from "../../services/emergencyRequestsService";
+import { emergencyRequestsService, EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { ambulanceService } from "../../services/ambulanceService";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
 import { parsePointGeometry } from "../../utils/emergencyRealtimeProjection";
@@ -206,7 +206,8 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			const activeBed = activeRequests.find(
 				(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
 			);
-			const pendingMatch = activeRequests.find((r) => r?.status === "pending_approval");
+			// PULLBACK NOTE: Pass 1 raw-status sweep — OLD: "pending_approval" inline  NEW: EmergencyRequestStatus.PENDING_APPROVAL
+			const pendingMatch = activeRequests.find((r) => r?.status === EmergencyRequestStatus.PENDING_APPROVAL);
 
 			// Read previous snapshots imperatively from the store at fetch time.
 			// This avoids capturing pre-hydration React state in the queryFn closure.

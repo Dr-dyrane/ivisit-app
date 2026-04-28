@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Location from "expo-location";
 import { supabase } from "../../services/supabase";
-import { emergencyRequestsService } from "../../services/emergencyRequestsService";
+import { emergencyRequestsService, EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
 import {
 	matchesTripRecord,
@@ -247,7 +247,8 @@ export function useEmergencyRealtime({
 
 	useEffect(() => {
 		if (!activeAmbulanceTrip?.requestId) return;
-		if (activeAmbulanceTrip.status === "completed" || activeAmbulanceTrip.status === "cancelled") return;
+		// PULLBACK NOTE: Pass 1 raw-status sweep — OLD: inline strings  NEW: EmergencyRequestStatus constants
+		if (activeAmbulanceTrip.status === EmergencyRequestStatus.COMPLETED || activeAmbulanceTrip.status === EmergencyRequestStatus.CANCELLED) return;
 		if (Platform.OS === "web") return;
 
 		let locationSubscription = null;
