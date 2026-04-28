@@ -417,6 +417,7 @@ export default function MapSheetOrchestrator({
 						sheetHeight={sheetHeight}
 						snapState={snapState}
 						historyItem={sheetPayload?.historyItem || null}
+						activeMapRequest={activeMapRequest}
 						onClose={onCloseVisitDetail}
 						onResume={onResumeHistoryVisit}
 						onRateVisit={onRateHistoryVisit}

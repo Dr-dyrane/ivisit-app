@@ -37,6 +37,7 @@ export default function MapVisitDetailStageBase({
 	sheetHeight,
 	snapState,
 	historyItem,
+	activeMapRequest,
 	onClose,
 	onResume,
 	onRateVisit,
@@ -60,6 +61,7 @@ export default function MapVisitDetailStageBase({
 
 	const model = useMapVisitDetailModel({
 		historyItem,
+		activeMapRequest,
 		onResume,
 		onRateVisit,
 		onCallClinic,

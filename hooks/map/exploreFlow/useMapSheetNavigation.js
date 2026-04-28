@@ -235,17 +235,30 @@ export function useMapSheetNavigation({
   }, [defaultExploreSnapState, setSheetView]);
 
   const openVisitDetail = useCallback(
-    (historyItem) => {
+    (historyItem, sourcePhase = null) => {
       setSheetView(
-        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null }),
+        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null, sourcePhase }),
       );
     },
     [setSheetView, usesSidebarLayout],
   );
 
+  // VD-B (EC-VD-2): return to sourcePhase if set, else fall back to EXPLORE_INTENT
   const closeVisitDetail = useCallback(() => {
+    const origin = sheetPayload?.sourcePhase;
+    if (origin && origin !== MAP_SHEET_PHASES.VISIT_DETAIL) {
+      setSheetView(
+        buildSourceReturnSheetView({
+          payload: sheetPayload,
+          fallbackPhase: origin,
+          fallbackSnapState: defaultExploreSnapState,
+          fallbackPayload: null,
+        }),
+      );
+      return;
+    }
     setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
+  }, [defaultExploreSnapState, setSheetView, sheetPayload]);
 
   const closeAmbulanceDecision = useCallback(() => {
     clearCommitFlow();

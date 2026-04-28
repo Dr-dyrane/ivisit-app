@@ -283,10 +283,19 @@ export function useMapHistoryFlow({
         return;
       }
 
+      // VD-B (EC-VD-1): guard against sparse historyItem before opening visit detail
+      const hasMinimumFields =
+        historyItem.requestId || historyItem.displayId || historyItem.id;
+      if (!hasMinimumFields) {
+        showToast("Visit details are still loading. Please try again.", "info");
+        return;
+      }
+
       setSelectedHistoryVisitKey(
         historyItem.requestId || historyItem.displayId || historyItem.id,
       );
-      openVisitDetail?.(historyItem);
+      // VD-B (EC-VD-2): pass current sheetPhase as sourcePhase for back navigation
+      openVisitDetail?.(historyItem, sheetPhase);
     },
     [
       activeHistoryRequestKeys,
@@ -295,6 +304,8 @@ export function useMapHistoryFlow({
       openVisitDetail,
       setRecentVisitsVisible,
       setSelectedHistoryVisitKey,
+      sheetPhase,
+      showToast,
     ],
   );
 
@@ -418,6 +429,16 @@ export function useMapHistoryFlow({
     ratingRecoveryClaims,
     visits,
   ]);
+
+  // VD-B (VD-3): clear selectedHistoryVisitKey when sheetPhase leaves VISIT_DETAIL
+  // Prevents stale key from keeping historyFocusedHospital pinned on the map
+  // after the user navigates to a different sheet phase.
+  useEffect(() => {
+    if (sheetPhase !== MAP_SHEET_PHASES.VISIT_DETAIL) {
+      setSelectedHistoryVisitKey(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetPhase]);
 
   useEffect(() => {
     // VD-A: log recovered rating trigger

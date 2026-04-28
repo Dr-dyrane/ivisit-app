@@ -410,6 +410,7 @@ const filterMeaningfulRows = (rows) =>
 
 export default function useMapVisitDetailModel({
 	historyItem,
+	activeMapRequest,
 	onResume,
 	onRateVisit,
 	onCallClinic,
@@ -1015,15 +1016,29 @@ export default function useMapVisitDetailModel({
 	const hasCoordinates = Boolean(
 		historyItem?.facilityCoordinate || historyItem?.hospitalCoordinate,
 	);
-	const canResume = Boolean(historyItem?.canResume && typeof onResume === "function");
+	// VD-B (VD-1): canResume requires BOTH visit-level flag AND live Zustand trip.
+	// Visit lifecycleState lags Zustand by one Realtime cycle after trip completion —
+	// gating on hasActiveRequest prevents the stale "Track" button window.
+	const matchesLiveRequest =
+		historyItem?.sourceKind === "emergency" &&
+		Boolean(activeMapRequest?.hasActiveRequest) &&
+		(
+			(historyItem?.requestId && activeMapRequest?.requestId === historyItem?.requestId) ||
+			(historyItem?.id && activeMapRequest?.requestId === historyItem?.id)
+		);
+	const canResume = Boolean(
+		historyItem?.canResume && typeof onResume === "function" && matchesLiveRequest,
+	);
 	// VD-A: log canResume at model build — detect stale visit status vs live trip
 	if (__DEV__) {
 		console.log("[VD-A][useMapVisitDetailModel] canResume", {
 			canResume,
 			historyItemCanResume: historyItem?.canResume,
+			matchesLiveRequest,
 			status: historyItem?.status,
 			lifecycleState: historyItem?.lifecycleState,
 			requestId: historyItem?.requestId,
+			activeRequestId: activeMapRequest?.requestId,
 			hasOnResume: typeof onResume === "function",
 		});
 	}
