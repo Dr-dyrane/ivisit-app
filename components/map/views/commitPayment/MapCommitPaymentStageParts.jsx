@@ -195,12 +195,14 @@ export function MapCommitPaymentSummaryCard({
 						>
 							<Text
 								numberOfLines={1}
+								allowFontScaling
 								style={[styles.heroHeaderTitle, { color: titleColor }]}
 							>
 								{headerTitle}
 							</Text>
 							<Text
 								numberOfLines={1}
+								allowFontScaling
 								style={[
 									styles.heroHeaderSubtitle,
 									{ color: headerSubtitleColor || mutedColor },
@@ -237,6 +239,7 @@ export function MapCommitPaymentSummaryCard({
 							>
 								<Text
 									numberOfLines={1}
+									allowFontScaling
 									style={[
 										styles.heroPrimaryActionLabel,
 										{ color: primaryTextColor },
@@ -258,6 +261,7 @@ export function MapCommitPaymentSummaryCard({
 									) : (
 										<Text
 											numberOfLines={1}
+											allowFontScaling
 											style={[
 												styles.heroPrimaryActionValue,
 												{ color: primaryTextColor },
@@ -270,6 +274,7 @@ export function MapCommitPaymentSummaryCard({
 								{primaryActionHint && !primaryActionShowsSkeleton ? (
 									<Text
 										numberOfLines={1}
+										allowFontScaling
 										style={[
 											styles.heroPrimaryActionHint,
 											{ color: "rgba(255,255,255,0.82)" },
@@ -295,6 +300,7 @@ export function MapCommitPaymentSummaryCard({
 						>
 							<Text
 								numberOfLines={1}
+								allowFontScaling
 								style={[
 									styles.heroPrimaryActionLabel,
 									{ color: primaryTextColor },
@@ -310,6 +316,7 @@ export function MapCommitPaymentSummaryCard({
 								) : (
 									<Text
 										numberOfLines={1}
+										allowFontScaling
 										style={[
 											styles.heroPrimaryActionValue,
 											{ color: primaryTextColor },
@@ -322,6 +329,7 @@ export function MapCommitPaymentSummaryCard({
 							{primaryActionHint && !primaryActionShowsSkeleton ? (
 								<Text
 									numberOfLines={1}
+									allowFontScaling
 									style={[
 										styles.heroPrimaryActionHint,
 										{ color: "rgba(255,255,255,0.82)" },
@@ -417,9 +425,7 @@ export function MapCommitPaymentSelectorCard({
 					<View style={styles.selectorTitleCopy}>
 						<Text style={[styles.selectorTitle, { color: titleColor }]}>{title}</Text>
 						{description ? (
-							<Text style={[styles.selectorDescription, { color: mutedColor }]}>
-								{description}
-							</Text>
+							<Text style={[styles.selectorDescription, { color: mutedColor }]}>{description}</Text>
 						) : null}
 					</View>
 					{shouldShowSelector && selectedMethod ? (
@@ -427,6 +433,7 @@ export function MapCommitPaymentSelectorCard({
 							onPress={handleCollapse}
 							accessibilityRole="button"
 							accessibilityLabel="Collapse payment methods"
+							hitSlop={8}
 							style={({ pressed }) => [
 								styles.paymentChangePill,
 								{ backgroundColor: changePillSurfaceColor },
@@ -466,6 +473,7 @@ export function MapCommitPaymentSelectorCard({
 				>
 					<Text
 						numberOfLines={1}
+						allowFontScaling
 						style={[styles.paymentSummaryText, { color: titleColor }]}
 					>
 						{paymentSummary}
@@ -498,13 +506,11 @@ export function MapCommitPaymentBreakdownCard({
 
 	return (
 		<View style={[styles.breakdownCard, { backgroundColor: surfaceColor }]}>
-			<Text style={[styles.breakdownTitle, { color: titleColor }]}>{title}</Text>
+			<Text allowFontScaling style={[styles.breakdownTitle, { color: titleColor }]}>{title}</Text>
 			<View style={styles.breakdownList}>
 				{breakdown.map((item) => (
 					<View key={`${item.name}-${item.cost}`} style={styles.breakdownRow}>
-						<Text style={[styles.breakdownRowLabel, { color: titleColor }]}>
-							{item.name}
-						</Text>
+						<Text style={[styles.breakdownRowLabel, { color: titleColor }]}>{item.name}</Text>
 						<Text style={[styles.breakdownRowValue, { color: titleColor }]}>
 							${Number(item.cost || 0).toFixed(2)}
 						</Text>
@@ -514,9 +520,7 @@ export function MapCommitPaymentBreakdownCard({
 			<View style={[styles.breakdownDivider, { backgroundColor: dividerColor }]} />
 			<View style={styles.breakdownTotalRow}>
 				<Text style={[styles.breakdownTotalLabel, { color: titleColor }]}>Total</Text>
-				<Text style={[styles.breakdownTotalValue, { color: titleColor }]}>
-					{totalCostLabel}
-				</Text>
+				<Text style={[styles.breakdownTotalValue, { color: titleColor }]}>{totalCostLabel}</Text>
 			</View>
 		</View>
 	);
@@ -536,11 +540,10 @@ export function MapCommitPaymentInfoGroupCard({
 			{rows.map((row, index) => (
 				<View key={`${row.label}-${index}`} style={styles.infoGroupRowWrap}>
 					<View style={styles.infoGroupRow}>
-						<Text style={[styles.infoGroupLabel, { color: mutedColor }]}>
-							{row.label}
-						</Text>
+						<Text style={[styles.infoGroupLabel, { color: mutedColor }]}>{row.label}</Text>
 						<Text
 							numberOfLines={1}
+							allowFontScaling
 							style={[styles.infoGroupValue, { color: titleColor }]}
 						>
 							{row.value}
@@ -605,6 +608,7 @@ export function MapCommitPaymentActionGroupCard({
 							<View style={styles.actionGroupCopy}>
 								<Text
 									numberOfLines={1}
+									allowFontScaling
 									style={[styles.actionGroupLabel, { color: titleColor }]}
 								>
 									{action.title || action.label}
@@ -612,6 +616,7 @@ export function MapCommitPaymentActionGroupCard({
 								{action.subtitle ? (
 									<Text
 										numberOfLines={1}
+										allowFontScaling
 										style={[
 											styles.actionGroupSubtitle,
 											{ color: action.subtitleColor || mutedColor },
@@ -678,13 +683,21 @@ export function MapCommitPaymentHeroBlade({
 					<Ionicons name="card" size={20} color={avatarIconColor} />
 				</View>
 				<View style={styles.paymentHeroCopy}>
-					<Text numberOfLines={1} style={[styles.paymentHeroTitle, { color: titleColor }]}>
+					<Text
+						numberOfLines={1}
+						allowFontScaling
+						style={[styles.paymentHeroTitle, { color: titleColor }]}
+					>
 						{title || "Payment"}
 					</Text>
 					{loading ? (
 						<View style={styles.paymentHeroSkeleton} />
 					) : subtitle ? (
-						<Text numberOfLines={1} style={[styles.paymentHeroSubtitle, { color: mutedColor }]}>
+						<Text
+							numberOfLines={1}
+							allowFontScaling
+							style={[styles.paymentHeroSubtitle, { color: mutedColor }]}
+						>
 							{subtitle}
 						</Text>
 					) : null}
@@ -789,8 +802,18 @@ export function MapCommitPaymentStatusCard({
 			<View style={[styles.statusIconWrap, { backgroundColor: `${accentColor}20` }]}>
 				<Ionicons name={iconName} size={30} color={accentColor} />
 			</View>
-			<Text style={[styles.statusTitle, { color: titleColor }]}>{statusTitle}</Text>
-			<Text style={[styles.statusDescription, { color: mutedColor }]}>
+			<Text
+				numberOfLines={1}
+				allowFontScaling
+				style={[styles.statusTitle, { color: titleColor }]}
+			>
+				{statusTitle}
+			</Text>
+			<Text
+				numberOfLines={1}
+				allowFontScaling
+				style={[styles.statusDescription, { color: mutedColor }]}
+			>
 				{statusDescription}
 			</Text>
 			{requestMeta ? (

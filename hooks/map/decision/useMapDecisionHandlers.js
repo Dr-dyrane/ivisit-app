@@ -6,7 +6,8 @@ import {
   isCommitPhoneValid,
 } from "../../../components/map/views/commitDetails/mapCommitDetails.helpers";
 import { buildBedDecisionSourcePayload } from "../../../components/map/core/mapSheetFlowPayloads";
-import { MAP_SHEET_PHASES, MAP_SHEET_SNAP_STATES } from "../../../components/map/MapSheetOrchestrator";
+// PULLBACK NOTE: wrong import — MapSheetOrchestrator never re-exported MAP_SHEET_PHASES; import directly from constants
+import { MAP_SHEET_PHASES, MAP_SHEET_SNAP_STATES } from "../../../components/map/core/mapSheet.constants";
 import { emergencyRequestsService } from "../../../services/emergencyRequestsService";
 
 /**
