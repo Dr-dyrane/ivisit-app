@@ -313,6 +313,7 @@ export function useMapExploreFlow() {
     closeAmbulanceDecision,
     closeBedDecision,
   } = useMapSheetNavigation({
+    sheetPhase,
     sheetPayload,
     sheetSnapState,
     defaultExploreSnapState,

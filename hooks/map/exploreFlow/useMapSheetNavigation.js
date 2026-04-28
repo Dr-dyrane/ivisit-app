@@ -4,6 +4,7 @@
 //       and service detail (owned by useMapServiceDetail)
 
 import { useCallback } from "react";
+import { useMapSheetPhaseReducer } from "../state/useMapSheetPhaseReducer";
 import {
   MAP_SHEET_PHASES,
 } from "../../../components/map/core/MapSheetOrchestrator";
@@ -34,6 +35,7 @@ import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/
  * (useMapCommitFlow) or service detail (useMapServiceDetail).
  */
 export function useMapSheetNavigation({
+  sheetPhase,
   sheetPayload,
   sheetSnapState,
   defaultExploreSnapState,
@@ -49,21 +51,30 @@ export function useMapSheetNavigation({
   setSearchSheetMode,
   setSheetView,
 }) {
+  // PULLBACK NOTE: Pass 3 valid-transitions reducer — wraps setSheetView with __DEV__ warn-only guard
+  // OLD: setSheetView called directly — no transition validation
+  // NEW: transitionTo() validates against VALID_TRANSITIONS table in __DEV__, then delegates
+  const { transitionTo, goBack } = useMapSheetPhaseReducer({
+    sheetPhase,
+    sheetPayload,
+    defaultExploreSnapState,
+    setSheetView,
+  });
   const openSearchSheet = useCallback(
     (nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
       setSearchSheetMode(nextMode);
-      setSheetView(buildSearchSheetView());
+      transitionTo(buildSearchSheetView());
     },
-    [setSearchSheetMode, setSheetView],
+    [setSearchSheetMode, transitionTo],
   );
 
   const closeSearchSheet = useCallback(() => {
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
+    goBack();
+  }, [goBack]);
 
   const openHospitalList = useCallback(() => {
-    setSheetView(buildHospitalListSheetView());
-  }, [setSheetView]);
+    transitionTo(buildHospitalListSheetView());
+  }, [transitionTo]);
 
   const openAmbulanceDecision = useCallback(
     (nextHospital = null, payload = null) => {
@@ -74,7 +85,7 @@ export function useMapSheetNavigation({
           fallbacks: [selectedHospital, featuredHospital, nearestHospital],
         }),
       );
-      setSheetView(
+      transitionTo(
         buildAmbulanceDecisionSheetView({
           defaultSnapState: defaultExploreSnapState,
           payload,
@@ -88,12 +99,12 @@ export function useMapSheetNavigation({
       nearestHospital,
       promoteHospitalSelection,
       selectedHospital,
-      setSheetView,
+      transitionTo,
     ],
   );
 
   const openAmbulanceHospitalList = useCallback(() => {
-    setSheetView(
+    transitionTo(
       buildHospitalListSheetView({
         sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
         sourceSnapState: sheetSnapState || defaultExploreSnapState,
@@ -104,7 +115,7 @@ export function useMapSheetNavigation({
     );
   }, [
     defaultExploreSnapState,
-    setSheetView,
+    transitionTo,
     sheetPayload,
     sheetSnapState,
   ]);
@@ -118,7 +129,7 @@ export function useMapSheetNavigation({
           fallbacks: [selectedHospital, featuredHospital, nearestHospital],
         }),
       );
-      setSheetView(
+      transitionTo(
         buildBedDecisionSheetView({
           defaultSnapState: defaultExploreSnapState,
           careIntent,
@@ -133,12 +144,12 @@ export function useMapSheetNavigation({
       nearestHospital,
       promoteHospitalSelection,
       selectedHospital,
-      setSheetView,
+      transitionTo,
     ],
   );
 
   const openBedHospitalList = useCallback(() => {
-    setSheetView(
+    transitionTo(
       buildHospitalListSheetView({
         sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
         sourceSnapState: sheetSnapState || defaultExploreSnapState,
@@ -154,34 +165,16 @@ export function useMapSheetNavigation({
     );
   }, [
     defaultExploreSnapState,
-    setSheetView,
+    transitionTo,
     sheetPayload?.careIntent,
     sheetSnapState,
   ]);
 
+  // PULLBACK NOTE: Pass 3 — closeHospitalList now delegates to goBack() which reads sourcePhase from payload
+  // OLD: inline sourcePhase check + setSheetView  NEW: goBack() handles both cases
   const closeHospitalList = useCallback(() => {
-    if (
-      sheetPayload?.sourcePhase === MAP_SHEET_PHASES.AMBULANCE_DECISION ||
-      sheetPayload?.sourcePhase === MAP_SHEET_PHASES.BED_DECISION
-    ) {
-      setSheetView(
-        buildSourceReturnSheetView({
-          payload: sheetPayload,
-          fallbackPhase: sheetPayload?.sourcePhase,
-          fallbackSnapState: defaultExploreSnapState,
-          fallbackPayload: null,
-        }),
-      );
-      return;
-    }
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [
-    defaultExploreSnapState,
-    setSheetView,
-    sheetPayload?.sourcePhase,
-    sheetPayload?.sourcePayload,
-    sheetPayload?.sourceSnapState,
-  ]);
+    goBack();
+  }, [goBack]);
 
   const handleSelectHospital = useCallback(
     (hospital) => {
@@ -225,44 +218,33 @@ export function useMapSheetNavigation({
       if (hospital) {
         setFeaturedHospital(hospital);
       }
-      setSheetView(buildHospitalDetailSheetView({ usesSidebarLayout }));
+      transitionTo(buildHospitalDetailSheetView({ usesSidebarLayout }));
     },
-    [setFeaturedHospital, setSheetView, usesSidebarLayout],
+    [setFeaturedHospital, transitionTo, usesSidebarLayout],
   );
 
   const closeHospitalDetail = useCallback(() => {
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView]);
+    goBack();
+  }, [goBack]);
 
   const openVisitDetail = useCallback(
     (historyItem, sourcePhase = null) => {
-      setSheetView(
+      transitionTo(
         buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null, sourcePhase }),
       );
     },
-    [setSheetView, usesSidebarLayout],
+    [transitionTo, usesSidebarLayout],
   );
 
-  // VD-B (EC-VD-2): return to sourcePhase if set, else fall back to EXPLORE_INTENT
+  // VD-B (EC-VD-2): PULLBACK NOTE: Pass 3 — goBack() handles sourcePhase return
+  // OLD: inline origin check + setSheetView  NEW: goBack() reads payload.sourcePhase
   const closeVisitDetail = useCallback(() => {
-    const origin = sheetPayload?.sourcePhase;
-    if (origin && origin !== MAP_SHEET_PHASES.VISIT_DETAIL) {
-      setSheetView(
-        buildSourceReturnSheetView({
-          payload: sheetPayload,
-          fallbackPhase: origin,
-          fallbackSnapState: defaultExploreSnapState,
-          fallbackPayload: null,
-        }),
-      );
-      return;
-    }
-    setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
-  }, [defaultExploreSnapState, setSheetView, sheetPayload]);
+    goBack();
+  }, [goBack]);
 
   const closeAmbulanceDecision = useCallback(() => {
     clearCommitFlow();
-    setSheetView(
+    transitionTo(
       buildTrackingOrExploreReturnSheetView({
         payload: sheetPayload,
         defaultExploreSnapState,
@@ -271,7 +253,7 @@ export function useMapSheetNavigation({
   }, [
     clearCommitFlow,
     defaultExploreSnapState,
-    setSheetView,
+    transitionTo,
     sheetPayload?.sourcePayload,
     sheetPayload?.sourcePhase,
     sheetPayload?.sourceSnapState,
@@ -279,7 +261,7 @@ export function useMapSheetNavigation({
 
   const closeBedDecision = useCallback(() => {
     clearCommitFlow();
-    setSheetView(
+    transitionTo(
       buildTrackingOrExploreReturnSheetView({
         payload: sheetPayload,
         defaultExploreSnapState,
@@ -288,7 +270,7 @@ export function useMapSheetNavigation({
   }, [
     clearCommitFlow,
     defaultExploreSnapState,
-    setSheetView,
+    transitionTo,
     sheetPayload?.sourcePayload,
     sheetPayload?.sourcePhase,
     sheetPayload?.sourceSnapState,
