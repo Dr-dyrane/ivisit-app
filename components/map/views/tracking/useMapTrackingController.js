@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share } from "react-native";
-import { useAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useToast } from "../../../../contexts/ToastContext";
 import { trackingRatingStateAtom } from "../../../../atoms/mapScreenAtoms";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
@@ -8,10 +8,6 @@ import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
 import {
   buildTrackingRatingState,
-  buildTrackingResolutionToast,
-  resolveTrackingRatingSkip,
-  resolveTrackingRatingSubmit,
-  deleteTrackingRatingRecoveryClaim,
   writeTrackingRatingRecoveryClaim,
 } from "./mapTracking.rating";
 import {
@@ -24,19 +20,6 @@ import {
   resolveTrackingHeaderActionHandler,
 } from "./mapTracking.model";
 
-// PULLBACK NOTE: Phase 8 — Rating state now uses Jotai atom for persistence
-// OLD: const [ratingState, setRatingState] = useState(INITIAL_RATING_STATE)
-// NEW: const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom)
-const INITIAL_RATING_STATE = {
-  visible: false,
-  visitId: null,
-  completeKind: null,
-  completionCommitted: false,
-  serviceType: null,
-  title: null,
-  subtitle: null,
-  serviceDetails: null,
-};
 
 export function useMapTrackingController({
   activeAmbulanceTrip,
@@ -88,7 +71,9 @@ export function useMapTrackingController({
   const { showToast } = useToast();
   const [busyAction, setBusyAction] = useState(null);
   // PULLBACK NOTE: Phase 8 — Jotai atom for cross-phase rating state persistence
-  const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
+  // PULLBACK NOTE: VD-C (VD-10) — controller only writes the atom (open); screen-level
+  // useTrackingRatingFlow owns all close/skip/submit paths.
+  const setRatingState = useSetAtom(trackingRatingStateAtom);
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
     activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||
@@ -412,136 +397,6 @@ export function useMapTrackingController({
     [destructiveAction, primaryAction, trackingKind],
   );
 
-  const closeRating = useCallback(() => {
-    setRatingState(INITIAL_RATING_STATE);
-  }, []);
-
-  const finalizeCompletedTracking = useCallback(
-    (completeKind) => {
-      if (completeKind === "ambulance") {
-        stopAmbulanceTrip?.();
-        return;
-      }
-      if (completeKind === "bed") {
-        stopBedBooking?.();
-      }
-    },
-    [stopAmbulanceTrip, stopBedBooking],
-  );
-
-  const skipRating = useCallback(async () => {
-    const visitId = ratingState.visitId;
-    if (!visitId) {
-      setRatingState(INITIAL_RATING_STATE);
-      return true;
-    }
-    let completionResult = { ok: true };
-    if (!ratingState.completionCommitted && ratingState.completeKind === "ambulance") {
-      completionResult = await runBusyAction("complete", () =>
-        onCompleteAmbulanceTrip?.({ deferCleanup: true }),
-      );
-    } else if (!ratingState.completionCommitted && ratingState.completeKind === "bed") {
-      completionResult = await runBusyAction("complete", () =>
-        onCompleteBedBooking?.({ deferCleanup: true }),
-      );
-    }
-    if (completionResult?.ok === false) {
-      showToast("Could not complete the request right now.", "error");
-      return false;
-    }
-    const resolution = await resolveTrackingRatingSkip({
-      visitId,
-      updateVisit,
-      deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
-    });
-    if (!resolution.ok) {
-      showToast("Could not close rating right now.", "error");
-      return false;
-    }
-    setRatingState(INITIAL_RATING_STATE);
-    finalizeCompletedTracking(ratingState.completeKind);
-    const skipToast = buildTrackingResolutionToast({
-      action: "skipped",
-      serviceType: ratingState.serviceType,
-      hospitalTitle: ratingState.serviceDetails?.hospital ?? null,
-    });
-    showToast(skipToast.message, skipToast.level);
-    return true;
-  }, [
-    finalizeCompletedTracking,
-    ratingState.completionCommitted,
-    onCompleteAmbulanceTrip,
-    onCompleteBedBooking,
-    ratingState.completeKind,
-    ratingState.serviceDetails?.hospital,
-    ratingState.serviceType,
-    ratingState.visitId,
-    runBusyAction,
-    showToast,
-    updateVisit,
-  ]);
-
-  const submitRating = useCallback(
-    async ({ rating, comment, tipAmount, tipCurrency }) => {
-      const visitId = ratingState.visitId;
-      if (!visitId) return false;
-      let completionResult = { ok: true };
-      if (!ratingState.completionCommitted && ratingState.completeKind === "ambulance") {
-        completionResult = await runBusyAction("complete", () =>
-          onCompleteAmbulanceTrip?.({ deferCleanup: true }),
-        );
-      } else if (!ratingState.completionCommitted && ratingState.completeKind === "bed") {
-        completionResult = await runBusyAction("complete", () =>
-          onCompleteBedBooking?.({ deferCleanup: true }),
-        );
-      }
-      if (completionResult?.ok === false) {
-        showToast("Could not complete the request right now.", "error");
-        return false;
-      }
-      const resolution = await resolveTrackingRatingSubmit({
-        visitId,
-        rating,
-        comment,
-        tipAmount,
-        tipCurrency,
-        updateVisit,
-        deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
-      });
-      if (!resolution.ok) {
-        showToast("Could not save your rating right now.", "error");
-        return false;
-      }
-      if (resolution.tipError) {
-        console.warn("[MapTracking] Tip processing failed:", resolution.tipError);
-      }
-      const successToast = buildTrackingResolutionToast({
-        action: "rated",
-        serviceType: ratingState.serviceType,
-        hospitalTitle: ratingState.serviceDetails?.hospital ?? null,
-        tipAmount,
-        tipError: resolution.tipError,
-      });
-      showToast(successToast.message, successToast.level);
-      setRatingState(INITIAL_RATING_STATE);
-      finalizeCompletedTracking(ratingState.completeKind);
-      return true;
-    },
-    [
-      onCompleteAmbulanceTrip,
-      onCompleteBedBooking,
-      finalizeCompletedTracking,
-      ratingState.completionCommitted,
-      ratingState.completeKind,
-      ratingState.serviceDetails?.hospital,
-      ratingState.serviceType,
-      ratingState.visitId,
-      runBusyAction,
-      showToast,
-      updateVisit,
-    ],
-  );
-
   return {
     openTrackingTriage,
     busyAction,
@@ -551,10 +406,6 @@ export function useMapTrackingController({
     trackingDetailRows,
     midActions,
     bottomAction,
-    ratingState,
-    closeRating,
-    skipRating,
-    submitRating,
   };
 }
 
