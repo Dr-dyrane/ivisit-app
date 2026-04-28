@@ -10,8 +10,8 @@
 //      `trackingRatingStateAtom`. Trigger (open) still lives in the controller
 //      where the completion business logic exists.
 //
-// Audit reference: docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md §2.4
-// Learning reference: docs/architecture/TRACKING_SHEET_LEARNINGS.md §2.1
+// Audit reference: docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md section 2.4
+// Learning reference: docs/architecture/TRACKING_SHEET_LEARNINGS.md section 2.1
 
 import { useCallback } from "react";
 import { useAtom } from "jotai";

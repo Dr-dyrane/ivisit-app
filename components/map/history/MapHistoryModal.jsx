@@ -157,7 +157,7 @@ function HistorySkeletonGroup({ theme, rowMetrics, containerRadius, rows = 3 }) 
  *   - Filter-aware empty states
  *   - Optional bottom CTA: "Book a visit" or "Choose care"
  *
- * Voice (per MAP_VISITS_SYSTEM_AUDIT_V1 §10.2):
+ * Voice (per MAP_VISITS_SYSTEM_AUDIT_V1 section 10.2):
  *   - iVisit liquid-glass grouped container from MapHistoryGroup
  *   - subtle hairline dividers inside groups
  *   - requestType-muted leading orb (ambulance/bed/visit palette)

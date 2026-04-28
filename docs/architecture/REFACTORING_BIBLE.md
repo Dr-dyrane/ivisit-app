@@ -107,7 +107,7 @@ We prioritize:
     *   Record the monolith baseline hash before the first pass — restore it at any time with `git show <hash>:<file>`.
     *   Commit after each complete pass (never mid-pass), with a structured message logging what changed and the line count delta.
     *   Compare against any stash prior art before closing the pass — never drop logic silently.
-    *   Full protocol in `docs/REFACTORING_GUARDRAILS.md` §13–14.
+    *   Full protocol in `docs/REFACTORING_GUARDRAILS.md` section 13–14.
 
 ---
 

@@ -222,7 +222,7 @@ export function resolveFacilityLine(historyItem) {
  * Filter a flat list of history items by a UI filter key.
  * Keys are defined in HISTORY_FILTER_KEYS. Unknown keys fall back to `all`.
  *
- * Status mapping (per VISITS_REQUEST_HISTORY_PLAN §7):
+ * Status mapping (per VISITS_REQUEST_HISTORY_PLAN section 7):
  *   - active     → "active" | "rating_pending"
  *   - upcoming   → "confirmed" | "pending"
  *   - completed  → "completed"

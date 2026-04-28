@@ -119,7 +119,7 @@ _To be filled on pass execution._
 ## Pass 3 — Valid Transitions Reducer for Sheet Phase
 
 **Status**: ✅ COMPLETE — commit `233be2b`
-**Defect class**: Defect class from `TRACKING_SHEET_LEARNINGS.md` §1.3 — sheet phase transitions are currently ad-hoc (`setSheetPhase(X)` called anywhere); no guard against invalid transitions, no history for `goBack()`
+**Defect class**: Defect class from `TRACKING_SHEET_LEARNINGS.md` section 1.3 — sheet phase transitions are currently ad-hoc (`setSheetPhase(X)` called anywhere); no guard against invalid transitions, no history for `goBack()`
 **Reference**: `stash@{0}:hooks/map/exploreFlow/useMapSheetPhase.js` — `validTransitions` table pattern (stash rejected wholesale but pattern is correct)
 
 ### Scope

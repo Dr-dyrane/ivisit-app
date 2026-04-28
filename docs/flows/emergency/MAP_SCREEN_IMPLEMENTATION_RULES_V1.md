@@ -291,7 +291,7 @@ Rules:
 
 - design and interaction truth may be established on iOS mobile first
 - once accepted, that truth must be moved into shared controller/model/theme/formatter boundaries so other variants inherit it
-- do not â€œport laterâ€ by rebuilding the same feature separately on web, tablet, or Android
+- do not "port later" by rebuilding the same feature separately on web, tablet, or Android
 - if a wide-screen skeleton/header/CTA already encodes the intended placement but the live phase does not, that is a propagation bug, not a design decision
 
 Parity is not only layout parity.
@@ -321,7 +321,7 @@ Every promoted `/map` phase must eventually inherit the same truth in these cate
 
 Implementation rule:
 
-- if a behavior belongs to more than one viewport or more than one service type, push it into shared helpers/modules before declaring the iOS implementation â€œdoneâ€
+- if a behavior belongs to more than one viewport or more than one service type, push it into shared helpers/modules before declaring the iOS implementation "done"
 
 Web persistence rule:
 

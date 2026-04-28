@@ -2,7 +2,7 @@
 //
 // PULLBACK NOTE: Pass 12 F5 - removed list-screen-only UI state from shared provider
 // OLD: exposed filter, filters, filteredVisits, visitCounts, selectedVisitId, selectVisit, setFilterType
-// NEW: shared provider owns only canonical collection + lifecycle CRUD (per VISITS_REQUEST_HISTORY_PLAN �10)
+// NEW: shared provider owns only canonical collection + lifecycle CRUD (per VISITS_REQUEST_HISTORY_PLAN section 10)
 //
 // Rationale: legacy VisitsScreen (demoted to bridge in F4a) was the only consumer of list-UI state.
 // /map consumers (MapRecentVisitsModal, MapVisitDetailsModal) read canonical `visits` and derive

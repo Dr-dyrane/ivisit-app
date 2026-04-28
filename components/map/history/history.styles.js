@@ -2,7 +2,7 @@
 // Stable StyleSheet fragments for /map history surfaces.
 //
 // Each *.jsx in this folder imports from here; no StyleSheet.create() lives
-// inside .jsx files. Per MAP_DESIGN_SYSTEM_OVERVIEW_V1 §18.
+// inside .jsx files. Per MAP_DESIGN_SYSTEM_OVERVIEW_V1 section 18.
 
 import { StyleSheet } from "react-native";
 

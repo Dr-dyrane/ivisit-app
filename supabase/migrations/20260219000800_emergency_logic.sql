@@ -1,7 +1,7 @@
 -- 🛰️ Module 08: Emergency Logic (Fluid Edition)
 -- Atomic operations for emergency lifecycles
 
--- � AMBULANCE DISPATCH RPC FUNCTIONS
+-- AMBULANCE DISPATCH RPC FUNCTIONS
 -- Part of Master System Improvement Plan - Phase 1 Critical Emergency Flow Fixes
 
 -- 1. Get Available Ambulances

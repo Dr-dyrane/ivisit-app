@@ -12,6 +12,24 @@ This document tracks the certification of all database tables, RPCs, and RLS pol
 - [x] Module 7: Insurance & Verification (Policies, Claims)
 - [x] Module 8: Health & Public Information (Trending, News)
 
+## Documentation Integrity Gate
+Status: IN PROGRESS
+
+Current warning:
+- `ivisit-app` has confirmed mojibake and replacement-character defects in tracked source/docs files.
+- `ivisit-app` also has tracked UTF-16LE text files that reduce audit trust and make grep-based QA less reliable.
+
+Current QA targets:
+- [ ] Remove real source corruption from live source and live migrations
+- [ ] Normalize tracked UTF-16LE text files that remain part of active workflows
+- [ ] Re-audit `docs/**`, `contexts/**`, `screens/**`, and `supabase/**` after schema exports or type generation
+- [ ] Keep archived corruption documented until cleaned or retired
+
+Minimum checks before closing a pass:
+1. Run `rg -nP "\\x{FFFD}|\\x{00C2}\\x{00A7}|\\x{00E2}\\x{20AC}|\\x{251C}\\x{00F3}\\x{0393}\\x{00C7}" docs contexts screens supabase`.
+2. Confirm no newly touched text files were committed as UTF-16LE.
+3. Record remaining exceptions in current-state docs instead of silently carrying them forward.
+
 ---
 
 ## 🔐 Module 1: Identity & Access

@@ -248,6 +248,38 @@ Before merging:
 2. Grep every consumer file — confirm every destructured key is present in the new value
 3. Line count: provider shell ≤200 lines, each hook ≤500 lines, each utils file ≤200 lines
 
+---
+
+## 12. Documentation and Encoding Integrity Guard
+
+Warning: `ivisit-app` currently has confirmed text-integrity defects. This is not only a docs-formatting issue. The repo contains both:
+- Real source corruption (`U+FFFD`, double-encoded punctuation, garbled box-drawing sequences) in tracked files
+- UTF-16LE tracked text files that should be normalized before further hardening work
+
+Current high-signal examples:
+- `contexts/VisitsContext.jsx`
+- `docs/console/dashboard-crud-plan.md`
+- `docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`
+- `supabase/migrations/20260219000800_emergency_logic.sql`
+- `supabase/docs/archive/legacy-references/20260218060000_consolidated_schema.sql`
+
+Required guardrails until cleanup is closed:
+- Treat copied punctuation from older docs, generated SQL, and logs as untrusted input.
+- New or edited text files must be committed as UTF-8.
+- Do not accept replacement characters (`U+FFFD`) in comments, docs, SQL, generated types, or test fixtures.
+- If a tracked file is UTF-16LE, normalize it before broad refactors so diffs and grep-based QA stay trustworthy.
+- If a migration, generated schema artifact, or audit note is regenerated, rerun the mojibake audit before merge.
+
+Pre-merge audit for touched files:
+```bash
+rg -nP "\\x{FFFD}|\\x{00C2}\\x{00A7}|\\x{00E2}\\x{20AC}|\\x{251C}\\x{00F3}\\x{0393}\\x{00C7}" contexts docs screens supabase
+```
+
+Release gate:
+- No new mojibake signatures in touched files
+- No new UTF-16LE tracked text files
+- Any existing corruption called out in current-state docs until repaired
+
 ### Phase 6 — Barrel Export
 Add `hooks/<domain>/index.js` exporting all new hooks.
 Update provider to use barrel imports.

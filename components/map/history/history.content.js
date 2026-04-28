@@ -1,6 +1,6 @@
 // history.content.js
 // Copy constants for /map history surfaces.
-// Per MAP_DESIGN_SYSTEM_OVERVIEW_V1 §18: string literals and section titles must live
+// Per MAP_DESIGN_SYSTEM_OVERVIEW_V1 section 18: string literals and section titles must live
 // outside *.jsx files so UI structure stays declarative and copy can be edited once.
 
 export const HISTORY_REQUEST_TYPES = Object.freeze({

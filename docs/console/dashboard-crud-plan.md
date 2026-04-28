@@ -57,7 +57,7 @@ const SPONSOR_RELATIONSHIPS = {
 };
 ```
 
-## � RBAC System Design
+## RBAC System Design
 
 ### Database Schema for RBAC
 ```sql
@@ -297,7 +297,7 @@ const HospitalManagement = () => {
 };
 ```
 
-## � Dashboard Modules
+## Dashboard Modules
 
 ### 1. User Management Module
 
