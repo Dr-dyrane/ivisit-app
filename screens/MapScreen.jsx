@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -11,7 +11,6 @@ import MapSheetOrchestrator, {
   MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
 } from "../components/map/core/MapSheetOrchestrator";
-import { MAP_ACTIVE_REQUEST_KINDS } from "../components/map/core/mapActiveRequestModel";
 import MapGuestProfileModal from "../components/map/MapGuestProfileModal";
 import MapCareHistoryModal from "../components/map/MapCareHistoryModal";
 import MapExploreLoadingOverlay from "../components/map/surfaces/MapExploreLoadingOverlay";
@@ -35,8 +34,8 @@ import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSea
 
 // PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
 import { useMapTrackingSync } from "../hooks/map/tracking/useMapTrackingSync";
-import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
-import { calculateBearing } from "../utils/mapUtils";
+// PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted
+import { useMapFocusedState } from "../hooks/map/shell/useMapFocusedState";
 import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
 
 export default function MapScreen() {
@@ -292,74 +291,29 @@ export default function MapScreen() {
     }
   }, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
-  const paymentPreviewKind = useMemo(() => {
-    if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
-    const hasTransportSelection = Boolean(
-      sheetPayload?.transport?.id ||
-        sheetPayload?.transport?.title ||
-        sheetPayload?.transport?.service_name ||
-        sheetPayload?.transport?.service_type,
-    );
-
-    if (hasTransportSelection) return "ambulance";
-    return null;
-  }, [sheetPhase, sheetPayload?.transport]);
-
-  const mapHospitals = useMemo(() => {
-    if (!historyFocusedHospital) return discoveredHospitals;
-    const alreadyPresent = discoveredHospitals.some(
-      (item) => item?.id === historyFocusedHospital?.id,
-    );
-    return alreadyPresent
-      ? discoveredHospitals
-      : [historyFocusedHospital, ...discoveredHospitals];
-  }, [discoveredHospitals, historyFocusedHospital]);
-
-  const mapFocusedHospitalId = useMemo(
-    () =>
-      historyFocusedHospital?.id ||
-      activeMapRequest?.hospitalId ||
-      (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
-        ? sheetPayload?.hospital?.id || null
-        : null) ||
-      nearestHospital?.id ||
-      null,
-    [
-      historyFocusedHospital?.id,
-      activeMapRequest?.hospitalId,
-      nearestHospital?.id,
-      sheetPhase,
-      sheetPayload?.hospital?.id,
-    ],
-  );
-
-  const mapFocusedHospital = useMemo(
-    () =>
-      historyFocusedHospital ||
-      mapHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
-      activeMapRequest?.hospital ||
-      featuredHospital ||
-      sheetPayload?.hospital ||
-      nearestHospital ||
-      null,
-    [
-      historyFocusedHospital,
-      mapHospitals,
-      activeMapRequest?.hospital,
-      featuredHospital,
-      mapFocusedHospitalId,
-      nearestHospital,
-      sheetPayload?.hospital,
-    ],
-  );
-
-  const mapFocusedHospitalCoordinate = useMemo(
-    () => getDestinationCoordinate(mapFocusedHospital),
-    [mapFocusedHospital],
-  );
+  // PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted to useMapFocusedState
+  const {
+    mapHospitals,
+    mapFocusedHospitalId,
+    mapFocusedHospital,
+    mapFocusedHospitalCoordinate,
+    mapServiceMarkerKind,
+    mapServiceMarkerCoordinate,
+    mapServiceMarkerHeading,
+  } = useMapFocusedState({
+    sheetPhase,
+    sheetPayload,
+    discoveredHospitals,
+    historyFocusedHospital,
+    historyVisitDetailsVisible,
+    activeMapRequest,
+    featuredHospital,
+    nearestHospital,
+    activeLocation,
+  });
 
   // PULLBACK NOTE: Pass 3 — decision handlers extracted to useMapDecisionHandlers
-  // Placed after mapFocusedHospital (line above) which it depends on
+  // Placed after mapFocusedHospital (above) which it depends on
   const {
     handleUseHospital,
     handleConfirmAmbulanceDecision,
@@ -388,64 +342,6 @@ export default function MapScreen() {
     closeCommitTriage,
   });
 
-  const mapServiceMarkerKind = useMemo(() => {
-    if (historyVisitDetailsVisible) {
-      return null;
-    }
-    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
-      return "ambulance";
-    }
-    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.PENDING) {
-      return activeMapRequest?.pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED
-        ? null
-        : "ambulance";
-    }
-    if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) {
-      return paymentPreviewKind;
-    }
-    return null;
-  }, [
-    activeMapRequest?.kind,
-    activeMapRequest?.pendingKind,
-    historyVisitDetailsVisible,
-    paymentPreviewKind,
-    sheetPhase,
-  ]);
-
-  const mapServiceMarkerCoordinate = useMemo(() => {
-    const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
-    if (activeAmbulance?.currentResponderLocation) {
-      return activeAmbulance.currentResponderLocation;
-    }
-    if (mapServiceMarkerKind === "ambulance") {
-      return mapFocusedHospitalCoordinate;
-    }
-    return null;
-  }, [
-    activeMapRequest?.raw?.activeAmbulanceTrip,
-    mapFocusedHospitalCoordinate,
-    mapServiceMarkerKind,
-  ]);
-
-  const mapServiceMarkerHeading = useMemo(() => {
-    const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
-    if (Number.isFinite(activeAmbulance?.currentResponderHeading)) {
-      return Number(activeAmbulance.currentResponderHeading);
-    }
-    if (
-      mapServiceMarkerKind === "ambulance" &&
-      mapFocusedHospitalCoordinate &&
-      activeLocation
-    ) {
-      return calculateBearing(mapFocusedHospitalCoordinate, activeLocation);
-    }
-    return 0;
-  }, [
-    activeMapRequest?.raw?.activeAmbulanceTrip,
-    activeLocation,
-    mapFocusedHospitalCoordinate,
-    mapServiceMarkerKind,
-  ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
 
   // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
