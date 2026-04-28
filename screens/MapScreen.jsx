@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -33,12 +33,8 @@ import { useTrackingRatingFlow } from "../hooks/map/exploreFlow/useTrackingRatin
 // getMapViewportVariant/getMapViewportSurfaceConfig/isSidebarMapVariant — moved to useMapShell
 import { MAP_SEARCH_SHEET_MODES } from "../components/map/surfaces/search/mapSearchSheet.helpers";
 
-import {
-  buildTrackingRouteSignature,
-  hasUsableTrackingStartedAt,
-  normalizeTrackingRouteCoordinates,
-  shouldReconcileTrackingTimeline,
-} from "../components/map/views/tracking/mapTracking.timeline";
+// PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
+import { useMapTrackingSync } from "../hooks/map/tracking/useMapTrackingSync";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
@@ -274,10 +270,11 @@ export default function MapScreen() {
   }, [router, setCareHistoryVisible]);
 
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
-  const [trackingRouteInfo, setTrackingRouteInfo] = useState({
-    durationSec: null,
-    distanceMeters: null,
-    coordinates: [],
+
+  // PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
+  const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } = useMapTrackingSync({
+    activeAmbulanceTrip,
+    patchActiveAmbulanceTrip,
   });
 
   const shouldShowMapControls = usesSidebarLayout
@@ -481,88 +478,6 @@ export default function MapScreen() {
     openRatingForVisit(selectedHistoryVisit);
     closeHistoryVisitDetails();
   }, [closeHistoryVisitDetails, openRatingForVisit, selectedHistoryVisit]);
-
-  const trackingRouteCoordinates = useMemo(
-    () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
-    [trackingRouteInfo?.coordinates],
-  );
-  const activeTripRouteSignature = useMemo(
-    () => buildTrackingRouteSignature(activeAmbulanceTrip?.route),
-    [activeAmbulanceTrip?.route],
-  );
-  const trackingRouteSignature = useMemo(
-    () => buildTrackingRouteSignature(trackingRouteCoordinates),
-    [trackingRouteCoordinates],
-  );
-  const trackingTimeline = useMemo(
-    () => ({
-      etaSeconds:
-        activeAmbulanceTrip?.etaSeconds ?? trackingRouteInfo?.durationSec ?? null,
-      startedAt: activeAmbulanceTrip?.startedAt ?? null,
-    }),
-    [
-      activeAmbulanceTrip?.etaSeconds,
-      activeAmbulanceTrip?.startedAt,
-      trackingRouteInfo?.durationSec,
-    ],
-  );
-
-  useEffect(() => {
-    if (
-      !activeAmbulanceTrip?.requestId ||
-      typeof patchActiveAmbulanceTrip !== "function"
-    ) {
-      return;
-    }
-
-    const updates = {};
-    const nowMs = Date.now();
-    const routeEtaSeconds = Number(trackingRouteInfo?.durationSec);
-    const rawTripEtaSeconds = activeAmbulanceTrip?.etaSeconds;
-    const hasPolylineRoute = trackingRouteCoordinates.length >= 2;
-    const shouldReconcileRouteTimeline = shouldReconcileTrackingTimeline({
-      routeEtaSeconds,
-      tripEtaSeconds: rawTripEtaSeconds,
-      tripStartedAt: activeAmbulanceTrip?.startedAt,
-      hasPolylineRoute,
-      nowMs,
-    });
-
-    if (shouldReconcileRouteTimeline) {
-      updates.etaSeconds = routeEtaSeconds;
-      updates.estimatedArrival = `${Math.max(1, Math.ceil(routeEtaSeconds / 60))} min`;
-      updates.etaSource = "map_route";
-      updates.startedAt = nowMs;
-    }
-
-    if (
-      !shouldReconcileRouteTimeline &&
-      !hasUsableTrackingStartedAt(activeAmbulanceTrip?.startedAt)
-    ) {
-      updates.startedAt = nowMs;
-    }
-
-    if (
-      trackingRouteCoordinates.length >= 2 &&
-      trackingRouteSignature &&
-      trackingRouteSignature !== activeTripRouteSignature
-    ) {
-      updates.route = trackingRouteCoordinates;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      patchActiveAmbulanceTrip(updates);
-    }
-  }, [
-    activeAmbulanceTrip?.etaSeconds,
-    activeAmbulanceTrip?.requestId,
-    activeAmbulanceTrip?.startedAt,
-    activeTripRouteSignature,
-    patchActiveAmbulanceTrip,
-    trackingRouteCoordinates,
-    trackingRouteInfo?.durationSec,
-    trackingRouteSignature,
-  ]);
 
   return (
     <View
