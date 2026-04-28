@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
@@ -25,6 +25,8 @@ import { useVisits } from "../contexts/VisitsContext";
 import { useFABActions } from "../contexts/FABContext";
 import { useMapExploreFlow } from "../hooks/map/useMapExploreFlow";
 import { useMapShell } from "../hooks/map/shell/useMapShell";
+// PULLBACK NOTE: MapScreen decomposition Pass 2 — history+rating-recovery cluster extracted
+import { useMapHistoryFlow } from "../hooks/map/history/useMapHistoryFlow";
 // PULLBACK NOTE: Phase 8 — Pass B: in-flow rating modal lifted to MapScreen
 import { useTrackingRatingFlow } from "../hooks/map/exploreFlow/useTrackingRatingFlow";
 // getMapViewportVariant/getMapViewportSurfaceConfig/isSidebarMapVariant — moved to useMapShell
@@ -41,28 +43,10 @@ import {
   normalizeTrackingRouteCoordinates,
   shouldReconcileTrackingTimeline,
 } from "../components/map/views/tracking/mapTracking.timeline";
-import {
-  buildTrackingResolutionToast,
-  buildRecoveredTrackingRatingState,
-  findPendingTrackingRatingVisit,
-  getTrackingRatingRecoveryClaim,
-  readTrackingRatingRecoveryClaims,
-  resolveTrackingRatingSkip,
-  resolveTrackingRatingSubmit,
-  purgeStaleTrackingRatingClaims,
-} from "../components/map/views/tracking/mapTracking.rating";
 import { getDestinationCoordinate } from "../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../utils/mapUtils";
 import { emergencyRequestsService } from "../services/emergencyRequestsService";
-import { paymentService } from "../services/paymentService";
-import { selectHistoryItemByAnyKey } from "../hooks/visits/useVisitHistorySelectors";
-import {
-  ratingRecoveryVersionAtom,
-  ratingRecoveryClaimsAtom,
-  recoveredRatingStateAtom,
-  selectedHistoryVisitKeyAtom,
-  trackingRatingStateAtom,
-} from "../atoms/mapScreenAtoms";
+import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -173,22 +157,7 @@ export default function MapScreen() {
   // OLD: viewportVariant/surfaceConfig/usesSidebarLayout/renderedSnapState/bottomSheetHeight/
   //      sidebarWidth/sidebarOcclusionWidth/activeHistoryRequestKeys/hasActiveMapModal all inline
   // NEW: useMapShell owns all shell derivations; MapScreen passes raw values, destructures results
-  const handledRecoveredRatingVisitIdsRef = useRef(new Set());
-  // PULLBACK NOTE: VD-C3 (EC-VD-2) — track origin of visit detail open so closeHistoryVisitDetails
-  // can restore the correct surface (history modal vs direct tap).
-  const visitDetailReturnTargetRef = useRef(null);
-  // PULLBACK NOTE: VD-D — migrate ephemeral UI state from useState → Jotai atoms (L5).
-  // Atoms were already defined in mapScreenAtoms.js; this completes the wiring.
-  const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useAtom(ratingRecoveryVersionAtom);
-  const [ratingRecoveryClaims, setRatingRecoveryClaims] = useAtom(ratingRecoveryClaimsAtom);
-  const [recoveredRatingState, setRecoveredRatingState] = useAtom(recoveredRatingStateAtom);
-  const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useAtom(selectedHistoryVisitKeyAtom);
-  const [historyPaymentState, setHistoryPaymentState] = useState({
-    visible: false,
-    loading: false,
-    paymentRecord: null,
-  });
-  const historyPaymentRequestVersionRef = useRef(0);
+  // PULLBACK NOTE: MapScreen decomposition Pass 2 — history + rating-recovery cluster
   // PULLBACK NOTE: VD-2 — read atom directly here so useMapShell gets the modal-open
   // signal without requiring useTrackingRatingFlow to be called above the shell.
   const trackingRatingStateForShell = useAtomValue(trackingRatingStateAtom);
@@ -222,10 +191,50 @@ export default function MapScreen() {
     recoveredRatingState,
   });
 
-  // Visit details live in the VISIT_DETAIL sheet phase now (not a modal).
-  const historyVisitDetailsVisible =
-    sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
-
+  const {
+    // State
+    selectedHistoryVisit,
+    selectedHistoryVisitKey,
+    historyPaymentState,
+    recoveredRatingState,
+    ratingRecoveryClaims,
+    historyVisitDetailsVisible,
+    // Handlers
+    closeHistoryVisitDetails,
+    closeHistoryPaymentDetails,
+    handleOpenChooseCareFromHistory,
+    handleBookVisitFromHistory,
+    handleGetHistoryDirections,
+    handleOpenHistoryPaymentDetails,
+    handleSelectHistoryItem,
+    handleResumeHistoryRequest,
+    handleCallHistoryClinic,
+    handleJoinHistoryVisit,
+    handleBookHistoryAgain,
+    handleCancelHistoryVisit,
+    closeRecoveredRating,
+    handleSkipRecoveredRating,
+    handleSubmitRecoveredRating,
+  } = useMapHistoryFlow({
+    visits,
+    updateVisit,
+    cancelVisit,
+    showToast,
+    openTracking,
+    openVisitDetail,
+    closeVisitDetail,
+    setRecentVisitsVisible,
+    setCareHistoryVisible,
+    openAmbulanceDecision,
+    openBedDecision,
+    activeMapRequest,
+    activeHistoryRequestKeys,
+    sheetPhase,
+    hasActiveMapModal,
+    hasActiveTrip,
+    historyFocusedHospital,
+    router,
+  });
 
   useEffect(() => {
     const suppressionId = "map-modal-fab-suppression";
@@ -261,107 +270,7 @@ export default function MapScreen() {
     }
     return result;
   }, [clearCommitFlow, logout]);
-  const selectedHistoryVisit = useMemo(
-    () => selectHistoryItemByAnyKey(visits, selectedHistoryVisitKey),
-    [selectedHistoryVisitKey, visits],
-  );
-  // activeHistoryRequestKeys now derived in useMapShell
 
-  const closeHistoryVisitDetails = useCallback(() => {
-    const returnTarget = visitDetailReturnTargetRef.current;
-    visitDetailReturnTargetRef.current = null;
-    setSelectedHistoryVisitKey(null);
-    closeVisitDetail?.();
-    // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
-    // If opened from history modal, re-show it so user returns to their list context.
-    if (returnTarget === "history_modal") {
-      setRecentVisitsVisible(true);
-    }
-  }, [closeVisitDetail, setRecentVisitsVisible]);
-  const closeHistoryPaymentDetails = useCallback(() => {
-    historyPaymentRequestVersionRef.current += 1;
-    setHistoryPaymentState({
-      visible: false,
-      loading: false,
-      paymentRecord: null,
-    });
-  }, []);
-
-  const handleOpenChooseCareFromHistory = useCallback(() => {
-    setRecentVisitsVisible(false);
-    setCareHistoryVisible(true);
-  }, [setCareHistoryVisible, setRecentVisitsVisible]);
-
-  // Booking from the History modal is temporarily bridged to the legacy route
-  // while the sheet-native Pass 12 booking rebuild is in progress.
-  const handleBookVisitFromHistory = useCallback(() => {
-    setRecentVisitsVisible(false);
-    router.push("/(user)/(stacks)/book-visit");
-  }, [router, setRecentVisitsVisible]);
-
-  // Directions from visit detail — mirrors hospital detail's pattern.
-  const handleGetHistoryDirections = useCallback(() => {
-    const coordinate =
-      selectedHistoryVisit?.facilityCoordinate || selectedHistoryVisit?.hospitalCoordinate;
-    if (!coordinate) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${coordinate.latitude},${coordinate.longitude}`;
-    Linking.openURL(url);
-  }, [selectedHistoryVisit]);
-  const handleOpenHistoryPaymentDetails = useCallback(() => {
-    const paymentTransactionId =
-      selectedHistoryVisit?.paymentId ||
-      selectedHistoryVisit?.visit?.paymentId ||
-      selectedHistoryVisit?.visit?.payment_id ||
-      null;
-    const historyRequestId =
-      selectedHistoryVisit?.requestId ||
-      selectedHistoryVisit?.visit?.requestId ||
-      selectedHistoryVisit?.visit?.request_id ||
-      null;
-
-    if (!paymentTransactionId && !historyRequestId) return;
-
-    const requestVersion = historyPaymentRequestVersionRef.current + 1;
-    historyPaymentRequestVersionRef.current = requestVersion;
-    setHistoryPaymentState({
-      visible: true,
-      loading: true,
-      paymentRecord: null,
-    });
-
-    (async () => {
-      const paymentRecord = await paymentService.getPaymentHistoryEntry({
-        transactionId: paymentTransactionId || null,
-        requestId: historyRequestId || null,
-      });
-
-      if (historyPaymentRequestVersionRef.current !== requestVersion) return;
-
-      if (!paymentRecord) {
-        setHistoryPaymentState({
-          visible: false,
-          loading: false,
-          paymentRecord: null,
-        });
-        showToast("Payment details are not available yet.", "info");
-        return;
-      }
-
-      setHistoryPaymentState({
-        visible: true,
-        loading: false,
-        paymentRecord,
-      });
-    })();
-  }, [
-    selectedHistoryVisit?.paymentId,
-    selectedHistoryVisit?.requestId,
-    selectedHistoryVisit?.visit?.paymentId,
-    selectedHistoryVisit?.visit?.payment_id,
-    selectedHistoryVisit?.visit?.requestId,
-    selectedHistoryVisit?.visit?.request_id,
-    showToast,
-  ]);
   // Booking flow is temporarily bridged to the legacy full-screen route while the
   // sheet-native Pass 12 booking rebuild is in progress. When the rebuild lands,
   // this handler will reopen the map-owned booking sheet with clean state.
@@ -369,61 +278,6 @@ export default function MapScreen() {
     setCareHistoryVisible(false);
     router.push("/(user)/(stacks)/book-visit");
   }, [router, setCareHistoryVisible]);
-
-  const handleSelectHistoryItem = useCallback(
-    (historyItem) => {
-      if (!historyItem) return;
-
-      // PULLBACK NOTE: VD-C3 — record that visit detail was opened from history modal
-      visitDetailReturnTargetRef.current = "history_modal";
-      setRecentVisitsVisible(false);
-      const historyKeys = [
-        historyItem.requestId,
-        historyItem.displayId,
-        historyItem.id,
-      ]
-        .filter(
-          (value) =>
-            value !== null &&
-            value !== undefined &&
-            String(value).trim().length > 0,
-        )
-        .map((value) => String(value));
-      const wantsResumeAction =
-        historyItem.primaryAction === "resume_tracking" ||
-        historyItem.primaryAction === "resume_request";
-      const matchesActiveEmergencyRequest =
-        historyItem.sourceKind === "emergency" &&
-        historyKeys.some((key) => activeHistoryRequestKeys.has(key));
-
-      const canResumeLiveRequest =
-        Boolean(activeMapRequest?.hasActiveRequest) &&
-        wantsResumeAction &&
-        matchesActiveEmergencyRequest;
-      if (canResumeLiveRequest) {
-        openTracking?.();
-        return;
-      }
-
-      setSelectedHistoryVisitKey(
-        historyItem.requestId || historyItem.displayId || historyItem.id,
-      );
-      openVisitDetail?.(historyItem);
-    },
-    [
-      activeHistoryRequestKeys,
-      activeMapRequest?.hasActiveRequest,
-      openTracking,
-      openVisitDetail,
-      setRecentVisitsVisible,
-    ],
-  );
-
-  useEffect(() => {
-    if (!historyVisitDetailsVisible) return;
-    if (selectedHistoryVisit) return;
-    closeHistoryVisitDetails();
-  }, [closeHistoryVisitDetails, historyVisitDetailsVisible, selectedHistoryVisit]);
 
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
   const [trackingRouteInfo, setTrackingRouteInfo] = useState({
@@ -921,170 +775,6 @@ export default function MapScreen() {
     mapServiceMarkerKind,
   ]);
   const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
-  const canRecoverTrackingRating =
-    sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
-    sheetPhase === MAP_SHEET_PHASES.TRACKING;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadClaims = async () => {
-      // PULLBACK NOTE: VD-B3 — purge stale claims (5th layer: Supabase truth)
-      // visits whose lifecycleState is no longer RATING_PENDING are removed from
-      // AsyncStorage so they never surface a recovery modal again.
-      const nextClaims = visits.length > 0
-        ? await purgeStaleTrackingRatingClaims(visits)
-        : await readTrackingRatingRecoveryClaims();
-      if (!cancelled) {
-        setRatingRecoveryClaims(nextClaims);
-      }
-    };
-
-    loadClaims();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeMapRequest?.hasActiveRequest,
-    handledRecoveredRatingVersion,
-    sheetPhase,
-    visits,
-  ]);
-
-  const pendingRecoveredRatingVisit = useMemo(() => {
-    if (
-      !canRecoverTrackingRating ||
-      hasActiveMapModal ||
-      activeMapRequest?.hasActiveRequest
-    ) {
-      return null;
-    }
-
-    return findPendingTrackingRatingVisit(visits, {
-      excludeVisitIds: Array.from(handledRecoveredRatingVisitIdsRef.current),
-      allowedVisitIds: Object.keys(ratingRecoveryClaims),
-    });
-  }, [
-    activeMapRequest?.hasActiveRequest,
-    canRecoverTrackingRating,
-    handledRecoveredRatingVersion,
-    hasActiveMapModal,
-    ratingRecoveryClaims,
-    visits,
-  ]);
-
-  useEffect(() => {
-    if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
-    const nextState = buildRecoveredTrackingRatingState(
-      pendingRecoveredRatingVisit,
-      getTrackingRatingRecoveryClaim(pendingRecoveredRatingVisit, ratingRecoveryClaims),
-    );
-    if (nextState) {
-      setRecoveredRatingState(nextState);
-    }
-  }, [pendingRecoveredRatingVisit, ratingRecoveryClaims, recoveredRatingState?.visible]);
-
-  const closeRecoveredRating = useCallback(() => {
-    setRecoveredRatingState(null);
-  }, []);
-
-  const markRecoveredRatingHandled = useCallback((visitId) => {
-    if (!visitId) return;
-    const normalizedVisitId = String(visitId);
-    if (handledRecoveredRatingVisitIdsRef.current.has(normalizedVisitId)) return;
-    handledRecoveredRatingVisitIdsRef.current.add(normalizedVisitId);
-    setHandledRecoveredRatingVersion((current) => current + 1);
-  }, []);
-
-  const handleSkipRecoveredRating = useCallback(async () => {
-    const visitId = recoveredRatingState?.visitId;
-    if (!visitId) {
-      closeRecoveredRating();
-      return true;
-    }
-
-    const resolution = await resolveTrackingRatingSkip({
-      visitId,
-      updateVisit,
-    });
-    if (!resolution.ok) {
-      showToast("Could not close rating right now.", "error");
-      return false;
-    }
-    markRecoveredRatingHandled(visitId);
-    closeRecoveredRating();
-    const skipToast = buildTrackingResolutionToast({
-      action: "skipped",
-      serviceType: recoveredRatingState?.serviceType,
-      hospitalTitle: recoveredRatingState?.serviceDetails?.hospital ?? null,
-    });
-    showToast(skipToast.message, skipToast.level);
-    return true;
-  }, [
-    closeRecoveredRating,
-    markRecoveredRatingHandled,
-    recoveredRatingState?.serviceDetails?.hospital,
-    recoveredRatingState?.serviceType,
-    recoveredRatingState?.visitId,
-    showToast,
-    updateVisit,
-  ]);
-
-  const handleSubmitRecoveredRating = useCallback(
-    async ({ rating, comment, tipAmount, tipCurrency }) => {
-      const visitId = recoveredRatingState?.visitId;
-      if (!visitId) return false;
-
-      const resolution = await resolveTrackingRatingSubmit({
-        visitId,
-        rating,
-        comment,
-        tipAmount,
-        tipCurrency,
-        updateVisit,
-      });
-      if (!resolution.ok) {
-        showToast("Could not save your rating right now.", "error");
-        return false;
-      }
-      if (resolution.tipError) {
-        console.warn("[MapScreen] Recovered rating tip processing failed:", resolution.tipError);
-      }
-
-      markRecoveredRatingHandled(visitId);
-      closeRecoveredRating();
-      const successToast = buildTrackingResolutionToast({
-        action: "rated",
-        serviceType: recoveredRatingState?.serviceType,
-        hospitalTitle: recoveredRatingState?.serviceDetails?.hospital ?? null,
-        tipAmount,
-        tipError: resolution.tipError,
-      });
-      showToast(successToast.message, successToast.level);
-      return true;
-    },
-    [
-      closeRecoveredRating,
-      markRecoveredRatingHandled,
-      recoveredRatingState?.serviceDetails?.hospital,
-      recoveredRatingState?.serviceType,
-      recoveredRatingState?.visitId,
-      showToast,
-      updateVisit,
-    ],
-  );
-
-  const handleResumeHistoryRequest = useCallback(() => {
-    // PULLBACK NOTE: VD-C1 (defect VD-6) — guard with XState hasActiveTrip before opening tracking.
-    // Without this, tapping 'Track' on a visit whose trip was already cleaned up from Zustand
-    // would call openTracking() on a ghost trip and leave the sheet stuck on TRACKING with no data.
-    if (!hasActiveTrip) {
-      showToast("This trip is no longer active.", "info");
-      return;
-    }
-    closeHistoryVisitDetails();
-    openTracking?.();
-  }, [closeHistoryVisitDetails, hasActiveTrip, openTracking, showToast]);
 
   // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
   // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
@@ -1116,72 +806,6 @@ export default function MapScreen() {
     openRatingForVisit(selectedHistoryVisit);
     closeHistoryVisitDetails();
   }, [closeHistoryVisitDetails, openRatingForVisit, selectedHistoryVisit]);
-
-  const handleCallHistoryClinic = useCallback(() => {
-    const phone = selectedHistoryVisit?.contactPhone;
-    if (!phone) return;
-    Linking.openURL(`tel:${phone}`);
-  }, [selectedHistoryVisit?.contactPhone]);
-
-  const handleJoinHistoryVisit = useCallback(() => {
-    const meetingLink = selectedHistoryVisit?.meetingLink;
-    if (!meetingLink) return;
-    Linking.openURL(meetingLink);
-  }, [selectedHistoryVisit?.meetingLink]);
-
-  // Book-again is temporarily bridged to the legacy full-screen route while the
-  // sheet-native Pass 12 booking rebuild is in progress. Prefill parity will be
-  // restored when the map-owned booking sheet lands.
-  const handleBookHistoryAgain = useCallback(() => {
-    if (!selectedHistoryVisit) return;
-
-    const targetHospital = historyFocusedHospital || null;
-    closeHistoryVisitDetails();
-
-    if (selectedHistoryVisit.requestType === "ambulance") {
-      openAmbulanceDecision(targetHospital);
-      return;
-    }
-
-    if (selectedHistoryVisit.requestType === "bed") {
-      openBedDecision(targetHospital, "bed");
-      return;
-    }
-
-    router.push("/(user)/(stacks)/book-visit");
-  }, [
-    closeHistoryVisitDetails,
-    historyFocusedHospital,
-    openAmbulanceDecision,
-    openBedDecision,
-    router,
-    selectedHistoryVisit,
-  ]);
-
-  const handleCancelHistoryVisit = useCallback(() => {
-    if (!selectedHistoryVisit?.id) return;
-
-    Alert.alert(
-      "Cancel Visit",
-      "Are you sure you want to cancel this visit?",
-      [
-        { text: "Keep", style: "cancel" },
-        {
-          text: "Cancel Visit",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await cancelVisit(selectedHistoryVisit.id);
-              showToast("Visit cancelled.", "success");
-            } catch (error) {
-              console.error("[MapScreen] Failed to cancel history visit:", error);
-              showToast("Could not cancel this visit right now.", "error");
-            }
-          },
-        },
-      ],
-    );
-  }, [cancelVisit, selectedHistoryVisit, showToast]);
 
   const trackingRouteCoordinates = useMemo(
     () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),

@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.subscribers (
     new_user BOOLEAN DEFAULT true,
     welcome_email_sent BOOLEAN DEFAULT false,
     subscription_date TIMESTAMPTZ DEFAULT NOW(),
+    metadata JSONB DEFAULT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
