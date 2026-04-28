@@ -18,7 +18,7 @@
 //   - Rating-recovery effects (claims load + stale-guard + modal trigger)
 //
 // Does NOT own:
-//   - historyFocusedHospital — stays in MapScreen (feeds map rendering)
+//   - historyFocusedHospital — owned here, returned to MapScreen for map rendering
 //   - useTrackingRatingFlow — stays in MapScreen (in-flow rating + openRatingForVisit)
 //   - handleBookVisitFromCare — stays in MapScreen (care-history surface, not visit-detail)
 
@@ -112,6 +112,46 @@ export function useMapHistoryFlow({
     () => selectHistoryItemByAnyKey(visits, selectedHistoryVisitKey),
     [selectedHistoryVisitKey, visits],
   );
+
+  // PULLBACK NOTE: Moved here (before any useCallback that references them) to prevent TDZ.
+  // historyVisitDetailsVisible only needs sheetPhase (a param) — safe to declare early.
+  // historyFocusedHospital only needs discoveredHospitals (param) + selectedHistoryVisit + historyVisitDetailsVisible.
+  const historyVisitDetailsVisible = sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
+
+  const historyFocusedHospital = useMemo(() => {
+    if (!historyVisitDetailsVisible || !selectedHistoryVisit) return null;
+
+    const byId = selectedHistoryVisit.hospitalId
+      ? (discoveredHospitals || []).find((item) => item?.id === selectedHistoryVisit.hospitalId)
+      : null;
+    if (byId) return byId;
+
+    const byName = selectedHistoryVisit.facilityName
+      ? (discoveredHospitals || []).find(
+          (item) =>
+            String(item?.name || "").trim().toLowerCase() ===
+            String(selectedHistoryVisit.facilityName || "").trim().toLowerCase(),
+        )
+      : null;
+    if (byName) return byName;
+
+    if (selectedHistoryVisit.facilityCoordinate) {
+      return {
+        id:
+          selectedHistoryVisit.hospitalId ||
+          selectedHistoryVisit.requestId ||
+          selectedHistoryVisit.id,
+        name: selectedHistoryVisit.facilityName || "Care facility",
+        address: selectedHistoryVisit.facilityAddress || null,
+        image: selectedHistoryVisit.heroImageUrl || null,
+        coordinates: selectedHistoryVisit.facilityCoordinate,
+        latitude: selectedHistoryVisit.facilityCoordinate.latitude,
+        longitude: selectedHistoryVisit.facilityCoordinate.longitude,
+      };
+    }
+
+    return null;
+  }, [discoveredHospitals, historyVisitDetailsVisible, selectedHistoryVisit]);
 
   // ─── History visit detail handlers ───────────────────────────────────────
 
@@ -306,44 +346,6 @@ export function useMapHistoryFlow({
   }, [cancelVisit, selectedHistoryVisit, showToast]);
 
   // ─── Stale-guard effect: close VISIT_DETAIL if visit deselected ──────────
-
-  const historyVisitDetailsVisible = sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL;
-
-  // --- Derived: historyFocusedHospital (lives here so selectedHistoryVisit + historyVisitDetailsVisible are in scope) ---
-  const historyFocusedHospital = useMemo(() => {
-    if (!historyVisitDetailsVisible || !selectedHistoryVisit) return null;
-
-    const byId = selectedHistoryVisit.hospitalId
-      ? (discoveredHospitals || []).find((item) => item?.id === selectedHistoryVisit.hospitalId)
-      : null;
-    if (byId) return byId;
-
-    const byName = selectedHistoryVisit.facilityName
-      ? (discoveredHospitals || []).find(
-          (item) =>
-            String(item?.name || "").trim().toLowerCase() ===
-            String(selectedHistoryVisit.facilityName || "").trim().toLowerCase(),
-        )
-      : null;
-    if (byName) return byName;
-
-    if (selectedHistoryVisit.facilityCoordinate) {
-      return {
-        id:
-          selectedHistoryVisit.hospitalId ||
-          selectedHistoryVisit.requestId ||
-          selectedHistoryVisit.id,
-        name: selectedHistoryVisit.facilityName || "Care facility",
-        address: selectedHistoryVisit.facilityAddress || null,
-        image: selectedHistoryVisit.heroImageUrl || null,
-        coordinates: selectedHistoryVisit.facilityCoordinate,
-        latitude: selectedHistoryVisit.facilityCoordinate.latitude,
-        longitude: selectedHistoryVisit.facilityCoordinate.longitude,
-      };
-    }
-
-    return null;
-  }, [discoveredHospitals, historyVisitDetailsVisible, selectedHistoryVisit]);
 
   useEffect(() => {
     if (!historyVisitDetailsVisible) return;
