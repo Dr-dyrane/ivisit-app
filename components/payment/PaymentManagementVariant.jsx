@@ -7,12 +7,13 @@ import {
   WalletBalanceCard,
   LinkPaymentCard,
   PaymentHistoryList,
+  WalletContextIsland,
 } from './PaymentScreenComponents';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
-import { getStackViewportVariant, getStackViewportVariantGroup } from '../../utils/ui/stackViewportConfig';
+import { getStackViewportVariant, getStackViewportVariantGroup, isDesktopStackVariant } from '../../utils/ui/stackViewportConfig';
 import { getStackResponsiveMetrics } from '../../utils/ui/stackResponsiveMetrics';
-import { PAYMENT_SIDEBAR_HIG, computeHeaderClearance, getPaymentSidebarGlassTokens } from './paymentSidebarLayout';
+import { PAYMENT_SIDEBAR_HIG, computeHeaderClearance, getPaymentSidebarGlassTokens, computeThirdColumnLayout } from './paymentSidebarLayout';
 import { COLORS } from '../../constants/colors';
 
 // PULLBACK NOTE: Pass 7 finalization — liquid-glass island at MD+
@@ -50,6 +51,10 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode, lay
     const { sidebarWidth, sidebarLeft, sidebarGutter, sidebarInnerPadding, sidebarInnerPaddingHorizontal, rightPanelLeftPadding, rightPanelRightPadding } = layout;
     const { SIDEBAR_CORNER_RADIUS } = PAYMENT_SIDEBAR_HIG;
     const glass = getPaymentSidebarGlassTokens({ isDarkMode });
+    const isDesktop = isDesktopStackVariant(viewportVariant);
+    const centerPanelMaxWidth = isDesktop ? 800 : 640;
+    const { usesThirdColumn, thirdIslandWidth, thirdIslandRight, centerPanelMarginRight } = computeThirdColumnLayout({ layout, viewportVariant });
+    const lastTransaction = model.paymentHistory?.[0] ?? null;
 
     return (
       <>
@@ -140,14 +145,14 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode, lay
 
         {/* Right: flex:1 with header clearance and gutter rhythm */}
         <ScrollView
-          style={{ flex: 1 }}
+          style={{ flex: 1, marginRight: usesThirdColumn ? centerPanelMarginRight : 0 }}
           contentContainerStyle={{
             gap,
             paddingTop: headerClearance,
             paddingBottom: bottomPadding,
             paddingLeft: rightPanelLeftPadding,
             paddingRight: rightPanelRightPadding,
-            maxWidth: 640,
+            maxWidth: centerPanelMaxWidth,
             width: '100%',
             alignSelf: 'flex-start',
           }}
@@ -170,6 +175,39 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode, lay
             isDarkMode={isDarkMode}
           />
         </ScrollView>
+
+        {/* XL right context island — absolute, mirrors left island geometry */}
+        {usesThirdColumn && (
+          <BlurView
+            intensity={glass.blurIntensity}
+            tint={glass.tint}
+            style={{
+              position: 'absolute',
+              right: thirdIslandRight,
+              top: headerClearance,
+              bottom: sidebarGutter,
+              width: thirdIslandWidth,
+              backgroundColor: glass.ghostSurface,
+              borderRadius: SIDEBAR_CORNER_RADIUS,
+              borderCurve: 'continuous',
+              overflow: 'hidden',
+            }}
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <WalletContextIsland
+                walletBalance={model.walletBalance}
+                lastTransaction={lastTransaction}
+                isLoading={model.isLoadingWallet}
+                onTopUp={model.handleTopUp}
+                isDarkMode={isDarkMode}
+              />
+            </ScrollView>
+          </BlurView>
+        )}
       </>
     );
   }

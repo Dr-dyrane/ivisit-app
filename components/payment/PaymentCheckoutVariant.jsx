@@ -7,13 +7,14 @@ import {
   PaymentSummarySection,
   ServiceReceiptCard,
   PaymentFooter,
+  PaymentContextIsland,
 } from './PaymentScreenComponents';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
-import { getStackViewportVariant, getStackViewportVariantGroup } from '../../utils/ui/stackViewportConfig';
+import { getStackViewportVariant, getStackViewportVariantGroup, isDesktopStackVariant } from '../../utils/ui/stackViewportConfig';
 import { getStackResponsiveMetrics } from '../../utils/ui/stackResponsiveMetrics';
 import { BlurView } from 'expo-blur';
-import { PAYMENT_SIDEBAR_HIG, computeHeaderClearance, getPaymentSidebarGlassTokens } from './paymentSidebarLayout';
+import { PAYMENT_SIDEBAR_HIG, computeHeaderClearance, getPaymentSidebarGlassTokens, computeThirdColumnLayout } from './paymentSidebarLayout';
 import { COLORS } from '../../constants/colors';
 
 // PULLBACK NOTE: Pass 7 finalization — HIG island layout at MD+ (mirrors Management variant)
@@ -49,6 +50,9 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
     const { sidebarWidth, sidebarLeft, sidebarGutter, sidebarInnerPadding, sidebarInnerPaddingHorizontal, rightPanelLeftPadding, rightPanelRightPadding } = layout;
     const { SIDEBAR_CORNER_RADIUS } = PAYMENT_SIDEBAR_HIG;
     const glass = getPaymentSidebarGlassTokens({ isDarkMode });
+    const isDesktop = isDesktopStackVariant(viewportVariant);
+    const centerPanelMaxWidth = isDesktop ? 800 : 640;
+    const { usesThirdColumn, thirdIslandWidth, thirdIslandRight, centerPanelMarginRight } = computeThirdColumnLayout({ layout, viewportVariant });
 
     return (
       <>
@@ -118,7 +122,7 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
         </BlurView>
 
         {/* Right: flex:1 column — scrollable content + sticky footer */}
-        <View style={{ flex: 1, flexDirection: 'column' }}>
+        <View style={{ flex: 1, flexDirection: 'column', marginRight: usesThirdColumn ? centerPanelMarginRight : 0 }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
@@ -127,7 +131,7 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
               paddingBottom: gap,
               paddingLeft: rightPanelLeftPadding,
               paddingRight: rightPanelRightPadding,
-              maxWidth: 640,
+              maxWidth: centerPanelMaxWidth,
               width: '100%',
               alignSelf: 'flex-start',
             }}
@@ -153,7 +157,7 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
             paddingHorizontal: rightPanelRightPadding,
             paddingBottom: insets.bottom + sidebarGutter,
             paddingTop: sidebarGutter,
-            maxWidth: 640,
+            maxWidth: centerPanelMaxWidth,
             width: '100%',
             alignSelf: 'flex-start',
           }}>
@@ -165,6 +169,38 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
             />
           </View>
         </View>
+
+        {/* XL right context island — absolute, mirrors left island geometry */}
+        {usesThirdColumn && (
+          <BlurView
+            intensity={glass.blurIntensity}
+            tint={glass.tint}
+            style={{
+              position: 'absolute',
+              right: thirdIslandRight,
+              top: headerClearance,
+              bottom: sidebarGutter,
+              width: thirdIslandWidth,
+              backgroundColor: glass.ghostSurface,
+              borderRadius: SIDEBAR_CORNER_RADIUS,
+              borderCurve: 'continuous',
+              overflow: 'hidden',
+            }}
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <PaymentContextIsland
+                cost={model.cost}
+                insuranceApplied={model.insuranceApplied}
+                serviceType={model.serviceType}
+                isDarkMode={isDarkMode}
+              />
+            </ScrollView>
+          </BlurView>
+        )}
       </>
     );
   }

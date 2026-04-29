@@ -1,6 +1,7 @@
 // PULLBACK NOTE: Pass 7 finalization — single source of truth for sidebar layout
 // Used by PaymentScreenOrchestrator (header containerLeft) and PaymentStageBase (row layout).
 // Mirrors the map's MapExploreLoadingOverlay sidebar formula and HIG sidebar gutters.
+import { STACK_VIEWPORT_VARIANTS } from '../../utils/ui/stackViewportConfig';
 
 // HIG-tuned constants
 export const PAYMENT_SIDEBAR_HIG = Object.freeze({
@@ -82,6 +83,40 @@ export function computePaymentSidebarLayout({ width, surfaceConfig }) {
 		rightPanelRightPadding: sidebarGutter,
 		headerContainerLeft,
 	};
+}
+
+/**
+ * Compute third column (right context island) layout for XL+ viewports.
+ * Returns usesThirdColumn=false on all non-XL variants — callers gate on this.
+ *
+ * Geometry contract:
+ *   - Right island is position:absolute, right=sidebarGutter, mirrors left island width
+ *   - At WEB_XL minimum (1280px) island narrows to min(320, sidebarWidth) to keep center breathable
+ *   - Center panel gets an explicit marginRight = thirdIslandWidth + sidebarGutter so content
+ *     never slides under the right island
+ *   - centerPanelMaxWidth raised to 800 for all desktop variants (even without third island)
+ */
+export function computeThirdColumnLayout({ layout, viewportVariant }) {
+	const isXL =
+		viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL ||
+		viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_2XL_3XL ||
+		viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_ULTRA_WIDE;
+
+	if (!layout?.usesSidebarLayout || !isXL) {
+		return { usesThirdColumn: false, thirdIslandWidth: 0, thirdIslandRight: 0, centerPanelMarginRight: 0 };
+	}
+
+	const { sidebarWidth, sidebarGutter } = layout;
+	// Narrow slightly at WEB_XL minimum to keep the center panel comfortably wide
+	const thirdIslandWidth =
+		viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL
+			? Math.min(320, sidebarWidth)
+			: sidebarWidth;
+
+	const thirdIslandRight = sidebarGutter;
+	const centerPanelMarginRight = thirdIslandWidth + sidebarGutter;
+
+	return { usesThirdColumn: true, thirdIslandWidth, thirdIslandRight, centerPanelMarginRight };
 }
 
 /**

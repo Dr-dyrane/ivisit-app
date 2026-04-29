@@ -786,6 +786,198 @@ export function LinkPaymentCard({ onPress, isDarkMode }) {
 // OLD: Inline footer in PaymentScreen
 // NEW: Reusable PaymentFooter component
 // REASON: Modularize payment screen UI
+// PaymentContextIsland — XL right context island for Checkout variant
+// Trust signals + service-aware "What happens next" + cost transparency footer.
+// Pure informational surface — no interactions, no API calls, no borders.
+export function PaymentContextIsland({ cost, insuranceApplied, serviceType, isDarkMode }) {
+	const text = isDarkMode ? '#FFFFFF' : '#0F172A';
+	const textMuted = isDarkMode ? '#94A3B8' : '#64748B';
+	const separator = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+	const iconColor = isDarkMode ? '#94A3B8' : '#64748B';
+
+	const isAmbulance = serviceType !== 'bed';
+
+	const steps = isAmbulance
+		? ['Request approved', 'Ambulance dispatched', 'Track live ETA']
+		: ['Request approved', 'Bed assigned', 'Navigate to facility'];
+
+	const stepIcons = isAmbulance
+		? ['checkmark-circle', 'car', 'navigate']
+		: ['checkmark-circle', 'bed', 'navigate'];
+
+	return (
+		<View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>
+			{/* Section 1 — Service Assurance */}
+			<View style={{ gap: 16, paddingBottom: 20 }}>
+				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+					Secure Payment
+				</Text>
+				{[
+					{ icon: 'lock-closed', label: 'PCI-DSS Level 1 encrypted' },
+					{ icon: 'flash', label: 'Real-time service dispatch' },
+					{ icon: 'shield-checkmark', label: 'Covered by iVisit guarantee' },
+				].map(({ icon, label }) => (
+					<View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+						<View style={{ width: 28, height: 28, borderRadius: 8, borderCurve: 'continuous', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center' }}>
+							<Ionicons name={icon} size={13} color={COLORS.brandPrimary} />
+						</View>
+						<Text style={{ fontSize: 13, fontWeight: '500', color: text, flex: 1 }}>{label}</Text>
+					</View>
+				))}
+			</View>
+
+			{/* Separator */}
+			<View style={{ height: 1, backgroundColor: separator, marginHorizontal: 0, marginBottom: 20 }} />
+
+			{/* Section 2 — What Happens Next */}
+			<View style={{ gap: 16, paddingBottom: 20 }}>
+				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+					What Happens Next
+				</Text>
+				{steps.map((step, idx) => (
+					<View key={step} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+						<View style={{ width: 28, height: 28, borderRadius: 8, borderCurve: 'continuous', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center' }}>
+							<Ionicons name={stepIcons[idx]} size={13} color={iconColor} />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={{ fontSize: 12, fontWeight: '400', color: textMuted, marginBottom: 1 }}>Step {idx + 1}</Text>
+							<Text style={{ fontSize: 13, fontWeight: '600', color: text }}>{step}</Text>
+						</View>
+					</View>
+				))}
+			</View>
+
+			{/* Separator */}
+			<View style={{ height: 1, backgroundColor: separator, marginHorizontal: 0, marginBottom: 16 }} />
+
+			{/* Section 3 — Cost Transparency footer */}
+			<View style={{ gap: 4 }}>
+				<Text style={{ fontSize: 12, fontWeight: '500', color: textMuted, lineHeight: 17 }}>
+					No hidden fees. Billed exactly{' '}
+					<Text style={{ fontWeight: '700', color: text }}>${(cost?.totalCost ?? 0).toFixed(2)}</Text>.
+				</Text>
+				{insuranceApplied && (
+					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+						<Ionicons name="shield-checkmark" size={11} color={COLORS.brandPrimary} />
+						<Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.brandPrimary }}>
+							Insurance has been applied to your total.
+						</Text>
+					</View>
+				)}
+			</View>
+		</View>
+	);
+}
+
+// WalletContextIsland — XL right context island for Management variant
+// Wallet balance hero + last transaction preview + security footer.
+// One ghost CTA (Top Up) — no other interactions.
+export function WalletContextIsland({ walletBalance, lastTransaction, isLoading, onTopUp, isDarkMode }) {
+	const text = isDarkMode ? '#FFFFFF' : '#0F172A';
+	const textMuted = isDarkMode ? '#94A3B8' : '#64748B';
+	const separator = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+	const ghostBg = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+
+	const balance = walletBalance?.balance ?? 0;
+	const currency = walletBalance?.currency ?? 'USD';
+
+	const txDate = lastTransaction?.created_at
+		? new Date(lastTransaction.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+		: null;
+	const txAmount = lastTransaction?.amount != null
+		? `$${parseFloat(lastTransaction.amount).toFixed(2)}`
+		: null;
+	const txStatus = lastTransaction?.status ?? null;
+	const statusColor = txStatus === 'completed' ? '#22C55E' : txStatus === 'failed' ? COLORS.brandPrimary : textMuted;
+
+	return (
+		<View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>
+			{/* Section 1 — Balance Hero */}
+			<View style={{ alignItems: 'flex-start', paddingBottom: 20, gap: 4 }}>
+				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+					Available Balance
+				</Text>
+				{isLoading ? (
+					<View style={{ height: 40, justifyContent: 'center' }}>
+						<ActivityIndicator size="small" color={textMuted} />
+					</View>
+				) : (
+					<Text style={{ fontSize: 32, fontWeight: '800', letterSpacing: -1, color: text, lineHeight: 38 }}>
+						{currency} {balance.toFixed(2)}
+					</Text>
+				)}
+				{/* Ghost Top Up CTA */}
+				<Pressable
+					onPress={onTopUp}
+					style={({ pressed }) => ({
+						marginTop: 10,
+						paddingHorizontal: 14,
+						paddingVertical: 7,
+						borderRadius: 10,
+						borderCurve: 'continuous',
+						backgroundColor: pressed ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)') : ghostBg,
+						flexDirection: 'row',
+						alignItems: 'center',
+						gap: 6,
+					})}
+				>
+					<Ionicons name="add-circle-outline" size={14} color={COLORS.brandPrimary} />
+					<Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.brandPrimary, letterSpacing: 0.3 }}>
+						Top Up
+					</Text>
+				</Pressable>
+			</View>
+
+			{/* Separator */}
+			<View style={{ height: 1, backgroundColor: separator, marginBottom: 20 }} />
+
+			{/* Section 2 — Last Transaction */}
+			<View style={{ gap: 12, paddingBottom: 20 }}>
+				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+					Last Transaction
+				</Text>
+				{!lastTransaction ? (
+					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+						<Ionicons name="receipt-outline" size={18} color={textMuted} />
+						<Text style={{ fontSize: 13, color: textMuted, fontWeight: '400' }}>No transactions yet</Text>
+					</View>
+				) : (
+					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+						<View style={{ width: 36, height: 36, borderRadius: 10, borderCurve: 'continuous', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', alignItems: 'center', justifyContent: 'center' }}>
+							<Ionicons name="receipt-outline" size={16} color={textMuted} />
+						</View>
+						<View style={{ flex: 1 }}>
+							<Text style={{ fontSize: 13, fontWeight: '600', color: text }}>
+								{lastTransaction?.service_type ?? 'Service'}
+							</Text>
+							<Text style={{ fontSize: 11, color: textMuted }}>{txDate}</Text>
+						</View>
+						<View style={{ alignItems: 'flex-end', gap: 2 }}>
+							<Text style={{ fontSize: 13, fontWeight: '700', color: text }}>{txAmount}</Text>
+							{txStatus && (
+								<Text style={{ fontSize: 10, fontWeight: '700', color: statusColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+									{txStatus}
+								</Text>
+							)}
+						</View>
+					</View>
+				)}
+			</View>
+
+			{/* Separator */}
+			<View style={{ height: 1, backgroundColor: separator, marginBottom: 16 }} />
+
+			{/* Section 3 — Security footer */}
+			<View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+				<Ionicons name="lock-closed" size={11} color={textMuted} style={{ marginTop: 1 }} />
+				<Text style={{ fontSize: 11, fontWeight: '400', color: textMuted, lineHeight: 16, flex: 1 }}>
+					Your payment data is encrypted and never stored on-device.
+				</Text>
+			</View>
+		</View>
+	);
+}
+
 export function PaymentFooter({ selectedMethod, isSaving, onPayment, isDarkMode }) {
 	const colors = {
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",

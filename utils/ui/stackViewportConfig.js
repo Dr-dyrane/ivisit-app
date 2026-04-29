@@ -62,6 +62,14 @@ export function isDesktopStackVariant(variant) {
 	return DESKTOP_STACK_VARIANTS.has(variant);
 }
 
+export function isXLStackVariant(variant) {
+	return (
+		variant === STACK_VIEWPORT_VARIANTS.WEB_XL ||
+		variant === STACK_VIEWPORT_VARIANTS.WEB_2XL_3XL ||
+		variant === STACK_VIEWPORT_VARIANTS.WEB_ULTRA_WIDE
+	);
+}
+
 export function getStackViewportVariantGroup(variant) {
 	if (isCompactStackVariant(variant)) return "compact";
 	if (isTabletStackVariant(variant)) return "tablet";
