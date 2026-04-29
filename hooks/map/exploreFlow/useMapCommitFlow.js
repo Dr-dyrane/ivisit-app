@@ -35,7 +35,6 @@ export function useMapCommitFlow({
   selectedHospital,
   featuredHospital,
   nearestHospital,
-  trackingRequestKey,
   promoteHospitalSelection,
   clearCommitFlow,
   setCommitFlow,
@@ -283,7 +282,6 @@ export function useMapCommitFlow({
   }, [
     clearCommitFlow,
     openTracking,
-    trackingRequestKey,
   ]);
 
   return {

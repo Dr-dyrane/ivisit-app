@@ -364,6 +364,7 @@ export default function MapScreen() {
     showToast,
     stopAmbulanceTrip,
     stopBedBooking,
+    visits,
     onAfterResolution: refreshVisits,
     onAfterSubmit: useCallback(({ visitId }) => {
       if (!visitId || !selectedHistoryVisitKey) return;

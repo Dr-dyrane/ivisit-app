@@ -311,18 +311,6 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 
 		const storeState = useEmergencyTripStore.getState();
 
-		// DIAGNOSTIC LOGS — Track sync behavior
-		const logPrefix = `[ActiveTripQuery.Sync ${Date.now().toString(36).slice(-4)}]`;
-		const queryTrip = query.data.ambulanceTrip;
-		const storeTrip = storeState.activeAmbulanceTrip;
-
-		console.log(`${logPrefix} Query trip:`, queryTrip
-			? { requestId: queryTrip.requestId, status: queryTrip.status, hasAssignedAmbulance: !!queryTrip.assignedAmbulance, assignedName: queryTrip.assignedAmbulance?.name }
-			: null);
-		console.log(`${logPrefix} Store trip:`, storeTrip
-			? { requestId: storeTrip.requestId, status: storeTrip.status, hasAssignedAmbulance: !!storeTrip.assignedAmbulance, assignedName: storeTrip.assignedAmbulance?.name }
-			: null);
-
 		// Merge helper: preserve responder identity if query data is incomplete
 		const mergeAmbulanceTrip = (queryTrip) => {
 			// If query returns null but store has a terminal-state trip, preserve it
@@ -330,30 +318,24 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			if (!queryTrip) {
 				const storeTrip = storeState.activeAmbulanceTrip;
 				if (storeTrip && isTerminalStatus(storeTrip.status)) {
-					console.log(`${logPrefix} PRESERVING terminal store trip (query is null)`);
 					return storeTrip;
 				}
-				console.log(`${logPrefix} Accepting null (no store trip or not terminal)`);
 				return queryTrip;
 			}
 
 			const storeTrip = storeState.activeAmbulanceTrip;
 			// If same trip identity and store has assignedAmbulance but query doesn't (or has incomplete)
 			const sameTrip = storeTrip && queryTrip.requestId && storeTrip.requestId === queryTrip.requestId;
-			console.log(`${logPrefix} Same trip check:`, { sameTrip: !!sameTrip, storeReq: storeTrip?.requestId, queryReq: queryTrip.requestId });
 			if (!sameTrip) {
-				console.log(`${logPrefix} Different trip — accepting query data`);
 				return queryTrip;
 			}
 
 			const storeAssigned = storeTrip?.assignedAmbulance;
 			const queryAssigned = queryTrip?.assignedAmbulance;
 			const needsMerge = storeAssigned && (!queryAssigned || (!queryAssigned.name && storeAssigned.name));
-			console.log(`${logPrefix} Merge check:`, { needsMerge: !!needsMerge, storeName: storeAssigned?.name, queryName: queryAssigned?.name });
 
 			// If store has name/phone but query doesn't, merge store's identity into query result
 			if (needsMerge) {
-				console.log(`${logPrefix} MERGING responder identity from store into query`);
 				return {
 					...queryTrip,
 					assignedAmbulance: {
@@ -367,7 +349,6 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 					},
 				};
 			}
-			console.log(`${logPrefix} No merge needed — accepting query data`);
 			return queryTrip;
 		};
 
@@ -376,7 +357,6 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			if (!queryBooking) {
 				const storeBooking = storeState.activeBedBooking;
 				if (storeBooking && isTerminalStatus(storeBooking.status)) {
-					console.log(`${logPrefix} PRESERVING terminal store bed booking`);
 					return storeBooking;
 				}
 				return queryBooking;
@@ -385,10 +365,6 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		};
 
 		const finalTrip = mergeAmbulanceTrip(query.data.ambulanceTrip);
-		console.log(`${logPrefix} Final trip to sync:`, finalTrip
-			? { requestId: finalTrip.requestId, assignedName: finalTrip.assignedAmbulance?.name }
-			: null);
-
 		setActiveAmbulanceTrip(finalTrip);
 		setActiveBedBooking(mergeBedBooking(query.data.bedBooking));
 		setPendingApproval(query.data.pending);

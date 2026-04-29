@@ -21,7 +21,7 @@ import {
 	TripState,
 	serverStatusToMachineEvent,
 } from "../../machines/tripLifecycleMachine";
-import { useEmergencyTripStore } from "../../stores/emergencyTripStore";
+import { useEmergencyTripStore, useStoreHydrated } from "../../stores/emergencyTripStore";
 
 export function useTripLifecycle() {
 	const [snapshot, send] = useMachine(tripLifecycleMachine);
@@ -30,6 +30,13 @@ export function useTripLifecycle() {
 	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
 	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
 	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
+	// PULLBACK NOTE: HR-A fix — Zustand hydration gate.
+	// OLD: effect fired on first render with pre-hydration nulls → RESET event sent
+	//      → machine stayed IDLE → hasActiveTrip = false → auto-open blocked
+	//      (~10-15s delay until TanStack query resolved and updated the store).
+	// NEW: effect is a no-op until initFromStorage completes (hydrated = true).
+	//      First meaningful fire uses the real persisted values from storage.
+	const storeHydrated = useStoreHydrated();
 
 	// ─── Drive machine from Zustand store state ────────────────────────────
 	// PULLBACK NOTE: Phase 4 — Zustand is truth for trip data,
@@ -37,6 +44,7 @@ export function useTripLifecycle() {
 	// When store updates (via Phase 2 TanStack Query), we send SERVER_SYNC.
 
 	useEffect(() => {
+		if (!storeHydrated) return;
 		if (activeAmbulanceTrip?.status) {
 			const event = serverStatusToMachineEvent(activeAmbulanceTrip.status, {
 				requestId: activeAmbulanceTrip.requestId,
@@ -67,6 +75,7 @@ export function useTripLifecycle() {
 			}
 		}
 	}, [
+		storeHydrated,
 		activeAmbulanceTrip?.status,
 		activeAmbulanceTrip?.requestId,
 		activeBedBooking?.status,

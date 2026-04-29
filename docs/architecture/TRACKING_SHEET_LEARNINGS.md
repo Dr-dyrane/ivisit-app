@@ -1,9 +1,43 @@
 # Tracking Sheet Phase — Cross-Cutting Learnings
 
 **Source**: Tracking sheet audit + stash review (`stash@{0}` from `recovery/clean-2026-04-25`)
-**Date**: 2026-04-26
+**Date**: 2026-04-26 (updated 2026-04-28)
 **Audience**: Future passes across MapScreen, EmergencyContext, Commit flow, Visit history, Payment.
 **Mandate**: These learnings apply codebase-wide. Treat as global rules for the same defect classes.
+
+---
+
+## ⚡ Quick Reference — The `useEffect` Decision Tree
+
+> Before reaching for `useEffect`, walk this tree top to bottom.
+> `useEffect` only wins the **last** branch. In practice: no subscription, no timer → it's wrong.
+
+```
+"When X changes, I need Y"
+         │
+         ▼
+Is Y a value derived from X?
+  → YES → useMemo / inline const — no hook needed
+           Example: ratingState + visits → validatedRatingState (BUG-012 fix)
+
+Is Y a ref that mirrors X?
+  → YES → assign ref.current = X inline during render, no useEffect
+           Example: totalCostValueRef = totalCostValue (useMapCommitPaymentController)
+
+Is Y a machine state with named terminal values (IDLE, WAITING, FAILED…)?
+  → YES → Jotai atom (L5) or XState (L4)
+           Example: submissionState in useMapCommitPaymentController
+
+Is Y server data triggered by X?
+  → YES → TanStack Query with X in queryKey or enabled: Boolean(X)
+           Example: estimatedCost query enabled on hospitalId
+
+Is Y a real side-effect — subscription, cleanup, timer, navigation?
+  → YES → useEffect is correct here
+           Example: Supabase realtime channel setup/teardown
+```
+
+**Rule of thumb**: if you are not managing a subscription, timer, or cleanup, `useEffect` is probably wrong. The violation only surfaces as a bug *later* — stale closure, missed dep, extra render, race condition — never at the point of writing.
 
 ---
 
@@ -341,6 +375,17 @@ For any sheet/card/overlay:
 - 0.5-second glance: can the user answer "what state am I in?", "what action is next?".
 - More than 2 visual channels saying the same thing: cut to one.
 - Red color anywhere not destructive/critical: replace with accent.
+
+### H6. The "`useEffect` or not?" question
+Before writing `useEffect`, walk the decision tree (see Quick Reference at top of file):
+
+1. **Is Y derived from X?** → `useMemo` or inline `const`. No hook.
+2. **Is Y a ref mirroring X?** → assign `ref.current = X` during render. No hook.
+3. **Is Y a machine state?** → Jotai atom (L5) or XState (L4).
+4. **Is Y server data?** → TanStack Query with `enabled: Boolean(X)` or X in `queryKey`.
+5. **Is Y a real side-effect?** → `useEffect` is correct.
+
+The cost of a misplaced `useEffect`: stale closure bugs, double-runs, missed deps, and race conditions that only appear in production. A misplaced `useMemo` is harmless by comparison.
 
 ---
 

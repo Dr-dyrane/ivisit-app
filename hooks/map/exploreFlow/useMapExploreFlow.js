@@ -350,7 +350,6 @@ export function useMapExploreFlow() {
     selectedHospital,
     featuredHospital,
     nearestHospital,
-    trackingRequestKey,
     promoteHospitalSelection,
     clearCommitFlow,
     setCommitFlow,

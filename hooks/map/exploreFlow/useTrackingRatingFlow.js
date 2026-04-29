@@ -13,7 +13,7 @@
 // Audit reference: docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md section 2.4
 // Learning reference: docs/architecture/TRACKING_SHEET_LEARNINGS.md section 2.1
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
 import {
   trackingRatingStateAtom,
@@ -25,6 +25,7 @@ import {
   resolveTrackingRatingSubmit,
   deleteTrackingRatingRecoveryClaim,
 } from "../../../components/map/views/tracking/mapTracking.rating";
+import { EMERGENCY_VISIT_LIFECYCLE } from "../../../constants/visits";
 
 const normalizeHistoryServiceType = (requestType) => {
   if (requestType === "ambulance") return "ambulance";
@@ -71,6 +72,10 @@ const buildHistoryVisitRatingState = (historyItem) => {
  * @param {Function} params.showToast
  * @param {Function} params.stopAmbulanceTrip
  * @param {Function} params.stopBedBooking
+ * @param {Array}    params.visits - visits array from VisitsContext (already loaded)
+ *   Used once on mount to validate persisted ratingState.visible against server truth.
+ *   If the visit is already RATED, the atom is reset before the modal can surface.
+ *   (BUG-012 fix — PC class: persisted atom boolean validated on cold-start hydration)
  * @returns {{
  *   ratingState: object,
  *   closeRating: () => void,
@@ -85,8 +90,29 @@ export function useTrackingRatingFlow({
   stopBedBooking,
   onAfterResolution,
   onAfterSubmit,
+  visits,
 }) {
   const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
+
+  // PULLBACK NOTE: BUG-012 fix — PC class (Phase Contamination / persisted atom validation)
+  // OLD: useEffect+useRef side-effect that wrote back to the atom — layer violation
+  //      (reactive side-effect on a data dependency belongs in derived state, not useEffect).
+  // NEW: pure useMemo derivation — reads atom + visits, returns validated shape without writing.
+  //      Layer: L5 derived read (Jotai atom is source of truth; visits is context-provided truth).
+  //      The upstream hydrateTrackingViz fix already prevents visible:true on cold start.
+  //      This guard covers the runtime case: visits load after atom, atom has stale visible:true.
+  const validatedRatingState = useMemo(() => {
+    if (!ratingState?.visible || !ratingState?.visitId) return ratingState;
+    if (!Array.isArray(visits) || visits.length === 0) return ratingState;
+    const visitId = String(ratingState.visitId);
+    const match = visits.find(
+      (v) => String(v.id) === visitId || String(v.requestId) === visitId,
+    );
+    if (!match || match.lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATED) {
+      return INITIAL_TRACKING_RATING_STATE;
+    }
+    return ratingState;
+  }, [ratingState, visits]);
 
   const finalizeCompletedTracking = useCallback(
     (completeKind) => {
@@ -213,7 +239,7 @@ export function useTrackingRatingFlow({
   );
 
   return {
-    ratingState,
+    ratingState: validatedRatingState,
     closeRating,
     skipRating,
     submitRating,

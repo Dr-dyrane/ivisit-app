@@ -59,6 +59,15 @@ const hydrateTrackingViz = async () => {
       TRACKING_VIZ_DEFAULTS,
     );
     const merged = { ...TRACKING_VIZ_DEFAULTS, ...(value || {}) };
+    // PULLBACK NOTE: BUG-012 fix — PC class (Phase Contamination)
+    // OLD: ratingState.visible:true was restored blindly, re-showing the rating modal
+    //      on cold start even when the visit was already rated (app killed mid-flow).
+    // NEW: strip visible:true at hydration time. Server truth is unavailable here
+    //      (no auth context at module load). The useTrackingRatingFlow mount-time
+    //      effect handles the authoritative RATED check once visits are loaded.
+    if (merged.ratingState?.visible) {
+      merged.ratingState = { ...merged.ratingState, visible: false };
+    }
     const store = getDefaultStore();
     // Write hydrated values into each atom — triggers re-render of subscribers
     Object.keys(trackingFieldAtoms).forEach((field) => {
