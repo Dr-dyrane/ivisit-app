@@ -225,7 +225,7 @@ export function useMapExploreFlow() {
 
   // Pass 12: derived data — runs first so discoveredHospitals/nearestHospital
   // can be passed down to useMapHospitalSelection (Pass 14a: single source of truth)
-  // nowMs seeded via stable ref; updated by useMapTracking after first render.
+  // nowMs seeded via stable ref; kept in sync inline (see below — HR-D fix).
   const nowMsRef = useRef(Date.now());
 
   const {
@@ -290,10 +290,11 @@ export function useMapExploreFlow() {
     setSheetView,
   });
 
-  // Keep ref in sync so activeMapRequest re-memos on next render with live clock
-  useEffect(() => {
-    nowMsRef.current = nowMs;
-  }, [nowMs]);
+  // PULLBACK NOTE: HR-D fix — assign ref inline during render (guardrail rule 3).
+  // OLD: useEffect(() => { nowMsRef.current = nowMs }, [nowMs]) — ref sync 1 render late,
+  //      activeMapRequest saw a stale timestamp on cold start (one-frame ETA artifact).
+  // NEW: assign inline — ref is always current in the same render pass as nowMs.
+  nowMsRef.current = nowMs;
 
 
   const {

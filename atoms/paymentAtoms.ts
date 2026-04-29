@@ -16,6 +16,13 @@ import { atom } from "jotai";
  */
 export const selectedPaymentMethodIdAtom = atom<string | null>(null);
 
+// PULLBACK NOTE: HR-C fix — selectedPaymentMethod survivability gap.
+// OLD: useState(null) in useMapCommitPaymentController — reset to null on every sheet remount.
+//      User had to re-select their card after sheet collapse.
+// NEW: writable Jotai atom (L5) — survives remount, reset on unmount by controller.
+//      Uses full object directly (not ID derivation) to avoid migrating availablePaymentMethodsAtom.
+export const selectedPaymentMethodObjectAtom = atom<any | null>(null);
+
 /**
  * Available payment methods from the server
  */

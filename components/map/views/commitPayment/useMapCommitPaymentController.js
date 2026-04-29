@@ -30,6 +30,7 @@ import {
 	paymentErrorMessageAtom,
 	paymentInfoMessageAtom,
 	paymentSubmissionStateAtom,
+	selectedPaymentMethodObjectAtom,
 } from "../../../../atoms/paymentAtoms";
 import { MAP_COMMIT_PAYMENT_COPY } from "./mapCommitPayment.content";
 import {
@@ -129,7 +130,10 @@ export function useMapCommitPaymentController({
 	const [estimatedCost, setEstimatedCost] = useAtom(estimatedCostAtom);
 	const [isLoadingCost, setIsLoadingCost] = useAtom(isLoadingCostAtom);
 
-	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+	// PULLBACK NOTE: HR-C fix — migrate from useState(null) to Jotai atom (L5).
+	// OLD: useState(null) — reset to null on every sheet remount → user re-selects card after collapse.
+	// NEW: selectedPaymentMethodObjectAtom — survives remount; reset on unmount in cleanup effect.
+	const [selectedPaymentMethod, setSelectedPaymentMethod] = useAtom(selectedPaymentMethodObjectAtom);
 	// PULLBACK NOTE: PT-D (violation 3) — selectedPaymentMethodRef assigned inline; useEffect sync removed
 	const selectedPaymentMethodRef = useRef(null);
 	selectedPaymentMethodRef.current = selectedPaymentMethod;
@@ -197,6 +201,9 @@ export function useMapCommitPaymentController({
 			// PULLBACK NOTE: PT-D — reset ephemeral atoms on unmount so stale state does not bleed
 			// into next sheet open. WAITING_APPROVAL and above are intentionally NOT reset here
 			// (awaitingApprovalRef guards the CTA; atom persists through collapse for remount lock).
+			// PULLBACK NOTE: HR-C — reset selected payment method on unmount so a different
+			// hospital's sheet doesn't inherit the previous selection.
+			setSelectedPaymentMethod(null);
 			setErrorMessage("");
 			setInfoMessage("");
 			setIsLoadingCost(false);
