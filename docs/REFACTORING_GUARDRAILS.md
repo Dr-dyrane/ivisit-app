@@ -1,11 +1,23 @@
 # Refactoring Guardrails
 
 > **Purpose**: Maintain architectural integrity during fixes and refactoring.  
-> **Context**: iVisit uses a three-layer state architecture (TanStack Query + Zustand + Jotai) with strict separation of concerns.
+> **Context**: iVisit emergency and map flows now use a five-layer state architecture with strict separation of concerns: Supabase/Realtime -> TanStack Query -> Zustand -> XState -> Jotai.
 
 ---
 
 ## 1. State Management Rules
+### Canonical Layers
+- **Server truth** (live emergency rows, responder updates) -> Supabase / Realtime
+- **Server cache + refetch control** (active trip query, hospitals, visits) -> TanStack Query
+- **Persistent client state** (active trips, commit flow, user mode) -> Zustand
+- **Lifecycle + legal transitions** (pending -> active -> arrived -> completed) -> XState
+- **Ephemeral UI state** (sheet phase, rating modal, route visualization atoms) -> Jotai
+- **Cross-component sync** -> Jotai atoms or store selectors, not ad-hoc prop drilling
+
+### Pass Documentation Rule
+- **Before any pass**: document intent, scope, invariants, and what layer(s) will change
+- **After any pass**: document what changed, what stayed intentionally unchanged, and the verification result
+- **Do not start implementation from a vague pass name alone**: write the target defect or behavior first
 
 ### ✅ DO
 - **Server state** (API data, caching, sync) → TanStack Query

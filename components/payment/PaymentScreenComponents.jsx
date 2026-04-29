@@ -804,12 +804,10 @@ export function PaymentContextIsland({ cost, insuranceApplied, serviceType, isDa
 	const stepIcons = isAmbulance
 		? ['checkmark-circle', 'car', 'navigate']
 		: ['checkmark-circle', 'bed', 'navigate'];
-
-	return (
 		<View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>
 			{/* Section 1 — Service Assurance */}
 			<View style={{ gap: 16, paddingBottom: 20 }}>
-				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+				<Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.1, color: textMuted }}>
 					Secure Payment
 				</Text>
 				{[
@@ -831,7 +829,7 @@ export function PaymentContextIsland({ cost, insuranceApplied, serviceType, isDa
 
 			{/* Section 2 — What Happens Next */}
 			<View style={{ gap: 16, paddingBottom: 20 }}>
-				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+				<Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.1, color: textMuted }}>
 					What Happens Next
 				</Text>
 				{steps.map((step, idx) => (
@@ -866,7 +864,6 @@ export function PaymentContextIsland({ cost, insuranceApplied, serviceType, isDa
 				)}
 			</View>
 		</View>
-	);
 }
 
 // WalletContextIsland — XL right context island for Management variant
@@ -894,7 +891,7 @@ export function WalletContextIsland({ walletBalance, lastTransaction, isLoading,
 		<View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>
 			{/* Section 1 — Balance Hero */}
 			<View style={{ alignItems: 'flex-start', paddingBottom: 20, gap: 4 }}>
-				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+				<Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.1, color: textMuted }}>
 					Available Balance
 				</Text>
 				{isLoading ? (
@@ -933,7 +930,7 @@ export function WalletContextIsland({ walletBalance, lastTransaction, isLoading,
 
 			{/* Section 2 — Last Transaction */}
 			<View style={{ gap: 12, paddingBottom: 20 }}>
-				<Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: textMuted }}>
+				<Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.1, color: textMuted }}>
 					Last Transaction
 				</Text>
 				{!lastTransaction ? (

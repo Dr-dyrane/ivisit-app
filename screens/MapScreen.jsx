@@ -274,6 +274,11 @@ export default function MapScreen() {
   const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } = useMapTrackingSync({
     activeAmbulanceTrip,
     patchActiveAmbulanceTrip,
+    activeRequestKey: activeMapRequest?.requestId || null,
+    isTrackingMapActive: sheetPhase === MAP_SHEET_PHASES.TRACKING,
+    trackingKind:
+      activeMapRequest?.kind ||
+      (activeAmbulanceTrip?.requestId ? "ambulance" : null),
   });
 
   const shouldShowMapControls = usesSidebarLayout
@@ -389,6 +394,12 @@ export default function MapScreen() {
         serviceMarkerKind={mapServiceMarkerKind}
         serviceMarkerCoordinate={mapServiceMarkerCoordinate}
         serviceMarkerHeading={mapServiceMarkerHeading}
+        trackingRouteCoordinates={
+          Array.isArray(activeAmbulanceTrip?.route) &&
+          activeAmbulanceTrip.route.length >= 2
+            ? activeAmbulanceTrip.route
+            : trackingRouteInfo?.coordinates
+        }
         telemetryHealth={ambulanceTelemetryHealth}
         placeLabel={currentLocationDetails?.primaryText}
         interactive={isMapFrameReady}

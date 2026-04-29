@@ -83,7 +83,6 @@ export function useMapCommitPaymentController({
 		startBedBooking,
 		clearSelectedHospital,
 		effectiveDemoModeEnabled,
-		clearCommitFlow,
 	} = useEmergency();
 	// PULLBACK NOTE: Phase 5d — raw trip objects + setPendingApproval from Zustand store directly
 	// OLD: destructured from useEmergency() — context re-rendered all subscribers on every trip update
@@ -92,6 +91,7 @@ export function useMapCommitPaymentController({
 	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
 	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
 	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
+	const clearCommitFlow = useEmergencyTripStore((s) => s.clearCommitFlow);
 
 	const { handleRequestInitiated, handleRequestComplete } = useRequestFlow({
 		createRequest,

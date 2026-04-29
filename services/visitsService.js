@@ -819,6 +819,66 @@ export const visitsService = {
         });
     },
 
+    // DOUBLE-RATING FIX (BUG-009/BUG-010) — Layer 2: server-side idempotency.
+    //
+    // Unlike update(), this method applies a .is('rated_at', null) condition so
+    // the PATCH is a no-op if the visit was already rated in a previous session.
+    // That makes duplicate submissions (from retry after network failure) safe:
+    // the second call returns { ok: true, alreadyRated: true } and the caller
+    // can proceed to delete the recovery claim without writing garbage data.
+    async updateRating(id, { rating, ratingComment, ratedAt, lifecycleState, lifecycleUpdatedAt }) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not logged in");
+        const lookupId = String(id);
+        const resolvedVisitRow = await resolveVisitRowForKey(lookupId, user.id);
+        const targetId = resolvedVisitRow?.id ?? lookupId;
+
+        let dbUpdates = mapToDb({ rating, ratingComment, ratedAt, lifecycleState, lifecycleUpdatedAt });
+        dbUpdates.updated_at = new Date().toISOString();
+        if (supportsExtendedEmergencyColumns === false) {
+            dbUpdates = stripExtendedEmergencyColumns(dbUpdates);
+        }
+
+        let updateQuery = supabase
+            .from(TABLE)
+            .update(dbUpdates);
+        updateQuery = eqById(updateQuery, targetId);
+        const { data, error } = await updateQuery
+            .eq("user_id", user.id)
+            .is("rated_at", null)
+            .select();
+
+        if (error && supportsExtendedEmergencyColumns !== false && shouldDisableExtendedColumns(error)) {
+            supportsExtendedEmergencyColumns = false;
+            const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
+            let retryQuery = supabase.from(TABLE).update(retryUpdates);
+            retryQuery = eqById(retryQuery, targetId);
+            const { data: retryData, error: retryError } = await retryQuery
+                .eq("user_id", user.id)
+                .is("rated_at", null)
+                .select();
+            if (retryError) {
+                console.error(`[visitsService] updateRating retry error for ${lookupId}:`, retryError);
+                throw retryError;
+            }
+            if (!retryData || retryData.length === 0) {
+                return { alreadyRated: true, visit: null };
+            }
+            return { alreadyRated: false, visit: normalizeVisit(mapFromDb(retryData[0])) };
+        }
+
+        if (error) {
+            console.error(`[visitsService] updateRating error for ${lookupId}:`, error);
+            throw error;
+        }
+
+        if (!data || data.length === 0) {
+            return { alreadyRated: true, visit: null };
+        }
+
+        return { alreadyRated: false, visit: normalizeVisit(mapFromDb(data[0])) };
+    },
+
     async delete(id) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not logged in");

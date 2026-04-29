@@ -186,16 +186,34 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 		  }
 		: prevAssigned;
 
+	// Parse estimated_arrival string from DB (e.g. "8 min", "12 min") → etaSeconds
+	// Falls back to prevTrip values if the record doesn't carry a fresh ETA.
+	let nextEstimatedArrival = prevTrip.estimatedArrival ?? null;
+	let nextEtaSeconds = prevTrip.etaSeconds ?? null;
+	if (record.estimated_arrival != null) {
+		nextEstimatedArrival = record.estimated_arrival;
+		const parsedMinutes = parseInt(String(record.estimated_arrival), 10);
+		if (Number.isFinite(parsedMinutes) && parsedMinutes > 0) {
+			nextEtaSeconds = parsedMinutes * 60;
+		}
+	}
+
 	return {
 		...prevTrip,
 		id: record.id ?? prevTrip.id,
 		requestId: record.display_id ?? prevTrip.requestId,
+		displayId: record.display_id ?? prevTrip.displayId ?? null,
 		status: record.status ?? prevTrip.status,
+		hospitalId: record.hospital_id ?? prevTrip.hospitalId ?? null,
+		hospitalName: record.hospital_name ?? prevTrip.hospitalName ?? null,
+		specialty: record.specialty ?? prevTrip.specialty ?? null,
 		assignedAmbulance: mergedAssigned,
 		currentResponderLocation: loc || prevTrip.currentResponderLocation || null,
 		currentResponderHeading: Number.isFinite(record.responder_heading)
 			? record.responder_heading
 			: (prevTrip.currentResponderHeading ?? null),
+		estimatedArrival: nextEstimatedArrival,
+		etaSeconds: nextEtaSeconds,
 		responderTelemetryAt: record.updated_at ?? prevTrip.responderTelemetryAt ?? null,
 		updatedAt: record.updated_at ?? prevTrip.updatedAt ?? null,
 	};

@@ -95,3 +95,31 @@ export function buildTrackingRouteSignature(route = []) {
     )
     .join("|");
 }
+
+function normalizeTrackingMetric(value) {
+  const resolved = Number(value);
+  if (!Number.isFinite(resolved) || resolved <= 0) {
+    return null;
+  }
+  return Math.round(resolved);
+}
+
+export function normalizeTrackingRouteInfo(routeInfo = {}) {
+  return {
+    durationSec: normalizeTrackingMetric(routeInfo?.durationSec),
+    distanceMeters: normalizeTrackingMetric(routeInfo?.distanceMeters),
+    coordinates: normalizeTrackingRouteCoordinates(routeInfo?.coordinates),
+  };
+}
+
+export function areTrackingRouteInfosEqual(left, right) {
+  const normalizedLeft = normalizeTrackingRouteInfo(left);
+  const normalizedRight = normalizeTrackingRouteInfo(right);
+
+  return (
+    normalizedLeft.durationSec === normalizedRight.durationSec &&
+    normalizedLeft.distanceMeters === normalizedRight.distanceMeters &&
+    buildTrackingRouteSignature(normalizedLeft.coordinates) ===
+      buildTrackingRouteSignature(normalizedRight.coordinates)
+  );
+}

@@ -200,6 +200,44 @@ function distanceMetersBetween(from, to) {
 	return Math.sqrt(dLat * dLat + dLng * dLng);
 }
 
+function normalizeRoutePayloadCoordinates(points = []) {
+	return Array.isArray(points)
+		? points.filter(
+				(point) =>
+					point &&
+					Number.isFinite(point.latitude) &&
+					Number.isFinite(point.longitude),
+			)
+		: [];
+}
+
+function buildRoutePayloadSignature({
+	durationSec = null,
+	distanceMeters = null,
+	coordinates = [],
+	isCalculatingRoute = false,
+}) {
+	const normalizedDuration = Number.isFinite(Number(durationSec))
+		? Math.round(Number(durationSec))
+		: "null";
+	const normalizedDistance = Number.isFinite(Number(distanceMeters))
+		? Math.round(Number(distanceMeters))
+		: "null";
+	const coordinatesSignature = normalizeRoutePayloadCoordinates(coordinates)
+		.map(
+			(point) =>
+				`${Number(point.latitude).toFixed(5)}:${Number(point.longitude).toFixed(5)}`,
+		)
+		.join("|");
+
+	return [
+		normalizedDuration,
+		normalizedDistance,
+		isCalculatingRoute ? "calculating" : "settled",
+		coordinatesSignature,
+	].join("::");
+}
+
 function buildFallbackRouteInfo(origin, destination) {
 	if (!origin || !destination) {
 		return { durationSec: null, distanceMeters: null };
@@ -251,6 +289,7 @@ export default function EmergencyLocationPreviewMap({
 	const { width: screenWidth } = useWindowDimensions();
 	const mapRef = useRef(null);
 	const routeFitPrimeKeyRef = useRef(null);
+	const routeInfoChangeSignatureRef = useRef(null);
 	const occlusionSignatureRef = useRef(`${Math.round(bottomSheetHeight)}|${Math.round(leftPanelWidth)}`);
 	const [isMapReady, setIsMapReady] = useState(false);
 	const [isNearbyOverview, setIsNearbyOverview] = useState(false);
@@ -368,53 +407,9 @@ export default function EmergencyLocationPreviewMap({
 	const routeDestinationCoordinate = useMemo(() => {
 		return selectedHospitalCoordinate;
 	}, [selectedHospitalCoordinate]);
-	const routeBoundsCoordinates = useMemo(() => {
-		const canonicalTrackingRoute = Array.isArray(trackingRouteCoordinates)
-			? trackingRouteCoordinates.filter(
-					(point) =>
-						point &&
-						Number.isFinite(point.latitude) &&
-						Number.isFinite(point.longitude),
-				)
-			: [];
-		if (
-			activeTracking &&
-			previewRouteCoordinates.length >= 2 &&
-			!isFallbackRoute
-		) {
-			return previewRouteCoordinates;
-		}
-		if (canonicalTrackingRoute.length >= 2) {
-			return canonicalTrackingRoute;
-		}
-		if (previewRouteCoordinates.length >= 2) {
-			return previewRouteCoordinates;
-		}
-		return [routeOriginCoordinate, routeDestinationCoordinate].filter(Boolean);
-	}, [
-		activeTracking,
-		isFallbackRoute,
-		previewRouteCoordinates,
-		routeDestinationCoordinate,
-		routeOriginCoordinate,
-		trackingRouteCoordinates,
-	]);
-	const fallbackRouteInfo = useMemo(
-		() => buildFallbackRouteInfo(routeOriginCoordinate, routeDestinationCoordinate),
-		[routeDestinationCoordinate, routeOriginCoordinate],
-	);
-	const resolvedRouteInfo = useMemo(
-		() => ({
-			durationSec:
-				Number.isFinite(routeInfo?.durationSec) && routeInfo.durationSec > 0
-					? routeInfo.durationSec
-					: fallbackRouteInfo.durationSec,
-			distanceMeters:
-				Number.isFinite(routeInfo?.distanceMeters) && routeInfo.distanceMeters > 0
-					? routeInfo.distanceMeters
-					: fallbackRouteInfo.distanceMeters,
-		}),
-		[fallbackRouteInfo.distanceMeters, fallbackRouteInfo.durationSec, routeInfo?.distanceMeters, routeInfo?.durationSec],
+	const canonicalTrackingRouteCoordinates = useMemo(
+		() => normalizeRoutePayloadCoordinates(trackingRouteCoordinates),
+		[trackingRouteCoordinates],
 	);
 	const hasActiveTrackingTimeline = useMemo(() => {
 		const etaSeconds = Number(trackingTimeline?.etaSeconds);
@@ -433,10 +428,55 @@ export default function EmergencyLocationPreviewMap({
 		trackingTimeline?.startedAt,
 		trackingTimeline?.startedAtMs,
 	]);
+	const canReuseCanonicalTrackingRoute = activeTracking || hasActiveTrackingTimeline;
+	const routeBoundsCoordinates = useMemo(() => {
+		if (
+			activeTracking &&
+			previewRouteCoordinates.length >= 2 &&
+			!isFallbackRoute
+		) {
+			return previewRouteCoordinates;
+		}
+		if (
+			canReuseCanonicalTrackingRoute &&
+			canonicalTrackingRouteCoordinates.length >= 2
+		) {
+			return canonicalTrackingRouteCoordinates;
+		}
+		if (previewRouteCoordinates.length >= 2) {
+			return previewRouteCoordinates;
+		}
+		return [routeOriginCoordinate, routeDestinationCoordinate].filter(Boolean);
+	}, [
+		activeTracking,
+		canReuseCanonicalTrackingRoute,
+		canonicalTrackingRouteCoordinates,
+		isFallbackRoute,
+		previewRouteCoordinates,
+		routeDestinationCoordinate,
+		routeOriginCoordinate,
+	]);
+	const fallbackRouteInfo = useMemo(
+		() => buildFallbackRouteInfo(routeOriginCoordinate, routeDestinationCoordinate),
+		[routeDestinationCoordinate, routeOriginCoordinate],
+	);
+	const resolvedRouteInfo = useMemo(
+		() => ({
+			durationSec:
+				Number.isFinite(routeInfo?.durationSec) && routeInfo.durationSec > 0
+					? routeInfo.durationSec
+					: fallbackRouteInfo.durationSec,
+			distanceMeters:
+				Number.isFinite(routeInfo?.distanceMeters) && routeInfo.distanceMeters > 0
+					? routeInfo.distanceMeters
+					: fallbackRouteInfo.distanceMeters,
+		}),
+		[fallbackRouteInfo.distanceMeters, fallbackRouteInfo.durationSec, routeInfo?.distanceMeters, routeInfo?.durationSec],
+	);
 	const shouldAnimateAmbulance =
 		serviceMarkerKind === "ambulance" &&
 		(activeTracking || hasActiveTrackingTimeline) &&
-		previewRouteCoordinates.length >= 2 &&
+		routeBoundsCoordinates.length >= 2 &&
 		Number.isFinite(resolvedRouteInfo.durationSec) &&
 		resolvedRouteInfo.durationSec > 0;
 	const canonicalAnimationRouteCoordinates = useMemo(() => {
@@ -560,12 +600,33 @@ export default function EmergencyLocationPreviewMap({
 	}, [calculateRoute, clearRoute, routeDestinationCoordinate, routeOriginCoordinate]);
 
 	useEffect(() => {
-		onRouteInfoChange?.({
+		if (!onRouteInfoChange) {
+			return;
+		}
+
+		const emittedCoordinates =
+			previewRouteCoordinates.length >= 2
+				? previewRouteCoordinates
+				: canReuseCanonicalTrackingRoute
+					? canonicalTrackingRouteCoordinates
+					: [];
+		const nextRoutePayload = {
 			durationSec: resolvedRouteInfo.durationSec ?? null,
 			distanceMeters: resolvedRouteInfo.distanceMeters ?? null,
-			coordinates: previewRouteCoordinates,
-		});
+			coordinates: emittedCoordinates,
+			isCalculatingRoute,
+		};
+		const nextSignature = buildRoutePayloadSignature(nextRoutePayload);
+		if (routeInfoChangeSignatureRef.current === nextSignature) {
+			return;
+		}
+
+		routeInfoChangeSignatureRef.current = nextSignature;
+		onRouteInfoChange(nextRoutePayload);
 	}, [
+		canReuseCanonicalTrackingRoute,
+		canonicalTrackingRouteCoordinates,
+		isCalculatingRoute,
 		onRouteInfoChange,
 		previewRouteCoordinates,
 		resolvedRouteInfo.distanceMeters,

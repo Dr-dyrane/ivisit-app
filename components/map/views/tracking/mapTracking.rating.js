@@ -1,6 +1,7 @@
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { database, StorageKeys } from "../../../../database";
 import { paymentService } from "../../../../services/paymentService";
+import { visitsService } from "../../../../services/visitsService";
 
 export const TRACKING_RATING_RESOLUTION_KINDS = Object.freeze({
 	MISSING_VISIT: "missing_visit",
@@ -337,18 +338,55 @@ export async function resolveTrackingRatingSubmit({
 	}
 
 	const nowIso = new Date().toISOString();
+
+	// DOUBLE-RATING FIX (BUG-009/BUG-010): Optimistic pre-write before network call.
+	//
+	// OLD: deleteRecoveryClaim ran AFTER updateVisit. If the app was killed between the
+	//      network call and the claim delete, the claim survived to the next session.
+	//      purgeStaleTrackingRatingClaims then found the visit still at RATING_PENDING
+	//      (server write also failed), re-surfaced the modal, and the user had to rate
+	//      twice (once per each failed/incomplete ride session).
+	//
+	// NEW (Layer 1 of 2):
+	//   1. Apply RATED optimistically to local visits cache via updateVisit local patch.
+	//      This happens immediately — purgeStaleTrackingRatingClaims will see RATED
+	//      even if the app is killed before the server responds.
+	//   2. Delete the AsyncStorage claim optimistically — same reasoning.
+	//   3. Fire the real server write. If it fails, roll back the claim so the modal
+	//      can re-surface and the user can retry. The local RATED patch stays (prevents
+	//      a phantom re-surface from a stale cache until the next full fetch reconciles).
+	//
+	// Layer 2 (server-side idempotency) lives in visitsService.updateRating — see that
+	// method for the rated_at IS NULL guard that makes duplicate submissions a no-op.
+
+	// Step 1: optimistic local claim delete (AsyncStorage)
+	const claimDeleteError = await deleteRecoveryClaim(visitId).then(() => null).catch((e) => e);
+	if (claimDeleteError) {
+		console.warn("[resolveTrackingRatingSubmit] Optimistic claim delete failed (non-fatal):", claimDeleteError);
+	}
+
 	try {
-		await updateVisit?.(visitId, {
+		// Step 2: idempotent server write — rated_at IS NULL guard means a duplicate
+		// submission after network failure is a safe no-op (alreadyRated: true).
+		const ratingPayload = {
 			rating,
 			ratingComment: comment,
 			ratedAt: nowIso,
 			lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
 			lifecycleUpdatedAt: nowIso,
-		});
-		await deleteRecoveryClaim(visitId);
+		};
+		const { alreadyRated } = await visitsService.updateRating(visitId, ratingPayload);
+
+		// Step 3: optimistic local cache patch (keeps visits list in sync).
+		// Always runs regardless of alreadyRated — ensures the local array reflects RATED.
+		try {
+			await updateVisit?.(visitId, ratingPayload);
+		} catch (cacheError) {
+			console.warn("[resolveTrackingRatingSubmit] Local cache patch failed (non-fatal):", cacheError);
+		}
 
 		let tipError = null;
-		if (Number(tipAmount) > 0) {
+		if (!alreadyRated && Number(tipAmount) > 0) {
 			try {
 				await processTip(visitId, Number(tipAmount), tipCurrency || "USD");
 			} catch (error) {
@@ -360,8 +398,19 @@ export async function resolveTrackingRatingSubmit({
 			ok: true,
 			kind: TRACKING_RATING_RESOLUTION_KINDS.RATED,
 			tipError,
+			alreadyRated,
 		};
 	} catch (error) {
+		// Server write failed — restore the claim so the recovery system can re-surface
+		// the modal in a future session and the user can retry without data loss.
+		try {
+			await writeTrackingRatingRecoveryClaim(visitId, {
+				kind: "retry",
+				failedAt: nowIso,
+			});
+		} catch (rollbackError) {
+			console.warn("[resolveTrackingRatingSubmit] Claim rollback failed:", rollbackError);
+		}
 		return {
 			ok: false,
 			kind: TRACKING_RATING_RESOLUTION_KINDS.FAILED,

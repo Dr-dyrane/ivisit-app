@@ -33,7 +33,6 @@ export default function useMapCommitTriageController({
 	onConfirm,
 }) {
 	const {
-		setCommitFlow,
 		hospitals,
 		selectedSpecialty,
 	} = useEmergency();
@@ -46,6 +45,7 @@ export default function useMapCommitTriageController({
 	const patchActiveAmbulanceTrip = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
 	const patchActiveBedBooking = useEmergencyTripStore((s) => s.patchActiveBedBooking);
 	const patchPendingApproval = useEmergencyTripStore((s) => s.patchPendingApproval);
+	const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 

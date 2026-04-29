@@ -10,6 +10,20 @@
 
 Successfully refactored `MapScreen.jsx` from **1,153 lines** to **~549 lines**, achieving a **52.4% reduction** in code size. The component is now a pure orchestrator that composes 8 focused hooks.
 
+## Current Architecture Note
+
+The live emergency/map flow should now be reasoned about as a five-layer stack:
+- **Supabase / Realtime** -> live request and responder truth
+- **TanStack Query** -> active-trip cache, refetch, invalidation
+- **Zustand** -> persistent trip and commit-flow state
+- **XState** -> legal lifecycle transitions and tracking gates
+- **Jotai** -> sheet/UI atoms, route visualization, rating state
+
+Recent hardening on top of the orchestrator split:
+- `useMapTrackingSync` now uses Jotai-backed route state instead of screen-local `useState`
+- live ambulance trip reconciliation only runs while the map is actually in ambulance tracking mode
+- `EmergencyLocationPreviewMap` reuses persisted trip polylines during reloads/recalculations so route rendering and ambulance animation do not blank out while a new route fetch is in flight
+
 ---
 
 ## Extracted Hooks
