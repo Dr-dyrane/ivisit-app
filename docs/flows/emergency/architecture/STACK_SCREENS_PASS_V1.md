@@ -1,9 +1,10 @@
 # Stack Screens Pass Plan (v1)
 
 > Status: Active execution plan
-> Scope: Stack-owned screens (Profile, Settings, Emergency Contact, Payment) plus the MiniProfile window that bridges `/map` to the stack
+> Scope: Stack-owned screens (Profile, Settings, Medical Profile, Emergency Contact, Payment) plus the MiniProfile window that bridges `/map` to the stack
 > Purpose: Bring legacy stack screens into alignment with the modular architecture, doctrine, and visual language established by Map Sheets and Welcome Screen
 > Parallel to: [MAP_RUNTIME_PASS_PLAN_V1.md](./MAP_RUNTIME_PASS_PLAN_V1.md)
+> Source of truth: global product and UI doctrine lives in [docs/rules.json](../../../rules.json); this document only applies that doctrine to stack-screen passes and exit criteria.
 
 ## Relationship to Map Runtime Pass Plan
 
@@ -267,6 +268,18 @@ Infrastructure introduced here is app-wide, not screen-specific — it outlives 
 
 ## 4. Per-Screen Pass Requirements
 
+### 4.0 Four-Track Pass Contract
+
+Every subsequent stack-screen pass must address these four tracks explicitly:
+
+- **State management** â€” the pass must audit the feature's state ownership and either improve it or document the exact remaining gap against the five-layer doctrine
+- **UI quality** â€” the pass must bring the screen closer to the current stack language (mobile clarity, wide-screen behavior, calmer copy, typography discipline, modal discipline)
+- **DRY / modular code** â€” the pass must reduce repetition and move the screen toward the shared anatomy instead of adding more route-owned one-offs
+- **Documentation** â€” the pass must land pre-pass intent and post-pass checkpoint updates in the same wave
+
+No future stack pass should be treated as a styling-only pass unless the docs explicitly justify why state and modularity are intentionally unchanged.
+Under UI quality, loading-state doctrine is explicit: favor skeletons for route, list, card, and form-shell loading states; reserve activity indicators for compact inline pending feedback only.
+
 ### 4.1 Surface & Layout Pass
 
 - Responsive across all 14 viewport variants using the shared viewport config
@@ -288,12 +301,17 @@ Infrastructure introduced here is app-wide, not screen-specific — it outlives 
 - 4-layer liquid glass stack on blurred surfaces (host → underlay (Android) → blur (iOS) → backdrop → overlay)
 - Squircle discipline: `borderCurve: "continuous"` alongside every `borderRadius`
 - Icon wrapper orbs: `borderRadius = size / 2`, `iconSize = size * 0.43`
+- Loading surfaces preview structure with skeletons wherever the user is waiting on a route-sized or layout-bearing surface
+- Spinners and activity indicators are limited to small inline actions, button pending states, and lightweight accessory refresh cues
 
 ## 5. Exit Criteria (Per Screen)
 
 A screen is done when all of the following are true:
 
 - Composition root, hook, orchestrator, stage base, variant(s), and parts/content/theme tokens all present
+- State management posture is documented: either improved in the pass or explicitly called out as deferred against the five-layer doctrine
+- UI surface is aligned with the current stack-screen language, not merely functional
+- Repetition reduced enough that the screen is moving toward the shared anatomy instead of away from it
 - Visual regression pass on seven device widths: **375, 430, 744, 1024, 1280, 1440, 1920**
 - Zero console warnings
 - Zero infinite-loop re-renders
@@ -384,3 +402,13 @@ Current docs:
 - [../../../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [SETTINGS_STACK_PASS_PLAN_V1.md](./SETTINGS_STACK_PASS_PLAN_V1.md)
 - [../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 13. Medical Profile Wave
+
+`Medical Profile` is now in the same modern stack-screen family as `Profile` and `Settings`.
+
+Current docs:
+
+- [../../../audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md](./MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md)
+- [../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)

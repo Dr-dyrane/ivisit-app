@@ -1,7 +1,7 @@
 # Emergency Architecture Guide
 
 > Status: Active refactor guide
-> Scope: `welcome` and `/map`
+> Scope: `welcome`, `/map`, and the modern stack-screen architecture surfaces
 > Purpose: keep code structure, docs, and implementation order aligned as the new emergency flow grows
 
 ## Read Order
@@ -18,9 +18,11 @@
 10. [../../../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 11. [SETTINGS_STACK_PASS_PLAN_V1.md](./SETTINGS_STACK_PASS_PLAN_V1.md)
 12. [../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
-13. [STACK_SCREENS_PASS_V1.md](./STACK_SCREENS_PASS_V1.md)
-14. [../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
-15. [../../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
+13. [MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md](./MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md)
+14. [../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+15. [STACK_SCREENS_PASS_V1.md](./STACK_SCREENS_PASS_V1.md)
+16. [../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+17. [../../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
 
 ## Why This Subtree Exists
 

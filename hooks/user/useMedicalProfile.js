@@ -4,6 +4,7 @@ import { medicalProfileService } from "../../services/medicalProfileService";
 export function useMedicalProfile() {
 	const [profile, setProfile] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState(null);
 
 	const fetchProfile = useCallback(async () => {
@@ -20,19 +21,28 @@ export function useMedicalProfile() {
 	}, []);
 
 	const updateProfile = useCallback(async (updates) => {
-		setIsLoading(true);
+		setIsSaving(true);
 		setError(null);
 		try {
 			const updated = await medicalProfileService.update(updates);
 			setProfile(updated);
 			return updated;
 		} catch (err) {
+			if (err?.nextProfile) {
+				setProfile(err.nextProfile);
+			}
 			console.error('[useMedicalProfile] Update failed:', err);
 			const errorMessage = err?.message || "Failed to update medical profile";
 			setError(errorMessage);
-			throw new Error(errorMessage);
+			if (err instanceof Error) {
+				throw err;
+			}
+			const wrappedError = new Error(errorMessage);
+			if (err?.localSaved) wrappedError.localSaved = true;
+			if (err?.nextProfile) wrappedError.nextProfile = err.nextProfile;
+			throw wrappedError;
 		} finally {
-			setIsLoading(false);
+			setIsSaving(false);
 		}
 	}, []);
 
@@ -43,6 +53,7 @@ export function useMedicalProfile() {
 	return {
 		profile,
 		isLoading,
+		isSaving,
 		error,
 		refreshProfile: fetchProfile,
 		updateProfile,

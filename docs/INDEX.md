@@ -57,6 +57,8 @@ docs/
   audit/
     AUDIT_CHECKLIST.md
     EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
+    MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
+    MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
     PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md
@@ -127,6 +129,9 @@ docs/
 - Settings implementation plan: [flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md)
 - Settings comparison audit: [audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - Settings implementation checkpoint: [audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Medical profile implementation plan: [flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md)
+- Medical profile comparison audit: [audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Medical profile implementation checkpoint: [audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
 
@@ -158,6 +163,8 @@ docs/
 | [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                 | ✅ All passes complete (VD-A–G)                |
 | [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                             | ✅ All passes complete (A–G)                   |
 | [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                     | Pre-pass five-layer baseline                   |
+| [MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)     | Medical profile vs stack-screen baseline       |
+| [MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Medical profile stack implementation checkpoint |
 | [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                     | Profile vs payment/emergency-contacts baseline |
 | [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)   | Profile stack implementation checkpoint        |
 | [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Settings vs payment/emergency/profile baseline |

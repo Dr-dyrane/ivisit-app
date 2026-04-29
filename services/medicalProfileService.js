@@ -149,7 +149,10 @@ export const medicalProfileService = {
 
         // Throw error if DB update failed but cache succeeded
         if (updateError) {
-            throw new Error(`Database update failed: ${updateError.message}`);
+            const syncError = new Error(`Database update failed: ${updateError.message}`);
+            syncError.localSaved = true;
+            syncError.nextProfile = next;
+            throw syncError;
         }
 
         return next;
