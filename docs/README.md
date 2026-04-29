@@ -117,6 +117,8 @@ When in doubt, `rules.json` wins.
 - [`audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the settings stack refactor
 - [`flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `MedicalProfileScreen`
 - [`audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the medical profile stack refactor
+- [`flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `InsuranceScreen`
+- [`audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the coverage stack refactor
 - [`flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth for `/map`
 - [`flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live execution plan
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
@@ -146,6 +148,8 @@ When in doubt, `rules.json` wins.
 - [`audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md`](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) — ✅ ALL PASSES COMPLETE (VD-A through VD-G)
 - [`audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) — ✅ ALL PASSES COMPLETE (A–G)
 - [`audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md`](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) — pre-pass baseline for five-layer migration
+- [`audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the coverage stack pass
+- [`audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — coverage stack implementation outcome and remaining verification
 - [`audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md) — payment/emergency-contacts comparison baseline for the next profile pass
 - [`audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — profile stack implementation outcome and remaining verification
 - [`audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the next settings stack pass

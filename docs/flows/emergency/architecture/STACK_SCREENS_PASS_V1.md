@@ -1,7 +1,7 @@
 # Stack Screens Pass Plan (v1)
 
 > Status: Active execution plan
-> Scope: Stack-owned screens (Profile, Settings, Medical Profile, Emergency Contact, Payment) plus the MiniProfile window that bridges `/map` to the stack
+> Scope: Stack-owned screens (Profile, Settings, Medical Profile, Insurance, Emergency Contact, Payment) plus the MiniProfile window that bridges `/map` to the stack
 > Purpose: Bring legacy stack screens into alignment with the modular architecture, doctrine, and visual language established by Map Sheets and Welcome Screen
 > Parallel to: [MAP_RUNTIME_PASS_PLAN_V1.md](./MAP_RUNTIME_PASS_PLAN_V1.md)
 > Source of truth: global product and UI doctrine lives in [docs/rules.json](../../../rules.json); this document only applies that doctrine to stack-screen passes and exit criteria.
@@ -412,3 +412,13 @@ Current docs:
 - [../../../audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md](./MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md)
 - [../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 14. Insurance Wave
+
+`Insurance` is now in the same modern stack-screen family as `Profile`, `Settings`, and `Medical Profile`.
+
+Current docs:
+
+- [../../../audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [INSURANCE_STACK_PASS_PLAN_V1.md](./INSURANCE_STACK_PASS_PLAN_V1.md)
+- [../../../audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)

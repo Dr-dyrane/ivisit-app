@@ -145,7 +145,7 @@ export default function StacksLayout() {
       <Stack.Screen
         name="insurance"
         options={{
-          headerTitle: "Insurance",
+          headerTitle: "Coverage",
           headerTitleStyle: {
             fontWeight: "bold",
             fontSize: 18,

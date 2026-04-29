@@ -24,14 +24,18 @@ export const insuranceWizardStepAtom = atom(0);
 // PULLBACK NOTE: Pass 6 — OLD: useState({...}) — all typed field values lost on remount
 // NEW: Jotai atom — form draft survives background (e.g. user switches app during camera scan)
 export const INSURANCE_FORM_DEFAULT = {
-	provider_name: "",
-	policy_number: "",
-	group_number: "",
-	policy_holder_name: "",
-	front_image_url: "",
-	back_image_url: "",
+  provider_name: "",
+  policy_number: "",
+  group_number: "",
+  policy_holder_name: "",
+  front_image_url: "",
+  back_image_url: "",
 };
 export const insuranceFormDataAtom = atom({ ...INSURANCE_FORM_DEFAULT });
+
+// PULLBACK NOTE: Insurance coverage pass — OLD: useState(null) — edit target was lost on remount
+// NEW: Jotai atom — add/edit wizard keeps the correct identity when the route remounts mid-flow
+export const insuranceEditingIdAtom = atom(null);
 
 // =============================================================================
 // MEDICAL PROFILE SCREEN — unsaved profile edits

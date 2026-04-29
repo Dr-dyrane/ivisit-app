@@ -57,6 +57,8 @@ docs/
   audit/
     AUDIT_CHECKLIST.md
     EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
+    INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md
+    INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
     MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
@@ -132,6 +134,9 @@ docs/
 - Medical profile implementation plan: [flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md)
 - Medical profile comparison audit: [audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - Medical profile implementation checkpoint: [audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Coverage implementation plan: [flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md)
+- Coverage comparison audit: [audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Coverage implementation checkpoint: [audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
 
@@ -158,21 +163,23 @@ docs/
 
 ### Active (2026-04-27)
 
-| Doc                                                                                                                      | Status                                         |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                 | ✅ All passes complete (VD-A–G)                |
-| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                             | ✅ All passes complete (A–G)                   |
-| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                     | Pre-pass five-layer baseline                   |
-| [MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)     | Medical profile vs stack-screen baseline       |
+| Doc                                                                                                                                    | Status                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                               | ✅ All passes complete (VD-A–G)                 |
+| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                                           | ✅ All passes complete (A–G)                    |
+| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                                   | Pre-pass five-layer baseline                    |
+| [INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)                               | Coverage vs modern stack baseline               |
+| [INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)             | Coverage stack implementation checkpoint        |
+| [MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Medical profile vs stack-screen baseline        |
 | [MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Medical profile stack implementation checkpoint |
-| [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                     | Profile vs payment/emergency-contacts baseline |
-| [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)   | Profile stack implementation checkpoint        |
-| [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Settings vs payment/emergency/profile baseline |
-| [SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Settings stack implementation checkpoint       |
-| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                     | ✅ Reference                                   |
-| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                           | R1–R10 tracker                                 |
-| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                       |                                                |
-| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                         |                                                |
+| [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                                   | Profile vs payment/emergency-contacts baseline  |
+| [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)                 | Profile stack implementation checkpoint         |
+| [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                                 | Settings vs payment/emergency/profile baseline  |
+| [SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)               | Settings stack implementation checkpoint        |
+| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                                   | ✅ Reference                                    |
+| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                                         | R1–R10 tracker                                  |
+| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                                     |                                                 |
+| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                                       |                                                 |
 
 ### Orchestrator Refactor (2026-04-25)
 
