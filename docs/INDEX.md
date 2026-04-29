@@ -4,22 +4,22 @@ Last Updated: 2026-04-29
 
 ## Quick Rules Reference
 
-| Rule Type | Source | Authority |
-|-----------|--------|-----------|
-| **System Rules** | [`rules.json`](./rules.json) | **Tiebreaker** — HIG compliance, product doctrine |
-| **Blueprint** | [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) | Locked — Product vision |
-| **Sprint State** | [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md) | Mutable — Current priorities |
-| **Code Standards** | [`.agent/workflows/code-standards.md`](../.agent/workflows/code-standards.md) | Development patterns |
-| **Doc Model** | [`README.md`](./README.md) | Folder roles, routing rules |
+| Rule Type          | Source                                                                        | Authority                                         |
+| ------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| **System Rules**   | [`rules.json`](./rules.json)                                                  | **Tiebreaker** — HIG compliance, product doctrine |
+| **Blueprint**      | [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md)                                | Locked — Product vision                           |
+| **Sprint State**   | [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md)                                    | Mutable — Current priorities                      |
+| **Code Standards** | [`.agent/workflows/code-standards.md`](../.agent/workflows/code-standards.md) | Development patterns                              |
+| **Doc Model**      | [`README.md`](./README.md)                                                    | Folder roles, routing rules                       |
 
 ### **File Size Compliance**
 
-| Type | Target | Max | Violation |
-|------|--------|-----|-----------|
-| Routes | 20-100 | 150 | >800 = refactor, >1000 = violation |
-| Screens | 250-400 | 500 | |
-| Components | 80-250 | 350 | |
-| Hooks | 80-200 | 300 | |
+| Type       | Target  | Max | Violation                          |
+| ---------- | ------- | --- | ---------------------------------- |
+| Routes     | 20-100  | 150 | >800 = refactor, >1000 = violation |
+| Screens    | 250-400 | 500 |                                    |
+| Components | 80-250  | 350 |                                    |
+| Hooks      | 80-200  | 300 |                                    |
 
 **See [README.md > Architecture Compliance](./README.md#architecture-compliance-rules) for full table.**
 
@@ -57,6 +57,8 @@ docs/
   audit/
     AUDIT_CHECKLIST.md
     EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
+    PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
+    PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md
     BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md
     CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md
@@ -112,13 +114,17 @@ docs/
 - **Workflow map hub**: [flows/README.md](./flows/README.md)
 
 ### Flows
+
 - Welcome + intake: [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
 - Emergency doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Map sheet notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Stack surface contract: [flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md)
+- Profile implementation plan: [flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md)
+- Profile implementation checkpoint: [audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
+
 - **Gold standard state roadmap**: [architecture/GOLD_STANDARD_STATE_ROADMAP.md](./architecture/GOLD_STANDARD_STATE_ROADMAP.md)
 - **Emergency contacts five-layer contract**: [architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md](./architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md)
 - **Tracking sheet learnings**: [architecture/TRACKING_SHEET_LEARNINGS.md](./architecture/TRACKING_SHEET_LEARNINGS.md)
@@ -131,6 +137,7 @@ docs/
 - System overview: [architecture/overview/ARCHITECTURE.md](./architecture/overview/ARCHITECTURE.md)
 
 ### Design / Product
+
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)
 - Marketing strategy: [product_design/marketing/STRATEGY.md](./product_design/marketing/STRATEGY.md)
 - Ad manuscript: [product_design/marketing/MANUSCRIPT.md](./product_design/marketing/MANUSCRIPT.md)
@@ -140,17 +147,21 @@ docs/
 ## Audit Register
 
 ### Active (2026-04-27)
-| Doc | Status |
-|-----|--------|
-| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) | ✅ All passes complete (VD-A–G) |
-| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) | ✅ All passes complete (A–G) |
-| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) | Pre-pass five-layer baseline |
-| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md) | ✅ Reference |
-| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md) | R1–R10 tracker |
-| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md) | |
-| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md) | |
+
+| Doc                                                                                                                    | Status                                         |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                               | ✅ All passes complete (VD-A–G)                |
+| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                           | ✅ All passes complete (A–G)                   |
+| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                   | Pre-pass five-layer baseline                   |
+| [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Profile vs payment/emergency-contacts baseline |
+| [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Profile stack implementation checkpoint        |
+| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                   | ✅ Reference                                   |
+| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                         | R1–R10 tracker                                 |
+| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                     |                                                |
+| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                       |                                                |
 
 ### Orchestrator Refactor (2026-04-25)
+
 - **START HERE**: [audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md](./audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md)
 - [audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md](./audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md)
 - [audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md](./audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md)
@@ -162,12 +173,14 @@ docs/
 - **Results**: 42 files changed, -6,990 lines net; MapScreen 1,153 → 535 lines (-54%)
 
 ### Emergency Flow (2026-04-24)
+
 - [audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md](./audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md)
 - [audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md](./audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md)
 - [audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md](./audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md)
 - [audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md](./audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md)
 
 ### Historical Artifacts
+
 - [audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - [audit/ivisit_full_system_reconstruction_report_2026-03-02.md](./audit/ivisit_full_system_reconstruction_report_2026-03-02.md)
 - JSON artifacts: `flow_dependency_graph`, `rpc_dependency_graph`, `ui_db_parity_matrix`, `live_schema_inventory`, etc.

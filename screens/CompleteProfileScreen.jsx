@@ -1,325 +1,360 @@
-"use client";
+export const DEPRECATED_FILE =
+  "CompleteProfileScreen - Commit-details and emergency auth no longer hard-gate the app behind legacy profile setup";
+("use client");
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
-	View,
-	Text,
-	StyleSheet,
-	Platform,
-	Pressable,
-	ActivityIndicator,
-	Animated,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../contexts/ThemeContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
-import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarVisibility } from "../contexts/TabBarVisibilityContext";
+import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants/colors";
 import { STACK_TOP_PADDING } from "../constants/layout";
-import ProfileField from "../components/form/ProfileField";
-import { useUpdateProfile } from "../hooks/user/useUpdateProfile";
-import { useAuth } from "../contexts/AuthContext";
-import { useProfileCompletion } from "../hooks/auth";
-import { useToast } from "../contexts/ToastContext";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 
+// PULLBACK NOTE: This route remains for stale deep links and older navigation state only.
+// OLD: CompleteProfileScreen was a required full-name + username form and blocked entry.
+// NEW: The route is a deprecated fallback surface that lets the user continue immediately or open Profile.
+// REASON: Commit-details and emergency auth no longer hard-gate the app behind legacy profile setup.
+
 export default function CompleteProfileScreen() {
-	const router = useRouter();
-	const { isDarkMode } = useTheme();
-	const insets = useSafeAreaInsets();
-	const { setHeaderState } = useHeaderState();
-	const { handleScroll: handleTabBarScroll, resetTabBar } =
-		useTabBarVisibility();
-	const { handleScroll: handleHeaderScroll, resetHeader } =
-		useScrollAwareHeader();
-	const { user, syncUserData, logout } = useAuth();
-	const { updateProfile, isLoading: isSaving } = useUpdateProfile();
-	const { getDraft, saveDraft, clearDraft } = useProfileCompletion();
-	const { showToast } = useToast();
-	const { horizontalPadding, surfaceMaxWidth, bodyTextSize, bodyTextLineHeight } = useAuthViewport();
+  const router = useRouter();
+  const { isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { setHeaderState } = useHeaderState();
+  const { resetHeader } = useScrollAwareHeader();
+  const { resetTabBar } = useTabBarVisibility();
+  const { user, syncUserData, logout } = useAuth();
+  const {
+    horizontalPadding,
+    surfaceMaxWidth,
+    bodyTextSize,
+    bodyTextLineHeight,
+  } = useAuthViewport();
 
-	// Ensure we have the latest verification status
-	useEffect(() => {
-		syncUserData();
-	}, []);
+  useEffect(() => {
+    syncUserData();
+  }, [syncUserData]);
 
-	const signOutButton = useCallback(
-		() => (
-			<Pressable
-				onPress={async () => {
-					await logout();
-					router.replace("/(auth)");
-				}}
-				hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				style={{ paddingHorizontal: 12, paddingVertical: 6 }}
-			>
-				<Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
-			</Pressable>
-		),
-		[logout, router]
-	);
+  const signOutButton = useCallback(
+    () => (
+      <Pressable
+        onPress={async () => {
+          await logout();
+          router.replace("/(auth)");
+        }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={styles.headerAction}
+      >
+        <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
+      </Pressable>
+    ),
+    [logout, router],
+  );
 
-	const initialFullName =
-		typeof user?.fullName === "string" && user.fullName.trim().length > 0
-			? user.fullName
-			: [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  useFocusEffect(
+    useCallback(() => {
+      resetTabBar();
+      resetHeader();
+      setHeaderState({
+        title: "Profile setup",
+        icon: (
+          <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" />
+        ),
+        backgroundColor: COLORS.brandPrimary,
+        leftComponent: null,
+        rightComponent: signOutButton(),
+      });
+    }, [resetHeader, resetTabBar, setHeaderState, signOutButton]),
+  );
 
-	const [fullName, setFullName] = useState(initialFullName ?? "");
-	const [username, setUsername] = useState(user?.username ?? "");
+  const colors = useMemo(
+    () => ({
+      text: isDarkMode ? "#FFFFFF" : "#0F172A",
+      textMuted: isDarkMode ? "#A8B2C5" : "#64748B",
+      surface: isDarkMode ? "#101826" : "#FFFFFF",
+      surfaceAlt: isDarkMode ? "#0C1320" : "#F8F4F4",
+      border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)",
+      secondaryButton: isDarkMode ? "rgba(255,255,255,0.08)" : "#EEF2FF",
+      secondaryText: isDarkMode ? "#E2E8F0" : "#1E293B",
+    }),
+    [isDarkMode],
+  );
 
-	useFocusEffect(
-		useCallback(() => {
-			resetTabBar();
-			resetHeader();
-			setHeaderState({
-				title: "Finish Setup",
-				subtitle: "ONE STEP LEFT",
-				icon: <Ionicons name="person" size={26} color="#FFFFFF" />,
-				backgroundColor: COLORS.brandPrimary,
-				leftComponent: null,
-				rightComponent: signOutButton(),
-			});
-		}, [resetHeader, resetTabBar, setHeaderState, signOutButton])
-	);
+  const backgroundColors = useMemo(
+    () =>
+      isDarkMode
+        ? ["#101826", "#0A1020", "#101826"]
+        : ["#FFFDFC", "#F6ECEB", "#FFFDFC"],
+    [isDarkMode],
+  );
 
-	const fadeAnim = useRef(new Animated.Value(0)).current;
-	const slideAnim = useRef(new Animated.Value(30)).current;
+  const phone = typeof user?.phone === "string" ? user.phone.trim() : "";
+  const email = typeof user?.email === "string" ? user.email.trim() : "";
+  const hasPhone = phone.length > 0;
+  const signedInAs =
+    phone || email || user?.fullName || user?.username || "Signed-in account";
 
-	useEffect(() => {
-		Animated.parallel([
-			Animated.timing(fadeAnim, {
-				toValue: 1,
-				duration: 600,
-				useNativeDriver: true,
-			}),
-			Animated.spring(slideAnim, {
-				toValue: 0,
-				friction: 8,
-				tension: 50,
-				useNativeDriver: true,
-			}),
-		]).start();
-	}, []);
+  const phoneStatusTitle = hasPhone ? "Phone on file" : "Phone missing";
+  const phoneStatusBody = hasPhone
+    ? "This account already has a phone number. Continue normally."
+    : "Add a working phone number from Profile when you are ready.";
 
-	const handleScroll = useCallback(
-		(event) => {
-			handleTabBarScroll(event);
-			handleHeaderScroll(event);
-		},
-		[handleHeaderScroll, handleTabBarScroll]
-	);
+  const bottomPadding =
+    STACK_TOP_PADDING + insets.bottom + (Platform.OS === "ios" ? 28 : 20);
 
-	const backgroundColors = useMemo(
-		() =>
-			isDarkMode
-				? ["#121826", "#0B0F1A", "#121826"]
-				: ["#FFFFFF", "#F3E7E7", "#FFFFFF"],
-		[isDarkMode]
-	);
+  return (
+    <LinearGradient colors={backgroundColors} style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: STACK_TOP_PADDING,
+            paddingBottom: bottomPadding,
+            paddingHorizontal: horizontalPadding,
+          },
+        ]}
+      >
+        <View
+          style={[styles.surface, { maxWidth: Math.min(surfaceMaxWidth, 760) }]}
+        >
+          <View
+            style={[
+              styles.card,
+              styles.heroCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.heroIcon}>
+              <Ionicons
+                name="arrow-forward-circle-outline"
+                size={22}
+                color={COLORS.brandPrimary}
+              />
+            </View>
 
-	const colors = useMemo(
-		() => ({
-			text: isDarkMode ? "#FFFFFF" : "#0F172A",
-			textMuted: isDarkMode ? "#94A3B8" : "#64748B",
-			card: isDarkMode ? "#0B0F1A" : "#F3E7E7",
-		}),
-		[isDarkMode]
-	);
+            <Text style={[styles.title, { color: colors.text }]}>
+              Profile setup moved
+            </Text>
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  color: colors.textMuted,
+                  fontSize: bodyTextSize,
+                  lineHeight: bodyTextLineHeight,
+                },
+              ]}
+            >
+              iVisit no longer stops you here. Continue to the app, or open
+              Profile if you want to add a phone number.
+            </Text>
+          </View>
 
-	const tabBarHeight = Platform.OS === "ios" ? 85 + insets.bottom : 70;
-	const bottomPadding = tabBarHeight + 20;
-	const topPadding = STACK_TOP_PADDING;
+          <View
+            style={[
+              styles.card,
+              styles.detailCard,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
+                Signed in as
+              </Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>
+                {signedInAs}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
+                {phoneStatusTitle}
+              </Text>
+              <Text
+                style={[
+                  styles.detailHint,
+                  {
+                    color: hasPhone
+                      ? COLORS.success || "#16A34A"
+                      : colors.textMuted,
+                  },
+                ]}
+              >
+                {hasPhone ? phone : phoneStatusBody}
+              </Text>
+            </View>
+            {!hasPhone ? (
+              <Text
+                style={[
+                  styles.detailSupport,
+                  {
+                    color: colors.textMuted,
+                    fontSize: bodyTextSize,
+                    lineHeight: bodyTextLineHeight,
+                  },
+                ]}
+              >
+                Emergency and care flows can ask for a phone number later
+                without forcing this route.
+              </Text>
+            ) : null}
+          </View>
 
-	const normalizedUsername = useMemo(() => {
-		const v = typeof username === "string" ? username : "";
-		return v.trim().replace(/\s+/g, "_").toLowerCase();
-	}, [username]);
+          <View style={styles.actions}>
+            <Pressable
+              onPress={() => router.replace("/(user)")}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { opacity: pressed ? 0.92 : 1 },
+              ]}
+            >
+              <Ionicons name="home-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Continue to iVisit</Text>
+            </Pressable>
 
-	useEffect(() => {
-		let isActive = true;
-		(async () => {
-			const draft = await getDraft();
-			if (!isActive || !draft) return;
-			if (typeof draft.fullName === "string" && fullName.trim().length === 0) {
-				setFullName(draft.fullName);
-			}
-			if (typeof draft.username === "string" && username.trim().length === 0) {
-				setUsername(draft.username);
-			}
-		})();
-		return () => {
-			isActive = false;
-		};
-	}, []);
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			saveDraft({ fullName, username });
-		}, 300);
-		return () => clearTimeout(timer);
-	}, [fullName, username, saveDraft]);
-
-	const canSave =
-		typeof fullName === "string" &&
-		fullName.trim().length >= 2 &&
-		typeof normalizedUsername === "string" &&
-		normalizedUsername.length >= 3;
-
-	const splitName = useCallback((name) => {
-		const parts = String(name || "")
-			.trim()
-			.split(/\s+/)
-			.filter(Boolean);
-		if (parts.length === 0) return { firstName: null, lastName: null };
-		if (parts.length === 1) return { firstName: parts[0], lastName: null };
-		return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
-	}, []);
-
-	const handleSave = useCallback(async () => {
-		if (!canSave || isSaving) return;
-		try {
-			const { firstName, lastName } = splitName(fullName);
-			await updateProfile({
-				fullName: fullName.trim(),
-				username: normalizedUsername,
-				firstName,
-				lastName,
-			});
-			await syncUserData();
-			await clearDraft();
-			router.replace("/(user)");
-		} catch (error) {
-			console.error("Update profile failed", error);
-			showToast("Couldn't save your profile", "error");
-		}
-	}, [canSave, fullName, isSaving, normalizedUsername, router, splitName, syncUserData, updateProfile, clearDraft, showToast]);
-
-	return (
-		<LinearGradient colors={backgroundColors} style={{ flex: 1 }}>
-			<Animated.ScrollView
-				contentContainerStyle={[
-					styles.content,
-					{
-						paddingTop: topPadding,
-						paddingBottom: bottomPadding,
-						paddingHorizontal: horizontalPadding,
-					},
-				]}
-				showsVerticalScrollIndicator={false}
-				scrollEventThrottle={16}
-				onScroll={handleScroll}
-				style={{
-					opacity: fadeAnim,
-					transform: [{ translateY: slideAnim }],
-				}}
-			>
-				<View style={[styles.surface, { maxWidth: surfaceMaxWidth }]}>
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.title, { color: colors.text }]}>
-							Finish your account
-						</Text>
-						<Text
-							style={[
-								styles.subtitle,
-								{
-									color: colors.textMuted,
-									fontSize: bodyTextSize,
-									lineHeight: bodyTextLineHeight,
-								},
-							]}
-						>
-							Add your name and username so care teams can identify you quickly.
-						</Text>
-					</View>
-
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-							Signed In As
-						</Text>
-						<Text style={[styles.subtitle, { color: colors.text }]}>
-							{user?.emailVerified && user?.email ? user.email : user?.phone ?? user?.email ?? "--"}
-						</Text>
-						<Text style={[styles.helperText, { color: colors.textMuted }]}>
-							{user?.emailVerified || user?.phoneVerified ? "Verified and ready" : "Needs verification"}
-						</Text>
-					</View>
-
-					<View style={[styles.card, { backgroundColor: colors.card }]}>
-						<ProfileField
-							label="Full Name"
-							value={fullName}
-							onChange={setFullName}
-							iconName="person-outline"
-						/>
-						<ProfileField
-							label="Username"
-							value={username}
-							onChange={setUsername}
-							iconName="at-outline"
-						/>
-
-						<View style={styles.helperRow}>
-							<Ionicons name="sparkles-outline" size={16} color={COLORS.brandPrimary} />
-							<Text style={[styles.helperText, { color: colors.textMuted }]}>
-								We'll save this as @{normalizedUsername || "username"}
-							</Text>
-						</View>
-
-						<Pressable
-							disabled={!canSave || isSaving}
-							onPress={handleSave}
-							style={({ pressed }) => ({
-								marginTop: 8,
-								height: 54,
-								borderRadius: 22,
-								backgroundColor: COLORS.brandPrimary,
-								opacity: !canSave || isSaving ? 0.5 : pressed ? 0.92 : 1,
-								flexDirection: "row",
-								alignItems: "center",
-								justifyContent: "center",
-								gap: 10,
-							})}
-						>
-							{isSaving ? (
-								<ActivityIndicator color="#FFFFFF" />
-							) : (
-								<Ionicons name="checkmark" size={18} color="#FFFFFF" />
-							)}
-							<Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
-								Continue to iVisit
-							</Text>
-						</Pressable>
-					</View>
-				</View>
-			</Animated.ScrollView>
-		</LinearGradient>
-	);
+            <Pressable
+              onPress={() => router.replace("/(user)/(stacks)/profile")}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                {
+                  backgroundColor: colors.secondaryButton,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.9 : 1,
+                },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={colors.secondaryText}
+              />
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.secondaryText },
+                ]}
+              >
+                Open Profile
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-	container: { flex: 1 },
-	content: { flexGrow: 1, gap: 12 },
-	surface: { width: "100%", alignSelf: "center", gap: 12 },
-	card: {
-		borderRadius: 30,
-		padding: 20,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.03,
-		shadowRadius: 10,
-	},
-	title: { fontSize: 19, fontWeight: "900", letterSpacing: -0.5 },
-	subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, fontWeight: '400' },
-	sectionTitle: {
-		fontSize: 10,
-		fontWeight: "900",
-		letterSpacing: 3,
-		textTransform: "uppercase",
-	},
-	helperRow: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 8 },
-	helperText: { fontSize: 13, fontWeight: "500" },
+  container: {
+    flex: 1,
+  },
+  content: {
+    flexGrow: 1,
+  },
+  surface: {
+    width: "100%",
+    alignSelf: "center",
+    gap: 16,
+  },
+  card: {
+    borderRadius: 28,
+    padding: 22,
+    borderWidth: 1,
+  },
+  heroCard: {
+    gap: 12,
+  },
+  heroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(79, 70, 229, 0.08)",
+  },
+  title: {
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    fontWeight: "400",
+  },
+  detailCard: {
+    gap: 14,
+  },
+  detailRow: {
+    gap: 4,
+  },
+  detailLabel: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  detailValue: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+  },
+  detailHint: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "500",
+  },
+  detailSupport: {
+    fontWeight: "400",
+  },
+  actions: {
+    gap: 12,
+  },
+  primaryButton: {
+    height: 56,
+    borderRadius: 22,
+    backgroundColor: COLORS.brandPrimary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    height: 54,
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+  headerAction: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
 });

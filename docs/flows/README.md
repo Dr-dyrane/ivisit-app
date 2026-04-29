@@ -7,6 +7,8 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [auth/workflow_map.md](./auth/workflow_map.md): Authentication and registration execution path.
 - [emergency/workflow_map.md](./emergency/workflow_map.md): Deterministic emergency lifecycle from request to completion.
 - [emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md): Stack-screen contract for `welcome -> map -> stack` surfaces.
+- [emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md): Profile stack implementation plan and ownership split.
+- [../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the profile stack refactor.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
 
 ## Existing Deep Dives (Keep Using These)
@@ -30,4 +32,3 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [../audit/flow_dependency_graph_2026-03-02.json](../audit/flow_dependency_graph_2026-03-02.json)
 - [../audit/rpc_dependency_graph_2026-03-02.json](../audit/rpc_dependency_graph_2026-03-02.json)
 - [../audit/ui_db_parity_matrix_2026-03-02.json](../audit/ui_db_parity_matrix_2026-03-02.json)
-

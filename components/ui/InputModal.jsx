@@ -39,6 +39,7 @@ export default function InputModal({
   modalMaxHeightRatio = null,
   modalPresentationMode = null,
   allowDismissWhileLoading = false,
+  primaryActionBackgroundColor = COLORS.brandPrimary,
 }) {
   const { isDarkMode } = useTheme();
   const { width } = useWindowDimensions();
@@ -198,8 +199,8 @@ export default function InputModal({
                     styles.primaryButton,
                     {
                       opacity: disabled || loading ? 0.7 : 1,
-                      backgroundColor: COLORS.brandPrimary,
-                      shadowColor: COLORS.brandPrimary,
+                      backgroundColor: primaryActionBackgroundColor,
+                      shadowColor: primaryActionBackgroundColor,
                       shadowOffset: { width: 0, height: 8 },
                       shadowOpacity: 0.3,
                       shadowRadius: 12,

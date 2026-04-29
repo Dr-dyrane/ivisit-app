@@ -231,6 +231,8 @@ Deviations from these shapes, once a shape is chosen, require explicit doctrine 
 Target screens, in execution order for this pass:
 
 1. **Profile** — stack route, smallest architectural delta
+   Implemented in code on 2026-04-29. Follow-up checkpoint: [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+   Detailed pass record: [PROFILE_STACK_PASS_PLAN_V1.md](./PROFILE_STACK_PASS_PLAN_V1.md)
 2. **Settings** — stack route, sectioned list patterns
 3. **Emergency Contact** — re-audit for full doctrine compliance
 4. **Payment** — re-audit for the responsive layer (viewport config + metrics)
@@ -371,3 +373,4 @@ Apply these directly to the remaining stack-owned pages before inventing anythin
 - **Blocking saves need explicit pending behavior.** Backdrop-dismiss, close buttons, and destructive exits must be intentional during async save states, never accidental.
 - **Fallback modes must stay truthful.** If backend schema or sync is unavailable, surface a local-only or degraded-state notice and keep the feature usable instead of failing hard.
 - **Documentation lands in the same pass as code.** Record pre-pass intent, post-pass verification, and the reusable lesson set while the implementation context is still fresh.
+- **Mini-profile row grammar can survive a shell refactor.** `Profile` proved that the quiet shortcut-group language can stay intact while the route, wide layout, and modal ownership move to the shared stack-screen anatomy.

@@ -8,20 +8,20 @@ iVisit uses a **Role-Based Doctrine Tree**. Every folder has one role. Every new
 
 ### Folder Roles
 
-| Role | Folder | Purpose |
-|---|---|---|
-| Doctrine | `docs/` (root files) | Tiebreaker + product truth + active sprint |
-| Flows | `docs/flows/<domain>/` | Deterministic runtime maps and phase dossiers per domain |
-| Architecture | `docs/architecture/` | Cross-cutting system spec, roadmaps, refactor bibles |
-| Design | `docs/design/` | Design system, tokens, motion |
-| Audit | `docs/audit/` | Point-in-time evidence reports and risk trackers |
-| Change control | `docs/project_state/` | SCC items, active change trackers, quick-start |
-| Research | `docs/research/` | External references (Apple Maps, platform docs) |
-| Cross-repo | `docs/console/` | Pointers and specs for the `ivisit-console` surface |
-| Ops | `docs/deployment/` | Deployment, environment, and store submission guides |
-| Onboarding | `docs/onboarding/` | Contributor onboarding |
-| Marketing | `docs/product_design/` | Public-facing design and marketing strategy |
-| Archive | `docs/archive/` | Superseded docs preserved for historical context |
+| Role           | Folder                 | Purpose                                                  |
+| -------------- | ---------------------- | -------------------------------------------------------- |
+| Doctrine       | `docs/` (root files)   | Tiebreaker + product truth + active sprint               |
+| Flows          | `docs/flows/<domain>/` | Deterministic runtime maps and phase dossiers per domain |
+| Architecture   | `docs/architecture/`   | Cross-cutting system spec, roadmaps, refactor bibles     |
+| Design         | `docs/design/`         | Design system, tokens, motion                            |
+| Audit          | `docs/audit/`          | Point-in-time evidence reports and risk trackers         |
+| Change control | `docs/project_state/`  | SCC items, active change trackers, quick-start           |
+| Research       | `docs/research/`       | External references (Apple Maps, platform docs)          |
+| Cross-repo     | `docs/console/`        | Pointers and specs for the `ivisit-console` surface      |
+| Ops            | `docs/deployment/`     | Deployment, environment, and store submission guides     |
+| Onboarding     | `docs/onboarding/`     | Contributor onboarding                                   |
+| Marketing      | `docs/product_design/` | Public-facing design and marketing strategy              |
+| Archive        | `docs/archive/`        | Superseded docs preserved for historical context         |
 
 ### Routing Rules
 
@@ -51,52 +51,56 @@ When in doubt, `rules.json` wins.
 
 ### **Primary System Rules**
 
-| Document | Purpose | Authority |
-|----------|---------|-----------|
-| [`rules.json`](./rules.json) | Locked v2.0 system rules, product doctrine, HIG compliance | **Tiebreaker** |
-| [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md) | Product blueprint and architectural vision | Locked |
-| [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md) | Active sprint checkpoint and current priorities | Mutable |
+| Document                                     | Purpose                                                    | Authority      |
+| -------------------------------------------- | ---------------------------------------------------------- | -------------- |
+| [`rules.json`](./rules.json)                 | Locked v2.0 system rules, product doctrine, HIG compliance | **Tiebreaker** |
+| [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md) | Product blueprint and architectural vision                 | Locked         |
+| [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md)     | Active sprint checkpoint and current priorities            | Mutable        |
 
 ### **Code & Development Standards**
 
-| Document | Location | Purpose |
-|----------|----------|---------|
-| **Code Standards** | [../.agent/workflows/code-standards.md](../.agent/workflows/code-standards.md) | Named exports, barrel imports, 6-step audit protocol |
-| **DB Update Protocol** | [../.agent/workflows/db-update.md](../.agent/workflows/db-update.md) | Database migration and certification workflow |
+| Document               | Location                                                                       | Purpose                                              |
+| ---------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **Code Standards**     | [../.agent/workflows/code-standards.md](../.agent/workflows/code-standards.md) | Named exports, barrel imports, 6-step audit protocol |
+| **DB Update Protocol** | [../.agent/workflows/db-update.md](../.agent/workflows/db-update.md)           | Database migration and certification workflow        |
 
 ### **Architecture Compliance Rules**
 
 **File Size Ranges (Target → Max):**
 
-| File Type | Target | Max | Notes |
-|-----------|--------|-----|-------|
-| Route/Layout | 20–100 | 150 | Composition only |
-| Screen files | 250–400 | 500 | Assemble hooks + layout |
-| UI Components | 80–250 | 350 | Single surface |
-| Complex Features | 150–300 | 450 | | 
-| Hooks | 80–200 | 300 | Single behavior |
-| Controllers | 150–300 | 400 | Orchestration only |
-| State files | 30–150 | 250 | Atoms/reducers |
-| Services | 100–300 | 500 | Business logic |
-| Utils/Helpers | 30–150 | 200 | |
+| File Type        | Target  | Max | Notes                   |
+| ---------------- | ------- | --- | ----------------------- |
+| Route/Layout     | 20–100  | 150 | Composition only        |
+| Screen files     | 250–400 | 500 | Assemble hooks + layout |
+| UI Components    | 80–250  | 350 | Single surface          |
+| Complex Features | 150–300 | 450 |                         |
+| Hooks            | 80–200  | 300 | Single behavior         |
+| Controllers      | 150–300 | 400 | Orchestration only      |
+| State files      | 30–150  | 250 | Atoms/reducers          |
+| Services         | 100–300 | 500 | Business logic          |
+| Utils/Helpers    | 30–150  | 200 |                         |
 
 **Escalation Thresholds:**
-- >800 lines → Flag for refactor
-- >1000 lines → Architectural violation (unless generated)
+
+- > 800 lines → Flag for refactor
+- > 1000 lines → Architectural violation (unless generated)
 
 ## Start Here
 
 ### Doctrine
+
 - [`rules.json`](./rules.json) — system rules, tiebreaker
 - [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) — product blueprint
 - [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md) — active sprint checkpoint
 - [`INDEX.md`](./INDEX.md) — file-tree index
 
 ### Contributor onboarding
+
 - [`project_state/QUICK_START.md`](./project_state/QUICK_START.md) — development quick start
 - [`onboarding/Technical.md`](./onboarding/Technical.md) — technical onboarding
 
 ### Marketing and brand
+
 - [`product_design/ANDROID_GLASS_PATTERN.md`](./product_design/ANDROID_GLASS_PATTERN.md) — Android shadow/glass standard
 - [`product_design/marketing/STRATEGY.md`](./product_design/marketing/STRATEGY.md) — marketing strategy and brand pillars
 - [`product_design/marketing/MANUSCRIPT.md`](./product_design/marketing/MANUSCRIPT.md) — 60-second cinematic ad script
@@ -107,6 +111,8 @@ When in doubt, `rules.json` wins.
 - [`flows/auth/workflow_map.md`](./flows/auth/workflow_map.md) — auth / login / register execution map
 - [`flows/emergency/workflow_map.md`](./flows/emergency/workflow_map.md) — deterministic emergency lifecycle map
 - [`flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md`](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md) — stack-screen contract for `welcome -> map -> stack`
+- [`flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `ProfileScreen`
+- [`audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the profile stack refactor
 - [`flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth for `/map`
 - [`flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live execution plan
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
@@ -132,15 +138,19 @@ When in doubt, `rules.json` wins.
 ## Audit
 
 ### Active
+
 - [`audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md`](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) — ✅ ALL PASSES COMPLETE (VD-A through VD-G)
 - [`audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) — ✅ ALL PASSES COMPLETE (A–G)
 - [`audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md`](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) — pre-pass baseline for five-layer migration
+- [`audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md) — payment/emergency-contacts comparison baseline for the next profile pass
+- [`audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — profile stack implementation outcome and remaining verification
 - [`audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md`](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md) — Pre-tracking phase constraint audit
 - [`audit/RISK_STATUS_2026-04-23.md`](./audit/RISK_STATUS_2026-04-23.md) — R1-R10 resolution tracker
 - [`audit/TEMPORAL_DEAD_ZONE_FIXES.md`](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)
 - [`audit/AUDIT_CHECKLIST.md`](./audit/AUDIT_CHECKLIST.md)
 
 ### Orchestrator Refactor (2026-04-25)
+
 - [`audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md`](./audit/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md) ← START HERE
 - [`audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md`](./audit/BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md)
 - [`audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md`](./audit/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md)
@@ -151,12 +161,14 @@ When in doubt, `rules.json` wins.
 - [`audit/PERFORMANCE_STABILITY_MODULARIZATION.md`](./audit/PERFORMANCE_STABILITY_MODULARIZATION.md)
 
 ### Emergency Flow (2026-04-24)
+
 - [`audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md`](./audit/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md)
 - [`audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md`](./audit/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md)
 - [`audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md`](./audit/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md)
 - [`audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md`](./audit/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md)
 
 ### Historical Artifacts (2026-03-02)
+
 - [`audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md`](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - [`audit/ivisit_full_system_reconstruction_report_2026-03-02.md`](./audit/ivisit_full_system_reconstruction_report_2026-03-02.md)
 
@@ -189,12 +201,12 @@ All schema, RPC, and migration conventions live under `supabase/docs/`:
 
 ### **Git Workflow for Docs**
 
-| Change Type | Branch Pattern | Notes |
-|-------------|---------------|-------|
-| New audit/checkpoint | `docs/audit-[date]` | Include date in branch |
-| Flow map updates | `docs/flow-[domain]` | Domain-specific updates |
-| Archival cleanup | `docs/archive-[batch]` | Batch archival operations |
-| INDEX updates | `docs/index-sync` | Navigation sync only |
+| Change Type          | Branch Pattern         | Notes                     |
+| -------------------- | ---------------------- | ------------------------- |
+| New audit/checkpoint | `docs/audit-[date]`    | Include date in branch    |
+| Flow map updates     | `docs/flow-[domain]`   | Domain-specific updates   |
+| Archival cleanup     | `docs/archive-[batch]` | Batch archival operations |
+| INDEX updates        | `docs/index-sync`      | Navigation sync only      |
 
 ### **Quality Gates**
 

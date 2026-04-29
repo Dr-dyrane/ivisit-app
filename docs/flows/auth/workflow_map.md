@@ -1,11 +1,12 @@
 # Auth Workflow Map
 
-This map shows the runtime path for login, OTP, registration, and profile completion.
+This map shows the runtime path for login, OTP, registration, and the deprecated profile-setup fallback route.
 
 ## Entry Points
 
 - `app/(auth)/login.js` -> `screens/LoginScreen.jsx` -> `components/login/LoginInputModal.jsx`
 - `app/(auth)/signup.js` -> `screens/SignupScreen.jsx` -> `components/register/AuthInputModal.jsx`
+- Deprecated fallback only: `app/(user)/(stacks)/complete-profile.js` -> `screens/CompleteProfileScreen.jsx`
 
 ## Runtime Chain
 
@@ -59,6 +60,9 @@ This map shows the runtime path for login, OTP, registration, and profile comple
 ## State and Failure Notes
 
 - Auth context defends against stale refresh tokens and clears local auth state on expiry.
+- `app/(user)/_layout.js` now enforces authentication only. It does not force-redirect incomplete profiles into `complete-profile`.
+- Emergency / commit-details auth may set `PROFILE_COMPLETION_DEFERRED`; the deferred flag now clears once the account has a working phone number on file.
+- Username is auto-derived from the auth email when missing via `authService.ensureDefaultUsernameForProfile`, so username is no longer a user-blocking setup requirement.
 - Registration can persist pending data locally via:
   - `authService.savePendingRegistration`
   - `authService.getPendingRegistration`
@@ -72,4 +76,3 @@ This map shows the runtime path for login, OTP, registration, and profile comple
 - [REGISTRATION_UI_UX.md](./REGISTRATION_UI_UX.md)
 - [../../../supabase/docs/REFERENCE.md](../../../supabase/docs/REFERENCE.md)
 - [../../../supabase/docs/API_REFERENCE.md](../../../supabase/docs/API_REFERENCE.md)
-
