@@ -166,12 +166,14 @@ export function ServiceReceiptCard({ cost, insuranceApplied, isDarkMode }) {
 	);
 }
 
-// PaymentHistoryList - Transaction history ledger (shows last 3)
+// PaymentHistoryList - Transaction history ledger (shows last 3, or all on md+ with showAll)
 // PULLBACK NOTE: Extracted from PaymentScreen for reusability
 // OLD: Inline history in PaymentScreen showing all transactions
 // NEW: Reusable PaymentHistoryList component showing last 3 with See More
 // REASON: Modularize payment screen UI and improve UX
-export function PaymentHistoryList({ paymentHistory, onTransactionPress, refreshing, onRefresh, onSeeMore, isDarkMode, loading }) {
+// showAll prop: bypasses the 3-item cap and hides See All button — used on md+ sidebar layout
+// where the right panel has unlimited vertical scroll space.
+export function PaymentHistoryList({ paymentHistory, onTransactionPress, refreshing, onRefresh, onSeeMore, isDarkMode, loading, showAll = false }) {
 	const colors = {
 		text: isDarkMode ? "#FFFFFF" : "#0F172A",
 		textMuted: isDarkMode ? "#94A3B8" : "#64748B",
@@ -179,9 +181,11 @@ export function PaymentHistoryList({ paymentHistory, onTransactionPress, refresh
 		skeleton: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
 	};
 
-	// Show only last 3 transactions
-	const displayHistory = paymentHistory.slice(0, 3);
-	const hasMore = paymentHistory.length > 3;
+	// PULLBACK NOTE: showAll bypasses 3-item cap on md+ (sidebar layout has unlimited scroll)
+	// OLD: always slice(0, 3)
+	// NEW: showAll=true → show all; showAll=false → slice(0, 3) as before
+	const displayHistory = showAll ? paymentHistory : paymentHistory.slice(0, 3);
+	const hasMore = !showAll && paymentHistory.length > 3;
 
 	// Skeleton loader component
 	const SkeletonItem = ({ showDivider }) => (
@@ -212,18 +216,22 @@ export function PaymentHistoryList({ paymentHistory, onTransactionPress, refresh
 				<View style={[styles.ledgerList, { backgroundColor: colors.card }]}>
 					<SkeletonItem showDivider={true} />
 					<SkeletonItem showDivider={true} />
-					<SkeletonItem showDivider={false} />
-					<Pressable
-						style={({ pressed }) => [
-							styles.seeMoreButton,
-							{ opacity: pressed ? 0.7 : 1 }
-						]}
-					>
-						<Text style={[styles.seeMoreText, { color: COLORS.brandPrimary }]}>
-							See All
-						</Text>
-						<Ionicons name="chevron-forward" size={16} color={COLORS.brandPrimary} />
-					</Pressable>
+					<SkeletonItem showDivider={showAll} />
+					{showAll && <SkeletonItem showDivider={true} />}
+					{showAll && <SkeletonItem showDivider={false} />}
+					{!showAll && (
+						<Pressable
+							style={({ pressed }) => [
+								styles.seeMoreButton,
+								{ opacity: pressed ? 0.7 : 1 }
+							]}
+						>
+							<Text style={[styles.seeMoreText, { color: COLORS.brandPrimary }]}>
+								See All
+							</Text>
+							<Ionicons name="chevron-forward" size={16} color={COLORS.brandPrimary} />
+						</Pressable>
+					)}
 				</View>
 			) : displayHistory.length > 0 ? (
 				<View style={[styles.ledgerList, { backgroundColor: colors.card }]}>

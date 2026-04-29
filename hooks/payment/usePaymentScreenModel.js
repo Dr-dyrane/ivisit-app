@@ -62,9 +62,13 @@ export function usePaymentScreenModel() {
   const loadWalletData = async () => {
     setIsLoadingWallet(true);
     try {
+      // PULLBACK NOTE: fetch 100 on md+ (all items visible in unlimited scroll panel)
+      // OLD: always getPaymentHistory() → default limit 20
+      // NEW: 100 limit — covers virtually all real users; modal still has full history
+      const historyLimit = isManagementMode ? 100 : 20;
       const [balance, payments] = await Promise.all([
         paymentService.getWalletBalance(),
-        paymentService.getPaymentHistory()
+        paymentService.getPaymentHistory(historyLimit)
       ]);
       setWalletBalance(balance);
       setPaymentHistory(payments);

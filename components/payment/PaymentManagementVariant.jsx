@@ -173,6 +173,7 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode, lay
             onRefresh={model.refreshPaymentHistory}
             onSeeMore={() => model.setShowHistoryModal(true)}
             isDarkMode={isDarkMode}
+            showAll
           />
         </ScrollView>
 
@@ -250,6 +251,7 @@ export default function PaymentManagementVariant({ model, theme, isDarkMode, lay
         onSeeMore={() => model.setShowHistoryModal(true)}
         isDarkMode={isDarkMode}
       />
+      {/* NOTE: showAll is intentionally omitted here — compact/mobile layout keeps the 3-item cap and See All button */}
     </View>
   );
 }
