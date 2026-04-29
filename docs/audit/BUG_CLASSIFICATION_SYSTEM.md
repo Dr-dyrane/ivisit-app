@@ -1,5 +1,5 @@
 # iVisit Bug Classification System
-_Last updated: 2026-04-28_
+_Last updated: 2026-04-28 — Session 2 update_
 
 ---
 
@@ -89,6 +89,7 @@ Every bug is assigned a **Class** (structural type), a **Layer** (where it lives
 | BUG-008 | LR | HO | P1 | `useEmergencyHandlers` wrote both `COMPLETED` and `RATING_PENDING` in parallel — race caused incorrect lifecycle state. Fixed to sequential write. | `useEmergencyHandlers.js` (prior session) |
 | BUG-009 | DS | HO + AT | P1 | `deleteRecoveryClaim` ran after `updateVisit`. If the server write failed, the claim survived to the next session — re-surfacing the rating modal. On server failure with no rollback the claim was permanently lost, preventing retry. | `mapTracking.rating.js` 2026-04-28 — optimistic claim delete + claim rollback on failure |
 | BUG-010 | RCL | PS + AT | P1 | Generic `updateVisit` had no idempotency guard — duplicate submission after network failure could overwrite rating data. | `visitsService.updateRating` 2026-04-28 — `rated_at IS NULL` condition makes duplicate writes a safe no-op |
+| BUG-016 | HR | HO + SC | P1 | Payment → Map state gap: `router.push('/(auth)/map')` fired immediately after payment success with no cache invalidation. `useMapExploreFlow` derived `trackingRequestKey` from `activeAmbulanceTrip` which was still null. Map mounted with stale state → tracking never triggered → user required Metro restart. Fixed by awaiting `invalidateActiveTrip()` (TanStack Query cache invalidation) before navigation — deterministic refetch in-flight before map screen mounts. | `usePaymentScreenModel.js` (prior session) — `useInvalidateActiveTrip` hook |
 
 ---
 
@@ -96,9 +97,10 @@ Every bug is assigned a **Class** (structural type), a **Layer** (where it lives
 
 | ID | Class | Layer | Severity | Description | Detection Method |
 |---|---|---|---|---|---|
-| BUG-011 | SOC | AT + HO | P2 | `trackingRatingStateAtom` (in-flow, persisted) and `recoveredRatingStateAtom` (recovery, not persisted) are independent atoms. If a user completes a trip, app crashes between `writeTrackingRatingRecoveryClaim` and `setRatingState`, on restart: recovery path fires modal. In-flow atom is cleared (was never fully set). No conflict — but the recovery path skips `finalizeCompletedTracking` (`completeKind` not in recovery state context if the trip was for the same ride as an active Zustand state). | CLA |
-| BUG-012 | PC | AT | P3 | `trackingRatingStateAtom` is persisted via `persistedTrackingAtom`. If the app closes with `visible: true` (mid-rating), on next cold start the modal re-appears even if the user had already submitted (only the `deleteRecoveryClaim` write failed). This is the same underlying failure as BUG-010 but surfaces differently on cold start. | CLA |
+| BUG-011 | SOC | AT + HO | ~~P2~~ **CLOSED** | **Reclassified: by design.** Recovery path (`recoveredRatingStateAtom`) sets `completeKind: null` intentionally — the Zustand trip state (`activeAmbulanceTrip`/`activeBedBooking`) was already cleared at completion before the crash. `finalizeCompletedTracking` is a no-op on `null` completeKind. The two atoms are correctly independent: `trackingRatingStateAtom` is persisted (in-flow, survives cold start), `recoveredRatingStateAtom` is a plain `atom(null)` (session-only, re-derived from AsyncStorage claims on each mount). No actual conflict path exists. | N/A — closed after code audit 2026-04-28 |
+| BUG-012 | PC | AT | P3 | `trackingRatingStateAtom` is persisted via `persistedTrackingAtom` into `StorageKeys.TRACKING_VISUALIZATION` (bundled JSON write on every atom set). If the app closes with `ratingState.visible: true` mid-rating (e.g. OS kill), cold start re-hydrates the atom with `visible: true` and the modal re-appears. If BUG-009/010 fixes already ran (claim deleted, server already wrote), this is a phantom re-show with a stale `visitId`. Fix: on cold-start hydration, validate `ratingState.visible` against the visits cache — if `lifecycleState === RATED`, reset to `INITIAL_TRACKING_RATING_STATE` before the modal can surface. | CLA + HOA |
 | BUG-013 | SHM | RT | P2 | `mergeAmbulanceRealtimeTrip` (ambulances table) only maps `location` and `updated_at`. If the ambulances table gains a `heading` column (it currently has `responder_heading` on `emergency_requests` only), this merge function would silently drop it. Low risk today, pre-emptive flag. | SPA |
+| BUG-017 | GM | SC + HO | P2 | All stack screens except `PaymentScreen` have zero viewport awareness — no `getStackViewportVariant`, no `usesSidebarLayout`, no `contentMaxWidth` clamping. On web md+ they render as full-bleed single-column mobile layouts. Affected: `MoreScreen` (1498 lines), `InsuranceScreen` (1287 lines, direct Supabase calls in screen), `SearchScreen`, `NotificationsScreen`, `HelpSupportScreen`, `RequestAmbulanceScreen`. `PaymentStageBase` + `stackViewportConfig.js` are already the correct pattern to adopt. | SPA + PGA |
 | BUG-014 | GM | RT | P2 | `useEmergencyRealtime` patient location subscription (`watchPositionAsync`) has no guard against `Platform.OS === "web"` being the only guard — if `Location.getForegroundPermissionsAsync` throws on a device without location permission, the effect swallows the error silently and never sets up tracking. No toast/log visible to user. | PGA |
 | BUG-015 | SL | RT | P3 | `useEmergencyRealtime` per-trip subscription keyed on `activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId`. If these two values differ across a server merge (e.g. `id` changes but `requestId` stays same), the dep changes, old channel is removed, new one is created — but there is a gap window where no channel exists. Low frequency. | DAA |
 
@@ -146,19 +148,21 @@ Every bug is assigned a **Class** (structural type), a **Layer** (where it lives
 - `purgeStaleTrackingRatingClaims` — 5th layer, cross-checks against `lifecycleState` from Supabase (only works if `updateVisit` succeeded)
 - `isSubmitPending` / `isSkipPending` in modal — prevents double-tap within session
 
-### The gap
+### The gap (was)
 
 **If `updateVisit` fails, there is no retry or optimistic commit.** The claim stays live. The next session's `purgeStaleTrackingRatingClaims` will still find the visit as `RATING_PENDING` and re-surface the modal.
 
-### Fix path
+### Fix path — SHIPPED 2026-04-28
 
-Two layers needed:
+**Layer 1 — Optimistic claim delete + rollback (`mapTracking.rating.js`):**
+Claim is deleted from AsyncStorage *before* the network write. If the server write fails, `writeTrackingRatingRecoveryClaim` is called in the `catch` block to restore the claim so the recovery system can re-surface the modal in the next session.
 
-**Layer 1 — Optimistic lifecycle write before network call:**
-Write `lifecycleState = RATED` to local Zustand/visits cache optimistically before the `updateVisit` network call. On failure, roll back. This means `purgeStaleTrackingRatingClaims` sees `RATED` even if server is unreachable, and purges the claim.
+**Layer 2 — Server-side idempotency (`visitsService.updateRating`):**
+New dedicated method with `.is('rated_at', null)` Supabase filter — the PATCH is a no-op if the visit was already rated. Returns `{ alreadyRated: true }` which the caller treats as success, allowing `deleteRecoveryClaim` to complete cleanly. Tip processing is skipped on `alreadyRated: true` (tip was already charged in the original session).
 
-**Layer 2 — Server-side idempotency on rating:**
-`updateVisit` should be a PATCH with a `rated_at IS NULL` condition or use a Postgres upsert that is idempotent — so even if submitted twice, the second write is a no-op and returns success, allowing `deleteRecoveryClaim` to complete.
+### Remaining open item (BUG-012)
+
+`trackingRatingStateAtom` persists `visible: true` into `TRACKING_VISUALIZATION`. If BUG-009/010 fixes ran but the atom write to `visible: false` was lost (OS kill between `setRatingState(INITIAL)` and the AsyncStorage write), cold start re-shows the modal. **Not yet fixed.** Fix path: validate `ratingState.visible` against visits cache on hydration.
 
 ---
 
@@ -169,8 +173,45 @@ Write `lifecycleState = RATED` to local Zustand/visits cache optimistically befo
 □ Dep Array: every variable that could change across renders listed in useEffect deps?
 □ Phase Guard: every patchActiveAmbulanceTrip/store write has isTrackingMapActive or equivalent?
 □ Claim Lifecycle: every writeXxxClaim has deleteXxxClaim on BOTH success AND failure path?
+□ Claim Rollback: every optimistic deleteXxxClaim has a restore path in the catch block?
 □ In-flight Lock: every submit handler has isPending guard that survives unmount?
+□ Idempotency: every rating/payment mutation has a server-side uniqueness guard (rated_at IS NULL etc.)?
 □ Terminal Preservation: any query returning null — does the store sync effect preserve terminal state?
 □ Hydration Order: any queryFn reading store — uses getState() not closed-over selector?
 □ Shape Parity: realtime payload snake_case fields mapped to camelCase trip object for ALL consumed columns?
+□ Persisted Atom Validation: any persisted atom with a boolean flag (visible, active) — validated against server truth on cold-start hydration?
+□ Viewport Awareness: new stack screen uses getStackViewportVariant + PaymentStageBase pattern?
+□ Screen Size: new screen file < 500 lines? model hook extracted? service calls in hook not screen?
 ```
+
+---
+
+## Stack Screen Viewport Gap (BUG-017 detail)
+
+### What `PaymentScreen` has that others don't
+
+`PaymentStageBase` → `getStackViewportVariant` → `getStackViewportSurfaceConfig` → `computePaymentSidebarLayout`:
+- 14-variant resolver (ios/android/web × compact/tablet/desktop/xl)
+- Sidebar island at tablet+ (`overlayLayout: "left-sidebar"`)
+- `contentMaxWidth` clamping (720px tablet, 960px desktop, 1120px XL)
+- Centered modals at tablet+ (`modalPresentationMode: "centered-modal"`)
+- XL third-column context island
+
+### Screens that need this treatment (priority order)
+
+| Screen | Lines | Violations | Priority |
+|---|---|---|---|
+| `MoreScreen.jsx` | 1498 | No viewport, monolith, >800 line rule | **P2 / next** |
+| `InsuranceScreen.jsx` | 1287 | No viewport, direct Supabase calls in screen | **P2 / next** |
+| `SearchScreen.jsx` | 705 | No viewport, moderate | P3 |
+| `NotificationsScreen.jsx` | 555 | No viewport | P3 |
+| `HelpSupportScreen.jsx` | 532 | No viewport | P3 |
+| `RequestAmbulanceScreen.jsx` | 808 | Emergency flow — complex | P3 |
+| `MedicalProfileScreen.jsx` | 422 | No viewport | P3 |
+
+### Pattern to adopt
+1. Extract model hook (`useXxxScreenModel`) — owns all state + service calls
+2. Wrap in `StageBase` component — owns viewport resolution + layout shell
+3. Create `CompactVariant` + `SidebarVariant` (or `ManagementVariant`) — owns layout
+4. Screen file becomes a 10-20 line orchestrator (`<XxxScreenOrchestrator />`)
+5. Modals rendered at orchestrator level (not inside variants — avoids z-order issues)
