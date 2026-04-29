@@ -36,6 +36,14 @@ const COLUMN_CONTRACTS = {
   medical_profiles: [
     'user_id'
   ],
+  emergency_contacts: [
+    'id',
+    'user_id',
+    'name',
+    'phone',
+    'is_primary',
+    'is_active'
+  ],
   organizations: [
     'id',
     'name',
@@ -245,6 +253,7 @@ async function run() {
     'profiles',
     'preferences',
     'medical_profiles',
+    'emergency_contacts',
     'patient_wallets',
     'organizations',
     'organization_wallets',

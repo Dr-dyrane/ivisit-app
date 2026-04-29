@@ -7,38 +7,40 @@ export const PAYMENT_SCREEN_COPY = {
   // Management Mode
   management: {
     title: "Wallet",
-    subtitle: "FINANCIAL HUB",
+    subtitle: "Financial hub",
     savedMethods: "Saved Methods",
     recentActivity: "Recent Activity",
   },
-  
+
   // Checkout Mode
   checkout: {
     title: "Payment",
-    subtitle: "SECURE CHECKOUT",
+    subtitle: "Secure checkout",
     paymentMethod: "Payment Method",
   },
-  
+
   // Link Card
   linkCard: {
     title: "Link Payment Card",
     subtitle: "For automatic billing & top-ups",
   },
-  
+
   // Add Funds
   addFunds: {
     title: "Add Funds",
     placeholder: "Enter amount",
     confirm: "Add Funds",
-    success: (amount, newBalance) => `Added $${amount} to your wallet. Your new balance is $${newBalance.toFixed(2)}`,
+    success: (amount, newBalance) =>
+      `Added $${amount} to your wallet. Your new balance is $${newBalance.toFixed(2)}`,
     failed: "Top-up Failed",
     failedMessage: "Could not process top-up. Please check your card.",
   },
-  
+
   // Payment Method Linking
   linking: {
     title: "Link Payment Method",
-    message: (brand, last4, provider) => `Do you want to link ${brand} •••• ${last4} to your ${provider || 'insurance'} policy?`,
+    message: (brand, last4, provider) =>
+      `Do you want to link ${brand} •••• ${last4} to your ${provider || "insurance"} policy?`,
     cancel: "Cancel",
     confirm: "Link Card",
     success: "Success",
@@ -48,26 +50,28 @@ export const PAYMENT_SCREEN_COPY = {
     error: "Error",
     errorMessage: "Failed to link card to policy.",
   },
-  
+
   // Payment Processing
   payment: {
     selectionRequired: "Selection Required",
     selectionRequiredMessage: "Please choose a payment method to continue.",
     success: "Payment Successful",
-    successMessage: "Your request has been processed securely. Track your service real-time.",
+    successMessage:
+      "Your request has been processed securely. Track your service real-time.",
     trackNow: "Track Now",
     failed: "Payment Failed",
-    failedMessage: (message) => message || 'Something went wrong. Please try another card.',
+    failedMessage: (message) =>
+      message || "Something went wrong. Please try another card.",
     unableToConfirm: "Unable to confirm payment",
   },
-  
+
   // Add Payment Method
   addPaymentMethod: {
     success: "Success",
     successMessage: "Payment method linked successfully.",
     systemError: "System Error",
   },
-  
+
   // FAB
   fab: {
     icon: "add-circle",
@@ -79,7 +83,7 @@ export const PAYMENT_SCREEN_COPY = {
     animation: "prominent",
     allowInStack: true,
   },
-  
+
   // Service Types
   service: {
     baseService: "Base Service",

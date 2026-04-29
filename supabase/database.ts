@@ -417,6 +417,53 @@ export type Database = {
         }
         Relationships: []
       }
+      emergency_contacts: {
+        Row: {
+          created_at: string
+          display_id: string | null
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          name: string
+          phone: string
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          name: string
+          phone: string
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          name?: string
+          phone?: string
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_doctor_assignments: {
         Row: {
           assigned_at: string | null

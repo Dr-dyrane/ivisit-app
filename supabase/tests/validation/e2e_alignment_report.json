@@ -1,55 +1,90 @@
 {
-  "generatedAt": "2026-03-04T02:48:15.902Z",
+  "generatedAt": "2026-04-29T08:05:26.096Z",
   "source": "run_alignment_audit.js",
   "supabaseUrl": "https://dlwtcmhdzoklveihuhjf.supabase.co",
   "queryErrors": [],
   "counts": {
-    "profiles": 7,
-    "preferences": 7,
-    "medical_profiles": 7,
-    "patient_wallets": 7,
-    "organizations": 45,
-    "organization_wallets": 45,
-    "hospitals": 95,
-    "ambulances": 5,
-    "doctors": 1,
-    "emergency_requests": 19,
-    "visits": 24,
-    "payments": 25,
-    "emergency_doctor_assignments": 0,
-    "insurance_billing": 75,
-    "wallet_ledger": 16
+    "profiles": 257,
+    "preferences": 257,
+    "medical_profiles": 257,
+    "emergency_contacts": 0,
+    "patient_wallets": 257,
+    "organizations": 25,
+    "organization_wallets": 25,
+    "hospitals": 207,
+    "ambulances": 107,
+    "doctors": 103,
+    "emergency_requests": 82,
+    "visits": 90,
+    "payments": 90,
+    "emergency_doctor_assignments": 109,
+    "insurance_billing": 238,
+    "wallet_ledger": 67
   },
   "bootstrapCoverage": {
-    "profiles": 7,
-    "preferences": 7,
-    "medicalProfiles": 7,
-    "patientWallets": 7,
+    "profiles": 257,
+    "preferences": 257,
+    "medicalProfiles": 257,
+    "patientWallets": 257,
     "missingPreferences": [],
     "missingMedicalProfiles": [],
     "missingPatientWallets": []
   },
   "orgWalletCoverage": {
-    "organizations": 45,
-    "organizationWallets": 45,
+    "organizations": 25,
+    "organizationWallets": 25,
     "nullOrgWallets": [],
     "orphanOrgWallets": [],
     "missing": []
   },
   "emergencyVisitHealth": {
-    "emergencyCount": 19,
-    "visitCount": 24,
+    "emergencyCount": 82,
+    "visitCount": 90,
     "missingVisitsCount": 0,
     "emergenciesMissingVisits": [],
-    "duplicateVisitsPerRequest": []
+    "duplicateVisitsPerRequest": [
+      {
+        "requestId": "bd52e0d9-b0e0-4cea-a1f1-1610217c169f",
+        "count": 2,
+        "visitIds": [
+          "eb9f6d25-fc53-4a01-a1e3-33a35f317cb1",
+          "bd52e0d9-b0e0-4cea-a1f1-1610217c169f"
+        ]
+      },
+      {
+        "requestId": "08ff1bfb-a668-462a-ad5f-2561fc538fe6",
+        "count": 2,
+        "visitIds": [
+          "0fbb6143-d652-45ef-92d9-70afb109577e",
+          "08ff1bfb-a668-462a-ad5f-2561fc538fe6"
+        ]
+      },
+      {
+        "requestId": "32679d02-8f91-4a46-9c93-b1d0d1db9fc9",
+        "count": 2,
+        "visitIds": [
+          "521a8f18-5f27-49bc-92db-58b9e387c992",
+          "32679d02-8f91-4a46-9c93-b1d0d1db9fc9"
+        ]
+      }
+    ]
   },
   "paymentHealth": {
-    "total": 25,
-    "linkedToEmergency": 11,
-    "missingEmergencyLink": 14,
+    "total": 90,
+    "linkedToEmergency": 81,
+    "missingEmergencyLink": 9,
     "missingOrganizationLink": 0,
-    "pendingCash": 6,
+    "pendingCash": 8,
     "paymentsMissingLinks": [
+      {
+        "id": "0a8acedf-9147-4665-8fbd-7248b5ac66c1",
+        "display_id": "PAY-208C3C",
+        "payment_method": "card",
+        "status": "completed",
+        "amount": 136.5,
+        "emergency_request_id": null,
+        "organization_id": "b8332507-2ecf-46c4-8445-ed3448f352bf"
+      },
       {
         "id": "35e8b99e-003d-478e-9b87-a2a48bcc8756",
         "display_id": "PAY-BA38CC",
@@ -121,138 +156,664 @@
         "amount": 165,
         "emergency_request_id": null,
         "organization_id": "12ae277e-474d-405f-b65f-2c6b2c044897"
-      },
-      {
-        "id": "6d6d3aab-6339-4425-aea6-e7ce75ee9409",
-        "display_id": "PAY-401799",
-        "payment_method": "card",
-        "status": "completed",
-        "amount": 120,
-        "emergency_request_id": null,
-        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
-      },
-      {
-        "id": "00ed5b18-d11e-4f8d-9257-9bfab1e387d4",
-        "display_id": "PAY-18E7DE",
-        "payment_method": "cash",
-        "status": "completed",
-        "amount": 130,
-        "emergency_request_id": null,
-        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
-      },
-      {
-        "id": "610bda23-e811-4a3a-b116-6072b7cb581d",
-        "display_id": "PAY-527C40",
-        "payment_method": "cash",
-        "status": "completed",
-        "amount": 80,
-        "emergency_request_id": null,
-        "organization_id": "754dd2bf-33ee-4bdd-860f-33c304b0e126"
-      },
-      {
-        "id": "2f2abb8d-f8bc-4fe8-a457-09239a849619",
-        "display_id": "PAY-C0F98C",
-        "payment_method": "cash",
-        "status": "completed",
-        "amount": 130,
-        "emergency_request_id": null,
-        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
-      },
-      {
-        "id": "bf670392-f12d-4bb6-96bd-1d3b4275da75",
-        "display_id": "PAY-2D9F22",
-        "payment_method": "cash",
-        "status": "completed",
-        "amount": 80,
-        "emergency_request_id": null,
-        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
-      },
-      {
-        "id": "d043d1f8-e4ab-45b1-acb7-cc84215a4090",
-        "display_id": "PAY-663FBA",
-        "payment_method": "card",
-        "status": "completed",
-        "amount": 120,
-        "emergency_request_id": null,
-        "organization_id": "4cb4eee3-9b90-49e9-911a-fa248d1cf87d"
       }
     ],
     "placeholderOrphans": []
   },
   "dispatchHealth": {
-    "activeCount": 0,
-    "byServiceType": {},
+    "activeCount": 2,
+    "byServiceType": {
+      "bed": 1,
+      "ambulance": 1
+    },
     "ambulanceFlow": {
-      "activeCount": 0,
-      "dispatchPhaseCount": 0,
-      "withAmbulanceId": 0,
-      "withResponderId": 0,
+      "activeCount": 1,
+      "dispatchPhaseCount": 1,
+      "withAmbulanceId": 1,
+      "withResponderId": 1,
       "withResponderLocation": 0,
-      "withPatientLocation": 0,
+      "withPatientLocation": 1,
       "dispatchPhaseMissingAssignments": 0,
       "dispatchPhaseMissingHospital": 0,
-      "dispatchPhaseRecords": [],
-      "activeRecords": []
+      "dispatchPhaseRecords": [
+        {
+          "id": "99694e3c-f8a5-48ec-947b-0accec68c42f",
+          "display_id": "REQ-08964F",
+          "status": "accepted",
+          "service_type": "ambulance",
+          "hospital_id": "5c06089d-70c0-40f6-a102-4b1978aedfb9",
+          "ambulance_id": "8a0c11f0-6ee8-48e0-9ef5-cc677413a9f8",
+          "responder_id": "63458cec-f3f6-4317-b4f1-8acded383a7a"
+        }
+      ],
+      "activeRecords": [
+        {
+          "id": "99694e3c-f8a5-48ec-947b-0accec68c42f",
+          "display_id": "REQ-08964F",
+          "status": "accepted",
+          "service_type": "ambulance",
+          "ambulance_id": "8a0c11f0-6ee8-48e0-9ef5-cc677413a9f8",
+          "responder_id": "63458cec-f3f6-4317-b4f1-8acded383a7a",
+          "has_responder_location": false,
+          "has_patient_location": true
+        }
+      ]
     },
     "nonAmbulanceFlow": {
-      "activeCount": 0,
-      "activeRecords": []
+      "activeCount": 1,
+      "activeRecords": [
+        {
+          "id": "b346d9a6-f6d8-42f0-95c3-3367e3ca6030",
+          "display_id": "REQ-E271D2",
+          "status": "accepted",
+          "service_type": "bed",
+          "ambulance_id": null,
+          "responder_id": null
+        }
+      ]
     },
-    "activeRecords": []
+    "activeRecords": [
+      {
+        "id": "b346d9a6-f6d8-42f0-95c3-3367e3ca6030",
+        "display_id": "REQ-E271D2",
+        "status": "accepted",
+        "service_type": "bed",
+        "ambulance_id": null,
+        "responder_id": null,
+        "has_responder_location": false,
+        "has_patient_location": true
+      },
+      {
+        "id": "99694e3c-f8a5-48ec-947b-0accec68c42f",
+        "display_id": "REQ-08964F",
+        "status": "accepted",
+        "service_type": "ambulance",
+        "ambulance_id": "8a0c11f0-6ee8-48e0-9ef5-cc677413a9f8",
+        "responder_id": "63458cec-f3f6-4317-b4f1-8acded383a7a",
+        "has_responder_location": false,
+        "has_patient_location": true
+      }
+    ]
   },
   "duplicateCandidates": {
     "organizationsByName": [],
     "hospitalsByName": [
       {
         "key": "hemet valley medical center",
-        "count": 2,
+        "count": 5,
         "ids": [
-          "5bde70b9-212e-42f2-b51a-61ced5f649ce",
-          "c32c4600-1275-4630-be98-6c0836f67245"
+          "c32c4600-1275-4630-be98-6c0836f67245",
+          "152f1282-ecc1-402a-8acb-d83d59d26d83",
+          "079b3783-98a6-4f9b-baa0-3e431a2665eb",
+          "2fc65a9e-7907-49bf-a3d8-730ed432d96e",
+          "8fef9265-8d26-4256-a194-0b3dec9eeb52"
         ],
         "displayIds": [
-          "HSP-24B5EA",
-          "HSP-110376"
+          "HSP-110376",
+          "HSP-9B0B89",
+          "HSP-E3D951",
+          "HSP-B1EBF4",
+          "HSP-475220"
         ]
       },
       {
-        "key": "kindred hospital riverside",
-        "count": 2,
+        "key": "phh tech center",
+        "count": 5,
         "ids": [
-          "e00d3dfc-432b-4f74-b382-169af461b61c",
-          "d2baf8c1-5337-426b-aa84-eab9ae99bb23"
+          "95643193-ab41-4ef8-a047-3f6556d4c15d",
+          "e4df3a1c-39d8-448b-a6c9-36fd407888fe",
+          "bf49278d-9211-4780-87d0-9fc616f6fd66",
+          "19b1caeb-7430-4848-b83d-efa22a38cf65",
+          "e4243778-903c-43d7-b245-2763adc684ec"
         ],
         "displayIds": [
-          "HSP-6AAC1C",
-          "HSP-A43DB3"
+          "HSP-6FBC91",
+          "HSP-F3EB15",
+          "HSP-520136",
+          "HSP-93A992",
+          "HSP-7B7560"
+        ]
+      },
+      {
+        "key": "lhl",
+        "count": 4,
+        "ids": [
+          "8e546b51-dae6-420b-a4f2-0eff1e738042",
+          "d09bdc4e-fb91-4b39-93d2-64754b1acc2f",
+          "ebc7498e-3d7e-435b-8553-c03d29a1a972",
+          "7b234110-8b7f-45b0-a250-fb2f26ac7863"
+        ],
+        "displayIds": [
+          "HSP-7FB69B",
+          "HSP-0734B0",
+          "HSP-CA9882",
+          "HSP-35CD1E"
+        ]
+      },
+      {
+        "key": "menifee valley medical center",
+        "count": 4,
+        "ids": [
+          "8bc06c7d-a47e-489a-8ec8-a0e0cdac60b6",
+          "e2fd25f4-4047-4cba-a30a-9c4510e9e357",
+          "6e830d6b-c9b0-479a-8b2b-4f3946a312a8",
+          "186c6fc4-34c5-46bb-ae52-639b4060cf74"
+        ],
+        "displayIds": [
+          "HSP-967ED4",
+          "HSP-540CC9",
+          "HSP-AE6833",
+          "HSP-09CE63"
+        ]
+      },
+      {
+        "key": "valley medical center",
+        "count": 4,
+        "ids": [
+          "8cccbdc3-5834-4989-8782-dd995b1d9b44",
+          "6fb96582-926f-49b6-8fbf-4ba62c7a1463",
+          "446542cd-d122-420b-bb44-a2e78455c9b3",
+          "110312df-78ea-4556-9652-2ca35d3db147"
+        ],
+        "displayIds": [
+          "HSP-4B5A18",
+          "HSP-7F4D70",
+          "HSP-43C4D0",
+          "HSP-521F25"
+        ]
+      },
+      {
+        "key": "lagos island general hospital",
+        "count": 3,
+        "ids": [
+          "5eb7c7bb-186a-43fb-88e4-992cbe5e525f",
+          "9a37a399-f47a-4c2e-8ec6-a78a85243ac9",
+          "883818c4-0496-4e76-a3fb-b4e8ae11d9dd"
+        ],
+        "displayIds": [
+          "HSP-E07858",
+          "HSP-0A6378",
+          "HSP-EED949"
+        ]
+      },
+      {
+        "key": "lekki coast medical centre",
+        "count": 3,
+        "ids": [
+          "e85b382b-8488-40df-9728-4b4bcd8b8a0d",
+          "73dc7d19-cb64-4941-bc56-c674741573b0",
+          "108307f9-225b-4bda-8d43-501b5a3a8527"
+        ],
+        "displayIds": [
+          "HSP-BE6032",
+          "HSP-A62BB1",
+          "HSP-688B53"
+        ]
+      },
+      {
+        "key": "menifee global medical center",
+        "count": 3,
+        "ids": [
+          "b8923d96-a91a-40dd-9703-8961538f0fd8",
+          "14b80975-a861-4704-b6f7-4e239b859c30",
+          "0d663f07-4a3f-42fd-81ac-bf4943dbf78f"
+        ],
+        "displayIds": [
+          "HSP-EAEA89",
+          "HSP-F24B1E",
+          "HSP-9D4102"
+        ]
+      },
+      {
+        "key": "surulere emergency hospital",
+        "count": 3,
+        "ids": [
+          "512d36bc-76dd-429f-9891-abe8b22fe9b7",
+          "47d33130-7b90-4fba-a622-0b3ececbea97",
+          "11585af6-f52d-4af6-95ca-5a2777597a59"
+        ],
+        "displayIds": [
+          "HSP-8FEC81",
+          "HSP-8C23A8",
+          "HSP-200087"
+        ]
+      },
+      {
+        "key": "victoria island emergency centre",
+        "count": 3,
+        "ids": [
+          "1b7c1799-8070-4982-b786-bb2ba6e84949",
+          "bdc4fcc5-5396-4695-950c-563bd18aa998",
+          "b2c56ffc-bfdf-4213-8b84-1ff45993f309"
+        ],
+        "displayIds": [
+          "HSP-C9812C",
+          "HSP-CA2681",
+          "HSP-4B86BD"
+        ]
+      },
+      {
+        "key": "yaba community hospital",
+        "count": 3,
+        "ids": [
+          "aa13e2f5-3637-4433-a679-d0967391e002",
+          "46312245-ba11-4946-b71d-07aec6deb604",
+          "323bbbf8-6be2-4ed6-ac71-bea198878d8e"
+        ],
+        "displayIds": [
+          "HSP-BFE6FC",
+          "HSP-645870",
+          "HSP-784C54"
+        ]
+      },
+      {
+        "key": "5c",
+        "count": 2,
+        "ids": [
+          "b68800e2-59ac-40e7-9a09-b0605d1debce",
+          "97c4b139-c747-4ed6-923c-e324e49e8eba"
+        ],
+        "displayIds": [
+          "HSP-ACCC56",
+          "HSP-665E8C"
+        ]
+      },
+      {
+        "key": "cardiology clinic 4a",
+        "count": 2,
+        "ids": [
+          "e9da32a6-e3f6-4c95-a0f5-0572d86eca22",
+          "769c3aad-bc44-4271-a2ec-829fba9e0355"
+        ],
+        "displayIds": [
+          "HSP-EAE0AE",
+          "HSP-8CE66B"
+        ]
+      },
+      {
+        "key": "green waters hospital",
+        "count": 2,
+        "ids": [
+          "ceaec305-e586-497b-8b5d-bf4ad6efb135",
+          "eb3a6bbe-4eb6-4e34-aaef-5e5e8a0b9cb3"
+        ],
+        "displayIds": [
+          "HSP-8560BC",
+          "HSP-B8A450"
+        ]
+      },
+      {
+        "key": "guiding hands home care",
+        "count": 2,
+        "ids": [
+          "e0a32c95-5152-4d62-87ce-ddc1055cd464",
+          "7df2c5dd-5320-4939-9dff-f1169c7e747d"
+        ],
+        "displayIds": [
+          "HSP-CD9D8C",
+          "HSP-8376F0"
+        ]
+      },
+      {
+        "key": "hope hospice and healthcare",
+        "count": 2,
+        "ids": [
+          "385c3b75-99ea-4432-a837-1af68ed4386d",
+          "1880fea5-3097-4ad7-959b-83aad2be6b32"
+        ],
+        "displayIds": [
+          "HSP-EB20B4",
+          "HSP-AD2B2F"
+        ]
+      },
+      {
+        "key": "loma linda university medical center - murrieta emergency services",
+        "count": 2,
+        "ids": [
+          "0d8b8a7a-344d-4885-8f03-37fa2d57dac2",
+          "307e0b6e-5838-4fb5-b5b8-23dbff935f6f"
+        ],
+        "displayIds": [
+          "HSP-BC5FCD",
+          "HSP-D4AB17"
+        ]
+      },
+      {
+        "key": "machine intelligence in medicine lab",
+        "count": 2,
+        "ids": [
+          "2c2ef182-69aa-4c3d-8130-0748796d20b3",
+          "61fdc355-c845-4280-81d1-b74218281c90"
+        ],
+        "displayIds": [
+          "HSP-9A4B36",
+          "HSP-9B116E"
+        ]
+      },
+      {
+        "key": "murietta",
+        "count": 2,
+        "ids": [
+          "7e059679-aae5-4cfa-9ca0-ce8efae90f21",
+          "1413a808-34c9-4da0-bbce-d491e33f141c"
+        ],
+        "displayIds": [
+          "HSP-055B80",
+          "HSP-492B61"
         ]
       },
       {
         "key": "new york blood center - grand central donor center",
         "count": 2,
         "ids": [
-          "c93c9302-9d18-4fff-8aa8-5546bdb5e180",
-          "a90b1860-74cc-4894-b510-d07402f47a11"
+          "a90b1860-74cc-4894-b510-d07402f47a11",
+          "c93c9302-9d18-4fff-8aa8-5546bdb5e180"
         ],
         "displayIds": [
-          "HSP-5D6651",
-          "HSP-F23484"
+          "HSP-F23484",
+          "HSP-5D6651"
         ]
       },
       {
         "key": "odyssey hospice",
         "count": 2,
         "ids": [
-          "aea90c0b-e11b-4e6e-9450-a13c4fc8012f",
-          "58e8e4b5-5e37-4672-a5e5-446bfc0ff539"
+          "5c06089d-70c0-40f6-a102-4b1978aedfb9",
+          "c66384a9-27b8-41ba-bb51-e46ac263bb09"
         ],
         "displayIds": [
-          "HSP-6B320A",
-          "HSP-EE0C40"
+          "HSP-E70A50",
+          "HSP-E2C404"
+        ]
+      },
+      {
+        "key": "san gorgonio memorial hospital",
+        "count": 2,
+        "ids": [
+          "bb70eff1-a0c3-4224-a6bd-cf5b95a9cbe5",
+          "66487f86-967b-4873-8994-af8fd919dd1c"
+        ],
+        "displayIds": [
+          "HSP-AF6536",
+          "HSP-380413"
+        ]
+      },
+      {
+        "key": "serenity haven",
+        "count": 2,
+        "ids": [
+          "f88707e4-6a1e-4cd3-bf6b-6b589e6c4f47",
+          "d4f05b76-6f91-4955-9a11-7df0daa5d64f"
+        ],
+        "displayIds": [
+          "HSP-8E885F",
+          "HSP-976036"
+        ]
+      },
+      {
+        "key": "st michaels hospital clinical research",
+        "count": 2,
+        "ids": [
+          "0129fe37-5af2-4638-9912-5c2cb52dbb51",
+          "8f0f8734-b6ec-49be-aa31-d3efaa7b49f0"
+        ],
+        "displayIds": [
+          "HSP-A0A328",
+          "HSP-C8A594"
+        ]
+      },
+      {
+        "key": "the hospital for sick children emergency room",
+        "count": 2,
+        "ids": [
+          "4d97a50f-7c2c-48e2-aa6a-f1e612b127d3",
+          "c74350a6-67d4-4289-99b0-e1eee22790d9"
+        ],
+        "displayIds": [
+          "HSP-DE6262",
+          "HSP-BBA595"
+        ]
+      },
+      {
+        "key": "visiting nurse association of inland",
+        "count": 2,
+        "ids": [
+          "028101e5-2d28-4fb5-b57a-0ff57033e422",
+          "5b2c89ee-87fd-4576-9d8a-083a3059822f"
+        ],
+        "displayIds": [
+          "HSP-77F584",
+          "HSP-47C866"
         ]
       }
     ],
     "ambulancesByCallSignGlobal": [
+      {
+        "key": "d-amb-2",
+        "count": 10,
+        "ids": [
+          "4329cfb9-e82a-4248-b3ee-84e89c287b89",
+          "d0126386-4fe7-477f-9fe3-2c5d4b46411a",
+          "0309e7ee-52af-47bd-b900-0a6f79988b87",
+          "567e45a2-be60-431e-8d23-6a982d57cef5",
+          "4e05a2d1-8dab-4f55-af35-03c6b79636bf",
+          "706b85b5-bdee-4045-9624-aae21fabc0dd",
+          "4aedd82d-d56f-4621-8594-27cfef4e631a",
+          "89eb03fe-2be7-4c6c-8cfc-7921ce6b2d22",
+          "f454aacd-072a-4e09-a28c-29f55b430f97",
+          "8a0c11f0-6ee8-48e0-9ef5-cc677413a9f8"
+        ],
+        "displayIds": [
+          "AMB-DE9247",
+          "AMB-5D0C25",
+          "AMB-191C25",
+          "AMB-96641A",
+          "AMB-71AC15",
+          "AMB-4C3C5A",
+          "AMB-48DD30",
+          "AMB-52BB3C",
+          "AMB-29C9F1",
+          "AMB-7B9F94"
+        ]
+      },
+      {
+        "key": "d-amb-3",
+        "count": 10,
+        "ids": [
+          "1c4aae61-7ad9-4962-9018-966522dca60a",
+          "ae37d063-056e-4851-8905-c1682688ec78",
+          "a672a177-1ee3-480e-92e6-44ba9157f1e0",
+          "9b74956d-2465-4b5b-80ec-4928311284b8",
+          "1aa6ccd0-427d-4d8a-9c25-54ee57a6b9fd",
+          "2d5058f7-4bd9-4e5f-b896-0a7c09b73bdb",
+          "49eab1fd-53e3-42d0-8d15-c55f97cc73d3",
+          "07769f79-effd-4c4a-a99f-020e6b8b50cb",
+          "d6e715bf-eee8-474d-8f50-0e96505a2a98",
+          "dcc6ffdd-110b-4748-983e-39e269bdb6a2"
+        ],
+        "displayIds": [
+          "AMB-4B4E4F",
+          "AMB-0D812C",
+          "AMB-F1A050",
+          "AMB-744A63",
+          "AMB-F56A5E",
+          "AMB-089288",
+          "AMB-0E8216",
+          "AMB-19FE8A",
+          "AMB-99A855",
+          "AMB-B7D3EC"
+        ]
+      },
+      {
+        "key": "d-amb-1",
+        "count": 9,
+        "ids": [
+          "c7133ab5-cff4-40e3-9772-bbc022a81352",
+          "777e74ef-f358-43f4-8260-ccc8c869cb4d",
+          "75358225-9231-4008-a556-cf01efb1831d",
+          "24c58604-0841-4127-bc24-ff4312a30bab",
+          "449499f1-35da-461b-bf46-d9b602d3ea9c",
+          "3b264cc6-7060-49ba-b4f2-16e7d65c133f",
+          "6d64413e-9d21-4cf6-b633-d9bb6349b4eb",
+          "aa8fa3f5-ea93-407d-900f-16b4c0ebb7af",
+          "e897f9c6-5fba-4dc4-9b18-2e605ecd23f1"
+        ],
+        "displayIds": [
+          "AMB-9D36AF",
+          "AMB-6B3CFD",
+          "AMB-0B5DF4",
+          "AMB-219C51",
+          "AMB-CCCEDF",
+          "AMB-228B82",
+          "AMB-F88C79",
+          "AMB-1EA00A",
+          "AMB-10EB6E"
+        ]
+      },
+      {
+        "key": "d-amb-4",
+        "count": 9,
+        "ids": [
+          "7f90e252-b398-4cb9-a508-d8ecf5593824",
+          "252a6bd9-1570-410f-8899-1fdcbcf34513",
+          "32df1815-7adb-4ed1-af0f-d8463ddb65c0",
+          "832dc794-c41b-4398-a4ad-fbd663e7c646",
+          "1e2af797-6324-4937-a672-4ffc9cbc9c7d",
+          "0e149f6a-8bda-4355-a928-d32b26323c72",
+          "b98b6866-1116-4913-97e2-dbc3d5ae2393",
+          "0fde6bc1-c67f-4779-93e1-8664de758561",
+          "ba7e8048-5ba8-4409-9fab-59ad21398352"
+        ],
+        "displayIds": [
+          "AMB-35F3E0",
+          "AMB-83EDD4",
+          "AMB-698556",
+          "AMB-8498BA",
+          "AMB-F79F03",
+          "AMB-E011F3",
+          "AMB-0F0165",
+          "AMB-00C3A9",
+          "AMB-063E0B"
+        ]
+      },
+      {
+        "key": "d-amb-5",
+        "count": 9,
+        "ids": [
+          "c77a5fa7-2e99-4bc3-903d-c59820b8a230",
+          "92f014ab-72e4-451e-b348-cf5ea611884a",
+          "7d90dc1b-6eb6-4265-bcd8-85ce433b6e43",
+          "86e07db7-1490-48f3-b6cb-878c938cf644",
+          "aacce356-d543-49d3-8cda-41997d9935d8",
+          "97007fe0-1ec8-456e-8e0a-d114c62ee423",
+          "4109bcfa-79fa-4345-bad8-720b99e20c05",
+          "8225deda-920b-49dd-8f81-1c56b1ec74ec",
+          "ac4f070d-0dd1-4bfb-be0f-8fda0e723df0"
+        ],
+        "displayIds": [
+          "AMB-4927C9",
+          "AMB-9A7985",
+          "AMB-430A29",
+          "AMB-6B1151",
+          "AMB-DC7F99",
+          "AMB-56444C",
+          "AMB-A63220",
+          "AMB-774054",
+          "AMB-301DE9"
+        ]
+      },
+      {
+        "key": "d-amb-6",
+        "count": 7,
+        "ids": [
+          "8167d9e1-eb29-4693-88a9-b3cf1810a00a",
+          "b7646839-decb-4416-93e1-63c52de28439",
+          "999d1082-1e78-40c4-afc5-cab05361c8f1",
+          "a004db80-f54d-404e-a177-754d442c2c8e",
+          "0701f678-1c6a-454a-b14c-78f41e1774a2",
+          "da317fc3-faf4-400c-b35e-fa26c78cd281",
+          "d53dff07-691a-41fb-b862-136122e08d0e"
+        ],
+        "displayIds": [
+          "AMB-087AF4",
+          "AMB-344992",
+          "AMB-21CE5C",
+          "AMB-675F78",
+          "AMB-08AB8F",
+          "AMB-416053",
+          "AMB-F3ACC1"
+        ]
+      },
+      {
+        "key": "d-amb-10",
+        "count": 3,
+        "ids": [
+          "6f2c26a1-b25c-4137-b267-a62e47561fe5",
+          "b4c6b5ac-e0d5-4a45-a7f8-f217f18216e5",
+          "63e420a7-4107-41d1-8278-2a5eb1df6733"
+        ],
+        "displayIds": [
+          "AMB-89DE36",
+          "AMB-926573",
+          "AMB-CA073E"
+        ]
+      },
+      {
+        "key": "d-amb-11",
+        "count": 3,
+        "ids": [
+          "9a054ea8-1387-434d-8e39-c331b48c71bd",
+          "94f2d4cf-48fe-46bf-b58b-9db7e019117e",
+          "b1dab703-1bac-497f-b4b4-ca510ef62c4d"
+        ],
+        "displayIds": [
+          "AMB-A5C4E7",
+          "AMB-A42314",
+          "AMB-DA271B"
+        ]
+      },
+      {
+        "key": "d-amb-7",
+        "count": 3,
+        "ids": [
+          "482546d4-e18f-4385-92bd-d7910740aebe",
+          "755b1f7c-5863-4d1a-94cd-1d05ef5fbbb2",
+          "d73023c8-b325-4eaa-a25e-70492dcbe9ff"
+        ],
+        "displayIds": [
+          "AMB-076AD2",
+          "AMB-18E2A9",
+          "AMB-0986F1"
+        ]
+      },
+      {
+        "key": "d-amb-8",
+        "count": 3,
+        "ids": [
+          "b88b5dcb-5754-41c7-9a40-80df35663867",
+          "9ec01fbd-deb4-4944-9e1a-0f81a5656005",
+          "0e324e69-d6e9-4805-892e-8740ec3189d7"
+        ],
+        "displayIds": [
+          "AMB-2E4DF3",
+          "AMB-6CB721",
+          "AMB-DD3980"
+        ]
+      },
+      {
+        "key": "d-amb-9",
+        "count": 3,
+        "ids": [
+          "d827a708-0b91-45bd-b34d-281dce3abb55",
+          "a8e72876-3b8a-49e5-97c6-5b1c42453e9d",
+          "449ba6c8-9387-4421-abc6-ea51d7c95519"
+        ],
+        "displayIds": [
+          "AMB-48939D",
+          "AMB-E481A7",
+          "AMB-C0E81E"
+        ]
+      },
       {
         "key": "bravo-02",
         "count": 2,
@@ -276,12 +837,24 @@
           "AMB-E4DE9C",
           "AMB-FD6F48"
         ]
+      },
+      {
+        "key": "d-amb-12",
+        "count": 2,
+        "ids": [
+          "e17b0a1d-db9e-47f0-a3fd-4d32ae79922d",
+          "e71b0d02-dcc4-45a4-ae82-d152489de80b"
+        ],
+        "displayIds": [
+          "AMB-536D1D",
+          "AMB-D95502"
+        ]
       }
     ],
     "ambulancesByHospitalAndCallSign": []
   },
   "schemaContracts": {
-    "checkedTables": 16,
+    "checkedTables": 17,
     "missingColumnsByTable": [],
     "probeErrors": []
   },

@@ -1,27 +1,43 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, Platform, Image } from 'react-native';
-import { useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo } from "react";
+import { View, Text, ScrollView, Platform, Image } from "react-native";
+import { useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   PaymentIdentitySection,
   PaymentSummarySection,
   ServiceReceiptCard,
   PaymentFooter,
   PaymentContextIsland,
-} from './PaymentScreenComponents';
-import PaymentMethodSelector from './PaymentMethodSelector';
-import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
-import { getStackViewportVariant, getStackViewportVariantGroup, isDesktopStackVariant } from '../../utils/ui/stackViewportConfig';
-import { getStackResponsiveMetrics } from '../../utils/ui/stackResponsiveMetrics';
-import { BlurView } from 'expo-blur';
-import { PAYMENT_SIDEBAR_HIG, computeHeaderClearance, getPaymentSidebarGlassTokens, computeThirdColumnLayout } from './paymentSidebarLayout';
-import { COLORS } from '../../constants/colors';
+} from "./PaymentScreenComponents";
+import PaymentMethodSelector from "./PaymentMethodSelector";
+import { PAYMENT_SCREEN_COPY } from "./paymentScreen.content";
+import {
+  getStackViewportVariant,
+  getStackViewportVariantGroup,
+  isDesktopStackVariant,
+} from "../../utils/ui/stackViewportConfig";
+import { getStackResponsiveMetrics } from "../../utils/ui/stackResponsiveMetrics";
+import { BlurView } from "expo-blur";
+import {
+  PAYMENT_SIDEBAR_HIG,
+  computeHeaderClearance,
+  getPaymentSidebarGlassTokens,
+  computeThirdColumnLayout,
+} from "./paymentSidebarLayout";
+import { COLORS } from "../../constants/colors";
 
 // PULLBACK NOTE: Pass 7 finalization — HIG island layout at MD+ (mirrors Management variant)
 // Left island: PaymentIdentitySection + PaymentSummarySection
 // Right panel: PaymentMethodSelector + PaymentFooter (under floating header)
 
-export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layout = null, bottomPadding = 90, surfaceConfig = {} }) {
+export default function PaymentCheckoutVariant({
+  model,
+  theme,
+  isDarkMode,
+  layout = null,
+  bottomPadding = 90,
+  surfaceConfig = {},
+}) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -35,7 +51,7 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
     [viewportVariant],
   );
   const metrics = useMemo(
-    () => getStackResponsiveMetrics(variantGroup || 'compact'),
+    () => getStackResponsiveMetrics(variantGroup || "compact"),
     [variantGroup],
   );
 
@@ -47,12 +63,25 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
   );
 
   if (usesSidebarLayout) {
-    const { sidebarWidth, sidebarLeft, sidebarGutter, sidebarInnerPadding, sidebarInnerPaddingHorizontal, rightPanelLeftPadding, rightPanelRightPadding } = layout;
+    const {
+      sidebarWidth,
+      sidebarLeft,
+      sidebarGutter,
+      sidebarInnerPadding,
+      sidebarInnerPaddingHorizontal,
+      rightPanelLeftPadding,
+      rightPanelRightPadding,
+    } = layout;
     const { SIDEBAR_CORNER_RADIUS } = PAYMENT_SIDEBAR_HIG;
     const glass = getPaymentSidebarGlassTokens({ isDarkMode });
     const isDesktop = isDesktopStackVariant(viewportVariant);
     const centerPanelMaxWidth = isDesktop ? 800 : 640;
-    const { usesThirdColumn, thirdIslandWidth, thirdIslandRight, centerPanelMarginRight } = computeThirdColumnLayout({ layout, viewportVariant });
+    const {
+      usesThirdColumn,
+      thirdIslandWidth,
+      thirdIslandRight,
+      centerPanelMarginRight,
+    } = computeThirdColumnLayout({ layout, viewportVariant });
 
     return (
       <>
@@ -60,28 +89,46 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
         <View
           pointerEvents="none"
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: sidebarLeft,
             width: sidebarWidth,
             top: 0,
             height: headerClearance,
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: "row",
+            alignItems: "center",
             paddingLeft: sidebarInnerPaddingHorizontal + 4,
             gap: 8,
           }}
         >
           <Image
-            source={require('../../assets/logo.png')}
+            source={require("../../assets/logo.png")}
             style={{ width: 28, height: 28 }}
             resizeMode="contain"
           />
-          <View style={{ flexDirection: 'column', gap: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '900', letterSpacing: -0.5, color: isDarkMode ? '#FFFFFF' : '#0F172A', lineHeight: 20 }}>
+          <View style={{ flexDirection: "column", gap: 1 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "900",
+                letterSpacing: -0.5,
+                color: isDarkMode ? "#FFFFFF" : "#0F172A",
+                lineHeight: 20,
+              }}
+            >
               iVisit<Text style={{ color: COLORS.brandPrimary }}>.</Text>
             </Text>
-            <Text style={{ fontSize: 8, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', color: COLORS.brandPrimary, opacity: 0.7, lineHeight: 10 }}>
-              Emergency Response
+            <Text
+              style={{
+                fontSize: 8,
+                fontWeight: "900",
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: COLORS.brandPrimary,
+                opacity: 0.7,
+                lineHeight: 10,
+              }}
+            >
+              {PAYMENT_SCREEN_COPY.checkout.title}
             </Text>
           </View>
         </View>
@@ -100,8 +147,8 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
             marginBottom: sidebarGutter,
             backgroundColor: glass.ghostSurface,
             borderRadius: SIDEBAR_CORNER_RADIUS,
-            borderCurve: 'continuous',
-            overflow: 'hidden',
+            borderCurve: "continuous",
+            overflow: "hidden",
           }}
         >
           <ScrollView
@@ -122,7 +169,13 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
         </BlurView>
 
         {/* Right: flex:1 column — scrollable content + sticky footer */}
-        <View style={{ flex: 1, flexDirection: 'column', marginRight: usesThirdColumn ? centerPanelMarginRight : 0 }}>
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "column",
+            marginRight: usesThirdColumn ? centerPanelMarginRight : 0,
+          }}
+        >
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
@@ -132,13 +185,20 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
               paddingLeft: rightPanelLeftPadding,
               paddingRight: rightPanelRightPadding,
               maxWidth: centerPanelMaxWidth,
-              width: '100%',
-              alignSelf: 'flex-start',
+              width: "100%",
+              alignSelf: "flex-start",
             }}
             showsVerticalScrollIndicator={false}
           >
             <View style={{ gap: metrics?.spacing?.sm || 8 }}>
-              <Text style={{ fontSize: metrics?.typography?.body?.fontSize || 14, fontWeight: '600', marginBottom: metrics?.spacing?.xs || 4, color: theme.textMuted }}>
+              <Text
+                style={{
+                  fontSize: metrics?.typography?.body?.fontSize || 14,
+                  fontWeight: "600",
+                  marginBottom: metrics?.spacing?.xs || 4,
+                  color: theme.textMuted,
+                }}
+              >
                 {PAYMENT_SCREEN_COPY.checkout.paymentMethod}
               </Text>
               <PaymentMethodSelector
@@ -153,14 +213,16 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
           </ScrollView>
 
           {/* Sticky footer — pinned outside ScrollView, always visible */}
-          <View style={{
-            paddingHorizontal: rightPanelRightPadding,
-            paddingBottom: insets.bottom + sidebarGutter,
-            paddingTop: sidebarGutter,
-            maxWidth: centerPanelMaxWidth,
-            width: '100%',
-            alignSelf: 'flex-start',
-          }}>
+          <View
+            style={{
+              paddingHorizontal: rightPanelRightPadding,
+              paddingBottom: insets.bottom + sidebarGutter,
+              paddingTop: sidebarGutter,
+              maxWidth: centerPanelMaxWidth,
+              width: "100%",
+              alignSelf: "flex-start",
+            }}
+          >
             <PaymentFooter
               selectedMethod={model.selectedMethod}
               isSaving={model.isSaving}
@@ -176,15 +238,15 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
             intensity={glass.blurIntensity}
             tint={glass.tint}
             style={{
-              position: 'absolute',
+              position: "absolute",
               right: thirdIslandRight,
               top: headerClearance,
               bottom: sidebarGutter,
               width: thirdIslandWidth,
               backgroundColor: glass.ghostSurface,
               borderRadius: SIDEBAR_CORNER_RADIUS,
-              borderCurve: 'continuous',
-              overflow: 'hidden',
+              borderCurve: "continuous",
+              overflow: "hidden",
             }}
           >
             <ScrollView
@@ -213,13 +275,18 @@ export default function PaymentCheckoutVariant({ model, theme, isDarkMode, layou
         isDarkMode={isDarkMode}
       />
 
-      <PaymentSummarySection
-        cost={model.cost}
-        isDarkMode={isDarkMode}
-      />
+      <PaymentSummarySection cost={model.cost} isDarkMode={isDarkMode} />
 
       <View style={{ gap: metrics?.spacing?.sm || 8 }}>
-        <Text style={{ fontSize: metrics?.typography?.body?.fontSize || 14, fontWeight: '400', marginLeft: metrics?.spacing?.sm || 8, marginBottom: metrics?.spacing?.md || 12, color: theme.text }}>
+        <Text
+          style={{
+            fontSize: metrics?.typography?.body?.fontSize || 14,
+            fontWeight: "400",
+            marginLeft: metrics?.spacing?.sm || 8,
+            marginBottom: metrics?.spacing?.md || 12,
+            color: theme.text,
+          }}
+        >
           {PAYMENT_SCREEN_COPY.checkout.paymentMethod}
         </Text>
         <PaymentMethodSelector

@@ -1,75 +1,185 @@
-import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
+import {
+  emergencyContactsApiService,
+  isEmergencyContactsBackendUnavailableError,
+} from "./emergencyContactsApiService";
+import { emergencyContactsMigrationService } from "./emergencyContactsMigrationService";
+import { emergencyContactsLocalService } from "./emergencyContactsLocalService";
 
-const normalizeString = (v) => (typeof v === "string" ? v.trim() : "");
+const migrationPromises = new Map();
+const backendStateByUserId = new Map();
 
-const normalizeContact = (contact) => {
-	const name = normalizeString(contact?.name);
-	const relationship = normalizeString(contact?.relationship);
-	const phone = normalizeString(contact?.phone);
-	const email = normalizeString(contact?.email).toLowerCase();
+const createDefaultBackendState = () => ({
+  serverBacked: true,
+  backendUnavailable: false,
+  lastError: null,
+});
 
-	return {
-		id: contact?.id ? String(contact.id) : `ec_${Date.now()}`,
-		name,
-		relationship,
-		phone: phone.length > 0 ? phone : null,
-		email: email.length > 0 ? email : null,
-		createdAt: contact?.createdAt ? String(contact.createdAt) : new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-	};
+const resolveUserId = async (options = {}) => {
+  if (options?.userId) return String(options.userId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ? String(user.id) : null;
+};
+
+const requireUserId = async (options = {}) => {
+  const userId = await resolveUserId(options);
+  if (!userId) {
+    throw new Error("AUTH_REQUIRED|User not logged in");
+  }
+  return userId;
+};
+
+const getBackendStateForUser = (userId) => {
+  if (!userId) return createDefaultBackendState();
+  return (
+    backendStateByUserId.get(String(userId)) || createDefaultBackendState()
+  );
+};
+
+const setBackendStateForUser = (userId, nextState = {}) => {
+  if (!userId) return createDefaultBackendState();
+  const resolvedState = {
+    ...createDefaultBackendState(),
+    ...nextState,
+    lastError: nextState?.lastError || null,
+  };
+  backendStateByUserId.set(String(userId), resolvedState);
+  return resolvedState;
+};
+
+const markBackendAvailable = (userId) =>
+  setBackendStateForUser(userId, {
+    serverBacked: true,
+    backendUnavailable: false,
+    lastError: null,
+  });
+
+const markBackendUnavailable = (userId, error) =>
+  setBackendStateForUser(userId, {
+    serverBacked: false,
+    backendUnavailable: true,
+    lastError: error || null,
+  });
+
+const runWithBackendFallback = async (
+  userId,
+  serverOperation,
+  localOperation,
+) => {
+  const backendState = getBackendStateForUser(userId);
+
+  if (backendState.backendUnavailable) {
+    return localOperation();
+  }
+
+  try {
+    const result = await serverOperation();
+    markBackendAvailable(userId);
+    return result;
+  } catch (error) {
+    if (!isEmergencyContactsBackendUnavailableError(error)) {
+      throw error;
+    }
+    markBackendUnavailable(userId, error);
+    return localOperation();
+  }
 };
 
 export const emergencyContactsService = {
-	async list() {
-		const items = await database.read(StorageKeys.EMERGENCY_CONTACTS, []);
-		if (!Array.isArray(items)) return [];
-		return items
-			.filter((c) => c && typeof c === "object")
-			.sort((a, b) => String(b?.updatedAt ?? "").localeCompare(String(a?.updatedAt ?? "")));
-	},
+  async list(options = {}) {
+    const userId = await resolveUserId(options);
+    if (!userId) return [];
+    return runWithBackendFallback(
+      userId,
+      () => emergencyContactsApiService.listByUser(userId),
+      () => emergencyContactsLocalService.listByUser(userId),
+    );
+  },
 
-	async create(contact) {
-		const next = normalizeContact(contact);
-		if (next.name.length < 2) {
-			throw new Error("INVALID_INPUT|Name is required");
-		}
-		if (!next.phone && !next.email) {
-			throw new Error("INVALID_INPUT|Phone or email is required");
-		}
-		await database.createOne(StorageKeys.EMERGENCY_CONTACTS, next);
-		return next;
-	},
+  async create(contact, options = {}) {
+    const userId = await requireUserId(options);
+    return runWithBackendFallback(
+      userId,
+      () => emergencyContactsApiService.create(userId, contact),
+      () => emergencyContactsLocalService.create(userId, contact),
+    );
+  },
 
-	async update(id, updates) {
-		const contactId = String(id);
-		const current = await database.findOne(
-			StorageKeys.EMERGENCY_CONTACTS,
-			(c) => String(c?.id) === contactId
-		);
-		if (!current) throw new Error("NOT_FOUND|Contact not found");
-		const merged = normalizeContact({ ...current, ...updates, id: contactId, createdAt: current.createdAt });
-		if (merged.name.length < 2) {
-			throw new Error("INVALID_INPUT|Name is required");
-		}
-		if (!merged.phone && !merged.email) {
-			throw new Error("INVALID_INPUT|Phone or email is required");
-		}
-		await database.updateOne(
-			StorageKeys.EMERGENCY_CONTACTS,
-			(c) => String(c?.id) === contactId,
-			merged
-		);
-		return merged;
-	},
+  async update(id, updates, options = {}) {
+    const userId = await requireUserId(options);
+    return runWithBackendFallback(
+      userId,
+      () => emergencyContactsApiService.update(userId, id, updates),
+      () => emergencyContactsLocalService.update(userId, id, updates),
+    );
+  },
 
-	async remove(id) {
-		const contactId = String(id);
-		await database.deleteOne(
-			StorageKeys.EMERGENCY_CONTACTS,
-			(c) => String(c?.id) === contactId
-		);
-		return true;
-	},
+  async remove(id, options = {}) {
+    const userId = await requireUserId(options);
+    return runWithBackendFallback(
+      userId,
+      () => emergencyContactsApiService.remove(userId, id),
+      () => emergencyContactsLocalService.remove(userId, id),
+    );
+  },
+
+  async readLegacySnapshot() {
+    return emergencyContactsMigrationService.readLegacyContacts();
+  },
+
+  async getMigrationState(options = {}) {
+    const userId = await resolveUserId(options);
+    if (!userId) return emergencyContactsMigrationService.getDefaultState();
+    return emergencyContactsMigrationService.getMigrationStateForUser(userId);
+  },
+
+  async ensureLegacyMigration(options = {}) {
+    const userId = await resolveUserId(options);
+    if (!userId) return emergencyContactsMigrationService.getDefaultState();
+
+    if (migrationPromises.has(userId)) {
+      return migrationPromises.get(userId);
+    }
+
+    const promise = emergencyContactsMigrationService
+      .migrateLegacyContacts(userId)
+      .finally(() => {
+        migrationPromises.delete(userId);
+      });
+
+    migrationPromises.set(userId, promise);
+    return promise;
+  },
+
+  async removeSkippedLegacyContact(legacyId, options = {}) {
+    const userId = await requireUserId(options);
+    return emergencyContactsMigrationService.removeSkippedLegacyContact(
+      userId,
+      legacyId,
+    );
+  },
+
+  getBackendState(options = {}) {
+    const userId = options?.userId ? String(options.userId) : null;
+    return getBackendStateForUser(userId);
+  },
+
+  resetBackendState(options = {}) {
+    const userId = options?.userId ? String(options.userId) : null;
+    if (!userId) return createDefaultBackendState();
+    backendStateByUserId.delete(String(userId));
+    return getBackendStateForUser(userId);
+  },
+
+  subscribe(userId, onEvent) {
+    const backendState = getBackendStateForUser(userId);
+    if (backendState.backendUnavailable) {
+      return { unsubscribe: () => {} };
+    }
+    return emergencyContactsApiService.subscribe(userId, onEvent);
+  },
 };
 
+export default emergencyContactsService;

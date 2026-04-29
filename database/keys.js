@@ -62,6 +62,8 @@ export const StorageKeys = {
 
 	/** Emergency contacts */
 	EMERGENCY_CONTACTS: `${DB_PREFIX}emergency_contacts`,
+	EMERGENCY_CONTACTS_CACHE: `${DB_PREFIX}emergency_contacts_cache`,
+	EMERGENCY_CONTACTS_MIGRATION: `${DB_PREFIX}emergency_contacts_migration`,
 
 	/** Emergency request data */
 	EMERGENCY_REQUESTS: `${DB_PREFIX}emergency_requests`,
@@ -158,6 +160,8 @@ export const SingletonKeys = [
 	StorageKeys.LAST_PUBLIC_ROUTE,
 	StorageKeys.AUTH_RETURN_ROUTE,
 	StorageKeys.MEDICAL_PROFILE,
+	StorageKeys.EMERGENCY_CONTACTS_CACHE,
+	StorageKeys.EMERGENCY_CONTACTS_MIGRATION,
 	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.MODE_PREFERENCES,
 	StorageKeys.COVERAGE_PREFERENCES,

@@ -6,6 +6,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 
 - [auth/workflow_map.md](./auth/workflow_map.md): Authentication and registration execution path.
 - [emergency/workflow_map.md](./emergency/workflow_map.md): Deterministic emergency lifecycle from request to completion.
+- [emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md): Stack-screen contract for `welcome -> map -> stack` surfaces.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
 
 ## Existing Deep Dives (Keep Using These)

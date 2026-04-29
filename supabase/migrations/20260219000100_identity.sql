@@ -90,6 +90,9 @@ CREATE TABLE IF NOT EXISTS public.emergency_contacts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_user_id
+ON public.emergency_contacts(user_id);
+
 -- 5. Subscribers
 CREATE TABLE IF NOT EXISTS public.subscribers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

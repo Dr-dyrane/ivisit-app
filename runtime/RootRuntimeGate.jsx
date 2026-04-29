@@ -11,6 +11,7 @@ import { hydrateModeStore } from "../stores/modeStore";
 // OLD: coverageMode/userLocation hydrated inside EmergencyContext useEffect (deferred, race-prone)
 // NEW: both run in prepare() — deterministic, before first render
 import { hydrateCoverageStore } from "../stores/coverageStore";
+import { hydrateEmergencyContactsStore } from "../stores/emergencyContactsStore";
 import { hydrateLocationStore } from "../stores/locationStore";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
@@ -23,57 +24,58 @@ let isSplashPrevented = false;
  * - Splash screen management
  * - Database migrations
  * - Schema reload
- * - Emergency trip store hydration (Metro reload safety)
+ * - Core persisted-store hydration before first paint
  */
 export function RootRuntimeGate({ children }) {
-	const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
-	useEffect(() => {
-		let isMounted = true;
+  useEffect(() => {
+    let isMounted = true;
 
-		async function prepare() {
-			try {
-				if (!isSplashPrevented) {
-					await SplashScreen.preventAutoHideAsync().catch((e) => {
-						console.warn("[RootRuntimeGate] SplashScreen error:", e.message);
-					});
-					isSplashPrevented = true;
-				}
+    async function prepare() {
+      try {
+        if (!isSplashPrevented) {
+          await SplashScreen.preventAutoHideAsync().catch((e) => {
+            console.warn("[RootRuntimeGate] SplashScreen error:", e.message);
+          });
+          isSplashPrevented = true;
+        }
 
-				// Run migrations and schema reload on startup
-				await appMigrationsService.run();
+        // Run migrations and schema reload on startup
+        await appMigrationsService.run();
 
-				// Phase 6a/6b — hydrate Zustand stores before first render
-				await Promise.all([
-					hydrateModeStore(),
-					hydrateCoverageStore(),
-					hydrateLocationStore(),
-				]);
+        // Phase 6a/6b — hydrate Zustand stores before first render
+        await Promise.all([
+          hydrateModeStore(),
+          hydrateCoverageStore(),
+          hydrateEmergencyContactsStore(),
+          hydrateLocationStore(),
+        ]);
 
-				if (isMounted) setIsReady(true);
-			} catch (err) {
-				console.warn("[RootRuntimeGate] Prepare exception:", err);
-				if (isMounted) setIsReady(true);
-			}
-		}
+        if (isMounted) setIsReady(true);
+      } catch (err) {
+        console.warn("[RootRuntimeGate] Prepare exception:", err);
+        if (isMounted) setIsReady(true);
+      }
+    }
 
-		prepare();
-		return () => {
-			isMounted = false;
-		};
-	}, []);
+    prepare();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-	useEffect(() => {
-		if (isReady) {
-			const timer = setTimeout(() => {
-				SplashScreen.hideAsync().catch((err) => {
-					console.warn("[RootRuntimeGate] hideAsync error:", err.message);
-				});
-			}, 200);
-			return () => clearTimeout(timer);
-		}
-	}, [isReady]);
+  useEffect(() => {
+    if (isReady) {
+      const timer = setTimeout(() => {
+        SplashScreen.hideAsync().catch((err) => {
+          console.warn("[RootRuntimeGate] hideAsync error:", err.message);
+        });
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isReady]);
 
-	// Render children only when ready
-	return <View style={{ flex: 1 }}>{isReady ? children : null}</View>;
+  // Render children only when ready
+  return <View style={{ flex: 1 }}>{isReady ? children : null}</View>;
 }

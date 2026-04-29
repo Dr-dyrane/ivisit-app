@@ -962,6 +962,7 @@ DECLARE
     v_table TEXT;
     v_targets TEXT[] := ARRAY[
         'ambulances',
+        'emergency_contacts',
         'doctors',
         'emergency_requests',
         'health_news',

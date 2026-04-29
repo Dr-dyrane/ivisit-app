@@ -33,6 +33,17 @@ Locked next seam:
 - `commit_details` is sheet-led, expanded, and one-question-at-a-time
 - `bed` and combined bed booking remain on the legacy booking bridge until the ambulance commit lane is stable
 
+## Emergency Contacts State Spine
+
+Emergency contacts now follow the app's five-layer state model:
+
+`supabase emergency_contacts -> TanStack Query -> Zustand snapshot/selectors -> XState lifecycle -> Jotai screen atoms`
+
+Rules:
+- the canonical contact model is phone-first
+- request and commit flows consume selector-backed snapshots, not direct local storage
+- legacy contacts without phone numbers stay visible in migration review until resolved
+
 Current pre-dispatch data rule:
 
 - `ambulance_decision` should survive on:

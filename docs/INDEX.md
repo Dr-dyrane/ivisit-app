@@ -1,6 +1,6 @@
 ﻿# iVisit Documentation Index
 
-Last Updated: 2026-04-27
+Last Updated: 2026-04-29
 
 ## Quick Rules Reference
 
@@ -38,6 +38,7 @@ docs/
 
   architecture/
     ARCHITECTURE_README.md
+    EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md
     EMERGENCY_STATE_REFACTOR.md
     GOLD_STANDARD_STATE_ROADMAP.md
     MAP_EXPLORE_FLOW_MODULARIZATION.md
@@ -55,6 +56,7 @@ docs/
 
   audit/
     AUDIT_CHECKLIST.md
+    EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
     ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md
     BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md
     CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md
@@ -114,9 +116,11 @@ docs/
 - Emergency doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Map sheet notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
+- Stack surface contract: [flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md)
 
 ### Architecture
 - **Gold standard state roadmap**: [architecture/GOLD_STANDARD_STATE_ROADMAP.md](./architecture/GOLD_STANDARD_STATE_ROADMAP.md)
+- **Emergency contacts five-layer contract**: [architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md](./architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md)
 - **Tracking sheet learnings**: [architecture/TRACKING_SHEET_LEARNINGS.md](./architecture/TRACKING_SHEET_LEARNINGS.md)
 - Emergency state refactor: [architecture/EMERGENCY_STATE_REFACTOR.md](./architecture/EMERGENCY_STATE_REFACTOR.md)
 - Map explore flow modularization: [architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md](./architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md)
@@ -140,6 +144,7 @@ docs/
 |-----|--------|
 | [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) | ✅ All passes complete (VD-A–G) |
 | [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) | ✅ All passes complete (A–G) |
+| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) | Pre-pass five-layer baseline |
 | [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md) | ✅ Reference |
 | [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md) | R1–R10 tracker |
 | [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md) | |

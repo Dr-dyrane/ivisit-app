@@ -35,6 +35,7 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medical_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
@@ -192,6 +193,12 @@ USING (auth.uid() = user_id);
 CREATE POLICY "Users manage own medical profiles"
 ON public.medical_profiles FOR ALL
 USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users manage own emergency contacts" ON public.emergency_contacts;
+CREATE POLICY "Users manage own emergency contacts"
+ON public.emergency_contacts FOR ALL
+USING (auth.uid() = user_id OR public.p_is_admin())
+WITH CHECK (auth.uid() = user_id OR public.p_is_admin());
 
 -- 7. LOGISTICS (Ambulances & Visits)
 CREATE POLICY "Public read for ambulances"

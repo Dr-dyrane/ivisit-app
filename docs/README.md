@@ -106,6 +106,7 @@ When in doubt, `rules.json` wins.
 - [`flows/README.md`](./flows/README.md) — workflow map hub
 - [`flows/auth/workflow_map.md`](./flows/auth/workflow_map.md) — auth / login / register execution map
 - [`flows/emergency/workflow_map.md`](./flows/emergency/workflow_map.md) — deterministic emergency lifecycle map
+- [`flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md`](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md) — stack-screen contract for `welcome -> map -> stack`
 - [`flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth for `/map`
 - [`flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live execution plan
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
@@ -115,6 +116,7 @@ When in doubt, `rules.json` wins.
 - [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md)
 - [`architecture/REFACTORING_BIBLE.md`](./architecture/REFACTORING_BIBLE.md)
 - [`architecture/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/GOLD_STANDARD_STATE_ROADMAP.md) — 5-layer state migration roadmap
+- [`architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md`](./architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md) — canonical emergency-contacts state contract
 - [`architecture/TRACKING_SHEET_LEARNINGS.md`](./architecture/TRACKING_SHEET_LEARNINGS.md) — defect classes 2.1–2.16, heuristics, process lessons
 - [`architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md`](./architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md)
 - [`architecture/EMERGENCY_STATE_REFACTOR.md`](./architecture/EMERGENCY_STATE_REFACTOR.md)
@@ -132,6 +134,7 @@ When in doubt, `rules.json` wins.
 ### Active
 - [`audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md`](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) — ✅ ALL PASSES COMPLETE (VD-A through VD-G)
 - [`audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) — ✅ ALL PASSES COMPLETE (A–G)
+- [`audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md`](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) — pre-pass baseline for five-layer migration
 - [`audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md`](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md) — Pre-tracking phase constraint audit
 - [`audit/RISK_STATUS_2026-04-23.md`](./audit/RISK_STATUS_2026-04-23.md) — R1-R10 resolution tracker
 - [`audit/TEMPORAL_DEAD_ZONE_FIXES.md`](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)

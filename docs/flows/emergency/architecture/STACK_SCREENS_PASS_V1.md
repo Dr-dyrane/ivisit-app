@@ -25,6 +25,7 @@ These two screens are the reference implementations for this pass plan.
 ## 2. Doctrine (Canonical, From This Sprint Forward)
 
 ### 2.1 Surface Inclusivity
+
 Every screen ships iOS, Android, and Web parity from day one. Platform branching is allowed only for native affordances (blur, shadow, haptics), never for functionality or information hierarchy.
 
 ### 2.2 Layout Behavior — Fourteen-Variant Matrix
@@ -40,11 +41,11 @@ The app does not think in three canvases. It thinks in **fourteen named viewport
 
 **The 14 variants (platform × size):**
 
-| Platform | Variants |
-|---|---|
-| iOS | `ios_mobile`, `ios_pad` |
-| Android | `android_mobile`, `android_fold`, `android_tablet`, `android_chromebook` |
-| Web | `web_mobile`, `web_sm_wide`, `web_md`, `macbook`, `web_lg`, `web_xl`, `web_2xl_3xl`, `web_ultra_wide` |
+| Platform | Variants                                                                                              |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| iOS      | `ios_mobile`, `ios_pad`                                                                               |
+| Android  | `android_mobile`, `android_fold`, `android_tablet`, `android_chromebook`                              |
+| Web      | `web_mobile`, `web_sm_wide`, `web_md`, `macbook`, `web_lg`, `web_xl`, `web_2xl_3xl`, `web_ultra_wide` |
 
 **Selection function:** every screen obtains its variant via a platform-aware resolver that takes `{ platform, width }` and returns one of the 14 names. Welcome uses `getWelcomeVariant`; Map uses `getMapViewportVariant`; future stack screens must provide their own `getXYZViewportVariant` or reuse a shared resolver.
 
@@ -79,12 +80,12 @@ Stack screens in this pass default to **Pattern A** unless a specific surface is
 
 Every modal/sheet declares its presentation mode per variant group, not per abstract canvas.
 
-| Surface class | Compact variants (`*_mobile`, `android_fold`) | Tablet variants (`ios_pad`, `android_tablet`, `android_chromebook`, `web_md`) | Desktop variants (`macbook`, `web_lg`, `web_xl`, `web_2xl_3xl`, `web_ultra_wide`) |
-|---|---|---|---|
-| Quick action | Bottom sheet | Centered modal or left drawer | Side sheet (right) or centered modal |
-| Context detail | Bottom sheet or full-height modal | Centered modal | Side sheet or landscape modal |
-| Full task | Full-screen modal | Landscape modal with max-width | Full-canvas modal with max-width |
-| Navigation | Bottom sheet | Left drawer | Persistent left rail / sidebar |
+| Surface class  | Compact variants (`*_mobile`, `android_fold`) | Tablet variants (`ios_pad`, `android_tablet`, `android_chromebook`, `web_md`) | Desktop variants (`macbook`, `web_lg`, `web_xl`, `web_2xl_3xl`, `web_ultra_wide`) |
+| -------------- | --------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Quick action   | Bottom sheet                                  | Centered modal or left drawer                                                 | Side sheet (right) or centered modal                                              |
+| Context detail | Bottom sheet or full-height modal             | Centered modal                                                                | Side sheet or landscape modal                                                     |
+| Full task      | Full-screen modal                             | Landscape modal with max-width                                                | Full-canvas modal with max-width                                                  |
+| Navigation     | Bottom sheet                                  | Left drawer                                                                   | Persistent left rail / sidebar                                                    |
 
 Every screen must declare, per surface, which row of this matrix it occupies and which variant group maps to which cell. Ambiguity here is a doctrine violation.
 
@@ -147,6 +148,7 @@ components/welcome/
 ```
 
 Key principles:
+
 - One view per variant, one styles file per variant — no conditional layout branching inside any view
 - Shared primitives live in `shared/`
 - Variant-invariant logic (theme, content, hooks) lives at the top level
@@ -196,6 +198,7 @@ components/map/
 ```
 
 Key principles:
+
 - `core/` owns flow contracts, domain models, presentations, and the viewport resolver
 - `tokens/` owns every visual / motion primitive
 - `surfaces/` owns sheet and modal shells
@@ -205,11 +208,11 @@ Key principles:
 
 **Which shape applies to a stack screen:**
 
-| Screen characteristic | Shape |
-|---|---|
-| Content is mostly presentational and layout varies meaningfully per variant | **Shape A** |
-| Domain is deep (state machines, multiple flows) and layout is mostly config-driven | **Shape B** |
-| Mix of deep domain + variant-specific layout | Hybrid: Shape B skeleton with `views/<variant>/` subtrees for variant-specific renders |
+| Screen characteristic                                                              | Shape                                                                                  |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Content is mostly presentational and layout varies meaningfully per variant        | **Shape A**                                                                            |
+| Domain is deep (state machines, multiple flows) and layout is mostly config-driven | **Shape B**                                                                            |
+| Mix of deep domain + variant-specific layout                                       | Hybrid: Shape B skeleton with `views/<variant>/` subtrees for variant-specific renders |
 
 **Shape selection is per-screen, decided at that screen's wave kickoff.** No blanket default is applied here — premature commitment would either force-fit Shape A onto screens with identical content across variants (wasting 14 nearly-duplicate view files) or force-fit Shape B onto screens whose layouts genuinely diverge per device (collapsing meaningful differences into config primitives). Each wave starts with a brief shape audit that answers three questions:
 
@@ -297,12 +300,12 @@ A screen is done when all of the following are true:
 
 ## 6. Documentation Updates Required By This Pass
 
-| Doc | Update |
-|---|---|
-| `docs/DESIGN.md` | Doctrine sections 2.1 – 2.5, layout & modal/sheet decision matrices, modular implementation anatomy |
-| `docs/SYSTEMS.md` | Side-effect stabilization playbook, screen lifecycle contract, modular architecture diagram |
-| `README.md` | Architecture overview pointing to seven-file anatomy and reference screens |
-| `CONTRIBUTING.md` | Rules for creating new screens — require the full anatomy before merge |
+| Doc               | Update                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `docs/DESIGN.md`  | Doctrine sections 2.1 – 2.5, layout & modal/sheet decision matrices, modular implementation anatomy |
+| `docs/SYSTEMS.md` | Side-effect stabilization playbook, screen lifecycle contract, modular architecture diagram         |
+| `README.md`       | Architecture overview pointing to seven-file anatomy and reference screens                          |
+| `CONTRIBUTING.md` | Rules for creating new screens — require the full anatomy before merge                              |
 
 Updates must land atomically at the end of the pass, not as a trailing follow-up.
 
@@ -353,3 +356,18 @@ It is failing if:
 - New stack screens ship outside the anatomy before it is codified in docs
 - Responsive rules are reimplemented per screen instead of consumed from shared config
 - Platform branching leaks back into functionality instead of staying at the affordance layer
+
+## 11. Carry-Forward Lessons
+
+Apply these directly to the remaining stack-owned pages before inventing anything new:
+
+- **Bootstrap once, consume everywhere.** If a feature needs hydration, migration, or realtime startup, mount that work at the runtime shell. Screens and controllers should read selectors, not call a data hook only for side effects.
+- **Five-layer ownership must stay explicit.** Server truth, query cache, persisted store, lifecycle legality, and ephemeral UI state each need a named home. Do not collapse back into `hook + service + local useState`.
+- **Phone-valid and route-valid selectors beat ad hoc filtering.** Cross-surface consumers should read canonical selectors for concepts like “reachable,” “primary,” “active,” or “ready,” not re-derive them inside screens.
+- **Wide-screen dead space becomes context, not a wider form.** Keep editing modals centered and bounded; when XL layouts expose extra canvas, fill it with a right context island or action panel instead of stretching the modal.
+- **Utility stack copy stays short and actionable.** One clear task title, one useful hint only when necessary, and no repeated explanatory paragraphs across header, body, and footer.
+- **Hierarchy comes from size and spacing before weight.** Patient-app utility surfaces should cap visible type at `700`, avoid all-caps headers, and reserve identity-style caps for logo-mark labels only.
+- **Side-effect surfaces must use shared viewport primitives.** Modal width, height, and posture should come from shared stack surface config so `Profile`, `Settings`, `Medical Profile`, `Insurance`, and `Help & Support` do not each reinvent their own responsive shell.
+- **Blocking saves need explicit pending behavior.** Backdrop-dismiss, close buttons, and destructive exits must be intentional during async save states, never accidental.
+- **Fallback modes must stay truthful.** If backend schema or sync is unavailable, surface a local-only or degraded-state notice and keep the feature usable instead of failing hard.
+- **Documentation lands in the same pass as code.** Record pre-pass intent, post-pass verification, and the reusable lesson set while the implementation context is still fresh.

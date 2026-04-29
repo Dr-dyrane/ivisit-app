@@ -90,6 +90,23 @@ CREATE TABLE IF NOT EXISTS public.medical_profiles (
 );
 ```
 
+### Table: `emergency_contacts`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    relationship TEXT,
+    phone TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    display_id TEXT UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
 ### Table: `subscribers`
 
 ```sql

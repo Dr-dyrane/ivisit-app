@@ -13,7 +13,7 @@ The schema is organized into **11 pillar modules** (authoritative) plus targeted
 | File Pillar | Module Name | Primary Responsibility |
 |---|---|---|
 | `0000_infra` | Infrastructure | Extensions (PostGIS, pgcrypto), Enums, Core Utils |
-| `0001_identity` | Identity & Registry | Profiles, Preferences, Medical Profiles, Fluid ID Logic, `id_mappings` |
+| `0001_identity` | Identity & Registry | Profiles, Preferences, Medical Profiles, Emergency Contacts, Fluid ID Logic, `id_mappings` |
 | `0002_org_structure` | Org Structure | Organizations, Hospitals, Providers (Doctors) |
 | `0003_logistics` | Logistics | Ambulances, Emergency Requests, Visits |
 | `0004_finance` | Financials | Wallets (Org/Patient), Ledger, Payments, Insurance |

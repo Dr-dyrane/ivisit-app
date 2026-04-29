@@ -14,6 +14,12 @@
 - **Ephemeral UI state** (sheet phase, rating modal, route visualization atoms) -> Jotai
 - **Cross-component sync** -> Jotai atoms or store selectors, not ad-hoc prop drilling
 
+### Emergency Contacts Rule
+- `EmergencyContacts` is a formal five-layer feature, not a hook-plus-service exception
+- canonical `EmergencyContact` is phone-first and does not include `email`
+- legacy local contacts without a phone number must flow into migration review, not silent deletion
+- no runtime writes to `StorageKeys.EMERGENCY_CONTACTS` outside migration compatibility code
+
 ### Pass Documentation Rule
 - **Before any pass**: document intent, scope, invariants, and what layer(s) will change
 - **After any pass**: document what changed, what stayed intentionally unchanged, and the verification result

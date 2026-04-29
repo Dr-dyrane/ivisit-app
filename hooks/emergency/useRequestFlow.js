@@ -22,6 +22,8 @@ import {
 	toPointWkt,
 } from "../../constants/locationDefaults";
 import { useLocationStore } from "../../stores/locationStore";
+import { useEmergencyContactsStore } from "../../stores/emergencyContactsStore";
+import { selectReachableEmergencyContacts } from "../../stores/emergencyContactsSelectors";
 
 // PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
 // OLD: GPS failure in request flow → hardcoded Lagos coords
@@ -182,13 +184,20 @@ export const useRequestFlow = (props) => {
 
 	const getSnapshots = useCallback(() => {
 		const { preferences, medicalProfile, emergencyContacts, user } = propsRef.current;
+		const storeBackedContacts = selectReachableEmergencyContacts(
+			useEmergencyContactsStore.getState(),
+		);
+		const currentEmergencyContacts =
+			Array.isArray(storeBackedContacts) && storeBackedContacts.length > 0
+				? storeBackedContacts
+				: emergencyContacts;
 		const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
 		const shareEmergencyContacts =
 			preferences?.privacyShareEmergencyContacts === true;
 
 		const shared = {
 			medicalProfile: shareMedicalProfile ? medicalProfile : null,
-			emergencyContacts: shareEmergencyContacts ? emergencyContacts : null,
+			emergencyContacts: shareEmergencyContacts ? currentEmergencyContacts : null,
 		};
 
 		const patient = {

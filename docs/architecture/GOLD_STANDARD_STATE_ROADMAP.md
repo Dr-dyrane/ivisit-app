@@ -10,6 +10,7 @@ Gold standard is non-negotiable. One hospital onboarding via ivisit-console trig
 ## Why This Migration
 
 ### Current limitations
+
 - `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `commitFlow` are all `useState`
 - A Metro restart wipes trip state — user loses tracking context
 - Payment → tracking transition is non-deterministic (relies on `syncActiveTripsFromServer` timing)
@@ -18,6 +19,7 @@ Gold standard is non-negotiable. One hospital onboarding via ivisit-console trig
 - No illegal-state prevention — boolean flags can contradict each other
 
 ### What apps at this scale actually use
+
 Uber, Apple Maps, Google Maps all share the same architectural pattern:
 
 ```
@@ -31,13 +33,43 @@ Server Truth  →  Local Cache  →  UI Projection  →  Trip Lifecycle
 
 ## Target Architecture
 
-| Layer | Technology | What it owns |
-|-------|-----------|--------------|
-| Server truth | Supabase Realtime (already in place) | Live subscriptions |
-| Server cache | TanStack Query | Hospitals, visits, server sync |
-| Global app state | Zustand + persist | Trip state (survives app kill) |
-| Local UI state | Jotai atoms | Sheet phase, modals, snap state |
-| Trip lifecycle | XState machine | State machine for trip events |
+| Layer            | Technology                           | What it owns                    |
+| ---------------- | ------------------------------------ | ------------------------------- |
+| Server truth     | Supabase Realtime (already in place) | Live subscriptions              |
+| Server cache     | TanStack Query                       | Hospitals, visits, server sync  |
+| Global app state | Zustand + persist                    | Trip state (survives app kill)  |
+| Local UI state   | Jotai atoms                          | Sheet phase, modals, snap state |
+| Trip lifecycle   | XState machine                       | State machine for trip events   |
+
+---
+
+## Emergency Contacts Five-Layer Track
+
+`EmergencyContacts` is now part of the gold-standard migration surface.
+
+Required ownership split:
+
+- Supabase / Realtime -> canonical `public.emergency_contacts`
+- TanStack Query -> `["emergencyContacts", userId]`
+- Zustand -> persisted contact snapshot, migration metadata, skipped legacy rows
+- XState -> feature readiness, migration legality, mutation/sync state
+- Jotai -> editor, modal, selection, and wizard state
+
+Canonical rule:
+
+- phone-first contact model
+- no canonical `email` field
+- legacy rows missing `phone` must surface in review instead of being dropped
+
+This feature follows the same no-silent-drop discipline used in the trip-state migration.
+
+Carry-forward for remaining stack pages:
+
+- keep feature bootstrap at the app/runtime shell when hydration or migration is global
+- keep route screens thin; wide-screen extra canvas should become context panels, not wider forms
+- keep task/editor modals centered and width-bounded when the page itself already owns a desktop/tablet shell
+- use canonical selectors for derived concepts instead of per-screen filtering
+- document fallback/degraded modes explicitly when backend truth is unavailable
 
 ---
 
@@ -48,6 +80,7 @@ Server Truth  →  Local Cache  →  UI Projection  →  Trip Lifecycle
 
 This is the clean, stable state before any state migration begins.  
 Restore or diff at any time:
+
 ```bash
 # View any file at this baseline
 git show 0303a6e:<path_to_file>
@@ -65,16 +98,19 @@ git diff 0303a6e -- <path_to_file>
 ---
 
 ### Phase 1 — Zustand + persist for trip state ✅ COMPLETE
+
 **Commit**: `7c4c1a9`  
 **Priority**: Highest  
 **Effort**: Low  
-**Risk**: Low — EmergencyContext still wraps it, zero consumer blast radius  
+**Risk**: Low — EmergencyContext still wraps it, zero consumer blast radius
 
 **What it fixes**:
+
 - Metro restart bug — trip state persists to AsyncStorage via Zustand `persist` middleware
 - Payment → tracking timing — state update is synchronous, no async sync needed
 
 **What changes**:
+
 - `useState` in `useEmergencyTripState` → reads/writes to `useEmergencyTripStore`
 - `EmergencyContext` still exists and still provides `useEmergency()` — no consumer changes
 
@@ -83,41 +119,48 @@ git diff 0303a6e -- <path_to_file>
 ---
 
 ### Phase 2 — TanStack Query for hospitals + server sync ✅ COMPLETE
+
 **Commit**: `8bdce65`  
 **Priority**: High  
 **Effort**: Medium  
-**Risk**: Medium  
+**Risk**: Medium
 
 **What it fixes**:
+
 - Replaces `syncActiveTripsFromServer` with deterministic `invalidateQueries`
 - Background refetch, stale-while-revalidate, automatic retry
 - Hospital data cached — no redundant fetches on navigation
 
 **What changes**:
+
 - `useEmergencyHospitalSync` + `useEmergencyServerSync` → TanStack Query hooks
 - Payment completion calls `queryClient.invalidateQueries(['activeTrip'])` — deterministic
 
-**Stash reference**: 
+**Stash reference**:
+
 - `hooks/emergency/useHospitalsQuery.ts`
 - `hooks/emergency/useActiveTripQuery.ts`
 
 ---
 
 ### Phase 3 — Jotai atoms for map UI state
+
 **Priority**: Medium  
 **Effort**: Low  
-**Risk**: Low — pure UI state, no server interaction  
+**Risk**: Low — pure UI state, no server interaction
 
 **What it fixes**:
+
 - `useMapExploreFlowStore` (Zustand) → Jotai atoms
 - Surgical re-renders — only the component subscribed to a specific atom re-renders
 - Derived atoms replace boolean `useState` chains
 
 **Example — derived atom pattern**:
+
 ```js
 // Instead of separate boolean state:
-export const trackingVisibleAtom = atom((get) =>
-  get(sheetPhaseAtom) === 'TRACKING'  // derived, never set directly
+export const trackingVisibleAtom = atom(
+  (get) => get(sheetPhaseAtom) === "TRACKING", // derived, never set directly
 );
 ```
 
@@ -126,12 +169,14 @@ export const trackingVisibleAtom = atom((get) =>
 ---
 
 ### Phase 4 — XState for trip lifecycle ✅ COMPLETE
+
 **Commit**: `7c898f7`  
 **Priority**: High value, lower urgency  
 **Effort**: High  
-**Risk**: Medium — well-defined contract, eliminates entire bug classes  
+**Risk**: Medium — well-defined contract, eliminates entire bug classes
 
 **What it fixes**:
+
 - Illegal states become impossible by design
 - `IDLE → PENDING_APPROVAL → ACTIVE → COMPLETING → COMPLETED` — explicit machine
 - Eliminates scattered boolean flag coordination
@@ -139,11 +184,13 @@ export const trackingVisibleAtom = atom((get) =>
 - Full DevTools support — time-travel debugging, visual state chart
 
 **Scope**:
+
 - Must cover both ambulance AND bed booking flows
 - All state transitions must be observable via DevTools
 - XState `@xstate/react` `useMachine` hook replaces trip boolean coordination
 
 **Example machine states**:
+
 ```
 IDLE
   → on PAYMENT_COMPLETE → PENDING_APPROVAL
@@ -160,11 +207,13 @@ COMPLETING
 ---
 
 ### Phase 5 — Retire EmergencyContext
+
 **Priority**: Final cleanup  
 **Effort**: High  
-**Risk**: High — 19 direct consumers, 75 raw status string comparisons across 23 app files  
+**Risk**: High — 19 direct consumers, 75 raw status string comparisons across 23 app files
 
 **Audit findings** (recorded `dcad33c`):
+
 - 19 files call `useEmergency()` directly
 - 75 raw `activeAmbulanceTrip?.status === 'in_progress'` etc. comparisons in app code
 - Heaviest consumers: `EmergencyScreen.jsx`, `useMapExploreFlow.js`, `useMapTrackingRuntime.js`, `PaymentScreenComponents.jsx`
@@ -172,6 +221,7 @@ COMPLETING
 - `useEmergency()` API surface stays unchanged — consumers never know what changes underneath
 
 **Sub-pass plan**:
+
 - **5a** ✅ COMPLETE — Migrate raw string comparisons to `TripState` constants (non-breaking, mechanical)
 - **5b** ✅ COMPLETE — Migrate heavy consumers to use `isActive`, `isArrived`, `hasActiveTrip` from `useEmergency()`
 - **5c** ✅ COMPLETE (`ddd655b`) — Strip `useEmergency()` from tracking subtree; raw trips now flow via `activeMapRequest.raw.*`
@@ -181,7 +231,7 @@ COMPLETING
   - `MapScreen`: passes `trackingXxx` props down to `MapSheetOrchestrator`
   - Context value strip deferred: `EmergencyRequestModal` + commit controllers still consumers → 5d
 - **5d** ✅ COMPLETE (`6ea20f8`) — Strip `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchPendingApproval` from `EmergencyContext` useMemo value + deps
-  - `useMapCommitTriageController`: raw trips + patch* → `useEmergencyTripStore()` selectors
+  - `useMapCommitTriageController`: raw trips + patch\* → `useEmergencyTripStore()` selectors
   - `useMapCommitPaymentController`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
   - `EmergencyRequestModal`: raw trips + `setPendingApproval` → `useEmergencyTripStore()` selectors
   - `setPendingApproval`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking` retained in context value — `useMapExploreFlow` still reads them → 5e
@@ -204,64 +254,71 @@ COMPLETING
 > Audited post-Phase-5d. Each file's reads categorised: ✅ safe in context | 🔴 raw trip (needs migration)
 
 ### `hooks/map/exploreFlow/useMapExploreFlow.js` → Phase 5e target
-| Field | Category | Action |
-|---|---|---|
-| `activeAmbulanceTrip` | 🔴 raw trip | → store |
-| `activeBedBooking` | 🔴 raw trip | → store |
-| `pendingApproval` | 🔴 raw trip | → store |
-| `commitFlow` | 🔴 raw trip | → store |
-| `patchActiveAmbulanceTrip` | 🔴 raw trip action | → store |
-| `setCommitFlow` / `clearCommitFlow` | 🔴 raw trip action | → store |
-| `setPendingApproval` | 🔴 raw trip action | → store |
-| `ambulanceTelemetryHealth` | ✅ derived | stays |
-| `stopAmbulanceTrip` / `stopBedBooking` | ✅ action | stays |
-| `setAmbulanceTripStatus` / `setBedBookingStatus` | ✅ action | stays |
-| `isArrived` / `isPendingApproval` | ✅ XState flag | stays |
-| hospitals / UI fields | ✅ context-owned | stays |
+
+| Field                                            | Category           | Action  |
+| ------------------------------------------------ | ------------------ | ------- |
+| `activeAmbulanceTrip`                            | 🔴 raw trip        | → store |
+| `activeBedBooking`                               | 🔴 raw trip        | → store |
+| `pendingApproval`                                | 🔴 raw trip        | → store |
+| `commitFlow`                                     | 🔴 raw trip        | → store |
+| `patchActiveAmbulanceTrip`                       | 🔴 raw trip action | → store |
+| `setCommitFlow` / `clearCommitFlow`              | 🔴 raw trip action | → store |
+| `setPendingApproval`                             | 🔴 raw trip action | → store |
+| `ambulanceTelemetryHealth`                       | ✅ derived         | stays   |
+| `stopAmbulanceTrip` / `stopBedBooking`           | ✅ action          | stays   |
+| `setAmbulanceTripStatus` / `setBedBookingStatus` | ✅ action          | stays   |
+| `isArrived` / `isPendingApproval`                | ✅ XState flag     | stays   |
+| hospitals / UI fields                            | ✅ context-owned   | stays   |
 
 ### `components/map/views/commitDetails/useMapCommitDetailsController.js` → Phase 5e or 5f
-| Field | Category | Action |
-|---|---|---|
+
+| Field           | Category           | Action                                    |
+| --------------- | ------------------ | ----------------------------------------- |
 | `setCommitFlow` | 🔴 raw trip action | → store (after 5e strips it from context) |
 
 ### Screens — all safe in context (no raw trip reads)
-| File | Reads from `useEmergency()` | Status |
-|---|---|---|
-| `screens/SearchScreen.jsx` | `specialties`, `selectedSpecialty`, `selectSpecialty` | ✅ stays |
-| `screens/WelcomeScreen.jsx` | `setUserLocation`, `refreshHospitals`, `userLocation` | ✅ stays |
-| `screens/RequestAmbulanceScreen.jsx` | coverage/mode fields only | ✅ stays |
-| `screens/NotificationsScreen.jsx` | `setMode` | ✅ stays |
-| `screens/NotificationDetailsScreen.jsx` | `setMode` | ✅ stays |
-| `screens/MoreScreen.jsx` | coverage/mode fields only | ✅ stays |
-| `screens/MapEntryLoadingScreen.jsx` | `refreshHospitals`, `effectiveDemoModeEnabled` | ✅ stays |
-| `screens/EmergencyScreen.jsx` | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip` + coverage/mode | ⚠️ DEPRECATED — zero router entry points, dead code, safe to delete post-5f |
-| `screens/BookBedRequestScreen.jsx` | `clearSelectedHospital`, `setMode`, `effectiveDemoModeEnabled` | ✅ stays |
-| `screens/MapScreen.jsx` | reads from `useMapExploreFlow()` only — zero direct `useEmergency()` calls | ⚠️ 1,434 lines — architectural violation (mandate: 500), decomposition required |
+
+| File                                    | Reads from `useEmergency()`                                                                              | Status                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `screens/SearchScreen.jsx`              | `specialties`, `selectedSpecialty`, `selectSpecialty`                                                    | ✅ stays                                                                        |
+| `screens/WelcomeScreen.jsx`             | `setUserLocation`, `refreshHospitals`, `userLocation`                                                    | ✅ stays                                                                        |
+| `screens/RequestAmbulanceScreen.jsx`    | coverage/mode fields only                                                                                | ✅ stays                                                                        |
+| `screens/NotificationsScreen.jsx`       | `setMode`                                                                                                | ✅ stays                                                                        |
+| `screens/NotificationDetailsScreen.jsx` | `setMode`                                                                                                | ✅ stays                                                                        |
+| `screens/MoreScreen.jsx`                | coverage/mode fields only                                                                                | ✅ stays                                                                        |
+| `screens/MapEntryLoadingScreen.jsx`     | `refreshHospitals`, `effectiveDemoModeEnabled`                                                           | ✅ stays                                                                        |
+| `screens/EmergencyScreen.jsx`           | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `patchActiveAmbulanceTrip` + coverage/mode | ⚠️ DEPRECATED — zero router entry points, dead code, safe to delete post-5f     |
+| `screens/BookBedRequestScreen.jsx`      | `clearSelectedHospital`, `setMode`, `effectiveDemoModeEnabled`                                           | ✅ stays                                                                        |
+| `screens/MapScreen.jsx`                 | reads from `useMapExploreFlow()` only — zero direct `useEmergency()` calls                               | ⚠️ 1,434 lines — architectural violation (mandate: 500), decomposition required |
 
 ### Hooks — all safe in context (no raw trip reads)
-| File | Reads | Status |
-|---|---|---|
-| `hooks/visits/useBookVisit.js` | `allHospitals`, `effectiveDemoModeEnabled` | ✅ stays |
-| `hooks/search/useSearchRanking.js` | `allHospitals`, `setMode`, `selectedSpecialty` | ✅ stays |
-| `hooks/emergency/useHospitalSelection.js` | `mode` | ✅ stays |
+
+| File                                      | Reads                                          | Status   |
+| ----------------------------------------- | ---------------------------------------------- | -------- |
+| `hooks/visits/useBookVisit.js`            | `allHospitals`, `effectiveDemoModeEnabled`     | ✅ stays |
+| `hooks/search/useSearchRanking.js`        | `allHospitals`, `setMode`, `selectedSpecialty` | ✅ stays |
+| `hooks/emergency/useHospitalSelection.js` | `mode`                                         | ✅ stays |
 
 ### Components — already migrated
-| File | Status |
-|---|---|
-| `components/emergency/EmergencyRequestModal.jsx` | ✅ Phase 5d complete |
-| `components/map/views/commitTriage/useMapCommitTriageController.js` | ✅ Phase 5d complete |
+
+| File                                                                  | Status               |
+| --------------------------------------------------------------------- | -------------------- |
+| `components/emergency/EmergencyRequestModal.jsx`                      | ✅ Phase 5d complete |
+| `components/map/views/commitTriage/useMapCommitTriageController.js`   | ✅ Phase 5d complete |
 | `components/map/views/commitPayment/useMapCommitPaymentController.js` | ✅ Phase 5d complete |
-| `components/map/views/tracking/MapTrackingStageBase.jsx` | ✅ Phase 5c complete |
+| `components/map/views/tracking/MapTrackingStageBase.jsx`              | ✅ Phase 5c complete |
 
 ---
 
 ## Phase 6 — Retire `EmergencyContext.jsx` shell
+
 - After Phase 5f: context value contains zero raw trip data, no active-path consumer reads trip fields
 - Remaining `useEmergency()` callers all read context-owned fields: `mode`, `hospitals`, `coverage`, `specialties`, `userLocation`, XState actions
 - **Architecture**: Zustand stores (not atoms) for persistent client state, TanStack Query for server state
 - **Gate**: Phases 5a–5f verified in production
 
 ### 6a ✅ COMPLETE (`bd9fa38`, fix `923f931`) — Create `useModeStore` (Zustand) + hydration integration
+
 - Store: `stores/modeStore.js` — `mode`, `serviceType`, `viewMode`, `selectedSpecialty`
 - Persistence: `MODE_PREFERENCES` storage key (database abstraction)
 - Pattern: equality-guarded setters, immer middleware, follows `emergencyTripStore.js` structure
@@ -269,6 +326,7 @@ COMPLETING
 - Stash audit: stash `@{0}` contained same files — no additional logic to adopt
 
 ### 6b ✅ COMPLETE (`cca3647`) — Create `useCoverageStore` + `useLocationStore`
+
 - `stores/coverageStore.js` — `coverageModePreference`, `demoOwnerSlug`, `coverageModeOperation`, `forceDemoFetch`
 - `stores/locationStore.js` — `userLocation`, `locationPermission`, `isTrackingLocation`
 - Both hydrated in `RootRuntimeGate.jsx` via `Promise.all` — parallel, deterministic
@@ -277,51 +335,62 @@ COMPLETING
 ### 6c — Consumer migration (one screen at a time)
 
 #### 6c-1 ✅ COMPLETE (`3821ee3`) SearchScreen (pilot)
+
 - `mode`, `setMode`, `selectedSpecialty`, `selectSpecialty` → `useModeStore` direct selectors
 - `allHospitals`, `specialties` remain on `useEmergency()` — server state, separate migration
 - Pattern: surgical `useModeStore((s) => s.x)` selectors, no context blast radius
 
 #### 6c-2 ✅ COMPLETE (`96a43a5`) NotificationsScreen
+
 - `setMode` → `useModeStore((s) => s.setMode)` — `useEmergency()` import fully removed
 
 #### Blocked screens — context-owned computed/service fields, not raw store fields
+
 - `WelcomeScreen` — `setUserLocation` uses functional updater `(current) => newValue`; needs store API extension or Phase 6d resolution
 - `MoreScreen` — `coverageMode` (resolved effective mode), `setCoverageMode` (async service action), `coverageStatus`/`isLiveOnlyAvailable`/`hasComfortableDemoCoverage` (server-derived) — all context-level, migrate in 6d
 
 #### 6c complete — remaining screens deferred to 6d
+
 - `RequestAmbulanceScreen` — `setMode` migratable but 8 other context service fields block partial migration
 - `MapEntryLoadingScreen` — `coverageModePreferenceLoaded` migratable but `effectiveDemoModeEnabled`, `refreshHospitals`, `setUserLocation` block partial migration
 - `BookBedRequestScreen` — `setMode` migratable but same service field blockers
 - **Decision**: all 3 migrate transparently via `EmergencyContextAdapter` shim in 6d — no partial churn
 
 ### 6d ✅ COMPLETE (`42933ab`) — Wire existing EmergencyContext internals to Zustand stores
+
 - **Stash adapter rejected**: stash `EmergencyContextAdapter.jsx` → `useEmergencyHospitals` → `useCoverageMode` (❌ REJECTED). Wholesale adoption would reintroduce rejected pattern.
 - **Approach**: wire Zustand stores into the existing hook layer, not above it — `useEmergency()` signature unchanged, zero consumer blast radius
 
 #### 6d-1 ✅ `useEmergencyTripState` — mode/serviceType/selectedSpecialty/viewMode → `useModeStore`
+
 - All 4 `useState` calls replaced with `useModeStore` selectors
 - `toggleMode`, `selectSpecialty`, `selectServiceType`, `toggleViewMode`, `resetFilters` updated to call store setters directly (no functional updaters needed)
 - `selectedHospitalId` remains local `useState` — ephemeral UI selection, not persisted
 
 #### 6d-2 ✅ `useEmergencyLocationSync` — `userLocation`/`setUserLocation` → `useLocationStore`
+
 - `useState(null)` replaced with `useLocationStore` selector
 - Functional updater pattern `setUserLocation((current) => ...)` replaced with `useLocationStore.getState()` read + direct `setUserLocation(value)` call
 - Resolves `WelcomeScreen` blocker
 
 #### 6d-3 ✅ `WelcomeScreen` — now fully off `useEmergency()` for location fields
+
 - `setUserLocation` + `emergencyUserLocation` → `useLocationStore`
 - `refreshHospitals` remains on `useEmergency()` — server action
 
 ### 6e ✅ COMPLETE — Dead code cleanup
 
 #### 6e-1 (`5d83a7a`) `screens/EmergencyScreen.jsx`
+
 - 1,482 lines deleted — zero router entry points, zero source imports confirmed
 - **Recovery**: `git show 5d83a7a~1:screens/EmergencyScreen.jsx`
 
 #### 6e-2 (`7f260f8`) EmergencyBottomSheet cluster — orphaned by EmergencyScreen deletion
+
 All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `MapSheetOrchestrator` — confirmed independent.
 
 **Components deleted:**
+
 - `components/emergency/EmergencyBottomSheet.jsx` — main sheet host (~540 lines)
 - `components/emergency/BottomSheetController.jsx` — ref-forwarding wrapper
 - `components/emergency/bottomSheet/EmergencySheetHandle.jsx`
@@ -335,6 +404,7 @@ All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `M
 - `components/emergency/bottomSheet/ActiveVisitsSwitcher.jsx`
 
 **Hooks deleted:**
+
 - `hooks/emergency/useBottomSheetSnap.js`
 - `hooks/emergency/useBottomSheetScroll.js`
 - `hooks/emergency/useBottomSheetSearch.js`
@@ -343,6 +413,7 @@ All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `M
 **Recovery**: `git show <6e-2 hash>^` to browse all deleted files, or `git checkout <6e-2 hash>~ -- <path>` to restore any individual file
 
 ## MapScreen Decomposition — Parallel Track (not Phase 6)
+
 - `MapScreen.jsx` is **1,434 lines** — architectural violation (mandate: max 500 for screen files)
 - No direct `useEmergency()` calls — all data flows via `useMapExploreFlow()`
 - Decomposition scope: extract inline logic into sub-hooks/controllers (rating, history, route reconciliation, tracking timeline)
@@ -365,19 +436,20 @@ All files below were exclusively owned by `EmergencyScreen`. `MapScreen` uses `M
 10. **Before writing any new store/service** — verify exact API methods from an existing working file (`emergencyTripStore.js` is canonical). Database API is `.read/.write`, not `.get/.set`
 
 ### File Line Count Rules (Apple HIG Architecture Standards)
+
 Flag any file exceeding its target — mandatory refactor above max:
 
-| File type | Target | Max | Violation threshold |
-|---|---|---|---|
-| Route / Layout | 20–100 | 150 | >150 → flag |
-| Screen | 250–400 | 500 | >500 → flag, >800 → mandatory refactor |
-| UI Component | 80–250 | 350 | >350 → flag |
-| Complex Feature Component | 150–300 | 450 | >450 → flag |
-| Hook | 80–200 | 300 | >300 → flag |
-| Controller | 150–300 | 400 | >400 → flag |
-| State file (store/atom) | 30–150 | 250 | >250 → flag |
-| Service | 100–300 | 500 | >500 → flag |
-| Utils / helpers | 30–150 | 200 | >200 → flag |
+| File type                 | Target  | Max | Violation threshold                    |
+| ------------------------- | ------- | --- | -------------------------------------- |
+| Route / Layout            | 20–100  | 150 | >150 → flag                            |
+| Screen                    | 250–400 | 500 | >500 → flag, >800 → mandatory refactor |
+| UI Component              | 80–250  | 350 | >350 → flag                            |
+| Complex Feature Component | 150–300 | 450 | >450 → flag                            |
+| Hook                      | 80–200  | 300 | >300 → flag                            |
+| Controller                | 150–300 | 400 | >400 → flag                            |
+| State file (store/atom)   | 30–150  | 250 | >250 → flag                            |
+| Service                   | 100–300 | 500 | >500 → flag                            |
+| Utils / helpers           | 30–150  | 200 | >200 → flag                            |
 
 > **Hard rules**: >800 lines → mandatory refactor candidate. >1000 lines → architectural violation (unless generated).  
 > Never judge by line count alone — flag **responsibility leakage** too.
@@ -389,21 +461,25 @@ Flag any file exceeding its target — mandatory refactor above max:
 These bugs exist today and will be resolved by the migration — not separate fixes:
 
 ### Bug 1 — Payment → Tracking gap
+
 **Root cause**: `syncActiveTripsFromServer` not awaited after payment.  
 **Fixed by**: Phase 1 (Zustand sync) + Phase 2 (TanStack Query invalidation).  
 **Location**: `usePaymentScreenModel.js` lines 227–245.
 
 ### Bug 2 — Rating modal timing
+
 **Root cause**: `stopAmbulanceTrip` clears state before rating modal renders.  
 **Fixed by**: Phase 4 (XState — `COMPLETING` state holds context until rating submitted).  
 **Location**: `useEmergencyHandlers.js` lines 91–119.
 
 ### Bug 3 — Metro restart wipes trip state
+
 **Root cause**: `useState` in `useEmergencyTripState` is in-memory only.  
 **Fixed by**: Phase 1 (Zustand + persist middleware).  
 **Location**: `useEmergencyTripState.js`.
 
 ### Bug 4 — Hospital marker intermittent visibility
+
 **Root cause**: Loading race — `nearestHospital` null on first render before hospitals load.  
 `selectHospital` fires from auto-select effect but `selectedHospital` hasn't propagated
 back through `EmergencyContext` yet.  
@@ -449,13 +525,13 @@ The deceptive thing: each component's logging looked locally consistent, but the
 
 ### Fixes Applied (all minimal, upstream)
 
-| File | Fix |
-|---|---|
-| `hooks/map/exploreFlow/useMapLocation.js` | Added `hasValidCoords()` guard. Each location source must have finite `latitude`/`longitude` before being accepted by the `||` chain. |
-| `hooks/map/exploreFlow/useMapLoadingState.js` | Added `hadLocationLatchRef` so once we've ever had a valid location this mount, it stays effective. Defends against transient flapping mid-render. |
+| File                                                          | Fix                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------- |
+| `hooks/map/exploreFlow/useMapLocation.js`                     | Added `hasValidCoords()` guard. Each location source must have finite `latitude`/`longitude` before being accepted by the `                                                                                                            |     | ` chain. |
+| `hooks/map/exploreFlow/useMapLoadingState.js`                 | Added `hadLocationLatchRef` so once we've ever had a valid location this mount, it stays effective. Defends against transient flapping mid-render.                                                                                     |
 | `components/emergency/intake/EmergencyLocationPreviewMap.jsx` | Removed `!hasLocation` guard from `isMapReady` fallback timeout so it always fires. (Switched `mapType` to `"standard"` during debugging — retained as a simpler default, but `mutedStandard` is also valid; this was not a real fix.) |
-| `contexts/AuthContext.jsx` | Seed `user`/`token` from `database.read(StorageKeys.CURRENT_USER)` synchronously before the async `getCurrentUser()` API call. |
-| `stores/locationStore.js` (defense-in-depth) | `setUserLocation` and `patchUserLocation` now reject objects without finite `latitude`/`longitude`. Empty/partial objects can no longer enter the store as truthy sentinels. |
+| `contexts/AuthContext.jsx`                                    | Seed `user`/`token` from `database.read(StorageKeys.CURRENT_USER)` synchronously before the async `getCurrentUser()` API call.                                                                                                         |
+| `stores/locationStore.js` (defense-in-depth)                  | `setUserLocation` and `patchUserLocation` now reject objects without finite `latitude`/`longitude`. Empty/partial objects can no longer enter the store as truthy sentinels.                                                           |
 
 ### Permanent Architectural Rules (added to canon)
 
@@ -468,12 +544,12 @@ The deceptive thing: each component's logging looked locally consistent, but the
 
 ### Audit of Sibling Stores (post-fix)
 
-| Store | Truthy-empty risk | Verdict |
-|---|---|---|
-| `modeStore.js` | Primitives only (`string \| null`) | ✅ Safe |
-| `coverageStore.js` | `coverageModeOperation` always written with full shape | ✅ Safe |
-| `emergencyTripStore.js` | Trip objects always carry `requestId`; consumers gate on it | ✅ Contained |
-| `locationStore.js` | **Was vulnerable** | ✅ Now hardened (validity guard added) |
+| Store                   | Truthy-empty risk                                           | Verdict                                |
+| ----------------------- | ----------------------------------------------------------- | -------------------------------------- |
+| `modeStore.js`          | Primitives only (`string \| null`)                          | ✅ Safe                                |
+| `coverageStore.js`      | `coverageModeOperation` always written with full shape      | ✅ Safe                                |
+| `emergencyTripStore.js` | Trip objects always carry `requestId`; consumers gate on it | ✅ Contained                           |
+| `locationStore.js`      | **Was vulnerable**                                          | ✅ Now hardened (validity guard added) |
 
 ### Outstanding Tech Debt
 
@@ -484,13 +560,13 @@ The deceptive thing: each component's logging looked locally consistent, but the
 
 ## Stash Files Available (Review Before Use)
 
-| File | Phase | Status |
-|------|-------|--------|
-| `stores/emergencyTripStore.js` | Phase 1 | Available — review for feature parity |
-| `hooks/emergency/useHospitalsQuery.ts` | Phase 2 | Available — review for feature parity |
+| File                                    | Phase   | Status                                |
+| --------------------------------------- | ------- | ------------------------------------- |
+| `stores/emergencyTripStore.js`          | Phase 1 | Available — review for feature parity |
+| `hooks/emergency/useHospitalsQuery.ts`  | Phase 2 | Available — review for feature parity |
 | `hooks/emergency/useActiveTripQuery.ts` | Phase 2 | Available — review for feature parity |
-| `atoms/mapFlowAtoms.js` | Phase 3 | Available — review for feature parity |
-| `contexts/EmergencyContextAdapter.jsx` | Phase 5 | Available — use LAST |
+| `atoms/mapFlowAtoms.js`                 | Phase 3 | Available — review for feature parity |
+| `contexts/EmergencyContextAdapter.jsx`  | Phase 5 | Available — use LAST                  |
 
 **Warning**: The stash attempted all 5 phases simultaneously and broke the app.  
 Use stash files as reference only — do not apply wholesale.
@@ -506,12 +582,12 @@ Use stash files as reference only — do not apply wholesale.
 
 ### 7a — Screens deprecated (router entry still exists but surface is superseded)
 
-| File | Lines | Superseded By | Status |
-|---|---|---|---|
-| `screens/MoreScreen.jsx` | 1,492 | `MiniProfileModal` + `(user)/(stacks)/*` direct nav | ⚠️ DEPRECATED — router entry `app/(user)/(stacks)/more.js` still live, mark in-file |
-| `screens/RequestAmbulanceScreen.jsx` | 802 | `MapSheetOrchestrator` commit flow | ⚠️ DEPRECATED — still routed from stacks, mark in-file |
-| `screens/BookBedRequestScreen.jsx` | ~400 | `MapSheetOrchestrator` bed decision flow | ⚠️ DEPRECATED — still routed from stacks, mark in-file |
-| `screens/MapEntryLoadingScreen.jsx` | ~80 | `MapExploreLoadingOverlay` inside MapScreen | ⚠️ DEPRECATED — confirm router entry before marking |
+| File                                 | Lines | Superseded By                                       | Status                                                                              |
+| ------------------------------------ | ----- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `screens/MoreScreen.jsx`             | 1,492 | `MiniProfileModal` + `(user)/(stacks)/*` direct nav | ⚠️ DEPRECATED — router entry `app/(user)/(stacks)/more.js` still live, mark in-file |
+| `screens/RequestAmbulanceScreen.jsx` | 802   | `MapSheetOrchestrator` commit flow                  | ⚠️ DEPRECATED — still routed from stacks, mark in-file                              |
+| `screens/BookBedRequestScreen.jsx`   | ~400  | `MapSheetOrchestrator` bed decision flow            | ⚠️ DEPRECATED — still routed from stacks, mark in-file                              |
+| `screens/MapEntryLoadingScreen.jsx`  | ~80   | `MapExploreLoadingOverlay` inside MapScreen         | ⚠️ DEPRECATED — confirm router entry before marking                                 |
 
 ---
 
@@ -519,37 +595,37 @@ Use stash files as reference only — do not apply wholesale.
 
 #### Owned by `RequestAmbulanceScreen` / `BookBedRequestScreen`
 
-| File | Notes |
-|---|---|
+| File                                             | Notes                                                                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `components/emergency/EmergencyRequestModal.jsx` | **2,926 lines** — entire legacy request modal. Used only by `RequestAmbulanceScreen` + `BookBedRequestScreen`. Map sheet flow replaces it entirely. |
-| `components/emergency/requestModal/*` | All sub-components of `EmergencyRequestModal` (12 files) |
-| `components/emergency/triage/*` | `TriageIntakeModal` and helpers — owned by `EmergencyRequestModal` |
-| `components/emergency/RequestAmbulanceFAB.jsx` | No live import found outside deprecated screens |
-| `components/emergency/emergencyFlowContent.js` | Only imported by `EmergencyRequestModal` + `EmergencyIOSMobileIntakeView` |
+| `components/emergency/requestModal/*`            | All sub-components of `EmergencyRequestModal` (12 files)                                                                                            |
+| `components/emergency/triage/*`                  | `TriageIntakeModal` and helpers — owned by `EmergencyRequestModal`                                                                                  |
+| `components/emergency/RequestAmbulanceFAB.jsx`   | No live import found outside deprecated screens                                                                                                     |
+| `components/emergency/emergencyFlowContent.js`   | Only imported by `EmergencyRequestModal` + `EmergencyIOSMobileIntakeView`                                                                           |
 
 #### Owned by `EmergencyScreen` (deleted in 6e) or no live consumers
 
-| File | Notes |
-|---|---|
-| `components/emergency/HospitalDetailView.jsx` | No live import — only imported by itself (self-ref) |
-| `components/emergency/HospitalCard.jsx` | Only imported by `HospitalDetailView` (also deprecated) |
-| `components/emergency/Call911Card.jsx` | No live import found |
-| `components/emergency/ServiceTypeSelector.jsx` | No live import found — `SearchScreen` uses `SpecialtySelector`, not this |
-| `components/emergency/EmergencyMapContainer.jsx` | Only used inside `EmergencyIOSMobileIntakeView` (intake flow) |
-| `components/emergency/ServiceRatingModal-old.jsx` | Old file — superseded by `ServiceRatingModal.jsx` |
+| File                                              | Notes                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `components/emergency/HospitalDetailView.jsx`     | No live import — only imported by itself (self-ref)                      |
+| `components/emergency/HospitalCard.jsx`           | Only imported by `HospitalDetailView` (also deprecated)                  |
+| `components/emergency/Call911Card.jsx`            | No live import found                                                     |
+| `components/emergency/ServiceTypeSelector.jsx`    | No live import found — `SearchScreen` uses `SpecialtySelector`, not this |
+| `components/emergency/EmergencyMapContainer.jsx`  | Only used inside `EmergencyIOSMobileIntakeView` (intake flow)            |
+| `components/emergency/ServiceRatingModal-old.jsx` | Old file — superseded by `ServiceRatingModal.jsx`                        |
 
 #### Still live — DO NOT deprecate
 
-| File | Notes |
-|---|---|
-| `components/emergency/MiniProfileModal.jsx` | ✅ LIVE — used in `MapScreen` as MoreScreen replacement |
-| `components/emergency/ServiceRatingModal.jsx` | ✅ LIVE — used in `MapScreen` (history + recovered rating) |
-| `components/emergency/SpecialtySelector.jsx` | ✅ LIVE — used in `SearchScreen` + `SuggestiveContent` |
-| `components/emergency/EmergencySearchBar.jsx` | ✅ LIVE — used in `SearchScreen` |
-| `components/emergency/ContactCard.jsx` | ✅ LIVE — used in `EmergencyContactsScreen` |
-| `components/emergency/CoverageDisclaimerModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating |
-| `components/emergency/DemoBootstrapModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating |
-| `components/emergency/intake/*` | ⚠️ REVIEW — owned by `RequestAmbulanceScreen` intake flow, deprecates with it |
+| File                                               | Notes                                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `components/emergency/MiniProfileModal.jsx`        | ✅ LIVE — used in `MapScreen` as MoreScreen replacement                       |
+| `components/emergency/ServiceRatingModal.jsx`      | ✅ LIVE — used in `MapScreen` (history + recovered rating)                    |
+| `components/emergency/SpecialtySelector.jsx`       | ✅ LIVE — used in `SearchScreen` + `SuggestiveContent`                        |
+| `components/emergency/EmergencySearchBar.jsx`      | ✅ LIVE — used in `SearchScreen`                                              |
+| `components/emergency/ContactCard.jsx`             | ✅ LIVE — used in `EmergencyContactsScreen`                                   |
+| `components/emergency/CoverageDisclaimerModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating                |
+| `components/emergency/DemoBootstrapModal.jsx`      | ⚠️ REVIEW — no source import found, confirm before deprecating                |
+| `components/emergency/intake/*`                    | ⚠️ REVIEW — owned by `RequestAmbulanceScreen` intake flow, deprecates with it |
 
 ---
 
@@ -570,15 +646,15 @@ Use stash files as reference only — do not apply wholesale.
 
 ### Inputs (in priority order)
 
-| # | Input | Layer | Source |
-|---|---|---|---|
-| 1 | `hasActiveTrip` | XState | `useTripLifecycle()` — canonical "are we tracking?" |
-| 2 | `isRatingPending` | XState | `useTripLifecycle()` — completion → rate gate |
-| 3 | `trackingRequestKey` | Zustand | `activeMapRequest.requestId` — identity for hospital resolution |
-| 4 | `sheetPhase` | Jotai | `mapSheetPhaseAtom` — current sheet (EXPLORE_INTENT / TRACKING / COMMIT_*) |
-| 5 | `trackingDismissedRef` | React ref | User explicitly closed tracking sheet for this request |
-| 6 | History selection | Call site | `handleSelectHistoryItem(historyItem)` |
-| 7 | Payment commit | Call site | `useMapCommitFlow.finishCommitPayment()` |
+| #   | Input                  | Layer     | Source                                                                      |
+| --- | ---------------------- | --------- | --------------------------------------------------------------------------- |
+| 1   | `hasActiveTrip`        | XState    | `useTripLifecycle()` — canonical "are we tracking?"                         |
+| 2   | `isRatingPending`      | XState    | `useTripLifecycle()` — completion → rate gate                               |
+| 3   | `trackingRequestKey`   | Zustand   | `activeMapRequest.requestId` — identity for hospital resolution             |
+| 4   | `sheetPhase`           | Jotai     | `mapSheetPhaseAtom` — current sheet (EXPLORE*INTENT / TRACKING / COMMIT*\*) |
+| 5   | `trackingDismissedRef` | React ref | User explicitly closed tracking sheet for this request                      |
+| 6   | History selection      | Call site | `handleSelectHistoryItem(historyItem)`                                      |
+| 7   | Payment commit         | Call site | `useMapCommitFlow.finishCommitPayment()`                                    |
 
 ### Decision rules (evaluated each render)
 
@@ -608,11 +684,11 @@ Implemented in `@hooks/map/exploreFlow/useMapTracking.js` (Pass C — XState gat
 
 ### Cross-cutting renderers (NOT gated on sheetPhase)
 
-| Renderer | Gating signal | Location |
-|---|---|---|
-| In-flow rating modal | `trackingRatingStateAtom.visible` (persisted) | `MapScreen` root |
-| Recovered rating modal | `recoveredRatingState` | `MapScreen` root |
-| History rating modal | `historyRatingState` | `MapScreen` root |
+| Renderer               | Gating signal                                 | Location         |
+| ---------------------- | --------------------------------------------- | ---------------- |
+| In-flow rating modal   | `trackingRatingStateAtom.visible` (persisted) | `MapScreen` root |
+| Recovered rating modal | `recoveredRatingState`                        | `MapScreen` root |
+| History rating modal   | `historyRatingState`                          | `MapScreen` root |
 
 These survive sheet phase transitions by mounting at `MapScreen` root, not inside
 `MapTrackingStageBase` (Pass B — rating modal lift).
@@ -620,11 +696,13 @@ These survive sheet phase transitions by mounting at `MapScreen` root, not insid
 ### History "Resume tracking" routing
 
 `handleSelectHistoryItem` (`@screens/MapScreen.jsx`) gates resume on:
+
 ```
 matchesActiveEmergencyRequest =
     sourceKind == "emergency" &&
     historyItem.requestId in activeHistoryRequestKeys
 ```
+
 - Match → `openTracking()`
 - Mismatch → `openVisitDetail(historyItem)`
 
