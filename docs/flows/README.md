@@ -9,6 +9,9 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md): Stack-screen contract for `welcome -> map -> stack` surfaces.
 - [emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md): Profile stack implementation plan and ownership split.
 - [../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the profile stack refactor.
+- [emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md](./emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md): Settings stack implementation plan and ownership split.
+- [../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the settings stack refactor.
+- [../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the settings stack refactor.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
 
 ## Existing Deep Dives (Keep Using These)

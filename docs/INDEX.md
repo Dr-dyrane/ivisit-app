@@ -59,6 +59,8 @@ docs/
     EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
     PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
     PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
+    SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md
+    SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md
     BEHAVIORAL_VALIDATION_PLAN_2026-04-25.md
     CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md
@@ -122,6 +124,9 @@ docs/
 - Stack surface contract: [flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md)
 - Profile implementation plan: [flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md)
 - Profile implementation checkpoint: [audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Settings implementation plan: [flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md)
+- Settings comparison audit: [audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Settings implementation checkpoint: [audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
 
@@ -148,17 +153,19 @@ docs/
 
 ### Active (2026-04-27)
 
-| Doc                                                                                                                    | Status                                         |
-| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                               | ✅ All passes complete (VD-A–G)                |
-| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                           | ✅ All passes complete (A–G)                   |
-| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                   | Pre-pass five-layer baseline                   |
-| [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Profile vs payment/emergency-contacts baseline |
-| [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Profile stack implementation checkpoint        |
-| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                   | ✅ Reference                                   |
-| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                         | R1–R10 tracker                                 |
-| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                     |                                                |
-| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                       |                                                |
+| Doc                                                                                                                      | Status                                         |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                 | ✅ All passes complete (VD-A–G)                |
+| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                             | ✅ All passes complete (A–G)                   |
+| [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                     | Pre-pass five-layer baseline                   |
+| [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                     | Profile vs payment/emergency-contacts baseline |
+| [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)   | Profile stack implementation checkpoint        |
+| [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Settings vs payment/emergency/profile baseline |
+| [SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Settings stack implementation checkpoint       |
+| [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                     | ✅ Reference                                   |
+| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                           | R1–R10 tracker                                 |
+| [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                       |                                                |
+| [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                         |                                                |
 
 ### Orchestrator Refactor (2026-04-25)
 

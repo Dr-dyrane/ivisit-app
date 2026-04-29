@@ -374,3 +374,13 @@ Apply these directly to the remaining stack-owned pages before inventing anythin
 - **Fallback modes must stay truthful.** If backend schema or sync is unavailable, surface a local-only or degraded-state notice and keep the feature usable instead of failing hard.
 - **Documentation lands in the same pass as code.** Record pre-pass intent, post-pass verification, and the reusable lesson set while the implementation context is still fresh.
 - **Mini-profile row grammar can survive a shell refactor.** `Profile` proved that the quiet shortcut-group language can stay intact while the route, wide layout, and modal ownership move to the shared stack-screen anatomy.
+
+## 12. Settings Wave
+
+`Settings` is now in the same modern stack-screen family as `Profile`.
+
+Current docs:
+
+- [../../../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [SETTINGS_STACK_PASS_PLAN_V1.md](./SETTINGS_STACK_PASS_PLAN_V1.md)
+- [../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
