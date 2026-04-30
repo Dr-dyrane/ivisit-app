@@ -1,126 +1,122 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { database, StorageKeys } from "../database";
+import { useSearchDiscoveryFeeds } from "../hooks/search/useSearchDiscoveryFeeds";
 import { discoveryService } from "../services/discoveryService";
 
 const SearchContext = createContext();
 
 export function SearchProvider({ children }) {
-	const [query, setQuery] = useState("");
-	const [recentQueries, setRecentQueries] = useState([]);
-	const [trendingSearches, setTrendingSearches] = useState([]);
-	const [trendingLoading, setTrendingLoading] = useState(false);
-	const [healthNews, setHealthNews] = useState([]);
-	const [healthNewsLoading, setHealthNewsLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [recentQueries, setRecentQueries] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const {
+    trendingSearches,
+    trendingLoading,
+    healthNews,
+    healthNewsLoading,
+    discoveryRefreshing,
+    refreshDiscovery,
+  } = useSearchDiscoveryFeeds();
 
-	// Fetch trending searches on app startup
-	useEffect(() => {
-		const loadTrendingSearches = async () => {
-			setTrendingLoading(true);
-			const trending = await discoveryService.getTrendingSearches({
-				limit: 8,
-				days: 7,
-			});
-			setTrendingSearches(trending);
-			setTrendingLoading(false);
-		};
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      const stored = await database.read(StorageKeys.SEARCH_HISTORY, []);
+      if (!isActive) return;
+      setRecentQueries(Array.isArray(stored) ? stored.filter(Boolean) : []);
+      setHistoryLoading(false);
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-		loadTrendingSearches();
+  useEffect(() => {
+    if (historyLoading || !Array.isArray(recentQueries)) return;
+    database.write(StorageKeys.SEARCH_HISTORY, recentQueries).catch(() => {});
+  }, [historyLoading, recentQueries]);
 
-		// Refresh trending searches every 30 minutes
-		const interval = setInterval(loadTrendingSearches, 30 * 60 * 1000);
-		return () => clearInterval(interval);
-	}, []);
+  const setSearchQuery = useCallback((next) => {
+    setQuery(typeof next === "string" ? next : "");
+  }, []);
 
-	// Fetch health news on app startup
-	useEffect(() => {
-		const loadHealthNews = async () => {
-			setHealthNewsLoading(true);
-			const news = await discoveryService.getHealthNews({
-				limit: 10,
-			});
-			setHealthNews(news);
-			setHealthNewsLoading(false);
-		};
+  const commitQuery = useCallback((raw) => {
+    const next = typeof raw === "string" ? raw.trim() : "";
+    if (!next) return;
 
-		loadHealthNews();
+    discoveryService.trackSearchSelection({
+      query: next,
+      source: "search_screen",
+    });
 
-		// Refresh health news every hour
-		const interval = setInterval(loadHealthNews, 60 * 60 * 1000);
-		return () => clearInterval(interval);
-	}, []);
+    setRecentQueries((prev) => {
+      const base = Array.isArray(prev) ? prev : [];
+      const deduped = base.filter(
+        (item) => String(item).toLowerCase() !== next.toLowerCase(),
+      );
+      return [next, ...deduped].slice(0, 12);
+    });
+  }, []);
 
-	useEffect(() => {
-		let isActive = true;
-		(async () => {
-			const stored = await database.read(StorageKeys.SEARCH_HISTORY, []);
-			if (!isActive) return;
-			setRecentQueries(Array.isArray(stored) ? stored.filter(Boolean) : []);
-		})();
-		return () => {
-			isActive = false;
-		};
-	}, []);
+  const clearHistory = useCallback(() => {
+    setRecentQueries([]);
+  }, []);
 
-	useEffect(() => {
-		if (!Array.isArray(recentQueries)) return;
-		database.write(StorageKeys.SEARCH_HISTORY, recentQueries).catch(() => {});
-	}, [recentQueries]);
+  const value = useMemo(
+    () => ({
+      query,
+      recentQueries,
+      historyLoading,
+      trendingSearches,
+      trendingLoading,
+      healthNews,
+      healthNewsLoading,
+      discoveryRefreshing,
+      setSearchQuery,
+      commitQuery,
+      clearHistory,
+      refreshDiscovery,
+    }),
+    [
+      clearHistory,
+      commitQuery,
+      discoveryRefreshing,
+      healthNews,
+      healthNewsLoading,
+      historyLoading,
+      query,
+      recentQueries,
+      refreshDiscovery,
+      setSearchQuery,
+      trendingLoading,
+      trendingSearches,
+    ],
+  );
 
-	const setSearchQuery = useCallback((next) => {
-		setQuery(typeof next === "string" ? next : "");
-	}, []);
-
-	const commitQuery = useCallback((raw) => {
-		const next = typeof raw === "string" ? raw.trim() : "";
-		if (!next) return;
-
-		// Track selection
-		discoveryService.trackSearchSelection({
-			query: next,
-			source: 'search_screen',
-		});
-
-		setRecentQueries((prev) => {
-			const base = Array.isArray(prev) ? prev : [];
-			const deduped = base.filter((q) => String(q).toLowerCase() !== next.toLowerCase());
-			return [next, ...deduped].slice(0, 12);
-		});
-	}, []);
-
-	const clearHistory = useCallback(() => {
-		setRecentQueries([]);
-	}, []);
-
-	const value = useMemo(
-		() => ({
-			query,
-			recentQueries,
-			trendingSearches,
-			trendingLoading,
-			healthNews,
-			healthNewsLoading,
-			setSearchQuery,
-			commitQuery,
-			clearHistory,
-		}),
-		[clearHistory, commitQuery, query, recentQueries, trendingSearches, trendingLoading, healthNews, healthNewsLoading, setSearchQuery]
-	);
-
-	return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
+  return (
+    <SearchContext.Provider value={value}>{children}</SearchContext.Provider>
+  );
 }
 
 export function SearchBoundary({ children }) {
-	const ctx = useContext(SearchContext);
-	if (ctx) return children;
-	return <SearchProvider>{children}</SearchProvider>;
+  const ctx = useContext(SearchContext);
+  if (ctx) return children;
+  return <SearchProvider>{children}</SearchProvider>;
 }
 
 export function useSearch() {
-	const ctx = useContext(SearchContext);
-	if (!ctx) throw new Error("useSearch must be used within a SearchProvider");
-	return ctx;
+  const ctx = useContext(SearchContext);
+  if (!ctx) throw new Error("useSearch must be used within a SearchProvider");
+  return ctx;
 }
 
 export default SearchContext;

@@ -422,3 +422,13 @@ Current docs:
 - [../../../audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [INSURANCE_STACK_PASS_PLAN_V1.md](./INSURANCE_STACK_PASS_PLAN_V1.md)
 - [../../../audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 15. Search Wave
+
+`Search` is now in the same modern stack-screen family as `Profile`, `Settings`, `Medical Profile`, and `Insurance`.
+
+Current docs:
+
+- [../../../audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [SEARCH_STACK_PASS_PLAN_V1.md](./SEARCH_STACK_PASS_PLAN_V1.md)
+- [../../../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)

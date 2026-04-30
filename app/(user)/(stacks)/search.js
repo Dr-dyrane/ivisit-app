@@ -1,7 +1,11 @@
 import React from "react";
 import SearchScreen from "../../../screens/SearchScreen";
+import { SearchBoundary } from "../../../contexts/SearchContext";
 
 export default function Search() {
-	return <SearchScreen />;
+  return (
+    <SearchBoundary>
+      <SearchScreen />
+    </SearchBoundary>
+  );
 }
-

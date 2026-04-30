@@ -605,27 +605,27 @@ Use stash files as reference only — do not apply wholesale.
 
 #### Owned by `EmergencyScreen` (deleted in 6e) or no live consumers
 
-| File                                              | Notes                                                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------ |
-| `components/emergency/HospitalDetailView.jsx`     | No live import — only imported by itself (self-ref)                      |
-| `components/emergency/HospitalCard.jsx`           | Only imported by `HospitalDetailView` (also deprecated)                  |
-| `components/emergency/Call911Card.jsx`            | No live import found                                                     |
-| `components/emergency/ServiceTypeSelector.jsx`    | No live import found — `SearchScreen` uses `SpecialtySelector`, not this |
-| `components/emergency/EmergencyMapContainer.jsx`  | Only used inside `EmergencyIOSMobileIntakeView` (intake flow)            |
-| `components/emergency/ServiceRatingModal-old.jsx` | Old file — superseded by `ServiceRatingModal.jsx`                        |
+| File                                              | Notes                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `components/emergency/HospitalDetailView.jsx`     | No live import — only imported by itself (self-ref)                             |
+| `components/emergency/HospitalCard.jsx`           | Only imported by `HospitalDetailView` (also deprecated)                         |
+| `components/emergency/Call911Card.jsx`            | No live import found                                                            |
+| `components/emergency/ServiceTypeSelector.jsx`    | No live import found — `SearchScreen` now uses `SearchSpecialtyStrip`, not this |
+| `components/emergency/EmergencyMapContainer.jsx`  | Only used inside `EmergencyIOSMobileIntakeView` (intake flow)                   |
+| `components/emergency/ServiceRatingModal-old.jsx` | Old file — superseded by `ServiceRatingModal.jsx`                               |
 
 #### Still live — DO NOT deprecate
 
-| File                                               | Notes                                                                         |
-| -------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `components/emergency/MiniProfileModal.jsx`        | ✅ LIVE — used in `MapScreen` as MoreScreen replacement                       |
-| `components/emergency/ServiceRatingModal.jsx`      | ✅ LIVE — used in `MapScreen` (history + recovered rating)                    |
-| `components/emergency/SpecialtySelector.jsx`       | ✅ LIVE — used in `SearchScreen` + `SuggestiveContent`                        |
-| `components/emergency/EmergencySearchBar.jsx`      | ✅ LIVE — used in `SearchScreen`                                              |
-| `components/emergency/ContactCard.jsx`             | ✅ LIVE — used in `EmergencyContactsScreen`                                   |
-| `components/emergency/CoverageDisclaimerModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating                |
-| `components/emergency/DemoBootstrapModal.jsx`      | ⚠️ REVIEW — no source import found, confirm before deprecating                |
-| `components/emergency/intake/*`                    | ⚠️ REVIEW — owned by `RequestAmbulanceScreen` intake flow, deprecates with it |
+| File                                               | Notes                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `components/emergency/MiniProfileModal.jsx`        | ✅ LIVE — used in `MapScreen` as MoreScreen replacement                         |
+| `components/emergency/ServiceRatingModal.jsx`      | ✅ LIVE — used in `MapScreen` (history + recovered rating)                      |
+| `components/emergency/SpecialtySelector.jsx`       | No live import found — replaced by `components/search/SearchSpecialtyStrip.jsx` |
+| `components/emergency/EmergencySearchBar.jsx`      | ✅ LIVE — used in `SearchMainContent`                                           |
+| `components/emergency/ContactCard.jsx`             | ✅ LIVE — used in `EmergencyContactsScreen`                                     |
+| `components/emergency/CoverageDisclaimerModal.jsx` | ⚠️ REVIEW — no source import found, confirm before deprecating                  |
+| `components/emergency/DemoBootstrapModal.jsx`      | ⚠️ REVIEW — no source import found, confirm before deprecating                  |
+| `components/emergency/intake/*`                    | ⚠️ REVIEW — owned by `RequestAmbulanceScreen` intake flow, deprecates with it   |
 
 ---
 

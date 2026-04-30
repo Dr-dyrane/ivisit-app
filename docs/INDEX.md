@@ -63,6 +63,8 @@ docs/
     MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
     PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
+    SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md
+    SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md
     SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md
@@ -137,6 +139,9 @@ docs/
 - Coverage implementation plan: [flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md)
 - Coverage comparison audit: [audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - Coverage implementation checkpoint: [audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Search implementation plan: [flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md)
+- Search comparison audit: [audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Search implementation checkpoint: [audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
 
@@ -174,6 +179,8 @@ docs/
 | [MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Medical profile stack implementation checkpoint |
 | [PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                                   | Profile vs payment/emergency-contacts baseline  |
 | [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)                 | Profile stack implementation checkpoint         |
+| [SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md)                                     | Search vs modern stack baseline                 |
+| [SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)                   | Search stack implementation checkpoint          |
 | [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                                 | Settings vs payment/emergency/profile baseline  |
 | [SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)               | Settings stack implementation checkpoint        |
 | [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                                   | ✅ Reference                                    |
