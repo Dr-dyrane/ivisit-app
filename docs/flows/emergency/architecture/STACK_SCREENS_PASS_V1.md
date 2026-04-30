@@ -432,3 +432,12 @@ Current docs:
 - [../../../audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [SEARCH_STACK_PASS_PLAN_V1.md](./SEARCH_STACK_PASS_PLAN_V1.md)
 - [../../../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 16. Notifications Wave
+
+`Notifications` is the next active stack-screen wave after `Search`.
+
+Current docs:
+
+- [../../../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [NOTIFICATIONS_STACK_PASS_PLAN_V1.md](./NOTIFICATIONS_STACK_PASS_PLAN_V1.md)

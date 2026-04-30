@@ -1,164 +1,240 @@
-// contexts/NotificationsContext.jsx - Notifications state management
+// contexts/NotificationsContext.jsx - Notifications data boundary
 
-import { createContext, useContext, useMemo, useState, useCallback } from "react";
-import { NOTIFICATION_FILTERS, NOTIFICATION_TYPES } from "../constants/notifications";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { useNotificationsData } from "../hooks/notifications/useNotificationsData";
+import {
+  NOTIFICATION_FILTERS,
+  NOTIFICATION_TYPES,
+} from "../constants/notifications";
 
-// Create the notifications context
 const NotificationsContext = createContext();
 
-// Notifications provider component
-export function NotificationsProvider({ children }) {
-    const { 
-        notifications, 
-        isLoading, 
-        addNotification, 
-        markAsRead, 
-        markAllAsRead, 
-        clearNotification, 
-        clearAllNotifications,
-        refetch: refreshNotifications
-    } = useNotificationsData();
+function filterNotifications(notifications, filter) {
+  const list = Array.isArray(notifications) ? notifications : [];
 
-    const [filter, setFilter] = useState("all");
-    const [isSelectMode, setIsSelectMode] = useState(false);
-    const [selectedNotifications, setSelectedNotifications] = useState(new Set());
-
-    // Derived state
-    const unreadCount = useMemo(() => {
-        return notifications.filter((n) => !n.read).length;
-    }, [notifications]);
-
-    // Derived: Filtered notifications
-    const filteredNotifications = useMemo(() => {
-        const list = notifications.filter(n => n && typeof n === "object");
-        switch (filter) {
-            case "unread":
-                return list.filter(n => n.read !== true);
-            case "emergency":
-                return list.filter(n => n.type === NOTIFICATION_TYPES.EMERGENCY);
-            case "appointments":
-                return list.filter(n => 
-                    n.type === NOTIFICATION_TYPES.APPOINTMENT || 
-                    n.type === NOTIFICATION_TYPES.VISIT
-                );
-            case "support":
-                return list.filter(n => n.type === NOTIFICATION_TYPES.SUPPORT);
-            default:
-                return list;
-        }
-    }, [notifications, filter]);
-
-    // Derived: Counts per filter
-    const filterCounts = useMemo(() => ({
-        all: notifications.length,
-        unread: notifications.filter(n => !n.read).length,
-        emergency: notifications.filter(n => n.type === NOTIFICATION_TYPES.EMERGENCY).length,
-        appointments: notifications.filter(n => 
-            n.type === NOTIFICATION_TYPES.APPOINTMENT || n.type === NOTIFICATION_TYPES.VISIT
-        ).length,
-        support: notifications.filter(n => n.type === NOTIFICATION_TYPES.SUPPORT).length,
-    }), [notifications]);
-
-    const setFilterType = useCallback((filterType) => {
-        setFilter(filterType);
-    }, []);
-
-    // Selection management functions
-    const toggleSelectMode = useCallback(() => {
-        setIsSelectMode(prev => !prev);
-        setSelectedNotifications(new Set());
-    }, []);
-
-    const toggleNotificationSelection = useCallback((notificationId) => {
-        setSelectedNotifications(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(notificationId)) {
-                newSet.delete(notificationId);
-            } else {
-                newSet.add(notificationId);
-            }
-            return newSet;
-        });
-    }, []);
-
-    const selectAllNotifications = useCallback(() => {
-        const allIds = filteredNotifications.map(n => n.id);
-        setSelectedNotifications(new Set(allIds));
-    }, [filteredNotifications]);
-
-    const clearSelection = useCallback(() => {
-        setSelectedNotifications(new Set());
-    }, []);
-
-    const markSelectedAsRead = useCallback(async () => {
-        const selectedIds = Array.from(selectedNotifications);
-        if (selectedIds.length === 0) return;
-        
-        try {
-            await Promise.all(selectedIds.map(id => markAsRead(id)));
-            clearSelection();
-        } catch (error) {
-            console.error('Failed to mark selected notifications as read:', error);
-        }
-    }, [selectedNotifications, markAsRead, clearSelection]);
-
-    const deleteSelectedNotifications = useCallback(async () => {
-        const selectedIds = Array.from(selectedNotifications);
-        if (selectedIds.length === 0) return;
-        
-        try {
-            await Promise.all(selectedIds.map(id => clearNotification(id)));
-            clearSelection();
-            toggleSelectMode();
-        } catch (error) {
-            console.error('Failed to delete selected notifications:', error);
-        }
-    }, [selectedNotifications, clearNotification, clearSelection, toggleSelectMode]);
-
-    const deleteNotification = clearNotification;
-    const clearAll = clearAllNotifications;
-
-    const value = {
-        notifications,
-        filteredNotifications,
-        filter,
-        filters: NOTIFICATION_FILTERS,
-        filterCounts,
-        unreadCount,
-        isLoading,
-        setFilterType,
-        markAsRead,
-        markAllAsRead,
-        deleteNotification,
-        clearAll,
-        addNotification,
-        refreshNotifications,
-        // Selection mode properties
-        isSelectMode,
-        selectedNotifications,
-        toggleSelectMode,
-        toggleNotificationSelection,
-        selectAllNotifications,
-        clearSelection,
-        markSelectedAsRead,
-        deleteSelectedNotifications,
-    };
-
-    return (
-        <NotificationsContext.Provider value={value}>
-            {children}
-        </NotificationsContext.Provider>
-    );
+  switch (filter) {
+    case "unread":
+      return list.filter((notification) => notification?.read !== true);
+    case "emergency":
+      return list.filter(
+        (notification) => notification?.type === NOTIFICATION_TYPES.EMERGENCY,
+      );
+    case "appointments":
+      return list.filter(
+        (notification) =>
+          notification?.type === NOTIFICATION_TYPES.APPOINTMENT ||
+          notification?.type === NOTIFICATION_TYPES.VISIT,
+      );
+    case "support":
+      return list.filter(
+        (notification) => notification?.type === NOTIFICATION_TYPES.SUPPORT,
+      );
+    case "all":
+    default:
+      return list;
+  }
 }
 
-// Custom hook to use the notifications context
+function getFilterCountMap(notifications) {
+  const list = Array.isArray(notifications) ? notifications : [];
+
+  return {
+    all: list.length,
+    unread: list.filter((notification) => notification?.read !== true).length,
+    emergency: list.filter(
+      (notification) => notification?.type === NOTIFICATION_TYPES.EMERGENCY,
+    ).length,
+    appointments: list.filter(
+      (notification) =>
+        notification?.type === NOTIFICATION_TYPES.APPOINTMENT ||
+        notification?.type === NOTIFICATION_TYPES.VISIT,
+    ).length,
+    support: list.filter(
+      (notification) => notification?.type === NOTIFICATION_TYPES.SUPPORT,
+    ).length,
+  };
+}
+
+export function NotificationsProvider({ children }) {
+  const {
+    notifications,
+    isLoading,
+    isRefreshing,
+    error,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    clearNotification,
+    clearAllNotifications,
+    refetch: refreshNotifications,
+  } = useNotificationsData();
+  const [filter, setFilter] = useState("all");
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedNotificationIds, setSelectedNotificationIds] = useState([]);
+
+  const unreadCount = useMemo(
+    () =>
+      Array.isArray(notifications)
+        ? notifications.filter((notification) => notification?.read !== true)
+            .length
+        : 0,
+    [notifications],
+  );
+
+  const filters = useMemo(() => NOTIFICATION_FILTERS, []);
+
+  const filterCounts = useMemo(
+    () => getFilterCountMap(notifications),
+    [notifications],
+  );
+
+  const filteredNotifications = useMemo(
+    () => filterNotifications(notifications, filter),
+    [filter, notifications],
+  );
+
+  const selectedNotifications = useMemo(
+    () => new Set(selectedNotificationIds),
+    [selectedNotificationIds],
+  );
+
+  const setFilterType = useCallback((nextFilter) => {
+    const normalized =
+      typeof nextFilter === "string" &&
+      NOTIFICATION_FILTERS.some((entry) => entry.id === nextFilter)
+        ? nextFilter
+        : "all";
+
+    setFilter(normalized);
+    setSelectedNotificationIds([]);
+    setIsSelectMode(false);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedNotificationIds([]);
+  }, []);
+
+  const toggleSelectMode = useCallback(() => {
+    setIsSelectMode((current) => {
+      const next = !current;
+      if (!next) {
+        setSelectedNotificationIds([]);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleNotificationSelection = useCallback((notificationId) => {
+    if (!notificationId) return;
+
+    setSelectedNotificationIds((current) =>
+      current.includes(notificationId)
+        ? current.filter((id) => id !== notificationId)
+        : [...current, notificationId],
+    );
+  }, []);
+
+  const selectAllNotifications = useCallback(() => {
+    setSelectedNotificationIds(
+      filteredNotifications
+        .map((notification) => notification?.id)
+        .filter(Boolean),
+    );
+  }, [filteredNotifications]);
+
+  const markSelectedAsRead = useCallback(async () => {
+    if (selectedNotificationIds.length === 0) return;
+
+    await Promise.all(selectedNotificationIds.map((id) => markAsRead(id)));
+    setSelectedNotificationIds([]);
+  }, [markAsRead, selectedNotificationIds]);
+
+  const deleteSelectedNotifications = useCallback(async () => {
+    if (selectedNotificationIds.length === 0) return;
+
+    await Promise.all(
+      selectedNotificationIds.map((id) => clearNotification(id)),
+    );
+    setSelectedNotificationIds([]);
+    setIsSelectMode(false);
+  }, [clearNotification, selectedNotificationIds]);
+
+  const value = useMemo(
+    () => ({
+      notifications,
+      filteredNotifications,
+      filter,
+      filters,
+      filterCounts,
+      unreadCount,
+      isLoading,
+      isRefreshing,
+      isSelectMode,
+      selectedNotifications,
+      error,
+      addNotification,
+      setFilterType,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification: clearNotification,
+      clearAll: clearAllNotifications,
+      toggleSelectMode,
+      toggleNotificationSelection,
+      selectAllNotifications,
+      clearSelection,
+      markSelectedAsRead,
+      deleteSelectedNotifications,
+      refreshNotifications,
+    }),
+    [
+      addNotification,
+      clearAllNotifications,
+      clearSelection,
+      clearNotification,
+      deleteSelectedNotifications,
+      error,
+      filter,
+      filteredNotifications,
+      filterCounts,
+      filters,
+      isLoading,
+      isRefreshing,
+      isSelectMode,
+      markAllAsRead,
+      markAsRead,
+      markSelectedAsRead,
+      notifications,
+      refreshNotifications,
+      selectAllNotifications,
+      selectedNotifications,
+      setFilterType,
+      toggleNotificationSelection,
+      toggleSelectMode,
+      unreadCount,
+    ],
+  );
+
+  return (
+    <NotificationsContext.Provider value={value}>
+      {children}
+    </NotificationsContext.Provider>
+  );
+}
+
 export function useNotifications() {
-    const context = useContext(NotificationsContext);
-    if (context === undefined) {
-        throw new Error("useNotifications must be used within a NotificationsProvider");
-    }
-    return context;
+  const context = useContext(NotificationsContext);
+  if (context === undefined) {
+    throw new Error(
+      "useNotifications must be used within a NotificationsProvider",
+    );
+  }
+  return context;
 }
 
 export default NotificationsContext;

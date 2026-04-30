@@ -1,196 +1,134 @@
-import { useState, useEffect, useCallback } from 'react';
-import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from '../../constants/notifications';
-
-// Mock data for development - replace with actual API calls
-const mockNotifications = [
-  {
-    id: '1',
-    type: NOTIFICATION_TYPES.EMERGENCY,
-    title: 'Emergency Response',
-    message: 'Ambulance dispatched to your location',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
-    read: false,
-    priority: NOTIFICATION_PRIORITY.URGENT,
-    data: {
-      ambulanceId: 'amb-001',
-      eta: 8,
-    },
-  },
-  {
-    id: '2',
-    type: NOTIFICATION_TYPES.APPOINTMENT,
-    title: 'Appointment Reminder',
-    message: 'Your appointment is scheduled for tomorrow at 2:00 PM',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-    read: false,
-    priority: NOTIFICATION_PRIORITY.HIGH,
-    data: {
-      appointmentId: 'apt-001',
-      hospitalName: 'General Hospital',
-    },
-  },
-  {
-    id: '3',
-    type: NOTIFICATION_TYPES.VISIT,
-    title: 'Visit Completed',
-    message: 'Your visit to City Medical Center has been completed',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-    read: true,
-    priority: NOTIFICATION_PRIORITY.NORMAL,
-    data: {
-      visitId: 'visit-001',
-      hospitalName: 'City Medical Center',
-    },
-  },
-  {
-    id: '4',
-    type: NOTIFICATION_TYPES.SYSTEM,
-    title: 'System Update',
-    message: 'New features have been added to the app',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
-    read: true,
-    priority: NOTIFICATION_PRIORITY.LOW,
-  },
-];
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../../contexts/AuthContext";
+import { notificationsService } from "../../services/notificationsService";
+import { normalizeNotificationsList } from "../../utils/domainNormalize";
 
 export function useNotificationsData() {
-  const [notifications, setNotifications] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const notificationsQueryKey = useMemo(
+    () => ["notifications", user?.id || "anonymous"],
+    [user?.id],
+  );
 
-  // Load notifications on mount
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        setIsLoading(true);
-        // In a real app, this would be an API call
-        // const response = await notificationsService.getNotifications();
-        // setNotifications(response.data);
-        
-        // For now, use mock data
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        setNotifications(mockNotifications);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-        setNotifications([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const notificationsQuery = useQuery({
+    queryKey: notificationsQueryKey,
+    queryFn: async () => {
+      const result = await notificationsService.list();
+      return normalizeNotificationsList(result);
+    },
+    enabled: Boolean(user?.id),
+    staleTime: 30 * 1000,
+  });
 
-    loadNotifications();
-  }, []);
+  const notifications = useMemo(
+    () =>
+      Array.isArray(notificationsQuery.data)
+        ? normalizeNotificationsList(notificationsQuery.data)
+        : [],
+    [notificationsQuery.data],
+  );
 
-  // Add a new notification
-  const addNotification = useCallback(async (notificationData) => {
-    try {
-      const newNotification = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        read: false,
-        priority: notificationData.priority || NOTIFICATION_PRIORITY.NORMAL,
-        ...notificationData,
-      };
+  const setCachedNotifications = useCallback(
+    (updater) => {
+      queryClient.setQueryData(notificationsQueryKey, (current) => {
+        const base = Array.isArray(current) ? current : [];
+        const next = typeof updater === "function" ? updater(base) : updater;
+        return normalizeNotificationsList(Array.isArray(next) ? next : []);
+      });
+    },
+    [notificationsQueryKey, queryClient],
+  );
 
-      // In a real app, this would be an API call
-      // const response = await notificationsService.createNotification(newNotification);
-      
-      setNotifications(prev => [newNotification, ...prev]);
-      return newNotification;
-    } catch (error) {
-      console.error('Failed to add notification:', error);
-      throw error;
-    }
-  }, []);
+  const refreshNotifications = useCallback(async () => {
+    return notificationsQuery.refetch();
+  }, [notificationsQuery]);
 
-  // Mark notification as read
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      // In a real app, this would be an API call
-      // await notificationsService.markAsRead(notificationId);
-      
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+  const addNotification = useCallback(
+    async (notificationData) => {
+      const created = await notificationsService.create(notificationData);
+      setCachedNotifications((current) => [created, ...current]);
+      return created;
+    },
+    [setCachedNotifications],
+  );
+
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      setCachedNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId
             ? { ...notification, read: true }
-            : notification
-        )
+            : notification,
+        ),
       );
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-      throw error;
-    }
-  }, []);
 
-  // Mark all notifications as read
+      try {
+        await notificationsService.markAsRead(notificationId);
+      } catch (error) {
+        await queryClient.invalidateQueries({
+          queryKey: notificationsQueryKey,
+        });
+        throw error;
+      }
+    },
+    [notificationsQueryKey, queryClient, setCachedNotifications],
+  );
+
   const markAllAsRead = useCallback(async () => {
+    setCachedNotifications((current) =>
+      current.map((notification) => ({ ...notification, read: true })),
+    );
+
     try {
-      // In a real app, this would be an API call
-      // await notificationsService.markAllAsRead();
-      
-      setNotifications(prev => 
-        prev.map(notification => ({ ...notification, read: true }))
-      );
+      await notificationsService.markAllAsRead();
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
+      await queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
       throw error;
     }
-  }, []);
+  }, [notificationsQueryKey, queryClient, setCachedNotifications]);
 
-  // Clear/delete a notification
-  const clearNotification = useCallback(async (notificationId) => {
-    try {
-      // In a real app, this would be an API call
-      // await notificationsService.deleteNotification(notificationId);
-      
-      setNotifications(prev => 
-        prev.filter(notification => notification.id !== notificationId)
+  const clearNotification = useCallback(
+    async (notificationId) => {
+      setCachedNotifications((current) =>
+        current.filter((notification) => notification.id !== notificationId),
       );
-    } catch (error) {
-      console.error('Failed to clear notification:', error);
-      throw error;
-    }
-  }, []);
 
-  // Clear all notifications
+      try {
+        await notificationsService.delete(notificationId);
+      } catch (error) {
+        await queryClient.invalidateQueries({
+          queryKey: notificationsQueryKey,
+        });
+        throw error;
+      }
+    },
+    [notificationsQueryKey, queryClient, setCachedNotifications],
+  );
+
   const clearAllNotifications = useCallback(async () => {
+    setCachedNotifications([]);
+
     try {
-      // In a real app, this would be an API call
-      // await notificationsService.clearAllNotifications();
-      
-      setNotifications([]);
+      await notificationsService.clearAll();
     } catch (error) {
-      console.error('Failed to clear all notifications:', error);
+      await queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
       throw error;
     }
-  }, []);
-
-  // Refetch notifications
-  const refetch = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      // In a real app, this would be an API call
-      // const response = await notificationsService.getNotifications();
-      // setNotifications(response.data);
-      
-      // For now, just reload mock data
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setNotifications(mockNotifications);
-    } catch (error) {
-      console.error('Failed to refetch notifications:', error);
-      setNotifications([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  }, [notificationsQueryKey, queryClient, setCachedNotifications]);
 
   return {
     notifications,
-    isLoading,
+    isLoading: notificationsQuery.isLoading,
+    isRefreshing:
+      notificationsQuery.isFetching && !notificationsQuery.isLoading,
+    error: notificationsQuery.error || null,
     addNotification,
     markAsRead,
     markAllAsRead,
     clearNotification,
     clearAllNotifications,
-    refetch,
+    refetch: refreshNotifications,
   };
 }
