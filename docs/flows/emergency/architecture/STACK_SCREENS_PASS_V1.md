@@ -435,9 +435,19 @@ Current docs:
 
 ## 16. Notifications Wave
 
-`Notifications` is the next active stack-screen wave after `Search`.
+`Notifications` is now in the same modern stack-screen family as `Search`, `Insurance`, `Medical Profile`, `Settings`, and `Profile`.
 
 Current docs:
 
 - [../../../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [NOTIFICATIONS_STACK_PASS_PLAN_V1.md](./NOTIFICATIONS_STACK_PASS_PLAN_V1.md)
+- [../../../audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 17. Notification Details Wave
+
+`Notification Details` is the next companion stack-screen wave after `Notifications`.
+
+Current docs:
+
+- [../../../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md](./NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md)

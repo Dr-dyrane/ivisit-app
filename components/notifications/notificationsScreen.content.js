@@ -1,7 +1,46 @@
 export const NOTIFICATIONS_SCREEN_COPY = {
+  screen: {
+    title: "Notifications",
+    subtitle: "Care updates",
+  },
+  center: {
+    title: "Recent updates",
+    emptyTitle: "No notifications yet",
+    emptyBody: "Updates from alerts, visits, and support appear here.",
+    emptyFilteredTitle: "No items in this filter",
+    emptyFilteredBody: "Try another filter or refresh the inbox.",
+  },
   context: {
-    primarySelecting: "Manage selection",
+    title: "Stay in sync",
+    body: "Unread alerts, support replies, and visit changes land here.",
+    unreadLabel: "Unread",
+    totalLabel: "On file",
+    focusLabel: "Focus",
     primaryUnread: "Mark all read",
     primaryIdle: "Refresh inbox",
+    primarySelecting: "Done selecting",
+  },
+  island: {
+    title: "Inbox actions",
+    unreadLabel: "Unread",
+    totalLabel: "Total",
+    filterLabel: "Filter",
+    selectedLabel: "Selected",
+    latestSection: "Latest unread",
+  },
+  rows: {
+    clearSection: "Clear",
+    selectAll: "Select all",
+    clearAll: "Clear all",
+    markRead: "Mark read",
+    delete: "Delete",
+    done: "Done",
+    unreadBadge: "New",
+  },
+  messages: {
+    allCaughtUp: "All caught up",
+    refreshReady: "Inbox ready",
+    latestUnreadEmpty: "No unread alerts",
+    unreadFocus: "Unread first",
   },
 };

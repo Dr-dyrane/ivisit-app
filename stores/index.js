@@ -7,6 +7,11 @@ export { default as useEmergencyContactsStore } from "./emergencyContactsStore";
 export * from "./emergencyContactsStore";
 export * from "./emergencyContactsSelectors";
 
+// Notifications Store
+export { default as useNotificationsStore } from "./notificationsStore";
+export * from "./notificationsStore";
+export * from "./notificationsSelectors";
+
 // Payment Preferences Store
 export { usePaymentPreferencesStore } from "./paymentPreferencesStore";
 

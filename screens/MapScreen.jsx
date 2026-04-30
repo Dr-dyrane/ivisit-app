@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyLocationPreviewMap from "../components/emergency/intake/EmergencyLocationPreviewMap";
 import MiniProfileModal from "../components/emergency/MiniProfileModal";
@@ -40,10 +40,17 @@ import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
 
 export default function MapScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { isDarkMode } = useTheme();
   const { showToast } = useToast();
   const { logout, user } = useAuth();
-  const { visits = [], updateVisit, cancelVisit, refreshVisits } = useVisits();
+  const {
+    visits = [],
+    isLoading: visitsLoading,
+    updateVisit,
+    cancelVisit,
+    refreshVisits,
+  } = useVisits();
   const { registerFAB, unregisterFAB } = useFABActions();
   const { width, height, browserInsetTop, browserInsetBottom } =
     useAuthViewport();
@@ -188,6 +195,7 @@ export default function MapScreen() {
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
     historyFocusedHospital,
+    openHistoryVisitByKey,
     // Handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,
@@ -224,6 +232,19 @@ export default function MapScreen() {
     discoveredHospitals,
     router,
   });
+  const routeVisitKeyFailureRef = useRef(null);
+  const routeMapSheet =
+    typeof params?.mapSheet === "string"
+      ? params.mapSheet
+      : Array.isArray(params?.mapSheet)
+        ? params.mapSheet[0]
+        : null;
+  const routeVisitKey =
+    typeof params?.visitKey === "string"
+      ? params.visitKey
+      : Array.isArray(params?.visitKey)
+        ? params.visitKey[0]
+        : null;
 
   useEffect(() => {
     const suppressionId = "map-modal-fab-suppression";
@@ -380,6 +401,47 @@ export default function MapScreen() {
     openRatingForVisit(selectedHistoryVisit);
     closeHistoryVisitDetails();
   }, [closeHistoryVisitDetails, openRatingForVisit, selectedHistoryVisit]);
+
+  useEffect(() => {
+    const wantsRouteVisitDetail =
+      routeMapSheet === "visit_detail" && Boolean(routeVisitKey);
+    if (!wantsRouteVisitDetail) {
+      routeVisitKeyFailureRef.current = null;
+      return;
+    }
+
+    if (visitsLoading) return;
+
+    if (
+      sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL &&
+      String(selectedHistoryVisitKey || "") === String(routeVisitKey)
+    ) {
+      routeVisitKeyFailureRef.current = null;
+      return;
+    }
+
+    const didOpen = openHistoryVisitByKey(routeVisitKey, {
+      routeManaged: true,
+    });
+    if (didOpen) {
+      routeVisitKeyFailureRef.current = null;
+      return;
+    }
+
+    if (routeVisitKeyFailureRef.current === routeVisitKey) return;
+    routeVisitKeyFailureRef.current = routeVisitKey;
+    router.replace("/(user)");
+    showToast("Visit details are not available right now.", "info");
+  }, [
+    openHistoryVisitByKey,
+    routeMapSheet,
+    routeVisitKey,
+    router,
+    selectedHistoryVisitKey,
+    sheetPhase,
+    showToast,
+    visitsLoading,
+  ]);
 
   return (
     <View

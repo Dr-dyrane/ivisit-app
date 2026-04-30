@@ -4,16 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
 import * as Haptics from "expo-haptics";
 import { useNotifications } from "../../contexts/NotificationsContext";
-import { EmergencyMode } from "../../contexts/EmergencyContext";
 import { useModeStore } from "../../stores/modeStore";
-import {
-  navigateToHelpSupport,
-  navigateToMore,
-  navigateToNotificationDetails,
-  navigateToSOS,
-  navigateToVisitDetails,
-  navigateToVisits,
-} from "../../utils/navigationHelpers";
 import {
   NOTIFICATION_FILTERS,
   NOTIFICATION_TYPES,
@@ -24,6 +15,10 @@ import {
   notificationsSelectedIdsAtom,
 } from "../../atoms/notificationsScreenAtoms";
 import { NOTIFICATIONS_SCREEN_COPY } from "../../components/notifications/notificationsScreen.content";
+import {
+  getNotificationPrimaryActionLabel,
+  routeNotificationDestination,
+} from "./notificationDestination";
 
 function isValidFilter(value) {
   return NOTIFICATION_FILTERS.some((filter) => filter.id === value);
@@ -115,68 +110,6 @@ function filterNotifications(notifications, filter) {
     default:
       return list;
   }
-}
-
-function getNotificationDestination({
-  actionType,
-  actionData,
-  notification,
-  router,
-  setEmergencyMode,
-}) {
-  const visitId =
-    typeof actionData?.visitId === "string"
-      ? actionData.visitId
-      : typeof actionData?.appointmentId === "string"
-        ? actionData.appointmentId
-        : null;
-
-  if (actionType === "track") {
-    navigateToSOS({
-      router,
-      setEmergencyMode,
-      mode: EmergencyMode.EMERGENCY,
-    });
-    return;
-  }
-
-  if (actionType === "view_appointment") {
-    if (visitId) {
-      navigateToVisitDetails({ router, visitId });
-      return;
-    }
-    navigateToVisits({ router, filter: "upcoming" });
-    return;
-  }
-
-  if (actionType === "view_visit" || actionType === "view_summary") {
-    if (visitId) {
-      navigateToVisitDetails({ router, visitId });
-      return;
-    }
-    navigateToVisits({ router });
-    return;
-  }
-
-  if (actionType === "upgrade") {
-    navigateToMore({ router });
-    return;
-  }
-
-  if (actionType === "view_ticket") {
-    navigateToHelpSupport({ router, ticketId: actionData?.ticketId });
-    return;
-  }
-
-  if (actionType === "view_insurance") {
-    navigateToMore({ router, screen: "insurance" });
-    return;
-  }
-
-  navigateToNotificationDetails({
-    router,
-    notificationId: notification?.id,
-  });
 }
 
 export function useNotificationsScreenModel() {
@@ -334,6 +267,16 @@ export function useNotificationsScreenModel() {
     setSelectedIds([]);
   }, [markAsRead, selectedCount, selectedIds, setSelectedIds]);
 
+  const deleteNotificationIds = useCallback(
+    async (notificationIds) => {
+      const ids = [...new Set((notificationIds || []).filter(Boolean))];
+      if (ids.length === 0) return;
+      await Promise.all(ids.map((id) => deleteNotification(id)));
+      closeSelectionMode();
+    },
+    [closeSelectionMode, deleteNotification],
+  );
+
   const deleteSelected = useCallback(() => {
     if (selectedCount === 0) return;
 
@@ -346,13 +289,42 @@ export function useNotificationsScreenModel() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await Promise.all(selectedIds.map((id) => deleteNotification(id)));
-            closeSelectionMode();
+            await deleteNotificationIds(selectedIds);
           },
         },
       ],
     );
-  }, [closeSelectionMode, deleteNotification, selectedCount, selectedIds]);
+  }, [deleteNotificationIds, selectedCount, selectedIds]);
+
+  const prepareSectionSelection = useCallback(
+    (section) => {
+      const ids =
+        section?.items
+          ?.map((notification) => notification?.id)
+          .filter(Boolean) ?? [];
+
+      if (ids.length === 0) return;
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setIsSelectMode(true);
+      setSelectedIds(ids);
+    },
+    [setIsSelectMode, setSelectedIds],
+  );
+
+  const deleteSection = useCallback(
+    async (section) => {
+      const ids =
+        section?.items
+          ?.map((notification) => notification?.id)
+          .filter(Boolean) ?? [];
+
+      if (ids.length === 0) return;
+
+      await deleteNotificationIds(ids);
+    },
+    [deleteNotificationIds],
+  );
 
   const handleNotificationPress = useCallback(
     async (notification) => {
@@ -369,9 +341,7 @@ export function useNotificationsScreenModel() {
         await markAsRead(notification.id);
       }
 
-      getNotificationDestination({
-        actionType: notification?.actionType ?? null,
-        actionData: notification?.actionData ?? {},
+      routeNotificationDestination({
         notification,
         router,
         setEmergencyMode,
@@ -426,6 +396,7 @@ export function useNotificationsScreenModel() {
     contextTotalLabel:
       totalCount === 1 ? "1 notification" : `${totalCount} notifications`,
     focusLabel: filterLabel,
+    getPrimaryActionLabel: getNotificationPrimaryActionLabel,
     refresh: refreshNotifications,
     onPrimaryAction: handlePrimaryAction,
     onSelectFilter: selectFilter,
@@ -435,6 +406,8 @@ export function useNotificationsScreenModel() {
     onToggleSelectAll: toggleSelectAll,
     onMarkSelectedRead: markSelectedRead,
     onDeleteSelected: deleteSelected,
+    onPrepareSectionSelection: prepareSectionSelection,
+    onDeleteSection: deleteSection,
     onNotificationPress: handleNotificationPress,
     onNotificationLongPress: handleNotificationLongPress,
   };

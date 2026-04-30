@@ -96,6 +96,7 @@ export function useMapHistoryFlow({
   // PULLBACK NOTE: VD-C3 (EC-VD-2) — track origin of visit detail open so
   // closeHistoryVisitDetails can restore the correct surface.
   const visitDetailReturnTargetRef = useRef(null);
+  const routeManagedVisitDetailRef = useRef(false);
   const historyPaymentRequestVersionRef = useRef(0);
 
   // --- Jotai atoms ---
@@ -157,14 +158,24 @@ export function useMapHistoryFlow({
 
   const closeHistoryVisitDetails = useCallback(() => {
     const returnTarget = visitDetailReturnTargetRef.current;
+    const routeManaged = routeManagedVisitDetailRef.current === true;
     visitDetailReturnTargetRef.current = null;
+    routeManagedVisitDetailRef.current = false;
     setSelectedHistoryVisitKey(null);
     closeVisitDetail?.();
     // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
     if (returnTarget === "history_modal") {
       setRecentVisitsVisible(true);
     }
-  }, [closeVisitDetail, setRecentVisitsVisible, setSelectedHistoryVisitKey]);
+    if (routeManaged) {
+      router.replace("/(user)");
+    }
+  }, [
+    closeVisitDetail,
+    router,
+    setRecentVisitsVisible,
+    setSelectedHistoryVisitKey,
+  ]);
 
   const closeHistoryPaymentDetails = useCallback(() => {
     historyPaymentRequestVersionRef.current += 1;
@@ -233,6 +244,23 @@ export function useMapHistoryFlow({
     showToast,
   ]);
 
+  const openHistoryVisitByKey = useCallback(
+    (visitKey, options = {}) => {
+      if (!visitKey) return false;
+      const historyItem = selectHistoryItemByAnyKey(visits, visitKey);
+      if (!historyItem) return false;
+
+      routeManagedVisitDetailRef.current = options?.routeManaged === true;
+      visitDetailReturnTargetRef.current = options?.returnTarget || null;
+      setSelectedHistoryVisitKey(
+        historyItem.requestId || historyItem.displayId || historyItem.id,
+      );
+      openVisitDetail?.(historyItem, options?.sourcePhase || null);
+      return true;
+    },
+    [openVisitDetail, setSelectedHistoryVisitKey, visits],
+  );
+
   const handleSelectHistoryItem = useCallback(
     (historyItem) => {
       if (!historyItem) return;
@@ -267,19 +295,20 @@ export function useMapHistoryFlow({
         return;
       }
 
-      setSelectedHistoryVisitKey(
+      openHistoryVisitByKey(
         historyItem.requestId || historyItem.displayId || historyItem.id,
+        {
+          sourcePhase: sheetPhase,
+          returnTarget: "history_modal",
+        },
       );
-      // VD-B (EC-VD-2): pass current sheetPhase as sourcePhase for back navigation
-      openVisitDetail?.(historyItem, sheetPhase);
     },
     [
       activeHistoryRequestKeys,
       activeMapRequest?.hasActiveRequest,
       openTracking,
-      openVisitDetail,
+      openHistoryVisitByKey,
       setRecentVisitsVisible,
-      setSelectedHistoryVisitKey,
       sheetPhase,
       showToast,
     ],
@@ -520,6 +549,7 @@ export function useMapHistoryFlow({
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
     historyFocusedHospital,
+    openHistoryVisitByKey,
     // History detail handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,

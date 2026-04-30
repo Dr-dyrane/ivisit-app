@@ -1,5 +1,6 @@
 import React from "react";
 import { useEmergencyContactsBootstrap } from "../hooks/emergency/useEmergencyContactsBootstrap";
+import { useNotificationsBootstrap } from "../hooks/notifications/useNotificationsBootstrap";
 
 /**
  * RootBootstrapEffects
@@ -9,6 +10,7 @@ import { useEmergencyContactsBootstrap } from "../hooks/emergency/useEmergencyCo
  */
 export function RootBootstrapEffects() {
   useEmergencyContactsBootstrap();
+  useNotificationsBootstrap();
   return null;
 }
 

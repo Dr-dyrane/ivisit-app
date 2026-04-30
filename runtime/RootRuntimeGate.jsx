@@ -13,6 +13,7 @@ import { hydrateModeStore } from "../stores/modeStore";
 import { hydrateCoverageStore } from "../stores/coverageStore";
 import { hydrateEmergencyContactsStore } from "../stores/emergencyContactsStore";
 import { hydrateLocationStore } from "../stores/locationStore";
+import { hydrateNotificationsStore } from "../stores/notificationsStore";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
 let isSplashPrevented = false;
@@ -49,6 +50,7 @@ export function RootRuntimeGate({ children }) {
           hydrateModeStore(),
           hydrateCoverageStore(),
           hydrateEmergencyContactsStore(),
+          hydrateNotificationsStore(),
           hydrateLocationStore(),
         ]);
 

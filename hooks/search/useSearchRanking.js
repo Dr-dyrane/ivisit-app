@@ -9,6 +9,7 @@ import { useSearch } from "../../contexts/SearchContext";
 import { scoreText, isBedRelatedQuery } from "../../utils/searchScoring";
 import { discoveryService } from "../../services/discoveryService";
 import { NOTIFICATION_TYPES } from "../../constants/notifications";
+import { routeNotificationDestination } from "../notifications/notificationDestination";
 import {
   navigateToNotifications,
   navigateToSOS,
@@ -211,37 +212,14 @@ export const useSearchRanking = () => {
           subtitle: String(notification?.message ?? ""),
           icon: "notifications-outline",
           score,
-          onPress: () => {
-            const actionType = notification?.actionType ?? null;
-            const actionData = notification?.actionData ?? {};
-            const visitId =
-              typeof actionData?.visitId === "string"
-                ? actionData.visitId
-                : typeof actionData?.appointmentId === "string"
-                  ? actionData.appointmentId
-                  : null;
-
-            if (actionType === "track") {
-              navigateToSOS({
-                router,
-                setEmergencyMode: setMode,
-                mode: EmergencyMode.EMERGENCY,
-              });
-              return;
-            }
-
-            if (actionType === "view_summary" && visitId) {
-              navigateToVisitDetails({ router, visitId, method: "replace" });
-              return;
-            }
-
-            if (actionType === "view_appointment" && visitId) {
-              navigateToVisitDetails({ router, visitId, method: "replace" });
-              return;
-            }
-
-            openNotificationsFiltered(defaultFilter);
-          },
+          onPress: () =>
+            routeNotificationDestination({
+              notification,
+              router,
+              setEmergencyMode: setMode,
+              method: "replace",
+              fallbackToDetails: false,
+            }) || openNotificationsFiltered(defaultFilter),
         });
       }
     }

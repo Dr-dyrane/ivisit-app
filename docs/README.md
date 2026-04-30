@@ -122,6 +122,8 @@ When in doubt, `rules.json` wins.
 - [`flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `SearchScreen`
 - [`audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the search stack refactor
 - [`flows/emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `NotificationsScreen`
+- [`audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the notifications stack refactor
+- [`flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md`](./flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md) — implementation plan and ownership split for `NotificationDetailsScreen`
 - [`flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth for `/map`
 - [`flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live execution plan
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
@@ -156,6 +158,8 @@ When in doubt, `rules.json` wins.
 - [`audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the search stack pass
 - [`audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — search stack implementation outcome and remaining verification
 - [`audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the notifications stack pass
+- [`audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — notifications stack implementation outcome and remaining verification
+- [`audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the notification-details stack pass
 - [`audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md) — payment/emergency-contacts comparison baseline for the next profile pass
 - [`audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — profile stack implementation outcome and remaining verification
 - [`audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the next settings stack pass

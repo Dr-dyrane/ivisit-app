@@ -85,7 +85,13 @@ export function navigateToNotifications({ router, filter, method = "push" }) {
 
 export function navigateToVisitDetails({ router, visitId, method = "push" }) {
 	if (!visitId) return;
-	nav(router, method, ROUTES.STACK_VISIT_DETAILS(visitId));
+	nav(router, method, {
+		pathname: ROUTES.USER_HOME,
+		params: {
+			mapSheet: "visit_detail",
+			visitKey: String(visitId),
+		},
+	});
 }
 
 export function navigateToSettings({ router, method = "push" }) {

@@ -23,6 +23,9 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/SEARCH_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the search stack refactor.
 - [emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md](./emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md): Notifications stack implementation plan and ownership split.
 - [../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the notifications stack refactor.
+- [../audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the notifications stack refactor.
+- [emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md](./emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md): Notification-details stack implementation plan and ownership split.
+- [../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the notification-details stack refactor.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
 
 ## Existing Deep Dives (Keep Using These)

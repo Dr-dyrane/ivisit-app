@@ -107,6 +107,7 @@ export const StorageKeys = {
 	// ============================================
 	/** User notifications */
 	NOTIFICATIONS: `${DB_PREFIX}notifications`,
+	NOTIFICATIONS_CACHE: `${DB_PREFIX}notifications_cache`,
 	DEMO_NOTIFICATIONS: `${DB_PREFIX}demo_notifications`,
 
 	SEARCH_HISTORY: `${DB_PREFIX}search_history`,
@@ -162,6 +163,7 @@ export const SingletonKeys = [
 	StorageKeys.MEDICAL_PROFILE,
 	StorageKeys.EMERGENCY_CONTACTS_CACHE,
 	StorageKeys.EMERGENCY_CONTACTS_MIGRATION,
+	StorageKeys.NOTIFICATIONS_CACHE,
 	StorageKeys.EMERGENCY_STATE,
 	StorageKeys.MODE_PREFERENCES,
 	StorageKeys.COVERAGE_PREFERENCES,
