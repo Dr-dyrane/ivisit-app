@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { Platform, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useWindowDimensions } from "react-native";
@@ -92,42 +92,6 @@ export default function ProfileScreenOrchestrator() {
     }, [backButton, headerLayoutInsets, setHeaderState]),
   );
 
-  if (model.isDataLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-          backgroundColor: isDarkMode ? "#08111D" : "#FFF9F7",
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: COLORS.brandPrimary,
-            width: 72,
-            height: 72,
-            borderRadius: 22,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ActivityIndicator size="large" color="#FFFFFF" />
-        </View>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: "400",
-            color: isDarkMode ? "#94A3B8" : "#64748B",
-          }}
-        >
-          Loading your profile...
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <>
       <ProfileStageBase isDarkMode={isDarkMode}>
@@ -150,6 +114,7 @@ export default function ProfileScreenOrchestrator() {
                 viewportVariant={stageViewportVariant}
                 bottomPadding={bottomPadding}
                 model={model}
+                loading={model.isDataLoading}
               />
             );
           }
@@ -165,6 +130,7 @@ export default function ProfileScreenOrchestrator() {
                 metrics={metrics}
                 onPickImage={model.pickImage}
                 compact
+                loading={model.isDataLoading}
               />
               <ProfileActionList
                 emergencyContacts={model.emergencyContacts}
@@ -178,6 +144,7 @@ export default function ProfileScreenOrchestrator() {
                 onDeleteAccountPress={model.openDeleteAccount}
                 onSignOutPress={model.signOut}
                 contentPaddingHorizontal={0}
+                loading={model.isDataLoading}
               />
             </View>
           );

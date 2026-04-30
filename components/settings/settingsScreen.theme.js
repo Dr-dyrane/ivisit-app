@@ -6,5 +6,7 @@ export function createSettingsScreenTheme({ isDarkMode }) {
     border: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
     text: isDarkMode ? "#FFFFFF" : "#0F172A",
     textMuted: isDarkMode ? "#94A3B8" : "#64748B",
+    skeletonBase: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)",
+    skeletonSoft: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.05)",
   };
 }

@@ -26,6 +26,7 @@ export default function ProfileActionList({
   fadeAnim,
   slideAnim,
   contentPaddingHorizontal = 12,
+  loading = false,
 }) {
   const miniProfileColors = getMiniProfileColors(isDarkMode);
   const miniProfileTones = getMiniProfileTones(isDarkMode);
@@ -36,6 +37,64 @@ export default function ProfileActionList({
     },
     { preferDrawerPresentation: false },
   );
+
+  if (loading) {
+    return (
+      <View style={{ gap: 16, paddingHorizontal: contentPaddingHorizontal }}>
+        {[1, 2, 2, 2].map((rows, groupIndex) => (
+          <View
+            key={`profile-skeleton-group-${groupIndex}`}
+            style={{
+              backgroundColor: miniProfileColors.card,
+              borderRadius: layout.groups.radius,
+              overflow: "hidden",
+            }}
+          >
+            {Array.from({ length: rows }).map((_, rowIndex) => (
+              <View
+                key={`profile-skeleton-row-${groupIndex}-${rowIndex}`}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  minHeight: layout.row.minHeight,
+                  paddingLeft: layout.row.paddingLeft,
+                  paddingRight: layout.row.paddingRight,
+                }}
+              >
+                <View
+                  style={{
+                    width: layout.row.orbSize,
+                    height: layout.row.orbSize,
+                    borderRadius: 999,
+                    marginRight: layout.row.orbGap,
+                    backgroundColor: miniProfileColors.cardStrong,
+                  }}
+                />
+                <View
+                  style={{
+                    flex: 1,
+                    minHeight: layout.row.minHeight,
+                    justifyContent: "center",
+                    borderBottomWidth: rowIndex === rows - 1 ? 0 : 1,
+                    borderBottomColor: miniProfileColors.divider,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: rowIndex % 2 === 0 ? "48%" : "58%",
+                      height: 14,
+                      borderRadius: 999,
+                      backgroundColor: miniProfileColors.cardStrong,
+                    }}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  }
 
   const actionGroups = [
     [

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   LayoutAnimation,
@@ -128,20 +127,66 @@ export function ContactsLoadingState({
 
   return (
     <ContactGroup isDarkMode={isDarkMode}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          padding: 16,
-        }}
-      >
-        <ActivityIndicator color={COLORS.brandPrimary} />
+      <View style={{ padding: 16, gap: 14 }}>
+        <View
+          style={{
+            width: "42%",
+            height: 14,
+            borderRadius: 999,
+            backgroundColor: isDarkMode
+              ? "rgba(255,255,255,0.05)"
+              : "rgba(15,23,42,0.05)",
+          }}
+        />
+        {Array.from({ length: 2 }).map((_, index) => (
+          <View
+            key={`contact-loading-row-${index}`}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 6,
+            }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 999,
+                backgroundColor: isDarkMode
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(15,23,42,0.07)",
+              }}
+            />
+            <View style={{ flex: 1, gap: 8 }}>
+              <View
+                style={{
+                  width: index === 0 ? "56%" : "48%",
+                  height: 14,
+                  borderRadius: 999,
+                  backgroundColor: isDarkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(15,23,42,0.07)",
+                }}
+              />
+              <View
+                style={{
+                  width: "34%",
+                  height: 12,
+                  borderRadius: 999,
+                  backgroundColor: isDarkMode
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(15,23,42,0.05)",
+                }}
+              />
+            </View>
+          </View>
+        ))}
         <Text
           style={{
             color: colors.muted,
-            fontSize: 14,
-            lineHeight: 20,
+            fontSize: 13,
+            lineHeight: 18,
             fontWeight: "400",
           }}
         >

@@ -71,7 +71,11 @@ export function computeInsuranceSidebarLayout({ width, surfaceConfig }) {
   };
 }
 
-export function computeInsuranceThirdColumnLayout({ layout, viewportVariant }) {
+export function computeInsuranceThirdColumnLayout({
+  layout,
+  viewportVariant,
+  width = 0,
+}) {
   const isXL =
     viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL ||
     viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_2XL_3XL ||
@@ -86,17 +90,42 @@ export function computeInsuranceThirdColumnLayout({ layout, viewportVariant }) {
     };
   }
 
-  const { sidebarWidth, sidebarGutter } = layout;
-  const thirdIslandWidth =
-    viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL
-      ? Math.min(320, sidebarWidth)
-      : sidebarWidth;
+  const {
+    sidebarWidth,
+    sidebarLeft = layout.sidebarGutter || 0,
+    sidebarGutter,
+  } = layout;
+  const centerMinWidth =
+    viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL ? 640 : 680;
+  const thirdIslandMinWidth = 280;
+  const thirdIslandMaxWidth =
+    viewportVariant === STACK_VIEWPORT_VARIANTS.WEB_XL ? 320 : 360;
+  const preferredThirdIslandWidth = Math.min(thirdIslandMaxWidth, sidebarWidth);
+  const leftFootprint = sidebarLeft + sidebarWidth + sidebarGutter;
+  const maxThirdIslandWidthByRatio =
+    width - leftFootprint - sidebarGutter - centerMinWidth;
+  const thirdIslandWidth = Math.min(
+    preferredThirdIslandWidth,
+    maxThirdIslandWidthByRatio,
+  );
+
+  if (
+    !Number.isFinite(thirdIslandWidth) ||
+    thirdIslandWidth < thirdIslandMinWidth
+  ) {
+    return {
+      usesThirdColumn: false,
+      thirdIslandWidth: 0,
+      thirdIslandRight: 0,
+      centerPanelMarginRight: 0,
+    };
+  }
 
   return {
     usesThirdColumn: true,
-    thirdIslandWidth,
+    thirdIslandWidth: Math.round(thirdIslandWidth),
     thirdIslandRight: sidebarGutter,
-    centerPanelMarginRight: thirdIslandWidth + sidebarGutter,
+    centerPanelMarginRight: Math.round(thirdIslandWidth) + sidebarGutter,
   };
 }
 

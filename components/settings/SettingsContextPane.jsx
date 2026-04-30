@@ -48,6 +48,40 @@ function MetricRow({ icon, label, value, theme, isDarkMode }) {
   );
 }
 
+function SkeletonMetricRow({ theme }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          borderCurve: "continuous",
+          backgroundColor: theme.skeletonSoft,
+        }}
+      />
+      <View style={{ flex: 1, gap: 6 }}>
+        <View
+          style={{
+            width: "34%",
+            height: 11,
+            borderRadius: 999,
+            backgroundColor: theme.skeletonSoft,
+          }}
+        />
+        <View
+          style={{
+            width: "56%",
+            height: 13,
+            borderRadius: 999,
+            backgroundColor: theme.skeletonBase,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function SettingsContextPane({
   theme,
   metrics,
@@ -56,7 +90,67 @@ export default function SettingsContextPane({
   themeSummary,
   notificationsSummary,
   privacySummary,
+  loading = false,
 }) {
+  if (loading) {
+    return (
+      <View style={{ gap: metrics.spacing.md }}>
+        <View style={{ gap: metrics.spacing.xs }}>
+          <View
+            style={{
+              width: "52%",
+              height: 22,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonBase,
+            }}
+          />
+          <View
+            style={{
+              width: "78%",
+              height: 14,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonSoft,
+            }}
+          />
+        </View>
+
+        <View
+          style={{
+            gap: 6,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            borderRadius: 14,
+            borderCurve: "continuous",
+            backgroundColor: theme.cardMuted,
+          }}
+        >
+          <View
+            style={{
+              width: "28%",
+              height: 11,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonSoft,
+            }}
+          />
+          <View
+            style={{
+              width: "64%",
+              height: 14,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonBase,
+            }}
+          />
+        </View>
+
+        <View style={{ gap: metrics.spacing.sm }}>
+          <SkeletonMetricRow theme={theme} />
+          <SkeletonMetricRow theme={theme} />
+          <SkeletonMetricRow theme={theme} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: metrics.spacing.md }}>
       <View style={{ gap: metrics.spacing.xs }}>

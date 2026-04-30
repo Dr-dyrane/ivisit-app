@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
-import { Image, RefreshControl, ScrollView, Text, View } from "react-native";
+import {
+  Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
@@ -29,6 +36,7 @@ export default function InsuranceWideLayout({
   loading = false,
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const glass = useMemo(
     () => getInsuranceSidebarGlassTokens({ isDarkMode }),
     [isDarkMode],
@@ -46,11 +54,12 @@ export default function InsuranceWideLayout({
       computeInsuranceThirdColumnLayout({
         layout,
         viewportVariant,
+        width,
       }),
-    [layout, viewportVariant],
+    [layout, viewportVariant, width],
   );
   const showThirdColumn = thirdColumnLayout.usesThirdColumn === true;
-  const centerPanelMaxWidth = showThirdColumn ? 760 : 720;
+  const centerPanelMaxWidth = showThirdColumn ? 800 : 720;
 
   return (
     <>
@@ -144,19 +153,18 @@ export default function InsuranceWideLayout({
       <ScrollView
         style={{
           flex: 1,
+          minWidth: 0,
           marginRight: showThirdColumn
             ? thirdColumnLayout.centerPanelMarginRight
             : 0,
         }}
         contentContainerStyle={{
-          gap: metrics.spacing.lg,
+          flexGrow: 1,
           paddingTop: headerClearance,
           paddingBottom: bottomPadding,
           paddingLeft: layout.rightPanelLeftPadding,
           paddingRight: layout.rightPanelRightPadding,
-          maxWidth: centerPanelMaxWidth,
-          width: "100%",
-          alignSelf: "flex-start",
+          minWidth: 0,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -169,33 +177,46 @@ export default function InsuranceWideLayout({
           />
         }
       >
-        <View style={{ gap: metrics.spacing.xs }}>
-          <Text
-            style={{
-              color: theme.text,
-              fontSize: Math.max(metrics.typography.title.fontSize + 4, 24),
-              lineHeight: Math.max(metrics.typography.title.lineHeight + 6, 30),
-              fontWeight: "700",
-              letterSpacing: -0.35,
-            }}
-          >
-            {INSURANCE_SCREEN_COPY.center.title}
-          </Text>
-        </View>
+        <View
+          style={{
+            width: "100%",
+            maxWidth: centerPanelMaxWidth,
+            minWidth: 0,
+            alignSelf: "flex-start",
+            gap: metrics.spacing.lg,
+          }}
+        >
+          <View style={{ gap: metrics.spacing.xs, width: "100%" }}>
+            <Text
+              style={{
+                color: theme.text,
+                fontSize: Math.max(metrics.typography.title.fontSize + 4, 24),
+                lineHeight: Math.max(
+                  metrics.typography.title.lineHeight + 6,
+                  30,
+                ),
+                fontWeight: "700",
+                letterSpacing: -0.35,
+              }}
+            >
+              {INSURANCE_SCREEN_COPY.center.title}
+            </Text>
+          </View>
 
-        <InsurancePolicyList
-          policies={model.policies}
-          isDarkMode={isDarkMode}
-          theme={theme}
-          metrics={metrics}
-          loading={loading}
-          onAddCoverage={model.openCreate}
-          onEditPolicy={model.editPolicy}
-          onDeletePolicy={model.deletePolicy}
-          onSetDefaultPolicy={model.setDefaultPolicy}
-          onLinkPayment={model.linkPayment}
-          contentPaddingHorizontal={0}
-        />
+          <InsurancePolicyList
+            policies={model.policies}
+            isDarkMode={isDarkMode}
+            theme={theme}
+            metrics={metrics}
+            loading={loading}
+            onAddCoverage={model.openCreate}
+            onEditPolicy={model.editPolicy}
+            onDeletePolicy={model.deletePolicy}
+            onSetDefaultPolicy={model.setDefaultPolicy}
+            onLinkPayment={model.linkPayment}
+            contentPaddingHorizontal={0}
+          />
+        </View>
       </ScrollView>
 
       {showThirdColumn ? (

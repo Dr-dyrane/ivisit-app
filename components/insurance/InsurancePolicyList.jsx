@@ -107,8 +107,10 @@ export default function InsurancePolicyList({
     return (
       <View
         style={{
+          alignSelf: "stretch",
           marginHorizontal: contentPaddingHorizontal,
           gap: metrics.spacing.md,
+          width: "100%",
         }}
       >
         {Array.from({ length: 2 }).map((_, index) => (
@@ -130,6 +132,7 @@ export default function InsurancePolicyList({
           onAddCoverage?.();
         }}
         style={({ pressed }) => ({
+          alignSelf: "stretch",
           marginHorizontal: contentPaddingHorizontal,
           backgroundColor: theme.card,
           borderRadius: metrics.radii.xl,
@@ -138,6 +141,7 @@ export default function InsurancePolicyList({
           gap: metrics.spacing.md,
           alignItems: "center",
           opacity: pressed ? 0.97 : 1,
+          width: "100%",
         })}
       >
         <View
@@ -214,8 +218,10 @@ export default function InsurancePolicyList({
   return (
     <View
       style={{
+        alignSelf: "stretch",
         marginHorizontal: contentPaddingHorizontal,
         gap: metrics.spacing.md,
+        width: "100%",
       }}
     >
       {policies.map((policy) => (

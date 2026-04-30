@@ -26,6 +26,7 @@ export default function SettingsWideLayout({
   viewportVariant,
   bottomPadding,
   model,
+  loading = false,
 }) {
   const insets = useSafeAreaInsets();
   const glass = useMemo(
@@ -135,6 +136,7 @@ export default function SettingsWideLayout({
             themeSummary={model.themeSummary}
             notificationsSummary={model.notificationsSummary}
             privacySummary={model.privacySummary}
+            loading={loading}
           />
         </ScrollView>
       </BlurView>
@@ -176,6 +178,7 @@ export default function SettingsWideLayout({
           sections={model.sections}
           isDarkMode={isDarkMode}
           contentPaddingHorizontal={0}
+          loading={loading}
         />
       </ScrollView>
 
@@ -220,6 +223,7 @@ export default function SettingsWideLayout({
                   ? SETTINGS_SCREEN_COPY.rows.changePassword
                   : SETTINGS_SCREEN_COPY.rows.createPassword
               }
+              loading={loading}
             />
           </ScrollView>
         </BlurView>

@@ -73,6 +73,63 @@ function QuickAction({
   );
 }
 
+function SkeletonStatusRow({ isDarkMode }) {
+  const surface = isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+  const skeletonBase = isDarkMode
+    ? "rgba(255,255,255,0.08)"
+    : "rgba(15,23,42,0.07)";
+  const skeletonSoft = isDarkMode
+    ? "rgba(255,255,255,0.05)"
+    : "rgba(15,23,42,0.05)";
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          borderCurve: "continuous",
+          backgroundColor: surface,
+        }}
+      />
+      <View style={{ flex: 1, gap: 6 }}>
+        <View
+          style={{
+            width: "34%",
+            height: 11,
+            borderRadius: 999,
+            backgroundColor: skeletonSoft,
+          }}
+        />
+        <View
+          style={{
+            width: "52%",
+            height: 13,
+            borderRadius: 999,
+            backgroundColor: skeletonBase,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function SkeletonQuickAction({ isDarkMode }) {
+  return (
+    <View
+      style={{
+        height: 40,
+        borderRadius: 12,
+        borderCurve: "continuous",
+        backgroundColor: isDarkMode
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(0,0,0,0.04)",
+      }}
+    />
+  );
+}
+
 export default function SettingsActionIsland({
   isDarkMode,
   securitySummary,
@@ -84,11 +141,56 @@ export default function SettingsActionIsland({
   onContactSupportPress,
   onSignOutPress,
   passwordLabel,
+  loading = false,
 }) {
   const copy = SETTINGS_SCREEN_COPY.island;
   const text = isDarkMode ? "#FFFFFF" : "#0F172A";
   const textMuted = isDarkMode ? "#94A3B8" : "#64748B";
   const separator = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>
+        <View style={{ gap: 16, paddingBottom: 20 }}>
+          <View
+            style={{
+              width: 132,
+              height: 18,
+              borderRadius: 999,
+              backgroundColor: isDarkMode
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(15,23,42,0.07)",
+            }}
+          />
+          <SkeletonStatusRow isDarkMode={isDarkMode} />
+          <SkeletonStatusRow isDarkMode={isDarkMode} />
+          <SkeletonStatusRow isDarkMode={isDarkMode} />
+        </View>
+
+        <View
+          style={{ height: 1, backgroundColor: separator, marginBottom: 20 }}
+        />
+
+        <View style={{ gap: 12, paddingBottom: 20 }}>
+          <View
+            style={{
+              width: 80,
+              height: 12,
+              borderRadius: 999,
+              backgroundColor: isDarkMode
+                ? "rgba(255,255,255,0.05)"
+                : "rgba(15,23,42,0.05)",
+            }}
+          />
+          <SkeletonQuickAction isDarkMode={isDarkMode} />
+          <SkeletonQuickAction isDarkMode={isDarkMode} />
+          <SkeletonQuickAction isDarkMode={isDarkMode} />
+          <SkeletonQuickAction isDarkMode={isDarkMode} />
+          <SkeletonQuickAction isDarkMode={isDarkMode} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, gap: 0 }}>

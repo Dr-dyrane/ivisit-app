@@ -16,7 +16,79 @@ export default function ProfileIdentityPane({
   metrics,
   onPickImage,
   compact = false,
+  loading = false,
 }) {
+  if (loading) {
+    return (
+      <View
+        style={{
+          gap: compact ? metrics.spacing.md : metrics.spacing.lg,
+          alignItems: compact ? "center" : "flex-start",
+          width: "100%",
+        }}
+      >
+        <View
+          style={{
+            width: compact ? 112 : 104,
+            height: compact ? 112 : 104,
+            borderRadius: compact ? 34 : 30,
+            backgroundColor: theme.skeletonBase,
+          }}
+        />
+
+        <View
+          style={{
+            gap: metrics.spacing.xs,
+            alignItems: compact ? "center" : "flex-start",
+            width: "100%",
+          }}
+        >
+          <View
+            style={{
+              width: compact ? "68%" : "56%",
+              height: compact ? 30 : 26,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonBase,
+            }}
+          />
+          <View
+            style={{
+              width: compact ? "54%" : "44%",
+              height: metrics.typography.body.fontSize,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonSoft,
+            }}
+          />
+        </View>
+
+        <View
+          style={{
+            gap: metrics.spacing.sm,
+            width: "100%",
+            alignItems: compact ? "center" : "flex-start",
+          }}
+        >
+          <View
+            style={{
+              width: 118,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: theme.skeletonSoft,
+            }}
+          />
+          <View
+            style={{
+              width: 132,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: theme.skeletonBase,
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
   const name = user?.fullName || PROFILE_SCREEN_COPY.identity.nameFallback;
   const email = user?.email || PROFILE_SCREEN_COPY.identity.emailFallback;
   const textAlign = compact ? "center" : "left";

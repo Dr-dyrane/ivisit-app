@@ -36,6 +36,40 @@ function MetricRow({ icon, label, value, theme, isDarkMode }) {
   );
 }
 
+function SkeletonMetricRow({ theme, isDarkMode }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          borderCurve: "continuous",
+          backgroundColor: theme.skeletonSoft,
+        }}
+      />
+      <View style={{ flex: 1, gap: 6 }}>
+        <View
+          style={{
+            width: "34%",
+            height: 11,
+            borderRadius: 999,
+            backgroundColor: theme.skeletonSoft,
+          }}
+        />
+        <View
+          style={{
+            width: isDarkMode ? "48%" : "56%",
+            height: 13,
+            borderRadius: 999,
+            backgroundColor: theme.skeletonBase,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileContextPane({
   theme,
   metrics,
@@ -44,7 +78,57 @@ export default function ProfileContextPane({
   emergencyCountLabel,
   healthStatusLabel,
   onEditPersonalInfo,
+  loading = false,
 }) {
+  if (loading) {
+    return (
+      <View style={{ gap: metrics.spacing.md }}>
+        <View style={{ gap: metrics.spacing.xs }}>
+          <View
+            style={{
+              width: "46%",
+              height: 22,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonBase,
+            }}
+          />
+          <View
+            style={{
+              width: "72%",
+              height: 14,
+              borderRadius: 999,
+              backgroundColor: theme.skeletonSoft,
+            }}
+          />
+        </View>
+
+        <View style={{ gap: metrics.spacing.sm }}>
+          <SkeletonMetricRow theme={theme} isDarkMode={isDarkMode} />
+          <SkeletonMetricRow theme={theme} isDarkMode={isDarkMode} />
+          <SkeletonMetricRow theme={theme} isDarkMode={isDarkMode} />
+        </View>
+
+        <View
+          style={{
+            height: 42,
+            borderRadius: 14,
+            borderCurve: "continuous",
+            backgroundColor: theme.skeletonBase,
+          }}
+        />
+
+        <View
+          style={{
+            width: "82%",
+            height: 11,
+            borderRadius: 999,
+            backgroundColor: theme.skeletonSoft,
+          }}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: metrics.spacing.md }}>
       <View style={{ gap: metrics.spacing.xs }}>

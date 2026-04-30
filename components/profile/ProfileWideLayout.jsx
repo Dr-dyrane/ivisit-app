@@ -27,6 +27,7 @@ export default function ProfileWideLayout({
   viewportVariant,
   bottomPadding,
   model,
+  loading = false,
 }) {
   const insets = useSafeAreaInsets();
   const glass = useMemo(
@@ -136,6 +137,7 @@ export default function ProfileWideLayout({
             theme={theme}
             metrics={metrics}
             onPickImage={model.pickImage}
+            loading={loading}
           />
           <ProfileContextPane
             theme={theme}
@@ -145,6 +147,7 @@ export default function ProfileWideLayout({
             emergencyCountLabel={model.emergencyCountLabel}
             healthStatusLabel={model.healthStatusLabel}
             onEditPersonalInfo={model.openPersonalInfo}
+            loading={loading}
           />
         </ScrollView>
       </BlurView>
@@ -194,6 +197,7 @@ export default function ProfileWideLayout({
           onDeleteAccountPress={model.openDeleteAccount}
           onSignOutPress={model.signOut}
           contentPaddingHorizontal={0}
+          loading={loading}
         />
       </ScrollView>
 
@@ -233,6 +237,7 @@ export default function ProfileWideLayout({
               onOpenEmergencyContacts={model.openEmergencyContacts}
               onOpenHealthInfo={model.openMedicalProfile}
               onOpenCoverage={model.openInsurance}
+              loading={loading}
             />
           </ScrollView>
         </BlurView>
