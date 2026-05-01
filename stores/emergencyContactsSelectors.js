@@ -11,10 +11,27 @@ export const selectEmergencyContacts = (state) =>
 export const selectEmergencyContactsCount = (state) =>
   selectEmergencyContacts(state).length;
 
-export const selectReachableEmergencyContacts = (state) =>
-  selectEmergencyContacts(state).filter(
-    (contact) => contact?.isActive !== false && isValidPhone(contact?.phone),
-  );
+const EMPTY_REACHABLE_CONTACTS = [];
+let lastReachableContactsSource = null;
+let lastReachableContactsResult = EMPTY_REACHABLE_CONTACTS;
+
+export const selectReachableEmergencyContacts = (state) => {
+  const contacts = selectEmergencyContacts(state);
+  if (contacts === lastReachableContactsSource) {
+    return lastReachableContactsResult;
+  }
+
+  lastReachableContactsSource = contacts;
+  lastReachableContactsResult =
+    contacts.length > 0
+      ? contacts.filter(
+          (contact) =>
+            contact?.isActive !== false && isValidPhone(contact?.phone),
+        )
+      : EMPTY_REACHABLE_CONTACTS;
+
+  return lastReachableContactsResult;
+};
 
 export const selectPrimaryEmergencyContact = (state) =>
   selectEmergencyContacts(state).find(
