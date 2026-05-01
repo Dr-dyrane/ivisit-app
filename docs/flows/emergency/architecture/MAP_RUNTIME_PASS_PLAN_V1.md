@@ -27,8 +27,8 @@ Parallel track for stack-owned screens (Profile, Settings, Emergency Contact, Pa
 - Pass 11: complete
 - Pass 12: complete
 - Pass 13: complete
-- Pass 14: pending
-- Pass 15: pending
+- Pass 14: shared route state hardening complete
+- Pass 15: complete
 
 ## Unified Surgical Mapping
 
@@ -36,14 +36,14 @@ This document is the canonical execution plan.
 
 [`MAP_FLOW_SURGICAL_AUDIT_V1.md`](./MAP_FLOW_SURGICAL_AUDIT_V1.md) defines the audit requirements. Its Pass A-F list is now folded into this runtime plan so there is one pass order, one stop condition, and one place to update execution status.
 
-| Surgical audit pass | Runtime plan owner | Current status | Notes |
-| --- | --- | --- | --- |
-| Pass A: contracts and reducer guardrails | Pass 1 plus guardrail addendum | complete | Runtime slices/selectors/transitions were already extracted; sheet phase/snap/payload contracts were added after the surgical audit. |
-| Pass B: normalized request model | Pass 4 first remaining slice | complete | Header, tracking sheet, map marker, completion gates, and recovery now read a normalized active request model instead of deriving request truth independently. |
-| Pass C: commit transaction model | Pass 3 structurally, Pass 4 behaviorally | complete for ambulance-only | Commit stages now have controller boundaries and explicit ambulance payment/dispatch/rating transaction contracts; bed and combined follow-ons are deferred to later parity passes. |
-| Pass D: bed parity | Pass 6 and Pass 7 | not started | Bed-only parity is Pass 6; combined ambulance + bed parity is Pass 7. |
-| Pass E: persistence and recovery | Pass 4, Pass 6, and Pass 8 | partially complete | Ambulance reload/rating/route recovery belongs to Pass 4; bed hold/countdown recovery belongs to Pass 6; cross-device web persistence belongs to Pass 8. |
-| Pass F: failure UX and device matrix | Pass 5 and Pass 8 | in progress | iOS ambulance failure tone/UI signoff is Pass 5; Android/web/tablet/wide-screen validation is Pass 8. |
+| Surgical audit pass                      | Runtime plan owner                       | Current status              | Notes                                                                                                                                                                               |
+| ---------------------------------------- | ---------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pass A: contracts and reducer guardrails | Pass 1 plus guardrail addendum           | complete                    | Runtime slices/selectors/transitions were already extracted; sheet phase/snap/payload contracts were added after the surgical audit.                                                |
+| Pass B: normalized request model         | Pass 4 first remaining slice             | complete                    | Header, tracking sheet, map marker, completion gates, and recovery now read a normalized active request model instead of deriving request truth independently.                      |
+| Pass C: commit transaction model         | Pass 3 structurally, Pass 4 behaviorally | complete for ambulance-only | Commit stages now have controller boundaries and explicit ambulance payment/dispatch/rating transaction contracts; bed and combined follow-ons are deferred to later parity passes. |
+| Pass D: bed parity                       | Pass 6 and Pass 7                        | not started                 | Bed-only parity is Pass 6; combined ambulance + bed parity is Pass 7.                                                                                                               |
+| Pass E: persistence and recovery         | Pass 4, Pass 6, and Pass 8               | partially complete          | Ambulance reload/rating/route recovery belongs to Pass 4; bed hold/countdown recovery belongs to Pass 6; cross-device web persistence belongs to Pass 8.                            |
+| Pass F: failure UX and device matrix     | Pass 5 and Pass 8                        | in progress                 | iOS ambulance failure tone/UI signoff is Pass 5; Android/web/tablet/wide-screen validation is Pass 8.                                                                               |
 
 Unified remaining order:
 
@@ -144,6 +144,55 @@ Next Pass 3 slice:
   - `COMMIT_DETAILS` has controller/theme boundaries
 - defer any extra `COMMIT_PAYMENT` micro-extractions unless a later pass exposes a concrete pain point
 - move to Pass 4: ambulance functional signoff
+
+### Pass 14 Output
+
+Pass 14 hardened route calculation ownership so `/map` does not pay duplicate directions cost across overlapping surfaces:
+
+- canonical directions and fallback resolution moved into [`services/routeService.js`](../../../../services/routeService.js)
+- shared route query contract added in [`hooks/emergency/mapRoute.queryKeys.js`](../../../../hooks/emergency/mapRoute.queryKeys.js)
+- shared runtime cache/status lane added in [`stores/mapRouteStore.js`](../../../../stores/mapRouteStore.js)
+- [`hooks/emergency/useMapRoute.js`](../../../../hooks/emergency/useMapRoute.js) now resolves routes through TanStack Query + shared runtime cache instead of private per-hook fetch/cache state
+- post-pass stabilization removed the unstable idle-selector path that could trigger `Maximum update depth exceeded` from `EmergencyLocationPreviewMap`
+
+Result:
+
+- repeated same-route mounts across map preview, hospital detail, and decision sheets reuse one canonical route snapshot
+- simultaneous same-route requests dedupe on one shared query key instead of issuing parallel Mapbox calls
+- fallback routes are cached briefly so transient provider failures do not immediately fan out into repeat retry storms
+
+Checkpoint:
+
+- [`../../../audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md`](../../../audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)
+
+### Pass 15 Output
+
+Pass 15 completed the remaining shared state defaulters that still fed `/map` after the stack-screen wave:
+
+- route state is now a real five-layer feature:
+  - lifecycle machine in [`machines/mapRouteMachine.js`](../../../../machines/mapRouteMachine.js)
+  - lifecycle adapter in [`hooks/emergency/useMapRouteLifecycle.js`](../../../../hooks/emergency/useMapRouteLifecycle.js)
+  - runtime bootstrap in [`hooks/emergency/useMapRouteBootstrap.js`](../../../../hooks/emergency/useMapRouteBootstrap.js)
+  - shared UI atoms in [`atoms/mapRouteAtoms.js`](../../../../atoms/mapRouteAtoms.js)
+- visits state is now a canonical five-layer lane instead of a context-owned list:
+  - query + realtime + mutations in [`hooks/visits/*`](../../../../hooks/visits)
+  - persisted snapshot in [`stores/visitsStore.js`](../../../../stores/visitsStore.js)
+  - lifecycle machine in [`machines/visitsMachine.js`](../../../../machines/visitsMachine.js)
+  - compatibility boundary in [`contexts/VisitsContext.jsx`](../../../../contexts/VisitsContext.jsx)
+- medical profile state is now a canonical five-layer lane instead of a legacy hook/service pair:
+  - query + realtime + mutations in [`hooks/medicalProfile/*`](../../../../hooks/medicalProfile)
+  - persisted snapshot in [`stores/medicalProfileStore.js`](../../../../stores/medicalProfileStore.js)
+  - lifecycle machine in [`machines/medicalProfileMachine.js`](../../../../machines/medicalProfileMachine.js)
+  - editor/draft atoms in [`atoms/medicalProfileAtoms.js`](../../../../atoms/medicalProfileAtoms.js)
+- startup/runtime hosts now mount these lanes once:
+  - hydration in [`runtime/RootRuntimeGate.jsx`](../../../../runtime/RootRuntimeGate.jsx)
+  - bootstraps in [`runtime/RootBootstrapEffects.jsx`](../../../../runtime/RootBootstrapEffects.jsx)
+
+Pass 15 checkpoints:
+
+- [`../../../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- [`../../../audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- [`../../../audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ## Why This Exists
 
@@ -283,17 +332,17 @@ Required direction:
 
 Current direct-storage audit:
 
-| Area | File | Current classification | Decision |
-| --- | --- | --- | --- |
-| Public route resume | `app/_layout.js` | `/map` startup and reload truth | moved legacy dynamic key reads/writes behind `database.readRaw/deleteRaw` |
-| Demo bootstrap | `services/demoEcosystemService.js` | `/map` coverage and demo hospital readiness | moved dynamic app-owned keys behind `database.readRaw/writeRaw` |
-| Coverage mode | `services/coverageModeService.js` | `/map` hospital discovery behavior | moved dynamic per-user key behind `database.readRaw/writeRaw/deleteRaw` |
-| Legacy intake resume | `screens/RequestAmbulanceScreen.jsx` | legacy/request-help bridge that can seed `/map` emergency work | moved dynamic intake phase key behind `database.readRaw/writeRaw/deleteRaw` |
-| Triage draft resume | `components/emergency/triage/TriageIntakeModal.jsx` | legacy triage surface still used around active requests | moved dynamic request triage key behind `database.readRaw/writeRaw` |
-| Supabase auth | `services/supabase.js` | auth session adapter | keep direct `AsyncStorage`; Supabase requires an AsyncStorage-compatible storage adapter |
-| OTA update pending flag | `contexts/OTAUpdatesContext.jsx` | app-global update state | moved behind `database.readRaw/writeRaw/deleteRaw`; not `/map` specific, but now follows the same app-owned storage boundary |
-| Legacy emergency disclaimer | `screens/EmergencyScreen.jsx` | legacy emergency surface | moved behind `database.readRaw/writeRaw`; this keeps legacy emergency parity while avoiding another direct storage exception |
-| Database boundary | `database/db.js` | app-owned persistence adapter | keep direct `AsyncStorage`; this is the one allowed app storage boundary |
+| Area                        | File                                                | Current classification                                         | Decision                                                                                                                     |
+| --------------------------- | --------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Public route resume         | `app/_layout.js`                                    | `/map` startup and reload truth                                | moved legacy dynamic key reads/writes behind `database.readRaw/deleteRaw`                                                    |
+| Demo bootstrap              | `services/demoEcosystemService.js`                  | `/map` coverage and demo hospital readiness                    | moved dynamic app-owned keys behind `database.readRaw/writeRaw`                                                              |
+| Coverage mode               | `services/coverageModeService.js`                   | `/map` hospital discovery behavior                             | moved dynamic per-user key behind `database.readRaw/writeRaw/deleteRaw`                                                      |
+| Legacy intake resume        | `screens/RequestAmbulanceScreen.jsx`                | legacy/request-help bridge that can seed `/map` emergency work | moved dynamic intake phase key behind `database.readRaw/writeRaw/deleteRaw`                                                  |
+| Triage draft resume         | `components/emergency/triage/TriageIntakeModal.jsx` | legacy triage surface still used around active requests        | moved dynamic request triage key behind `database.readRaw/writeRaw`                                                          |
+| Supabase auth               | `services/supabase.js`                              | auth session adapter                                           | keep direct `AsyncStorage`; Supabase requires an AsyncStorage-compatible storage adapter                                     |
+| OTA update pending flag     | `contexts/OTAUpdatesContext.jsx`                    | app-global update state                                        | moved behind `database.readRaw/writeRaw/deleteRaw`; not `/map` specific, but now follows the same app-owned storage boundary |
+| Legacy emergency disclaimer | `screens/EmergencyScreen.jsx`                       | legacy emergency surface                                       | moved behind `database.readRaw/writeRaw`; this keeps legacy emergency parity while avoiding another direct storage exception |
+| Database boundary           | `database/db.js`                                    | app-owned persistence adapter                                  | keep direct `AsyncStorage`; this is the one allowed app storage boundary                                                     |
 
 Direct-storage re-audit - 2026-04-22:
 
@@ -1000,11 +1049,11 @@ Done when:
 
 Pass 10 implemented:
 
-- [`app/(user)/index.js`](../../../../app/(user)/index.js) now renders `MapScreen` as the authenticated home
-- [`app/(user)/_layout.js`](../../../../app/(user)/_layout.js) now includes the authenticated index route while keeping `(tabs)` and `(stacks)` as compatibility routes
-- [`app/(user)/(tabs)/_layout.js`](../../../../app/(user)/(tabs)/_layout.js) no longer mounts a bottom-tab navigator; it is a stack-only compatibility shell
-- [`app/(user)/(tabs)/index.js`](../../../../app/(user)/(tabs)/index.js) is now a compatibility map bridge instead of owning the legacy home surface
-- [`app/(user)/(stacks)/visits.js`](../../../../app/(user)/(stacks)/visits.js) is the canonical route-owned Visits surface
+- [`app/(user)/index.js`](<../../../../app/(user)/index.js>) now renders `MapScreen` as the authenticated home
+- [`app/(user)/_layout.js`](<../../../../app/(user)/_layout.js>) now includes the authenticated index route while keeping `(tabs)` and `(stacks)` as compatibility routes
+- [`app/(user)/(tabs)/_layout.js`](<../../../../app/(user)/(tabs)/_layout.js>) no longer mounts a bottom-tab navigator; it is a stack-only compatibility shell
+- [`app/(user)/(tabs)/index.js`](<../../../../app/(user)/(tabs)/index.js>) is now a compatibility map bridge instead of owning the legacy home surface
+- [`app/(user)/(stacks)/visits.js`](<../../../../app/(user)/(stacks)/visits.js>) is the canonical route-owned Visits surface
 - `navigateToVisits` now targets `/(user)/(stacks)/visits`; legacy tab visit paths remain compatibility-only
 - authenticated redirects in [`app/_layout.js`](../../../../app/_layout.js), reset-password completion, and complete-profile completion now point to `/(user)` as the primary home
 
@@ -1053,7 +1102,6 @@ Pass 11 implemented & refined:
   - **Intentional Iconography**: Desaturated icons with softer accent tones for a calmer, premium feel.
   - **Destructive Secondary**: `Sign Out` demarcated with a divider and lower saturation to prevent accidental taps.
 - [`screens/MapScreen.jsx`](../../../../screens/MapScreen.jsx) now lets mini profile open the map-owned recent-visits modal instead of routing through the legacy visits tab first
-
 
 Pass 11 proven:
 
@@ -1128,8 +1176,10 @@ Pass 12 design contract additions:
 Pass 12 recommended execution order:
 
 1. lock naming and ownership contracts:
-  - Mini Profile says `History`
-  - choose-care remains a care-decision owner
+
+- Mini Profile says `History`
+- choose-care remains a care-decision owner
+
 2. extract grouped history selectors from legacy list assumptions
 3. replace recents preview with grouped `/map` history owner
 4. build canonical map-owned visit details with active-emergency handoff to tracking

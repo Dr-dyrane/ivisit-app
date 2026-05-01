@@ -2,7 +2,7 @@ import React from "react";
 import { TabBarVisibilityProvider } from "../contexts/TabBarVisibilityContext";
 import { HeaderStateProvider } from "../contexts/HeaderStateContext";
 import { FABProvider } from "../contexts/FABContext";
-import { VisitsProvider } from "../contexts/VisitsContext";
+import { VisitsBoundary } from "../contexts/VisitsContext";
 import { EmergencyUIProvider } from "../contexts/EmergencyUIContext";
 
 /**
@@ -13,15 +13,15 @@ import { EmergencyUIProvider } from "../contexts/EmergencyUIContext";
  * Wraps the user stack with necessary context providers.
  */
 export const UserProviders = ({ children }) => {
-	return (
-		<TabBarVisibilityProvider>
-			<HeaderStateProvider>
-				<FABProvider>
-					<VisitsProvider>
-						<EmergencyUIProvider>{children}</EmergencyUIProvider>
-					</VisitsProvider>
-				</FABProvider>
-			</HeaderStateProvider>
-		</TabBarVisibilityProvider>
-	);
+  return (
+    <TabBarVisibilityProvider>
+      <HeaderStateProvider>
+        <FABProvider>
+          <VisitsBoundary>
+            <EmergencyUIProvider>{children}</EmergencyUIProvider>
+          </VisitsBoundary>
+        </FABProvider>
+      </HeaderStateProvider>
+    </TabBarVisibilityProvider>
+  );
 };

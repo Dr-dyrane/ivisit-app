@@ -1,8 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useAtom } from "jotai";
 import * as Haptics from "expo-haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { useMedicalProfile } from "../user/useMedicalProfile";
 import { MEDICAL_PROFILE_SCREEN_COPY } from "../../components/medicalProfile/medicalProfileScreen.content";
+import {
+  medicalProfileDraftAtom,
+  medicalProfileEditorVisibleAtom,
+} from "../../atoms/medicalProfileAtoms";
 
 // PULLBACK NOTE: Medical profile screen model owns route-local edit state and summary derivations.
 // It keeps the route/orchestrator free of field normalization, section construction, and save messaging.
@@ -72,9 +77,17 @@ export function useMedicalProfileScreenModel() {
   const { profile, isLoading, isSaving, error, refreshProfile, updateProfile } =
     useMedicalProfile();
 
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const normalizedProfile = useMemo(() => normalizeProfile(profile), [profile]);
-  const [draft, setDraft] = useState(normalizedProfile);
+  const [isEditorOpen, setIsEditorOpen] = useAtom(
+    medicalProfileEditorVisibleAtom,
+  );
+  const [draft, setDraft] = useAtom(medicalProfileDraftAtom);
+
+  useEffect(() => {
+    if (!isEditorOpen) {
+      setDraft(normalizedProfile);
+    }
+  }, [isEditorOpen, normalizedProfile, setDraft]);
 
   const sections = useMemo(
     () => buildSections(normalizedProfile),

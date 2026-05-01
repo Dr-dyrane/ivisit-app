@@ -58,6 +58,7 @@ export const StorageKeys = {
 
   /** User visits/appointments */
   VISITS: `${DB_PREFIX}visits`,
+  VISITS_CACHE: `${DB_PREFIX}visits_cache`,
   DEMO_VISITS: `${DB_PREFIX}demo_visits`,
   SUPPORT_TICKETS: `${DB_PREFIX}support_tickets`,
   HELP_SUPPORT_CACHE: `${DB_PREFIX}help_support_cache`,
@@ -71,6 +72,7 @@ export const StorageKeys = {
   EMERGENCY_REQUESTS: `${DB_PREFIX}emergency_requests`,
 
   MEDICAL_PROFILE: `${DB_PREFIX}medical_profile`,
+  MEDICAL_PROFILE_CACHE: `${DB_PREFIX}medical_profile_cache`,
 
   EMERGENCY_STATE: `${DB_PREFIX}emergency_state`,
 
@@ -165,6 +167,8 @@ export const SingletonKeys = [
   StorageKeys.LAST_PUBLIC_ROUTE,
   StorageKeys.AUTH_RETURN_ROUTE,
   StorageKeys.MEDICAL_PROFILE,
+  StorageKeys.MEDICAL_PROFILE_CACHE,
+  StorageKeys.VISITS_CACHE,
   StorageKeys.EMERGENCY_CONTACTS_CACHE,
   StorageKeys.EMERGENCY_CONTACTS_MIGRATION,
   StorageKeys.NOTIFICATIONS_CACHE,

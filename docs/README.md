@@ -130,6 +130,13 @@ When in doubt, `rules.json` wins.
 - [`audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the help-support stack refactor
 - [`flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth for `/map`
 - [`flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live execution plan
+- [`audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md`](./audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md) — shared directions-state hardening pass and loop-fix checkpoint
+- [`flows/emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md`](./flows/emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md) — architecture contract for the full five-layer route-state completion
+- [`audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the full five-layer route-state migration
+- [`flows/emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md`](./flows/emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md) — architecture contract for the canonical visits-domain state migration
+- [`audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the visits-domain five-layer migration
+- [`flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md`](./flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md) — architecture contract for the medical-profile five-layer completion
+- [`audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the medical-profile state migration
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
 
 ## Architecture and Ops
@@ -157,6 +164,13 @@ When in doubt, `rules.json` wins.
 - [`audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md`](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md) — ✅ ALL PASSES COMPLETE (VD-A through VD-G)
 - [`audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md) — ✅ ALL PASSES COMPLETE (A–G)
 - [`audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md`](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md) — pre-pass baseline for five-layer migration
+- [`audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md`](./audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md) — route dedupe, shared cache, and selector-stability checkpoint for `/map`
+- [`audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md`](./audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md) — deep follow-on audit for completing route state to full five layers
+- [`audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — route-state five-layer completion outcome and remaining verification
+- [`audit/VISITS_STATE_ARCHITECTURE_AUDIT_2026-04-29.md`](./audit/VISITS_STATE_ARCHITECTURE_AUDIT_2026-04-29.md) — deep audit of the canonical visits-domain state lane
+- [`audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — visits-domain five-layer implementation outcome and remaining verification
+- [`audit/MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md) — deep audit of the medical-profile data lane after shell modernization
+- [`audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — medical-profile five-layer implementation outcome and remaining verification
 - [`audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the coverage stack pass
 - [`audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — coverage stack implementation outcome and remaining verification
 - [`audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md`](./audit/SEARCH_STACK_COMPARISON_AUDIT_2026-04-29.md) — comparison baseline for the search stack pass
