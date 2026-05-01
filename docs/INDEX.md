@@ -56,7 +56,11 @@ docs/
 
   audit/
     AUDIT_CHECKLIST.md
+    BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md
+    BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md
+    HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md
+    HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md
     INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
@@ -150,6 +154,12 @@ docs/
 - Notifications implementation checkpoint: [audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/NOTIFICATIONS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 - Notification details implementation plan: [flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md)
 - Notification details comparison audit: [audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Book Visit implementation plan: [flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md)
+- Book Visit comparison audit: [audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Book Visit implementation checkpoint: [audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Help Support implementation plan: [flows/emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md)
+- Help Support comparison audit: [audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- Help Support implementation checkpoint: [audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
 ### Architecture
 
@@ -181,6 +191,10 @@ docs/
 | [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                               | ✅ All passes complete (VD-A–G)                 |
 | [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                                           | ✅ All passes complete (A–G)                    |
 | [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                                   | Pre-pass five-layer baseline                    |
+| [BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md)                             | Book Visit vs modern stack baseline             |
+| [BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)           | Book Visit stack implementation checkpoint      |
+| [HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)                         | Help Support vs modern stack baseline           |
+| [HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)       | Help Support stack implementation checkpoint    |
 | [INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)                               | Coverage vs modern stack baseline               |
 | [INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)             | Coverage stack implementation checkpoint        |
 | [MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md)                   | Medical profile vs stack-screen baseline        |

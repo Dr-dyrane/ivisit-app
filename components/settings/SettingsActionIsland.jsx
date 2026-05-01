@@ -132,15 +132,12 @@ function SkeletonQuickAction({ isDarkMode }) {
 
 export default function SettingsActionIsland({
   isDarkMode,
-  securitySummary,
   paymentsSummary,
   supportSummary,
-  onPasswordPress,
   onPaymentsPress,
   onHelpPress,
   onContactSupportPress,
   onSignOutPress,
-  passwordLabel,
   loading = false,
 }) {
   const copy = SETTINGS_SCREEN_COPY.island;
@@ -164,7 +161,6 @@ export default function SettingsActionIsland({
           />
           <SkeletonStatusRow isDarkMode={isDarkMode} />
           <SkeletonStatusRow isDarkMode={isDarkMode} />
-          <SkeletonStatusRow isDarkMode={isDarkMode} />
         </View>
 
         <View
@@ -182,7 +178,6 @@ export default function SettingsActionIsland({
                 : "rgba(15,23,42,0.05)",
             }}
           />
-          <SkeletonQuickAction isDarkMode={isDarkMode} />
           <SkeletonQuickAction isDarkMode={isDarkMode} />
           <SkeletonQuickAction isDarkMode={isDarkMode} />
           <SkeletonQuickAction isDarkMode={isDarkMode} />
@@ -205,12 +200,6 @@ export default function SettingsActionIsland({
         >
           {copy.title}
         </Text>
-        <StatusRow
-          icon="lock-closed-outline"
-          label={copy.securityLabel}
-          value={securitySummary}
-          isDarkMode={isDarkMode}
-        />
         <StatusRow
           icon="card-outline"
           label={copy.paymentsLabel}
@@ -240,12 +229,6 @@ export default function SettingsActionIsland({
         >
           {copy.quickActionsTitle}
         </Text>
-        <QuickAction
-          icon="lock-closed-outline"
-          label={passwordLabel}
-          onPress={onPasswordPress}
-          isDarkMode={isDarkMode}
-        />
         <QuickAction
           icon="card-outline"
           label={SETTINGS_SCREEN_COPY.rows.managePayments}

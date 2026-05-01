@@ -259,6 +259,8 @@ export default function StacksLayout() {
         }}
       />
 
+      {/* Deprecated fallback-only auth mutation pages.
+          App entry is OTP/social first, so these no longer have live stack UI entry points. */}
       <Stack.Screen
         name="create-password"
         options={{

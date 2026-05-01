@@ -210,19 +210,12 @@ export default function SettingsWideLayout({
           >
             <SettingsActionIsland
               isDarkMode={isDarkMode}
-              securitySummary={model.securitySummary}
               paymentsSummary={model.paymentsSummary}
               supportSummary={model.supportSummary}
-              onPasswordPress={model.openPassword}
               onPaymentsPress={model.openPayments}
               onHelpPress={model.openHelpCenter}
               onContactSupportPress={model.openContactSupport}
               onSignOutPress={model.signOut}
-              passwordLabel={
-                model.user?.hasPassword
-                  ? SETTINGS_SCREEN_COPY.rows.changePassword
-                  : SETTINGS_SCREEN_COPY.rows.createPassword
-              }
               loading={loading}
             />
           </ScrollView>

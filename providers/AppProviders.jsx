@@ -13,7 +13,6 @@ import { NotificationsProvider } from "../contexts/NotificationsContext";
 import { VisitsProvider } from "../contexts/VisitsContext";
 import { SearchProvider } from "../contexts/SearchContext";
 import ToastProvider from "../contexts/ToastContext";
-import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 import { FABProvider } from "../contexts/FABContext";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { Provider as JotaiProvider } from "jotai";
@@ -35,48 +34,44 @@ import { QueryProvider } from "./QueryProvider";
  * 7. Feature Providers (TabBar, Headers, Search, Emergency, EmergencyUI, FAB, Toast)
  */
 export const AppProviders = ({ children }) => {
-	return (
-		<StripeProvider
-			publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-			merchantIdentifier="merchant.com.ivisit" // Required for Apple Pay
-		>
-			<AuthProvider>
-				<QueryProvider>
-					<JotaiProvider>
-						<OTAUpdatesProvider>
-							<ThemeProvider>
-								<PreferencesProvider>
-									<ToastProvider>
-										<UnifiedScrollProvider>
-											<TabBarVisibilityProvider>
-												<ScrollAwareHeaderProvider>
-													<HeaderStateProvider>
-														<NotificationsProvider>
-															<VisitsProvider>
-																<SearchProvider>
-																	<EmergencyProvider>
-																		<EmergencyUIProvider>
-																			<FABProvider>
-																				<HelpSupportProvider>
-																					{children}
-																				</HelpSupportProvider>
-																			</FABProvider>
-																		</EmergencyUIProvider>
-																	</EmergencyProvider>
-																</SearchProvider>
-															</VisitsProvider>
-														</NotificationsProvider>
-													</HeaderStateProvider>
-												</ScrollAwareHeaderProvider>
-											</TabBarVisibilityProvider>
-										</UnifiedScrollProvider>
-									</ToastProvider>
-								</PreferencesProvider>
-							</ThemeProvider>
-						</OTAUpdatesProvider>
-					</JotaiProvider>
-				</QueryProvider>
-			</AuthProvider>
-		</StripeProvider>
-	);
+  return (
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.ivisit" // Required for Apple Pay
+    >
+      <AuthProvider>
+        <QueryProvider>
+          <JotaiProvider>
+            <OTAUpdatesProvider>
+              <ThemeProvider>
+                <PreferencesProvider>
+                  <ToastProvider>
+                    <UnifiedScrollProvider>
+                      <TabBarVisibilityProvider>
+                        <ScrollAwareHeaderProvider>
+                          <HeaderStateProvider>
+                            <NotificationsProvider>
+                              <VisitsProvider>
+                                <SearchProvider>
+                                  <EmergencyProvider>
+                                    <EmergencyUIProvider>
+                                      <FABProvider>{children}</FABProvider>
+                                    </EmergencyUIProvider>
+                                  </EmergencyProvider>
+                                </SearchProvider>
+                              </VisitsProvider>
+                            </NotificationsProvider>
+                          </HeaderStateProvider>
+                        </ScrollAwareHeaderProvider>
+                      </TabBarVisibilityProvider>
+                    </UnifiedScrollProvider>
+                  </ToastProvider>
+                </PreferencesProvider>
+              </ThemeProvider>
+            </OTAUpdatesProvider>
+          </JotaiProvider>
+        </QueryProvider>
+      </AuthProvider>
+    </StripeProvider>
+  );
 };

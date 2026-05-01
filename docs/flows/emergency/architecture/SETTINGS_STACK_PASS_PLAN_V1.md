@@ -69,7 +69,7 @@ Owns:
 
 - theme mode toggle
 - preferences toggles
-- route actions for password / payment / support
+- route actions for payment / support
 - logout action
 - grouped row data
 - derived labels for context surfaces
@@ -166,7 +166,6 @@ Each section should be represented as data from the screen model, not hand-built
 - account actions
 - payment shortcut
 - support shortcut
-- security shortcut
 
 The exact content should stay concise and avoid duplicating every row.
 
@@ -184,9 +183,19 @@ The exact content should stay concise and avoid duplicating every row.
 - wide screens show bounded center surface plus context islands
 - theme toggle still works immediately
 - notification/privacy toggles still persist correctly
-- password/payment/support routes still open correctly
+- payment/support routes still open correctly
 - logout still exits deterministically
 - header copy and typography match the updated utility-surface doctrine
+
+## Deprecation Note
+
+`change-password` and `create-password` are no longer active stack-screen targets.
+
+Reason:
+
+- patient app entry is OTP-first and social-login compatible
+- password management is no longer surfaced in `Settings` or `Profile`
+- those two routes remain fallback-only legacy auth surfaces, not pages this stack pass should keep expanding
 
 ## Documentation Sync Required
 

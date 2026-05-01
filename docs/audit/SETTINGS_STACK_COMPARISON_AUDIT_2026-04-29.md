@@ -29,7 +29,7 @@ Current entry path:
 - motion boot
 - theme switching
 - preferences mutations
-- password/payment/support navigation
+- payment/support navigation
 - logout action
 - all section grouping and inline spacing
 
@@ -98,13 +98,13 @@ That subtitle casing is now behind the newer contract. The current screen also h
 - compact uses simpler posture
 - wide screens must not stretch temporary surfaces
 
-This matters most for any future password/help/privacy surfaces that remain inside the settings ecosystem.
+This matters most for any future help/privacy surfaces that remain inside the settings ecosystem.
 
 ## Strengths to Preserve
 
 - grouped row interaction model is already close to the mini-profile blade grammar
 - theme toggle and preference toggles are understandable
-- password/payment/support rows are clearly task-oriented
+- payment/support rows are clearly task-oriented
 - the screen is smaller and more structurally regular than the old profile route, so the pass should be lower-risk
 
 ## Main Gaps
@@ -122,7 +122,7 @@ This matters most for any future password/help/privacy surfaces that remain insi
 - `hooks/settings/useSettingsScreenModel.js` owns:
   - theme mode actions
   - preferences toggles
-  - password/payment/support routing
+  - payment/support routing
   - logout action
 - `components/settings/SettingsWideLayout.jsx` converts desktop dead space into context islands
 - `components/settings/settingsScreen.content.js`
@@ -145,6 +145,14 @@ Reason:
 - existing mini-profile row grammar should survive the shell rewrite
 - compact/mobile should stay simpler than wide, not become a shrunk desktop layout
 - section ordering and current navigation affordances must not regress
+
+## Updated Auth Scope Note
+
+The patient app no longer treats password management as an active stack concern.
+
+- app entry is OTP-first and social-login compatible
+- `change-password` and `create-password` remain legacy fallback routes only
+- they should not drive future `Settings` modernization scope
 
 ## Exit Conditions for the Pass
 

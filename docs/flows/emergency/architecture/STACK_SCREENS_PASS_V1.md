@@ -253,6 +253,17 @@ Future waves (non-binding order, subject to prioritization):
 - Support / help / legal surfaces
 - Any remaining legacy "more" or utility screens
 
+Deprecated stack leftovers excluded from modernization scope unless product direction changes:
+
+- `/(user)/(stacks)/change-password`
+- `/(user)/(stacks)/create-password`
+
+Reason:
+
+- patient app entry is OTP-first and social-login compatible
+- password management is no longer surfaced from the live stack UI
+- these routes are fallback-only legacy auth surfaces, not active stack products
+
 No screen is permanently exempt. Any screen that ships after this pass must conform on day one (see Section 7). Existing screens outside this pass remain in their current form until their own wave begins, but no new feature work may land on them in a non-conforming way — all new work uses the doctrine.
 
 **Migration principle:** no screen is rewritten until its wave. No screen escapes the doctrine once its wave lands. No doctrine drift between waves.
@@ -451,3 +462,23 @@ Current docs:
 
 - [../../../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md](./NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md)
+
+## 18. Book Visit Wave
+
+`Book Visit` is the largest remaining active stack-screen task and the next wave after `Notification Details`.
+
+Current docs:
+
+- [../../../audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [BOOK_VISIT_STACK_PASS_PLAN_V1.md](./BOOK_VISIT_STACK_PASS_PLAN_V1.md)
+- [../../../audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+## 19. Help Support Wave
+
+`Help Support` is the next active stack-screen wave after `Book Visit`.
+
+Current docs:
+
+- [../../../audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](../../../audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)
+- [HELP_SUPPORT_STACK_PASS_PLAN_V1.md](./HELP_SUPPORT_STACK_PASS_PLAN_V1.md)
+- [../../../audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)

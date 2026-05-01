@@ -18,7 +18,6 @@ export const SETTINGS_SCREEN_COPY = {
   island: {
     title: "Account actions",
     quickActionsTitle: "Shortcuts",
-    securityLabel: "Security",
     paymentsLabel: "Payments",
     supportLabel: "Support",
   },
@@ -30,8 +29,6 @@ export const SETTINGS_SCREEN_COPY = {
     notificationSounds: "Notification sounds",
     shareMedicalProfile: "Share medical profile",
     shareEmergencyContacts: "Share emergency contacts",
-    createPassword: "Create password",
-    changePassword: "Change password",
     managePayments: "Manage payments",
     helpCenter: "Help center",
     contactSupport: "Contact support",

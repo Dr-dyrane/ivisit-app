@@ -15,7 +15,7 @@ Verification state: Runtime/device matrix still pending
 - `hooks/settings/useSettingsScreenModel.js` now owns:
   - theme toggle behavior
   - preferences toggles
-  - password / payment / support routing
+  - payment / support routing
   - logout orchestration
   - section row data and derived summaries
 - `components/settings/SettingsWideLayout.jsx` now uses:
@@ -29,10 +29,15 @@ Verification state: Runtime/device matrix still pending
 
 - theme mode toggle still flips immediately
 - notification and privacy toggles still update through `PreferencesContext`
-- password row still resolves to create vs change correctly
 - payments row still opens the payment stack route
 - help and contact support still resolve through the support route
 - logout still clears the session and returns to `/(auth)`
+
+## Auth Contract Note
+
+`change-password` and `create-password` are now treated as deprecated fallback-only auth routes.
+
+They are no longer surfaced from `Settings`, because the patient app entry path is OTP-first and social-login compatible rather than password-led.
 
 ## Surface Outcome
 
@@ -49,7 +54,6 @@ Still needed before calling this fully closed:
 - runtime smoke for:
   - theme toggle
   - notification/privacy toggle persistence
-  - password route selection
   - payment route handoff
   - help/support route handoff
   - logout behavior

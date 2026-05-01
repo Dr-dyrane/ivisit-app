@@ -12,45 +12,42 @@ import { EmergencyUIProvider } from "../contexts/EmergencyUIContext";
 import { NotificationsProvider } from "../contexts/NotificationsContext";
 import { VisitsProvider } from "../contexts/VisitsContext";
 import ToastProvider from "../contexts/ToastContext";
-import { HelpSupportProvider } from "../contexts/HelpSupportContext";
 import { FABProvider } from "../contexts/FABContext";
 import { Provider as JotaiProvider } from "jotai";
 import { QueryProvider } from "./QueryProvider";
 
 export const AppProviders = ({ children }) => {
-	return (
-		<AuthProvider>
-			<QueryProvider>
-				<JotaiProvider>
-					<OTAUpdatesProvider>
-						<ThemeProvider>
-							<PreferencesProvider>
-								<ToastProvider>
-									<UnifiedScrollProvider>
-										<TabBarVisibilityProvider>
-											<ScrollAwareHeaderProvider>
-												<HeaderStateProvider>
-													<NotificationsProvider>
-														<VisitsProvider>
-															<EmergencyProvider>
-																<EmergencyUIProvider>
-																	<FABProvider>
-																		<HelpSupportProvider>{children}</HelpSupportProvider>
-																	</FABProvider>
-																</EmergencyUIProvider>
-															</EmergencyProvider>
-														</VisitsProvider>
-													</NotificationsProvider>
-												</HeaderStateProvider>
-											</ScrollAwareHeaderProvider>
-										</TabBarVisibilityProvider>
-									</UnifiedScrollProvider>
-								</ToastProvider>
-							</PreferencesProvider>
-						</ThemeProvider>
-					</OTAUpdatesProvider>
-				</JotaiProvider>
-			</QueryProvider>
-		</AuthProvider>
-	);
+  return (
+    <AuthProvider>
+      <QueryProvider>
+        <JotaiProvider>
+          <OTAUpdatesProvider>
+            <ThemeProvider>
+              <PreferencesProvider>
+                <ToastProvider>
+                  <UnifiedScrollProvider>
+                    <TabBarVisibilityProvider>
+                      <ScrollAwareHeaderProvider>
+                        <HeaderStateProvider>
+                          <NotificationsProvider>
+                            <VisitsProvider>
+                              <EmergencyProvider>
+                                <EmergencyUIProvider>
+                                  <FABProvider>{children}</FABProvider>
+                                </EmergencyUIProvider>
+                              </EmergencyProvider>
+                            </VisitsProvider>
+                          </NotificationsProvider>
+                        </HeaderStateProvider>
+                      </ScrollAwareHeaderProvider>
+                    </TabBarVisibilityProvider>
+                  </UnifiedScrollProvider>
+                </ToastProvider>
+              </PreferencesProvider>
+            </ThemeProvider>
+          </OTAUpdatesProvider>
+        </JotaiProvider>
+      </QueryProvider>
+    </AuthProvider>
+  );
 };

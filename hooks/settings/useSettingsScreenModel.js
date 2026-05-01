@@ -5,8 +5,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ThemeMode, useTheme } from "../../contexts/ThemeContext";
 import { usePreferences } from "../../contexts/PreferencesContext";
 import {
-  navigateToChangePassword,
-  navigateToCreatePassword,
   navigateToHelpSupport,
   navigateToPayment,
 } from "../../utils/navigationHelpers";
@@ -46,15 +44,6 @@ export function useSettingsScreenModel() {
     },
     [preferences, preferencesReady, updatePreferences],
   );
-
-  const openPassword = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (user?.hasPassword) {
-      navigateToChangePassword({ router });
-      return;
-    }
-    navigateToCreatePassword({ router });
-  }, [router, user?.hasPassword]);
 
   const openPayments = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -128,11 +117,6 @@ export function useSettingsScreenModel() {
     if (enabledCount === 1) return "1 sharing control enabled";
     return `${enabledCount} sharing controls enabled`;
   }, [preferences, preferencesReady]);
-
-  const securitySummary = useMemo(
-    () => (user?.hasPassword ? "Password set" : "Password needed"),
-    [user?.hasPassword],
-  );
 
   const paymentsSummary = useMemo(
     () =>
@@ -236,16 +220,6 @@ export function useSettingsScreenModel() {
         key: "account",
         rows: [
           {
-            key: "password",
-            title: user?.hasPassword
-              ? SETTINGS_SCREEN_COPY.rows.changePassword
-              : SETTINGS_SCREEN_COPY.rows.createPassword,
-            iconName: "lock-closed",
-            tone: "profile",
-            trailing: "chevron",
-            onPress: openPassword,
-          },
-          {
             key: "payments",
             title: SETTINGS_SCREEN_COPY.rows.managePayments,
             iconName: "card",
@@ -295,14 +269,12 @@ export function useSettingsScreenModel() {
     isDarkMode,
     openContactSupport,
     openHelpCenter,
-    openPassword,
     openPayments,
     preferences,
     preferencesReady,
     signOut,
     togglePreference,
     toggleThemeMode,
-    user?.hasPassword,
   ]);
 
   return {
@@ -315,10 +287,8 @@ export function useSettingsScreenModel() {
     themeSummary,
     notificationsSummary,
     privacySummary,
-    securitySummary,
     paymentsSummary,
     supportSummary,
-    openPassword,
     openPayments,
     openHelpCenter,
     openContactSupport,
