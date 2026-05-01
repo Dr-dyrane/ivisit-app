@@ -170,12 +170,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   rowLabel: {
-    flex: 1,
     letterSpacing: -0.12,
   },
   rowCopy: {
     flex: 1,
     gap: 2,
+    justifyContent: "center",
   },
   rowSubtitle: {
     letterSpacing: -0.08,
