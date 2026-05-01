@@ -283,6 +283,7 @@ export default function MapHistoryModal({
 			contentContainerStyle={historyModalStyles.content}
 		>
 			<ScrollView
+				style={historyModalStyles.scrollView}
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={historyModalStyles.scrollContent}
 				refreshControl={

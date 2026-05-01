@@ -349,6 +349,15 @@ These should reuse the existing service/provider truth instead of replacing it.
 6. bridge legacy routes
 7. harden across platforms and viewport variants
 
+### 15.1 Web scroll ownership note
+
+Implemented hardening note for `MapHistoryModal`:
+
+- when `MapModalShell` runs with `scrollEnabled={false}`, the history modal must bound its own inner scroll region
+- on web, the inner history `ScrollView` must own the overflow height instead of expanding to full content height
+- the current fix lives in `components/map/history/MapHistoryModal.jsx` and `components/map/history/history.styles.js`
+- if this modal is refactored again, preserve the `flex: 1` / `minHeight: 0` contract on the shell content and the inner scroll surface
+
 ## 16. Final Decision
 
 The deterministic answer is:

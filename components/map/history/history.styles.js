@@ -91,9 +91,15 @@ export const historyGroupStyles = StyleSheet.create({
 
 export const historyModalStyles = StyleSheet.create({
 	content: {
+		flex: 1,
+		minHeight: 0,
 		paddingTop: 0,
 		paddingBottom: 12,
 		gap: 14,
+	},
+	scrollView: {
+		flex: 1,
+		minHeight: 0,
 	},
 	scrollContent: {
 		paddingBottom: 100,
