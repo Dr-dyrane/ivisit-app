@@ -76,6 +76,9 @@ export default function StacksLayout() {
         }}
       />
 
+      {/* Controlled compatibility bridges retained for stale links and old navigation state.
+          These route files now redirect into canonical modern surfaces instead of rendering
+          legacy UI owners. */}
       <Stack.Screen
         name="more"
         options={{
@@ -260,7 +263,7 @@ export default function StacksLayout() {
       />
 
       {/* Deprecated fallback-only auth mutation pages.
-          App entry is OTP/social first, so these no longer have live stack UI entry points. */}
+          App entry is OTP/social first, so these route files now behave as thin redirects only. */}
       <Stack.Screen
         name="create-password"
         options={{

@@ -66,6 +66,7 @@ docs/
     MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md
     MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md
     MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
+    STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md
     MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md
     MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md
     MEDICAL_PROFILE_STACK_COMPARISON_AUDIT_2026-04-29.md
@@ -150,6 +151,7 @@ docs/
 - Medical profile state audit: [audit/MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md)
 - Medical profile state plan: [flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md](./flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md)
 - Medical profile state implementation checkpoint: [audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Stack guardrail reconciliation checkpoint: [audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md](./audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md)
 - Stack surface contract: [flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md)
 - Profile implementation plan: [flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md)
 - Profile implementation checkpoint: [audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
@@ -214,6 +216,7 @@ docs/
 | [VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)                   | Visits-domain five-layer implementation checkpoint   |
 | [MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](./audit/MEDICAL_PROFILE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md)               | Medical-profile state-lane follow-on audit           |
 | [MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) | Medical-profile five-layer implementation checkpoint |
+| [STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md](./audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md)             | 48-hour stack and route guardrail reconciliation     |
 | [BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md)                             | Book Visit vs modern stack baseline                  |
 | [BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)           | Book Visit stack implementation checkpoint           |
 | [HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)                         | Help Support vs modern stack baseline                |

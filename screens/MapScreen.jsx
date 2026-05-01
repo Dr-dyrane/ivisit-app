@@ -245,6 +245,15 @@ export default function MapScreen() {
       : Array.isArray(params?.visitKey)
         ? params.visitKey[0]
         : null;
+  const routeHistoryFilter =
+    typeof params?.historyFilter === "string"
+      ? params.historyFilter
+      : Array.isArray(params?.historyFilter)
+        ? params.historyFilter[0]
+        : null;
+  const isRouteManagedRecentVisits = routeMapSheet === "recent_visits";
+  const recentVisitsModalVisible =
+    recentVisitsVisible || isRouteManagedRecentVisits;
 
   useEffect(() => {
     const suppressionId = "map-modal-fab-suppression";
@@ -272,8 +281,6 @@ export default function MapScreen() {
   }, [registerFAB, unregisterFAB]);
 
   const handleProfileSignOut = useCallback(async () => {
-
-
     const result = await logout();
     if (result?.success) {
       clearCommitFlow?.();
@@ -292,30 +299,22 @@ export default function MapScreen() {
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
 
   // PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
-  const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } = useMapTrackingSync({
-    activeAmbulanceTrip,
-    patchActiveAmbulanceTrip,
-    activeRequestKey: activeMapRequest?.requestId || null,
-    isTrackingMapActive: sheetPhase === MAP_SHEET_PHASES.TRACKING,
-    trackingKind:
-      activeMapRequest?.kind ||
-      (activeAmbulanceTrip?.requestId ? "ambulance" : null),
-  });
+  const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } =
+    useMapTrackingSync({
+      activeAmbulanceTrip,
+      patchActiveAmbulanceTrip,
+      activeRequestKey: activeMapRequest?.requestId || null,
+      isTrackingMapActive: sheetPhase === MAP_SHEET_PHASES.TRACKING,
+      trackingKind:
+        activeMapRequest?.kind ||
+        (activeAmbulanceTrip?.requestId ? "ambulance" : null),
+    });
 
   const shouldShowMapControls = usesSidebarLayout
     ? !hasActiveMapModal && !hasFocusedSheetPhase
     : renderedSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED &&
       !hasActiveMapModal &&
       !hasFocusedSheetPhase;
-
-  useEffect(() => {
-    if (
-      usesSidebarLayout &&
-      sheetSnapState !== MAP_SHEET_SNAP_STATES.EXPANDED
-    ) {
-      setSheetSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
-    }
-  }, [setSheetSnapState, sheetSnapState, usesSidebarLayout]);
 
   // PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted to useMapFocusedState
   const {
@@ -387,11 +386,16 @@ export default function MapScreen() {
     stopBedBooking,
     visits,
     onAfterResolution: refreshVisits,
-    onAfterSubmit: useCallback(({ visitId }) => {
-      if (!visitId || !selectedHistoryVisitKey) return;
-      const updatedItem = visits.find((v) => v.id === visitId || v.requestId === visitId);
-      if (updatedItem) openVisitDetail?.(updatedItem);
-    }, [openVisitDetail, selectedHistoryVisitKey, visits]),
+    onAfterSubmit: useCallback(
+      ({ visitId }) => {
+        if (!visitId || !selectedHistoryVisitKey) return;
+        const updatedItem = visits.find(
+          (v) => v.id === visitId || v.requestId === visitId,
+        );
+        if (updatedItem) openVisitDetail?.(updatedItem);
+      },
+      [openVisitDetail, selectedHistoryVisitKey, visits],
+    ),
   });
 
   const handleRateHistoryVisit = useCallback(() => {
@@ -443,6 +447,35 @@ export default function MapScreen() {
     visitsLoading,
   ]);
 
+  const handleCloseRecentVisits = useCallback(() => {
+    setRecentVisitsVisible(false);
+    if (isRouteManagedRecentVisits) {
+      router.replace("/(user)");
+    }
+  }, [isRouteManagedRecentVisits, router, setRecentVisitsVisible]);
+
+  const handleRouteManagedHistoryFilterChange = useCallback(
+    (nextFilter) => {
+      if (!isRouteManagedRecentVisits) return;
+
+      const nextParams =
+        nextFilter && nextFilter !== "all"
+          ? {
+              mapSheet: "recent_visits",
+              historyFilter: nextFilter,
+            }
+          : {
+              mapSheet: "recent_visits",
+            };
+
+      router.replace({
+        pathname: "/(user)",
+        params: nextParams,
+      });
+    },
+    [isRouteManagedRecentVisits, router],
+  );
+
   return (
     <View
       style={[
@@ -469,7 +502,9 @@ export default function MapScreen() {
         onReadinessChange={handleMapReadinessChange}
         onRouteInfoChange={setTrackingRouteInfo}
         activeTracking={isActiveTrackingMap}
-        trackingTimeline={activeAmbulanceTrip?.requestId ? trackingTimeline : null}
+        trackingTimeline={
+          activeAmbulanceTrip?.requestId ? trackingTimeline : null
+        }
         headerOcclusionHeight={trackingHeaderOcclusionHeight}
         bottomSheetHeight={bottomSheetHeight}
         leftPanelWidth={sidebarOcclusionWidth}
@@ -549,7 +584,9 @@ export default function MapScreen() {
           activeMapRequest={activeMapRequest}
           trackingRouteInfo={trackingRouteInfo}
           trackingHeaderActionRequest={trackingHeaderActionRequest}
-          onConsumeTrackingHeaderActionRequest={clearTrackingHeaderActionRequest}
+          onConsumeTrackingHeaderActionRequest={
+            clearTrackingHeaderActionRequest
+          }
           trackingHospitals={discoveredHospitals}
           trackingAllHospitals={allHospitals}
           trackingAmbulanceTelemetryHealth={ambulanceTelemetryHealth}
@@ -612,15 +649,23 @@ export default function MapScreen() {
           setCareHistoryVisible(false);
           handleChooseCare(mode);
         }}
-        onBookVisit={handleBookVisitFromCare}
+        onBookVisit={isSignedIn ? handleBookVisitFromCare : undefined}
       />
 
       <MapHistoryModal
-        visible={recentVisitsVisible}
-        onClose={() => setRecentVisitsVisible(false)}
+        visible={recentVisitsModalVisible}
+        onClose={handleCloseRecentVisits}
         onSelectVisit={handleSelectHistoryItem}
-        onBookVisit={handleBookVisitFromHistory}
+        onBookVisit={isSignedIn ? handleBookVisitFromHistory : undefined}
         onChooseCare={handleOpenChooseCareFromHistory}
+        routeManagedFilterKey={
+          isRouteManagedRecentVisits ? routeHistoryFilter : null
+        }
+        onRouteManagedFilterChange={
+          isRouteManagedRecentVisits
+            ? handleRouteManagedHistoryFilterChange
+            : undefined
+        }
       />
 
       <MapHistoryPaymentModal

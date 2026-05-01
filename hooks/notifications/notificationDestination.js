@@ -1,7 +1,8 @@
 import {
   navigateToHelpSupport,
-  navigateToMore,
+  navigateToInsurance,
   navigateToNotificationDetails,
+  navigateToProfile,
   navigateToSOS,
   navigateToVisitDetails,
   navigateToVisits,
@@ -98,8 +99,8 @@ export function routeNotificationDestination({
   }
 
   if (actionType === "upgrade") {
-    navigateToMore({ router, method });
-    return "more";
+    navigateToProfile({ router, method });
+    return "profile";
   }
 
   if (actionType === "view_ticket") {
@@ -108,7 +109,7 @@ export function routeNotificationDestination({
   }
 
   if (actionType === "view_insurance") {
-    navigateToMore({ router, method, screen: "insurance" });
+    navigateToInsurance({ router, method });
     return "insurance";
   }
 

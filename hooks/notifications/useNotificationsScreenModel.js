@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
@@ -22,6 +22,12 @@ import {
 
 function isValidFilter(value) {
   return NOTIFICATION_FILTERS.some((filter) => filter.id === value);
+}
+
+function normalizeRouteFilter(value) {
+  const nextFilter =
+    typeof value === "string" ? value : Array.isArray(value) ? value[0] : null;
+  return nextFilter && isValidFilter(nextFilter) ? nextFilter : null;
 }
 
 function formatSectionLabel(timestamp) {
@@ -129,29 +135,23 @@ export function useNotificationsScreenModel() {
   const [filter, setFilter] = useAtom(notificationsFilterAtom);
   const [isSelectMode, setIsSelectMode] = useAtom(notificationsSelectModeAtom);
   const [selectedIds, setSelectedIds] = useAtom(notificationsSelectedIdsAtom);
-
-  useEffect(() => {
-    const nextFilter =
-      typeof filterParam === "string"
-        ? filterParam
-        : Array.isArray(filterParam)
-          ? filterParam[0]
-          : null;
-
-    if (nextFilter && isValidFilter(nextFilter) && nextFilter !== filter) {
-      setFilter(nextFilter);
-    }
-  }, [filter, filterParam, setFilter]);
-
-  useEffect(() => {
-    const ids = new Set(
-      Array.isArray(notifications)
-        ? notifications.map((notification) => notification?.id).filter(Boolean)
-        : [],
-    );
-
-    setSelectedIds((current) => current.filter((id) => ids.has(id)));
-  }, [notifications, setSelectedIds]);
+  const routeFilter = normalizeRouteFilter(filterParam);
+  const activeFilter = routeFilter || filter;
+  const notificationIdSet = useMemo(
+    () =>
+      new Set(
+        Array.isArray(notifications)
+          ? notifications
+              .map((notification) => notification?.id)
+              .filter(Boolean)
+          : [],
+      ),
+    [notifications],
+  );
+  const validSelectedIds = useMemo(
+    () => selectedIds.filter((id) => notificationIdSet.has(id)),
+    [notificationIdSet, selectedIds],
+  );
 
   const filterCounts = useMemo(
     () => getFilterCountMap(notifications),
@@ -159,20 +159,26 @@ export function useNotificationsScreenModel() {
   );
 
   const filteredNotifications = useMemo(
-    () => filterNotifications(notifications, filter),
-    [filter, notifications],
+    () => filterNotifications(notifications, activeFilter),
+    [activeFilter, notifications],
   );
   const sections = useMemo(
     () => buildSections(filteredNotifications),
     [filteredNotifications],
   );
-  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const selectedCount = selectedIds.length;
+  const selectedIdSet = useMemo(
+    () => new Set(validSelectedIds),
+    [validSelectedIds],
+  );
+  const selectedCount = validSelectedIds.length;
   const allFilteredSelected =
     filteredNotifications.length > 0 &&
-    selectedCount === filteredNotifications.length;
+    filteredNotifications.every((notification) =>
+      selectedIdSet.has(notification?.id),
+    );
   const filterLabel =
-    NOTIFICATION_FILTERS.find((option) => option.id === filter)?.label || "All";
+    NOTIFICATION_FILTERS.find((option) => option.id === activeFilter)?.label ||
+    "All";
   const totalCount = Array.isArray(notifications) ? notifications.length : 0;
   const hasNotifications = filteredNotifications.length > 0;
   const isDataLoading = isLoading && totalCount === 0;
@@ -208,24 +214,43 @@ export function useNotificationsScreenModel() {
 
   const selectFilter = useCallback(
     (nextFilter) => {
-      if (nextFilter === filter) return;
+      if (nextFilter === activeFilter) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setFilter(nextFilter);
+      if (routeFilter) {
+        if (nextFilter === "all") {
+          router.replace("/(user)/(stacks)/notifications");
+        } else {
+          router.replace({
+            pathname: "/(user)/(stacks)/notifications",
+            params: { filter: nextFilter },
+          });
+        }
+      } else {
+        setFilter(nextFilter);
+      }
       setSelectedIds([]);
       setIsSelectMode(false);
     },
-    [filter, setFilter, setIsSelectMode, setSelectedIds],
+    [
+      activeFilter,
+      routeFilter,
+      router,
+      setFilter,
+      setIsSelectMode,
+      setSelectedIds,
+    ],
   );
 
   const toggleNotificationSelection = useCallback(
     (notificationId) => {
-      setSelectedIds((current) =>
-        current.includes(notificationId)
-          ? current.filter((id) => id !== notificationId)
-          : [...current, notificationId],
-      );
+      setSelectedIds((current) => {
+        const nextCurrent = current.filter((id) => notificationIdSet.has(id));
+        return nextCurrent.includes(notificationId)
+          ? nextCurrent.filter((id) => id !== notificationId)
+          : [...nextCurrent, notificationId];
+      });
     },
-    [setSelectedIds],
+    [notificationIdSet, setSelectedIds],
   );
 
   const toggleSelectAll = useCallback(() => {
@@ -263,9 +288,9 @@ export function useNotificationsScreenModel() {
   const markSelectedRead = useCallback(async () => {
     if (selectedCount === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await Promise.all(selectedIds.map((id) => markAsRead(id)));
+    await Promise.all(validSelectedIds.map((id) => markAsRead(id)));
     setSelectedIds([]);
-  }, [markAsRead, selectedCount, selectedIds, setSelectedIds]);
+  }, [markAsRead, selectedCount, setSelectedIds, validSelectedIds]);
 
   const deleteNotificationIds = useCallback(
     async (notificationIds) => {
@@ -289,12 +314,12 @@ export function useNotificationsScreenModel() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteNotificationIds(selectedIds);
+            await deleteNotificationIds(validSelectedIds);
           },
         },
       ],
     );
-  }, [deleteNotificationIds, selectedCount, selectedIds]);
+  }, [deleteNotificationIds, selectedCount, validSelectedIds]);
 
   const prepareSectionSelection = useCallback(
     (section) => {
@@ -376,7 +401,7 @@ export function useNotificationsScreenModel() {
     filteredNotifications,
     sections,
     filters: NOTIFICATION_FILTERS,
-    filter,
+    filter: activeFilter,
     filterLabel,
     filterCounts,
     unreadCount,
@@ -385,7 +410,7 @@ export function useNotificationsScreenModel() {
     isRefreshing,
     hasNotifications,
     isSelectMode,
-    selectedIds,
+    selectedIds: validSelectedIds,
     selectedIdSet,
     selectedCount,
     allFilteredSelected,

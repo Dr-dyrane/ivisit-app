@@ -11,15 +11,17 @@
 //
 // Users access grouped history via Mini Profile -> History on /map.
 
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 
 export default function VisitsScreen() {
-const router = useRouter();
-
-useEffect(() => {
-router.replace("/(user)");
-}, [router]);
-
-return null;
+  return (
+    <Redirect
+      href={{
+        pathname: "/(user)",
+        params: {
+          mapSheet: "recent_visits",
+        },
+      }}
+    />
+  );
 }

@@ -1,9 +1,9 @@
-import React from "react";
-import MoreScreen from "../../../screens/MoreScreen";
+import { Redirect } from "expo-router";
 
-const More = () => {
-	return <MoreScreen />;
-};
+// Deprecated compatibility bridge.
+// The old More hub is replaced by MiniProfileModal on /map and dedicated stack pages.
+// Stale links now land on Profile instead of rendering the retired More surface.
 
-export default More;
-
+export default function More() {
+  return <Redirect href="/(user)/(stacks)/profile" />;
+}

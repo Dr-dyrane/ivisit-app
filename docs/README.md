@@ -139,6 +139,8 @@ When in doubt, `rules.json` wins.
 - [`audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the medical-profile state migration
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
 
+- [`audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md`](./audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md) â€” post-audit guardrail reconciliation for recent stack-screen and route-state changes
+
 ## Architecture and Ops
 
 - [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md)

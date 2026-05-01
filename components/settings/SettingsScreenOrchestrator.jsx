@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Platform, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -62,10 +62,6 @@ export default function SettingsScreenOrchestrator() {
     surfaceConfig.headerTopInset,
     usesSidebarLayout,
   ]);
-
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
 
   useFocusEffect(
     useCallback(() => {

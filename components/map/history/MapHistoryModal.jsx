@@ -190,6 +190,8 @@ export default function MapHistoryModal({
   onSelectVisit,
   onBookVisit,
   onChooseCare,
+  routeManagedFilterKey = null,
+  onRouteManagedFilterChange,
 }) {
   const { isDarkMode } = useTheme();
   const viewportMetrics = useResponsiveSurfaceMetrics({
@@ -197,11 +199,22 @@ export default function MapHistoryModal({
   });
   const { visits = [], isLoading, refreshVisits } = useVisits();
   const [filter, setFilter] = useAtom(visitHistoryFilterAtom);
+  const isRouteManaged = typeof onRouteManagedFilterChange === "function";
 
   const theme = useMemo(
     () => buildHistoryThemeTokens({ isDarkMode, surface: "row" }),
     [isDarkMode],
   );
+  const normalizedRouteManagedFilter = useMemo(() => {
+    if (!isRouteManaged) return null;
+    const normalizedKey = String(routeManagedFilterKey || "")
+      .trim()
+      .toLowerCase();
+    return Object.values(HISTORY_FILTER_KEYS).includes(normalizedKey)
+      ? normalizedKey
+      : HISTORY_FILTER_KEYS.ALL;
+  }, [isRouteManaged, routeManagedFilterKey]);
+  const activeFilter = isRouteManaged ? normalizedRouteManagedFilter : filter;
 
   // Canonical flat + grouped projections (one selector call each).
   const allItems = useMemo(() => selectHistoryItems(visits), [visits]);
@@ -214,8 +227,8 @@ export default function MapHistoryModal({
     [allItems],
   );
   const filteredItems = useMemo(
-    () => filterHistoryItemsByKey(allItems, filter),
-    [allItems, filter],
+    () => filterHistoryItemsByKey(allItems, activeFilter),
+    [activeFilter, allItems],
   );
 
   const rowMetrics = useMemo(() => {
@@ -274,16 +287,23 @@ export default function MapHistoryModal({
 
   const containerRadius = viewportMetrics.radius.card;
 
-  const handleFilterChange = useCallback((nextKey) => {
-    setFilter(nextKey);
-  }, []);
+  const handleFilterChange = useCallback(
+    (nextKey) => {
+      if (isRouteManaged) {
+        onRouteManagedFilterChange(nextKey);
+        return;
+      }
+      setFilter(nextKey);
+    },
+    [isRouteManaged, onRouteManagedFilterChange, setFilter],
+  );
 
   const emptyCopy =
-    HISTORY_EMPTY_STATE_BY_FILTER[filter] ||
+    HISTORY_EMPTY_STATE_BY_FILTER[activeFilter] ||
     HISTORY_EMPTY_STATE_BY_FILTER[HISTORY_FILTER_KEYS.ALL];
 
   const hasAny = filteredItems.length > 0;
-  const isAllFilter = filter === HISTORY_FILTER_KEYS.ALL;
+  const isAllFilter = activeFilter === HISTORY_FILTER_KEYS.ALL;
   const shouldShowSkeletons = Boolean(isLoading && allItems.length === 0);
 
   // Bottom action: prefer onBookVisit (primary care intent). Falls back to
@@ -339,7 +359,7 @@ export default function MapHistoryModal({
               <FilterChip
                 key={option.key}
                 option={option}
-                isActive={filter === option.key}
+                isActive={activeFilter === option.key}
                 count={filterCounts[option.key] || 0}
                 theme={theme}
                 onPress={handleFilterChange}

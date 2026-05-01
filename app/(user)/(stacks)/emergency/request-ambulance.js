@@ -1,7 +1,8 @@
-import React from "react";
-import RequestAmbulanceScreen from "../../../../screens/RequestAmbulanceScreen";
+import { Redirect } from "expo-router";
+
+// Deprecated compatibility bridge.
+// Emergency request entry now lives in the /map sheet flow.
 
 export default function RequestAmbulance() {
-	return <RequestAmbulanceScreen />;
+  return <Redirect href="/(user)" />;
 }
-

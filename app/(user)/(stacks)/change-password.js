@@ -1,7 +1,8 @@
-import React from "react";
-import ChangePasswordScreen from "../../../screens/ChangePasswordScreen";
+import { Redirect } from "expo-router";
+
+// Deprecated compatibility bridge.
+// App entry is OTP/social first, so password mutation no longer has a live stack surface.
 
 export default function ChangePassword() {
-	return <ChangePasswordScreen />;
+  return <Redirect href="/(user)" />;
 }
-

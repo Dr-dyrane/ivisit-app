@@ -10,6 +10,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md](./emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md): Architecture contract for the full five-layer shared map route state.
 - [../audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](../audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md): Follow-on architecture audit for route state after dedupe hardening.
 - [../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the full five-layer route-state migration.
+- [../audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md](../audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md): 48-hour guardrail reconciliation for recent stack-screen and route-state changes.
 - [emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md](./emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md): Stack-screen contract for `welcome -> map -> stack` surfaces.
 - [emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md](./emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md): Canonical visits-domain five-layer migration plan.
 - [../audit/VISITS_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](../audit/VISITS_STATE_ARCHITECTURE_AUDIT_2026-04-29.md): Deep architecture audit for the visits-domain state lane.

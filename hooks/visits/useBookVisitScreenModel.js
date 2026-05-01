@@ -1,9 +1,9 @@
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import * as Haptics from "expo-haptics";
 import { addDays, format, startOfToday } from "date-fns";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,11 +22,10 @@ import {
 import {
   BOOK_VISIT_STEPS,
   createEmptyBookVisitDraft,
-  hydrateBookVisitStore,
   useBookVisitStore,
 } from "../../stores/bookVisitStore";
 import { useBookVisitQuoteQuery } from "./useBookVisitQuoteQuery";
-import { useBookVisitLifecycle } from "./useBookVisitLifecycle";
+import { useBookVisitBootstrap } from "./useBookVisitBootstrap";
 import { paymentService } from "../../services/paymentService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { VISIT_STATUS, VISIT_TYPES } from "../../constants/visits";
@@ -34,51 +33,6 @@ import {
   navigateBack,
   navigateToVisitDetails,
 } from "../../utils/navigationHelpers";
-
-const safeParseParam = (value) => {
-  const source = Array.isArray(value) ? value[0] : value;
-  if (!source) return null;
-  if (typeof source === "object") return source;
-  try {
-    return JSON.parse(source);
-  } catch (_error) {
-    return source;
-  }
-};
-
-const toTrimmedString = (value) => {
-  const source = Array.isArray(value) ? value[0] : value;
-  if (typeof source !== "string") return null;
-  const trimmed = source.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const buildRouteSeedSignature = (params = {}) => {
-  const payload = {
-    type: toTrimmedString(params?.type),
-    specialty: toTrimmedString(params?.specialty),
-    hospital: safeParseParam(params?.hospital),
-    doctor: safeParseParam(params?.doctor),
-    date: toTrimmedString(params?.date),
-    time: toTrimmedString(params?.time),
-    notes: toTrimmedString(params?.notes),
-    step: toTrimmedString(params?.step),
-  };
-  const hasMeaningfulValue = Object.values(payload).some(
-    (value) => value !== null && value !== undefined,
-  );
-  return hasMeaningfulValue ? JSON.stringify(payload) : null;
-};
-
-const buildDraftFromParams = (params = {}) => ({
-  type: toTrimmedString(params?.type),
-  specialty: toTrimmedString(params?.specialty),
-  hospital: safeParseParam(params?.hospital),
-  doctor: safeParseParam(params?.doctor),
-  date: toTrimmedString(params?.date),
-  time: toTrimmedString(params?.time),
-  notes: toTrimmedString(params?.notes) || "",
-});
 
 const asDate = (value) => {
   if (!value) return null;
@@ -113,7 +67,6 @@ const getNextStepLabel = (step) => {
 
 export function useBookVisitScreenModel() {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const { showToast } = useToast();
   const { user } = useAuth();
   const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
@@ -122,23 +75,13 @@ export function useBookVisitScreenModel() {
   const hospitals = Array.isArray(allHospitals) ? allHospitals : [];
 
   const hydrated = useBookVisitStore((state) => state.hydrated);
-  const ownerUserId = useBookVisitStore((state) => state.ownerUserId);
   const step = useBookVisitStore((state) => state.step);
   const draft = useBookVisitStore((state) => state.draft);
   const quote = useBookVisitStore((state) => state.quote);
-  const routeSeedSignature = useBookVisitStore(
-    (state) => state.routeSeedSignature,
-  );
   const setStep = useBookVisitStore((state) => state.setStep);
   const updateDraftField = useBookVisitStore((state) => state.updateDraftField);
   const mergeDraft = useBookVisitStore((state) => state.mergeDraft);
-  const setQuote = useBookVisitStore((state) => state.setQuote);
   const clearQuote = useBookVisitStore((state) => state.clearQuote);
-  const seedFromParams = useBookVisitStore((state) => state.seedFromParams);
-  const setLifecycleStatus = useBookVisitStore(
-    (state) => state.setLifecycleStatus,
-  );
-  const markHydrated = useBookVisitStore((state) => state.markHydrated);
   const resetBookVisitState = useBookVisitStore(
     (state) => state.resetBookVisitState,
   );
@@ -155,42 +98,6 @@ export function useBookVisitScreenModel() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
-
-  useEffect(() => {
-    void hydrateBookVisitStore();
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-
-    if (!userId) {
-      if (ownerUserId) {
-        resetBookVisitState(null);
-      }
-      return;
-    }
-
-    if (ownerUserId && ownerUserId !== userId) {
-      resetBookVisitState(userId);
-      return;
-    }
-
-    if (!ownerUserId) {
-      markHydrated(userId);
-    }
-  }, [hydrated, markHydrated, ownerUserId, resetBookVisitState, userId]);
-
-  const routeSignature = useMemo(
-    () => buildRouteSeedSignature(params),
-    [params],
-  );
-
-  useEffect(() => {
-    if (!hydrated || !routeSignature || routeSignature === routeSeedSignature) {
-      return;
-    }
-    seedFromParams(buildDraftFromParams(params), routeSignature);
-  }, [hydrated, params, routeSeedSignature, routeSignature, seedFromParams]);
 
   const bookingData = useMemo(
     () => ({
@@ -266,28 +173,16 @@ export function useBookVisitScreenModel() {
     enabled: shouldFetchQuote,
   });
 
-  useEffect(() => {
-    if (quoteQuery.data) {
-      setQuote(quoteQuery.data);
-    }
-  }, [quoteQuery.data, setQuote]);
-
-  const lifecycle = useBookVisitLifecycle({
-    hydrated,
+  const { lifecycle } = useBookVisitBootstrap({
+    userId,
+    quoteData: quoteQuery.data,
     shouldFetchQuote,
-    quoteError: quoteQuery.error,
     isQuoteFetching: quoteQuery.isFetching,
+    quoteError: quoteQuery.error,
     hasQuote: Boolean(quoteQuery.data || quote),
     isSubmitting,
     submitError,
   });
-
-  useEffect(() => {
-    setLifecycleStatus({
-      lifecycleState: String(lifecycle.lifecycleState),
-      lifecycleError: lifecycle.error,
-    });
-  }, [lifecycle.error, lifecycle.lifecycleState, setLifecycleStatus]);
 
   const progressValue = useMemo(
     () => Math.min(1, (step + 1) / (BOOK_VISIT_STEPS.SUMMARY + 1)),

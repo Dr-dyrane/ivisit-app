@@ -1,30 +1,30 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Modal, Platform } from 'react-native';
-import { useWindowDimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useHeaderState } from '../../contexts/HeaderStateContext';
-import { useFocusEffect } from 'expo-router';
-import { useFAB } from '../../contexts/FABContext';
-import HeaderBackButton from '../navigation/HeaderBackButton';
-import AddPaymentMethodModal from './AddPaymentMethodModal';
-import MapHistoryPaymentModal from '../map/history/MapHistoryPaymentModal';
-import {
-  PaymentHistoryModal,
-  AddFundsModal,
-} from './PaymentScreenComponents';
-import { PAYMENT_SCREEN_COPY } from './paymentScreen.content';
-import { usePaymentScreenModel } from '../../hooks/payment/usePaymentScreenModel';
+import React, { useCallback, useMemo } from "react";
+import { Modal, Platform } from "react-native";
+import { useWindowDimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useHeaderState } from "../../contexts/HeaderStateContext";
+import { useFocusEffect } from "expo-router";
+import { useFAB } from "../../contexts/FABContext";
+import HeaderBackButton from "../navigation/HeaderBackButton";
+import AddPaymentMethodModal from "./AddPaymentMethodModal";
+import MapHistoryPaymentModal from "../map/history/MapHistoryPaymentModal";
+import { PaymentHistoryModal, AddFundsModal } from "./PaymentScreenComponents";
+import { PAYMENT_SCREEN_COPY } from "./paymentScreen.content";
+import { usePaymentScreenModel } from "../../hooks/payment/usePaymentScreenModel";
 // PULLBACK NOTE: Pass 7 — sidebar layout props from PaymentStageBase (mirrors map pattern)
-import PaymentStageBase from './PaymentStageBase';
-import PaymentManagementVariant from './PaymentManagementVariant';
-import PaymentCheckoutVariant from './PaymentCheckoutVariant';
-import { createPaymentScreenTheme } from './paymentScreen.theme';
-import { computePaymentSidebarLayout, PAYMENT_SIDEBAR_HIG } from './paymentSidebarLayout';
+import PaymentStageBase from "./PaymentStageBase";
+import PaymentManagementVariant from "./PaymentManagementVariant";
+import PaymentCheckoutVariant from "./PaymentCheckoutVariant";
+import { createPaymentScreenTheme } from "./paymentScreen.theme";
+import {
+  computePaymentSidebarLayout,
+  PAYMENT_SIDEBAR_HIG,
+} from "./paymentSidebarLayout";
 import {
   getStackViewportVariant,
   getStackViewportSurfaceConfig,
-} from '../../utils/ui/stackViewportConfig';
+} from "../../utils/ui/stackViewportConfig";
 
 // PULLBACK NOTE: Refactor PaymentScreenOrchestrator following modular architecture pattern
 // OLD: Orchestrator owned shell, snap, motion, slots, and rendered UI directly
@@ -66,7 +66,9 @@ export default function PaymentScreenOrchestrator() {
   const headerLayoutInsets = useMemo(() => {
     if (!usesSidebarLayout) return null;
     const baseTopInset = surfaceConfig.headerTopInset || 10;
-    const topInset = Math.round(baseTopInset * PAYMENT_SIDEBAR_HIG.HEADER_TOP_INSET_REDUCTION);
+    const topInset = Math.round(
+      baseTopInset * PAYMENT_SIDEBAR_HIG.HEADER_TOP_INSET_REDUCTION,
+    );
     return {
       topInset,
       leftInset: 0,
@@ -74,12 +76,12 @@ export default function PaymentScreenOrchestrator() {
       containerLeft: sidebarLayout.headerContainerLeft,
       containerRight: sidebarLayout.sidebarGutter,
     };
-  }, [usesSidebarLayout, sidebarLayout.headerContainerLeft, sidebarLayout.sidebarGutter, surfaceConfig.headerTopInset]);
-
-  // Keep layoutInsets reactive to width changes
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
+  }, [
+    usesSidebarLayout,
+    sidebarLayout.headerContainerLeft,
+    sidebarLayout.sidebarGutter,
+    surfaceConfig.headerTopInset,
+  ]);
 
   // Header & Tab Bar Setup
   const backButton = useCallback(() => <HeaderBackButton />, []);
@@ -88,8 +90,12 @@ export default function PaymentScreenOrchestrator() {
     useCallback(() => {
       // Show header in remaining right space (containerLeft shifts it past the sidebar)
       setHeaderState({
-        title: model.isManagementMode ? PAYMENT_SCREEN_COPY.management.title : PAYMENT_SCREEN_COPY.checkout.title,
-        subtitle: model.isManagementMode ? PAYMENT_SCREEN_COPY.management.subtitle : PAYMENT_SCREEN_COPY.checkout.subtitle,
+        title: model.isManagementMode
+          ? PAYMENT_SCREEN_COPY.management.title
+          : PAYMENT_SCREEN_COPY.checkout.title,
+        subtitle: model.isManagementMode
+          ? PAYMENT_SCREEN_COPY.management.subtitle
+          : PAYMENT_SCREEN_COPY.checkout.subtitle,
         icon: model.isManagementMode ? (
           <Ionicons name="wallet" size={26} color={theme.text} />
         ) : (
@@ -104,7 +110,7 @@ export default function PaymentScreenOrchestrator() {
 
       // Context-Aware FAB for Linking Card
       if (model.isManagementMode) {
-        registerFAB('wallet-add-card', {
+        registerFAB("wallet-add-card", {
           icon: PAYMENT_SCREEN_COPY.fab.icon,
           label: PAYMENT_SCREEN_COPY.fab.label,
           subText: PAYMENT_SCREEN_COPY.fab.subText,
@@ -120,18 +126,29 @@ export default function PaymentScreenOrchestrator() {
 
       return () => {
         if (model.isManagementMode) {
-          unregisterFAB('wallet-add-card');
+          unregisterFAB("wallet-add-card");
         }
       };
-    // PULLBACK NOTE: Fix infinite loop by removing unstable deps
-    // OLD: model and theme in deps (new objects every render) caused infinite loop
-    // NEW: only primitives and stable callbacks in deps
-    // REASON: Root cause was useFocusEffect re-running every render
-    }, [setHeaderState, backButton, model.isManagementMode, isDarkMode, registerFAB, unregisterFAB, model.setShowAddModal, headerLayoutInsets])
+      // PULLBACK NOTE: Fix infinite loop by removing unstable deps
+      // OLD: model and theme in deps (new objects every render) caused infinite loop
+      // NEW: only primitives and stable callbacks in deps
+      // REASON: Root cause was useFocusEffect re-running every render
+    }, [
+      setHeaderState,
+      backButton,
+      model.isManagementMode,
+      isDarkMode,
+      registerFAB,
+      unregisterFAB,
+      model.setShowAddModal,
+      headerLayoutInsets,
+    ]),
   );
 
   // Choose variant based on mode
-  const VariantComponent = model.isManagementMode ? PaymentManagementVariant : PaymentCheckoutVariant;
+  const VariantComponent = model.isManagementMode
+    ? PaymentManagementVariant
+    : PaymentCheckoutVariant;
 
   return (
     <PaymentStageBase isDarkMode={isDarkMode}>
@@ -150,7 +167,11 @@ export default function PaymentScreenOrchestrator() {
           <Modal
             visible={model.showAddModal}
             transparent
-            animationType={surfaceConfig.modalPresentationMode === "centered-modal" ? "fade" : "slide"}
+            animationType={
+              surfaceConfig.modalPresentationMode === "centered-modal"
+                ? "fade"
+                : "slide"
+            }
             onRequestClose={() => model.setShowAddModal(false)}
           >
             <AddPaymentMethodModal

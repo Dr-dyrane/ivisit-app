@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Platform,
   RefreshControl,
@@ -85,10 +85,6 @@ export default function SearchScreenOrchestrator() {
     surfaceConfig.headerTopInset,
     usesSidebarLayout,
   ]);
-
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
 
   useFocusEffect(
     useCallback(() => {

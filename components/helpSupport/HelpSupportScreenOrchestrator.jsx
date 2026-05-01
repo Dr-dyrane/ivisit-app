@@ -1,9 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-import {
-  Platform,
-  RefreshControl,
-  useWindowDimensions,
-} from "react-native";
+import React, { useCallback, useMemo } from "react";
+import { Platform, RefreshControl, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { COLORS } from "../../constants/colors";
@@ -64,10 +60,6 @@ export default function HelpSupportScreenOrchestrator() {
     surfaceConfig.headerTopInset,
     usesSidebarLayout,
   ]);
-
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
 
   useFocusEffect(
     useCallback(() => {

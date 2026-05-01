@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useHelpSupport } from "../../contexts/HelpSupportContext";
 import {
   helpSupportCanSubmitAtom,
@@ -77,15 +77,10 @@ export function useHelpSupportScreenModel() {
   const canSubmit = useAtomValue(helpSupportCanSubmitAtom);
 
   const highlightedTicketId = normalizeRouteTicketId(ticketId);
-
-  useEffect(() => {
-    if (!highlightedTicketId) return;
-    setExpandedTicketIds((current) =>
-      current.includes(highlightedTicketId)
-        ? current
-        : [highlightedTicketId, ...current],
-    );
-  }, [highlightedTicketId, setExpandedTicketIds]);
+  const expandedTicketIdSet = useMemo(() => {
+    const routeManagedIds = highlightedTicketId ? [highlightedTicketId] : [];
+    return new Set([...routeManagedIds, ...expandedTicketIds]);
+  }, [expandedTicketIds, highlightedTicketId]);
 
   const openTickets = useMemo(
     () =>
@@ -228,7 +223,7 @@ export function useHelpSupportScreenModel() {
     canSubmit,
     isSubmitting,
     expandedFaqIds: new Set(expandedFaqIds),
-    expandedTicketIds: new Set(expandedTicketIds),
+    expandedTicketIds: expandedTicketIdSet,
     highlightedTicketId,
     headerSubtitle,
     centerTitle: HELP_SUPPORT_SCREEN_COPY.center.title,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
 import * as Haptics from "expo-haptics";
 import { useToast } from "../../contexts/ToastContext";
@@ -83,12 +83,6 @@ export function useMedicalProfileScreenModel() {
   );
   const [draft, setDraft] = useAtom(medicalProfileDraftAtom);
 
-  useEffect(() => {
-    if (!isEditorOpen) {
-      setDraft(normalizedProfile);
-    }
-  }, [isEditorOpen, normalizedProfile, setDraft]);
-
   const sections = useMemo(
     () => buildSections(normalizedProfile),
     [normalizedProfile],
@@ -126,19 +120,22 @@ export function useMedicalProfileScreenModel() {
   const openEditor = useCallback(() => {
     setDraft(normalizedProfile);
     setIsEditorOpen(true);
-  }, [normalizedProfile]);
+  }, [normalizedProfile, setDraft, setIsEditorOpen]);
 
   const closeEditor = useCallback(() => {
     setDraft(normalizedProfile);
     setIsEditorOpen(false);
-  }, [normalizedProfile]);
+  }, [normalizedProfile, setDraft, setIsEditorOpen]);
 
-  const updateField = useCallback((key, value) => {
-    setDraft((currentDraft) => ({
-      ...currentDraft,
-      [key]: value,
-    }));
-  }, []);
+  const updateField = useCallback(
+    (key, value) => {
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        [key]: value,
+      }));
+    },
+    [setDraft],
+  );
 
   const refresh = useCallback(() => {
     refreshProfile();
@@ -166,7 +163,7 @@ export function useMedicalProfileScreenModel() {
       showToast(MEDICAL_PROFILE_SCREEN_COPY.messages.failed, "error");
       throw saveError;
     }
-  }, [draft, showToast, updateProfile]);
+  }, [draft, setIsEditorOpen, showToast, updateProfile]);
 
   return {
     isDataLoading: isLoading,

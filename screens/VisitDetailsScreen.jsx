@@ -9,27 +9,30 @@
 //
 // Users reach visit details by tapping a row in MapRecentVisitsModal (grouped history).
 
-import { useEffect } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
 export default function VisitDetailsScreen() {
-const router = useRouter();
-const params = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const rawId =
+    typeof params?.id === "string"
+      ? params.id
+      : Array.isArray(params?.id)
+        ? params.id[0]
+        : null;
 
-useEffect(() => {
-const rawId = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : null;
-if (!rawId) {
-router.replace("/(user)");
-return;
-}
-router.replace({
-pathname: "/(user)",
-params: {
-mapSheet: "visit_detail",
-visitKey: String(rawId),
-},
-});
-}, [params?.id, router]);
+  if (!rawId) {
+    return <Redirect href="/(user)" />;
+  }
 
-return null;
+  return (
+    <Redirect
+      href={{
+        pathname: "/(user)",
+        params: {
+          mapSheet: "visit_detail",
+          visitKey: String(rawId),
+        },
+      }}
+    />
+  );
 }

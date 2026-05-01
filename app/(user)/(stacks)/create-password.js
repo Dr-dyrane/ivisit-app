@@ -1,7 +1,8 @@
-import React from "react";
-import CreatePasswordScreen from "../../../screens/CreatePasswordScreen";
+import { Redirect } from "expo-router";
+
+// Deprecated compatibility bridge.
+// App entry is OTP/social first, so password creation no longer has a live stack surface.
 
 export default function CreatePassword() {
-	return <CreatePasswordScreen />;
+  return <Redirect href="/(user)" />;
 }
-

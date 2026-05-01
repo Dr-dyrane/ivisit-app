@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Platform,
   Pressable,
@@ -168,10 +168,6 @@ export default function NotificationsScreenOrchestrator() {
     surfaceConfig.headerTopInset,
     usesSidebarLayout,
   ]);
-
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
 
   useFocusEffect(
     useCallback(() => {

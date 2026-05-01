@@ -2,7 +2,6 @@ import { EmergencyMode } from "../contexts/EmergencyContext";
 
 export const ROUTES = {
   USER_HOME: "/(user)",
-  STACK_MORE: "/(user)/(stacks)/more",
   STACK_SEARCH: "/(user)/(stacks)/search",
   STACK_NOTIFICATIONS: "/(user)/(stacks)/notifications",
   STACK_NOTIFICATION_DETAILS: (id) =>
@@ -74,11 +73,11 @@ export function navigateToSOS({
 
 export function navigateToVisits({ router, filter, method = "push" }) {
   const v = typeof filter === "string" && filter.trim() ? filter.trim() : null;
-  if (!v) {
-    nav(router, method, ROUTES.STACK_VISITS);
-    return;
+  const params = { mapSheet: "recent_visits" };
+  if (v) {
+    params.historyFilter = v;
   }
-  nav(router, method, { pathname: ROUTES.STACK_VISITS, params: { filter: v } });
+  nav(router, method, { pathname: ROUTES.USER_HOME, params });
 }
 
 export function navigateToNotifications({ router, filter, method = "push" }) {
@@ -146,14 +145,6 @@ export function navigateToNotificationDetails({
 }) {
   if (!notificationId) return;
   nav(router, method, ROUTES.STACK_NOTIFICATION_DETAILS(notificationId));
-}
-
-export function navigateToMore({ router, method = "push", screen }) {
-  if (screen === "insurance") {
-    nav(router, method, "/(user)/(stacks)/insurance");
-    return;
-  }
-  nav(router, method, ROUTES.STACK_MORE);
 }
 
 export function navigateToRequestAmbulance({

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Platform, View } from "react-native";
 import { useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,10 +70,6 @@ export default function EmergencyContactsScreenOrchestrator() {
     surfaceConfig.headerTopInset,
     usesSidebarLayout,
   ]);
-
-  useEffect(() => {
-    setHeaderState({ layoutInsets: headerLayoutInsets });
-  }, [headerLayoutInsets, setHeaderState]);
 
   useFocusEffect(
     useCallback(() => {
