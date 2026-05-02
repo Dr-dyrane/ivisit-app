@@ -470,6 +470,12 @@ const styles = StyleSheet.create({
 		shadowRadius: 14,
 		elevation: 4,
 	},
+	// PULLBACK NOTE: Pass 17D — CTA disabled contract
+	// OLD: no disabled style; bottom CTA appeared active even when another action was busy
+	// NEW: muted opacity when disabled=true so the surface truthfully reflects unavailable state
+	cancelCtaButtonDisabled: {
+		opacity: 0.56,
+	},
 	cancelCtaFill: {
 		minHeight: 56,
 		width: "100%",

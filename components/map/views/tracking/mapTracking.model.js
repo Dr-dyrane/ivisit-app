@@ -270,20 +270,31 @@ export function buildTrackingBottomAction({
   trackingKind,
   primaryAction,
   destructiveAction,
+  busyAction,
 }) {
+  // PULLBACK NOTE: Pass 17D — CTA disabled contract for concurrent-action guard
+  // OLD: returned action objects without disabled field; UI only checked loading
+  // NEW: disabled=true when another action is in-flight so CTA truthfully reflects unavailable state
+  let action = null;
   if (trackingKind === "ambulance" && primaryAction?.key === "complete-ambulance") {
-    return {
+    action = {
       ...primaryAction,
       label: "Complete Request",
     };
-  }
-  if (trackingKind === "bed" && primaryAction?.key === "complete-bed") {
-    return {
+  } else if (trackingKind === "bed" && primaryAction?.key === "complete-bed") {
+    action = {
       ...primaryAction,
       label: "Complete Stay",
     };
+  } else {
+    action = destructiveAction;
   }
-  return destructiveAction;
+  if (!action) return null;
+  const isBusy = Boolean(busyAction) && busyAction !== action.key;
+  return {
+    ...action,
+    disabled: isBusy,
+  };
 }
 
 export function resolveTrackingHeaderActionHandler({

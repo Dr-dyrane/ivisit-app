@@ -385,8 +385,12 @@ export function useMapTrackingController({
         trackingKind,
         primaryAction,
         destructiveAction,
+        busyAction,
       }),
-    [destructiveAction, primaryAction, trackingKind],
+    // PULLBACK NOTE: Pass 17D — CTA disabled contract
+    // OLD: dependency array omitted busyAction, so disabled could stale-render
+    // NEW: busyAction wired in so bottomAction.disabled recomputes in real time
+    [busyAction, destructiveAction, primaryAction, trackingKind],
   );
 
   return {

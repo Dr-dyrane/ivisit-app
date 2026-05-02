@@ -537,6 +537,7 @@ export function MapServiceDetailFeatures({
 
 export function MapServiceDetailFooter({
 	isSelected,
+	isFooterDisabled,
 	modalContainedStyle,
 	onConfirm,
 	serviceType,
@@ -555,6 +556,10 @@ export function MapServiceDetailFooter({
 			<EntryActionButton
 				label={label}
 				onPress={onConfirm}
+				// PULLBACK NOTE: Pass 17A — CTA disabled contract
+				// OLD: button always active even when service unavailable/missing
+				// NEW: disabled={isFooterDisabled} reflects service validity truth
+				disabled={isFooterDisabled}
 				variant="primary"
 				height={stageMetrics?.footer?.buttonHeight || 50}
 				radius={stageMetrics?.footer?.buttonRadius || 24}

@@ -30,6 +30,7 @@ Parallel track for stack-owned screens (Profile, Settings, Emergency Contact, Pa
 - Pass 14: shared route state hardening complete
 - Pass 15: complete
 - Pass 16: map entity render hardening complete
+- Pass 17: CTA state contract hardening planned
 
 ## Unified Surgical Mapping
 
@@ -209,6 +210,32 @@ Pass 16 hardened marker/entity rendering after the shared route-state pass prove
 Pass 16 checkpoint:
 
 - [`../../../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md`](../../../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md)
+
+### Pass 17 Planned Slice
+
+Pass 17 is the next targeted `/map` UX-truth pass after route and marker ownership hardening.
+
+Primary focus:
+
+- stop presenting forward red CTAs when the model already knows the user is in `recover` or `unavailable`
+- move CTA semantics from handler rejection into explicit controller/presentation truth
+
+Primary references:
+
+- [`../../../audit/MAP_CTA_STATE_CONTRACT_AUDIT_2026-05-02.md`](../../../audit/MAP_CTA_STATE_CONTRACT_AUDIT_2026-05-02.md)
+- [`MAP_CTA_STATE_PASS_PLAN_V1.md`](./MAP_CTA_STATE_PASS_PLAN_V1.md)
+
+Patch order by ROI:
+
+1. `serviceDetail`
+2. `commitDetails`
+3. `chooseHospital`
+4. `tracking`
+
+Pass 17 proven when:
+
+- these surfaces expose `ready`, `recover`, or `unavailable` truth at the CTA layer
+- users no longer need to tap a red progress CTA just to discover the action cannot continue
 
 ## Why This Exists
 

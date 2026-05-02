@@ -107,6 +107,7 @@ export default function MapCommitDetailsStageBase({
 		successMessage,
 		otpRemainingSeconds,
 		isSubmitting,
+		isCtaDisabled,
 		handleBack,
 		handleChangeValue,
 		handleSubmit,
@@ -192,6 +193,10 @@ export default function MapCommitDetailsStageBase({
 					successMessage={successMessage}
 					otpRemainingSeconds={otpRemainingSeconds}
 					isSubmitting={isSubmitting}
+					// PULLBACK NOTE: Pass 17B — CTA disabled contract
+					// OLD: hardcoded isDisabled={false}
+					// NEW: controller-derived isCtaDisabled reflecting real step validity
+					isDisabled={isCtaDisabled}
 					onChangeValue={handleChangeValue}
 					onSubmit={handleSubmit}
 					onResend={activeStep === "otp" ? handleResendOtp : undefined}

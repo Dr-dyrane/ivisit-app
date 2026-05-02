@@ -121,6 +121,10 @@ export default function MapServiceDetailStageBase({
 	const closeSurface = isDarkMode ? "rgba(148,163,184,0.14)" : "rgba(255,255,255,0.42)";
 	const accent = serviceType === "room" ? "#64748B" : COLORS.brandPrimary;
 	const isSelected = service?.id === selectedServiceId;
+	// PULLBACK NOTE: Pass 17A — CTA disabled contract for service detail footer
+	// OLD: footer always rendered active CTA even when service unavailable
+	// NEW: disabled=true when service missing or disabled so CTA truthfully reflects unavailability
+	const isFooterDisabled = !service || service?.enabled === false || service?.isUnavailable === true;
 	const statusLabel = service?.metaText || (serviceType === "room" ? "Available" : "Ready");
 	const priceLabel = service?.priceText || null;
 	const showPriceSkeleton = Boolean(service?.showPriceSkeleton && !priceLabel);
@@ -331,6 +335,7 @@ export default function MapServiceDetailStageBase({
 
 				<MapServiceDetailFooter
 					isSelected={isSelected}
+					isFooterDisabled={isFooterDisabled}
 					modalContainedStyle={null}
 					onConfirm={onConfirm}
 					serviceType={serviceType}

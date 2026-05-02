@@ -633,6 +633,39 @@ export default function useMapCommitDetailsController({
 		void handleSubmitPhone();
 	}, [activeStep, handleSubmitEmail, handleSubmitOtp, handleSubmitPhone]);
 
+	// PULLBACK NOTE: Pass 17B — CTA disabled contract derived from step validity
+	// OLD: MapCommitDetailsQuestionCard received isDisabled={false} unconditionally
+	// NEW: controller computes truth state so CTA reflects whether submission is actually valid
+	const isCtaDisabled = useMemo(() => {
+		if (isSubmitting) return true;
+		if (activeStep === "email") {
+			return !isCommitEmailValid(draft.email);
+		}
+		if (activeStep === "otp") {
+			const otp = sanitizeCommitOtp(draft.otp);
+			if (otp.length !== 6) return true;
+			if (otpExpiresAt && Date.now() >= otpExpiresAt) return true;
+			return false;
+		}
+		if (activeStep === "phone") {
+			const normalizedPhone = phoneE164Format || sanitizeCommitPhone(draft.phone);
+			const isPhoneValidForSubmit = phoneE164Format
+				? true
+				: isCommitPhoneValid(normalizedPhone) && isPhoneResolvedValid;
+			return !isPhoneValidForSubmit || !normalizedPhone;
+		}
+		return false;
+	}, [
+		activeStep,
+		isSubmitting,
+		draft.email,
+		draft.otp,
+		draft.phone,
+		phoneE164Format,
+		isPhoneResolvedValid,
+		otpExpiresAt,
+	]);
+
 	return {
 		activeStep,
 		currentStepConfig,
@@ -641,6 +674,7 @@ export default function useMapCommitDetailsController({
 		successMessage,
 		otpRemainingSeconds,
 		isSubmitting,
+		isCtaDisabled,
 		handleBack,
 		handleChangeValue,
 		handleSubmit,

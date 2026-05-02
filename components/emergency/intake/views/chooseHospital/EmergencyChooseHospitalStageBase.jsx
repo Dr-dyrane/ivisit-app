@@ -102,6 +102,16 @@ export default function EmergencyChooseHospitalStageBase({
 			? styles.reviewStackSheet
 			: styles.reviewSheet;
 
+	// PULLBACK NOTE: Pass 17C — CTA disabled contract for review CTAs
+	// OLD: only isRefreshingRoutePreview gated CTA; no handling for missing hospital/route/catalog
+	// NEW: disabled when route missing/stale, catalog failed/refreshing, or no viable hospital
+	const isPrimaryDisabled =
+		isRefreshingRoutePreview ||
+		isRefreshingCatalog ||
+		!hospital ||
+		!routeInfo ||
+		(typeof onPrimaryPress !== "function");
+
 	const reviewCard = (
 		<View style={reviewCardContainerStyle}>
 			<View style={styles.reviewWell}>
@@ -169,13 +179,18 @@ export default function EmergencyChooseHospitalStageBase({
 						label={primaryLabel}
 						variant="primary"
 						height={metrics.primaryHeight}
-						onPress={isRefreshingRoutePreview ? undefined : onPrimaryPress}
+						// PULLBACK NOTE: Pass 17C — CTA disabled contract
+						// OLD: onPress gated only by isRefreshingRoutePreview; no semantic disabled state
+						// NEW: disabled reflects full model truth (route/catalog/hospital availability)
+						disabled={isPrimaryDisabled}
+						onPress={isPrimaryDisabled ? undefined : onPrimaryPress}
 					/>
 					<Pressable
-						onPress={isRefreshingRoutePreview ? undefined : onSecondaryPress}
+						onPress={isPrimaryDisabled ? undefined : onSecondaryPress}
+						disabled={isPrimaryDisabled}
 						style={[
 							styles.reviewQuietLink,
-							isRefreshingRoutePreview ? { opacity: 0.56 } : null,
+							isPrimaryDisabled ? { opacity: 0.56 } : null,
 						]}
 					>
 						<Text style={styles.quietLinkText}>{secondaryLabel}</Text>

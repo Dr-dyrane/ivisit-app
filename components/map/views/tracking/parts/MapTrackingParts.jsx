@@ -628,13 +628,17 @@ export function TrackingBottomActionButton({
     <View style={styles.cancelCtaWrap}>
       <Pressable
         onPress={bottomAction.onPress}
-        disabled={bottomAction.loading}
+        // PULLBACK NOTE: Pass 17D — CTA disabled contract
+        // OLD: disabled={bottomAction.loading} only
+        // NEW: disabled also when bottomAction.disabled signals semantic unavailability
+        disabled={bottomAction.loading || bottomAction.disabled}
         style={({ pressed }) => [
           styles.cancelCtaButton,
           isBottomCompletionAction
             ? styles.cancelCtaButtonPrimary
             : styles.cancelCtaButtonSecondary,
-          pressed ? styles.ctaButtonPressed : null,
+          pressed && !bottomAction.disabled ? styles.ctaButtonPressed : null,
+          bottomAction.disabled ? styles.cancelCtaButtonDisabled : null,
         ]}
       >
         <LinearGradient

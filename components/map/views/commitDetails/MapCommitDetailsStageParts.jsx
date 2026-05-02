@@ -116,6 +116,7 @@ export function MapCommitDetailsQuestionCard({
   successMessage,
   otpRemainingSeconds,
   isSubmitting,
+  isDisabled,
   onChangeValue,
   onSubmit,
   onResend,
@@ -199,7 +200,10 @@ export function MapCommitDetailsQuestionCard({
       showClearButton={isEmailStep || isPhoneStep}
       leadingAccessory={leadingAccessory}
       isSubmitting={isSubmitting}
-      isDisabled={false}
+      // PULLBACK NOTE: Pass 17B — CTA disabled contract
+      // OLD: isDisabled={false} (always clickable even when input invalid)
+      // NEW: isDisabled={isDisabled} (controller-derived step-validity truth)
+      isDisabled={isDisabled}
       selectionColor={selectionColor}
       onChangeValue={onChangeValue}
       onSubmit={onSubmit}
