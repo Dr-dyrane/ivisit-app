@@ -43,4 +43,7 @@ supabase/tests/validation/
 test-results/
 tmp-screens/
 
+# generated exports
+exports/
+
 .vercel

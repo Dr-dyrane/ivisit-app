@@ -75,7 +75,33 @@ activeAppFiles.forEach(file => {
     fs.copyFileSync(path.join(appMigrationsDir, file), path.join(consoleMigrationsDir, file));
 });
 
-// 3. Sync Types
+// 3. Sync Scripts (with README)
+console.log('Syncing Scripts...');
+const appScriptsDir = path.join(appSupabaseDir, 'scripts');
+const consoleScriptsDir = path.join(consoleSupabaseDir, 'scripts');
+
+if (fs.existsSync(appScriptsDir)) {
+    if (!fs.existsSync(consoleScriptsDir)) {
+        fs.mkdirSync(consoleScriptsDir, { recursive: true });
+    }
+
+    // Clean existing scripts
+    const existingScriptFiles = fs.readdirSync(consoleScriptsDir)
+        .filter(f => f.endsWith('.js') || f.endsWith('.sql') || f === 'README.md');
+    existingScriptFiles.forEach(file => {
+        fs.unlinkSync(path.join(consoleScriptsDir, file));
+    });
+
+    // Copy all scripts
+    const activeScriptFiles = fs.readdirSync(appScriptsDir)
+        .filter(f => f.endsWith('.js') || f.endsWith('.sql') || f === 'README.md');
+    activeScriptFiles.forEach(file => {
+        console.log(`  Copying script ${file}...`);
+        fs.copyFileSync(path.join(appScriptsDir, file), path.join(consoleScriptsDir, file));
+    });
+}
+
+// 4. Sync Types
 console.log('Syncing Types...');
 if (fs.existsSync(appTypesFile)) {
     const destDir = path.dirname(consoleTypesFile);
