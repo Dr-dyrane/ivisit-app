@@ -40,6 +40,7 @@ Emergency contacts now follow the app's five-layer state model:
 `supabase emergency_contacts -> TanStack Query -> Zustand snapshot/selectors -> XState lifecycle -> Jotai screen atoms`
 
 Rules:
+
 - the canonical contact model is phone-first
 - request and commit flows consume selector-backed snapshots, not direct local storage
 - legacy contacts without phone numbers stay visible in migration review until resolved
@@ -103,6 +104,7 @@ Demo/hybrid note:
 - demo-backed hospitals still use the real request creation lane
 - when payment is cash and the hospital is demo-backed, the app may auto-approve through `demo-approve-cash-payment`
 - that still resolves through the real `approve_cash_payment` RPC, so request status and later tracking remain truthful
+- demo bootstrap and cleanup rules are documented separately in [DEMO_MODE_COVERAGE_FLOW.md](./DEMO_MODE_COVERAGE_FLOW.md)
 
 ## Emergency Status State Machine
 

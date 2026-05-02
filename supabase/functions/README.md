@@ -20,6 +20,7 @@ functions/
 ## 💳 **Payment Functions**
 
 ### **create-payment-intent**
+
 Creates payment intents for emergency services and medical visits.
 
 **Endpoint**: `/functions/v1/create-payment-intent`
@@ -27,6 +28,7 @@ Creates payment intents for emergency services and medical visits.
 **Authentication**: Required
 
 ### **create-payout**
+
 Processes payouts to healthcare providers and ambulance services.
 
 **Endpoint**: `/functions/v1/create-payout`
@@ -34,6 +36,7 @@ Processes payouts to healthcare providers and ambulance services.
 **Authentication**: Admin required
 
 ### **manage-payment-methods**
+
 Manages patient payment methods (cards, digital wallets).
 
 **Endpoint**: `/functions/v1/manage-payment-methods`
@@ -43,6 +46,7 @@ Manages patient payment methods (cards, digital wallets).
 ## 🔍 **Discovery Functions**
 
 ### **discover-hospitals**
+
 Searches for hospitals based on location, specialty, and availability.
 
 **Endpoint**: `/functions/v1/discover-hospitals`
@@ -50,6 +54,7 @@ Searches for hospitals based on location, specialty, and availability.
 **Authentication**: Optional
 
 **Query Parameters**:
+
 - `lat`: Latitude (required)
 - `lng`: Longitude (required)
 - `radius`: Search radius in km (default: 10)
@@ -57,6 +62,7 @@ Searches for hospitals based on location, specialty, and availability.
 - `availability`: Filter by availability (optional)
 
 ### **bootstrap-demo-ecosystem**
+
 Builds a deterministic demo healthcare ecosystem for users in low/no verified coverage zones.
 
 **Endpoint**: `/functions/v1/bootstrap-demo-ecosystem`
@@ -64,12 +70,21 @@ Builds a deterministic demo healthcare ecosystem for users in low/no verified co
 **Authentication**: Required
 
 **Body Parameters**:
+
 - `phase`: `prepare | hospitals | staff | pricing | summary | full`
 - `latitude`: number (required)
 - `longitude`: number (required)
 - `radiusKm`: number (optional, default 50)
 
+**Maintenance Rules**:
+
+- only demo hospitals with `status = available` count as the active bootstrap pool
+- stale same-org demo hospitals must be retired out of the active pool instead of left available
+- staffing should run only against the active selected pack returned by the current bootstrap cycle
+- see [`docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`](../../docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md) for the cleanup runbook and sponsor-QA hygiene targets
+
 ### **review-demo-auth**
+
 Allows Google Play / app review testers to complete the emergency commit-details OTP step without mailbox access.
 
 **Endpoint**: `/functions/v1/review-demo-auth`
@@ -77,10 +92,12 @@ Allows Google Play / app review testers to complete the emergency commit-details
 **Authentication**: Public function, guarded by exact email + server-side static review OTP
 
 **Body Parameters**:
+
 - `email`: must match `REVIEW_DEMO_AUTH_EMAIL` (`support@ivisit.ng` by default)
 - `otp`: must match server-side `REVIEW_DEMO_AUTH_OTP`
 
 **Environment**:
+
 - `REVIEW_DEMO_AUTH_ENABLED=true`
 - `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`
 - `REVIEW_DEMO_AUTH_OTP=<Google Play review code>`
@@ -90,6 +107,7 @@ The function returns a real short-lived Supabase email OTP generated with the se
 ## 🪝 **Webhook Functions**
 
 ### **stripe-webhook**
+
 Handles Stripe webhook events for payment processing.
 
 **Endpoint**: `/functions/v1/stripe-webhook`
@@ -97,6 +115,7 @@ Handles Stripe webhook events for payment processing.
 **Authentication**: Stripe signature verification
 
 **Events Handled**:
+
 - `payment_intent.succeeded`
 - `payment_intent.payment_failed`
 - `payment_intent.canceled`
@@ -107,16 +126,19 @@ Handles Stripe webhook events for payment processing.
 Common utilities and helpers used across functions.
 
 ### **Authentication**
+
 - JWT token validation
 - Role-based access control
 - User session management
 
 ### **Validation**
+
 - Input sanitization
 - Parameter validation
 - Error handling
 
 ### **Database**
+
 - Supabase client initialization
 - Connection pooling
 - Error handling
@@ -124,6 +146,7 @@ Common utilities and helpers used across functions.
 ## 🚀 **Deployment**
 
 ### **Local Development**
+
 ```bash
 # Start local development server
 supabase functions serve
@@ -133,6 +156,7 @@ supabase functions serve discover-hospitals
 ```
 
 ### **Deployment**
+
 ```bash
 # Deploy all functions
 supabase functions deploy
@@ -144,7 +168,9 @@ supabase functions deploy discover-hospitals
 ## 📋 **Development Guidelines**
 
 ### **Function Structure**
+
 Each function should follow this structure:
+
 ```
 function-name/
 ├── index.ts          # Main function logic
@@ -154,18 +180,21 @@ function-name/
 ```
 
 ### **Naming Conventions**
+
 - **Directories**: kebab-case (e.g., `create-payment-intent`)
 - **Files**: kebab-case (e.g., `index.ts`, `types.ts`)
 - **Endpoints**: `/functions/v1/{function-name}`
 - **Environment**: Use `process.env` for configuration
 
 ### **Error Handling**
+
 - Use standardized error responses
 - Log errors for debugging
 - Return appropriate HTTP status codes
 - Include error details in response
 
 ### **Security**
+
 - Validate all inputs
 - Use authentication middleware
 - Implement rate limiting
@@ -174,6 +203,7 @@ function-name/
 ## 🔧 **Environment Variables**
 
 Required environment variables:
+
 ```bash
 # Supabase Configuration
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -193,12 +223,14 @@ TWILIO_AUTH_TOKEN=your_twilio_token
 ## 📊 **Monitoring**
 
 ### **Logging**
+
 - Use structured logging with timestamps
 - Include correlation IDs for request tracking
 - Log errors with full context
 - Monitor performance metrics
 
 ### **Health Checks**
+
 - Implement health check endpoints
 - Monitor function response times
 - Track error rates

@@ -26,6 +26,10 @@ Recent hardening on top of the orchestrator split:
 - live ambulance trip reconciliation only runs while the map is actually in ambulance tracking mode
 - `EmergencyLocationPreviewMap` reuses persisted trip polylines during reloads/recalculations so route rendering and ambulance animation do not blank out while a new route fetch is in flight
 - `useMapRoute` now resolves through a canonical service + TanStack Query key + shared runtime store + lifecycle machine + route UI atoms, so route-owning map surfaces reuse one directions result and one legality lane instead of keeping private per-hook fetch/cache state
+- map entity render owners now share a stronger coordinate/render contract:
+  - `FullScreenEmergencyMap` renders an app-owned fallback user marker instead of relying on provider-owned `showsUserLocation`
+  - `HospitalMarkers`, `EmergencyLocationPreviewMap`, and `EmergencyHospitalRoutePreview` now normalize coordinates through the shared helper and use a controlled marker-render pulse for image/custom markers
+  - `MapComponents.web` marker creation no longer depends on a fresh spread-props object that could trigger destroy/recreate churn
 - the shared route lane was stabilized after implementation by:
   - switching idle route status to a stable exported constant
   - removing a redundant store write on cached shared-route hits

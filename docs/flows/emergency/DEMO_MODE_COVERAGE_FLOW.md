@@ -1,9 +1,11 @@
 # Demo Coverage Flow: Task Verification Guide
 
 ## Goal
+
 When a user has poor/no **verified** nearby coverage, let them switch to a deterministic demo ecosystem without breaking core emergency flows.
 
 ## Deterministic Phases
+
 1. `prepare`
 2. `hospitals`
 3. `staff`
@@ -13,6 +15,7 @@ When a user has poor/no **verified** nearby coverage, let them switch to a deter
 Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-based, no schema migration).
 
 ## Data Rules
+
 - Demo entities are tagged and traceable:
   - `hospitals.place_id` starts with `demo:`
   - `hospitals.verified = true` and `hospitals.verification_status = verified` for experience continuity
@@ -21,6 +24,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Demo mode is user-level via `preferences.demo_mode_enabled`.
 
 ## UX Rules
+
 - Coverage modal shows `Switch To Demo Experience` when live verified coverage is poor/none.
 - Demo bootstrap modal is non-dismissible while phases run.
 - Phase progress is explicit (`pending`, `running`, `completed`, `failed`).
@@ -29,6 +33,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - User can toggle demo mode in **More > Demo Mode**.
 
 ## Coverage Threshold Rule (2026-04-09)
+
 - `COVERAGE_POOR_THRESHOLD` is currently **3** verified nearby live hospitals.
 - `0` verified nearby live hospitals = `none` coverage.
 - `1–2` verified nearby live hospitals = `poor` coverage.
@@ -37,6 +42,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Bootstrap/backfill should continue while the nearby verified experience is still below that cutoff.
 
 ## Nearby Radius Rule (2026-04-10)
+
 - `0-5 km` = `immediate`.
 - `>5-15 km` = `nearby support`.
 - `>15-50 km` = `extended browse`.
@@ -49,11 +55,13 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Any demo hospital that only appears in the `15-50 km` band should be treated as browse-only, not as proof that nearby support is already filled.
 
 ## Demo Bootstrap Volume Rule (2026-04-10)
+
 - The demo edge function should target **at least 5 nearby hospitals** per coverage scope.
 - The current cap is **5-6** hospitals so the map rail and hospital list can feel full without becoming noisy.
 - A bootstrap target of `2-3` hospitals is considered backend-minimum only and is not sufficient for the current map/sheet UI.
 
 ## Local Coverage Reuse Rule (2026-04-11)
+
 - Persisted demo coverage must not be treated as sufficient just because a city already has `5` demo hospitals somewhere inside the full nearby window.
 - Reuse now has a stricter local rule:
   - at least `5` dispatchable demo hospitals inside `0-15 km`
@@ -62,6 +70,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - This rule is generic and exists to stop one citywide bootstrap pack from masking neighborhood-level thin coverage in any metro, not only Lagos.
 
 ## Metro Catalog Rule (2026-04-11)
+
 - Demo bootstrap may maintain a shared metro-level fallback catalog for dense cities when a single neighborhood pack would be too brittle.
 - A metro catalog is stored once under a shared demo scope (for example `city_lagos`) and contains many real hospital identities distributed across the city.
 - The app should still render hospitals by the user's coordinates, not by the full catalog:
@@ -70,12 +79,42 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Two users in the same city may therefore share the same backing catalog while still seeing different nearby hospital sets if they are far enough apart.
 - Legacy per-bucket demo rows that are replaced by a metro catalog should be retired out of active coverage rather than left available beside the new catalog rows.
 
+## Active Demo Pool Rule (2026-05-01)
+
+- Only demo hospitals with `status = available` count as the active bootstrap pool.
+- `bootstrap-demo-ecosystem` must not feed staffing or pricing repair from the full same-org demo catalog.
+- Same-org demo hospitals that are no longer part of the selected active pack must be retired out of the active pool by setting `status = full`.
+- `ensureDemoStaff` and downstream maintenance must run only against the active selected pack returned by the current bootstrap cycle.
+- Historical demo hospitals may remain in `status = full` when they are still referenced by visits or emergency requests, but they must not generate new doctors, drivers, or ambulances.
+
+## Demo Cleanup Runbook (2026-05-01)
+
+- Prevention first:
+  - deploy the latest `bootstrap-demo-ecosystem` edge function
+  - rerun scope bootstrap for any oversized metro or coordinate scopes so stale same-org hospitals are retired out of `available`
+- Then clean the database in this order:
+  1. `node supabase/scripts/dedupe_demo_hospitals.js --apply`
+  2. `node supabase/scripts/cleanup_demo_orphans.js --apply`
+- `cleanup_demo_orphans.js` is allowed to delete:
+  - orphan demo auth users and profiles
+  - retired demo hospitals with no request or visit references
+  - retired demo doctors, ambulances, and pricing rows tied only to those prunable hospitals
+- The script must preserve:
+  - demo hospitals still referenced by `emergency_requests` or `visits`
+  - demo orgs that are not hard-delete eligible under payment and payment-method guards
+- After cleanup, rerun the script without `--apply`; the target sponsor-QA posture is:
+  - `orphan_demo_profiles = 0`
+  - `retired_demo_hospitals_prunable = 0`
+  - `hospitals_needing_repair = 0`
+
 ## Public Discovery Rule (2026-04-11)
+
 - `discover-hospitals` is part of the public `/map` path and must stay guest-callable.
 - The function must be deployed with JWT verification disabled so sponsor/tester sessions can discover real nearby hospitals before any auth wall.
 - If the function becomes auth-protected again, public `/map` silently degrades into RPC-only discovery and uncovered regions lose provider-backed expansion.
 
 ## Hospital Media Rule (2026-04-12)
+
 - Emergency and `/map` hospital surfaces should consume the existing `hospital.image` field seamlessly; image delivery must therefore be normalized at the data layer, not solved with special-case UI logic.
 - The canonical runtime delivery path is the public [`hospital-media`](../../../supabase/functions/hospital-media/index.ts) edge function. Hospital rows should point `image` to that proxy whenever the selected source is app-governed media rather than a raw static URL.
 - Source priority is:
@@ -93,6 +132,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Controlled fallback is still valid. If there is no trustworthy provider photo or official website image, the system must prefer a deterministic fallback over pretending a random image is the facility.
 
 ## Discovery Ordering Rule (2026-04-11)
+
 - The discovery function may read a mix of real dispatchable hospitals and non-dispatchable provider-shadow rows from `nearby_hospitals`.
 - Dispatchable hospitals must be ordered ahead of shadow/provider rows before the function applies its response limit.
 - "Database is sufficient" should be decided from **dispatchable nearby hospitals**, not from raw row count.
@@ -100,6 +140,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Shadow rows must never crowd real nearby hospitals out of the top slice sent back to the app.
 
 ## Audit Script Rule (2026-04-11)
+
 - Use [`supabase/scripts/audit_demo_coverage.js`](../../../supabase/scripts/audit_demo_coverage.js) for live coverage audits.
 - The script intentionally splits responsibilities:
   - service-role client for `nearby_hospitals`
@@ -107,6 +148,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - This mirrors the real runtime more accurately than a single privileged client.
 
 ## Demo Hospital Identity Rule (2026-04-10)
+
 - Demo bootstrap may create demo-owned hospitals, but it must preserve real hospital `name` and `address` whenever a database or provider seed exists.
 - Synthetic identities such as `Emergency Care Center 1` are valid only for true no-seed fallback slots.
 - Provider seed fallback order is:
@@ -121,6 +163,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Raw `nearby_hospitals` output alone is not sufficient for that decision because it does not expose every demo-identifying field needed to reject stale demo rows.
 
 ## Acceptance Checks
+
 1. No-coverage user sees coverage apology + demo switch CTA.
 2. Tapping demo switch runs all phases successfully.
 3. Demo hospitals become visible and are marked verified for experience continuity.
@@ -141,8 +184,11 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 18. A raw provider `place_id` passed to `hospital-media` should return a valid image redirect even before a dedicated `hospital_media` row exists.
 19. Emergency/map hospital cards continue to read from `hospital.image` after hydration and therefore pick up the normalized proxy automatically.
 20. When no trustworthy real image exists, the hospital still renders via deterministic fallback rather than blank media.
+21. Repeated bootstrap in the same metro scope must not keep growing active demo hospital count beyond the intended `5-6` pack.
+22. Historical full demo hospitals must not generate new doctor, driver, or ambulance records during later bootstrap cycles.
 
 ## Failure Handling
+
 - Any phase error:
   - active phase marked `failed`
   - clear toast surfaced to user
@@ -151,9 +197,11 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
   - rerunning is safe; edge function upserts and reuses deterministic identifiers.
 
 ## Console Subscriber 400 Fix Verification
+
 Problem: console create payload wrote columns not present in `public.subscribers`.
 
 Checks:
+
 1. Create subscriber from console succeeds (HTTP 200/201).
 2. Update subscriber succeeds without unknown-column errors.
 3. `markWelcomeEmailSent` succeeds and sets:

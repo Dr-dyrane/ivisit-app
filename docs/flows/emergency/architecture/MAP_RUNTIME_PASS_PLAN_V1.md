@@ -29,6 +29,7 @@ Parallel track for stack-owned screens (Profile, Settings, Emergency Contact, Pa
 - Pass 13: complete
 - Pass 14: shared route state hardening complete
 - Pass 15: complete
+- Pass 16: map entity render hardening complete
 
 ## Unified Surgical Mapping
 
@@ -193,6 +194,21 @@ Pass 15 checkpoints:
 - [`../../../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 - [`../../../audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/VISITS_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 - [`../../../audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](../../../audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+
+### Pass 16 Output
+
+Pass 16 hardened marker/entity rendering after the shared route-state pass proved route ownership was no longer the main map defaulter:
+
+- shared coordinate normalization expanded in [`utils/emergencyContextHelpers.js`](../../../../utils/emergencyContextHelpers.js) so marker consumers and route consumers accept the same hospital/location shapes
+- controlled image-marker recovery pulse added in [`hooks/map/useMarkerRenderPulse.js`](../../../../hooks/map/useMarkerRenderPulse.js)
+- [`components/map/HospitalMarkers.jsx`](../../../../components/map/HospitalMarkers.jsx) now normalizes hospital coordinates before render instead of hard-filtering one strict shape
+- [`components/map/FullScreenEmergencyMap.jsx`](../../../../components/map/FullScreenEmergencyMap.jsx) now renders an app-owned user marker fallback instead of depending on native `showsUserLocation`
+- [`components/emergency/intake/EmergencyLocationPreviewMap.jsx`](../../../../components/emergency/intake/EmergencyLocationPreviewMap.jsx) and [`components/emergency/intake/EmergencyHospitalRoutePreview.jsx`](../../../../components/emergency/intake/EmergencyHospitalRoutePreview.jsx) now use the shared marker pulse for image/custom markers
+- [`components/map/MapComponents.web.js`](../../../../components/map/MapComponents.web.js) no longer recreates web markers from a fresh spread-props dependency on harmless rerenders
+
+Pass 16 checkpoint:
+
+- [`../../../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md`](../../../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md)
 
 ## Why This Exists
 

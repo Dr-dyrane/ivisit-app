@@ -6,7 +6,10 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 
 - [auth/workflow_map.md](./auth/workflow_map.md): Authentication and registration execution path.
 - [emergency/workflow_map.md](./emergency/workflow_map.md): Deterministic emergency lifecycle from request to completion.
+- [emergency/DEMO_MODE_COVERAGE_FLOW.md](./emergency/DEMO_MODE_COVERAGE_FLOW.md): Demo bootstrap doctrine, active-pool rules, and cleanup runbook for sparse or sponsor-test coverage.
+- [../audit/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](../audit/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md): Live remediation checkpoint for demo bootstrap bloat and Supabase cleanup.
 - [../audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](../audit/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md): Shared map route-state hardening, directions dedupe, and loop-fix checkpoint.
+- [../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](../audit/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md): Marker/entity render hardening for hospital markers, user markers, and web marker stability.
 - [emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md](./emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md): Architecture contract for the full five-layer shared map route state.
 - [../audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](../audit/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md): Follow-on architecture audit for route state after dedupe hardening.
 - [../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/MAP_ROUTE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the full five-layer route-state migration.

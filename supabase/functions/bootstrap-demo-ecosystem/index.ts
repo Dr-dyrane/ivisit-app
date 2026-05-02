@@ -263,13 +263,15 @@ const SERVICE_PRICING_BASELINES = [
     service_type: "ambulance_advanced",
     service_name: "Advanced Life Support",
     base_price: 245,
-    description: "Higher-acuity transport with advanced monitoring and intervention support.",
+    description:
+      "Higher-acuity transport with advanced monitoring and intervention support.",
   },
   {
     service_type: "ambulance_critical",
     service_name: "Critical Care Transport",
     base_price: 360,
-    description: "ICU-style transport for the highest-risk cases requiring continuous escalation capacity.",
+    description:
+      "ICU-style transport for the highest-risk cases requiring continuous escalation capacity.",
   },
   {
     service_type: "bed",
@@ -379,7 +381,11 @@ const uniqueStrings = (values: string[]): string[] => {
 };
 
 const stripDemoSuffixes = (value: string) =>
-  value.replace(/\s*(?:\((?:demo)\))+$/i, "").replace(/\s*\(demo\)/gi, "").replace(/\s{2,}/g, " ").trim();
+  value
+    .replace(/\s*(?:\((?:demo)\))+$/i, "")
+    .replace(/\s*\(demo\)/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
 const normalizeHospitalName = (value: unknown, fallback = "Nearby Hospital") =>
   toSafeString(stripDemoSuffixes(toSafeString(value, fallback)), fallback);
@@ -411,7 +417,9 @@ const toStableIdFragment = (value: string, fallback: string) => {
 };
 
 const isBootstrapDemoFeature = (feature: string) => {
-  const normalized = String(feature || "").trim().toLowerCase();
+  const normalized = String(feature || "")
+    .trim()
+    .toLowerCase();
   return (
     normalized === DEMO_SHARED_FLAG ||
     normalized === "demo_seed" ||
@@ -425,8 +433,13 @@ const isBootstrapDemoFeature = (feature: string) => {
 
 const isDemoSeedRow = (row: any) => {
   const placeId = toSafeString(row?.place_id, "").toLowerCase();
-  const verificationStatus = toSafeString(row?.verification_status, "").toLowerCase();
-  const featureList = toSafeStringArray(row?.features).map((feature) => feature.toLowerCase());
+  const verificationStatus = toSafeString(
+    row?.verification_status,
+    "",
+  ).toLowerCase();
+  const featureList = toSafeStringArray(row?.features).map((feature) =>
+    feature.toLowerCase(),
+  );
   const name = toSafeString(row?.name, "").toLowerCase();
   const address = toSafeString(row?.address, "").toLowerCase();
 
@@ -440,7 +453,9 @@ const isDemoSeedRow = (row: any) => {
   );
 };
 
-const parseHospitalCoordinates = (row: any): { latitude: number | null; longitude: number | null } => {
+const parseHospitalCoordinates = (
+  row: any,
+): { latitude: number | null; longitude: number | null } => {
   const lat = toFiniteNumber(row?.latitude);
   const lng = toFiniteNumber(row?.longitude);
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -456,17 +471,30 @@ const parseHospitalCoordinates = (row: any): { latitude: number | null; longitud
   return { latitude: null, longitude: null };
 };
 
-const toDemoPlaceId = (ctx: DemoContext, seed: any, slotIndex: number): string => {
+const toDemoPlaceId = (
+  ctx: DemoContext,
+  seed: any,
+  slotIndex: number,
+): string => {
   const seedScopeKey = resolveDemoSeedScopeKey(ctx);
-  const sourcePlaceId = toSafeString(seed?.source_place_id || seed?.place_id, "");
+  const sourcePlaceId = toSafeString(
+    seed?.source_place_id || seed?.place_id,
+    "",
+  );
   if (sourcePlaceId) {
     return `demo:${seedScopeKey}:src:${toStableIdFragment(sourcePlaceId, `slot${slotIndex + 1}`)}`;
   }
   return `demo:${seedScopeKey}:slot:${slotIndex + 1}`;
 };
 
-const toAuthEmail = (ctx: DemoContext, kind: string, slotIndex?: number): string => {
-  const slotSuffix = Number.isFinite(slotIndex) ? `-${Number(slotIndex) + 1}` : "";
+const toAuthEmail = (
+  ctx: DemoContext,
+  kind: string,
+  slotIndex?: number,
+): string => {
+  const slotSuffix = Number.isFinite(slotIndex)
+    ? `-${Number(slotIndex) + 1}`
+    : "";
   return `demo-${kind}${slotSuffix}+${resolveDemoSeedScopeKey(ctx)}@ivisit-demo.local`;
 };
 
@@ -523,7 +551,9 @@ const parseDomain = (value: unknown) => {
 };
 
 const isBlockedDomain = (domain: string) =>
-  DOMAIN_BLOCKLIST.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+  DOMAIN_BLOCKLIST.some(
+    (blocked) => domain === blocked || domain.endsWith(`.${blocked}`),
+  );
 
 const tokenize = (value: string) =>
   value
@@ -549,7 +579,9 @@ const scoreNameDomainAffinity = (name: string, domain: string) => {
   const compactScore =
     compactName.length >= 6 &&
     compactDomain.length >= 6 &&
-    (compactDomain.includes(compactName.slice(0, Math.min(12, compactName.length))) ||
+    (compactDomain.includes(
+      compactName.slice(0, Math.min(12, compactName.length)),
+    ) ||
       compactName.includes(compactDomain))
       ? 0.65
       : 0;
@@ -558,7 +590,10 @@ const scoreNameDomainAffinity = (name: string, domain: string) => {
 };
 
 const buildHospitalMediaProxyUrl = (placeId: string) => {
-  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(/\/$/, "");
+  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(
+    /\/$/,
+    "",
+  );
   if (!supabaseUrl || !placeId) return "";
   return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
 };
@@ -590,7 +625,10 @@ const resolveSeedImage = (row: any) => {
   if (domain && !isBlockedDomain(domain)) {
     const affinity = scoreNameDomainAffinity(name, domain);
     if (affinity >= 0.45) {
-      const confidence = Math.min(0.95, Number((0.55 + affinity * 0.4).toFixed(2)));
+      const confidence = Math.min(
+        0.95,
+        Number((0.55 + affinity * 0.4).toFixed(2)),
+      );
       return {
         image: `https://logo.clearbit.com/${domain}?size=512`,
         image_source: "domain_logo",
@@ -630,7 +668,8 @@ const choosePreferredImage = (existing: any, candidate: any) => {
 
   if (!existingUrl && candidateUrl) return candidate;
   if (existingUrl && !candidateUrl) return existing;
-  if (!existingUrl && !candidateUrl) return existingRank >= candidateRank ? existing : candidate;
+  if (!existingUrl && !candidateUrl)
+    return existingRank >= candidateRank ? existing : candidate;
   if (candidateRank > existingRank) return candidate;
   if (existingRank > candidateRank) return existing;
   if (candidateConfidence > existingConfidence) return candidate;
@@ -643,7 +682,7 @@ const toRadians = (value: number) => (value * Math.PI) / 180;
 
 const haversineDistanceKm = (
   a: { latitude: number; longitude: number },
-  b: { latitude: number; longitude: number }
+  b: { latitude: number; longitude: number },
 ) => {
   const earthRadiusKm = 6371;
   const latDelta = toRadians(b.latitude - a.latitude);
@@ -654,17 +693,18 @@ const haversineDistanceKm = (
   const sinLat = Math.sin(latDelta / 2);
   const sinLng = Math.sin(lngDelta / 2);
   const haversine =
-    sinLat * sinLat +
-    Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+    sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
 
   return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
 };
 
-const findCityDemoFallbackCatalog = (ctx: DemoContext): DemoFallbackCatalog | null => {
+const findCityDemoFallbackCatalog = (
+  ctx: DemoContext,
+): DemoFallbackCatalog | null => {
   const match = CITY_DEMO_FALLBACK_CATALOGS.find((catalog) => {
     const distanceKm = haversineDistanceKm(
       { latitude: ctx.latitude, longitude: ctx.longitude },
-      catalog.referencePoint
+      catalog.referencePoint,
     );
     return distanceKm <= catalog.radiusKm;
   });
@@ -686,12 +726,12 @@ const getCatalogSeedHospitals = (ctx: DemoContext) => {
       ...hospital,
       source_place_id: `catalog:${catalog.key}:${toStableIdFragment(
         hospital.name,
-        `slot${index + 1}`
+        `slot${index + 1}`,
       )}`,
       identity_source: "catalog",
       distance_km: haversineDistanceKm(
         { latitude: ctx.latitude, longitude: ctx.longitude },
-        { latitude: hospital.latitude, longitude: hospital.longitude }
+        { latitude: hospital.latitude, longitude: hospital.longitude },
       ),
       features: uniqueStrings([
         ...toSafeStringArray(hospital.features),
@@ -721,11 +761,15 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
   if (ids.length > 0) {
     const { data: metadataRows, error: metadataError } = await admin
       .from("hospitals")
-      .select("id,place_id,verification_status,features,image,image_source,image_confidence,image_attribution_text")
+      .select(
+        "id,place_id,verification_status,features,image,image_source,image_confidence,image_attribution_text",
+      )
       .in("id", ids);
 
     if (metadataError) {
-      throw new Error(`hospital seed metadata lookup failed: ${metadataError.message}`);
+      throw new Error(
+        `hospital seed metadata lookup failed: ${metadataError.message}`,
+      );
     }
 
     (Array.isArray(metadataRows) ? metadataRows : []).forEach((row) => {
@@ -789,11 +833,13 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
 
   if (rows.length === 0) {
     const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
-      "hospital"
+      "hospital",
     )}&proximity=${ctx.longitude},${ctx.latitude}&types=poi&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
     const fallbackResponse = await fetch(fallbackQueryUrl);
     if (!fallbackResponse.ok) {
-      throw new Error(`mapbox hospital text fallback failed: ${fallbackResponse.status}`);
+      throw new Error(
+        `mapbox hospital text fallback failed: ${fallbackResponse.status}`,
+      );
     }
     const fallbackData = await fallbackResponse.json();
     rows = Array.isArray(fallbackData?.features)
@@ -815,7 +861,10 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
       const longitude = toFiniteNumber(coordinates?.[0]) ?? ctx.longitude;
       const website = toSafeString(
         properties?.website,
-        toSafeString(properties?.metadata?.website, toSafeString(properties?.contact?.website, ""))
+        toSafeString(
+          properties?.metadata?.website,
+          toSafeString(properties?.contact?.website, ""),
+        ),
       );
       const imageMeta = resolveSeedImage({
         name: properties?.name || row?.name || "Nearby Hospital",
@@ -828,25 +877,28 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
           toSafeString(row?.id) ||
           toSafeString(properties?.mapbox_id) ||
           `mapbox_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
-            Math.round(longitude * 10000)
+            Math.round(longitude * 10000),
           )}`,
         source_place_id:
           toSafeString(row?.id) || toSafeString(properties?.mapbox_id, ""),
         identity_source: "provider",
         name: normalizeHospitalName(
           properties?.name,
-          normalizeHospitalName(row?.name, "Nearby Hospital")
+          normalizeHospitalName(row?.name, "Nearby Hospital"),
         ),
         address: toSafeString(
           properties?.full_address,
           toSafeString(
             properties?.address,
-            toSafeString(row?.full_address, toSafeString(row?.place_formatted, "Address unavailable"))
-          )
+            toSafeString(
+              row?.full_address,
+              toSafeString(row?.place_formatted, "Address unavailable"),
+            ),
+          ),
         ),
         phone: toSafeString(
           properties?.phone,
-          toSafeString(properties?.metadata?.phone, "")
+          toSafeString(properties?.metadata?.phone, ""),
         ),
         website,
         rating: 4.2,
@@ -862,7 +914,7 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
         price_range: "Flexible",
         distance_km: haversineDistanceKm(
           { latitude: ctx.latitude, longitude: ctx.longitude },
-          { latitude, longitude }
+          { latitude, longitude },
         ),
         latitude,
         longitude,
@@ -871,31 +923,37 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
     .sort((a: any, b: any) => a.distance_km - b.distance_km);
 };
 
-const fetchGoogleNearbyPlaces = async (ctx: DemoContext, googleApiKey: string) => {
+const fetchGoogleNearbyPlaces = async (
+  ctx: DemoContext,
+  googleApiKey: string,
+) => {
   const radiusMeters = Math.max(1000, Math.round(ctx.radiusKm * 1000));
-  const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": googleApiKey,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos",
-    },
-    body: JSON.stringify({
-      includedTypes: ["hospital"],
-      maxResultCount: GOOGLE_PROVIDER_LIMIT,
-      rankPreference: "DISTANCE",
-      locationRestriction: {
-        circle: {
-          center: {
-            latitude: ctx.latitude,
-            longitude: ctx.longitude,
-          },
-          radius: radiusMeters,
-        },
+  const response = await fetch(
+    "https://places.googleapis.com/v1/places:searchNearby",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": googleApiKey,
+        "X-Goog-FieldMask":
+          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos",
       },
-    }),
-  });
+      body: JSON.stringify({
+        includedTypes: ["hospital"],
+        maxResultCount: GOOGLE_PROVIDER_LIMIT,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: ctx.latitude,
+              longitude: ctx.longitude,
+            },
+            radius: radiusMeters,
+          },
+        },
+      }),
+    },
+  );
 
   if (!response.ok) {
     throw new Error(`google hospital discovery failed: ${response.status}`);
@@ -914,7 +972,8 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
   const mappedRows = await Promise.all(
     rows.map(async (row: any, index: number) => {
       const latitude = toFiniteNumber(row?.location?.latitude) ?? ctx.latitude;
-      const longitude = toFiniteNumber(row?.location?.longitude) ?? ctx.longitude;
+      const longitude =
+        toFiniteNumber(row?.location?.longitude) ?? ctx.longitude;
       const sourcePlaceId = toSafeString(row?.id, "");
       const website = toSafeString(row?.websiteUri, "");
       const googlePhotoName = toSafeString(row?.photos?.[0]?.name, "");
@@ -933,18 +992,20 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
         place_id:
           sourcePlaceId ||
           `google_demo_${index}_${Math.abs(Math.round(latitude * 10000))}_${Math.abs(
-            Math.round(longitude * 10000)
+            Math.round(longitude * 10000),
           )}`,
         source_place_id: sourcePlaceId,
         identity_source: "provider",
         name: normalizeHospitalName(
-          typeof row?.displayName === "object" ? row?.displayName?.text : row?.displayName,
-          "Nearby Hospital"
+          typeof row?.displayName === "object"
+            ? row?.displayName?.text
+            : row?.displayName,
+          "Nearby Hospital",
         ),
         address: toSafeString(row?.formattedAddress, "Address unavailable"),
         phone: toSafeString(
           row?.internationalPhoneNumber,
-          toSafeString(row?.nationalPhoneNumber, "")
+          toSafeString(row?.nationalPhoneNumber, ""),
         ),
         website,
         rating: toFiniteNumber(row?.rating) ?? 4.2,
@@ -952,7 +1013,10 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
         image: imageMeta.image,
         image_source: imageMeta.image_source,
         image_confidence: imageMeta.image_confidence,
-        image_attribution_text: toSafeString(imageMeta.image_attribution_text, ""),
+        image_attribution_text: toSafeString(
+          imageMeta.image_attribution_text,
+          "",
+        ),
         google_photo_name: googlePhotoName,
         specialties: ["Emergency Medicine", "Internal Medicine"],
         service_types: ["standard", "premium"],
@@ -962,12 +1026,12 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
         price_range: "Flexible",
         distance_km: haversineDistanceKm(
           { latitude: ctx.latitude, longitude: ctx.longitude },
-          { latitude, longitude }
+          { latitude, longitude },
         ),
         latitude,
         longitude,
       };
-    })
+    }),
   );
 
   return mappedRows.sort((a: any, b: any) => a.distance_km - b.distance_km);
@@ -979,7 +1043,10 @@ const getProviderSeedHospitals = async (ctx: DemoContext) => {
   try {
     providers.push(...(await getMapboxSeedHospitals(ctx)));
   } catch (error) {
-    console.error("[bootstrap-demo-ecosystem] mapbox seed discovery failed", error);
+    console.error(
+      "[bootstrap-demo-ecosystem] mapbox seed discovery failed",
+      error,
+    );
   }
 
   if (providers.length >= DEMO_MIN_HOSPITALS) {
@@ -989,7 +1056,10 @@ const getProviderSeedHospitals = async (ctx: DemoContext) => {
   try {
     providers.push(...(await getGoogleSeedHospitals(ctx)));
   } catch (error) {
-    console.error("[bootstrap-demo-ecosystem] google seed discovery failed", error);
+    console.error(
+      "[bootstrap-demo-ecosystem] google seed discovery failed",
+      error,
+    );
   }
 
   return dedupeSeedHospitals(providers);
@@ -1012,7 +1082,8 @@ const dedupeSeedHospitals = (rows: any[]) => {
 };
 
 const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
-  const offset = DEMO_HOSPITAL_OFFSETS[slotIndex % DEMO_HOSPITAL_OFFSETS.length];
+  const offset =
+    DEMO_HOSPITAL_OFFSETS[slotIndex % DEMO_HOSPITAL_OFFSETS.length];
   const latitude = ctx.latitude + offset.lat;
   const longitude = ctx.longitude + offset.lng;
 
@@ -1077,7 +1148,10 @@ const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
   return { organization: created, created: true };
 };
 
-const ensureDemoFinancialReadiness = async (admin: any, organizationId: string) => {
+const ensureDemoFinancialReadiness = async (
+  admin: any,
+  organizationId: string,
+) => {
   const { error: orgUpdateError } = await admin
     .from("organizations")
     .update({
@@ -1088,7 +1162,9 @@ const ensureDemoFinancialReadiness = async (admin: any, organizationId: string) 
     .eq("id", organizationId);
 
   if (orgUpdateError) {
-    throw new Error(`organization finance sync failed: ${orgUpdateError.message}`);
+    throw new Error(
+      `organization finance sync failed: ${orgUpdateError.message}`,
+    );
   }
 
   const { data: orgWallet, error: orgWalletError } = await admin
@@ -1100,13 +1176,15 @@ const ensureDemoFinancialReadiness = async (admin: any, organizationId: string) 
         currency: "USD",
         updated_at: nowIso(),
       },
-      { onConflict: "organization_id", ignoreDuplicates: false }
+      { onConflict: "organization_id", ignoreDuplicates: false },
     )
     .select("id,balance,currency")
     .single();
 
   if (orgWalletError) {
-    throw new Error(`organization wallet sync failed: ${orgWalletError.message}`);
+    throw new Error(
+      `organization wallet sync failed: ${orgWalletError.message}`,
+    );
   }
 
   const { data: platformWallet, error: platformLookupError } = await admin
@@ -1117,41 +1195,49 @@ const ensureDemoFinancialReadiness = async (admin: any, organizationId: string) 
     .maybeSingle();
 
   if (platformLookupError) {
-    throw new Error(`platform wallet lookup failed: ${platformLookupError.message}`);
+    throw new Error(
+      `platform wallet lookup failed: ${platformLookupError.message}`,
+    );
   }
 
   let resolvedPlatformWallet = platformWallet;
   if (!resolvedPlatformWallet?.id) {
-    const { data: createdPlatformWallet, error: createPlatformWalletError } = await admin
-      .from("ivisit_main_wallet")
-      .insert({
-        balance: DEMO_PLATFORM_WALLET_MIN_BALANCE,
-        currency: "USD",
-        last_updated: nowIso(),
-      })
-      .select("id,balance,currency")
-      .single();
+    const { data: createdPlatformWallet, error: createPlatformWalletError } =
+      await admin
+        .from("ivisit_main_wallet")
+        .insert({
+          balance: DEMO_PLATFORM_WALLET_MIN_BALANCE,
+          currency: "USD",
+          last_updated: nowIso(),
+        })
+        .select("id,balance,currency")
+        .single();
 
     if (createPlatformWalletError) {
-      throw new Error(`platform wallet create failed: ${createPlatformWalletError.message}`);
+      throw new Error(
+        `platform wallet create failed: ${createPlatformWalletError.message}`,
+      );
     }
 
     resolvedPlatformWallet = createdPlatformWallet;
   } else {
     const currentPlatformBalance = Number(resolvedPlatformWallet.balance || 0);
     if (currentPlatformBalance < DEMO_PLATFORM_WALLET_MIN_BALANCE) {
-      const { data: updatedPlatformWallet, error: updatePlatformWalletError } = await admin
-        .from("ivisit_main_wallet")
-        .update({
-          balance: DEMO_PLATFORM_WALLET_MIN_BALANCE,
-          last_updated: nowIso(),
-        })
-        .eq("id", resolvedPlatformWallet.id)
-        .select("id,balance,currency")
-        .single();
+      const { data: updatedPlatformWallet, error: updatePlatformWalletError } =
+        await admin
+          .from("ivisit_main_wallet")
+          .update({
+            balance: DEMO_PLATFORM_WALLET_MIN_BALANCE,
+            last_updated: nowIso(),
+          })
+          .eq("id", resolvedPlatformWallet.id)
+          .select("id,balance,currency")
+          .single();
 
       if (updatePlatformWalletError) {
-        throw new Error(`platform wallet top-up failed: ${updatePlatformWalletError.message}`);
+        throw new Error(
+          `platform wallet top-up failed: ${updatePlatformWalletError.message}`,
+        );
       }
 
       resolvedPlatformWallet = updatedPlatformWallet;
@@ -1166,11 +1252,19 @@ const ensureDemoFinancialReadiness = async (admin: any, organizationId: string) 
   };
 };
 
-const listDemoHospitals = async (admin: any, ctx: DemoContext, organizationId: string) => {
+const listDemoHospitals = async (
+  admin: any,
+  ctx: DemoContext,
+  organizationId: string,
+) => {
   const { data, error } = await admin
     .from("hospitals")
-    .select("id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status")
+    .select(
+      "id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status",
+    )
     .eq("organization_id", organizationId)
+    .like("place_id", "demo:%")
+    .eq("status", "available")
     .order("place_id", { ascending: true });
 
   if (error) {
@@ -1184,44 +1278,59 @@ const ensureDemoHospitals = async (
   admin: any,
   ctx: DemoContext,
   organizationId: string,
-  orgAdminId: string | null
+  orgAdminId: string | null,
 ) => {
   const catalog = findCityDemoFallbackCatalog(ctx);
   const nearbySeeds = await getNearbySeedHospitals(admin, ctx);
   const providerSeeds =
-    nearbySeeds.length >= DEMO_MIN_HOSPITALS ? [] : await getProviderSeedHospitals(ctx);
+    nearbySeeds.length >= DEMO_MIN_HOSPITALS
+      ? []
+      : await getProviderSeedHospitals(ctx);
   const catalogSeeds =
     nearbySeeds.length + providerSeeds.length >= DEMO_MIN_HOSPITALS
       ? []
       : getCatalogSeedHospitals(ctx);
-  const seeds = dedupeSeedHospitals([...nearbySeeds, ...providerSeeds, ...catalogSeeds]);
+  const seeds = dedupeSeedHospitals([
+    ...nearbySeeds,
+    ...providerSeeds,
+    ...catalogSeeds,
+  ]);
   const targetCount = Math.max(
     DEMO_MIN_HOSPITALS,
-    Math.min(DEMO_MAX_HOSPITALS, seeds.length > 0 ? seeds.length : DEMO_MIN_HOSPITALS)
+    Math.min(
+      DEMO_MAX_HOSPITALS,
+      seeds.length > 0 ? seeds.length : DEMO_MIN_HOSPITALS,
+    ),
   );
 
   const baseRows = new Array(targetCount).fill(null).map((_, slotIndex) => {
     const seed = seeds[slotIndex] ?? buildFallbackHospital(ctx, slotIndex);
     const fallback = buildFallbackHospital(ctx, slotIndex);
-    const latitude = Number.isFinite(seed.latitude) ? Number(seed.latitude) : fallback.latitude;
-    const longitude = Number.isFinite(seed.longitude) ? Number(seed.longitude) : fallback.longitude;
+    const latitude = Number.isFinite(seed.latitude)
+      ? Number(seed.latitude)
+      : fallback.latitude;
+    const longitude = Number.isFinite(seed.longitude)
+      ? Number(seed.longitude)
+      : fallback.longitude;
     const features = uniqueStrings([
       ...DEMO_FEATURE_FLAGS,
       DEMO_SHARED_FLAG,
       `demo_scope:${ctx.coverageKey}`,
-      ...toSafeStringArray(seed.features).filter((feature) => !isBootstrapDemoFeature(feature)),
+      ...toSafeStringArray(seed.features).filter(
+        (feature) => !isBootstrapDemoFeature(feature),
+      ),
     ]);
 
     const specialties = uniqueStrings(
       toSafeStringArray(seed.specialties).length > 0
         ? toSafeStringArray(seed.specialties)
-        : ["Emergency Medicine", "Internal Medicine"]
+        : ["Emergency Medicine", "Internal Medicine"],
     );
 
     const serviceTypes = uniqueStrings(
       toSafeStringArray(seed.service_types).length > 0
         ? toSafeStringArray(seed.service_types)
-        : ["standard", "premium"]
+        : ["standard", "premium"],
     );
 
     const seedImageMeta = resolveSeedImage(seed);
@@ -1236,12 +1345,18 @@ const ensureDemoHospitals = async (
       image: toSafeString(seedImageMeta.image, ""),
       image_source: toSafeString(seedImageMeta.image_source, ""),
       image_confidence: toFiniteNumber(seedImageMeta.image_confidence) ?? 0,
-      image_attribution_text: toSafeString(seedImageMeta.image_attribution_text, ""),
+      image_attribution_text: toSafeString(
+        seedImageMeta.image_attribution_text,
+        "",
+      ),
       specialties,
       service_types: serviceTypes,
       features,
       emergency_level: toSafeString(seed.emergency_level, "Level 2"),
-      available_beds: Math.max(6, toNonNegativeInt((seed as any).available_beds, 12)),
+      available_beds: Math.max(
+        6,
+        toNonNegativeInt((seed as any).available_beds, 12),
+      ),
       ambulances_count: 1,
       wait_time: toSafeString(seed.wait_time, "12 min"),
       price_range: toSafeString(seed.price_range, "Flexible"),
@@ -1266,11 +1381,15 @@ const ensureDemoHospitals = async (
   if (placeIds.length > 0) {
     const { data: existingRows, error: existingError } = await admin
       .from("hospitals")
-      .select("place_id,image,image_source,image_confidence,image_attribution_text")
+      .select(
+        "place_id,image,image_source,image_confidence,image_attribution_text",
+      )
       .in("place_id", placeIds);
 
     if (existingError) {
-      throw new Error(`demo hospital image lookup failed: ${existingError.message}`);
+      throw new Error(
+        `demo hospital image lookup failed: ${existingError.message}`,
+      );
     }
 
     (Array.isArray(existingRows) ? existingRows : []).forEach((row) => {
@@ -1290,7 +1409,7 @@ const ensureDemoHospitals = async (
       image_confidence: toFiniteNumber(preferredImage?.image_confidence) ?? 0,
       image_attribution_text: toSafeString(
         preferredImage?.image_attribution_text,
-        toSafeString(row?.image_attribution_text, "")
+        toSafeString(row?.image_attribution_text, ""),
       ),
       image_synced_at:
         toSafeString(preferredImage?.image, "").length > 0 ? nowIso() : null,
@@ -1329,11 +1448,68 @@ const ensureDemoHospitals = async (
       .in("name", catalogNames);
 
     if (retireError) {
-      throw new Error(`catalog legacy retirement failed: ${retireError.message}`);
+      throw new Error(
+        `catalog legacy retirement failed: ${retireError.message}`,
+      );
     }
   }
 
-  return listDemoHospitals(admin, ctx, organizationId);
+  const activePlaceIds = rows
+    .map((row) => toSafeString(row?.place_id, ""))
+    .filter((value) => value.length > 0);
+
+  const { data: existingOrgDemoRows, error: existingOrgDemoRowsError } =
+    await admin
+      .from("hospitals")
+      .select("id,place_id")
+      .eq("organization_id", organizationId)
+      .like("place_id", "demo:%");
+
+  if (existingOrgDemoRowsError) {
+    throw new Error(
+      `org demo hospital sweep failed: ${existingOrgDemoRowsError.message}`,
+    );
+  }
+
+  const staleOrgDemoIds = (
+    Array.isArray(existingOrgDemoRows) ? existingOrgDemoRows : []
+  )
+    .filter((row) => !activePlaceIds.includes(toSafeString(row?.place_id, "")))
+    .map((row) => row.id)
+    .filter(Boolean);
+
+  if (staleOrgDemoIds.length > 0) {
+    const { error: retireStaleOrgRowsError } = await admin
+      .from("hospitals")
+      .update({
+        status: "full",
+        updated_at: nowIso(),
+      })
+      .in("id", staleOrgDemoIds);
+
+    if (retireStaleOrgRowsError) {
+      throw new Error(
+        `org demo hospital retirement failed: ${retireStaleOrgRowsError.message}`,
+      );
+    }
+  }
+
+  const { data: activeHospitals, error: activeHospitalsError } = await admin
+    .from("hospitals")
+    .select(
+      "id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status",
+    )
+    .eq("organization_id", organizationId)
+    .in("place_id", activePlaceIds)
+    .order("place_id", { ascending: true });
+
+  if (activeHospitalsError) {
+    throw new Error(
+      `active demo hospital lookup failed: ${activeHospitalsError.message}`,
+    );
+  }
+
+  return Array.isArray(activeHospitals) ? activeHospitals : [];
 };
 
 const findAuthUserByEmail = async (admin: any, email: string) => {
@@ -1348,7 +1524,9 @@ const findAuthUserByEmail = async (admin: any, email: string) => {
     }
 
     const users = data?.users || [];
-    const found = users.find((user: any) => String(user?.email || "").toLowerCase() === target);
+    const found = users.find(
+      (user: any) => String(user?.email || "").toLowerCase() === target,
+    );
     if (found) return found;
     if (users.length < perPage) break;
     page += 1;
@@ -1361,7 +1539,7 @@ const ensureAuthUser = async (
   admin: any,
   email: string,
   fullName: string,
-  role: string
+  role: string,
 ) => {
   const password = `DemoPass!${email.slice(0, 6)}#2026`;
 
@@ -1400,7 +1578,7 @@ const ensureAuthUser = async (
 const syncProfileRole = async (
   admin: any,
   userId: string,
-  patch: Record<string, unknown>
+  patch: Record<string, unknown>,
 ) => {
   const { error } = await admin
     .from("profiles")
@@ -1419,13 +1597,13 @@ const ensureDemoStaff = async (
   admin: any,
   ctx: DemoContext,
   organizationId: string,
-  hospitals: any[]
+  hospitals: any[],
 ) => {
   const adminAccount = await ensureAuthUser(
     admin,
     toAuthEmail(ctx, "admin"),
     toDisplayName("admin"),
-    "org_admin"
+    "org_admin",
   );
 
   await syncProfileRole(admin, adminAccount.user.id, {
@@ -1442,13 +1620,13 @@ const ensureDemoStaff = async (
       admin,
       toAuthEmail(ctx, "doctor", i),
       toDisplayName("doctor", i),
-      "provider"
+      "provider",
     );
     const driverAccount = await ensureAuthUser(
       admin,
       toAuthEmail(ctx, "driver", i),
       toDisplayName("driver", i),
-      "provider"
+      "provider",
     );
 
     await syncProfileRole(admin, doctorAccount.user.id, {
@@ -1465,22 +1643,20 @@ const ensureDemoStaff = async (
       full_name: toDisplayName("driver", i),
     });
 
-    const { error: doctorError } = await admin
-      .from("doctors")
-      .upsert(
-        {
-          profile_id: doctorAccount.user.id,
-          hospital_id: hospital.id,
-          name: toDisplayName("doctor", i),
-          specialization: "Emergency Medicine",
-          status: "available",
-          is_available: true,
-          max_patients: 8,
-          current_patients: 0,
-          email: toAuthEmail(ctx, "doctor", i),
-        },
-        { onConflict: "profile_id", ignoreDuplicates: false }
-      );
+    const { error: doctorError } = await admin.from("doctors").upsert(
+      {
+        profile_id: doctorAccount.user.id,
+        hospital_id: hospital.id,
+        name: toDisplayName("doctor", i),
+        specialization: "Emergency Medicine",
+        status: "available",
+        is_available: true,
+        max_patients: 8,
+        current_patients: 0,
+        email: toAuthEmail(ctx, "doctor", i),
+      },
+      { onConflict: "profile_id", ignoreDuplicates: false },
+    );
 
     if (doctorError) {
       throw new Error(`doctor upsert failed: ${doctorError.message}`);
@@ -1506,11 +1682,11 @@ const ensureDemoStaff = async (
           },
           location: toGeometryPoint(
             toFiniteNumber(hospital?.latitude) ?? ctx.latitude,
-            toFiniteNumber(hospital?.longitude) ?? ctx.longitude
+            toFiniteNumber(hospital?.longitude) ?? ctx.longitude,
           ),
           updated_at: nowIso(),
         },
-        { onConflict: "profile_id", ignoreDuplicates: false }
+        { onConflict: "profile_id", ignoreDuplicates: false },
       )
       .select("id")
       .single();
@@ -1591,12 +1767,18 @@ const ensureDemoPricing = async (admin: any, hospitals: any[]) => {
 
   return {
     hospitals_priced: hospitals.length,
-    service_pricing_rows_expected: hospitals.length * SERVICE_PRICING_BASELINES.length,
-    room_pricing_rows_expected: hospitals.length * ROOM_PRICING_BASELINES.length,
+    service_pricing_rows_expected:
+      hospitals.length * SERVICE_PRICING_BASELINES.length,
+    room_pricing_rows_expected:
+      hospitals.length * ROOM_PRICING_BASELINES.length,
   };
 };
 
-const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: string) => {
+const getDemoSummary = async (
+  admin: any,
+  ctx: DemoContext,
+  organizationId: string,
+) => {
   const hospitals = await listDemoHospitals(admin, ctx, organizationId);
   const hospitalIds = hospitals.map((h) => h.id).filter(Boolean);
 
@@ -1623,7 +1805,9 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
       .select("id", { count: "exact", head: true })
       .in("hospital_id", hospitalIds);
     if (ambulancesError) {
-      throw new Error(`summary ambulances count failed: ${ambulancesError.message}`);
+      throw new Error(
+        `summary ambulances count failed: ${ambulancesError.message}`,
+      );
     }
     ambulancesCount = Number(ambulances || 0);
 
@@ -1632,7 +1816,9 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
       .select("id", { count: "exact", head: true })
       .in("hospital_id", hospitalIds);
     if (servicePricingError) {
-      throw new Error(`summary service pricing count failed: ${servicePricingError.message}`);
+      throw new Error(
+        `summary service pricing count failed: ${servicePricingError.message}`,
+      );
     }
     servicePricingCount = Number(servicePricing || 0);
 
@@ -1641,7 +1827,9 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
       .select("id", { count: "exact", head: true })
       .in("hospital_id", hospitalIds);
     if (roomPricingError) {
-      throw new Error(`summary room pricing count failed: ${roomPricingError.message}`);
+      throw new Error(
+        `summary room pricing count failed: ${roomPricingError.message}`,
+      );
     }
     roomPricingCount = Number(roomPricing || 0);
   }
@@ -1669,10 +1857,15 @@ const getDemoSummary = async (admin: any, ctx: DemoContext, organizationId: stri
   orgFeePercentage = Number(organizationRow?.ivisit_fee_percentage || 0);
 
   const hospitalsReady = hospitals.length >= DEMO_MIN_HOSPITALS;
-  const staffingReady = hospitalsReady && doctorsCount >= hospitals.length && ambulancesCount >= hospitals.length;
-  const pricingReady = hospitalsReady
-    && servicePricingCount >= hospitals.length * SERVICE_PRICING_BASELINES.length
-    && roomPricingCount >= hospitals.length * ROOM_PRICING_BASELINES.length;
+  const staffingReady =
+    hospitalsReady &&
+    doctorsCount >= hospitals.length &&
+    ambulancesCount >= hospitals.length;
+  const pricingReady =
+    hospitalsReady &&
+    servicePricingCount >=
+      hospitals.length * SERVICE_PRICING_BASELINES.length &&
+    roomPricingCount >= hospitals.length * ROOM_PRICING_BASELINES.length;
   const financialReady =
     orgWalletBalance >= DEMO_ORG_WALLET_TARGET_BALANCE &&
     platformWalletBalance >= DEMO_PLATFORM_WALLET_MIN_BALANCE &&
@@ -1719,14 +1912,19 @@ serve(async (req) => {
     const requestedUserId = toSafeString(body?.userId, "");
     const latitude = toFiniteNumber(body?.latitude);
     const longitude = toFiniteNumber(body?.longitude);
-    const radiusKm = Math.max(1, Math.min(100, Math.round((toFiniteNumber(body?.radiusKm) ?? 50))));
+    const radiusKm = Math.max(
+      1,
+      Math.min(100, Math.round(toFiniteNumber(body?.radiusKm) ?? 50)),
+    );
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       throw new Error("latitude and longitude are required");
     }
 
     const userClient = createClient(supabaseUrl, anonKey, {
-      global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
+      global: authHeader
+        ? { headers: { Authorization: authHeader } }
+        : undefined,
     });
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -1736,16 +1934,15 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     const effectiveUserId =
-      !userError && user?.id ? String(user.id) : toSafeString(requestedUserId, "");
+      !userError && user?.id
+        ? String(user.id)
+        : toSafeString(requestedUserId, "");
 
     if (!effectiveUserId) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const ctx: DemoContext = {
@@ -1770,7 +1967,7 @@ serve(async (req) => {
     };
 
     const organizationResult = await runStep("ensure_org", () =>
-      ensureDemoOrganization(adminClient, ctx)
+      ensureDemoOrganization(adminClient, ctx),
     );
 
     const organizationId = organizationResult.organization.id;
@@ -1778,7 +1975,7 @@ serve(async (req) => {
 
     if (phase === "prepare") {
       const nearbySeeds = await runStep("preview_nearby_sources", () =>
-        getNearbySeedHospitals(adminClient, ctx)
+        getNearbySeedHospitals(adminClient, ctx),
       );
 
       return new Response(
@@ -1799,19 +1996,24 @@ serve(async (req) => {
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
-    if (phase === "hospitals" || phase === "staff" || phase === "pricing" || phase === "full") {
+    if (
+      phase === "hospitals" ||
+      phase === "staff" ||
+      phase === "pricing" ||
+      phase === "full"
+    ) {
       hospitals = await runStep("ensure_demo_hospitals", () =>
-        ensureDemoHospitals(adminClient, ctx, organizationId, null)
+        ensureDemoHospitals(adminClient, ctx, organizationId, null),
       );
     }
 
     if (phase === "staff" || phase === "pricing" || phase === "full") {
       const staffing = await runStep("ensure_demo_staff", () =>
-        ensureDemoStaff(adminClient, ctx, organizationId, hospitals)
+        ensureDemoStaff(adminClient, ctx, organizationId, hospitals),
       );
 
       hospitals = await runStep("refresh_demo_hospitals_after_staff", () =>
@@ -1819,22 +2021,22 @@ serve(async (req) => {
           adminClient,
           ctx,
           organizationId,
-          staffing.org_admin_profile_id ?? null
-        )
+          staffing.org_admin_profile_id ?? null,
+        ),
       );
     }
 
     if (phase === "pricing" || phase === "full") {
       await runStep("ensure_demo_finance", () =>
-        ensureDemoFinancialReadiness(adminClient, organizationId)
+        ensureDemoFinancialReadiness(adminClient, organizationId),
       );
       await runStep("ensure_demo_pricing", () =>
-        ensureDemoPricing(adminClient, hospitals)
+        ensureDemoPricing(adminClient, hospitals),
       );
     }
 
     const summary = await runStep("summary", () =>
-      getDemoSummary(adminClient, ctx, organizationId)
+      getDemoSummary(adminClient, ctx, organizationId),
     );
 
     return new Response(
@@ -1853,7 +2055,7 @@ serve(async (req) => {
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -1865,7 +2067,7 @@ serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
