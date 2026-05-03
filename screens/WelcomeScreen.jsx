@@ -7,7 +7,6 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useGlobalLocation } from "../contexts/GlobalLocationContext";
 import { useLocationStore } from "../stores/locationStore";
 import { isOpeningEmergencyAtom } from "../atoms/welcomeScreenAtoms";
-import { clearStoredPublicRoute } from "../runtime/navigation/useRoutePersistence";
 import WelcomeScreenOrchestrator from "../components/welcome/WelcomeScreenOrchestrator";
 
 const WelcomeScreen = () => {
@@ -23,9 +22,6 @@ const WelcomeScreen = () => {
 			setIsOpeningEmergency(false);
 			resetHeader();
 			setHeaderState({ hidden: true });
-			// Clear any persisted /map route so Android Metro reloads land here,
-			// not on the map screen, when the user is on Welcome.
-			clearStoredPublicRoute().catch(() => {});
 		}, [resetHeader, setHeaderState, setIsOpeningEmergency])
 	);
 
