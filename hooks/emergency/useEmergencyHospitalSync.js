@@ -53,7 +53,7 @@ export function useEmergencyHospitalSync({
 	const { ambulances: activeAmbulances } = useAmbulances();
 
 	// Pure derivation: distance/ETA localization is computation over query data, not a side effect.
-	// useEffect + setState here was a Category-1 violation (guardrails §1).
+	// useEffect + setState here was a Category-1 violation (guardrails #1).
 	const hospitals = useMemo(() => {
 		if (isLoadingHospitals) return [];
 		const sourceHospitals =

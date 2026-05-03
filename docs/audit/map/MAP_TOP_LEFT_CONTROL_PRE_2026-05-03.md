@@ -113,7 +113,7 @@ left: 16
 ## 6. Out of Scope for This Pass
 
 - Animation (fade/scale in/out as `hasFocusedSheetPhase` toggles) — deferred
-- ~~Sidebar layout variant consideration~~ — **Resolved same day** in a follow-up pass. Web sidebar hides the control; native tablet sidebar shifts it clear of the panel. See post-doc §3.
+- ~~Sidebar layout variant consideration~~ — **Resolved same day** in a follow-up pass. Web sidebar hides the control; native tablet sidebar shifts it clear of the panel. See post-doc #3.
 - Removing `MapTopLeftControl` once HIG work on Welcome is complete — this control has permanent value for authenticated users (profile avatar shortcut). Guest back-to-welcome behaviour may be removed once Welcome HIG work is done or kept permanently.
 
 ---
@@ -129,4 +129,4 @@ left: 16
 - [x] Tracking phase: control not visible
 - [x] Any focused sheet phase: control not visible
 - [x] Safe area respected via `useSafeAreaInsets().top` (not `browserInsetTop`)
-- [x] Sidebar layout: **resolved same day** — web sidebar hides control entirely; native tablet sidebar shifts `left` to `sidebarOcclusionWidth + 12`. See post-doc §3.
+- [x] Sidebar layout: **resolved same day** — web sidebar hides control entirely; native tablet sidebar shifts `left` to `sidebarOcclusionWidth + 12`. See post-doc #3.

@@ -3,7 +3,7 @@
 **Date**: 2026-05-03  
 **Status**: PRE — no code changed yet  
 **Post-doc**: `WELCOME_STAGE_BASE_MODULARIZATION_POST_2026-05-03.md` (to be created)  
-**Guardrail ref**: `REFACTORING_GUARDRAILS.md §11` (Safe Modularisation Methodology)
+**Guardrail ref**: `REFACTORING_GUARDRAILS.md #11` (Safe Modularisation Methodology)
 
 ---
 

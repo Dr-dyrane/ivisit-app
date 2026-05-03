@@ -38,17 +38,17 @@ All HIG violations addressed. See pass log below.
 #### A1 — Haptic feedback on primary `onPressIn`
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Added `handlePressIn` wrapper; calls `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)` when `isPrimary && !disabled && !loading`.  
-**Defect closed**: §2.1
+**Defect closed**: #2.1
 
 #### A2 — `hitSlop={12}` on `Pressable`
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Added `hitSlop={12}` to `Pressable`. Ensures ≥44pt effective target.  
-**Defect closed**: §2.3
+**Defect closed**: #2.3
 
 #### A3 — `isOpeningEmergency` 5s timeout recovery
 **File**: `hooks/ui/useWelcomeExitTransition.js` (extracted from `screens/WelcomeScreen.jsx`)  
 **Change**: `startExitTransition` accepts `{ onRecovery }` callback. Schedules a `setTimeout(onRecovery, 5000)` cleared on successful navigation. Prevents infinite "Opening…" state.  
-**Defect closed**: §2.2
+**Defect closed**: #2.2
 
 ---
 
@@ -57,17 +57,17 @@ All HIG violations addressed. See pass log below.
 #### B1 — Gate ambient loops behind `reduceMotion`
 **Files**: `WelcomeStageBase.jsx`, `WelcomeWideWebView.jsx`  
 **Change**: Added `reduceMotion` state via `AccessibilityInfo.isReduceMotionEnabled()` + `addEventListener("reduceMotionChanged")`. `driftLoop` and `pulseLoop` only start if `!reduceMotion`. If `reduceMotion` is true, all animated values snap to final state immediately via `setValue`.  
-**Defect closed**: §2.4
+**Defect closed**: #2.4
 
 #### B2 — Stagger entrance animation into 4 phases
 **Files**: `WelcomeStageBase.jsx`, `WelcomeWideWebView.jsx`  
 **Change**: Replaced single `entranceOpacity` block with four dedicated `Animated.Value`s (`brandOpacity`, `headlineOpacity`, `helperOpacity`, `actionsOpacity`) driven by `Animated.stagger(60, [...])`. Phases: brand (0ms) → headline (60ms) → helper (120ms) → actions (180ms). Each wired to its corresponding `Animated.View` wrapper.  
-**Defect closed**: §2.5
+**Defect closed**: #2.5
 
 #### B3 — Deepen press spring physics
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Press scale `0.985 → 0.96` (primary) / `0.975` (secondary). `translateY 1 → 2`. Opacity `0.98 → 0.97`. Gives confident tactile spring feel within Pressable's native animation.  
-**Defect closed**: §2.6
+**Defect closed**: #2.6
 
 ---
 
@@ -77,7 +77,7 @@ All HIG violations addressed. See pass log below.
 **File**: `hooks/ui/useWelcomeExitTransition.js` (new)  
 **Change**: `startExitTransition(onComplete, { onRecovery })` runs `Animated.timing(screenOpacity, { toValue: 0, duration: 150 })` then calls `onComplete` in the `.start()` callback. `WelcomeScreen` wraps the orchestrator in `<Animated.View style={{ flex: 1, opacity: screenOpacity }}>`.  
 `resetOpacity()` is called inside `useFocusEffect` so opacity snaps back to 1 on screen refocus (back navigation, recovery).  
-**Defect closed**: §2.7
+**Defect closed**: #2.7
 
 ---
 
@@ -86,12 +86,12 @@ All HIG violations addressed. See pass log below.
 #### D1 — `accessibilityLiveRegion` on action container
 **File**: `components/welcome/shared/WelcomeStageBase.jsx`  
 **Change**: Added `accessibilityLiveRegion="polite"` to the actions `View` inside `actionBlock`. VoiceOver/TalkBack will announce when the button label changes from "Get Help Now" to "Opening…".  
-**Defect closed**: §2.10
+**Defect closed**: #2.10
 
 #### D2 — `accessibilityLabel` on `ActivityIndicator`
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Added `accessibilityLabel="Loading"` to the `ActivityIndicator` in the loading state branch.  
-**Defect closed**: §2.11
+**Defect closed**: #2.11
 
 ---
 
@@ -113,9 +113,9 @@ All HIG violations addressed. See pass log below.
 
 | Item | Reason |
 |---|---|
-| §2.8 CTA prewarm readiness signal | Requires hospital query readiness signal from TanStack Query layer. Separate sprint item. |
-| §2.9 "Opening…" step context/subtitle | No evidence transition is long enough to warrant step dots. Deferred pending user testing. |
-| §2.12 iOS/tvOS focus ring extension | Low-impact on primary usage. Deferred to tvOS pass if required. |
+| #2.8 CTA prewarm readiness signal | Requires hospital query readiness signal from TanStack Query layer. Separate sprint item. |
+| #2.9 "Opening…" step context/subtitle | No evidence transition is long enough to warrant step dots. Deferred pending user testing. |
+| #2.12 iOS/tvOS focus ring extension | Low-impact on primary usage. Deferred to tvOS pass if required. |
 
 ---
 

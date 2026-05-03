@@ -35,7 +35,7 @@
 **Original finding (2026-03-02):** Publication contained only `access_requests`; runtime listens on 17 tables → silent non-delivery risk.
 
 **Current evidence:**
-- [`workflow_map.md` §Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.)"*
+- [`workflow_map.md` #Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.)"*
 
 **Next action:** none. Monitor via existing runner.
 
@@ -60,7 +60,7 @@
 
 **Current evidence:**
 - [`20260219000900_automations.sql:429-468`](../../supabase/migrations/20260219000900_automations.sql) defines `auto_assign_driver()` with `FOR UPDATE SKIP LOCKED` on the candidate ambulance selection (line 466). Comment: *"Harden auto assignment against race conditions."*
-- [`workflow_map.md` §Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md) also confirms the sibling `auto_assign_doctor` uses the same pattern.
+- [`workflow_map.md` #Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md) also confirms the sibling `auto_assign_doctor` uses the same pattern.
 - [`20260423000100_active_request_concurrency_guard.sql`](../../supabase/migrations/20260423000100_active_request_concurrency_guard.sql) adds an upstream unique-partial-index guard preventing duplicate active requests per user per service type.
 
 **Next action:** none. Concurrency guards are in place at both ends (request-level and assignment-level).
@@ -72,7 +72,7 @@
 **Original finding (2026-03-02):** Console performs `.update()`/`.delete()` directly on `emergency_requests`, depending on caller role/RLS luck.
 
 **Current evidence:**
-- [`workflow_map.md` §Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Runtime write-surface scan: `ivisit-console`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`. Remaining direct writes are test/seed-only scripts."*
+- [`workflow_map.md` #Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Runtime write-surface scan: `ivisit-console`: no direct runtime `insert/update/delete/upsert` on `emergency_requests`. Remaining direct writes are test/seed-only scripts."*
 - Guard runner: `supabase/tests/scripts/run_console_direct_mutation_surface_report.js`
 
 **Next action:** none. Continue running the guard in CI.
@@ -113,7 +113,7 @@ No duplicate triggers in the current pillar files.
 **Original finding (2026-03-02):** `anon`/`authenticated` write privileges across all 40 public tables; security definer routines broadly granted.
 
 **Current evidence:**
-- [`workflow_map.md` §Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Removed `anon` execute exposure from `create_emergency_v4`, `approve_cash_payment`, `decline_cash_payment`, `process_cash_payment_v2`, `notify_cash_approval_org_admins`. Added explicit execute grants to `authenticated` + `service_role` only."*
+- [`workflow_map.md` #Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Removed `anon` execute exposure from `create_emergency_v4`, `approve_cash_payment`, `decline_cash_payment`, `process_cash_payment_v2`, `notify_cash_approval_org_admins`. Added explicit execute grants to `authenticated` + `service_role` only."*
 - *"RLS snapshot: `emergency_requests`, `payments`, `visits` all have RLS enabled. Policy roles tightened to `{authenticated}` on critical read/write paths (no `anon/public` write-surface)."*
 
 **Gap:** table-level grant audit (40 tables total) is not cited as re-run. The hardening cited is per-RPC and per-critical-table, not a full sweep.
@@ -154,7 +154,7 @@ No duplicate triggers in the current pillar files.
 
 **Current evidence:**
 - Active tracked work under [`../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — Pass 12 in progress as of 2026-04-23.
-- [`../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) §"Reliability Hardening (ETA + Ambulance Motion)" documents the canonical single-source-of-truth direction for tracking timeline and responder coordinates.
+- [`../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) #"Reliability Hardening (ETA + Ambulance Motion)" documents the canonical single-source-of-truth direction for tracking timeline and responder coordinates.
 
 **Next action:** track via pass plan. Re-mark as 🟡 when Pass 4B (ambulance completion/recovery signoff) closes, and as ✅ when Passes 5–8 complete.
 
