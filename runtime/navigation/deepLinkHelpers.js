@@ -38,6 +38,10 @@ export function getPublicAuthRouteFromUrl(url) {
  * @returns {string|null} The normalized route or null
  */
 export function normalizeStoredPublicRoute(pathname) {
+	// Welcome screen: persisted so Metro/Android reloads land here, not on /map
+	if (pathname === "/(auth)/index" || pathname === "/(auth)/" || pathname === "/") {
+		return "/(auth)/index";
+	}
 	if (pathname === "/(auth)/map" || pathname === "/(auth)/map-loading") {
 		return "/(auth)/map";
 	}
