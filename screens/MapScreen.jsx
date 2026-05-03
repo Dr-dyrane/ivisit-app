@@ -677,7 +677,7 @@ export default function MapScreen() {
       />
 
       <ServiceRatingModal
-        visible={Boolean(recoveredRatingState?.visible)}
+        visible={Boolean(recoveredRatingState?.visible && !trackingRatingState?.visible)}
         serviceType={recoveredRatingState?.serviceType || "visit"}
         title={recoveredRatingState?.title || "Rate your visit"}
         subtitle={recoveredRatingState?.subtitle || null}

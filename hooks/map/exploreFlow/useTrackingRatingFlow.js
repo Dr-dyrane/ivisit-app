@@ -14,8 +14,10 @@
 // Learning reference: docs/architecture/TRACKING_SHEET_LEARNINGS.md section 2.1
 
 import { useCallback, useMemo } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import {
+  ratingRecoveryClaimsAtom,
+  recoveredRatingStateAtom,
   trackingRatingStateAtom,
   INITIAL_TRACKING_RATING_STATE,
 } from "../../../atoms/mapScreenAtoms";
@@ -93,6 +95,22 @@ export function useTrackingRatingFlow({
   visits,
 }) {
   const [ratingState, setRatingState] = useAtom(trackingRatingStateAtom);
+  const setRatingRecoveryClaims = useSetAtom(ratingRecoveryClaimsAtom);
+  const setRecoveredRatingState = useSetAtom(recoveredRatingStateAtom);
+
+  const removeRecoveredRatingClaim = useCallback(
+    async (visitId) => {
+      if (!visitId) return;
+      const normalizedVisitId = String(visitId);
+      setRatingRecoveryClaims((currentClaims) => {
+        if (!currentClaims || !currentClaims[normalizedVisitId]) return currentClaims;
+        const nextClaims = { ...currentClaims };
+        delete nextClaims[normalizedVisitId];
+        return nextClaims;
+      });
+    },
+    [setRatingRecoveryClaims],
+  );
 
   // PULLBACK NOTE: BUG-012 fix — PC class (Phase Contamination / persisted atom validation)
   // OLD: useEffect+useRef side-effect that wrote back to the atom — layer violation
@@ -158,6 +176,7 @@ export function useTrackingRatingFlow({
       serviceType,
       hospitalTitle,
     });
+    await removeRecoveredRatingClaim(visitId);
     showToast?.(skipToast.message, skipToast.level);
     return true;
   }, [
@@ -167,6 +186,7 @@ export function useTrackingRatingFlow({
     ratingState?.serviceDetails?.hospital,
     ratingState?.serviceType,
     ratingState?.visitId,
+    removeRecoveredRatingClaim,
     setRatingState,
     showToast,
     updateVisit,
@@ -203,6 +223,7 @@ export function useTrackingRatingFlow({
         tipError: resolution.tipError,
       });
       showToast?.(successToast.message, successToast.level);
+      await removeRecoveredRatingClaim(visitId);
       setRatingState(INITIAL_TRACKING_RATING_STATE);
       finalizeCompletedTracking(completeKind);
       // PULLBACK NOTE: VD-B4 — 5th layer refetch after submit
@@ -233,9 +254,10 @@ export function useTrackingRatingFlow({
     (historyItem) => {
       const nextState = buildHistoryVisitRatingState(historyItem);
       if (!nextState) return;
+      setRecoveredRatingState(null);
       setRatingState(nextState);
     },
-    [setRatingState],
+    [setRatingState, setRecoveredRatingState],
   );
 
   return {

@@ -65,12 +65,13 @@ export const useTripProgress = ({
 		return Math.min(1, Math.max(0, elapsedSec / eta));
 	}, [nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
 
+	const TRIP_ARRIVED_THRESHOLD = 0.95;
 	const computedStatus = useMemo(() => {
 		const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
 		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
 		if (status === EmergencyRequestStatus.ARRIVED) return "Arrived";
 		if (!Number.isFinite(tripProgress)) return "En Route";
-		if (tripProgress >= 1) return "Arrived";
+		if (tripProgress >= TRIP_ARRIVED_THRESHOLD) return "Arrived";
 		if (tripProgress < 0.2) return "Dispatched";
 		if (tripProgress < 0.85) return "En Route";
 		return "Arriving";

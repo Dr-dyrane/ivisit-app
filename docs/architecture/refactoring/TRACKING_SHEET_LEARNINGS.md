@@ -516,9 +516,37 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 3. Add `|| inFlowRatingVisible` to the early-return guard in the recovered-rating trigger effect.
 4. Add `inFlowRatingVisible` to the effect's dependency array.
 
-**Concrete site fixed (2026-05-03)**: `@hooks/map/history/useMapHistoryFlow.js` lines 449–462.
+**Permanent hardening update (2026-05-03)**:
+- `MapScreen.jsx` now enforces view-layer exclusivity: `recoveredRatingState` is only rendered when `trackingRatingState?.visible` is false.
+- `useMapTrackingController.js` clears `recoveredRatingStateAtom` before setting the in-flow `trackingRatingStateAtom` for ambulance/bed completion.
+- `useTrackingRatingFlow.js.openRatingForVisit()` also clears `recoveredRatingStateAtom` before opening a history-rated visit in the same shared modal path.
 
-**General rule**: When two independent hooks can both open a modal of the same type, each must check the other's atom before opening. Cross-hook modal coordination belongs at the atom layer (L5), not via prop drilling.
+**Concrete site fixed (2026-05-03)**: `@hooks/map/history/useMapHistoryFlow.js` lines 449–462, `@screens/MapScreen.jsx` rating modal render logic, `@components/map/views/tracking/useMapTrackingController.js`, and `@hooks/map/exploreFlow/useTrackingRatingFlow.js`.
+
+**General rule**: When two independent hooks can both open a modal of the same type, each must check the other's atom before opening, and shared modal ownership should be enforced both at render time and along the open path. Cross-hook modal coordination belongs at the atom layer (L5), not via prop drilling.
+
+---
+
+### 2.17 Arrival CTA timing lag on ambulance tracking
+
+**Pattern**: The arrival confirmation CTA was gated by a derived ambulance status value that only flipped to "Arrived" at 100% elapsed progress.
+
+**Symptoms**:
+- `Confirm arrival` appeared noticeably later than the arrival status UI.
+- The tracking sheet entered the arrived phase (green state) before the CTA became actionable.
+- The user experience felt like the screen was lagging behind realtime ambulance arrival.
+
+**Diagnosis**: `useTripProgress` computed `ambulanceComputedStatus` as "Arrived" only when `tripProgress >= 1`. The visual status phase and arrival action both already accepted `progress >= 0.95`, so the CTA was waiting for a stricter condition than the rest of the arriving flow.
+
+**Fix recipe**:
+1. Keep the same progress-based arrival model, but align the status computation threshold with the rest of the tracking flow.
+2. In `hooks/emergency/useTripProgress.js`, introduce `TRIP_ARRIVED_THRESHOLD = 0.95`.
+3. Treat `tripProgress >= TRIP_ARRIVED_THRESHOLD` as "Arrived" for `computedStatus`.
+
+**Concrete site fixed (2026-05-03)**:
+- `@hooks/emergency/useTripProgress.js`
+
+**General rule**: Status and action availability should use the same arrival threshold. If the UI already treats 95% progress as arrived, the underlying status computation must not require 100%.
 
 ---
 

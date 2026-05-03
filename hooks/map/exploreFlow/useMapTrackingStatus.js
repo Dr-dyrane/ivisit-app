@@ -37,9 +37,10 @@ function deriveStatusPhase({
   progress,
   tripStatus,
   bookingStatus,
+  canMarkArrived,
 }) {
   if (isCompleted) return "completed";
-  if (isArrived) return "arrived";
+  if (isArrived || canMarkArrived) return "arrived";
   if (progress >= STATUS_THRESHOLDS.ARRIVED) return "arrived";
   if (progress >= STATUS_THRESHOLDS.APPROACHING) return "approaching";
   return "en_route";
@@ -59,6 +60,7 @@ function deriveStatusPhase({
  * @param {Object} params.activeBedBooking - Active bed booking data
  * @param {boolean} params.isArrived - XState arrived flag
  * @param {boolean} params.isPendingApproval - XState pending approval flag
+ * @param {boolean} params.canMarkArrived - Arrival confirmation action is available
  * @param {string} params.ambulanceTripProgress - Trip progress value 0-1
  * @param {number} params.nowMs - Current timestamp for animation sync
  */
@@ -70,6 +72,7 @@ export function useMapTrackingStatus({
   isPendingApproval,
   ambulanceTripProgress,
   nowMs,
+  canMarkArrived,
 }) {
   const { showToast } = useToast();
 
@@ -131,8 +134,9 @@ export function useMapTrackingStatus({
       progress: rawProgress,
       tripStatus: activeAmbulanceTrip?.status,
       bookingStatus: activeBedBooking?.status,
+      canMarkArrived,
     });
-  }, [isArrived, activeAmbulanceTrip, activeBedBooking, isPendingApproval, rawProgress]);
+  }, [isArrived, activeAmbulanceTrip, activeBedBooking, isPendingApproval, rawProgress, canMarkArrived]);
 
   // Sync status phase to atom (with reset of animation flag on change)
   useEffect(() => {

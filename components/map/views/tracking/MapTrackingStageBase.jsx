@@ -161,14 +161,11 @@ export default function MapTrackingStageBase({
 		isPendingApproval,
 		ambulanceTripProgress,
 		nowMs: Date.now(),
+		canMarkArrived,
 	});
 
 	// Sheet title animation
-	// PULLBACK NOTE: Phase G — G-5 (Reduced motion).
-	// OLD: title always faded + translated in on each new status phase.
-	// NEW: respects the OS-level Reduce Motion accessibility flag — when on,
-	//      we skip the animation, snap directly to the resolved values, and
-	//      mark the title as animated so the controller does not re-trigger.
+	// PULLBACK NOTE: Phase G — Reduced motion accessibility.
 	const reducedMotion = useReducedMotion();
 	const titleOpacityAnim = useRef(new Animated.Value(0)).current;
 	const titleTranslateAnim = useRef(new Animated.Value(-10)).current;
@@ -181,6 +178,7 @@ export default function MapTrackingStageBase({
 			markTitleAnimated();
 			return;
 		}
+
 		// Reset animation values
 		titleOpacityAnim.setValue(0);
 		titleTranslateAnim.setValue(-10);
@@ -612,3 +610,6 @@ export default function MapTrackingStageBase({
 		</>
 	);
 }
+
+
+

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share } from "react-native";
 import { useSetAtom } from "jotai";
 import { useToast } from "../../../../contexts/ToastContext";
-import { trackingRatingStateAtom } from "../../../../atoms/mapScreenAtoms";
+import {
+  recoveredRatingStateAtom,
+  trackingRatingStateAtom,
+} from "../../../../atoms/mapScreenAtoms";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
@@ -74,6 +77,7 @@ export function useMapTrackingController({
   // PULLBACK NOTE: VD-C (VD-10) — controller only writes the atom (open); screen-level
   // useTrackingRatingFlow owns all close/skip/submit paths.
   const setRatingState = useSetAtom(trackingRatingStateAtom);
+  const setRecoveredRatingState = useSetAtom(recoveredRatingStateAtom);
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
     activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||
@@ -182,6 +186,7 @@ export function useMapTrackingController({
       hospitalTitle,
       providerName,
     });
+    setRecoveredRatingState(null);
     setRatingState(
       buildTrackingRatingState({
         kind: "ambulance",
@@ -219,6 +224,7 @@ export function useMapTrackingController({
       hospitalTitle,
       providerName: "Hospital staff",
     });
+    setRecoveredRatingState(null);
     setRatingState(
       buildTrackingRatingState({
         kind: "bed",
