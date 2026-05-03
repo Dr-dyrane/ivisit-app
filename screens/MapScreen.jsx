@@ -37,6 +37,7 @@ import { useMapTrackingSync } from "../hooks/map/tracking/useMapTrackingSync";
 // PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted
 import { useMapFocusedState } from "../hooks/map/shell/useMapFocusedState";
 import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
+import MapTopLeftControl from "../components/map/views/shared/MapTopLeftControl";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -701,6 +702,14 @@ export default function MapScreen() {
         onSubmit={submitTrackingRating}
         surfaceVariant="map"
         preferDrawerPresentation={usesSidebarLayout}
+      />
+
+      <MapTopLeftControl
+        isSignedIn={isSignedIn}
+        profileImageSource={profileImageSource}
+        onBack={() => router.replace("/(auth)/")}
+        onOpenProfile={handleOpenProfile}
+        visible={!hasFocusedSheetPhase && !mapLoadingState?.visible}
       />
     </View>
   );
