@@ -1,19 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo } from "react";
 import {
-	AccessibilityInfo,
 	Animated,
-	Easing,
 	Image,
 	Platform,
-	Pressable,
 	ScrollView,
 	Text,
 	View,
 } from "react-native";
-import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import getViewportSurfaceMetrics from "../../../utils/ui/viewportSurfaceMetrics";
@@ -22,73 +17,15 @@ import IOSInstallHintCard from "../install/IOSInstallHintCard";
 import WelcomeAmbientGlows from "./WelcomeAmbientGlows";
 import { WELCOME_COPY, WELCOME_INTENTS } from "../welcomeContent";
 import useWelcomeWebSurfaceChrome from "../hooks/useWelcomeWebSurfaceChrome";
+import { useHiddenWebScrollbars } from "../hooks/useHiddenWebScrollbars";
+import { getActionSpacing } from "../../../utils/welcome/welcomeStageHelpers";
+import { useReducedMotion } from "../../../hooks/ui/useReducedMotion";
+import { useWelcomeStageAnimation } from "../../../hooks/welcome/useWelcomeStageAnimation";
+import WelcomeHeroBlock from "./WelcomeHeroBlock";
+import WelcomeHeadlineBlock from "./WelcomeHeadlineBlock";
 
 const LOGO = require("../../../assets/logo.png");
-const HERO = require("../../../assets/hero/speed.png");
-const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
-function useHiddenWebScrollbars({ enabled, styleId, nativeID }) {
-	useEffect(() => {
-		if (
-			!enabled ||
-			Platform.OS !== "web" ||
-			typeof document === "undefined" ||
-			!styleId ||
-			!nativeID
-		) {
-			return undefined;
-		}
-
-		let styleElement = document.getElementById(styleId);
-		let created = false;
-
-		if (!styleElement) {
-			styleElement = document.createElement("style");
-			styleElement.id = styleId;
-			styleElement.textContent = `
-				#${nativeID},
-				#${nativeID} > div {
-					scrollbar-width: none;
-					-ms-overflow-style: none;
-				}
-
-				#${nativeID}::-webkit-scrollbar,
-				#${nativeID} > div::-webkit-scrollbar {
-					width: 0;
-					height: 0;
-					display: none;
-				}
-			`;
-			document.head.appendChild(styleElement);
-			created = true;
-		}
-
-		return () => {
-			if (created && styleElement?.parentNode) {
-				styleElement.parentNode.removeChild(styleElement);
-			}
-		};
-	}, [enabled, nativeID, styleId]);
-}
-
-function getActionSpacing(metrics, spacingKey) {
-	const stageSpacing = metrics?.stageSpacing || {};
-	const requested = Number(stageSpacing?.[spacingKey]);
-	const fallback = Number(
-		stageSpacing?.chipToActionWell ?? stageSpacing?.chipToActions ?? 20,
-	);
-	const helperGap = Number(stageSpacing?.helperToChip ?? 0);
-
-	if (!Number.isFinite(requested)) {
-		return Math.max(20, fallback);
-	}
-
-	if (metrics?.showChip) {
-		return requested;
-	}
-
-	return Math.max(requested - helperGap + 8, 20);
-}
 
 export default function WelcomeStageBase({
 	onRequestHelp,
@@ -125,20 +62,25 @@ export default function WelcomeStageBase({
 			}),
 		[height, layout, width],
 	);
-	const [reduceMotion, setReduceMotion] = useState(false);
-	const entranceOpacity = useRef(new Animated.Value(0)).current;
-	const entranceTranslate = useRef(new Animated.Value(18)).current;
-	const heroMotion = useRef(new Animated.Value(0)).current;
-	const pulseMotion = useRef(new Animated.Value(0)).current;
-	const brandOpacity = useRef(new Animated.Value(0)).current;
-	const headlineOpacity = useRef(new Animated.Value(0)).current;
-	const helperOpacity = useRef(new Animated.Value(0)).current;
-	const actionsOpacity = useRef(new Animated.Value(0)).current;
+	const reduceMotion = useReducedMotion();
 	const {
 		duration = 240,
 		tension = 50,
 		friction = 10,
 	} = animation;
+	const {
+		entranceOpacity,
+		entranceTranslate,
+		brandOpacity,
+		headlineOpacity,
+		helperOpacity,
+		actionsOpacity,
+		heroTranslateX,
+		trailTranslateX,
+		trailOpacity,
+		ringScale,
+		ringOpacity,
+	} = useWelcomeStageAnimation({ reduceMotion, duration, tension, friction, isDarkMode });
 
 	useWelcomeWebSurfaceChrome(isDarkMode, useWebChrome);
 	useHiddenWebScrollbars({
@@ -147,84 +89,6 @@ export default function WelcomeStageBase({
 		nativeID: scrollNativeID,
 	});
 
-	useEffect(() => {
-		AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-		const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
-		return () => sub?.remove();
-	}, []);
-
-	useEffect(() => {
-		if (reduceMotion) {
-			[entranceOpacity, brandOpacity, headlineOpacity, helperOpacity, actionsOpacity].forEach(
-				(v) => v.setValue(1),
-			);
-			entranceTranslate.setValue(0);
-			return;
-		}
-
-		const stagger = 60;
-		Animated.stagger(stagger, [
-			Animated.timing(brandOpacity, { toValue: 1, duration: duration * 0.7, useNativeDriver: true }),
-			Animated.timing(headlineOpacity, { toValue: 1, duration: duration * 0.8, useNativeDriver: true }),
-			Animated.timing(helperOpacity, { toValue: 1, duration: duration * 0.85, useNativeDriver: true }),
-			Animated.timing(actionsOpacity, { toValue: 1, duration: duration, useNativeDriver: true }),
-		]).start();
-
-		Animated.parallel([
-			Animated.timing(entranceOpacity, {
-				toValue: 1,
-				duration,
-				useNativeDriver: true,
-			}),
-			Animated.spring(entranceTranslate, {
-				toValue: 0,
-				tension,
-				friction,
-				useNativeDriver: true,
-			}),
-		]).start();
-
-		const driftLoop = Animated.loop(
-			Animated.sequence([
-				Animated.timing(heroMotion, {
-					toValue: 1,
-					duration: 2800,
-					easing: Easing.inOut(Easing.ease),
-					useNativeDriver: true,
-				}),
-				Animated.timing(heroMotion, {
-					toValue: 0,
-					duration: 2800,
-					easing: Easing.inOut(Easing.ease),
-					useNativeDriver: true,
-				}),
-			]),
-		);
-		const pulseLoop = Animated.loop(
-			Animated.sequence([
-				Animated.timing(pulseMotion, {
-					toValue: 1,
-					duration: 1100,
-					easing: Easing.inOut(Easing.ease),
-					useNativeDriver: true,
-				}),
-				Animated.timing(pulseMotion, {
-					toValue: 0,
-					duration: 1100,
-					easing: Easing.inOut(Easing.ease),
-					useNativeDriver: true,
-				}),
-			]),
-		);
-
-		driftLoop.start();
-		pulseLoop.start();
-
-		return () => {
-			driftLoop.stop();
-			pulseLoop.stop();
-		};
-	}, [reduceMotion, duration, tension, friction, entranceOpacity, entranceTranslate, brandOpacity, headlineOpacity, helperOpacity, actionsOpacity, heroMotion, pulseMotion]);
 
 	const themeContext = useMemo(
 		() => ({
@@ -390,78 +254,6 @@ export default function WelcomeStageBase({
 				(metrics?.stageSpacing?.actionWellMinHeight || 0) + 72,
 			)
 		: 0;
-	const heroTranslateX = heroMotion.interpolate({
-		inputRange: [0, 1],
-		outputRange: [-2, 2],
-	});
-	const trailTranslateX = heroMotion.interpolate({
-		inputRange: [0, 1],
-		outputRange: [-6, 5],
-	});
-	const trailOpacity = heroMotion.interpolate({
-		inputRange: [0, 1],
-		outputRange: [isDarkMode ? 0.08 : 0.04, isDarkMode ? 0.14 : 0.08],
-	});
-	const ringScale = pulseMotion.interpolate({
-		inputRange: [0, 1],
-		outputRange: [0.995, 1.02],
-	});
-	const ringOpacity = pulseMotion.interpolate({
-		inputRange: [0, 1],
-		outputRange: [isDarkMode ? 0.24 : 0.14, isDarkMode ? 0.4 : 0.24],
-	});
-
-	const premiumHeadline = Platform.OS === "web" ? (
-		<Text
-			style={[
-				styles.headline,
-				headlineDisplayStyle,
-				{
-					color: "transparent",
-					backgroundImage: `linear-gradient(135deg, ${colors.headline} 0%, ${colors.headline} 62%, ${COLORS.brandPrimary} 100%)`,
-					backgroundClip: "text",
-					WebkitBackgroundClip: "text",
-					WebkitTextFillColor: "transparent",
-					textShadowColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.10)",
-					textShadowRadius: 12,
-				},
-			]}
-		>
-			{WELCOME_COPY.headline}
-		</Text>
-	) : (
-		<MaskedView
-			maskElement={
-				<Text style={[styles.headline, headlineDisplayStyle]}>
-					{WELCOME_COPY.headline}
-				</Text>
-			}
-		>
-			<LinearGradient
-				colors={[colors.headline, colors.headline, COLORS.brandPrimary]}
-				start={{ x: 0, y: 0 }}
-				end={{ x: 1, y: 1 }}
-			>
-				<Text style={[styles.headline, headlineDisplayStyle, { opacity: 0 }]}>
-					{WELCOME_COPY.headline}
-				</Text>
-			</LinearGradient>
-		</MaskedView>
-	);
-
-	const signInPressable = (
-		<Pressable
-			onPress={onSignIn}
-			style={[
-				styles.signInPressable,
-				{ marginTop: (metrics?.stageSpacing?.signInTop || 0) + 6 },
-				Platform.OS === "web" ? { cursor: "pointer" } : null,
-			]}
-		>
-			<Text style={[styles.signInText, { opacity: isDarkMode ? 0.68 : 0.6 }]}>{WELCOME_COPY.resumeLabel || "Resume Visit"}</Text>
-		</Pressable>
-	);
-
 	const ctaFootnote = WELCOME_COPY.ctaFootnote ? (
 		<Text
 			style={[
@@ -541,7 +333,12 @@ export default function WelcomeStageBase({
 	const copyBlock = (
 		<View style={styles.copyBlock}>
 			<Animated.View style={{ opacity: headlineOpacity }}>
-				{premiumHeadline}
+				<WelcomeHeadlineBlock
+					styles={styles}
+					headlineDisplayStyle={headlineDisplayStyle}
+					colors={colors}
+					isDarkMode={isDarkMode}
+				/>
 			</Animated.View>
 			<Animated.View style={{ opacity: helperOpacity }}>
 				<Text style={[styles.helper, helperDisplayStyle]}>{WELCOME_COPY.helper}</Text>
@@ -554,73 +351,20 @@ export default function WelcomeStageBase({
 		</View>
 	);
 
-	const heroBlock =
-		layout === "split" ? (
-			<View style={styles.heroPanel}>
-				<AnimatedLinearGradient
-					pointerEvents="none"
-					colors={
-						isDarkMode
-							? ["transparent", "rgba(134,16,14,0.20)", "rgba(255,255,255,0.05)", "transparent"]
-							: ["transparent", "rgba(134,16,14,0.12)", "rgba(255,255,255,0.6)", "transparent"]
-					}
-					start={{ x: 0, y: 0.5 }}
-					end={{ x: 1, y: 0.5 }}
-					style={[
-						{
-							position: "absolute",
-							left: "10%",
-							bottom: "28%",
-							width: "66%",
-							height: Math.max(18, sharedMetrics.type.captionLineHeight + 4),
-							borderRadius: 999,
-						},
-						{
-							opacity: trailOpacity,
-							transform: [{ translateX: trailTranslateX }, { scaleX: 1.04 }],
-						},
-					]}
-				/>
-				<Animated.View
-					pointerEvents="none"
-					style={[
-						styles.heroRing,
-						{
-							backgroundColor: isDarkMode ? "rgba(134,16,14,0.16)" : "rgba(134,16,14,0.08)",
-							opacity: ringOpacity,
-							transform: [{ scale: ringScale }],
-						},
-					]}
-				/>
-				<Animated.Image
-					source={HERO}
-					resizeMode="contain"
-					style={[
-						styles.heroImage,
-						{
-							width: sharedMetrics.welcome.heroWidth,
-							height: sharedMetrics.welcome.heroHeight,
-							transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }],
-						},
-					]}
-				/>
-			</View>
-		) : (
-			<View style={styles.heroBlock}>
-				<Animated.Image
-					source={HERO}
-					resizeMode="contain"
-					style={[
-						styles.heroImage,
-						{
-							width: Math.min(sharedMetrics.welcome.heroWidth, viewport.heroImageWidth),
-							height: Math.min(sharedMetrics.welcome.heroHeight, viewport.heroImageHeight),
-							transform: [{ translateX: heroTranslateX }, { translateY: -8 }, { scale: 0.94 }],
-						},
-					]}
-				/>
-			</View>
-		);
+	const heroBlock = (
+		<WelcomeHeroBlock
+			layout={layout}
+			isDarkMode={isDarkMode}
+			sharedMetrics={sharedMetrics}
+			viewport={viewport}
+			heroTranslateX={heroTranslateX}
+			trailTranslateX={trailTranslateX}
+			trailOpacity={trailOpacity}
+			ringScale={ringScale}
+			ringOpacity={ringOpacity}
+			styles={styles}
+		/>
+	);
 
 	return (
 		<LinearGradient colors={colors.backgroundGradient} style={styles.gradient}>
