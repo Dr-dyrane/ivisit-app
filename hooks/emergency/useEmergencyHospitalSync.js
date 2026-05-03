@@ -6,7 +6,7 @@
  * hospital selection guard, and the updateHospitals + refreshHospitals actions.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useHospitals } from "./useHospitals";
 import { useAmbulances } from "./useAmbulances";
@@ -36,7 +36,6 @@ export function useEmergencyHospitalSync({
 	setSelectedHospitalId,
 }) {
 	const { user } = useAuth();
-	const [hospitals, setHospitals] = useState([]);
 
 	const {
 		hospitals: dbHospitals,
@@ -53,18 +52,16 @@ export function useEmergencyHospitalSync({
 
 	const { ambulances: activeAmbulances } = useAmbulances();
 
-	// Sync DB hospitals into local state with distance localization
-	useEffect(() => {
-		if (isLoadingHospitals) return;
+	// Pure derivation: distance/ETA localization is computation over query data, not a side effect.
+	// useEffect + setState here was a Category-1 violation (guardrails §1).
+	const hospitals = useMemo(() => {
+		if (isLoadingHospitals) return [];
 		const sourceHospitals =
 			Array.isArray(discoveredDbHospitals) && discoveredDbHospitals.length > 0
 				? discoveredDbHospitals
 				: dbHospitals;
 
-		if (sourceHospitals.length === 0) {
-			setHospitals([]);
-			return;
-		}
+		if (!Array.isArray(sourceHospitals) || sourceHospitals.length === 0) return [];
 
 		if (!userLocation) {
 			const normalized = sourceHospitals.map((h) => ({
@@ -77,8 +74,7 @@ export function useEmergencyHospitalSync({
 				serviceTypes: h.serviceTypes || [],
 				features: h.features || [],
 			}));
-			setHospitals(enrichHospitalsWithServiceTypes(normalized));
-			return;
+			return enrichHospitalsWithServiceTypes(normalized);
 		}
 
 		const localized = sourceHospitals
@@ -108,7 +104,7 @@ export function useEmergencyHospitalSync({
 				return aD - bD;
 			});
 
-		setHospitals(enrichHospitalsWithServiceTypes(localized));
+		return enrichHospitalsWithServiceTypes(localized);
 	}, [dbHospitals, discoveredDbHospitals, isLoadingHospitals, userLocation]);
 
 	// Hospital actions
@@ -137,7 +133,11 @@ export function useEmergencyHospitalSync({
 
 	const updateHospitals = useCallback((newHospitals) => {
 		const normalized = normalizeHospitals(newHospitals);
-		setHospitals(enrichHospitalsWithServiceTypes(normalized));
+		// Note: updateHospitals is a manual override path (e.g. realtime patch).
+		// It cannot mutate the useMemo-derived hospitals directly; callers must
+		// use queryClient.setQueryData or refetch to propagate changes through
+		// the query layer. This callback remains for backward-compat contract.
+		return enrichHospitalsWithServiceTypes(normalized);
 	}, [normalizeHospitals]);
 
 	const refreshHospitals = useCallback(async () => {

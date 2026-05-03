@@ -43,6 +43,41 @@ Every subsequent pass must be framed and reviewed across **four explicit tracks*
 If one of those four tracks is intentionally out of scope, the pass doc must say so explicitly.
 Do not silently treat a pass as "UI-only" when it also touches data flow, state ownership, or repeated screen structure.
 
+---
+
+### ⚡ Quick Reference — The `useEffect` Decision Tree
+
+> Before reaching for `useEffect`, walk this tree top to bottom.
+> `useEffect` only wins the **last** branch. In practice: no subscription, no timer → it's wrong.
+
+```
+"When X changes, I need Y"
+         │
+         ▼
+Is Y a value derived from X?
+  → YES → useMemo / inline const — no hook needed
+           Example: ratingState + visits → validatedRatingState (BUG-012 fix)
+
+Is Y a ref that mirrors X?
+  → YES → assign ref.current = X inline during render, no useEffect
+           Example: totalCostValueRef = totalCostValue (useMapCommitPaymentController)
+
+Is Y a machine state with named terminal values (IDLE, WAITING, FAILED…)?
+  → YES → Jotai atom (L5) or XState (L4)
+           Example: submissionState in useMapCommitPaymentController
+
+Is Y server data triggered by X?
+  → YES → TanStack Query with X in queryKey or enabled: Boolean(X)
+           Example: estimatedCost query enabled on hospitalId
+
+Is Y a real side-effect — subscription, cleanup, timer, navigation?
+  → YES → useEffect is correct here
+           Example: Supabase realtime channel setup/teardown
+```
+
+**Rule of thumb**: if you are not managing a subscription, timer, or cleanup, `useEffect` is probably wrong. The violation only surfaces as a bug *later* — stale closure, missed dep, extra render, race condition — never at the point of writing.
+
+
 ### Loading State Rule
 
 - Layout-bearing loading states should favor **skeletons** over generic activity indicators
