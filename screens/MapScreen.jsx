@@ -710,6 +710,8 @@ export default function MapScreen() {
         onBack={() => router.replace("/(auth)/")}
         onOpenProfile={handleOpenProfile}
         visible={!hasFocusedSheetPhase && !mapLoadingState?.visible}
+        usesSidebarLayout={usesSidebarLayout}
+        sidebarOcclusionWidth={sidebarOcclusionWidth}
       />
     </View>
   );

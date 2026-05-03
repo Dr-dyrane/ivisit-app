@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Pressable, StyleSheet } from "react-native";
+import { Image, Platform, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,11 +23,15 @@ export default function MapTopLeftControl({
 	onBack,
 	onOpenProfile,
 	visible = true,
+	usesSidebarLayout = false,
+	sidebarOcclusionWidth = 0,
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
 
 	if (!visible) return null;
+
+	if (usesSidebarLayout && Platform.OS === "web") return null;
 
 	const handlePress = () => {
 		Haptics.selectionAsync();
@@ -41,6 +45,10 @@ export default function MapTopLeftControl({
 	const bgColor = isDarkMode ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.82)";
 	const iconColor = isDarkMode ? "#e5e7eb" : "#334155";
 
+	const leftInset = usesSidebarLayout
+		? sidebarOcclusionWidth + 12
+		: Math.max(insets.left, 0) + 16;
+
 	return (
 		<Pressable
 			onPress={handlePress}
@@ -49,7 +57,7 @@ export default function MapTopLeftControl({
 			hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 			style={({ pressed }) => [
 				styles.root,
-				{ top: insets.top + 16 },
+				{ top: insets.top + 16, left: leftInset },
 				{ opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.94 : 1 }] },
 				!isSignedIn || !profileImageSource
 					? { backgroundColor: bgColor }
@@ -72,7 +80,6 @@ export default function MapTopLeftControl({
 const styles = StyleSheet.create({
 	root: {
 		position: "absolute",
-		left: 16,
 		width: SIZE,
 		height: SIZE,
 		borderRadius: RADIUS,

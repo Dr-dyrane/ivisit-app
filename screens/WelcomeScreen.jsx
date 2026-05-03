@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect } from "react";
+import { Animated } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useWelcomeExitTransition } from "../hooks/ui/useWelcomeExitTransition";
 import { useAtom } from "jotai";
 import { WELCOME_COPY } from "../components/welcome/welcomeContent";
 import { useHeaderState } from "../contexts/HeaderStateContext";
@@ -16,13 +18,15 @@ const WelcomeScreen = () => {
 	const { resetHeader } = useScrollAwareHeader();
 	const { userLocation } = useGlobalLocation();
 	const setUserLocationStore = useLocationStore((s) => s.setUserLocation);
+	const { screenOpacity, startExitTransition, resetOpacity } = useWelcomeExitTransition();
 
 	useFocusEffect(
 		useCallback(() => {
 			setIsOpeningEmergency(false);
 			resetHeader();
 			setHeaderState({ hidden: true });
-		}, [resetHeader, setHeaderState, setIsOpeningEmergency])
+			resetOpacity();
+		}, [resetHeader, resetOpacity, setHeaderState, setIsOpeningEmergency])
 	);
 
 	useEffect(() => {
@@ -48,7 +52,10 @@ const WelcomeScreen = () => {
 	const handleIntentPress = (intent) => {
 		if (intent === "emergency") {
 			setIsOpeningEmergency(true);
-			router.replace("/(auth)/map");
+			startExitTransition(
+				() => router.replace("/(auth)/map"),
+				{ onRecovery: () => setIsOpeningEmergency(false) },
+			);
 			return;
 		}
 
@@ -59,13 +66,15 @@ const WelcomeScreen = () => {
 	};
 
 	return (
-		<WelcomeScreenOrchestrator
-			onRequestHelp={() => handleIntentPress("emergency")}
-			onFindHospitalBed={() => handleIntentPress("bed")}
-			onSignIn={() => router.push("/(auth)/login")}
-			primaryActionLabel={isOpeningEmergency ? WELCOME_COPY.openingLabel : undefined}
-			isRequestOpening={isOpeningEmergency}
-		/>
+		<Animated.View style={{ flex: 1, opacity: screenOpacity }}>
+			<WelcomeScreenOrchestrator
+				onRequestHelp={() => handleIntentPress("emergency")}
+				onFindHospitalBed={() => handleIntentPress("bed")}
+				onSignIn={() => router.push("/(auth)/login")}
+				primaryActionLabel={isOpeningEmergency ? WELCOME_COPY.openingLabel : undefined}
+				isRequestOpening={isOpeningEmergency}
+			/>
+		</Animated.View>
 	);
 };
 

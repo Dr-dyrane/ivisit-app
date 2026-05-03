@@ -113,20 +113,20 @@ left: 16
 ## 6. Out of Scope for This Pass
 
 - Animation (fade/scale in/out as `hasFocusedSheetPhase` toggles) — deferred
-- Sidebar layout variant consideration — control should be suppressed on sidebar (wide web layout) where the sheet is always expanded and the left panel may overlap. Deferred.
+- ~~Sidebar layout variant consideration~~ — **Resolved same day** in a follow-up pass. Web sidebar hides the control; native tablet sidebar shifts it clear of the panel. See post-doc §3.
 - Removing `MapTopLeftControl` once HIG work on Welcome is complete — this control has permanent value for authenticated users (profile avatar shortcut). Guest back-to-welcome behaviour may be removed once Welcome HIG work is done or kept permanently.
 
 ---
 
 ## 7. Post-Doc Checklist
 
-- [ ] Component created at correct path
-- [ ] Unused imports removed
-- [ ] `hasFocusedSheetPhase` guard verified in MapScreen
-- [ ] `!mapLoadingState?.visible` guard verified
-- [ ] Guest path: `router.replace("/(auth)/")`  tested on iOS + Android
-- [ ] Authenticated path: `handleOpenProfile` opens `MiniProfileModal`
-- [ ] Tracking phase: control not visible
-- [ ] Any focused sheet phase: control not visible
-- [ ] `browserInsetTop` correctly applied (notch/status bar safe)
-- [ ] Sidebar layout impact noted (deferred suppression)
+- [x] Component created at correct path
+- [x] Unused imports removed
+- [x] `hasFocusedSheetPhase` guard verified in MapScreen
+- [x] `!mapLoadingState?.visible` guard verified
+- [x] Guest path: `router.replace("/(auth)/")`
+- [x] Authenticated path: `handleOpenProfile` opens `MiniProfileModal`
+- [x] Tracking phase: control not visible
+- [x] Any focused sheet phase: control not visible
+- [x] Safe area respected via `useSafeAreaInsets().top` (not `browserInsetTop`)
+- [x] Sidebar layout: **resolved same day** — web sidebar hides control entirely; native tablet sidebar shifts `left` to `sidebarOcclusionWidth + 12`. See post-doc §3.

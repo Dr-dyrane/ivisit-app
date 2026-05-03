@@ -1,6 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -41,10 +42,17 @@ export default function EntryActionButton({
 			? "#F8FAFC"
 			: "#111827";
 
+	const handlePressIn = (e) => {
+		if (isPrimary && !disabled && !loading) {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+		}
+		onPressIn?.(e);
+	};
+
 	return (
 		<Pressable
 			onPress={onPress}
-			onPressIn={onPressIn}
+			onPressIn={handlePressIn}
 			onPressOut={onPressOut}
 			disabled={disabled || loading}
 			accessible
@@ -52,6 +60,7 @@ export default function EntryActionButton({
 			accessibilityLabel={accessibilityLabel || label}
 			accessibilityHint={accessibilityHint}
 			focusable={Platform.OS === "web" ? true : undefined}
+			hitSlop={12}
 			style={({ pressed, focused }) => [
 				styles.base,
 				{
@@ -62,8 +71,8 @@ export default function EntryActionButton({
 					backgroundColor,
 					borderRadius: resolvedRadius,
 					borderCurve: "continuous",
-					opacity: disabled || loading ? 0.78 : pressed ? 0.98 : 1,
-					transform: [{ scale: pressed ? 0.985 : 1 }, { translateY: pressed ? 1 : 0 }],
+					opacity: disabled || loading ? 0.78 : pressed ? 0.97 : 1,
+					transform: [{ scale: pressed ? (isPrimary ? 0.96 : 0.975) : 1 }, { translateY: pressed ? 2 : 0 }],
 					shadowColor: "#0F172A",
 					shadowOpacity:
 						focused && Platform.OS === "web"
@@ -144,6 +153,7 @@ export default function EntryActionButton({
 							<ActivityIndicator
 								size="small"
 								color={isPrimary ? "#FFFFFF" : COLORS.brandPrimary}
+								accessibilityLabel="Loading"
 							/>
 						</View>
 					) : iconName ? (

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+	AccessibilityInfo,
 	Animated,
 	Easing,
 	Image,
@@ -33,10 +34,15 @@ export default function WelcomeWideWebView({
 }) {
 	const { isDarkMode } = useTheme();
 	const { height, width } = useWindowDimensions();
+	const [reduceMotion, setReduceMotion] = useState(false);
 	const entranceOpacity = useRef(new Animated.Value(0)).current;
 	const entranceTranslate = useRef(new Animated.Value(18)).current;
 	const heroMotion = useRef(new Animated.Value(0)).current;
 	const pulseMotion = useRef(new Animated.Value(0)).current;
+	const brandOpacity = useRef(new Animated.Value(0)).current;
+	const headlineOpacity = useRef(new Animated.Value(0)).current;
+	const helperOpacity = useRef(new Animated.Value(0)).current;
+	const actionsOpacity = useRef(new Animated.Value(0)).current;
 	const {
 		duration = 240,
 		tension = 50,
@@ -44,6 +50,13 @@ export default function WelcomeWideWebView({
 	} = animation;
 
 	useWelcomeWebSurfaceChrome(isDarkMode);
+
+	useEffect(() => {
+		AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+		const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+		return () => sub?.remove();
+	}, []);
+
 	const sharedMetrics = useMemo(
 		() =>
 			getViewportSurfaceMetrics({
@@ -56,6 +69,22 @@ export default function WelcomeWideWebView({
 	);
 
 	useEffect(() => {
+		if (reduceMotion) {
+			[entranceOpacity, brandOpacity, headlineOpacity, helperOpacity, actionsOpacity].forEach(
+				(v) => v.setValue(1),
+			);
+			entranceTranslate.setValue(0);
+			return;
+		}
+
+		const stagger = 60;
+		Animated.stagger(stagger, [
+			Animated.timing(brandOpacity, { toValue: 1, duration: duration * 0.7, useNativeDriver: true }),
+			Animated.timing(headlineOpacity, { toValue: 1, duration: duration * 0.8, useNativeDriver: true }),
+			Animated.timing(helperOpacity, { toValue: 1, duration: duration * 0.85, useNativeDriver: true }),
+			Animated.timing(actionsOpacity, { toValue: 1, duration: duration, useNativeDriver: true }),
+		]).start();
+
 		Animated.parallel([
 			Animated.timing(entranceOpacity, {
 				toValue: 1,
@@ -110,7 +139,7 @@ export default function WelcomeWideWebView({
 			driftLoop.stop();
 			pulseLoop.stop();
 		};
-	}, [duration, tension, friction, entranceOpacity, entranceTranslate, heroMotion, pulseMotion]);
+	}, [reduceMotion, duration, tension, friction, entranceOpacity, entranceTranslate, brandOpacity, headlineOpacity, helperOpacity, actionsOpacity, heroMotion, pulseMotion]);
 
 	const { colors, metrics, styles } = createTheme({
 		viewportHeight: height,
@@ -229,7 +258,7 @@ export default function WelcomeWideWebView({
 					]}
 				>
 					<View style={styles.leftColumn}>
-						<View style={[styles.brandBlock, { opacity: 0.88 }]}>
+						<Animated.View style={[styles.brandBlock, { opacity: Animated.multiply(brandOpacity, 0.88) }]}>
 							<Image
 								source={require("../../../assets/logo.png")}
 								resizeMode="contain"
@@ -255,19 +284,23 @@ export default function WelcomeWideWebView({
 								iVisit
 								<Text style={[styles.brandDot, { fontSize: sharedMetrics.welcome.brandSize + 2 }]}>.</Text>
 							</Text>
-						</View>
+						</Animated.View>
 
 						<View style={styles.copyBlock}>
-							{premiumHeadline}
-							<Text style={[styles.helper, helperDisplayStyle]}>{WELCOME_COPY.helper}</Text>
-							{WELCOME_COPY.chip ? (
-								<View style={styles.chip}>
-									<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
-								</View>
-							) : null}
+							<Animated.View style={{ opacity: headlineOpacity }}>
+								{premiumHeadline}
+							</Animated.View>
+							<Animated.View style={{ opacity: helperOpacity }}>
+								<Text style={[styles.helper, helperDisplayStyle]}>{WELCOME_COPY.helper}</Text>
+								{WELCOME_COPY.chip ? (
+									<View style={styles.chip}>
+										<Text style={styles.chipText}>{WELCOME_COPY.chip}</Text>
+									</View>
+								) : null}
+							</Animated.View>
 						</View>
 
-						<View style={[styles.actions, { marginTop: elevatedActionsMarginTop }]}>
+						<Animated.View style={[styles.actions, { marginTop: elevatedActionsMarginTop, opacity: actionsOpacity }]}>
 							{WELCOME_INTENTS.map((intent) => (
 								<View
 									key={intent.key}
@@ -302,7 +335,7 @@ export default function WelcomeWideWebView({
 									/>
 								</View>
 							))}
-						</View>
+						</Animated.View>
 
 						{WELCOME_COPY.ctaFootnote ? (
 							<Text
