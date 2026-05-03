@@ -32,8 +32,8 @@ Primary doctrine references:
 
 - `docs/rules.json`
 - `docs/REFACTORING_GUARDRAILS.md`
-- `docs/architecture/TRACKING_SHEET_LEARNINGS.md`
-- `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md`
+- `docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md`
+- `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`
 
 ## What Changed
 

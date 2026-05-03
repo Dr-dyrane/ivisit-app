@@ -31,4 +31,4 @@ const hasTrip = !!store.activeAmbulanceTrip;
 
 ## Migration from EmergencyContext
 
-See [docs/architecture/EMERGENCY_STATE_REFACTOR.md](../docs/architecture/EMERGENCY_STATE_REFACTOR.md) for full migration guide.
+See [docs/./architecture/emergency/EMERGENCY_STATE_REFACTOR.md](../docs/./architecture/emergency/EMERGENCY_STATE_REFACTOR.md) for full migration guide.

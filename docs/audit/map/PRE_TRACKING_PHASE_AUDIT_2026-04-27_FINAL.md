@@ -526,7 +526,7 @@ NEXT:
 
 FILES CHANGED IN THIS AUDIT (docs only):
   - docs/audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md (this file)
-  - docs/architecture/TRACKING_SHEET_LEARNINGS.md (2.13, 2.14 appended)
+  - docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md (2.13, 2.14 appended)
   - docs/audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27.md (superseded — can be deleted)
   - docs/audit/PRE_TRACKING_PHASE_AUDIT_RUN2_2026-04-27.md (superseded — can be deleted)
 ```

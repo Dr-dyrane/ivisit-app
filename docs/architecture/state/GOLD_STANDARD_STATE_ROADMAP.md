@@ -718,8 +718,8 @@ classes, and pass-by-pass implementation plan.
 
 ## Related Docs
 
-- `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md` — completed hook extraction
-- `docs/architecture/REFACTORING_BIBLE.md` — overall refactoring principles
+- `docs/./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` — completed hook extraction
+- `docs/./architecture/refactoring/REFACTORING_BIBLE.md` — overall refactoring principles
 - `docs/architecture/roadmap/IMPLEMENTATION_ROADMAP.md` — product roadmap
 - `docs/audit/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md` — tracking sheet audit + pass plan
-- `docs/architecture/TRACKING_SHEET_LEARNINGS.md` — cross-cutting defect classes from tracking audit
+- `docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` — cross-cutting defect classes from tracking audit

@@ -132,7 +132,7 @@ We prioritize:
 - [x] 18 specialized hooks extracted (Passes 1–16)
 - [x] Monolith baseline hash: `754a4c6` — restorable at any time
 - [x] Barrel `index.js` created for all exploreFlow hooks
-- [x] Full record: `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md`
+- [x] Full record: `docs/./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md`
 
 ### Phase 5: Gold Standard State Migration (Planned)
 - [ ] Phase 1: Zustand + persist for trip state
@@ -140,6 +140,6 @@ We prioritize:
 - [ ] Phase 3: Jotai atoms for map UI state
 - [ ] Phase 4: XState for trip lifecycle
 - [ ] Phase 5: Retire EmergencyContext
-- Full roadmap: `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md`
+- Full roadmap: `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`
 
 ---

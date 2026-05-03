@@ -148,16 +148,16 @@ When in doubt, `rules.json` wins.
 ## Architecture and Ops
 
 - [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md)
-- [`architecture/REFACTORING_BIBLE.md`](./architecture/REFACTORING_BIBLE.md)
-- [`architecture/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/GOLD_STANDARD_STATE_ROADMAP.md) — 5-layer state migration roadmap
-- [`architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md`](./architecture/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md) — canonical emergency-contacts state contract
-- [`architecture/TRACKING_SHEET_LEARNINGS.md`](./architecture/TRACKING_SHEET_LEARNINGS.md) — defect classes 2.1–2.16, heuristics, process lessons
-- [`architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md`](./architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md)
-- [`architecture/EMERGENCY_STATE_REFACTOR.md`](./architecture/EMERGENCY_STATE_REFACTOR.md)
-- [`architecture/STASH_AUDIT.md`](./architecture/STASH_AUDIT.md)
-- [`architecture/STORES_README.md`](./architecture/STORES_README.md) — global state store inventory
-- [`architecture/METRO_ROUTING_FIXES.md`](./architecture/METRO_ROUTING_FIXES.md) — platform idiosyncrasies
-- [`architecture/ZERO_COST_MAPBOX_MIGRATION.md`](./architecture/ZERO_COST_MAPBOX_MIGRATION.md) — Mapbox zero-cost migration strategy
+- [`./architecture/refactoring/REFACTORING_BIBLE.md`](./architecture/refactoring/REFACTORING_BIBLE.md)
+- [`./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) — 5-layer state migration roadmap
+- [`./architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md`](./architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md) — canonical emergency-contacts state contract
+- [`./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md`](./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md) — defect classes 2.1–2.16, heuristics, process lessons
+- [`./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md`](./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md)
+- [`./architecture/emergency/EMERGENCY_STATE_REFACTOR.md`](./architecture/emergency/EMERGENCY_STATE_REFACTOR.md)
+- [`./architecture/refactoring/STASH_AUDIT.md`](./architecture/refactoring/STASH_AUDIT.md)
+- [`./architecture/stores/STORES_README.md`](./architecture/stores/STORES_README.md) — global state store inventory
+- [`./architecture/map/METRO_ROUTING_FIXES.md`](./architecture/map/METRO_ROUTING_FIXES.md) — platform idiosyncrasies
+- [`./architecture/map/ZERO_COST_MAPBOX_MIGRATION.md`](./architecture/map/ZERO_COST_MAPBOX_MIGRATION.md) — Mapbox zero-cost migration strategy
 - [`architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md`](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md)
 - [`console/WEB_DASHBOARD_SPEC.md`](./console/WEB_DASHBOARD_SPEC.md) — `ivisit-console` implementation spec
 - [`deployment/VERCEL_WEB_DEPLOYMENT.md`](./deployment/VERCEL_WEB_DEPLOYMENT.md)

@@ -520,7 +520,7 @@ git diff stash@{0} -- <path_to_current_file>
 | `atoms/mapFlowAtoms.js`                | Jotai map UI atoms       | Gold Standard Phase 3 |
 | `contexts/EmergencyContextAdapter.jsx` | Context adapter          | Gold Standard Phase 5 |
 
-See `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` for full migration plan.
+See `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` for full migration plan.
 
 ---
 

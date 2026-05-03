@@ -195,8 +195,8 @@ Uncommitted files as of 2026-04-26:
 - `hooks/map/exploreFlow/useMapHospitalSelection.js` (modified — Pass 14a dedup)
 - `hooks/map/exploreFlow/useMapTrackingHeader.js` (modified — nowMs lifted)
 - `components/map/surfaces/visitDetail/useMapVisitDetailModel.js` (modified — TDZ fix)
-- `docs/architecture/MAP_EXPLORE_FLOW_MODULARIZATION.md` (new)
-- `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` (new)
+- `docs/./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` (new)
+- `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` (new)
 - `docs/INDEX.md` (modified)
 
 ---

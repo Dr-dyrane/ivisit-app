@@ -4,8 +4,8 @@ System architecture, refactoring decisions, and technical design documents.
 
 ## Files
 
-- [EMERGENCY_STATE_REFACTOR.md](./EMERGENCY_STATE_REFACTOR.md) - Emergency flow state management architecture refactor
-- [REFACTORING_BIBLE.md](./REFACTORING_BIBLE.md) - Refactoring patterns and guidelines
+- [EMERGENCY_STATE_REFACTOR.md](./emergency/EMERGENCY_STATE_REFACTOR.md) - Emergency flow state management architecture refactor
+- [REFACTORING_BIBLE.md](./refactoring/REFACTORING_BIBLE.md) - Refactoring patterns and guidelines
 
 ## Subfolders
 

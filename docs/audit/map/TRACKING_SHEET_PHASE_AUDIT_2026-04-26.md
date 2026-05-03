@@ -184,7 +184,7 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 **Goal**: Single source of truth for "what should happen when".
 
 **Actions**:
-1. Update `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` (or new sibling doc) with a state diagram:
+1. Update `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` (or new sibling doc) with a state diagram:
    - Inputs: XState lifecycle, Zustand store, sheet phase, payment events, history selection
    - Output: which sheet phase should be active
 2. Add a single derived selector (Jotai `atom((get) => ...)`) that computes the desired sheet phase from these inputs. Use it as a debug overlay in dev to visualize divergence between desired and actual.
@@ -365,7 +365,7 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
   `matchesActiveEmergencyRequest`; falls back to `openVisitDetail` for non-active items.
   Pass C's XState gate also removes the stale-request revert race in `useMapTracking`.
 - **Pass F** — Canonical sheet phase decision diagram added to
-  `docs/architecture/GOLD_STANDARD_STATE_ROADMAP.md` ("Tracking Sheet Phase — Canonical
+  `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` ("Tracking Sheet Phase — Canonical
   Decision Diagram" section). Inputs, rules, cross-cutting renderers, and history routing
   documented.
 - **Pass G — Apple HIG polish.** All seven sub-passes complete:
@@ -395,5 +395,5 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 Tracking sheet phase audit complete. All correctness (B–F) and polish (G) passes shipped.
 Future regressions in this surface should be tracked in
-`docs/architecture/TRACKING_SHEET_LEARNINGS.md` (defect classes 2.1–2.12) which now
+`docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` (defect classes 2.1–2.12) which now
 serves as the canonical playbook.

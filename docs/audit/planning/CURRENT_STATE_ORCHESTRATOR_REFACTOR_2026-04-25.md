@@ -250,5 +250,5 @@ When in doubt, this document represents the current source of truth for orchestr
 - `docs/INDEX.md` - Full documentation index
 - `docs/README.md` - Documentation doctrine
 - `docs/audit/RISK_STATUS_2026-04-23.md` - Risk tracker
-- `docs/architecture/REFACTORING_BIBLE.md` - Refactoring patterns
+- `docs/./architecture/refactoring/REFACTORING_BIBLE.md` - Refactoring patterns
 - `docs/flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` - Map flow current state

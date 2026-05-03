@@ -369,5 +369,5 @@ Pass 1 removed the double loading state as a quick cleanup, but the architectura
 ## Related Documents
 
 - [LAYOUT_SHELL_PASS_PLAN_2026-04-24.md](./LAYOUT_SHELL_PASS_PLAN_2026-04-24.md) - Incremental remediation plan
-- [../architecture/EMERGENCY_STATE_REFACTOR.md](../architecture/EMERGENCY_STATE_REFACTOR.md) - Store architecture
+- [../architecture/emergency/EMERGENCY_STATE_REFACTOR.md](../architecture/emergency/EMERGENCY_STATE_REFACTOR.md) - Store architecture
 - [../platform/METRO_ROUTING_FIXES.md](../platform/METRO_ROUTING_FIXES.md) - Recent reload fixes

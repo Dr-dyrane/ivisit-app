@@ -113,7 +113,7 @@ When in doubt, `rules.json` wins.
 ## Architecture and Ops
 
 - [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md)
-- [`architecture/REFACTORING_BIBLE.md`](./architecture/REFACTORING_BIBLE.md)
+- [`./architecture/refactoring/REFACTORING_BIBLE.md`](./architecture/refactoring/REFACTORING_BIBLE.md)
 - [`architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md`](./architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md)
 - [`console/WEB_DASHBOARD_SPEC.md`](./console/WEB_DASHBOARD_SPEC.md) - `ivisit-console` implementation spec
 - [`deployment/VERCEL_WEB_DEPLOYMENT.md`](./deployment/VERCEL_WEB_DEPLOYMENT.md)

@@ -287,8 +287,8 @@ These were deleted in the stash — already cleaned up in recovery branch.
 `docs/archive/historical/*` — 20 files — ❌ REJECTED  
 `docs/audit/*` — 11 files — ❌ REJECTED (content absorbed into GOLD_STANDARD_STATE_ROADMAP.md)  
 `docs/platform/METRO_ROUTING_FIXES.md` — ✅ PULLED (Metro fix already applied)  
-`docs/architecture/EMERGENCY_STATE_REFACTOR.md` — ⚠️ REVIEW before 6b  
-`docs/architecture/ZERO_COST_MAPBOX_MIGRATION.md` — ⏳ PENDING (separate track)  
+`docs/./architecture/emergency/EMERGENCY_STATE_REFACTOR.md` — ⚠️ REVIEW before 6b  
+`docs/./architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` — ⏳ PENDING (separate track)  
 
 ---
 
@@ -297,7 +297,7 @@ These were deleted in the stash — already cleaned up in recovery branch.
 ### Phase 6b ✅ COMPLETE
 - `hooks/emergency/useCoverageMode.js` ❌ REJECTED (useState pattern)
 - `hooks/emergency/useEmergencyLocationSync.js` → deferred to 6c (GPS consumer migration)
-- `docs/architecture/EMERGENCY_STATE_REFACTOR.md` ✅ READ — EmergencyContextAdapter pattern noted for 6c
+- `docs/./architecture/emergency/EMERGENCY_STATE_REFACTOR.md` ✅ READ — EmergencyContextAdapter pattern noted for 6c
 
 ### Phase 6c (Consumer migration)
 - `atoms/commitAtoms.ts`, `paymentAtoms.ts`, `searchAtoms.ts` ⏳
