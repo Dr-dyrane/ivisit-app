@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerPress } from "../../../../services/hapticService";
 import InAppBrowserLink from "../../../ui/InAppBrowserLink";
 import { MAP_EXPLORE_INTENT_COPY } from "./mapExploreIntent.content";
 import MapExploreIntentCareSection from "./MapExploreIntentCareSection";
@@ -45,7 +45,7 @@ export function MapExploreIntentTopRow({
 			<Pressable
 				onPress={onOpenSearch}
 				// PULLBACK NOTE: Pass A — Light haptic on search pill tap (E-2.3)
-				onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+				onPressIn={() => triggerPress("light")}
 				style={[
 					styles.searchPill,
 					responsiveMetrics?.topRow?.searchPillStyle,

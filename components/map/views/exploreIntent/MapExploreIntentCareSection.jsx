@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerPress } from "../../../../services/hapticService";
 import { COLORS } from "../../../../constants/colors";
 import { MAP_EXPLORE_INTENT_COPY } from "./mapExploreIntent.content";
 import { getBedSpaceSubtext, getSelectedCareLabel } from "./mapExploreIntent.helpers";
@@ -82,7 +82,7 @@ function CareIntentOrb({
 		<Pressable
 			onPress={onPress}
 			// PULLBACK NOTE: Pass A — Heavy haptic on care orb press (E-2.1)
-			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)}
+			onPressIn={() => triggerPress("heavy")}
 			hitSlop={8}
 			// PULLBACK NOTE: Pass D — accessibility label + hint for VoiceOver (E-2.11)
 			accessibilityRole="button"
@@ -307,7 +307,7 @@ function CareIntentCard({
 		<Pressable
 			onPress={onPress}
 			// PULLBACK NOTE: Pass A — Heavy haptic on care card press (E-2.1)
-			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)}
+			onPressIn={() => triggerPress("heavy")}
 			// PULLBACK NOTE: Pass D — accessibility label + hint for VoiceOver (E-2.11)
 			accessibilityRole="button"
 			accessibilityLabel={label}

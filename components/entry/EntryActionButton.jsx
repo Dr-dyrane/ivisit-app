@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { triggerPress } from "../../services/hapticService";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -44,7 +44,7 @@ export default function EntryActionButton({
 
 	const handlePressIn = (e) => {
 		if (isPrimary && !disabled && !loading) {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+			triggerPress("heavy");
 		}
 		onPressIn?.(e);
 	};

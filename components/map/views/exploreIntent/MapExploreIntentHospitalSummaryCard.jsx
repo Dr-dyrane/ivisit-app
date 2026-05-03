@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { triggerPress } from "../../../../services/hapticService";
 import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
 import styles from "./mapExploreIntent.styles";
 
@@ -173,7 +173,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 			<Pressable
 				onPress={onOpenHospitals}
 				// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
-				onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+				onPressIn={() => triggerPress("medium")}
 				accessibilityRole="button"
 				accessibilityLabel={cardAccessibilityLabel}
 				style={({ pressed }) => [
@@ -243,7 +243,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 			<Pressable
 				onPress={onOpenHospitals}
 				// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
-				onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+				onPressIn={() => triggerPress("medium")}
 				accessibilityRole="button"
 				accessibilityLabel={cardAccessibilityLabel}
 				style={({ pressed }) => [
@@ -337,7 +337,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 		<Pressable
 			onPress={onOpenHospitals}
 			// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
-			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+			onPressIn={() => triggerPress("medium")}
 			accessibilityRole="button"
 			accessibilityLabel={cardAccessibilityLabel}
 			style={[
