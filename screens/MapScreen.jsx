@@ -704,12 +704,15 @@ export default function MapScreen() {
         preferDrawerPresentation={usesSidebarLayout}
       />
 
+      {/* PULLBACK NOTE: MapTopLeftControl hidden for authenticated users */}
+      {/* OLD: visible for both auth + unauth (avatar duplicated sheet header TopRow) */}
+      {/* NEW: only rendered for unauthenticated users (back-to-welcome chevron) */}
       <MapTopLeftControl
         isSignedIn={isSignedIn}
         profileImageSource={profileImageSource}
         onBack={() => router.replace("/(auth)/")}
         onOpenProfile={handleOpenProfile}
-        visible={!hasFocusedSheetPhase && !mapLoadingState?.visible}
+        visible={!isSignedIn && !hasFocusedSheetPhase && !mapLoadingState?.visible}
         usesSidebarLayout={usesSidebarLayout}
         sidebarOcclusionWidth={sidebarOcclusionWidth}
       />
