@@ -1,4 +1,6 @@
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
+import { trackingRouteInfoAtom } from "../../../../atoms/mapScreenAtoms";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { useEmergencyHandlers } from "../../../../hooks/emergency/useEmergencyHandlers";
 import { useTripProgress } from "../../../../hooks/emergency/useTripProgress";
@@ -120,12 +122,30 @@ export function useMapTrackingRuntime({
 		stopBedBooking,
 	});
 
+	// PULLBACK NOTE: ETA display fix — subscribe to trackingRouteInfoAtom directly so
+	// durationSec is always current. The prop-chain path (routeInfo) can be stale on
+	// fresh trip open: useMapTrackingSync resets the atom when a new requestKey is
+	// detected, and EmergencyLocationPreviewMap won't re-fire onRouteInfoChange because
+	// its signature ref hasn't changed. Reading the atom here bypasses that gap.
+	// When activeAmbulanceTrip.etaSeconds is null (store not yet patched), the live
+	// durationSec from the atom is used as a transient fallback so useTripProgress
+	// computes remainingSeconds immediately. Once the store is patched, the store value
+	// takes over and the atom fallback has no effect.
+	const liveRouteInfo = useAtomValue(trackingRouteInfoAtom);
+	const ambulanceTripForProgress = useMemo(() => {
+		if (!activeAmbulanceTrip) return activeAmbulanceTrip;
+		if (Number.isFinite(activeAmbulanceTrip.etaSeconds) && activeAmbulanceTrip.etaSeconds > 0) return activeAmbulanceTrip;
+		const fallbackEta = liveRouteInfo?.durationSec;
+		if (!Number.isFinite(fallbackEta) || fallbackEta <= 0) return activeAmbulanceTrip;
+		return { ...activeAmbulanceTrip, etaSeconds: fallbackEta };
+	}, [activeAmbulanceTrip, liveRouteInfo?.durationSec]);
+
 	const {
 		remainingSeconds: ambulanceRemainingSeconds,
 		tripProgress: ambulanceTripProgress,
 		computedStatus: ambulanceComputedStatus,
 	} = useTripProgress({
-		activeAmbulanceTrip,
+		activeAmbulanceTrip: ambulanceTripForProgress,
 		nowMs,
 	});
 	const {

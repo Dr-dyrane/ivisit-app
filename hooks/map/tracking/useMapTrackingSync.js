@@ -134,11 +134,13 @@ export function useMapTrackingSync({
     setRouteCalculationError(null);
 
     if (!normalizedActiveRequestKey) {
-      setTrackingRouteInfoState((current) =>
-        areTrackingRouteInfosEqual(current, EMPTY_TRACKING_ROUTE_INFO)
-          ? current
-          : EMPTY_TRACKING_ROUTE_INFO,
-      );
+      // PULLBACK NOTE: ETA fix — preserve durationSec on reset; only wipe coordinates + identity.
+      // durationSec is live map data and is never stale. Wiping it here causes a signature-ref
+      // deadlock: the map won't re-emit because the route hasn't changed, leaving the atom null.
+      setTrackingRouteInfoState((current) => {
+        const reset = { ...EMPTY_TRACKING_ROUTE_INFO, durationSec: current?.durationSec ?? null };
+        return areTrackingRouteInfosEqual(current, reset) ? current : reset;
+      });
       return;
     }
 
@@ -146,23 +148,30 @@ export function useMapTrackingSync({
       trackingKind === "ambulance" &&
       normalizedAmbulanceRequestKey === normalizedActiveRequestKey
     ) {
-      const seededRouteInfo = normalizeTrackingRouteInfo({
-        durationSec: activeAmbulanceTrip?.etaSeconds ?? null,
-        coordinates: activeAmbulanceTrip?.route,
+      // PULLBACK NOTE: ETA display fix — preserve the atom's existing durationSec when
+      // seeding for a new request. EmergencyLocationPreviewMap's routeInfoChangeSignatureRef
+      // won't re-fire (it already emitted this data before tracking opened), so overwriting
+      // with null leaves the atom empty until the next route change. Prefer: store etaSeconds
+      // if present, otherwise keep the live atom value, otherwise null.
+      setTrackingRouteInfoState((current) => {
+        const storeDuration =
+          Number.isFinite(activeAmbulanceTrip?.etaSeconds) && activeAmbulanceTrip.etaSeconds > 0
+            ? Math.round(Number(activeAmbulanceTrip.etaSeconds))
+            : null;
+        const seededRouteInfo = normalizeTrackingRouteInfo({
+          durationSec: storeDuration ?? current?.durationSec ?? null,
+          coordinates: activeAmbulanceTrip?.route,
+        });
+        return areTrackingRouteInfosEqual(current, seededRouteInfo) ? current : seededRouteInfo;
       });
-      setTrackingRouteInfoState((current) =>
-        areTrackingRouteInfosEqual(current, seededRouteInfo)
-          ? current
-          : seededRouteInfo,
-      );
       return;
     }
 
-    setTrackingRouteInfoState((current) =>
-      areTrackingRouteInfosEqual(current, EMPTY_TRACKING_ROUTE_INFO)
-        ? current
-        : EMPTY_TRACKING_ROUTE_INFO,
-    );
+    // PULLBACK NOTE: ETA fix — preserve durationSec in fallthrough reset (same reason as above).
+    setTrackingRouteInfoState((current) => {
+      const reset = { ...EMPTY_TRACKING_ROUTE_INFO, durationSec: current?.durationSec ?? null };
+      return areTrackingRouteInfosEqual(current, reset) ? current : reset;
+    });
   }, [
     activeAmbulanceTrip?.etaSeconds,
     activeAmbulanceTrip?.route,

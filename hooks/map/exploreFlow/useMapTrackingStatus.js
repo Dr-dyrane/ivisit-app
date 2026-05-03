@@ -142,7 +142,8 @@ export function useMapTrackingStatus({
 
       if (nextStatusPhase === "arrived" && !hasFiredArrivedToastRef.current) {
         hasFiredArrivedToastRef.current = true;
-        showToast("Your driver has arrived", "success");
+        // PULLBACK NOTE: defer one frame so the button turns green before the toast appears
+        requestAnimationFrame(() => showToast("Your driver has arrived", "success"));
       }
       if (nextStatusPhase !== "arrived") {
         hasFiredArrivedToastRef.current = false;

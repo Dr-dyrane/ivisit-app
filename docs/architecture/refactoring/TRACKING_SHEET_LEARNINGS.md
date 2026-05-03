@@ -252,7 +252,7 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 const preserveTripStartedAt = (prev, next) => {
   if (!next || !prev) return next;
   if (!sameTripIdentity(prev, next)) return next;       // different trip → allow
-  if (!Number.isFinite(prev.startedAt)) return next;    // prev had none → allow
+  if (!Number.isFinite(prev.startedAt)) return next;    // prev had none → allowtry i
   if (prev.startedAt === next.startedAt) return next;   // unchanged → no-op
   return { ...next, startedAt: prev.startedAt };        // any other case → keep prev
 };
@@ -467,6 +467,58 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 4. Keep `isSubmitting = true` for the entire approval wait window — set to `false` only on `DISPATCHED`, `FAILED`, or `PAYMENT_DECLINED`.
 
 **Concrete site**: `useMapCommitPaymentController.js` — `WAITING_APPROVAL` listed as dismissible in `isCommitPaymentDismissibleState`. `finally` block resets `isSubmitting = false` at the moment of the `return` on the approval path. Fix: PT-C pass (pre-tracking audit).
+
+---
+
+### 2.15 Atom wipe + signature-ref deadlock → ETA display shows `"--"` on fresh trip open
+
+**Pattern**: A Jotai atom holding live map route data (`durationSec`, `coordinates`) is reset to `null`/empty on a key-change event. The map component that populates the atom guards re-emission via a signature ref — it only fires `onRouteInfoChange` when the payload hash changes. If the reset happens while the route/hospital destination hasn't changed, the signature ref still matches and the map never re-emits. The atom stays empty until the next independent route event.
+
+**Symptoms**:
+- ETA arrival time shows `"--"` immediately after booking is approved and tracking opens.
+- After Metro reload (which remounts the map and clears the signature ref), ETA displays correctly.
+- Ambulance animation is unaffected (it reads `etaSeconds` from a different path).
+- `km` / distance shows correctly; only the time countdown is blank.
+
+**Diagnosis**: Trace every place the atom is reset. Check whether the map component's signature ref was already set to the same payload before the reset. If yes — signature matches → no re-emit → atom stays null.
+
+**Fix recipe**:
+1. **Never wipe `durationSec` during a reset.** `durationSec` is pure live map data; it has no identity or staleness relative to the request key. Only coordinates and identity fields should be cleared on key change.
+2. In every reset branch of the seed effect (`null` requestKey, fallthrough), preserve `current?.durationSec` in the new object.
+3. As a secondary safety net, subscribe to the atom directly (`useAtomValue(trackingRouteInfoAtom)`) in the consumer hook and use `durationSec` as a fallback `etaSeconds` for `useTripProgress` when `activeAmbulanceTrip.etaSeconds` is null.
+
+**Concrete sites fixed (2026-05-03)**:
+- `@hooks/map/tracking/useMapTrackingSync.js` — all three reset branches now preserve `current?.durationSec`.
+- `@components/map/views/tracking/useMapTrackingRuntime.js` — subscribes directly to `trackingRouteInfoAtom`; builds `ambulanceTripForProgress` with `durationSec` fallback before passing to `useTripProgress`.
+
+**Rule**: Never wipe a live-data field to reset an identity field. Reset only what changed.
+
+---
+
+### 2.16 Dual rating modal from MapScreen decomposition — in-flow fires while recovered also triggers
+
+**Pattern**: Two independent rating-modal triggers coexist after a modularization pass:
+1. In-flow: `trackingRatingStateAtom` written by `useMapTrackingController` on trip completion.
+2. Recovered: `recoveredRatingStateAtom` written by `useMapHistoryFlow` when a `RATING_PENDING` visit is found.
+
+After decomposition, both hooks live at MapScreen level. When a trip completes, the visit transitions to `RATING_PENDING` in the history lane. If the recovered-rating effect fires before the in-flow modal is dismissed, both modals open simultaneously.
+
+**Symptoms**:
+- Two `ServiceRatingModal` components visible at the same time after a trip ends.
+- Only appeared after the MapScreen monolith was broken into `useMapHistoryFlow` + `useTrackingRatingFlow`.
+- Did not occur in the monolith because the recovered-rating effect only ran from MapScreen-level code that could directly reference the in-flow `ratingState` local variable.
+
+**Diagnosis**: `useMapHistoryFlow.recoveredRatingEffect` only checked `recoveredRatingState?.visible` — it had no reference to `trackingRatingStateAtom` and could not see whether the in-flow modal was already open.
+
+**Fix recipe**:
+1. Import `trackingRatingStateAtom` in `useMapHistoryFlow`.
+2. Read `inFlowRatingVisible = useAtomValue(trackingRatingStateAtom)?.visible ?? false`.
+3. Add `|| inFlowRatingVisible` to the early-return guard in the recovered-rating trigger effect.
+4. Add `inFlowRatingVisible` to the effect's dependency array.
+
+**Concrete site fixed (2026-05-03)**: `@hooks/map/history/useMapHistoryFlow.js` lines 449–462.
+
+**General rule**: When two independent hooks can both open a modal of the same type, each must check the other's atom before opening. Cross-hook modal coordination belongs at the atom layer (L5), not via prop drilling.
 
 ---
 

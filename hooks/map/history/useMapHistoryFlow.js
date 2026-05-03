@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, Linking } from "react-native";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { paymentService } from "../../../services/paymentService";
 import { selectHistoryItemByAnyKey } from "../../visits/useVisitHistorySelectors";
 import {
@@ -44,6 +44,7 @@ import {
   recoveredRatingStateAtom,
   selectedHistoryVisitKeyAtom,
   historyPaymentStateAtom,
+  trackingRatingStateAtom,
 } from "../../../atoms/mapScreenAtoms";
 
 /**
@@ -445,14 +446,20 @@ export function useMapHistoryFlow({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetPhase]);
 
+  // PULLBACK NOTE: duplicate-modal fix — guard against in-flow rating already being open.
+  // trackingRatingStateAtom is written by useMapTrackingController when a trip completes.
+  // Without this guard, both modals fire simultaneously when a trip ends while a
+  // RATING_PENDING visit also exists in the history lane.
+  const inFlowRatingVisible = useAtomValue(trackingRatingStateAtom)?.visible ?? false;
+
   useEffect(() => {
-    if (recoveredRatingState?.visible || !pendingRecoveredRatingVisit) return;
+    if (recoveredRatingState?.visible || inFlowRatingVisible || !pendingRecoveredRatingVisit) return;
     const nextState = buildRecoveredTrackingRatingState(
       pendingRecoveredRatingVisit,
       getTrackingRatingRecoveryClaim(pendingRecoveredRatingVisit, ratingRecoveryClaims),
     );
     if (nextState) setRecoveredRatingState(nextState);
-  }, [pendingRecoveredRatingVisit, ratingRecoveryClaims, recoveredRatingState?.visible, setRecoveredRatingState]);
+  }, [inFlowRatingVisible, pendingRecoveredRatingVisit, ratingRecoveryClaims, recoveredRatingState?.visible, setRecoveredRatingState]);
 
   // ─── Recovered-rating handlers ────────────────────────────────────────────
 
