@@ -1,7 +1,7 @@
 # Map Explore Intent — Apple HIG Audit — 2026-05-03
 
 **Scope**: `/map` explore intent phase — interaction, motion, progression feedback, accessibility
-**Status**: AUDIT COMPLETE — Pass A in progress
+**Status**: AUDIT COMPLETE — All passes DONE, pending device verification
 **Standard**: Apple Human Interface Guidelines (interaction, motion, haptics, accessibility)
 **Guardrails ref**: `docs/REFACTORING_GUARDRAILS.md` #1 Subsequent Pass Rule
 
@@ -155,17 +155,16 @@
 - All `Haptics` calls on `onPressIn` (not `onPress`) — fires before gesture resolution
 - `Heavy` for primary care selection, `Medium` for hospital card, `Light` for search, `selectionAsync` for profile
 
-**Status**: ⏳ Pending implementation
+**Status**: DONE
 
 | File | Change | Defect fixed |
 |---|---|---|
-| `MapExploreIntentCareSection.jsx` | `Heavy` on `CareIntentOrb` + `CareIntentCard` `onPressIn` | E-2.1 |
+| `MapExploreIntentCareSection.jsx` | `Heavy` on `CareIntentOrb` + `CareIntentCard` `onPressIn`; `hitSlop={8}` on orb | E-2.1, E-2.5 |
 | `MapExploreIntentHospitalSummaryCard.jsx` | `Medium` on all 3 layout `Pressable`s `onPressIn` | E-2.2 |
 | `MapExploreIntentStageParts.jsx` | `Light` on search pill `onPressIn` | E-2.3 |
 | `MapExploreIntentProfileTrigger.jsx` | `selectionAsync` on `onPressIn` | E-2.4 |
-| `MapExploreIntentCareSection.jsx` | `hitSlop={8}` on `CareIntentOrb` | E-2.5 |
 
-**Post-pass verification**: _(to be filled after implementation)_
+**Post-pass verification**:
 - [ ] Haptic fires on real iOS device for each surface
 - [ ] No haptic on web (`expo-haptics` no-ops silently on web — acceptable)
 - [ ] No regression on press visual feedback
@@ -174,23 +173,65 @@
 ---
 
 ### Pass B — Motion Discipline
-**Status**: ⏳ Pending
+
+**Pre-pass intent**: Gate pulse loop behind `reduceMotion`; spring-drive `isSelected` scale in both care components.
+
+**Status**: DONE
+
+| File | Change | Defect fixed |
+|---|---|---|
+| `MapExploreIntentStageBase.jsx` | `useReducedMotion()` import + gate on `reduceMotion` in pulse loop effect + dep array | E-2.6 |
+| `MapExploreIntentCareSection.jsx` | `selectionScaleAnim` `Animated.spring` in `CareIntentOrb` | E-2.8 |
+| `MapExploreIntentCareSection.jsx` | `cardSelectionScaleAnim` `Animated.spring` in `CareIntentCard` | E-2.8 |
+
+**Post-pass verification**:
+- [ ] With Reduce Motion ON: pulse loop stays at 0, care orbs static
+- [ ] With Reduce Motion OFF: pulse loop runs normally
+- [ ] Care selection animates with spring pop, not static jump
 
 ---
 
 ### Pass C — Progression
-**Status**: ⏳ Pending
+
+**Pre-pass intent**: Add skeleton timeout fallback; dim secondary/tertiary orbs when no network data.
+
+**Status**: DONE
+
+| File | Change | Defect fixed |
+|---|---|---|
+| `MapExploreIntentHospitalSummaryCard.jsx` | `SummaryLoadingCopy` — 6s `setTimeout` → fallback neutral copy | E-2.9 |
+| `MapExploreIntentCareSection.jsx` | `isNetworkDataReady` + `notReadyStyle` applied to secondary/tertiary orbs in canonical layout | E-2.10 |
+
+**Post-pass verification**:
+- [ ] With no location/network: after 6s skeleton replaces with fallback copy
+- [ ] With counts = 0: bed and compare orbs appear dimmed
+- [ ] Once counts resolve: orbs return to full hierarchy opacity
 
 ---
 
 ### Pass D — Accessibility
-**Status**: ⏳ Pending
+
+**Pre-pass intent**: Add `accessibilityLabel`, `accessibilityHint`, and `accessibilityLiveRegion` to all care surfaces and hospital card.
+
+**Status**: DONE
+
+| File | Change | Defect fixed |
+|---|---|---|
+| `MapExploreIntentCareSection.jsx` | `accessibilityRole`, `accessibilityLabel`, `accessibilityHint` on `CareIntentOrb` | E-2.11 |
+| `MapExploreIntentCareSection.jsx` | `accessibilityRole`, `accessibilityLabel`, `accessibilityHint` on `CareIntentCard` | E-2.11 |
+| `MapExploreIntentCareSection.jsx` | `accessibilityLiveRegion="polite"` on canonical care row `View` | E-2.13 |
+| `MapExploreIntentHospitalSummaryCard.jsx` | `accessibilityRole`, `accessibilityLabel` (derived from `nearestHospital.name` + meta) on all 3 layouts | E-2.12 |
+
+**Post-pass verification**:
+- [ ] VoiceOver reads care orb label + subtext as hint
+- [ ] VoiceOver reads hospital name + distance on card
+- [ ] VoiceOver announces selection change via liveRegion
 
 ---
 
 ## 6. Pass Plan
 
-### Pass A — Haptics ✅ IN PROGRESS
+### Pass A — Haptics ✅ DONE
 1. `CareIntentOrb` → `Heavy` impact on `onPressIn`
 2. `CareIntentCard` → `Heavy` impact on `onPressIn`
 3. `MapExploreIntentHospitalSummaryCard` (all 3 layouts) → `Medium` impact on `onPressIn`

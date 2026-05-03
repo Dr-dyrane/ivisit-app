@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, Platform, ScrollView, useWindowDimensions } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_CARE_PULSE_MS } from "../../tokens/mapMotionTokens";
@@ -47,6 +48,8 @@ export default function MapExploreIntentStageBase({
 	const responsiveMetrics = useMapExploreIntentResponsiveMetrics();
 	const isWebPlatform = Platform.OS === "web";
 	const pulseProgress = useRef(new Animated.Value(0)).current;
+	// PULLBACK NOTE: Pass B — gate pulse loop behind OS reduceMotion flag (E-2.6)
+	const reduceMotion = useReducedMotion();
 	const resolvedScreenConfig = useMemo(
 		() => screenConfig || getMapExploreIntentScreenConfig(variant),
 		[screenConfig, variant],
@@ -162,7 +165,7 @@ export default function MapExploreIntentStageBase({
 	);
 
 	useEffect(() => {
-		if (selectedCare || isExpanded) {
+		if (selectedCare || isExpanded || reduceMotion) {
 			pulseProgress.stopAnimation();
 			pulseProgress.setValue(0);
 			return undefined;
@@ -190,7 +193,7 @@ export default function MapExploreIntentStageBase({
 			pulseLoop.stop();
 			pulseProgress.stopAnimation();
 		};
-	}, [isExpanded, pulseProgress, selectedCare]);
+	}, [isExpanded, pulseProgress, reduceMotion, selectedCare]);
 
 	const headerSlot = (
 		<MapExploreIntentTopRow

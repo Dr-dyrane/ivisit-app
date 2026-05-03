@@ -1,6 +1,7 @@
 import React from "react";
 import { Image, Platform, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import styles from "./mapExploreIntent.styles";
 
@@ -17,6 +18,8 @@ export default function MapExploreIntentProfileTrigger({
 	return (
 		<Pressable
 			onPress={onPress}
+			// PULLBACK NOTE: Pass A — selectionAsync haptic on profile trigger (E-2.4)
+			onPressIn={() => Haptics.selectionAsync()}
 			style={({ pressed }) => [
 				styles.avatarPressable,
 				{

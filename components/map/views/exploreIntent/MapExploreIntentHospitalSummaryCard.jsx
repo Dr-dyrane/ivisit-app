@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
 import styles from "./mapExploreIntent.styles";
 
@@ -62,6 +63,28 @@ function SummaryHeroMetric({ label, value, surfaceColor, tokens }) {
 }
 
 function SummaryLoadingCopy({ hero = false }) {
+	// PULLBACK NOTE: Pass C — 6s timeout fallback when data never arrives (E-2.9)
+	// OLD: skeleton rendered indefinitely — no recovery if location denied or network stalls
+	// NEW: after 6s, show neutral fallback copy instead of permanent loading bones
+	const [timedOut, setTimedOut] = useState(false);
+	useEffect(() => {
+		const t = setTimeout(() => setTimedOut(true), 6000);
+		return () => clearTimeout(t);
+	}, []);
+
+	if (timedOut) {
+		return (
+			<View style={[styles.summaryLoadingCopy, hero ? styles.summaryLoadingCopyHero : null]}>
+				<Text style={[styles.hospitalEyebrow, { color: "rgba(100,116,139,0.6)" }]}>
+					{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
+				</Text>
+				<Text style={[styles.hospitalTitle, { color: "rgba(100,116,139,0.54)" }]}>
+					{MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
+				</Text>
+			</View>
+		);
+	}
+
 	return (
 		<View style={[styles.summaryLoadingCopy, hero ? styles.summaryLoadingCopyHero : null]}>
 			<View
@@ -140,10 +163,19 @@ export default function MapExploreIntentHospitalSummaryCard({
 		},
 	];
 
+	// PULLBACK NOTE: Pass D — accessibilityLabel derived from content (E-2.12)
+	const cardAccessibilityLabel = nearestHospital?.name
+		? `${nearestHospital.name}${nearestHospitalMeta.length > 0 ? `, ${nearestHospitalMeta.join(", ")}` : ""}`
+		: MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS;
+
 	if (usesCanonicalSummaryLayout) {
 		return (
 			<Pressable
 				onPress={onOpenHospitals}
+				// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
+				onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+				accessibilityRole="button"
+				accessibilityLabel={cardAccessibilityLabel}
 				style={({ pressed }) => [
 					styles.hospitalCard,
 					isCentered ? styles.hospitalCardCentered : null,
@@ -210,6 +242,10 @@ export default function MapExploreIntentHospitalSummaryCard({
 		return (
 			<Pressable
 				onPress={onOpenHospitals}
+				// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
+				onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+				accessibilityRole="button"
+				accessibilityLabel={cardAccessibilityLabel}
 				style={({ pressed }) => [
 					styles.summaryHeroCard,
 					isCentered ? styles.hospitalCardCentered : null,
@@ -300,6 +336,10 @@ export default function MapExploreIntentHospitalSummaryCard({
 	return (
 		<Pressable
 			onPress={onOpenHospitals}
+			// PULLBACK NOTE: Pass A — Medium haptic on hospital card tap (E-2.2)
+			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+			accessibilityRole="button"
+			accessibilityLabel={cardAccessibilityLabel}
 			style={[
 				styles.intentStatusCard,
 				isWebMobileVariant ? styles.intentStatusCardWebMobile : null,

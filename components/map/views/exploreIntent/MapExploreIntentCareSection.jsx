@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../../constants/colors";
 import { MAP_EXPLORE_INTENT_COPY } from "./mapExploreIntent.content";
 import { getBedSpaceSubtext, getSelectedCareLabel } from "./mapExploreIntent.helpers";
@@ -37,6 +38,19 @@ function CareIntentOrb({
 					outputRange: [1, 1.03],
 				})
 			: 1;
+	// PULLBACK NOTE: Pass B — spring-drive isSelected scale for tactile confirmation (E-2.8)
+	// OLD: static scale(1.05) on isSelected via ternary
+	// NEW: Animated.spring to 1.05 on select, 1.0 on deselect
+	const selectionScaleAnim = useRef(new Animated.Value(isSelected ? 1.05 : 1)).current;
+	useEffect(() => {
+		Animated.spring(selectionScaleAnim, {
+			toValue: isSelected ? 1.05 : 1,
+			useNativeDriver: true,
+			stiffness: 320,
+			damping: 22,
+			mass: 1,
+		}).start();
+	}, [isSelected, selectionScaleAnim]);
 	const wrapperOpacity =
 		hierarchy === "primary" ? 1 : hierarchy === "secondary" ? 0.84 : 0.68;
 	const isAndroid = Platform.OS === "android";
@@ -67,6 +81,13 @@ function CareIntentOrb({
 	return (
 		<Pressable
 			onPress={onPress}
+			// PULLBACK NOTE: Pass A — Heavy haptic on care orb press (E-2.1)
+			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)}
+			hitSlop={8}
+			// PULLBACK NOTE: Pass D — accessibility label + hint for VoiceOver (E-2.11)
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			accessibilityHint={subtext}
 			style={({ pressed }) => [
 				styles.careAction,
 				responsiveStyles?.actionStyle,
@@ -82,7 +103,7 @@ function CareIntentOrb({
 			>
 				<Animated.View
 					style={{
-						transform: [{ scale: isSelected ? 1.05 : animatedScale }],
+						transform: [{ scale: isSelected ? selectionScaleAnim : animatedScale }],
 					}}
 				>
 					<View
@@ -155,6 +176,17 @@ function CareIntentCard({
 	responsiveMetrics = null,
 }) {
 	const isPrimary = hierarchy === "primary";
+	// PULLBACK NOTE: Pass B — spring-drive isSelected scale for tactile confirmation (E-2.8)
+	const cardSelectionScaleAnim = useRef(new Animated.Value(isSelected ? 1.01 : 1)).current;
+	useEffect(() => {
+		Animated.spring(cardSelectionScaleAnim, {
+			toValue: isSelected ? 1.01 : 1,
+			useNativeDriver: true,
+			stiffness: 320,
+			damping: 22,
+			mass: 1,
+		}).start();
+	}, [isSelected, cardSelectionScaleAnim]);
 	const restingOpacity = isSelected ? 1 : isPrimary ? 1 : hierarchy === "secondary" ? 0.94 : 0.82;
 	const animatedScale =
 		isPrimary && pulseProgress
@@ -274,6 +306,12 @@ function CareIntentCard({
 	return (
 		<Pressable
 			onPress={onPress}
+			// PULLBACK NOTE: Pass A — Heavy haptic on care card press (E-2.1)
+			onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)}
+			// PULLBACK NOTE: Pass D — accessibility label + hint for VoiceOver (E-2.11)
+			accessibilityRole="button"
+			accessibilityLabel={label}
+			accessibilityHint={showSubtext && subtext ? subtext : undefined}
 			style={({ pressed }) => [
 				styles.intentCardPressable,
 				pressed ? styles.intentCardPressed : null,
@@ -288,7 +326,7 @@ function CareIntentCard({
 							{ perspective: 1000 },
 							{ translateX: staticTranslateX },
 							{ translateY: isSelected ? 0 : animatedTranslateY },
-							{ scale: isSelected ? 1.01 : animatedScale },
+							{ scale: isSelected ? cardSelectionScaleAnim : animatedScale },
 							{ rotateX: isSelected ? "0deg" : cardRotateX },
 						],
 					},
@@ -432,6 +470,11 @@ export default function MapExploreIntentCareSection({
 		nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : MAP_EXPLORE_INTENT_COPY.NEARBY_HELP;
 	const usesCanonicalOrbLayout =
 		layoutMode === "canonical" || layoutMode === "web_canonical";
+	// PULLBACK NOTE: Pass C — dim secondary/tertiary orbs while network data is not yet ready (E-2.10)
+	// OLD: secondary/tertiary orbs render at full hierarchy opacity regardless of data state
+	// NEW: when neither nearbyHospitalCount nor totalAvailableBeds has resolved, dim non-primary orbs
+	const isNetworkDataReady = nearbyHospitalCount > 0 || totalAvailableBeds > 0;
+	const notReadyStyle = !isNetworkDataReady && !selectedCare ? { opacity: 0.46 } : null;
 
 	if (layoutMode === "panel") {
 			return (
@@ -611,7 +654,11 @@ export default function MapExploreIntentCareSection({
 				<Ionicons name="chevron-forward" size={16} color={mutedColor} />
 			</Pressable>
 
-			<View style={[styles.careRow, styles.careRowBiased, careRowStyle]}>
+			{/* PULLBACK NOTE: Pass D — liveRegion so VoiceOver announces care selection changes (E-2.13) */}
+			<View
+				style={[styles.careRow, styles.careRowBiased, careRowStyle]}
+				accessibilityLiveRegion="polite"
+			>
 				<CareIntentOrb
 					label={MAP_EXPLORE_INTENT_COPY.AMBULANCE}
 					subtext={ambulanceSubtext}
@@ -634,7 +681,7 @@ export default function MapExploreIntentCareSection({
 					colors={["#6F8DA7", "#506A86"]}
 					hierarchy="secondary"
 					actionBias="leading"
-					containerStyle={styles.careActionLeadingBias}
+					containerStyle={[styles.careActionLeadingBias, notReadyStyle]}
 					onPress={() => onChooseCare("bed")}
 					isSelected={selectedCare === "bed"}
 					titleColor={titleColor}
@@ -648,7 +695,7 @@ export default function MapExploreIntentCareSection({
 					colors={["#7A8592", "#596370"]}
 					hierarchy="tertiary"
 					actionBias="trailing"
-					containerStyle={styles.careActionTrailingBias}
+					containerStyle={[styles.careActionTrailingBias, notReadyStyle]}
 					onPress={() => onChooseCare("both")}
 					isSelected={selectedCare === "both"}
 					titleColor={titleColor}
