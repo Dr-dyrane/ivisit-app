@@ -1,4 +1,5 @@
 import React, { memo, useMemo } from "react";
+import { Image, Platform, StyleSheet, View } from "react-native";
 import { Marker } from "./MapComponents";
 import useMarkerRenderPulse from "../../hooks/map/useMarkerRenderPulse";
 import { normalizeCoordinate } from "../../utils/emergencyContextHelpers";
@@ -6,19 +7,14 @@ import { normalizeCoordinate } from "../../utils/emergencyContextHelpers";
 const LOGO_MARKER_IMAGE = require("../../assets/map/hospital.png");
 const LOGO_MARKER_IMAGE_SELECTED = require("../../assets/map/selected_hospital.png");
 
-// Design-provided image dimensions:
-// hospital: 60.75 x 102.5
-// selected_hospital: 81 x 137
-// With anchor at center, pin bottom tip to coordinate by shifting up half height.
-const MARKER_HEIGHT = {
-  normal: 102.5,
-  selected: 137,
+const MARKER_SIZE = {
+  normal: { width: 30, height: 50 },
+  selected: { width: 38, height: 64 },
 };
 
-const getBottomPinnedCenterOffset = (isSelected) => ({
-  x: 0,
-  y: -(isSelected ? MARKER_HEIGHT.selected : MARKER_HEIGHT.normal) / 6,
-});
+const isWeb = Platform.OS === "web";
+const getMarkerStyle = (isSelected) =>
+  isSelected ? MARKER_SIZE.selected : MARKER_SIZE.normal;
 
 const HospitalMarkers = ({
   hospitals,
@@ -62,26 +58,53 @@ const HospitalMarkers = ({
 
   return markerHospitals.map(({ hospital, coordinate }) => {
     const isSelected = selectedHospitalId === hospital.id;
-    const centerOffset = getBottomPinnedCenterOffset(isSelected);
+    const markerStyle = getMarkerStyle(isSelected);
     const hospitalName =
       typeof hospital?.name === "string" && hospital.name.trim().length > 0
         ? hospital.name.trim()
         : "Hospital";
+    const markerImage = isSelected
+      ? LOGO_MARKER_IMAGE_SELECTED
+      : LOGO_MARKER_IMAGE;
+    const markerProps = isWeb
+      ? {
+          image: markerImage,
+          imageSize: markerStyle,
+          anchor: { x: 0.5, y: 1 },
+        }
+      : {
+          anchor: { x: 0.5, y: 1 },
+        };
 
     return (
       <Marker
         key={hospital.id}
         coordinate={coordinate}
         onPress={onHospitalPress ? () => onHospitalPress(hospital) : undefined}
-        anchor={{ x: 0.5, y: 0.5 }}
-        centerOffset={centerOffset}
         tracksViewChanges={tracksMarkerViews}
         zIndex={isSelected ? 100 : 1}
-        image={isSelected ? LOGO_MARKER_IMAGE_SELECTED : LOGO_MARKER_IMAGE}
         title={hospitalName}
-      />
+        {...markerProps}
+      >
+        {!isWeb && (
+          <View style={styles.markerWrapper}>
+            <Image
+              source={markerImage}
+              style={markerStyle}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+      </Marker>
     );
   });
 };
+
+const styles = StyleSheet.create({
+  markerWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
 
 export default memo(HospitalMarkers);

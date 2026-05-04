@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Platform } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { Marker, Polyline } from './MapComponents';
 import { COLORS } from "../../constants/colors";
 
@@ -27,6 +27,9 @@ const normalizeHeading = (heading) => {
 	if (!Number.isFinite(heading)) return 0;
 	return ((heading % 360) + 360) % 360;
 };
+
+const AMBULANCE_MARKER_SIZE = { width: 36, height: 36 };
+const isWeb = Platform.OS === 'web';
 
 export const getAmbulanceSpriteForHeading = (heading) => {
 	const normalized = normalizeHeading(heading);
@@ -80,15 +83,38 @@ const RouteLayer = ({
                     coordinate={ambulanceCoordinate}
                     anchor={{ x: 0.5, y: 0.5 }}
                     flat={true}
-                    image={ambulanceSprite}
+                    {...(isWeb
+                        ? { image: ambulanceSprite, imageSize: AMBULANCE_MARKER_SIZE }
+                        : {})}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
 					opacity={markerOpacity}
                     zIndex={200}
-                />
+                >
+                    {!isWeb && (
+                        <View style={styles.ambulanceWrapper}>
+                            <Image
+                                source={ambulanceSprite}
+                                style={styles.ambulanceImage}
+                                resizeMode="contain"
+                            />
+                        </View>
+                    )}
+                </Marker>
             )}
         </>
     );
 };
+
+const styles = StyleSheet.create({
+    ambulanceWrapper: {
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    ambulanceImage: {
+        width: AMBULANCE_MARKER_SIZE.width,
+        height: AMBULANCE_MARKER_SIZE.height,
+    },
+});
 
 export default memo(RouteLayer);

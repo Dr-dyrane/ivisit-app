@@ -6,6 +6,11 @@ Status: Implemented in code, runtime device/browser repro confirmation still pen
 
 This pass hardened map entity rendering after route-state ownership was already moved onto the shared five-layer lane.
 
+Precommit snapshot:
+
+- branch: `main`
+- HEAD: `28dea4b`
+
 Primary surfaces affected:
 
 - `components/map/FullScreenEmergencyMap.jsx`
@@ -86,6 +91,17 @@ Result:
 Result:
 
 - this pass reduces one of the documented `useEffect` guardrail violations in the map runtime
+
+### 6. Native and web marker sizing normalization
+
+- `HospitalMarkers.jsx` now renders native hospital image markers as explicit child views with fixed `width`/`height` and bottom-center anchor geometry.
+- `RouteLayer.jsx` now renders the ambulance marker as a fixed-size native image child on mobile and passes `imageSize` on web.
+- `MapComponents.web.js` already supports explicit `imageSize`; this pass supplies it for raw asset markers so web marker icons no longer scale from full source pixel dimensions.
+
+Result:
+
+- Android native marker scale is constrained to the intended design size instead of rendering enormous asset dimensions.
+- Web marker size behavior now matches the same explicit sizing contract used by native marker children.
 
 ## Outcome
 
