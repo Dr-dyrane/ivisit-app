@@ -97,11 +97,14 @@ Result:
 - `HospitalMarkers.jsx` now renders native hospital image markers as explicit child views with fixed `width`/`height` and bottom-center anchor geometry.
 - `RouteLayer.jsx` now renders the ambulance marker as a fixed-size native image child on mobile and passes `imageSize` on web.
 - `MapComponents.web.js` already supports explicit `imageSize`; this pass supplies it for raw asset markers so web marker icons no longer scale from full source pixel dimensions.
+- **Additional fix**: Modified `buildResolvedMarkerIcon` in `MapComponents.web.js` to respect explicit `imageSize` props instead of overriding them with automatic scaling logic.
+- **Android-specific fix**: Added `image={null}` to native markers and moved sizing to View wrapper to prevent default marker image conflicts and ensure exact sizing control.
 
 Result:
 
 - Android native marker scale is constrained to the intended design size instead of rendering enormous asset dimensions.
-- Web marker size behavior now matches the same explicit sizing contract used by native marker children.
+- Web marker size behavior now matches the same explicit sizing contract used by native marker children, with proper respect for `imageSize` parameters.
+- Native markers explicitly disable default images to prevent scaling conflicts.
 
 ## Outcome
 

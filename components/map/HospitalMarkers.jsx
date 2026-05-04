@@ -13,8 +13,18 @@ const MARKER_SIZE = {
 };
 
 const isWeb = Platform.OS === "web";
-const getMarkerStyle = (isSelected) =>
-  isSelected ? MARKER_SIZE.selected : MARKER_SIZE.normal;
+const isAndroid = Platform.OS === "android";
+const getMarkerStyle = (isSelected) => {
+  const baseSize = isSelected ? MARKER_SIZE.selected : MARKER_SIZE.normal;
+  // Android may need slightly different handling
+  if (isAndroid) {
+    return {
+      width: baseSize.width,
+      height: baseSize.height,
+    };
+  }
+  return baseSize;
+};
 
 const HospitalMarkers = ({
   hospitals,
@@ -73,6 +83,7 @@ const HospitalMarkers = ({
           anchor: { x: 0.5, y: 1 },
         }
       : {
+          image: null, // Explicitly disable default marker image on native
           anchor: { x: 0.5, y: 1 },
         };
 
@@ -87,10 +98,10 @@ const HospitalMarkers = ({
         {...markerProps}
       >
         {!isWeb && (
-          <View style={styles.markerWrapper}>
+          <View style={[styles.markerWrapper, markerStyle]}>
             <Image
               source={markerImage}
-              style={markerStyle}
+              style={styles.markerImage}
               resizeMode="contain"
             />
           </View>
@@ -104,6 +115,10 @@ const styles = StyleSheet.create({
   markerWrapper: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  markerImage: {
+    width: "100%",
+    height: "100%",
   },
 });
 

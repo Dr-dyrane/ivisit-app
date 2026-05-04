@@ -10,20 +10,28 @@ This note records the marker sizing/scale fix for native Android/iOS and web map
 
 - Android native `react-native-maps` markers were being rendered with raw asset images and no explicit size limit, causing excessively large marker pins in the deployed Android build.
 - Web marker rendering in `components/map/MapComponents.web.js` supports `imageSize`, but marker consumers were not consistently supplying it.
+- **Additional issue discovered**: Web `buildResolvedMarkerIcon` function was overriding explicit `imageSize` props with its own scaling logic, causing markers to be larger than intended.
+- **Android-specific issue**: Native markers may still use default marker images even when children are provided, causing scaling conflicts.
 
 ### Fix applied
 
 - `components/map/HospitalMarkers.jsx`
   - Native mobile markers now render custom marker children with explicit `width`/`height`.
   - Web markers now pass `imageSize` and `image` through the shared `Marker` props.
+  - Added `image={null}` to explicitly disable default marker images on native platforms.
+  - Moved sizing from Image to View wrapper with Image filling 100% of container.
 - `components/map/RouteLayer.jsx`
   - Ambulance markers now use explicit `imageSize` on web.
   - Native mobile ambulance markers now render a fixed-size image child.
+  - Added `image={null}` for native markers.
+- `components/map/MapComponents.web.js`
+  - Modified `buildResolvedMarkerIcon` to respect explicit `imageSize` when provided, preventing unwanted scaling.
 
 ### Verification notes
 
 - Code review confirms `MapComponents.web.js` already supports explicit `imageSize`.
 - The native fix is consistent with existing marker child rendering patterns in `react-native-maps`.
+- The web fix ensures `imageSize` props are honored over automatic scaling.
 - A staging OTA should now be safe to publish once the code has been validated by local tests.
 
 ### Git snapshot

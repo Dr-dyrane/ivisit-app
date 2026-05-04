@@ -109,15 +109,22 @@ const buildResolvedMarkerIcon = ({
     return undefined;
   }
 
-  const sourceWidth =
-    toFiniteNumber(imageSize?.width) || toFiniteNumber(asset.width) || 56;
-  const sourceHeight =
-    toFiniteNumber(imageSize?.height) || toFiniteNumber(asset.height) || 56;
-  const targetHeight = sourceHeight > 96 ? 72 : 56;
-  const targetWidth = Math.max(
-    20,
-    Math.round((sourceWidth / Math.max(sourceHeight, 1)) * targetHeight),
-  );
+  // Respect explicit imageSize if provided, otherwise apply default scaling
+  let targetWidth, targetHeight;
+  if (imageSize?.width && imageSize?.height) {
+    targetWidth = toFiniteNumber(imageSize.width);
+    targetHeight = toFiniteNumber(imageSize.height);
+  } else {
+    const sourceWidth =
+      toFiniteNumber(asset.width) || 56;
+    const sourceHeight =
+      toFiniteNumber(asset.height) || 56;
+    targetHeight = sourceHeight > 96 ? 72 : 56;
+    targetWidth = Math.max(
+      20,
+      Math.round((sourceWidth / Math.max(sourceHeight, 1)) * targetHeight),
+    );
+  }
 
   const anchorXRatio = toFiniteNumber(anchor?.x);
   const anchorYRatio = toFiniteNumber(anchor?.y);

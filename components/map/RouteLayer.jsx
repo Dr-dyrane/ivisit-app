@@ -85,7 +85,7 @@ const RouteLayer = ({
                     flat={true}
                     {...(isWeb
                         ? { image: ambulanceSprite, imageSize: AMBULANCE_MARKER_SIZE }
-                        : {})}
+                        : { image: null })}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
 					opacity={markerOpacity}
