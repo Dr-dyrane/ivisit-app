@@ -85,36 +85,17 @@ const RouteLayer = ({
                     flat={true}
                     {...(isWeb
                         ? { image: ambulanceSprite, imageSize: AMBULANCE_MARKER_SIZE }
-                        : { image: null })}
+                        : { image: ambulanceSprite })}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
 					opacity={markerOpacity}
                     zIndex={200}
-                >
-                    {!isWeb && (
-                        <View style={styles.ambulanceWrapper}>
-                            <Image
-                                source={ambulanceSprite}
-                                style={styles.ambulanceImage}
-                                resizeMode="contain"
-                            />
-                        </View>
-                    )}
-                </Marker>
+                />
             )}
         </>
     );
 };
 
-const styles = StyleSheet.create({
-    ambulanceWrapper: {
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    ambulanceImage: {
-        width: AMBULANCE_MARKER_SIZE.width,
-        height: AMBULANCE_MARKER_SIZE.height,
-    },
-});
+const styles = StyleSheet.create({});
 
 export default memo(RouteLayer);
