@@ -76,11 +76,15 @@ const HospitalMarkers = ({
     const markerImage = isSelected
       ? LOGO_MARKER_IMAGE_SELECTED
       : LOGO_MARKER_IMAGE;
-    const markerProps = {
-      image: markerImage,
-      anchor: { x: 0.5, y: 1 },
-      ...(isWeb ? { imageSize: markerStyle } : {}),
-    };
+    const markerProps = isWeb
+      ? {
+          image: markerImage,
+          imageSize: markerStyle,
+          anchor: { x: 0.5, y: 1 },
+        }
+      : {
+          anchor: { x: 0.5, y: 1 },
+        };
 
     return (
       <Marker
@@ -91,11 +95,30 @@ const HospitalMarkers = ({
         zIndex={isSelected ? 100 : 1}
         title={hospitalName}
         {...markerProps}
-      />
+      >
+        {!isWeb && (
+          <View style={[styles.markerWrapper, markerStyle]}>
+            <Image
+              source={markerImage}
+              style={styles.markerImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+      </Marker>
     );
   });
 };
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  markerWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markerImage: {
+    width: "100%",
+    height: "100%",
+  },
+});
 
 export default memo(HospitalMarkers);
