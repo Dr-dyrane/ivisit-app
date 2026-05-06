@@ -28,7 +28,7 @@ const normalizeHeading = (heading) => {
 	return ((heading % 360) + 360) % 360;
 };
 
-const getHeadingSprite = (heading) => {
+export const getAmbulanceSpriteForHeading = (heading) => {
 	const normalized = normalizeHeading(heading);
 	const bucket = Math.round(normalized / HEADING_BUCKET_SIZE) % AMBULANCE_SPRITES.length;
 	return AMBULANCE_SPRITES[bucket];
@@ -40,7 +40,7 @@ const RouteLayer = ({
     ambulanceHeading,
     animateAmbulance
 }) => {
-    const ambulanceSprite = getHeadingSprite(ambulanceHeading);
+    const ambulanceSprite = getAmbulanceSpriteForHeading(ambulanceHeading);
 
     return (
         <>
