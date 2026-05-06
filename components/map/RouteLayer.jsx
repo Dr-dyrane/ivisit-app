@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Platform } from 'react-native';
 import { Marker, Polyline } from './MapComponents';
 import { COLORS } from "../../constants/colors";
 
@@ -28,10 +28,7 @@ const normalizeHeading = (heading) => {
 	return ((heading % 360) + 360) % 360;
 };
 
-const AMBULANCE_MARKER_SIZE = { width: 36, height: 36 };
-const isWeb = Platform.OS === 'web';
-
-export const getAmbulanceSpriteForHeading = (heading) => {
+const getHeadingSprite = (heading) => {
 	const normalized = normalizeHeading(heading);
 	const bucket = Math.round(normalized / HEADING_BUCKET_SIZE) % AMBULANCE_SPRITES.length;
 	return AMBULANCE_SPRITES[bucket];
@@ -41,38 +38,17 @@ const RouteLayer = ({
     routeCoordinates,
     ambulanceCoordinate,
     ambulanceHeading,
-    animateAmbulance,
-	telemetryHealth = null,
+    animateAmbulance
 }) => {
-    const ambulanceSprite = getAmbulanceSpriteForHeading(ambulanceHeading);
-	const telemetryState = telemetryHealth?.state ?? "inactive";
-	const routeStrokeColor =
-		telemetryState === "lost"
-			? "#B91C1C"
-			: telemetryState === "stale"
-				? "#B45309"
-				: COLORS.brandPrimary;
-	const routeDashPattern =
-		telemetryState === "lost"
-			? [6, 7]
-			: telemetryState === "stale"
-				? [10, 6]
-				: undefined;
-	const markerOpacity =
-		telemetryState === "lost"
-			? 0.62
-			: telemetryState === "stale"
-				? 0.85
-				: 1;
+    const ambulanceSprite = getHeadingSprite(ambulanceHeading);
 
     return (
         <>
             {routeCoordinates && routeCoordinates.length > 1 && (
                 <Polyline
                     coordinates={routeCoordinates}
-                    strokeColor={routeStrokeColor}
-                    strokeWidth={telemetryState === "lost" ? 3 : 4}
-					lineDashPattern={routeDashPattern}
+                    strokeColor={COLORS.brandPrimary}
+                    strokeWidth={4}
                     lineCap="round"
                     lineJoin="round"
                 />
@@ -83,38 +59,14 @@ const RouteLayer = ({
                     coordinate={ambulanceCoordinate}
                     anchor={{ x: 0.5, y: 0.5 }}
                     flat={true}
-                    {...(isWeb
-                        ? { image: ambulanceSprite, imageSize: AMBULANCE_MARKER_SIZE }
-                        : {})}
+                    image={ambulanceSprite}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
-					opacity={markerOpacity}
                     zIndex={200}
-                >
-                    {!isWeb && (
-                        <View style={styles.ambulanceWrapper}>
-                            <Image
-                                source={ambulanceSprite}
-                                style={styles.ambulanceImage}
-                                resizeMode="contain"
-                            />
-                        </View>
-                    )}
-                </Marker>
+                />
             )}
         </>
     );
 };
-
-const styles = StyleSheet.create({
-    ambulanceWrapper: {
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    ambulanceImage: {
-        width: AMBULANCE_MARKER_SIZE.width,
-        height: AMBULANCE_MARKER_SIZE.height,
-    },
-});
 
 export default memo(RouteLayer);
