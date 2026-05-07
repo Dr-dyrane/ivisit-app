@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { buildHospitalSubtitle } from "./mapHospitalList.helpers";
+import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
 const ROOM_LABELS = {
 	standard: "Standard bed",
@@ -97,14 +98,15 @@ function formatRatingCount(value) {
 	return String(Math.round(count));
 }
 
-function formatPrice(value, fallback = "At request") {
-	if (typeof value === "string" && value.trim()) {
-		const trimmed = value.trim();
-		return trimmed.startsWith("$") ? trimmed : `$${trimmed}`;
-	}
-	const numeric = Number(value);
-	if (!Number.isFinite(numeric) || numeric <= 0) return fallback;
-	return `$${Math.round(numeric).toLocaleString()}`;
+function formatPrice(value, fallback = "At request", currency = "USD") {
+	return (
+		formatMoney(value, {
+			currency: resolveMoneyCurrency(currency),
+			fallback,
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		}) || fallback
+	);
 }
 
 function matchesAliases(value, aliases = []) {
@@ -253,9 +255,17 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 		const enabled = Boolean(row) || (tier.id === "basic" && hasAmbulances);
 		const title = tier.label;
 		const priceText = row
-			? formatPrice(row.base_price, null)
+			? formatPrice(
+					row.base_price,
+					null,
+					resolveMoneyCurrency(row?.currency, hospital?.currency),
+				)
 			: enabled
-				? formatPrice(hospital?.basePrice ?? hospital?.base_price, null)
+				? formatPrice(
+						hospital?.basePrice ?? hospital?.base_price,
+						null,
+						hospital?.currency,
+					)
 				: null;
 		return {
 			id: row?.id || tier.id,
@@ -305,9 +315,17 @@ export function buildRoomServiceCards(hospital, roomRows = [], isLoading = false
 		const enabled = Boolean(row) || (type.id === "standard" && Number.isFinite(available) && available > 0);
 		const title = type.label;
 		const priceText = row
-			? formatPrice(row.base_price ?? row.price_per_night ?? row.price, null)
+			? formatPrice(
+					row.base_price ?? row.price_per_night ?? row.price,
+					null,
+					resolveMoneyCurrency(row?.currency, hospital?.currency),
+				)
 			: enabled
-				? formatPrice(hospital?.basePrice ?? hospital?.base_price, null)
+				? formatPrice(
+						hospital?.basePrice ?? hospital?.base_price,
+						null,
+						hospital?.currency,
+					)
 				: null;
 
 		return {

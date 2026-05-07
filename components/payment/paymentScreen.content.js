@@ -3,6 +3,8 @@
 // NEW: Centralized content file following map sheets pattern
 // REASON: Maintain consistency and ease of updates
 
+import { formatMoney } from "../../utils/formatMoney";
+
 export const PAYMENT_SCREEN_COPY = {
   // Management Mode
   management: {
@@ -31,7 +33,7 @@ export const PAYMENT_SCREEN_COPY = {
     placeholder: "Enter amount",
     confirm: "Add Funds",
     success: (amount, newBalance) =>
-      `Added $${amount} to your wallet. Your new balance is $${newBalance.toFixed(2)}`,
+      `Added ${formatMoney(amount, { currency: "USD" })} to your wallet. Your new balance is ${formatMoney(newBalance, { currency: "USD" })}`,
     failed: "Top-up Failed",
     failedMessage: "Could not process top-up. Please check your card.",
   },

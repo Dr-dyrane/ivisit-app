@@ -86,6 +86,29 @@ Remaining cleanup, still separate from this lock:
 - the request-creation subtotal/gross contract should eventually be unified so the first insert and the Stripe lane no longer need the follow-up total sync
 - wallet checkout inside `/map` commit payment is still intentionally not treated as a truthful live lane here
 
+### Current Billing Currency Truth
+
+- backend pricing and payment truth is still USD-first today
+- client UI must not guess local billing currency from location or device country
+- immediate display rule is: render backend truth through the shared symbol-aware formatter such as `$150.00`
+- the future per-country quote lane is tracked in [BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md](./BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md)
+
+### Current Quote-Backed Runtime Adoption
+
+The first live owners already rendering server quote snapshots are:
+
+- `hooks/payment/usePaymentScreenModel.js`
+- `components/payment/PaymentCheckoutVariant.jsx`
+- `components/map/views/commitPayment/useMapCommitPaymentController.js`
+- `components/map/views/commitPayment/MapCommitPaymentStageBase.jsx`
+- `hooks/visits/useBookVisitScreenModel.js`
+- `hooks/visits/usePaymentHistoryEntryQuery.js`
+
+Guardrail at this stage:
+
+- canonical amounts still drive payment eligibility and settlement
+- quote snapshots drive visible totals, breakdowns, and history labels when available
+
 ## Lane B: Standalone Payment and Wallet
 
 ### Entry Points
@@ -170,6 +193,7 @@ Remaining cleanup, still separate from this lock:
 - Missing org mapping for hospital blocks cash path with explicit UI error.
 - Eligibility check prevents cash requests if org collateral is insufficient.
 - Realtime channel interruptions trigger stale-event gating and canonical state refresh to keep request/payment state deterministic.
+- Missing FX quote truth must fall back to explicit source currency display, not fake local conversion.
 
 ## Deterministic Validation Commands
 

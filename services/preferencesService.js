@@ -10,6 +10,8 @@ const DEFAULT_PREFERENCES = {
     emergencyUpdates: true,
     privacyShareMedicalProfile: false,
     privacyShareEmergencyContacts: false,
+    billingCountryCode: null,
+    billingCurrencyCode: null,
 };
 
 const mapFromDb = (row) => ({
@@ -20,6 +22,8 @@ const mapFromDb = (row) => ({
     emergencyUpdates: row.emergency_updates,
     privacyShareMedicalProfile: row.privacy_share_medical_profile,
     privacyShareEmergencyContacts: row.privacy_share_emergency_contacts,
+    billingCountryCode: row.billing_country_code ?? null,
+    billingCurrencyCode: row.billing_currency_code ?? null,
 });
 
 const mapToDb = (prefs) => {
@@ -31,6 +35,8 @@ const mapToDb = (prefs) => {
     if (prefs.emergencyUpdates !== undefined) db.emergency_updates = prefs.emergencyUpdates;
     if (prefs.privacyShareMedicalProfile !== undefined) db.privacy_share_medical_profile = prefs.privacyShareMedicalProfile;
     if (prefs.privacyShareEmergencyContacts !== undefined) db.privacy_share_emergency_contacts = prefs.privacyShareEmergencyContacts;
+    if (prefs.billingCountryCode !== undefined) db.billing_country_code = prefs.billingCountryCode;
+    if (prefs.billingCurrencyCode !== undefined) db.billing_currency_code = prefs.billingCurrencyCode;
     return db;
 };
 

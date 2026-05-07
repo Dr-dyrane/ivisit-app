@@ -44,6 +44,11 @@ import {
   parseCommitPaymentAmount,
 } from "./mapCommitPayment.helpers";
 import {
+  applyBillingQuoteToCost,
+  buildQuotedMoneyLabel,
+} from "../../../../utils/billingQuotePresentation";
+import { useBillingQuoteQuery } from "../../../../hooks/payment/useBillingQuoteQuery";
+import {
   MAP_COMMIT_PAYMENT_METHOD_KINDS,
   MAP_COMMIT_PAYMENT_TRANSACTION_STATES,
   createCommitPaymentSubmissionState,
@@ -195,8 +200,22 @@ export function useMapCommitPaymentController({
     estimatedCost?.totalCost ?? estimatedCost?.total_cost ?? null;
   // PULLBACK NOTE: PT-B — keep ref in sync with state for use inside refreshPaymentMethodSnapshot
   totalCostValueRef.current = totalCostValue;
+  const { data: costQuote } = useBillingQuoteQuery({
+    amount: totalCostValue,
+    sourceCurrency: estimatedCost?.currency || "USD",
+    preferences,
+    enabled: Number.isFinite(totalCostValue) && totalCostValue >= 0,
+  });
+  const displayEstimatedCost = useMemo(
+    () => applyBillingQuoteToCost(estimatedCost, costQuote),
+    [costQuote, estimatedCost],
+  );
   const totalCostLabel = Number.isFinite(totalCostValue)
-    ? `$${Number(totalCostValue).toFixed(2)}`
+    ? buildQuotedMoneyLabel({
+        amount: totalCostValue,
+        currency: estimatedCost?.currency || "USD",
+        quote: costQuote,
+      })
     : null;
 
   useEffect(() => {
@@ -927,10 +946,12 @@ export function useMapCommitPaymentController({
     selectedPaymentMethod,
     totalCostValue,
     totalCostLabel,
+    costQuote,
     isRefreshingPaymentMethods,
     paymentMethodsSnapshotReady,
     paymentMethodsRefreshKey,
     estimatedCost,
+    displayEstimatedCost,
     isLoadingCost,
     isSubmitting,
     errorMessage,

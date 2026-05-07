@@ -43,6 +43,7 @@ import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { EMERGENCY_FLOW_STATES } from "./emergencyFlowContent";
 import { getEmergencyIntakeVariant } from "./intake/EmergencyIntakeOrchestrator";
 import { getAmbulanceVisualProfile } from "./requestModal/ambulanceTierVisuals";
+import { formatMoney } from "../../utils/formatMoney";
 
 const isValidUUIDValue = (id) =>
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""));
@@ -293,20 +294,30 @@ const EmergencyRequestModal = React.memo(({
 	);
 	const formattedPaymentAmount = useMemo(() => {
 		const total = Number(estimatedCost?.totalCost);
+		const resolvedCurrency =
+			estimatedCost?.currency || selectedAmbulanceType?.currency || "USD";
 		if (Number.isFinite(total) && total > 0) {
-			return `$${total.toFixed(2)}`;
+			return formatMoney(total, { currency: resolvedCurrency });
 		}
 
 		const rawPrice = selectedAmbulanceType?.price;
 		if (typeof rawPrice === "string" && rawPrice.trim().length > 0) {
-			return rawPrice.trim().startsWith("$") ? rawPrice.trim() : `$${rawPrice.trim()}`;
+			return formatMoney(rawPrice, {
+				currency: resolvedCurrency,
+				fallback: rawPrice.trim(),
+			});
 		}
 
 		const numericPrice = Number(rawPrice);
 		return Number.isFinite(numericPrice) && numericPrice > 0
-			? `$${numericPrice.toFixed(2)}`
+			? formatMoney(numericPrice, { currency: resolvedCurrency })
 			: null;
-	}, [estimatedCost?.totalCost, selectedAmbulanceType?.price]);
+	}, [
+		estimatedCost?.currency,
+		estimatedCost?.totalCost,
+		selectedAmbulanceType?.currency,
+		selectedAmbulanceType?.price,
+	]);
 	const requesterLabel = useMemo(() => {
 		const metadata = user?.user_metadata || user?.metadata || {};
 		return (
@@ -1108,7 +1119,10 @@ const EmergencyRequestModal = React.memo(({
 							id: firstAmb.id,
 							title: firstAmb.service_name,
 							subtitle: firstAmb.description || "Emergency medical transport",
-							price: `$${firstAmb.base_price}`,
+							price: formatMoney(firstAmb.base_price, {
+								currency: firstAmb.currency || "USD",
+							}),
+							currency: firstAmb.currency || "USD",
 							icon: serviceKey.includes("critical")
 								? 'warning-outline'
 								: serviceKey.includes("advanced")
@@ -1542,8 +1556,12 @@ const EmergencyRequestModal = React.memo(({
 				subText:
 					mode === "booking"
 						? selectedPaymentMethod?.label
-							? `${selectedPaymentMethod.label} • $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`
-							: `Final: $${estimatedCost?.totalCost?.toFixed(2) || '0.00'}`
+							? `${selectedPaymentMethod.label} • ${formatMoney(estimatedCost?.totalCost || 0, {
+								currency: estimatedCost?.currency || "USD",
+							})}`
+							: `Final: ${formatMoney(estimatedCost?.totalCost || 0, {
+								currency: estimatedCost?.currency || "USD",
+							})}`
 						: undefined,
 				visible: true,
 				onPress: handleSubmitRequest,
@@ -1667,7 +1685,10 @@ const EmergencyRequestModal = React.memo(({
 					id: type.id,
 					title: visualProfile.label,
 					subtitle,
-					price: `$${type.base_price}`,
+					price: formatMoney(type.base_price, {
+						currency: type.currency || "USD",
+					}),
+					currency: type.currency || "USD",
 					icon: serviceKey.includes("critical")
 						? "warning-outline"
 						: serviceKey.includes("advanced")
@@ -1986,7 +2007,9 @@ const EmergencyRequestModal = React.memo(({
 											<View>
 												<Text style={styles.walletLabel}>TOTAL TO PAY</Text>
 												<Text style={styles.balanceValue}>
-													${estimatedCost?.totalCost?.toFixed(2) || "0.00"}
+													{formatMoney(estimatedCost?.totalCost || 0, {
+														currency: estimatedCost?.currency || "USD",
+													})}
 												</Text>
 											</View>
 											<View style={styles.currencyBadge}>
@@ -2021,14 +2044,20 @@ const EmergencyRequestModal = React.memo(({
 												)}
 											</View>
 											<Text style={[styles.rowValue, { color: requestColors.text }]}>
-												${item.cost.toFixed(2)}
+												{formatMoney(item.cost, {
+													currency: item?.currency || estimatedCost?.currency || "USD",
+												})}
 											</Text>
 										</View>
 									))}
 									<View style={[styles.divider, { backgroundColor: requestColors.border }]} />
 									<View style={styles.totalRow}>
 										<Text style={[styles.totalLabel, { color: requestColors.text }]}>Total to Pay</Text>
-										<Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>${estimatedCost.totalCost.toFixed(2)}</Text>
+										<Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>
+											{formatMoney(estimatedCost.totalCost, {
+												currency: estimatedCost?.currency || "USD",
+											})}
+										</Text>
 									</View>
 								</View>
 							) : null}

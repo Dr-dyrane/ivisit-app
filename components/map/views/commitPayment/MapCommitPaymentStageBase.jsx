@@ -34,6 +34,7 @@ import useMapCommitPaymentController from "./useMapCommitPaymentController";
 import styles from "./mapCommitPayment.styles";
 import { MAP_COMMIT_PAYMENT_TRANSACTION_STATES } from "./mapCommitPayment.transaction";
 import { formatMapRequestDisplayId } from "../../core/mapRequestPresentation";
+import { formatMoney } from "../../../../utils/formatMoney";
 
 export default function MapCommitPaymentStageBase({
 	sheetHeight,
@@ -178,6 +179,7 @@ export default function MapCommitPaymentStageBase({
 		paymentMethodsSnapshotReady,
 		paymentMethodsRefreshKey,
 		estimatedCost,
+		displayEstimatedCost,
 		isLoadingCost,
 		isSubmitting,
 		errorMessage,
@@ -486,8 +488,16 @@ export default function MapCommitPaymentStageBase({
 						surfaceColor={secondarySurfaceColor}
 						dividerColor={dividerColor}
 						title={MAP_COMMIT_PAYMENT_COPY.BREAKDOWN_TITLE}
-						breakdown={estimatedCost?.breakdown || []}
-						totalCostLabel={totalCostLabel || "$0.00"}
+						breakdown={displayEstimatedCost?.breakdown || []}
+						totalCostLabel={
+							totalCostLabel ||
+							formatMoney(0, {
+								currency:
+									displayEstimatedCost?.currency ||
+									estimatedCost?.currency ||
+									"USD",
+							})
+						}
 					/>
 				) : null}
 

@@ -1,5 +1,6 @@
 import { DispatchService } from "../../../../services/dispatchService";
 import { getDestinationCoordinate } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
+import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
 function toFiniteNumber(value) {
 	const parsed = Number(value);
@@ -77,6 +78,11 @@ export function normalizeCommitPaymentCost(
 	fallbackSelectionName = "Selected service",
 ) {
 	if (rawCost && typeof rawCost === "object") {
+		const currency = resolveMoneyCurrency(
+			rawCost.currency,
+			rawCost.display_currency,
+			rawCost.payment_currency,
+		);
 		const totalCost = toFiniteNumber(
 			rawCost.totalCost ?? rawCost.total_cost ?? rawCost.total_amount,
 		);
@@ -92,6 +98,7 @@ export function normalizeCommitPaymentCost(
 							name: item?.name || "Charge",
 							type: item?.type || "service",
 							cost,
+							currency: resolveMoneyCurrency(item?.currency, currency),
 						};
 					})
 					.filter(Boolean)
@@ -105,6 +112,7 @@ export function normalizeCommitPaymentCost(
 				fee_amount: feeAmount,
 				service_fee: feeAmount,
 				breakdown,
+				currency,
 				grossTotal: grossTotal ?? totalCost,
 				subtotal: subtotal ?? (feeAmount != null ? Math.max(0, totalCost - feeAmount) : totalCost),
 				orgFee: rawCost.orgFee || null,
@@ -135,8 +143,10 @@ export function normalizeCommitPaymentCost(
 					fallbackSelectionName,
 				type: "service",
 				cost: fallbackAmount,
+				currency: resolveMoneyCurrency(selection?.currency),
 			},
 		],
+		currency: resolveMoneyCurrency(selection?.currency),
 		grossTotal: fallbackAmount,
 		subtotal: fallbackAmount,
 		orgFee: null,
@@ -144,9 +154,9 @@ export function normalizeCommitPaymentCost(
 	};
 }
 
-export function buildCommitPaymentCtaLabel(totalCost, fallbackLabel) {
+export function buildCommitPaymentCtaLabel(totalCost, fallbackLabel, currency = "USD") {
 	if (!Number.isFinite(totalCost)) return fallbackLabel;
-	return `${fallbackLabel} ($${Number(totalCost).toFixed(2)})`;
+	return `${fallbackLabel} (${formatMoney(totalCost, { currency })})`;
 }
 
 export function buildAmbulanceCommitRequest({

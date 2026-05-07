@@ -57,6 +57,7 @@ export default function PaymentCheckoutVariant({
 
   const gap = metrics?.spacing?.lg || 20;
   const usesSidebarLayout = Boolean(layout?.usesSidebarLayout);
+  const summaryCost = model.displayCost || model.cost;
   const headerClearance = useMemo(
     () => computeHeaderClearance({ surfaceConfig, insetsTop: insets.top }),
     [surfaceConfig, insets.top],
@@ -161,7 +162,7 @@ export default function PaymentCheckoutVariant({
             showsVerticalScrollIndicator={false}
           >
             <ServiceReceiptCard
-              cost={model.cost}
+              cost={summaryCost}
               insuranceApplied={model.insuranceApplied}
               isDarkMode={isDarkMode}
             />
@@ -255,7 +256,7 @@ export default function PaymentCheckoutVariant({
               showsVerticalScrollIndicator={false}
             >
               <PaymentContextIsland
-                cost={model.cost}
+                cost={summaryCost}
                 insuranceApplied={model.insuranceApplied}
                 serviceType={model.serviceType}
                 isDarkMode={isDarkMode}
@@ -270,12 +271,12 @@ export default function PaymentCheckoutVariant({
   return (
     <>
       <PaymentIdentitySection
-        cost={model.cost}
+        cost={summaryCost}
         insuranceApplied={model.insuranceApplied}
         isDarkMode={isDarkMode}
       />
 
-      <PaymentSummarySection cost={model.cost} isDarkMode={isDarkMode} />
+      <PaymentSummarySection cost={summaryCost} isDarkMode={isDarkMode} />
 
       <View style={{ gap: metrics?.spacing?.sm || 8 }}>
         <Text

@@ -5,6 +5,7 @@
 
 import { supabase } from './supabase';
 import { emergencyRequestsService } from './emergencyRequestsService';
+import { formatMoney, resolveMoneyCurrency } from '../utils/formatMoney';
 
 export const serviceCostService = {
   /**
@@ -203,7 +204,9 @@ export const serviceCostService = {
         name: item.name,
         cost: item.cost,
         type: item.type,
-        display: `${item.name}: $${item.cost.toFixed(2)}`
+        display: `${item.name}: ${formatMoney(item.cost, {
+          currency: resolveMoneyCurrency(item?.currency, cost?.currency),
+        })}`
       }));
   },
 
@@ -212,9 +215,11 @@ export const serviceCostService = {
    */
   getFormattedTotalCost(cost) {
     if (!cost || !cost.total_cost) {
-      return '$0.00';
+      return formatMoney(0, { currency: 'USD' });
     }
-    return `$${cost.total_cost.toFixed(2)}`;
+    return formatMoney(cost.total_cost, {
+      currency: resolveMoneyCurrency(cost?.currency),
+    });
   },
 
   /**

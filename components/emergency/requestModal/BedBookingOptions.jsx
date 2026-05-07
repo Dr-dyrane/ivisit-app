@@ -4,6 +4,7 @@ import { Ionicons, Fontisto } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { formatMoney } from "../../../utils/formatMoney";
 
 const { width } = Dimensions.get("window");
 
@@ -33,7 +34,7 @@ export default function BedBookingOptions({
                 name: `${roomLabel.replace('_', ' ').toUpperCase()} #${room.room_number}`,
                 description: room.features ? room.features.join(' • ') : "Professional Care • Clinical Environment",
                 icon: roomTypeCode.includes('vip') || roomTypeCode.includes('private') ? "home" : "bed-patient",
-                price: `$${room.base_price}`,
+                price: formatMoney(room.base_price, { currency: room.currency || "USD" }),
             };
         })
 		: [
@@ -42,14 +43,22 @@ export default function BedBookingOptions({
 				name: "Standard Bed",
 				description: "General Ward • Professional Care • Shared Space",
 				icon: "bed-patient",
-				price: "$150",
+				price: formatMoney(150, {
+					currency: "USD",
+					minimumFractionDigits: 0,
+					maximumFractionDigits: 0,
+				}),
 			},
 			{
 				id: "private",
 				name: "Private Room",
 				description: "Premium Suite • Personal Bathroom • 24/7 Concierge",
 				icon: "home",
-				price: "$350",
+				price: formatMoney(350, {
+					currency: "USD",
+					minimumFractionDigits: 0,
+					maximumFractionDigits: 0,
+				}),
 			},
 		];
 

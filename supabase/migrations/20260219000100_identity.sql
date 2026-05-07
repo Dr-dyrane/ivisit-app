@@ -53,10 +53,70 @@ CREATE TABLE IF NOT EXISTS public.preferences (
     privacy_share_medical_profile BOOLEAN NOT NULL DEFAULT false,
     privacy_share_emergency_contacts BOOLEAN NOT NULL DEFAULT false,
     notification_sounds_enabled BOOLEAN NOT NULL DEFAULT true,
+    billing_country_code TEXT,
+    billing_currency_code TEXT,
     view_preferences JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'preferences'
+          AND column_name = 'billing_country_code'
+    ) THEN
+        ALTER TABLE public.preferences
+        ADD COLUMN billing_country_code TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'preferences'
+          AND column_name = 'billing_currency_code'
+    ) THEN
+        ALTER TABLE public.preferences
+        ADD COLUMN billing_currency_code TEXT;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'preferences'
+          AND constraint_name = 'preferences_billing_country_code_chk'
+    ) THEN
+        ALTER TABLE public.preferences
+        ADD CONSTRAINT preferences_billing_country_code_chk
+        CHECK (
+            billing_country_code IS NULL OR billing_country_code ~ '^[A-Z]{2}$'
+        );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'preferences'
+          AND constraint_name = 'preferences_billing_currency_code_chk'
+    ) THEN
+        ALTER TABLE public.preferences
+        ADD CONSTRAINT preferences_billing_currency_code_chk
+        CHECK (
+            billing_currency_code IS NULL OR billing_currency_code ~ '^[A-Z]{3}$'
+        );
+    END IF;
+END
+$$;
 
 -- 4. Medical Profiles
 CREATE TABLE IF NOT EXISTS public.medical_profiles (

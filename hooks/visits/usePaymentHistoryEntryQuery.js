@@ -7,6 +7,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { paymentService } from "../../services/paymentService";
+import { usePreferences } from "../../contexts/PreferencesContext";
+import { useBillingQuoteQuery } from "../payment/useBillingQuoteQuery";
+import { resolveMoneyCurrency } from "../../utils/formatMoney";
+import { buildQuotedMoneyLabel } from "../../utils/billingQuotePresentation";
 
 const toFiniteNumber = (value) => {
   if (typeof value === "string") {
@@ -17,13 +21,6 @@ const toFiniteNumber = (value) => {
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
-};
-
-const toCurrencyLabel = (value) => {
-  const numeric = toFiniteNumber(value);
-  if (numeric != null) return `$${numeric.toFixed(2)}`;
-  const text = typeof value === "string" ? value.trim() : "";
-  return text || null;
 };
 
 /**
@@ -39,34 +36,51 @@ export function usePaymentHistoryEntryQuery({
   requestId,
   localPaymentTotalLabel,
 }) {
-  const localAmount = toFiniteNumber(localPaymentTotalLabel);
-  const hasUsableLocal = localAmount != null && Math.abs(localAmount) > 0;
+  const { preferences } = usePreferences();
 
-  const { data: fetchedPriceLabel } = useQuery({
+  const { data: fetchedEntry } = useQuery({
     queryKey: ["paymentHistoryEntry", paymentLookupKey ?? null],
     queryFn: async () => {
-      const entry = await paymentService.getPaymentHistoryEntry({
+      return paymentService.getPaymentHistoryEntry({
         transactionId: paymentId || null,
         requestId: requestId || null,
       });
-      const label = toCurrencyLabel(entry?.amount);
-      const numeric = toFiniteNumber(label);
-      if (label && numeric != null && Math.abs(numeric) > 0) return label;
-      return null;
     },
-    enabled: Boolean(paymentLookupKey) && !hasUsableLocal,
+    enabled: Boolean(paymentLookupKey),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 1,
   });
+  const fetchedAmount = toFiniteNumber(fetchedEntry?.amount);
+  const fetchedCurrency = resolveMoneyCurrency(fetchedEntry?.currency);
+  const { data: fetchedQuote } = useBillingQuoteQuery({
+    amount: fetchedAmount,
+    sourceCurrency: fetchedCurrency,
+    preferences,
+    enabled: Boolean(paymentLookupKey) && fetchedAmount != null,
+  });
+  const fetchedPriceLabel =
+    fetchedAmount != null
+      ? buildQuotedMoneyLabel({
+          amount: fetchedAmount,
+          currency: fetchedCurrency,
+          quote: fetchedQuote,
+          fallback: null,
+        })
+      : null;
 
   const effectivePaymentTotalLabel = (() => {
     const local = toFiniteNumber(localPaymentTotalLabel);
+    if (fetchedPriceLabel) return fetchedPriceLabel;
     if (local != null && Math.abs(local) > 0) return localPaymentTotalLabel;
-    return fetchedPriceLabel || localPaymentTotalLabel || null;
+    return localPaymentTotalLabel || null;
   })();
 
-  return { fetchedPriceLabel: fetchedPriceLabel ?? null, effectivePaymentTotalLabel };
+  return {
+    fetchedEntry: fetchedEntry ?? null,
+    fetchedPriceLabel: fetchedPriceLabel ?? null,
+    effectivePaymentTotalLabel,
+  };
 }
 
 export default usePaymentHistoryEntryQuery;

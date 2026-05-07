@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { paymentService } from '../../services/paymentService';
 import { insuranceService } from '../../services/insuranceService';
+import { usePreferences } from '../../contexts/PreferencesContext';
+import { PAYMENT_SCREEN_COPY } from '../../components/payment/paymentScreen.content';
+import { useBillingQuoteQuery } from './useBillingQuoteQuery';
+import { applyBillingQuoteToCost } from '../../utils/billingQuotePresentation';
 // PULLBACK NOTE: Phase 2 — import useInvalidateActiveTrip to fix payment→tracking timing
 // OLD: navigation happened immediately with stale state — syncActiveTripsFromServer not awaited
 // NEW: invalidate TanStack Query cache before nav — deterministic refetch triggers store update
@@ -19,6 +23,7 @@ const readParamString = (value) => {
 export function usePaymentScreenModel() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { preferences } = usePreferences();
   // PULLBACK NOTE: Phase 2 — invalidateActiveTrip replaces awaiting syncActiveTripsFromServer
   const invalidateActiveTrip = useInvalidateActiveTrip();
 
@@ -40,7 +45,8 @@ export function usePaymentScreenModel() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [cost, setCost] = useState({
     totalCost: initialAmount,
-    breakdown: initialAmount > 0 ? [{ name: 'Base Service', cost: initialAmount, type: 'base' }] : []
+    currency: 'USD',
+    breakdown: initialAmount > 0 ? [{ name: 'Base Service', cost: initialAmount, type: 'base', currency: 'USD' }] : []
   });
 
   const [walletBalance, setWalletBalance] = useState({ balance: 0, currency: 'USD' });
@@ -57,6 +63,18 @@ export function usePaymentScreenModel() {
     : historyRequestIdParam
       ? `request:${historyRequestIdParam}`
       : null;
+
+  const { data: costQuote } = useBillingQuoteQuery({
+    amount: cost?.totalCost ?? cost?.total_cost ?? 0,
+    sourceCurrency: cost?.currency || 'USD',
+    preferences,
+    enabled: !isManagementMode,
+  });
+
+  const displayCost = useMemo(
+    () => applyBillingQuoteToCost(cost, costQuote),
+    [cost, costQuote],
+  );
 
   // Data Loading Functions
   const loadWalletData = async () => {
@@ -276,7 +294,13 @@ export function usePaymentScreenModel() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await loadWalletData();
         setShowAddFundsModal(false);
-        Alert.alert("Success", `Added $${amount} to your wallet. Your new balance is $${result.newBalance.toFixed(2)}`);
+        Alert.alert(
+          "Success",
+          PAYMENT_SCREEN_COPY.addFunds.success(
+            amount,
+            result.newBalance,
+          ),
+        );
       }
     } catch (error) {
       console.error("Top-up error:", error);
@@ -339,6 +363,8 @@ export function usePaymentScreenModel() {
     insuranceApplied,
     showAddModal,
     cost,
+    displayCost,
+    costQuote,
     walletBalance,
     paymentHistory,
     isLoadingWallet,

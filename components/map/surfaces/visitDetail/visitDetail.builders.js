@@ -146,6 +146,10 @@ export const resolvePaymentMethodLabel = (raw) => {
 };
 
 export const resolvePaymentTotalLabel = (historyItem, raw) => {
+	const resolvedCurrency =
+		readRawField(raw, "currency", "payment_currency", "paymentCurrency") ||
+		historyItem?.visit?.currency ||
+		"USD";
 	const numericCandidates = [
 		readRawField(raw, "userAmount", "user_amount"),
 		readRawField(raw, "totalAmount", "total_amount"),
@@ -158,7 +162,7 @@ export const resolvePaymentTotalLabel = (historyItem, raw) => {
 		return numeric != null && Math.abs(numeric) > 0;
 	});
 	if (positiveCandidate != null) {
-		return toCurrencyLabel(positiveCandidate);
+		return toCurrencyLabel(positiveCandidate, resolvedCurrency);
 	}
 
 	const textCandidate = numericCandidates.find((value) => {
@@ -167,7 +171,7 @@ export const resolvePaymentTotalLabel = (historyItem, raw) => {
 		return !/^\$?0(?:\.0+)?$/.test(text);
 	});
 	if (textCandidate != null) {
-		return toCurrencyLabel(textCandidate);
+		return toCurrencyLabel(textCandidate, resolvedCurrency);
 	}
 
 	const hasLinkedPayment =
@@ -176,7 +180,7 @@ export const resolvePaymentTotalLabel = (historyItem, raw) => {
 	if (hasLinkedPayment) return null;
 
 	const hasZeroCandidate = numericCandidates.some((value) => toFiniteNumber(value) === 0);
-	return hasZeroCandidate ? "$0.00" : null;
+	return hasZeroCandidate ? toCurrencyLabel(0, resolvedCurrency) : null;
 };
 
 export const buildJourney = (historyItem, raw, whenValue) => {

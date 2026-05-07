@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useToast } from "../../contexts/ToastContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useEmergency } from "../../contexts/EmergencyContext";
+import { usePreferences } from "../../contexts/PreferencesContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import {
   BOOK_VISIT_DOCTOR_NAMES,
@@ -26,9 +27,14 @@ import {
 } from "../../stores/bookVisitStore";
 import { useBookVisitQuoteQuery } from "./useBookVisitQuoteQuery";
 import { useBookVisitBootstrap } from "./useBookVisitBootstrap";
+import { useBillingQuoteQuery } from "../payment/useBillingQuoteQuery";
 import { paymentService } from "../../services/paymentService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { VISIT_STATUS, VISIT_TYPES } from "../../constants/visits";
+import {
+  applyBillingQuoteToCost,
+  buildQuotedMoneyLabel,
+} from "../../utils/billingQuotePresentation";
 import {
   navigateBack,
   navigateToVisitDetails,
@@ -69,6 +75,7 @@ export function useBookVisitScreenModel() {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
+  const { preferences } = usePreferences();
   const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
   const { addVisit } = useVisits();
   const userId = user?.id ? String(user.id) : null;
@@ -172,6 +179,19 @@ export function useBookVisitScreenModel() {
     hospitalId: bookingData.hospital?.id || null,
     enabled: shouldFetchQuote,
   });
+  const activeQuote = quoteQuery.data || quote;
+  const activeQuoteAmount =
+    activeQuote?.total_cost ?? activeQuote?.totalCost ?? null;
+  const { data: displayQuote } = useBillingQuoteQuery({
+    amount: activeQuoteAmount,
+    sourceCurrency: activeQuote?.currency || "USD",
+    preferences,
+    enabled: shouldFetchQuote && activeQuoteAmount != null,
+  });
+  const displayQuoteData = useMemo(
+    () => applyBillingQuoteToCost(activeQuote, displayQuote),
+    [activeQuote, displayQuote],
+  );
 
   const { lifecycle } = useBookVisitBootstrap({
     userId,
@@ -237,12 +257,16 @@ export function useBookVisitScreenModel() {
   );
 
   const quoteLabel = useMemo(() => {
-    const activeQuote = quoteQuery.data || quote;
     if (quoteQuery.isFetching && !activeQuote) return "Loading estimate";
-    if (activeQuote?.total_cost)
-      return `$${Number(activeQuote.total_cost).toFixed(2)}`;
+    if (activeQuoteAmount != null) {
+      return buildQuotedMoneyLabel({
+        amount: activeQuoteAmount,
+        currency: activeQuote?.currency || "USD",
+        quote: displayQuote,
+      });
+    }
     return BOOK_VISIT_SCREEN_COPY.messages.noQuote;
-  }, [quote, quoteQuery.data, quoteQuery.isFetching]);
+  }, [activeQuote, activeQuoteAmount, displayQuote, quoteQuery.isFetching]);
 
   const isDemoBookingFlow = useMemo(
     () =>
@@ -441,7 +465,6 @@ export function useBookVisitScreenModel() {
       setIsSubmitting(true);
       setSubmitError(null);
 
-      const activeQuote = quoteQuery.data || quote;
       const organizationId = getHospitalOrganizationId(bookingData.hospital);
 
       if (!isDemoBookingFlow && organizationId && activeQuote?.total_cost) {
@@ -487,8 +510,18 @@ export function useBookVisitScreenModel() {
           bookingData.type === "telehealth"
             ? "https://telehealth.ivisit.com/room/demo"
             : null,
-        cost: activeQuote?.total_cost
-          ? `$${Number(activeQuote.total_cost).toFixed(2)}`
+        currency: displayQuoteData?.currency || activeQuote?.currency || "USD",
+        canonicalCurrency: activeQuote?.currency || "USD",
+        canonicalCostAmount: activeQuoteAmount,
+        displayAmount:
+          displayQuoteData?.totalCost ?? displayQuoteData?.total_cost ?? null,
+        displayQuote: displayQuote || null,
+        cost: activeQuoteAmount != null
+          ? buildQuotedMoneyLabel({
+              amount: activeQuoteAmount,
+              currency: activeQuote?.currency || "USD",
+              quote: displayQuote,
+            })
           : null,
       };
 
@@ -528,8 +561,8 @@ export function useBookVisitScreenModel() {
     bookingData.time,
     bookingData.type,
     isDemoBookingFlow,
-    quote,
-    quoteQuery.data,
+    activeQuote,
+    activeQuoteAmount,
     resetBookVisitState,
     router,
     setProviderModalVisible,
@@ -538,6 +571,8 @@ export function useBookVisitScreenModel() {
     setSpecialtySearchVisible,
     showToast,
     userId,
+    displayQuote,
+    displayQuoteData,
   ]);
 
   const discardBooking = useCallback(() => {
@@ -588,7 +623,7 @@ export function useBookVisitScreenModel() {
     providerModalVisible,
     searchQuery,
     selectedProvider,
-    quote: quoteQuery.data || quote,
+    quote: displayQuoteData || activeQuote,
     quoteLabel,
     selections,
     isDataLoading: !hydrated,

@@ -49,6 +49,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [../audit/screens/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/screens/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the Help Support stack refactor.
 - [../audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the Help Support stack refactor.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
+- [payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md](./payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md): Immediate formatter normalization plus the future server-backed FX quote lane.
 
 ## Existing Deep Dives (Keep Using These)
 

@@ -7,18 +7,15 @@ import {
 } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
 import { buildServiceCopy } from "../serviceDetail/mapServiceDetail.content";
 import { MAP_BED_DECISION_COPY } from "./mapBedDecision.content";
+import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
-function formatPriceLabel(value, fallback = null) {
-	if (typeof value === "string" && value.trim().length > 0) {
-		return value.trim();
-	}
-
-	const numeric = Number(value);
-	if (!Number.isFinite(numeric) || numeric <= 0) {
-		return fallback;
-	}
-
-	return `$${Math.round(numeric).toLocaleString()}`;
+function formatPriceLabel(value, fallback = null, currency = "USD") {
+	return formatMoney(value, {
+		currency: resolveMoneyCurrency(currency),
+		fallback,
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 0,
+	});
 }
 
 function getVisibleRoomOptions(hospital, roomRows, isLoadingRooms) {
@@ -35,7 +32,11 @@ function buildFallbackRoomService(hospital) {
 		title: "General ward",
 		room_type: "standard",
 		metaText: Number.isFinite(available) && available > 0 ? `${available} open` : null,
-		priceText: formatPriceLabel(hospital?.basePrice ?? hospital?.base_price, null),
+		priceText: formatPriceLabel(
+			hospital?.basePrice ?? hospital?.base_price,
+			null,
+			hospital?.currency,
+		),
 		source: "fallback",
 	};
 }
@@ -193,7 +194,11 @@ export function buildBedDecisionModel({
 	const availabilityLabel = recommendedRoom?.metaText || null;
 	const priceLabel =
 		recommendedRoom?.priceText ||
-		formatPriceLabel(recommendedRoom?.price ?? recommendedRoom?.base_price, null);
+		formatPriceLabel(
+			recommendedRoom?.price ?? recommendedRoom?.base_price,
+			null,
+			resolveMoneyCurrency(recommendedRoom?.currency, hospital?.currency),
+		);
 
 	return {
 		hospital,

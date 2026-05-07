@@ -10,6 +10,7 @@ import { paymentService } from "../../services/paymentService";
 import { useAuth } from "../../contexts/AuthContext";
 import { useEmergency } from "../../contexts/EmergencyContext";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
+import { formatMoney } from "../../utils/formatMoney";
 
 export const STEPS = {
 	SERVICE: 0,
@@ -274,7 +275,12 @@ export function useBookVisit(props = {}) {
 				notes: bookingData.notes || (bookingData.type === 'telehealth' ? "Virtual consult." : "In-person appointment."),
 				estimatedDuration: bookingData.type === 'telehealth' ? "20 mins" : "45 mins",
 				meetingLink: bookingData.type === 'telehealth' ? "https://telehealth.ivisit.com/room/demo" : null,
-				cost: cost?.total_cost ? `$${cost.total_cost.toFixed(2)}` : null
+				currency: cost?.currency || "USD",
+				cost: cost?.total_cost
+					? formatMoney(cost.total_cost, {
+						currency: cost?.currency || "USD",
+					})
+					: null
 			};
 
 			await addVisit(visit);

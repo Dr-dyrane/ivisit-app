@@ -1089,6 +1089,45 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          fetched_at: string
+          id: string
+          metadata: Json | null
+          quote_currency: string
+          rate: number
+          source: string
+          stale_after: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          metadata?: Json | null
+          quote_currency: string
+          rate: number
+          source?: string
+          stale_after?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          metadata?: Json | null
+          quote_currency?: string
+          rate?: number
+          source?: string
+          stale_after?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       organization_wallets: {
         Row: {
           balance: number | null
@@ -1352,6 +1391,8 @@ export type Database = {
       preferences: {
         Row: {
           appointment_reminders: boolean
+          billing_country_code: string | null
+          billing_currency_code: string | null
           created_at: string
           demo_mode_enabled: boolean
           emergency_updates: boolean
@@ -1365,6 +1406,8 @@ export type Database = {
         }
         Insert: {
           appointment_reminders?: boolean
+          billing_country_code?: string | null
+          billing_currency_code?: string | null
           created_at?: string
           demo_mode_enabled?: boolean
           emergency_updates?: boolean
@@ -1378,6 +1421,8 @@ export type Database = {
         }
         Update: {
           appointment_reminders?: boolean
+          billing_country_code?: string | null
+          billing_currency_code?: string | null
           created_at?: string
           demo_mode_enabled?: boolean
           emergency_updates?: boolean

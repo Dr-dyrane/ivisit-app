@@ -423,3 +423,13 @@ entrypoint = "./functions/triage-copilot/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/hospital-media/index.ts"
+
+[functions.billing-quote]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/payments/billing-quote/index.ts"
+
+[functions.refresh-exchange-rates]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/payments/refresh-exchange-rates/index.ts"

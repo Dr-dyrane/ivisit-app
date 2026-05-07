@@ -19,6 +19,7 @@ import { COLORS } from "../../constants/colors";
 import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardAwareModal";
 import useResponsiveSurfaceMetrics from "../../hooks/ui/useResponsiveSurfaceMetrics";
 import { paymentService } from "../../services/paymentService";
+import { formatMoney } from "../../utils/formatMoney";
 import MapModalShell from "../map/surfaces/MapModalShell";
 import { styles, getServiceRatingModalResponsiveStyles } from "./serviceRatingModal.styles";
 
@@ -162,6 +163,7 @@ export function ServiceRatingModal({
 
 	const isWalletShortForTip =
 		currentTipAmount > 0 && currentTipAmount > Number(walletBalance || 0);
+	const tipCurrency = walletCurrency || "USD";
 
 	const mapShellMaxHeightRatio = useMemo(() => {
 		if (!Number.isFinite(modalHeight) || modalHeight <= 0) {
@@ -513,7 +515,13 @@ export function ServiceRatingModal({
 										{ color: isActive ? colors.accent : colors.text },
 									]}
 								>
-									{amount === 0 ? "No tip" : `$${amount}`}
+									{amount === 0
+										? "No tip"
+										: formatMoney(amount, {
+											currency: tipCurrency,
+											minimumFractionDigits: 0,
+											maximumFractionDigits: 0,
+										})}
 								</Text>
 							</Pressable>
 						);
@@ -570,7 +578,9 @@ export function ServiceRatingModal({
 				>
 					{walletLoading
 						? "Checking wallet balance..."
-						: `Wallet balance: ${walletCurrency} ${Number(walletBalance || 0).toFixed(2)}`}
+						: `Wallet balance: ${formatMoney(walletBalance, {
+							currency: tipCurrency,
+						})}`}
 				</Text>
 
 				{isWalletShortForTip ? (

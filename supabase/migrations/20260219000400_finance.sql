@@ -79,6 +79,23 @@ CREATE TABLE IF NOT EXISTS public.payments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.exchange_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_currency TEXT NOT NULL,
+    quote_currency TEXT NOT NULL,
+    rate NUMERIC NOT NULL CHECK (rate > 0),
+    source TEXT NOT NULL DEFAULT 'manual_seed',
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    stale_after TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT exchange_rates_currency_code_chk CHECK (
+        base_currency ~ '^[A-Z]{3}$' AND quote_currency ~ '^[A-Z]{3}$'
+    ),
+    CONSTRAINT exchange_rates_base_quote_unique UNIQUE (base_currency, quote_currency)
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -882,6 +899,160 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.resolve_currency_for_country(
+    p_country_code TEXT
+)
+RETURNS TEXT AS $$
+DECLARE
+    v_country_code TEXT := UPPER(COALESCE(NULLIF(TRIM(p_country_code), ''), ''));
+BEGIN
+    RETURN CASE v_country_code
+        WHEN 'NG' THEN 'NGN'
+        WHEN 'GH' THEN 'GHS'
+        WHEN 'KE' THEN 'KES'
+        WHEN 'UG' THEN 'UGX'
+        WHEN 'TZ' THEN 'TZS'
+        WHEN 'RW' THEN 'RWF'
+        WHEN 'ZA' THEN 'ZAR'
+        WHEN 'CM' THEN 'XAF'
+        WHEN 'SN' THEN 'XOF'
+        WHEN 'CI' THEN 'XOF'
+        WHEN 'GB' THEN 'GBP'
+        WHEN 'US' THEN 'USD'
+        WHEN 'CA' THEN 'CAD'
+        WHEN 'AU' THEN 'AUD'
+        WHEN 'NZ' THEN 'NZD'
+        WHEN 'IN' THEN 'INR'
+        WHEN 'PK' THEN 'PKR'
+        WHEN 'AE' THEN 'AED'
+        WHEN 'SA' THEN 'SAR'
+        WHEN 'QA' THEN 'QAR'
+        WHEN 'JP' THEN 'JPY'
+        WHEN 'CN' THEN 'CNY'
+        WHEN 'BR' THEN 'BRL'
+        WHEN 'MX' THEN 'MXN'
+        WHEN 'CH' THEN 'CHF'
+        WHEN 'SE' THEN 'SEK'
+        WHEN 'NO' THEN 'NOK'
+        WHEN 'DK' THEN 'DKK'
+        WHEN 'PL' THEN 'PLN'
+        WHEN 'TR' THEN 'TRY'
+        WHEN 'EG' THEN 'EGP'
+        WHEN 'MA' THEN 'MAD'
+        WHEN 'ZM' THEN 'ZMW'
+        WHEN 'BW' THEN 'BWP'
+        WHEN 'EU' THEN 'EUR'
+        WHEN 'DE' THEN 'EUR'
+        WHEN 'FR' THEN 'EUR'
+        WHEN 'ES' THEN 'EUR'
+        WHEN 'IT' THEN 'EUR'
+        WHEN 'PT' THEN 'EUR'
+        WHEN 'IE' THEN 'EUR'
+        WHEN 'NL' THEN 'EUR'
+        WHEN 'BE' THEN 'EUR'
+        WHEN 'AT' THEN 'EUR'
+        WHEN 'FI' THEN 'EUR'
+        WHEN 'GR' THEN 'EUR'
+        ELSE NULL
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.get_billing_quote(
+    p_amount_usd NUMERIC,
+    p_target_country_code TEXT DEFAULT NULL,
+    p_target_currency_code TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_amount_usd NUMERIC := ROUND(COALESCE(p_amount_usd, 0)::NUMERIC, 2);
+    v_target_country_code TEXT := UPPER(COALESCE(NULLIF(TRIM(p_target_country_code), ''), ''));
+    v_explicit_currency TEXT := UPPER(COALESCE(NULLIF(TRIM(p_target_currency_code), ''), ''));
+    v_display_currency TEXT;
+    v_rate NUMERIC := 1;
+    v_source TEXT := 'canonical_usd';
+    v_quoted_at TIMESTAMPTZ := NOW();
+    v_stale_after TIMESTAMPTZ := NULL;
+    v_metadata JSONB := '{}'::JSONB;
+    v_display_amount NUMERIC := 0;
+    v_is_stale BOOLEAN := false;
+    v_resolution_source TEXT := 'default_usd';
+BEGIN
+    IF p_amount_usd IS NULL OR p_amount_usd < 0 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'amount_usd must be a non-negative number'
+        );
+    END IF;
+
+    v_display_currency := CASE
+        WHEN v_explicit_currency ~ '^[A-Z]{3}$' THEN v_explicit_currency
+        WHEN v_target_country_code ~ '^[A-Z]{2}$' THEN public.resolve_currency_for_country(v_target_country_code)
+        ELSE 'USD'
+    END;
+
+    IF v_display_currency IS NULL THEN
+        v_display_currency := 'USD';
+    END IF;
+
+    IF v_explicit_currency ~ '^[A-Z]{3}$' THEN
+        v_resolution_source := 'explicit_currency';
+    ELSIF v_target_country_code ~ '^[A-Z]{2}$' THEN
+        v_resolution_source := 'country_map';
+    END IF;
+
+    IF v_display_currency <> 'USD' THEN
+        SELECT
+            rate,
+            source,
+            fetched_at,
+            stale_after,
+            metadata
+        INTO
+            v_rate,
+            v_source,
+            v_quoted_at,
+            v_stale_after,
+            v_metadata
+        FROM public.exchange_rates
+        WHERE base_currency = 'USD'
+          AND quote_currency = v_display_currency
+        ORDER BY fetched_at DESC, updated_at DESC
+        LIMIT 1;
+
+        IF v_rate IS NULL OR v_rate <= 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Exchange rate unavailable',
+                'amount_usd', v_amount_usd,
+                'display_currency', v_display_currency,
+                'billing_country_code', NULLIF(v_target_country_code, ''),
+                'resolution_source', v_resolution_source
+            );
+        END IF;
+
+        v_is_stale := v_stale_after IS NOT NULL AND v_stale_after < NOW();
+    END IF;
+
+    v_display_amount := ROUND(v_amount_usd * v_rate, 2);
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'amount_usd', v_amount_usd,
+        'display_currency', v_display_currency,
+        'display_amount', v_display_amount,
+        'fx_rate', v_rate,
+        'quoted_at', v_quoted_at,
+        'stale_after', v_stale_after,
+        'is_stale', v_is_stale,
+        'source', v_source,
+        'resolution_source', v_resolution_source,
+        'billing_country_code', NULLIF(v_target_country_code, ''),
+        'metadata', COALESCE(v_metadata, '{}'::JSONB)
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
 -- 4. Convert Currency for Payment
 CREATE OR REPLACE FUNCTION public.convert_currency_for_payment(
     p_amount NUMERIC,
@@ -890,40 +1061,113 @@ CREATE OR REPLACE FUNCTION public.convert_currency_for_payment(
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_conversion_rate NUMERIC := 1.0;
-    v_converted_amount NUMERIC;
-    v_result JSONB;
+    v_amount NUMERIC := ROUND(COALESCE(p_amount, 0)::NUMERIC, 2);
+    v_from_currency TEXT := UPPER(COALESCE(NULLIF(TRIM(p_from_currency), ''), 'USD'));
+    v_to_currency TEXT := UPPER(COALESCE(NULLIF(TRIM(p_to_currency), ''), 'USD'));
+    v_from_rate NUMERIC := 1;
+    v_to_rate NUMERIC := 1;
+    v_conversion_rate NUMERIC := 1;
+    v_converted_amount NUMERIC := 0;
+    v_quoted_at TIMESTAMPTZ := NOW();
+    v_source TEXT := 'canonical';
+    v_is_stale BOOLEAN := false;
 BEGIN
-    -- Simple currency conversion (in production, use real exchange rates)
-    IF p_from_currency = p_to_currency THEN
-        v_conversion_rate := 1.0;
-    ELSIF p_from_currency = 'USD' AND p_to_currency = 'EUR' THEN
-        v_conversion_rate := 0.85;
-    ELSIF p_from_currency = 'USD' AND p_to_currency = 'GBP' THEN
-        v_conversion_rate := 0.73;
-    ELSIF p_from_currency = 'EUR' AND p_to_currency = 'USD' THEN
-        v_conversion_rate := 1.18;
-    ELSIF p_from_currency = 'GBP' AND p_to_currency = 'USD' THEN
-        v_conversion_rate := 1.37;
-    ELSE
-        RETURN jsonb_build_object('success', false, 'error', 'Unsupported currency conversion');
+    IF p_amount IS NULL OR p_amount < 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Amount must be non-negative');
     END IF;
-    
-    v_converted_amount := p_amount * v_conversion_rate;
-    
-    v_result := jsonb_build_object(
+
+    IF v_from_currency !~ '^[A-Z]{3}$' OR v_to_currency !~ '^[A-Z]{3}$' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Invalid currency code');
+    END IF;
+
+    IF v_from_currency = v_to_currency THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'original_amount', v_amount,
+            'converted_amount', v_amount,
+            'from_currency', v_from_currency,
+            'to_currency', v_to_currency,
+            'conversion_rate', 1,
+            'quoted_at', v_quoted_at,
+            'source', 'identity'
+        );
+    END IF;
+
+    IF v_from_currency <> 'USD' THEN
+        SELECT rate, fetched_at, source, (stale_after IS NOT NULL AND stale_after < NOW())
+        INTO v_from_rate, v_quoted_at, v_source, v_is_stale
+        FROM public.exchange_rates
+        WHERE base_currency = 'USD'
+          AND quote_currency = v_from_currency
+        ORDER BY fetched_at DESC, updated_at DESC
+        LIMIT 1;
+
+        IF v_from_rate IS NULL OR v_from_rate <= 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Missing source currency rate',
+                'from_currency', v_from_currency
+            );
+        END IF;
+    END IF;
+
+    IF v_to_currency <> 'USD' THEN
+        SELECT
+            rate,
+            GREATEST(v_quoted_at, fetched_at),
+            COALESCE(v_source, source),
+            COALESCE(v_is_stale, false) OR (stale_after IS NOT NULL AND stale_after < NOW())
+        INTO
+            v_to_rate,
+            v_quoted_at,
+            v_source,
+            v_is_stale
+        FROM public.exchange_rates
+        WHERE base_currency = 'USD'
+          AND quote_currency = v_to_currency
+        ORDER BY fetched_at DESC, updated_at DESC
+        LIMIT 1;
+
+        IF v_to_rate IS NULL OR v_to_rate <= 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Missing target currency rate',
+                'to_currency', v_to_currency
+            );
+        END IF;
+    END IF;
+
+    IF v_from_currency = 'USD' THEN
+        v_conversion_rate := v_to_rate;
+    ELSIF v_to_currency = 'USD' THEN
+        v_conversion_rate := 1 / v_from_rate;
+    ELSE
+        v_conversion_rate := v_to_rate / v_from_rate;
+    END IF;
+
+    v_converted_amount := ROUND(v_amount * v_conversion_rate, 2);
+
+    RETURN jsonb_build_object(
         'success', true,
-        'original_amount', p_amount,
+        'original_amount', v_amount,
         'converted_amount', v_converted_amount,
-        'from_currency', p_from_currency,
-        'to_currency', p_to_currency,
-        'conversion_rate', v_conversion_rate
+        'from_currency', v_from_currency,
+        'to_currency', v_to_currency,
+        'conversion_rate', v_conversion_rate,
+        'quoted_at', v_quoted_at,
+        'source', v_source,
+        'is_stale', v_is_stale
     );
-    
-    RETURN v_result;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+REVOKE ALL ON FUNCTION public.resolve_currency_for_country(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.resolve_currency_for_country(TEXT) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_billing_quote(NUMERIC, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_billing_quote(NUMERIC, TEXT, TEXT) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.convert_currency_for_payment(NUMERIC, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.convert_currency_for_payment(NUMERIC, TEXT, TEXT) TO authenticated, service_role;
 -- Standard Updates
+CREATE TRIGGER handle_exchange_rates_updated_at BEFORE UPDATE ON public.exchange_rates FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_payment_method_updated_at BEFORE UPDATE ON public.payment_methods FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_org_wallet_updated_at BEFORE UPDATE ON public.organization_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_patient_wallet_updated_at BEFORE UPDATE ON public.patient_wallets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -931,6 +1175,8 @@ CREATE TRIGGER handle_insurance_updated_at BEFORE UPDATE ON public.insurance_pol
 CREATE TRIGGER handle_insurance_billing_updated_at BEFORE UPDATE ON public.insurance_billing FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- Indexes
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_base_quote ON public.exchange_rates(base_currency, quote_currency);
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_fetched_at ON public.exchange_rates(fetched_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payment_methods_active ON public.payment_methods(user_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_payment_methods_default ON public.payment_methods(user_id, is_default);
 CREATE INDEX IF NOT EXISTS idx_insurance_user_id ON public.insurance_policies(user_id);

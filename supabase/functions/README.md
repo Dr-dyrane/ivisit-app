@@ -1,248 +1,147 @@
 # Supabase Edge Functions
 
-This directory contains all Supabase Edge Functions organized by category.
+This directory contains Supabase Edge Functions organized by category.
 
-## 📁 **Directory Structure**
+## Directory Structure
 
-```
+```text
 functions/
-├── payments/              # Payment-related functions
-│   ├── create-payment-intent/
-│   ├── create-payout/
-│   └── manage-payment-methods/
-├── discovery/             # Discovery and search functions
-│   └── discover-hospitals/
-├── webhooks/              # Webhook handlers
-│   └── stripe-webhook/
-└── shared/                # Shared utilities and helpers
+|-- payments/
+|   |-- create-payment-intent/
+|   |-- create-payout/
+|   |-- manage-payment-methods/
+|   |-- billing-quote/
+|   `-- refresh-exchange-rates/
+|-- discovery/
+|   `-- discover-hospitals/
+|-- webhooks/
+|   `-- stripe-webhook/
+`-- shared/
 ```
 
-## 💳 **Payment Functions**
+## Payment Functions
 
-### **create-payment-intent**
+### create-payment-intent
 
-Creates payment intents for emergency services and medical visits.
+Creates payment intents for emergency services and wallet top-ups.
 
-**Endpoint**: `/functions/v1/create-payment-intent`
-**Method**: POST
-**Authentication**: Required
+- Endpoint: `/functions/v1/create-payment-intent`
+- Method: `POST`
+- Authentication: required
 
-### **create-payout**
+### create-payout
 
 Processes payouts to healthcare providers and ambulance services.
 
-**Endpoint**: `/functions/v1/create-payout`
-**Method**: POST
-**Authentication**: Admin required
+- Endpoint: `/functions/v1/create-payout`
+- Method: `POST`
+- Authentication: admin required
 
-### **manage-payment-methods**
+### manage-payment-methods
 
-Manages patient payment methods (cards, digital wallets).
+Manages patient payment methods.
 
-**Endpoint**: `/functions/v1/manage-payment-methods`
-**Method**: GET, POST, DELETE
-**Authentication**: Required
+- Endpoint: `/functions/v1/manage-payment-methods`
+- Method: `GET`, `POST`, `DELETE`
+- Authentication: required
 
-## 🔍 **Discovery Functions**
+### billing-quote
 
-### **discover-hospitals**
+Returns a deterministic billing quote snapshot for the authenticated user.
+
+- Endpoint: `/functions/v1/billing-quote`
+- Method: `POST`
+- Authentication: required
+
+Body:
+
+- `amount` or `amount_usd`: numeric
+- `source_currency`: optional, defaults to `USD`
+- `billing_country_code`: optional explicit override
+- `billing_currency_code`: optional explicit override
+
+If billing overrides are omitted, the function resolves them from `preferences`.
+
+### refresh-exchange-rates
+
+Refreshes the finance-owned `exchange_rates` cache.
+
+- Endpoint: `/functions/v1/refresh-exchange-rates`
+- Method: `POST`
+- Authentication: admin or org-admin required
+
+The function reads either:
+
+- `FX_MANUAL_RATES_JSON`
+- or a provider configured through `FX_PROVIDER_URL`
+
+## Discovery Functions
+
+### discover-hospitals
 
 Searches for hospitals based on location, specialty, and availability.
 
-**Endpoint**: `/functions/v1/discover-hospitals`
-**Method**: GET
-**Authentication**: Optional
+- Endpoint: `/functions/v1/discover-hospitals`
+- Method: `GET`
+- Authentication: optional
 
-**Query Parameters**:
+### bootstrap-demo-ecosystem
 
-- `lat`: Latitude (required)
-- `lng`: Longitude (required)
-- `radius`: Search radius in km (default: 10)
-- `specialty`: Medical specialty (optional)
-- `availability`: Filter by availability (optional)
+Builds the deterministic demo healthcare ecosystem for low or unverified coverage zones.
 
-### **bootstrap-demo-ecosystem**
+- Endpoint: `/functions/v1/bootstrap-demo-ecosystem`
+- Method: `POST`
+- Authentication: required
 
-Builds a deterministic demo healthcare ecosystem for users in low/no verified coverage zones.
+See [`docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`](../../docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md).
 
-**Endpoint**: `/functions/v1/bootstrap-demo-ecosystem`
-**Method**: POST
-**Authentication**: Required
+### review-demo-auth
 
-**Body Parameters**:
+Allows review testers to complete the OTP step without mailbox access.
 
-- `phase`: `prepare | hospitals | staff | pricing | summary | full`
-- `latitude`: number (required)
-- `longitude`: number (required)
-- `radiusKm`: number (optional, default 50)
+- Endpoint: `/functions/v1/review-demo-auth`
+- Method: `POST`
+- Authentication: public, guarded by exact email plus review OTP
 
-**Maintenance Rules**:
+## Webhook Functions
 
-- only demo hospitals with `status = available` count as the active bootstrap pool
-- stale same-org demo hospitals must be retired out of the active pool instead of left available
-- staffing should run only against the active selected pack returned by the current bootstrap cycle
-- see [`docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md`](../../docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md) for the cleanup runbook and sponsor-QA hygiene targets
-
-### **review-demo-auth**
-
-Allows Google Play / app review testers to complete the emergency commit-details OTP step without mailbox access.
-
-**Endpoint**: `/functions/v1/review-demo-auth`
-**Method**: POST
-**Authentication**: Public function, guarded by exact email + server-side static review OTP
-
-**Body Parameters**:
-
-- `email`: must match `REVIEW_DEMO_AUTH_EMAIL` (`support@ivisit.ng` by default)
-- `otp`: must match server-side `REVIEW_DEMO_AUTH_OTP`
-
-**Environment**:
-
-- `REVIEW_DEMO_AUTH_ENABLED=true`
-- `REVIEW_DEMO_AUTH_EMAIL=support@ivisit.ng`
-- `REVIEW_DEMO_AUTH_OTP=<Google Play review code>`
-
-The function returns a real short-lived Supabase email OTP generated with the service role. The app then verifies through normal Supabase auth, so downstream emergency flow state sees a real session.
-
-## 🪝 **Webhook Functions**
-
-### **stripe-webhook**
+### stripe-webhook
 
 Handles Stripe webhook events for payment processing.
 
-**Endpoint**: `/functions/v1/stripe-webhook`
-**Method**: POST
-**Authentication**: Stripe signature verification
+- Endpoint: `/functions/v1/stripe-webhook`
+- Method: `POST`
+- Authentication: Stripe signature verification
 
-**Events Handled**:
-
-- `payment_intent.succeeded`
-- `payment_intent.payment_failed`
-- `payment_intent.canceled`
-- `account.updated`
-
-## 🛠️ **Shared Utilities**
-
-Common utilities and helpers used across functions.
-
-### **Authentication**
-
-- JWT token validation
-- Role-based access control
-- User session management
-
-### **Validation**
-
-- Input sanitization
-- Parameter validation
-- Error handling
-
-### **Database**
-
-- Supabase client initialization
-- Connection pooling
-- Error handling
-
-## 🚀 **Deployment**
-
-### **Local Development**
+## Deployment
 
 ```bash
-# Start local development server
 supabase functions serve
-
-# Test specific function
-supabase functions serve discover-hospitals
-```
-
-### **Deployment**
-
-```bash
-# Deploy all functions
 supabase functions deploy
-
-# Deploy specific function
-supabase functions deploy discover-hospitals
+supabase functions deploy billing-quote
+supabase functions deploy refresh-exchange-rates
 ```
 
-## 📋 **Development Guidelines**
-
-### **Function Structure**
-
-Each function should follow this structure:
-
-```
-function-name/
-├── index.ts          # Main function logic
-├── types.ts          # TypeScript definitions
-├── utils.ts          # Function-specific utilities
-└── README.md         # Function documentation
-```
-
-### **Naming Conventions**
-
-- **Directories**: kebab-case (e.g., `create-payment-intent`)
-- **Files**: kebab-case (e.g., `index.ts`, `types.ts`)
-- **Endpoints**: `/functions/v1/{function-name}`
-- **Environment**: Use `process.env` for configuration
-
-### **Error Handling**
-
-- Use standardized error responses
-- Log errors for debugging
-- Return appropriate HTTP status codes
-- Include error details in response
-
-### **Security**
-
-- Validate all inputs
-- Use authentication middleware
-- Implement rate limiting
-- Sanitize outputs
-
-## 🔧 **Environment Variables**
-
-Required environment variables:
+## Environment Variables
 
 ```bash
-# Supabase Configuration
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Stripe Configuration
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_webhook_secret
 
-# Other Services
-GOOGLE_MAPS_API_KEY=your_google_maps_key
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
+FX_PROVIDER_URL=optional_provider_url
+FX_PROVIDER_API_KEY=optional_provider_api_key
+FX_PROVIDER_AUTH_HEADER=Authorization
+FX_PROVIDER_SOURCE=provider_cache
+FX_STALE_HOURS=24
+FX_MANUAL_RATES_JSON={"base":"USD","rates":{"NGN":1540,"GBP":0.79}}
 ```
 
-## 📊 **Monitoring**
+## Related Documentation
 
-### **Logging**
-
-- Use structured logging with timestamps
-- Include correlation IDs for request tracking
-- Log errors with full context
-- Monitor performance metrics
-
-### **Health Checks**
-
-- Implement health check endpoints
-- Monitor function response times
-- Track error rates
-- Set up alerts for failures
-
-## 🔗 **Related Documentation**
-
-- [Supabase Edge Functions Documentation](https://supabase.com/docs/guides/functions)
-- [API Reference](../docs/REFERENCE.md)
-- [Testing Guide](../docs/TESTING.md)
-- [Contribution Guidelines](../docs/CONTRIBUTING.md)
-
----
-
-**All functions should follow the established patterns and guidelines for consistency and maintainability.**
+- [`supabase/docs/CONTRIBUTING.md`](../docs/CONTRIBUTING.md)
+- [`supabase/docs/TESTING.md`](../docs/TESTING.md)
+- [`docs/flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md`](../../docs/flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md)

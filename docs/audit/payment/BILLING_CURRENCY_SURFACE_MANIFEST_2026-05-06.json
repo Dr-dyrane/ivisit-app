@@ -1,0 +1,67 @@
+{
+  "audit_id": "billing-currency-2026-05-06",
+  "phase": "server-quote-lane-in-progress",
+  "backend_truth": {
+    "canonical_amount_currency": "USD",
+    "client_must_not_guess_from_country": true
+  },
+  "immediate_rule": {
+    "display_mode": "intl_currency_symbol",
+    "example": "$150.00",
+    "no_fake_local_conversion": true
+  },
+  "runtime_surfaces": [
+    "components/payment/PaymentScreenComponents.jsx",
+    "components/payment/paymentScreen.content.js",
+    "hooks/payment/usePaymentScreenModel.js",
+    "components/map/views/commitPayment/mapCommitPayment.helpers.js",
+    "components/map/views/commitPayment/useMapCommitPaymentController.js",
+    "components/map/views/commitPayment/MapCommitPaymentStageParts.jsx",
+    "components/map/views/commitPayment/MapCommitPaymentStageBase.jsx",
+    "components/map/history/MapHistoryPaymentModal.jsx",
+    "components/map/surfaces/hospitals/mapHospitalDetail.helpers.js",
+    "components/map/surfaces/hospitals/mapHospitalList.helpers.js",
+    "components/emergency/intake/EmergencyHospitalChoiceSheet.jsx",
+    "components/map/views/bedDecision/mapBedDecision.helpers.js",
+    "components/map/surfaces/visitDetail/visitDetail.helpers.js",
+    "hooks/visits/usePaymentHistoryEntryQuery.js",
+    "hooks/visits/useVisitHistorySelectors.js",
+    "hooks/visits/useBookVisitScreenModel.js",
+    "hooks/visits/useBookVisit.js",
+    "services/serviceCostService.js",
+    "services/notificationDispatcher.js",
+    "components/emergency/EmergencyRequestModal.jsx",
+    "components/emergency/ServiceRatingModal.jsx",
+    "components/emergency/requestModal/BedBookingOptions.jsx"
+  ],
+  "future_backend_lane": {
+    "owner_pillar": "0004_finance",
+    "requires_fx_provider": true,
+    "live_provider_seed": {
+      "provider_url": "https://open.er-api.com/v6/latest/USD",
+      "provider_source": "https://www.exchangerate-api.com",
+      "seed_snapshot_date": "2026-05-07",
+      "stale_hours": 24
+    },
+    "recommended_contract": "server_quote_snapshot",
+    "explicit_billing_authority": [
+      "preferences.billing_country_code",
+      "preferences.billing_currency_code"
+    ],
+    "planned_runtime_owners": [
+      "services/billingQuoteService.js",
+      "hooks/payment/useBillingQuoteQuery.ts",
+      "stores/billingQuoteStore.js",
+      "machines/billingQuoteMachine.js"
+    ],
+    "runtime_adopted_owners": [
+      "hooks/payment/usePaymentScreenModel.js",
+      "components/payment/PaymentCheckoutVariant.jsx",
+      "components/map/views/commitPayment/useMapCommitPaymentController.js",
+      "components/map/views/commitPayment/MapCommitPaymentStageBase.jsx",
+      "hooks/visits/useBookVisitScreenModel.js",
+      "hooks/visits/usePaymentHistoryEntryQuery.js",
+      "utils/billingQuotePresentation.js"
+    ]
+  }
+}

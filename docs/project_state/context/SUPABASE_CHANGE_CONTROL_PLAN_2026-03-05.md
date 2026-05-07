@@ -1592,6 +1592,51 @@ Verification:
 - `npm run hardening:cleanup-dry-run-guard` green,
 - `npm run hardening:contract-drift-guard` green.
 
+### SCC-058: Billing FX Quote Lane Ownership + Runtime Introduction
+Objective:
+- Replace the current formatter-only billing stopgap with a deterministic per-country quote lane owned by explicit billing preferences and finance-backed exchange-rate truth.
+
+Deliverables:
+- identity pillar billing authority:
+  - `supabase/migrations/20260219000100_identity.sql`
+  - add canonical `preferences` fields:
+    - `billing_country_code`
+    - `billing_currency_code`
+- finance pillar quote primitives:
+  - `supabase/migrations/20260219000400_finance.sql`
+  - add `exchange_rates`
+  - add currency-resolution helpers
+  - replace placeholder `convert_currency_for_payment(...)`
+  - add `get_billing_quote(...)`
+- payment edge function lane:
+  - `supabase/functions/payments/billing-quote/index.ts`
+  - `supabase/functions/payments/refresh-exchange-rates/index.ts`
+  - `supabase/functions/README.md`
+- app runtime lane:
+  - `services/billingQuoteService.js`
+  - `hooks/payment/useBillingQuoteQuery.ts`
+  - `stores/billingQuoteStore.js`
+  - `machines/billingQuoteMachine.js`
+  - `services/preferencesService.js`
+  - `contexts/PreferencesContext.jsx` only if required by the new explicit billing fields
+- payment doctrine/audit:
+  - `docs/audit/payment/BILLING_CURRENCY_AND_FX_AUDIT_2026-05-06.md`
+  - `docs/audit/payment/BILLING_CURRENCY_SURFACE_MANIFEST_2026-05-06.json`
+  - `docs/flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md`
+
+Verification:
+- `npm run hardening:cleanup-dry-run-guard` green,
+- `npm run hardening:contract-drift-guard` green,
+- targeted table traces after pillar edits:
+  - `node supabase/tests/scripts/export_table_flow_trace.js --table preferences`
+  - `node supabase/tests/scripts/export_table_flow_trace.js --table payments`
+- targeted runtime coverage:
+  - `npm run hardening:table-field-runtime-coverage -- --table preferences`
+  - `npm run hardening:table-field-runtime-coverage -- --table payments`
+- payment runtime smoke after app-lane wiring:
+  - quote request returns canonical snapshot for explicit billing country/currency
+  - formatter surfaces can render quote snapshot without hardcoded symbols/codes
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

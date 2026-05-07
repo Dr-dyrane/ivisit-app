@@ -4,6 +4,7 @@ import {
 	VISIT_TYPES,
 } from "../../constants/visits";
 import { resolveHistoryServiceLabel } from "../../components/map/history/history.presentation";
+import { formatMoney, resolveMoneyCurrency } from "../../utils/formatMoney";
 
 export const REQUEST_HISTORY_GROUP_ORDER = [
 	"active_now",
@@ -47,12 +48,11 @@ const toFiniteNumber = (value) => {
 	return null;
 };
 
-const toCurrencyLabel = (value) => {
-	const numeric = toFiniteNumber(value);
-	if (numeric != null) return `$${numeric.toFixed(2)}`;
-	const text = toText(value);
-	return text || null;
-};
+const toCurrencyLabel = (value, currency = "USD") =>
+	formatMoney(value, {
+		currency: resolveMoneyCurrency(currency),
+		fallback: null,
+	});
 
 const toDate = (value) => {
 	if (!value) return null;
@@ -463,8 +463,21 @@ export const toHistoryItem = (visit, now = new Date()) => {
 				visit?.total_amount ??
 				visit?.totalCost ??
 				visit?.total_cost ??
-				visit?.amount
-		) || toCurrencyLabel(visit?.cost);
+				visit?.amount,
+			resolveMoneyCurrency(
+				visit?.currency,
+				visit?.paymentCurrency,
+				visit?.payment_currency,
+			),
+		) ||
+		toCurrencyLabel(
+			visit?.cost,
+			resolveMoneyCurrency(
+				visit?.currency,
+				visit?.paymentCurrency,
+				visit?.payment_currency,
+			),
+		);
 
 	return {
 		id: String(visit.id),

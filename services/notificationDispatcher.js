@@ -2,6 +2,7 @@ import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifica
 import { notificationsService } from "./notificationsService";
 import { supabase } from "./supabase";
 import { v4 as uuidv4 } from "uuid";
+import { formatMoney } from "../utils/formatMoney";
 
 /**
  * Notification Dispatcher
@@ -181,7 +182,7 @@ export const notificationDispatcher = {
                     type: NOTIFICATION_TYPES.EMERGENCY,
                     priority: NOTIFICATION_PRIORITY.URGENT,
                     title: 'Cash Payment Approval Required',
-                    message: `A patient has requested a ${serviceLabel} (${displayId}) at ${hospitalName} with cash payment of $${totalAmount.toFixed(2)}. Platform fee: $${feeAmount.toFixed(2)}. Tap to approve or decline.`,
+                    message: `A patient has requested a ${serviceLabel} (${displayId}) at ${hospitalName} with cash payment of ${formatMoney(totalAmount, { currency: "USD" })}. Platform fee: ${formatMoney(feeAmount, { currency: "USD" })}. Tap to approve or decline.`,
                     icon: 'cash-outline',
                     color: '#FF9500', // Orange — requires attention
                     actionType: 'approve_cash_payment',

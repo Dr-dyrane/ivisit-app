@@ -13,6 +13,7 @@ import EntryActionButton from "../../../entry/EntryActionButton";
 import PaymentMethodSelector from "../../../payment/PaymentMethodSelector";
 import styles from "./mapCommitPayment.styles";
 import { MAP_COMMIT_PAYMENT_TRANSACTION_STATES } from "./mapCommitPayment.transaction";
+import { formatMoney } from "../../../../utils/formatMoney";
 
 function MapCommitPaymentOverlaySurface({
 	style,
@@ -512,7 +513,9 @@ export function MapCommitPaymentBreakdownCard({
 					<View key={`${item.name}-${item.cost}`} style={styles.breakdownRow}>
 						<Text style={[styles.breakdownRowLabel, { color: titleColor }]}>{item.name}</Text>
 						<Text style={[styles.breakdownRowValue, { color: titleColor }]}>
-							${Number(item.cost || 0).toFixed(2)}
+							{formatMoney(item.cost || 0, {
+								currency: item?.currency || "USD",
+							})}
 						</Text>
 					</View>
 				))}

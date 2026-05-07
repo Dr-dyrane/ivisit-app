@@ -18,6 +18,7 @@ import { COLORS } from "../../constants/colors";
 import styles from "./paymentScreenComponents.styles.js";
 import { getPaymentGlassTokens, squircle } from "./tokens/paymentGlassTokens";
 import { getStackViewportVariant, getStackViewportSurfaceConfig } from "../../utils/ui/stackViewportConfig";
+import { formatMoney, getCurrencySymbol } from "../../utils/formatMoney";
 
 // WalletBalanceCard - Premium balance card with gradient
 // PULLBACK NOTE: Extracted from PaymentScreen for reusability
@@ -49,11 +50,15 @@ export function WalletBalanceCard({ walletBalance, onTopUp, isSaving, isDarkMode
 					<View>
 						<Text style={styles.walletLabel}>Available Balance</Text>
 						<Text style={styles.balanceValue}>
-							${walletBalance.balance.toFixed(2)}
+							{formatMoney(walletBalance.balance, {
+								currency: walletBalance.currency,
+							})}
 						</Text>
 					</View>
 					<View style={styles.currencyBadge}>
-						<Text style={styles.currencyText}>{walletBalance.currency}</Text>
+						<Text style={styles.currencyText}>
+							{getCurrencySymbol(walletBalance.currency)}
+						</Text>
 					</View>
 				</View>
 
@@ -98,14 +103,18 @@ export function PaymentSummarySection({ cost, isDarkMode }) {
 						)}
 					</View>
 					<Text style={[styles.rowValue, { color: colors.text }]}>
-						${item.cost.toFixed(2)}
+						{formatMoney(item.cost, {
+							currency: item?.currency || cost?.currency || "USD",
+						})}
 					</Text>
 				</View>
 			))}
 			<View style={[styles.divider, { backgroundColor: colors.border }]} />
 			<View style={styles.totalRow}>
 				<Text style={[styles.totalLabel, { color: colors.text }]}>Total to Pay</Text>
-				<Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>${cost.totalCost.toFixed(2)}</Text>
+				<Text style={[styles.totalValue, { color: COLORS.brandPrimary }]}>
+					{formatMoney(cost.totalCost, { currency: cost?.currency || "USD" })}
+				</Text>
 			</View>
 		</View>
 	);
@@ -129,7 +138,7 @@ export function ServiceReceiptCard({ cost, insuranceApplied, isDarkMode }) {
 					Total Due
 				</Text>
 				<Text style={{ fontSize: 40, fontWeight: '800', letterSpacing: -2, color: colors.text }}>
-					${cost.totalCost.toFixed(2)}
+					{formatMoney(cost.totalCost, { currency: cost?.currency || "USD" })}
 				</Text>
 				{insuranceApplied && (
 					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(134,16,14,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderCurve: 'continuous' }}>
@@ -152,7 +161,11 @@ export function ServiceReceiptCard({ cost, insuranceApplied, isDarkMode }) {
 								<Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>Processing fee</Text>
 							)}
 						</View>
-						<Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>${item.cost.toFixed(2)}</Text>
+						<Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+							{formatMoney(item.cost, {
+								currency: item?.currency || cost?.currency || "USD",
+							})}
+						</Text>
 					</View>
 				))}
 			</View>
@@ -269,7 +282,9 @@ export function PaymentHistoryList({ paymentHistory, onTransactionPress, refresh
 								styles.ledgerAmount,
 								{ color: item.status === "completed" ? colors.text : colors.textMuted }
 							]}>
-								${parseFloat(item.amount).toFixed(2)}
+								{formatMoney(item.amount, {
+									currency: item?.currency || "USD",
+								})}
 							</Text>
 						</Pressable>
 					))}
@@ -438,7 +453,9 @@ export function PaymentHistoryModal({ visible, paymentHistory, onTransactionPres
 							styles.ledgerAmount,
 							{ color: item.status === "completed" ? colors.text : colors.textMuted }
 						]}>
-							${parseFloat(item.amount).toFixed(2)}
+							{formatMoney(item.amount, {
+								currency: item?.currency || "USD",
+							})}
 						</Text>
 					</Pressable>
 				))}
@@ -541,7 +558,9 @@ export function PaymentIdentitySection({ cost, insuranceApplied, isDarkMode }) {
 		<View style={[styles.glowCard, { backgroundColor: colors.card }]}>
 			<View style={styles.amountDisplay}>
 				<Text style={[styles.amountLabel, { color: colors.textMuted }]}>Total Amount</Text>
-				<Text style={[styles.amountValue, { color: colors.text }]}>${cost.totalCost.toFixed(2)}</Text>
+				<Text style={[styles.amountValue, { color: colors.text }]}>
+					{formatMoney(cost.totalCost, { currency: cost?.currency || "USD" })}
+				</Text>
 			</View>
 
 			{insuranceApplied && (
@@ -666,7 +685,9 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 					</View>
 
 					<View style={styles.amountInputWrapper}>
-						<Text style={[styles.currencyPrefix, { color: colors.textMuted }]}>$</Text>
+						<Text style={[styles.currencyPrefix, { color: colors.textMuted }]}>
+							{getCurrencySymbol("USD")}
+						</Text>
 						<TextInput
 							style={[styles.amountInput, squircle(16), { color: colors.text, backgroundColor: colors.inputBg }]}
 							placeholder="Enter amount"
@@ -688,7 +709,13 @@ export function AddFundsModal({ visible, onClose, onAmountSelect, isDarkMode, is
 									{ backgroundColor: colors.inputBg, opacity: pressed ? 0.7 : 1 }
 								]}
 							>
-								<Text style={[styles.presetText, { color: colors.text }]}>${preset}</Text>
+								<Text style={[styles.presetText, { color: colors.text }]}>
+									{formatMoney(preset, {
+										currency: "USD",
+										minimumFractionDigits: 0,
+										maximumFractionDigits: 0,
+									})}
+								</Text>
 							</Pressable>
 						))}
 					</View>
@@ -860,7 +887,11 @@ export function PaymentContextIsland({ cost, insuranceApplied, serviceType, isDa
 			<View style={{ gap: 4 }}>
 				<Text style={{ fontSize: 12, fontWeight: '500', color: textMuted, lineHeight: 17 }}>
 					No hidden fees. Billed exactly{' '}
-					<Text style={{ fontWeight: '700', color: text }}>${(cost?.totalCost ?? 0).toFixed(2)}</Text>.
+					<Text style={{ fontWeight: '700', color: text }}>
+						{formatMoney(cost?.totalCost ?? 0, {
+							currency: cost?.currency || "USD",
+						})}
+					</Text>.
 				</Text>
 				{insuranceApplied && (
 					<View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
@@ -890,7 +921,9 @@ export function WalletContextIsland({ walletBalance, lastTransaction, isLoading,
 		? new Date(lastTransaction.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 		: null;
 	const txAmount = lastTransaction?.amount != null
-		? `$${parseFloat(lastTransaction.amount).toFixed(2)}`
+		? formatMoney(lastTransaction.amount, {
+				currency: lastTransaction?.currency || currency,
+			})
 		: null;
 	const txStatus = lastTransaction?.status ?? null;
 	const statusColor = txStatus === 'completed' ? '#22C55E' : txStatus === 'failed' ? COLORS.brandPrimary : textMuted;
@@ -908,7 +941,7 @@ export function WalletContextIsland({ walletBalance, lastTransaction, isLoading,
 					</View>
 				) : (
 					<Text style={{ fontSize: 32, fontWeight: '800', letterSpacing: -1, color: text, lineHeight: 38 }}>
-						{currency} {balance.toFixed(2)}
+						{formatMoney(balance, { currency })}
 					</Text>
 				)}
 				{/* Ghost Top Up CTA */}

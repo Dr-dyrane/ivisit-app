@@ -139,6 +139,7 @@ When in doubt, `rules.json` wins.
 - [`flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md`](./flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md) — architecture contract for the medical-profile five-layer completion
 - [`audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md`](./audit/MEDICAL_PROFILE_STATE_IMPLEMENTATION_CHECKPOINT_2026-04-29.md) — post-pass checkpoint for the medical-profile state migration
 - [`flows/payment/workflow_map.md`](./flows/payment/workflow_map.md) — payment and wallet map
+- [`flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md`](./flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md) - immediate billing formatter normalization and future FX quote lane
 
 - [`audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md`](./audit/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md) â€” post-audit guardrail reconciliation for recent stack-screen and route-state changes
 
@@ -199,6 +200,7 @@ When in doubt, `rules.json` wins.
 - [`audit/RISK_STATUS_2026-04-23.md`](./audit/RISK_STATUS_2026-04-23.md) — R1-R10 resolution tracker
 - [`audit/TEMPORAL_DEAD_ZONE_FIXES.md`](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)
 - [`audit/AUDIT_CHECKLIST.md`](./audit/AUDIT_CHECKLIST.md)
+- [`audit/payment/BILLING_CURRENCY_AND_FX_AUDIT_2026-05-06.md`](./audit/payment/BILLING_CURRENCY_AND_FX_AUDIT_2026-05-06.md) - billing currency audit and backend FX lane recommendation
 
 - [`audit/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md`](./audit/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md) â€” live demo bootstrap remediation checkpoint, cleanup sequence, and final inventory state
 

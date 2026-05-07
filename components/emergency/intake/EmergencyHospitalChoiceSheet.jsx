@@ -18,6 +18,7 @@ import {
 	logEmergencyDebug,
 	summarizeHospitalForDebug,
 } from "../../../utils/emergencyDebug";
+import { formatMoney, resolveMoneyCurrency } from "../../../utils/formatMoney";
 
 function buildHospitalSubtitle(hospital) {
 	const locality = [hospital?.city, hospital?.region].filter(Boolean).join(", ").trim();
@@ -50,7 +51,16 @@ function buildHospitalPrice(hospital) {
 
 	const numeric = Number(hospital?.price);
 	if (Number.isFinite(numeric) && numeric > 0) {
-		return `$${Math.round(numeric)}`;
+		return formatMoney(numeric, {
+			currency: resolveMoneyCurrency(
+				hospital?.currency,
+				hospital?.priceCurrency,
+				hospital?.price_currency,
+			),
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+			preserveText: false,
+		});
 	}
 
 	return null;

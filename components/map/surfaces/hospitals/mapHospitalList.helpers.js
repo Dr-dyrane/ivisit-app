@@ -1,4 +1,5 @@
 import { SPECIALTIES } from "../../../../constants/hospitals";
+import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
 const normalizeSpecialty = (value) =>
 	typeof value === "string" && value.trim().length > 0
@@ -123,7 +124,16 @@ export function buildHospitalPrice(hospital) {
 
 	const numeric = Number(hospital?.price);
 	if (Number.isFinite(numeric) && numeric > 0) {
-		return `$${Math.round(numeric)}`;
+		return formatMoney(numeric, {
+			currency: resolveMoneyCurrency(
+				hospital?.currency,
+				hospital?.priceCurrency,
+				hospital?.price_currency,
+			),
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+			preserveText: false,
+		});
 	}
 
 	return null;

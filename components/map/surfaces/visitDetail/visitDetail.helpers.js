@@ -3,6 +3,8 @@
 // PULLBACK NOTE: VD-D (VD-8) — extracted from useMapVisitDetailModel.js.
 // Pure formatting utilities with no React dependencies.
 
+import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
+
 export const REQUEST_TYPES = Object.freeze({
 	AMBULANCE: "ambulance",
 	BED: "bed",
@@ -65,12 +67,11 @@ export const toTitleCase = (value) => {
 	return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
 };
 
-export const toCurrencyLabel = (value) => {
-	const numeric = toFiniteNumber(value);
-	if (numeric != null) return `$${numeric.toFixed(2)}`;
-	const text = toText(value);
-	return text || null;
-};
+export const toCurrencyLabel = (value, currency = "USD") =>
+	formatMoney(value, {
+		currency: resolveMoneyCurrency(currency),
+		fallback: null,
+	});
 
 // PULLBACK NOTE: Add URL validation to prevent network errors
 // OLD: Return { uri: text } for any non-empty string

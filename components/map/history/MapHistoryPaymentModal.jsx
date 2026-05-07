@@ -6,11 +6,12 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import useResponsiveSurfaceMetrics from "../../../hooks/ui/useResponsiveSurfaceMetrics";
 import buildHistoryThemeTokens from "./history.theme";
 import { styles } from "./mapHistoryPaymentModal.styles";
+import { formatMoney } from "../../../utils/formatMoney";
 
-const formatAmount = (value) => {
+const formatAmount = (value, currency = "USD") => {
 	const numeric = Number(value);
-	if (!Number.isFinite(numeric)) return "$0.00";
-	return `${numeric < 0 ? "-" : ""}$${Math.abs(numeric).toFixed(2)}`;
+	if (!Number.isFinite(numeric)) return formatMoney(0, { currency });
+	return formatMoney(Math.abs(numeric), { currency });
 };
 
 const formatTimestamp = (value) => {
@@ -133,7 +134,7 @@ export default function MapHistoryPaymentModal({
 							/>
 						</View>
 						<Text style={[styles.amount, { color: colors.title }]}>
-							{`${paymentRecord?.transaction_type === "credit" ? "+" : "-"}${formatAmount(paymentRecord?.amount)}`}
+							{`${paymentRecord?.transaction_type === "credit" ? "+" : "-"}${formatAmount(paymentRecord?.amount, paymentRecord?.currency || "USD")}`}
 						</Text>
 						<Text style={[styles.status, { color: statusTone.color }]}>
 							{String(paymentRecord?.status || "unknown").toUpperCase()}
