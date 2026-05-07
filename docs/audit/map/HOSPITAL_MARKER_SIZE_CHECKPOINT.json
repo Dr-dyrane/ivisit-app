@@ -1,0 +1,47 @@
+{
+  "checkpointId": "hospital-marker-size-split",
+  "baseCommit": "2afd31c793a315018aa76843190197d0bd50a7e8",
+  "summary": "Hospital marker size checkpoint after web reduction and native re-enlargement. The effective fix was a split contract: imageSize for web, PNG bitmap size for native.",
+  "scope": {
+    "liveMapOwner": "components/emergency/intake/EmergencyLocationPreviewMap.jsx",
+    "alternateOwner": "components/map/HospitalMarkers.jsx",
+    "legacyPreviewOwner": "components/emergency/intake/EmergencyHospitalRoutePreview.jsx"
+  },
+  "contracts": {
+    "web": {
+      "normal": { "width": 28, "height": 48 },
+      "selected": { "width": 38, "height": 64 }
+    },
+    "native": {
+      "normal": { "width": 54, "height": 91 },
+      "selected": { "width": 68, "height": 114 }
+    }
+  },
+  "assets": {
+    "hospital": {
+      "path": "assets/map/hospital.png",
+      "size": "54x91"
+    },
+    "selectedHospital": {
+      "path": "assets/map/selected_hospital.png",
+      "size": "68x114"
+    }
+  },
+  "touchedPaths": [
+    "assets/map/hospital.png",
+    "assets/map/selected_hospital.png",
+    "components/emergency/intake/EmergencyLocationPreviewMap.jsx",
+    "components/emergency/intake/EmergencyHospitalRoutePreview.jsx",
+    "components/map/HospitalMarkers.jsx"
+  ],
+  "rollback": {
+    "description": "Restore this checkpoint back to the last pushed base before the local marker-size pass.",
+    "command": "git restore --source 2afd31c -- assets/map/hospital.png assets/map/selected_hospital.png components/emergency/intake/EmergencyLocationPreviewMap.jsx components/emergency/intake/EmergencyHospitalRoutePreview.jsx components/map/HospitalMarkers.jsx"
+  },
+  "notes": [
+    "Web sizing is code-driven through imageSize.",
+    "Native sizing is asset-driven for react-native-maps image markers.",
+    "If native size changes again, resize the PNG assets and keep the three owners in sync.",
+    "The main live /map owner is EmergencyLocationPreviewMap.jsx, but HospitalMarkers.jsx and EmergencyHospitalRoutePreview.jsx must not drift."
+  ]
+}

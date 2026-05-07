@@ -22,11 +22,24 @@ import useMarkerRenderPulse from "../../../hooks/map/useMarkerRenderPulse";
 import { normalizeCoordinate } from "../../../utils/emergencyContextHelpers";
 
 const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
+/*
+HOSPITAL_MARKER_SIZE_CHECKPOINT={
+  "baseCommit":"2afd31c793a315018aa76843190197d0bd50a7e8",
+  "doc":"docs/audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json",
+  "rollback":"git restore --source 2afd31c -- assets/map/hospital.png assets/map/selected_hospital.png components/emergency/intake/EmergencyLocationPreviewMap.jsx components/emergency/intake/EmergencyHospitalRoutePreview.jsx components/map/HospitalMarkers.jsx",
+  "scope":"legacy route preview selected hospital marker",
+  "native":{"selected":"68x114"},
+  "web":{"selected":"38x64"}
+}
+*/
 
-const HOSPITAL_MARKER_HEIGHT = 137;
+const HOSPITAL_MARKER_DIMENSIONS =
+  Platform.OS === "web"
+    ? { width: 38, height: 64 }
+    : { width: 68, height: 114 };
 const HOSPITAL_MARKER_CENTER_OFFSET = {
   x: 0,
-  y: -HOSPITAL_MARKER_HEIGHT / 6,
+  y: -HOSPITAL_MARKER_DIMENSIONS.height / 6,
 };
 const ORIGIN_MARKER_COLOR = "#3B82F6";
 const toCoordinate = normalizeCoordinate;
@@ -357,7 +370,7 @@ export default function EmergencyHospitalRoutePreview({
             <Marker
               coordinate={hospitalCoordinate}
               image={HOSPITAL_MARKER_IMAGE}
-              imageSize={{ width: 81, height: 137 }}
+              imageSize={HOSPITAL_MARKER_DIMENSIONS}
               pinColor={COLORS.brandPrimary}
               anchor={{ x: 0.5, y: 0.5 }}
               centerOffset={HOSPITAL_MARKER_CENTER_OFFSET}

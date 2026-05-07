@@ -8,6 +8,8 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [emergency/workflow_map.md](./emergency/workflow_map.md): Deterministic emergency lifecycle from request to completion.
 - [emergency/DEMO_MODE_COVERAGE_FLOW.md](./emergency/DEMO_MODE_COVERAGE_FLOW.md): Demo bootstrap doctrine, active-pool rules, and cleanup runbook for sparse or sponsor-test coverage.
 - [../audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](../audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md): Live remediation checkpoint for demo bootstrap bloat and Supabase cleanup.
+- [../audit/map/HOSPITAL_MARKER_RENDER_RULE_2026-05-06.md](../audit/map/HOSPITAL_MARKER_RENDER_RULE_2026-05-06.md): Cross-platform hospital-marker rule after the staging fix: web is code-sized, native is asset-sized.
+- [../audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json](../audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json): Machine-readable rollback and size contract ledger for the current hospital-marker checkpoint.
 - [../audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](../audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md): Shared map route-state hardening, directions dedupe, and loop-fix checkpoint.
 - [../audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](../audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md): Marker/entity render hardening for hospital markers, user markers, and web marker stability.
 - [emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md](./emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md): Architecture contract for the full five-layer shared map route state.

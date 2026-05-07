@@ -39,11 +39,27 @@ const DEFAULT_REGION = {
   latitudeDelta: 0.012,
   longitudeDelta: 0.012,
 };
+/*
+HOSPITAL_MARKER_SIZE_CHECKPOINT={
+  "baseCommit":"2afd31c793a315018aa76843190197d0bd50a7e8",
+  "doc":"docs/audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json",
+  "rollback":"git restore --source 2afd31c -- assets/map/hospital.png assets/map/selected_hospital.png components/emergency/intake/EmergencyLocationPreviewMap.jsx components/emergency/intake/EmergencyHospitalRoutePreview.jsx components/map/HospitalMarkers.jsx",
+  "scope":"live /map hospital markers",
+  "native":{"normal":"54x91","selected":"68x114"},
+  "web":{"normal":"28x48","selected":"38x64"}
+}
+*/
 const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/hospital.png");
 const SELECTED_HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
-const HOSPITAL_MARKER_HEIGHT = {
-  normal: 102.5,
-  selected: 137,
+const HOSPITAL_MARKER_DIMENSIONS = {
+  native: {
+    normal: { width: 54, height: 91 },
+    selected: { width: 68, height: 114 },
+  },
+  web: {
+    normal: { width: 28, height: 48 },
+    selected: { width: 38, height: 64 },
+  },
 };
 
 const toCoordinate = normalizeCoordinate;
@@ -254,13 +270,18 @@ function getWebRoutePanOffset(
   );
 }
 
-function getHospitalMarkerCenterOffset(isSelected) {
+function getHospitalMarkerDimensions(isSelected, isWeb) {
+  const platformMetrics = isWeb
+    ? HOSPITAL_MARKER_DIMENSIONS.web
+    : HOSPITAL_MARKER_DIMENSIONS.native;
+  return isSelected ? platformMetrics.selected : platformMetrics.normal;
+}
+
+function getHospitalMarkerCenterOffset(isSelected, isWeb) {
+  const { height } = getHospitalMarkerDimensions(isSelected, isWeb);
   return {
     x: 0,
-    y:
-      -(isSelected
-        ? HOSPITAL_MARKER_HEIGHT.selected
-        : HOSPITAL_MARKER_HEIGHT.normal) / 6,
+    y: -height / 6,
   };
 }
 
@@ -1086,18 +1107,14 @@ export default function EmergencyLocationPreviewMap({
               key={hospital?.id || `${hospital?.name || "hospital"}-${index}`}
               coordinate={coordinate}
               anchor={{ x: 0.5, y: 0.5 }}
-              centerOffset={getHospitalMarkerCenterOffset(isSelected)}
+              centerOffset={getHospitalMarkerCenterOffset(isSelected, isWeb)}
               zIndex={isSelected ? 100 : 10 - index}
               image={
                 isSelected
                   ? SELECTED_HOSPITAL_MARKER_IMAGE
                   : HOSPITAL_MARKER_IMAGE
               }
-              imageSize={
-                isSelected
-                  ? { width: 81, height: 137 }
-                  : { width: 60.75, height: 102.5 }
-              }
+              imageSize={getHospitalMarkerDimensions(isSelected, isWeb)}
               tracksViewChanges={tracksMarkerViews}
               title={hospital?.name || "Hospital"}
               onPress={
