@@ -263,6 +263,8 @@ export default function MapSearchSheetSections({ model }) {
 		activeChipSurface,
 		cardSurface,
 		currentLocation,
+		currentLocationActionLabel,
+		currentLocationBadgeLabel,
 		groupedSurface,
 		handleModeChange,
 		handleOpenHospital,
@@ -276,7 +278,10 @@ export default function MapSearchSheetSections({ model }) {
 		isResolvingLocation,
 		isSearchingLocations,
 		locationError,
+		locationPromptBody,
+		locationPromptTitle,
 		locationSectionTitle,
+		manualEntryActionLabel,
 		mutedColor,
 		nearbyHospitals,
 		orderedQuerySections,
@@ -308,7 +313,7 @@ export default function MapSearchSheetSections({ model }) {
 					responsiveStyles={responsiveStyles}
 				/>
 				<ModeChip
-					label="Area"
+					label="Pickup"
 					iconName="location-outline"
 					active={isLocationMode}
 					onPress={() => handleModeChange(MAP_SEARCH_SHEET_MODES.LOCATION)}
@@ -323,26 +328,82 @@ export default function MapSearchSheetSections({ model }) {
 
 			{!hasQuery ? (
 				<>
+					{isLocationMode ? (
+						<View
+							style={[
+								styles.emptyState,
+								responsiveStyles.emptyState,
+								{ backgroundColor: groupedSurface },
+							]}
+						>
+							<View style={[styles.emptyIconWrap, responsiveStyles.emptyIconWrap]}>
+								<Ionicons
+									name="navigate-outline"
+									size={20}
+									color={COLORS.brandPrimary}
+								/>
+							</View>
+							<Text
+								style={[
+									styles.emptyTitle,
+									responsiveStyles.emptyTitle,
+									{ color: titleColor },
+								]}
+							>
+								{locationPromptTitle}
+							</Text>
+							<Text
+								style={[
+									styles.emptyBody,
+									responsiveStyles.emptyBody,
+									{ color: mutedColor },
+								]}
+							>
+								{locationPromptBody}
+							</Text>
+						</View>
+					) : null}
+
 					<View style={[styles.section, responsiveStyles.section]}>
 						<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
-							Current area
+							{isLocationMode ? "Pickup controls" : "Current area"}
 						</Text>
 						<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
 							<SearchResultRow
 								iconName="locate"
-								title={currentLocation?.primaryText || "Current location"}
-								subtitle={currentLocation?.secondaryText || "Use your device location"}
-								meta="Use your device location"
+								title={
+									isLocationMode
+										? currentLocationActionLabel
+										: currentLocation?.primaryText || "Current location"
+								}
+								subtitle={
+									isLocationMode
+										? "Use your device location for pickup."
+										: currentLocation?.secondaryText || "Use your device location"
+								}
+								meta={currentLocation?.secondaryText || locationPromptBody}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={cardSurface}
 								isDarkMode={isDarkMode}
-								badgeLabel="Live"
+								badgeLabel={currentLocationBadgeLabel}
 								onPress={handleUseCurrent}
 								responsiveStyles={responsiveStyles}
 							/>
 						</View>
 					</View>
+
+					{isLocationMode ? (
+						<Text
+							style={[
+								styles.loadingText,
+								responsiveStyles.loadingText,
+								{ color: mutedColor },
+							]}
+						>
+							{`${manualEntryActionLabel}: type a street, area, city, or landmark above.`}
+						</Text>
+					) : null}
 
 					{nearbyHospitals.length > 0 ? (
 						<ResultsSection

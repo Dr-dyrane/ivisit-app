@@ -218,9 +218,44 @@ export default StyleSheet.create({
 		opacity: 0.96,
 		transform: [{ scale: 0.996 }],
 	},
+	locationSetupCard: {
+		alignItems: "flex-start",
+	},
 	hospitalCardCentered: {
 		width: "100%",
 		alignSelf: "center",
+	},
+	locationSetupActionRow: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 10,
+		marginTop: 14,
+	},
+	locationSetupPrimaryAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderRadius: 999,
+	},
+	locationSetupSecondaryAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderRadius: 999,
+	},
+	locationSetupPrimaryText: {
+		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "700",
+	},
+	locationSetupSecondaryText: {
+		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "600",
 	},
 	intentStatusCard: {
 		paddingHorizontal: 14,

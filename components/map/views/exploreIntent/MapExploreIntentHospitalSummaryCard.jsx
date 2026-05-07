@@ -121,9 +121,13 @@ export default function MapExploreIntentHospitalSummaryCard({
 	isDarkMode,
 	nearestHospital,
 	nearestHospitalMeta = [],
+	currentLocation = null,
+	locationControl = null,
 	nearbyHospitalCount = 0,
 	totalAvailableBeds = 0,
 	onOpenHospitals,
+	onUseCurrentLocation,
+	onOpenLocationSearch,
 	responsiveMetrics,
 }) {
 	const summaryIconSize = responsiveMetrics?.summary?.iconSize || 42;
@@ -144,6 +148,17 @@ export default function MapExploreIntentHospitalSummaryCard({
 		layoutMode === "canonical" || layoutMode === "web_canonical";
 	const usesHeroSummaryLayout = layoutMode === "hero";
 	const isSummaryLoading = !nearestHospital?.name;
+	const requiresLocationSelection = Boolean(
+		locationControl?.requiresLocationSelection,
+	);
+	const locationActionLabel =
+		locationControl?.currentLocationActionLabel || "Use device location";
+	const manualActionLabel =
+		locationControl?.manualEntryActionLabel || "Enter address manually";
+	const locationHint =
+		locationControl?.locationError ||
+		currentLocation?.secondaryText ||
+		"Turn on location or enter a pickup area manually.";
 	const heroMeta = nearestHospitalMeta.filter(Boolean).join(" | ");
 	const heroMetrics = [
 		{
@@ -167,6 +182,103 @@ export default function MapExploreIntentHospitalSummaryCard({
 	const cardAccessibilityLabel = nearestHospital?.name
 		? `${nearestHospital.name}${nearestHospitalMeta.length > 0 ? `, ${nearestHospitalMeta.join(", ")}` : ""}`
 		: MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS;
+
+	if (requiresLocationSelection) {
+		return (
+			<View
+				style={[
+					styles.hospitalCard,
+					styles.locationSetupCard,
+					isCentered ? styles.hospitalCardCentered : null,
+					isCentered && maxWidth ? { maxWidth } : null,
+					{
+						borderRadius: tokens.cardRadius,
+						borderCurve: "continuous",
+						backgroundColor: tokens.strongCardSurface,
+					},
+					canonicalCardResponsiveStyle,
+				]}
+			>
+				<SummaryIconTile isDarkMode={isDarkMode} size={summaryIconSize}>
+					<Ionicons
+						name={locationControl?.shouldOpenSettings ? "location-outline" : "locate"}
+						size={isTightViewport ? 16 : 18}
+						color={isDarkMode ? "#F8FAFC" : "#86100E"}
+					/>
+				</SummaryIconTile>
+				<View style={styles.hospitalCardCopy}>
+					<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
+						Pickup area
+					</Text>
+					<Text
+						numberOfLines={1}
+						style={[styles.hospitalTitle, titleTextStyle, { color: tokens.titleColor }]}
+					>
+						{currentLocation?.primaryText || "Set pickup area"}
+					</Text>
+					<Text
+						style={[styles.hospitalMeta, metaTextStyle, { color: tokens.bodyText }]}
+					>
+						{locationHint}
+					</Text>
+					<View style={styles.locationSetupActionRow}>
+						<Pressable
+							onPress={onUseCurrentLocation}
+							onPressIn={() => triggerPress("medium")}
+							style={({ pressed }) => [
+								styles.locationSetupPrimaryAction,
+								{
+									backgroundColor: isDarkMode
+										? "rgba(134,16,14,0.24)"
+										: "rgba(134,16,14,0.10)",
+									opacity: pressed ? 0.9 : 1,
+								},
+							]}
+						>
+							<Ionicons
+								name={locationControl?.shouldOpenSettings ? "settings-outline" : "locate-outline"}
+								size={14}
+								color={tokens.titleColor}
+							/>
+							<Text
+								style={[
+									styles.locationSetupPrimaryText,
+									{ color: tokens.titleColor },
+								]}
+							>
+								{locationActionLabel}
+							</Text>
+						</Pressable>
+						<Pressable
+							onPress={onOpenLocationSearch}
+							onPressIn={() => triggerPress("light")}
+							style={({ pressed }) => [
+								styles.locationSetupSecondaryAction,
+								{
+									backgroundColor: tokens.mutedCardSurface,
+									opacity: pressed ? 0.92 : 1,
+								},
+							]}
+						>
+							<Ionicons
+								name="search-outline"
+								size={14}
+								color={tokens.titleColor}
+							/>
+							<Text
+								style={[
+									styles.locationSetupSecondaryText,
+									{ color: tokens.titleColor },
+								]}
+							>
+								{manualActionLabel}
+							</Text>
+						</Pressable>
+					</View>
+				</View>
+			</View>
+		);
+	}
 
 	if (usesCanonicalSummaryLayout) {
 		return (

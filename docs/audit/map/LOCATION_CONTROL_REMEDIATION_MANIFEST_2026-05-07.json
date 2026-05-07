@@ -1,0 +1,79 @@
+{
+  "pass_id": "MAP-LOC-2026-05-07",
+  "scope": "live_map_location_control_and_manual_pickup",
+  "status": "implemented_local",
+  "problem_statement": [
+    "location-off users were still seeing fallback pickup behavior as if it were live",
+    "manual pickup selection was not obvious enough in the live /map UX",
+    "manual pickup changes could fail to propagate into hospital discovery and billing-country override"
+  ],
+  "root_causes": [
+    {
+      "id": "loc-1",
+      "title": "silent fallback disguised as live location",
+      "owner": "GlobalLocationContext"
+    },
+    {
+      "id": "loc-2",
+      "title": "hydrated device coordinates stayed trusted after relaunch",
+      "owner": "locationStore"
+    },
+    {
+      "id": "loc-3",
+      "title": "broken Zustand setter usage blocked propagation",
+      "owner": "MapEntryLoadingScreen / RequestAmbulanceScreen / map location lanes"
+    },
+    {
+      "id": "loc-4",
+      "title": "manual search dropped country metadata",
+      "owner": "Mapbox search lane"
+    },
+    {
+      "id": "loc-5",
+      "title": "explore intent and search did not present pickup as a first-class task",
+      "owner": "map sheet UI"
+    }
+  ],
+  "canonical_rules": {
+    "trusted_sources": ["manual", "device"],
+    "hydrated_device_source": "persisted",
+    "requires_location_selection_when": "no trusted pickup location exists",
+    "manual_pickup_must_update": [
+      "shared location store",
+      "manual location flow state",
+      "billing country override when country code exists"
+    ]
+  },
+  "files_changed": [
+    "stores/locationStore.js",
+    "contexts/GlobalLocationContext.jsx",
+    "hooks/emergency/useEmergencyLocationSync.js",
+    "contexts/EmergencyContext.jsx",
+    "hooks/map/exploreFlow/useMapLocation.js",
+    "hooks/map/exploreFlow/useMapExploreFlow.js",
+    "screens/MapScreen.jsx",
+    "components/map/core/MapSheetOrchestrator.jsx",
+    "components/map/surfaces/search/mapSearchSheet.helpers.js",
+    "components/map/surfaces/search/useMapSearchSheetModel.js",
+    "components/map/surfaces/search/MapSearchSheetSections.jsx",
+    "components/map/views/search/MapSearchStageParts.jsx",
+    "components/map/views/exploreIntent/MapExploreIntentStageBase.jsx",
+    "components/map/views/exploreIntent/MapExploreIntentStageParts.jsx",
+    "components/map/views/exploreIntent/MapExploreIntentHospitalSummaryCard.jsx",
+    "components/map/views/exploreIntent/mapExploreIntent.styles.js",
+    "screens/MapEntryLoadingScreen.jsx",
+    "screens/RequestAmbulanceScreen.jsx",
+    "services/mapboxService.js",
+    "utils/locationHelpers.js"
+  ],
+  "verification": {
+    "build_web": "passed",
+    "git_diff_check": "passed_with_existing_crlf_warnings_only",
+    "remaining_invalid_setter_calls": 0
+  },
+  "remaining_work": [
+    "thread explicit change-pickup entry points into tracking/payment/detail surfaces",
+    "continue reducing provider-local location state in favor of canonical shared store lanes",
+    "complete broader /map modularization"
+  ]
+}

@@ -1,337 +1,457 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import * as Location from "expo-location";
-import { Platform } from "react-native";
-import { DEFAULT_APP_COORDINATES } from "../constants/locationDefaults";
-import { useLocationStore } from "../stores/locationStore";
+import { Linking, Platform } from "react-native";
 import mapboxService from "../services/mapboxService";
+import { useLocationStore } from "../stores/locationStore";
 import {
-	normalizeLocationCoordinates,
-	buildFallbackPlaceModel,
-	buildPlaceModelFromOpenStreetMap,
-	reverseGeocodeWithOpenStreetMap,
-	buildPlaceModelFromFormattedAddress,
-	buildPlaceModelFromNativePlace,
+  buildFallbackPlaceModel,
+  buildPlaceModelFromFormattedAddress,
+  buildPlaceModelFromNativePlace,
+  normalizeLocationCoordinates,
+  reverseGeocodeWithOpenStreetMap,
 } from "../utils/locationHelpers";
 
-// PULLBACK NOTE: Location fallback priority: GPS → Zustand persisted last-known → DEFAULT_APP_COORDINATES
-// OLD: all GPS failures fell straight to hardcoded Lagos coords
-// NEW: check locationStore.userLocation first (persisted across sessions); hardcoded only on true cold install
-const getLocationFallback = () => {
-  const stored = useLocationStore.getState().userLocation;
-  const lat = Number(stored?.latitude);
-  const lng = Number(stored?.longitude);
-  if (stored && Number.isFinite(lat) && Number.isFinite(lng)) return stored;
-  return { ...DEFAULT_APP_COORDINATES };
-};
-
-// Location configuration constants
 const LOCATION_CONFIG = {
-	TIMEOUT: 10000, // 10 seconds
-	MAX_AGE: 30000, // 30 seconds cache
-	ACCURACY: Location.Accuracy.High,
+  TIMEOUT: 10000,
+  MAX_AGE: 30000,
+  ACCURACY: Location.Accuracy.High,
 };
 
-// Create context
 const GlobalLocationContext = createContext();
 
-/**
- * Global Location Provider
- * Loads location once at app startup and shares across all components
- * Prevents multiple location requests and improves performance
- */
+function getStoredLocationFallback({ allowDevice = false } = {}) {
+  const state = useLocationStore.getState();
+  const normalizedLocation = normalizeLocationCoordinates(state.userLocation);
+  const source = state.userLocationSource || "persisted";
+
+  if (!normalizedLocation) {
+    return null;
+  }
+  if (source === "manual") {
+    return {
+      location: normalizedLocation,
+      source: "manual_fallback",
+    };
+  }
+  if (allowDevice && (source === "device" || source === "persisted")) {
+    return {
+      location: normalizedLocation,
+      source: "stored_fallback",
+    };
+  }
+  return null;
+}
+
 export function GlobalLocationProvider({ children }) {
-	const [userLocation, setUserLocation] = useState(null);
-	const [locationPermission, setLocationPermission] = useState(null);
-	const [isLoadingLocation, setIsLoadingLocation] = useState(true);
-	const [locationError, setLocationError] = useState(null);
-	const [lastUpdated, setLastUpdated] = useState(null);
-	const [resolvedPlace, setResolvedPlace] = useState(null);
-	const [isResolvingPlaceName, setIsResolvingPlaceName] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationPermission, setLocationPermission] = useState(null);
+  const [locationPermissionStatus, setLocationPermissionStatus] =
+    useState("undetermined");
+  const [locationSource, setLocationSource] = useState("unknown");
+  const [locationServicesEnabled, setLocationServicesEnabled] = useState(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [locationError, setLocationError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [resolvedPlace, setResolvedPlace] = useState(null);
+  const [isResolvingPlaceName, setIsResolvingPlaceName] = useState(false);
 
-	// Prevent multiple simultaneous permission requests
-	const isRequestingPermission = useRef(false);
-	const isInitialized = useRef(false);
-	const placeRequestIdRef = useRef(0);
-	const resolvedPlaceKeyRef = useRef(null);
+  const isRequestingPermission = useRef(false);
+  const isInitialized = useRef(false);
+  const placeRequestIdRef = useRef(0);
+  const resolvedPlaceKeyRef = useRef(null);
 
-	const resolveLocationDetails = useCallback(async (locationInput) => {
-		const normalizedLocation = normalizeLocationCoordinates(locationInput);
-		if (!normalizedLocation) {
-			const fallbackPlace = buildFallbackPlaceModel(locationInput);
-			setResolvedPlace(fallbackPlace);
-			return fallbackPlace;
-		}
+  const syncStorePermissionStatus = useCallback((status) => {
+    useLocationStore.getState().setLocationPermission(status);
+  }, []);
 
-		const locationKey = `${normalizedLocation.latitude.toFixed(4)}:${normalizedLocation.longitude.toFixed(4)}`;
-		if (resolvedPlaceKeyRef.current === locationKey && resolvedPlace) {
-			return resolvedPlace;
-		}
+  const setPermissionState = useCallback(
+    (status) => {
+      setLocationPermissionStatus(status);
+      setLocationPermission(status === "granted");
+      syncStorePermissionStatus(status);
+    },
+    [syncStorePermissionStatus],
+  );
 
-		const requestId = ++placeRequestIdRef.current;
-		setIsResolvingPlaceName(true);
+  const resolveLocationDetails = useCallback(
+    async (locationInput) => {
+      const normalizedLocation = normalizeLocationCoordinates(locationInput);
+      if (!normalizedLocation) {
+        const fallbackPlace = buildFallbackPlaceModel(locationInput);
+        setResolvedPlace(fallbackPlace);
+        return fallbackPlace;
+      }
 
-		try {
-			let nextPlace = null;
+      const locationKey = `${normalizedLocation.latitude.toFixed(4)}:${normalizedLocation.longitude.toFixed(4)}`;
+      if (resolvedPlaceKeyRef.current === locationKey && resolvedPlace) {
+        return resolvedPlace;
+      }
 
-			try {
-				const nativePlaces = await Location.reverseGeocodeAsync(normalizedLocation);
-				const nativePlace = buildPlaceModelFromNativePlace(
-					nativePlaces?.[0],
-					normalizedLocation,
-				);
-				if (nativePlace?.source !== "fallback") {
-					nextPlace = nativePlace;
-				}
-			} catch (_nativeError) {
-				// Fall through to Mapbox reverse geocoding below.
-			}
+      const requestId = ++placeRequestIdRef.current;
+      setIsResolvingPlaceName(true);
 
-			if (!nextPlace) {
-				try {
-					const formattedAddress = await mapboxService.reverseGeocode(
-						normalizedLocation.latitude,
-						normalizedLocation.longitude,
-					);
-					if (
-						typeof formattedAddress === "string" &&
-						formattedAddress.trim() &&
-						formattedAddress !== "Unknown Address"
-					) {
-						nextPlace = buildPlaceModelFromFormattedAddress(
-							formattedAddress,
-							normalizedLocation,
-							"mapbox",
-						);
-					}
-				} catch (_mapboxError) {
-					// Fall through to web-safe public reverse geocoding below.
-				}
-			}
+      try {
+        let nextPlace = null;
 
-			if (!nextPlace) {
-				nextPlace = await reverseGeocodeWithOpenStreetMap(normalizedLocation);
-			}
+        try {
+          const nativePlaces = await Location.reverseGeocodeAsync(
+            normalizedLocation,
+          );
+          const nativePlace = buildPlaceModelFromNativePlace(
+            nativePlaces?.[0],
+            normalizedLocation,
+          );
+          if (nativePlace?.source !== "fallback") {
+            nextPlace = nativePlace;
+          }
+        } catch (_nativeError) {
+          // Fall through to Mapbox reverse geocoding below.
+        }
 
-			if (!nextPlace) {
-				nextPlace = buildFallbackPlaceModel(normalizedLocation);
-			}
+        if (!nextPlace) {
+          try {
+            const formattedAddress = await mapboxService.reverseGeocode(
+              normalizedLocation.latitude,
+              normalizedLocation.longitude,
+            );
+            if (
+              typeof formattedAddress === "string" &&
+              formattedAddress.trim() &&
+              formattedAddress !== "Unknown Address"
+            ) {
+              nextPlace = buildPlaceModelFromFormattedAddress(
+                formattedAddress,
+                normalizedLocation,
+                "mapbox",
+              );
+            }
+          } catch (_mapboxError) {
+            // Fall through to public reverse geocoding below.
+          }
+        }
 
-			if (requestId === placeRequestIdRef.current) {
-				resolvedPlaceKeyRef.current = locationKey;
-				setResolvedPlace(nextPlace);
-			}
+        if (!nextPlace) {
+          nextPlace = await reverseGeocodeWithOpenStreetMap(normalizedLocation);
+        }
 
-			return nextPlace;
-		} finally {
-			if (requestId === placeRequestIdRef.current) {
-				setIsResolvingPlaceName(false);
-			}
-		}
-	}, [resolvedPlace]);
+        if (!nextPlace) {
+          nextPlace = buildFallbackPlaceModel(normalizedLocation);
+        }
 
-	// Request location permission and get location
-	const requestLocationPermission = useCallback(async () => {
+        if (requestId === placeRequestIdRef.current) {
+          resolvedPlaceKeyRef.current = locationKey;
+          setResolvedPlace(nextPlace);
+        }
 
-		// Prevent multiple simultaneous requests
-		if (isRequestingPermission.current) {
-			return;
-		}
+        return nextPlace;
+      } finally {
+        if (requestId === placeRequestIdRef.current) {
+          setIsResolvingPlaceName(false);
+        }
+      }
+    },
+    [resolvedPlace],
+  );
 
-		isRequestingPermission.current = true;
-		setLocationError(null);
+  const applyResolvedLocation = useCallback(
+    async ({ locationData, source, permissionStatus, errorMessage = null }) => {
+      const normalizedLocation = normalizeLocationCoordinates(locationData);
+      setPermissionState(permissionStatus);
+      setLocationSource(source);
+      setLocationError(errorMessage);
+      setUserLocation(normalizedLocation);
+      setLastUpdated(Date.now());
 
-		try {
-			if (Platform.OS === "web" && typeof window !== "undefined" && !window.isSecureContext) {
-				console.warn(
-					"[GlobalLocationContext] Web geolocation may be blocked because this page is not a secure context. Use HTTPS or localhost for precise browser location."
-				);
-			}
+      if (!normalizedLocation) {
+        resolvedPlaceKeyRef.current = null;
+        setResolvedPlace(null);
+        return null;
+      }
 
-			// Check if permission is already granted
-			const { status } = await Location.getForegroundPermissionsAsync();
+      return resolveLocationDetails(normalizedLocation);
+    },
+    [resolveLocationDetails, setPermissionState],
+  );
 
-			if (status === "granted") {
-				setLocationPermission(true);
+  const openLocationSettings = useCallback(async () => {
+    try {
+      await Linking.openSettings();
+    } catch (_settingsError) {
+      // Settings open is best-effort only.
+    }
+  }, []);
 
-				// Get current location with timeout and error handling
-				try {
-					const location = await Promise.race([
-						Location.getCurrentPositionAsync({
-							accuracy: LOCATION_CONFIG.ACCURACY,
-							maxAge: LOCATION_CONFIG.MAX_AGE,
-							timeout: LOCATION_CONFIG.TIMEOUT,
-						}),
-						new Promise((_, reject) =>
-							setTimeout(() => reject(new Error("Location timeout")), LOCATION_CONFIG.TIMEOUT)
-						)
-					]);
+  const requestLocationPermission = useCallback(async () => {
+    if (isRequestingPermission.current) {
+      return;
+    }
 
-					const locationData = {
-						latitude: location.coords.latitude,
-						longitude: location.coords.longitude,
-					};
+    isRequestingPermission.current = true;
+    setLocationError(null);
 
-					setUserLocation(locationData);
-					setLastUpdated(Date.now());
-					void resolveLocationDetails(locationData);
-				} catch (locationErr) {
-					console.error("[GlobalLocationContext] Failed to get location (using fallback):", locationErr);
-					const fallbackData = getLocationFallback();
-					setUserLocation(fallbackData);
-					setLastUpdated(Date.now());
-					void resolveLocationDetails(fallbackData);
-					setLocationError(null);
-				}
-			} else {
-				// Request permission
-				const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
-				const hasPermission = newStatus === "granted";
-				setLocationPermission(hasPermission);
+    try {
+      if (
+        Platform.OS === "web" &&
+        typeof window !== "undefined" &&
+        !window.isSecureContext
+      ) {
+        console.warn(
+          "[GlobalLocationContext] Web geolocation may be blocked because this page is not a secure context. Use HTTPS or localhost for precise browser location.",
+        );
+      }
 
-				if (hasPermission) {
-					try {
-						const location = await Promise.race([
-							Location.getCurrentPositionAsync({
-								accuracy: LOCATION_CONFIG.ACCURACY,
-								maxAge: LOCATION_CONFIG.MAX_AGE,
-								timeout: LOCATION_CONFIG.TIMEOUT,
-							}),
-							new Promise((_, reject) =>
-								setTimeout(() => reject(new Error("Location timeout")), LOCATION_CONFIG.TIMEOUT)
-							)
-						]);
+      const servicesEnabled =
+        typeof Location.hasServicesEnabledAsync === "function"
+          ? await Location.hasServicesEnabledAsync()
+          : true;
+      setLocationServicesEnabled(servicesEnabled);
 
-						const locationData = {
-							latitude: location.coords.latitude,
-							longitude: location.coords.longitude,
-						};
-						setUserLocation(locationData);
-						setLastUpdated(Date.now());
-						void resolveLocationDetails(locationData);
-					} catch (locationErr) {
-						console.error("[GlobalLocationContext] Failed to get location after permission (using fallback):", locationErr);
-						const fallbackData = getLocationFallback();
-						setUserLocation(fallbackData);
-						setLastUpdated(Date.now());
-						void resolveLocationDetails(fallbackData);
-						setLocationError(null);
-					}
-				} else {
-					const fallbackData = getLocationFallback();
-					setUserLocation(fallbackData);
-					setLastUpdated(Date.now());
-					void resolveLocationDetails(fallbackData);
-					setLocationError(null);
-				}
-			}
-		} catch (err) {
-			console.error("[GlobalLocationContext] Permission request failed — using fallback:", err?.message ?? err);
-			const fallbackData = getLocationFallback();
-			setUserLocation(fallbackData);
-			setLastUpdated(Date.now());
-			void resolveLocationDetails(fallbackData);
-			setLocationError(null);
-		} finally {
-			isRequestingPermission.current = false;
-			setIsLoadingLocation(false);
-		}
-	}, [resolveLocationDetails]);
+      if (!servicesEnabled) {
+        const manualFallback = getStoredLocationFallback({
+          allowDevice: false,
+        });
+        const resolvedPlaceResult = await applyResolvedLocation({
+          locationData: manualFallback?.location || null,
+          source: manualFallback?.source || "services_disabled",
+          permissionStatus: "services_disabled",
+          errorMessage: manualFallback
+            ? "Location Services are off. Update the pickup area or turn location back on."
+            : "Location Services are off. Turn them on or enter a pickup area manually.",
+        });
+        return {
+          permissionStatus: "services_disabled",
+          source: manualFallback?.source || "services_disabled",
+          location: manualFallback?.location || null,
+          resolvedPlace: resolvedPlaceResult,
+        };
+      }
 
-	useEffect(() => {
-		if (isInitialized.current) {
-			return;
-		}
+      let permission = await Location.getForegroundPermissionsAsync();
+      let permissionStatus = permission?.status || "undetermined";
 
-		isInitialized.current = true;
+      if (permissionStatus !== "granted") {
+        permission = await Location.requestForegroundPermissionsAsync();
+        permissionStatus = permission?.status || "undetermined";
+      }
 
-		// Start location loading
-		requestLocationPermission();
-	}, [requestLocationPermission]);
+      if (permissionStatus !== "granted") {
+        const manualFallback = getStoredLocationFallback({
+          allowDevice: false,
+        });
+        const resolvedPlaceResult = await applyResolvedLocation({
+          locationData: manualFallback?.location || null,
+          source:
+            manualFallback?.source ||
+            (permission?.canAskAgain === false
+              ? "permission_denied"
+              : "permission_required"),
+          permissionStatus,
+          errorMessage: manualFallback
+            ? "Location access is off. Update the pickup area or turn location back on."
+            : "Location access is off. Turn it on or search for a pickup area manually.",
+        });
+        return {
+          permissionStatus,
+          source:
+            manualFallback?.source ||
+            (permission?.canAskAgain === false
+              ? "permission_denied"
+              : "permission_required"),
+          location: manualFallback?.location || null,
+          resolvedPlace: resolvedPlaceResult,
+        };
+      }
 
-	// Refresh location (for manual refresh)
-	const refreshLocation = useCallback(async () => {
-		setIsLoadingLocation(true);
-		await requestLocationPermission();
-	}, [requestLocationPermission]);
+      try {
+        const location = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: LOCATION_CONFIG.ACCURACY,
+            maxAge: LOCATION_CONFIG.MAX_AGE,
+            timeout: LOCATION_CONFIG.TIMEOUT,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Location timeout")),
+              LOCATION_CONFIG.TIMEOUT,
+            ),
+          ),
+        ]);
 
-	// Check if location is fresh (within MAX_AGE)
-	const isLocationFresh = useCallback(() => {
-		if (!lastUpdated || !userLocation) return false;
-		const age = Date.now() - lastUpdated;
-		return age < LOCATION_CONFIG.MAX_AGE;
-	}, [lastUpdated, userLocation]);
+        const locationData = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
 
-	// Context value
-	const value = {
-		// Location data
-		userLocation,
-		locationPermission,
-		isLoadingLocation,
-		locationError,
-		lastUpdated,
-		resolvedPlace,
-		isResolvingPlaceName,
-		locationLabel: resolvedPlace?.primaryText || null,
-		locationLabelDetail: resolvedPlace?.secondaryText || null,
+        const resolvedPlaceResult = await applyResolvedLocation({
+          locationData,
+          source: "device",
+          permissionStatus: "granted",
+        });
+        return {
+          permissionStatus: "granted",
+          source: "device",
+          location: locationData,
+          resolvedPlace: resolvedPlaceResult,
+        };
+      } catch (locationErr) {
+        console.error(
+          "[GlobalLocationContext] Failed to get live location:",
+          locationErr,
+        );
+        const storedFallback = getStoredLocationFallback({ allowDevice: true });
+        const resolvedPlaceResult = await applyResolvedLocation({
+          locationData: storedFallback?.location || null,
+          source: storedFallback?.source || "location_unavailable",
+          permissionStatus: "granted",
+          errorMessage: storedFallback
+            ? "Couldn't refresh your live location. Using your last saved area for now."
+            : "Couldn't fetch your current location. Turn location on again or enter a pickup area manually.",
+        });
+        return {
+          permissionStatus: "granted",
+          source: storedFallback?.source || "location_unavailable",
+          location: storedFallback?.location || null,
+          resolvedPlace: resolvedPlaceResult,
+        };
+      }
+    } catch (err) {
+      console.error(
+        "[GlobalLocationContext] Permission request failed:",
+        err?.message ?? err,
+      );
+      const manualFallback = getStoredLocationFallback({ allowDevice: false });
+      const resolvedPlaceResult = await applyResolvedLocation({
+        locationData: manualFallback?.location || null,
+        source: manualFallback?.source || "location_unavailable",
+        permissionStatus: "undetermined",
+        errorMessage: manualFallback
+          ? "Location access failed. Using your saved pickup area for now."
+          : "We couldn't fetch your location. Enter a pickup area manually or try again.",
+      });
+      return {
+        permissionStatus: "undetermined",
+        source: manualFallback?.source || "location_unavailable",
+        location: manualFallback?.location || null,
+        resolvedPlace: resolvedPlaceResult,
+      };
+    } finally {
+      isRequestingPermission.current = false;
+      setIsLoadingLocation(false);
+    }
+  }, [applyResolvedLocation]);
 
-		// Methods
-		refreshLocation,
-		isLocationFresh,
-		requestLocationPermission,
-		resolveLocationDetails,
+  useEffect(() => {
+    if (isInitialized.current) {
+      return;
+    }
 
-		// Computed values
-		hasUserLocation: !!userLocation,
-		isLocationError: !!locationError,
-		hasResolvedPlace: !!resolvedPlace,
-	};
+    isInitialized.current = true;
+    requestLocationPermission();
+  }, [requestLocationPermission]);
 
-	return (
-		<GlobalLocationContext.Provider value={value}>
-			{children}
-		</GlobalLocationContext.Provider>
-	);
+  const refreshLocation = useCallback(async () => {
+    setIsLoadingLocation(true);
+    return requestLocationPermission();
+  }, [requestLocationPermission]);
+
+  const isLocationFresh = useCallback(() => {
+    if (!lastUpdated || !userLocation) return false;
+    const age = Date.now() - lastUpdated;
+    return age < LOCATION_CONFIG.MAX_AGE;
+  }, [lastUpdated, userLocation]);
+
+  const hasPreciseDeviceLocation = Boolean(
+    userLocation?.latitude &&
+      userLocation?.longitude &&
+      locationSource === "device",
+  );
+  const isUsingFallbackLocation = [
+    "stored_fallback",
+    "manual_fallback",
+  ].includes(locationSource);
+
+  const value = {
+    userLocation,
+    locationPermission,
+    locationPermissionStatus,
+    locationSource,
+    locationServicesEnabled,
+    isLoadingLocation,
+    locationError,
+    lastUpdated,
+    resolvedPlace,
+    isResolvingPlaceName,
+    locationLabel: resolvedPlace?.primaryText || null,
+    locationLabelDetail: resolvedPlace?.secondaryText || null,
+    refreshLocation,
+    isLocationFresh,
+    requestLocationPermission,
+    resolveLocationDetails,
+    openLocationSettings,
+    hasUserLocation: !!userLocation,
+    hasPreciseDeviceLocation,
+    isUsingFallbackLocation,
+    isLocationError: !!locationError,
+    hasResolvedPlace: !!resolvedPlace,
+  };
+
+  return (
+    <GlobalLocationContext.Provider value={value}>
+      {children}
+    </GlobalLocationContext.Provider>
+  );
 }
 
-/**
- * Hook to use global location context
- * Provides instant access to cached location across all components
- */
 export function useGlobalLocation() {
-	const context = useContext(GlobalLocationContext);
+  const context = useContext(GlobalLocationContext);
 
-	if (!context) {
-		throw new Error("useGlobalLocation must be used within a GlobalLocationProvider");
-	}
+  if (!context) {
+    throw new Error(
+      "useGlobalLocation must be used within a GlobalLocationProvider",
+    );
+  }
 
-	return context;
+  return context;
 }
 
-/**
- * Hook for components that need location but can work without it
- * Returns cached location immediately, no waiting required
- */
 export function useOptionalLocation() {
-	const {
-		userLocation,
-		locationPermission,
-		isLoadingLocation,
-		hasUserLocation,
-		locationError,
-		resolvedPlace,
-	} = useGlobalLocation();
+  const {
+    userLocation,
+    locationPermission,
+    locationPermissionStatus,
+    locationSource,
+    isLoadingLocation,
+    locationError,
+    resolvedPlace,
+    hasPreciseDeviceLocation,
+    isUsingFallbackLocation,
+    openLocationSettings,
+    requestLocationPermission,
+  } = useGlobalLocation();
 
-	return {
-		location: userLocation,
-		hasPermission: locationPermission,
-		isLoading: isLoadingLocation,
-		hasLocation: hasUserLocation,
-		locationError,
-		resolvedPlace,
-		// No blocking - components can work without location
-	};
+  return {
+    location: userLocation,
+    hasPermission: locationPermission,
+    permissionStatus: locationPermissionStatus,
+    locationSource,
+    isLoading: isLoadingLocation,
+    hasLocation: !!userLocation,
+    hasPreciseDeviceLocation,
+    isUsingFallbackLocation,
+    locationError,
+    resolvedPlace,
+    openLocationSettings,
+    requestLocationPermission,
+  };
 }
 
 export default GlobalLocationContext;

@@ -78,7 +78,7 @@ export function MapSearchActiveTopRow({
 					model.commitQuery(model.query);
 				}}
 				onClear={() => model.setSearchQuery("")}
-				placeholder="Search hospitals, specialties, or area"
+				placeholder={model.searchPlaceholder}
 				showSuggestions={false}
 				autoFocus={false}
 				compact

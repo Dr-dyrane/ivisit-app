@@ -53,6 +53,26 @@ export function useMapSearchSheetModel({
 	const rowDividerColor = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)";
 	const hasQuery = typeof query === "string" && query.trim().length > 0;
 	const trimmedQuery = String(query || "").trim();
+	const requiresLocationSelection = Boolean(currentLocation?.requiresLocationSelection);
+	const currentLocationActionLabel =
+		currentLocation?.useCurrentLocationActionLabel ||
+		(requiresLocationSelection ? "Turn on location" : "Use device location");
+	const manualEntryActionLabel =
+		currentLocation?.manualEntryActionLabel || "Enter address manually";
+	const searchPlaceholder = isLocationMode
+		? currentLocation?.searchPlaceholder || "Enter street, area, city, or landmark"
+		: "Search hospitals, specialties, or area";
+	const locationPromptTitle = requiresLocationSelection
+		? "Set pickup area"
+		: currentLocation?.primaryText || "Current location";
+	const locationPromptBody =
+		currentLocation?.secondaryText ||
+		"Search for a street, area, city, or landmark near the pickup point.";
+	const currentLocationBadgeLabel = requiresLocationSelection
+		? "Required"
+		: currentLocation?.source === "manual"
+			? "Manual"
+			: "Live";
 	const nearbyHospitals = Array.isArray(hospitals) ? hospitals.filter(Boolean).slice(0, 4) : [];
 	const locationBias = currentLocation?.location || currentLocation || null;
 	const localPopularSearches = useMemo(
@@ -245,6 +265,8 @@ export function useMapSearchSheetModel({
 		cardSurface,
 		commitQuery,
 		currentLocation,
+		currentLocationActionLabel,
+		currentLocationBadgeLabel,
 		groupedSurface,
 		handleDismiss,
 		handleModeChange,
@@ -259,7 +281,10 @@ export function useMapSearchSheetModel({
 		isResolvingLocation,
 		isSearchingLocations,
 		locationError,
+		locationPromptBody,
+		locationPromptTitle,
 		locationSectionTitle: isLocationMode ? "Areas" : "Places",
+		manualEntryActionLabel,
 		mutedColor,
 		nearbyHospitals,
 		orderedQuerySections: isLocationMode ? ["places", "hospitals"] : ["hospitals", "places"],
@@ -267,6 +292,7 @@ export function useMapSearchSheetModel({
 		query,
 		recentQueries,
 		rowDividerColor,
+		searchPlaceholder,
 		selectedHospitalId,
 		setSearchQuery,
 		titleColor,

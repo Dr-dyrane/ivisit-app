@@ -20,6 +20,7 @@ export const buildFallbackPlaceModel = (location) => ({
 	secondaryText: "Nearby area",
 	formattedAddress: "Current location",
 	source: "fallback",
+	countryCode: null,
 	location: normalizeLocationCoordinates(location),
 });
 
@@ -51,6 +52,10 @@ export const buildPlaceModelFromOpenStreetMap = (payload, location) => {
 				? payload.display_name.trim()
 				: [primaryText, secondaryText].filter(Boolean).join(", "),
 		source: "openstreetmap",
+		countryCode:
+			typeof address.country_code === "string"
+				? address.country_code.trim().toUpperCase()
+				: null,
 		location: normalizeLocationCoordinates(location),
 	};
 };
@@ -104,6 +109,7 @@ export const buildPlaceModelFromFormattedAddress = (formattedAddress, location, 
 		secondaryText,
 		formattedAddress: formattedAddress.trim(),
 		source,
+		countryCode: null,
 		location: normalizeLocationCoordinates(location),
 	};
 };
@@ -130,6 +136,12 @@ export const buildPlaceModelFromNativePlace = (place, location) => {
 		secondaryText,
 		formattedAddress: [primaryText, secondaryText].filter(Boolean).join(", "),
 		source: "native",
+		countryCode:
+			typeof place.isoCountryCode === "string" && place.isoCountryCode.trim()
+				? place.isoCountryCode.trim().toUpperCase()
+				: typeof place.countryCode === "string" && place.countryCode.trim()
+					? place.countryCode.trim().toUpperCase()
+					: null,
 		location: normalizeLocationCoordinates(location),
 	};
 };

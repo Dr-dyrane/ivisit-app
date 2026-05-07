@@ -87,6 +87,7 @@ export default function MapSheetOrchestrator({
 	recommendedHospitalId = null,
 	featuredHospital = null,
 	currentLocation = null,
+	locationControl = null,
 	onSelectHospital = () => {},
 	onUseCurrentLocation = () => {},
 	onSelectLocation = () => {},
@@ -477,6 +478,9 @@ export default function MapSheetOrchestrator({
 						totalAvailableBeds={totalAvailableBeds}
 						nearbyBedHospitals={nearbyBedHospitals}
 						featuredHospitals={featuredHospitals}
+						currentLocation={currentLocation}
+						locationControl={locationControl}
+						onUseCurrentLocation={onUseCurrentLocation}
 					/>
 				</MapPhaseTransitionView>
 			);

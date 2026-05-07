@@ -10,6 +10,33 @@ class MapboxService {
         this.baseUrl = 'https://api.mapbox.com';
     }
 
+    extractCountryCode(feature) {
+        if (!feature || typeof feature !== 'object') {
+            return null;
+        }
+
+        const context = Array.isArray(feature.context) ? feature.context : [];
+        const countryContext =
+            context.find((item) =>
+                String(item?.id || '').startsWith('country.') ||
+                item?.short_code ||
+                item?.country_code
+            ) || null;
+
+        const rawCode =
+            countryContext?.short_code ||
+            countryContext?.country_code ||
+            feature?.properties?.short_code ||
+            feature?.properties?.country_code ||
+            null;
+
+        if (typeof rawCode !== 'string' || !rawCode.trim()) {
+            return null;
+        }
+
+        return rawCode.trim().slice(0, 2).toUpperCase();
+    }
+
     /**
      * Search for nearby hospitals using Mapbox Search API (v1)
      * This is much cheaper than Google Places for hospital discovery.
@@ -130,6 +157,7 @@ class MapboxService {
                 formattedAddress: feature.place_name || '',
                 source: 'mapbox',
                 requiresDetails: false,
+                countryCode: this.extractCountryCode(feature),
             }));
         } catch (error) {
             console.error('MapboxService.suggestAddresses error:', error);

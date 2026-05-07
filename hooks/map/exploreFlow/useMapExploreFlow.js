@@ -56,9 +56,15 @@ export function useMapExploreFlow() {
   const { visits = [] } = useVisits();
   const {
     userLocation: globalUserLocation,
+    locationPermissionStatus: globalLocationPermissionStatus,
+    locationSource: globalLocationSource,
     locationLabel,
     locationLabelDetail,
+    resolvedPlace,
     refreshLocation,
+    requestLocationPermission,
+    openLocationSettings,
+    locationError,
     isLoadingLocation,
     isResolvingPlaceName,
   } = useGlobalLocation();
@@ -70,6 +76,7 @@ export function useMapExploreFlow() {
     selectHospital,
     setUserLocation,
     userLocation: emergencyUserLocation,
+    userLocationSource: emergencyUserLocationSource,
     isLoadingHospitals,
     refreshHospitals,
     effectiveDemoModeEnabled,
@@ -167,12 +174,26 @@ export function useMapExploreFlow() {
     setRuntimeSlice,
   } = flowActions;
 
-  const { activeLocation, currentLocationDetails, loadingBackgroundImageUri, handleSearchLocation, handleUseCurrentLocation, } = useMapLocation({
+  const {
+    activeLocation,
+    currentLocationDetails,
+    loadingBackgroundImageUri,
+    handleSearchLocation,
+    handleUseCurrentLocation,
+    locationControl,
+  } = useMapLocation({
     globalUserLocation,
+    globalLocationSource,
+    globalLocationPermissionStatus,
     locationLabel,
     locationLabelDetail,
+    resolvedPlace,
     refreshLocation,
+    requestLocationPermission,
+    openLocationSettings,
+    locationError,
     emergencyUserLocation,
+    emergencyUserLocationSource,
     setUserLocation,
     manualLocation,
     setManualLocation,
@@ -249,6 +270,7 @@ export function useMapExploreFlow() {
     sheetPayload,
     featuredHospital,
     currentLocationDetails,
+    locationControl,
     nowMs: nowMsRef.current,
     visits,
   });
@@ -480,6 +502,7 @@ export function useMapExploreFlow() {
     authModalVisible,
     careHistoryVisible,
     currentLocationDetails,
+    locationControl,
     discoveredHospitals,
     guestProfileEmail,
     guestProfileVisible,

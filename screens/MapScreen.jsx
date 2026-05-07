@@ -60,6 +60,7 @@ export default function MapScreen() {
     authModalVisible,
     careHistoryVisible,
     currentLocationDetails,
+    locationControl,
     discoveredHospitals,
     featuredHospital,
     guestProfileEmail,
@@ -234,6 +235,7 @@ export default function MapScreen() {
     router,
   });
   const routeVisitKeyFailureRef = useRef(null);
+  const hasPromptedForPickupRef = useRef(false);
   const routeMapSheet =
     typeof params?.mapSheet === "string"
       ? params.mapSheet
@@ -477,6 +479,25 @@ export default function MapScreen() {
     [isRouteManagedRecentVisits, router],
   );
 
+  useEffect(() => {
+    if (!locationControl?.requiresLocationSelection) {
+      return;
+    }
+    if (hasPromptedForPickupRef.current) {
+      return;
+    }
+    if (sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT) {
+      return;
+    }
+
+    hasPromptedForPickupRef.current = true;
+    openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+  }, [
+    locationControl?.requiresLocationSelection,
+    openSearchSheet,
+    sheetPhase,
+  ]);
+
   return (
     <View
       style={[
@@ -529,7 +550,13 @@ export default function MapScreen() {
           nearestHospital={nearestHospital}
           nearestHospitalMeta={nearestHospitalMeta}
           selectedCare={selectedCare}
-          onOpenSearch={() => openSearchSheet(MAP_SEARCH_SHEET_MODES.SEARCH)}
+          onOpenSearch={() =>
+            openSearchSheet(
+              locationControl?.requiresLocationSelection
+                ? MAP_SEARCH_SHEET_MODES.LOCATION
+                : MAP_SEARCH_SHEET_MODES.SEARCH,
+            )
+          }
           onOpenHospitals={openHospitalList}
           onChooseCare={handleChooseCare}
           onOpenProfile={handleOpenProfile}
@@ -599,6 +626,7 @@ export default function MapScreen() {
           trackingIsArrived={isArrived}
           trackingIsPendingApproval={isPendingApproval}
           currentLocation={currentLocationDetails}
+          locationControl={locationControl}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}
           onSelectLocation={handleSearchLocation}

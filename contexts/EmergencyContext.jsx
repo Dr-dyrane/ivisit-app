@@ -17,7 +17,13 @@ export { EmergencyMode } from '../constants/emergency';
 const EmergencyContext = createContext();
 
 export function EmergencyProvider({ children }) {
-	const { userLocation, setUserLocation, userLocationRef, parseEtaToSeconds } =
+	const {
+		userLocation,
+		userLocationSource,
+		setUserLocation,
+		userLocationRef,
+		parseEtaToSeconds,
+	} =
 		useEmergencyLocationSync();
 
 	const {
@@ -122,6 +128,7 @@ export function EmergencyProvider({ children }) {
 			selectedHospital,
 			mode,
 			userLocation,
+			userLocationSource,
 			ambulanceTelemetryHealth,
 			serviceType,
 			selectedSpecialty,
@@ -181,7 +188,7 @@ export function EmergencyProvider({ children }) {
 		}),
 		[
 			filteredHospitals, visibleHospitals, specialties,
-			selectedHospitalId, selectedHospital, mode, userLocation,
+			selectedHospitalId, selectedHospital, mode, userLocation, userLocationSource,
 			ambulanceTelemetryHealth,
 			serviceType, selectedSpecialty, viewMode,
 			isLoadingHospitals, hasActiveFilters,

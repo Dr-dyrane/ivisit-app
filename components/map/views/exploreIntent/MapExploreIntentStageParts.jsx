@@ -110,11 +110,15 @@ export function buildMapExploreIntentScreenSections({
 	isDarkMode,
 	nearestHospital,
 	nearestHospitalMeta,
+	currentLocation,
+	locationControl,
 	nearbyHospitalCount,
 	totalAvailableBeds,
 	nearbyBedHospitals,
 	selectedCare,
+	onUseCurrentLocation,
 	onOpenHospitals,
+	onOpenLocationSearch,
 	onChooseCare,
 	onOpenCareHistory,
 	onOpenRecents,
@@ -139,9 +143,13 @@ export function buildMapExploreIntentScreenSections({
 					isDarkMode={isDarkMode}
 					nearestHospital={nearestHospital}
 					nearestHospitalMeta={nearestHospitalMeta}
+					currentLocation={currentLocation}
+					locationControl={locationControl}
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
 					onOpenHospitals={onOpenHospitals}
+					onUseCurrentLocation={onUseCurrentLocation}
+					onOpenLocationSearch={onOpenLocationSearch}
 					responsiveMetrics={responsiveMetrics}
 				/>
 			),

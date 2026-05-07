@@ -75,23 +75,22 @@ export default function MapEntryLoadingScreen() {
 			return;
 		}
 
-		setUserLocation((current) => {
-			const sameCoordinate =
-				Number(current?.latitude) === Number(globalUserLocation.latitude) &&
-				Number(current?.longitude) === Number(globalUserLocation.longitude);
-
-			if (sameCoordinate) {
-				return current;
-			}
-
-			return {
+		setUserLocation(
+			{
 				latitude: Number(globalUserLocation.latitude),
 				longitude: Number(globalUserLocation.longitude),
-				latitudeDelta: Number(current?.latitudeDelta) || 0.04,
-				longitudeDelta: Number(current?.longitudeDelta) || 0.04,
-			};
-		});
-	}, [globalUserLocation?.latitude, globalUserLocation?.longitude, setUserLocation]);
+				latitudeDelta: Number(emergencyUserLocation?.latitudeDelta) || 0.04,
+				longitudeDelta: Number(emergencyUserLocation?.longitudeDelta) || 0.04,
+			},
+			"device",
+		);
+	}, [
+		emergencyUserLocation?.latitudeDelta,
+		emergencyUserLocation?.longitudeDelta,
+		globalUserLocation?.latitude,
+		globalUserLocation?.longitude,
+		setUserLocation,
+	]);
 
 	useEffect(() => {
 		let cancelled = false;

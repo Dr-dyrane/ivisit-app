@@ -619,26 +619,15 @@ export default function RequestAmbulanceScreen() {
 	useEffect(() => {
 		if (!activeIntakeLocation) return;
 
-		setUserLocation((current) => {
-			const currentLatitude = Number(current?.latitude);
-			const currentLongitude = Number(current?.longitude);
-			const sameCoordinate =
-				Number.isFinite(currentLatitude) &&
-				Number.isFinite(currentLongitude) &&
-				Math.abs(currentLatitude - activeIntakeLocation.latitude) < 0.0001 &&
-				Math.abs(currentLongitude - activeIntakeLocation.longitude) < 0.0001;
-
-			if (sameCoordinate) {
-				return current;
-			}
-
-			return {
+		setUserLocation(
+			{
 				latitude: activeIntakeLocation.latitude,
 				longitude: activeIntakeLocation.longitude,
-				latitudeDelta: Number(current?.latitudeDelta) || 0.04,
-				longitudeDelta: Number(current?.longitudeDelta) || 0.04,
-			};
-		});
+				latitudeDelta: 0.04,
+				longitudeDelta: 0.04,
+			},
+			"manual",
+		);
 	}, [activeIntakeLocation, setUserLocation]);
 
 	useEffect(() => {

@@ -219,6 +219,12 @@ export function mapSuggestionToLocation(suggestion) {
 			secondaryText:
 				suggestion.secondaryText || suggestion.formattedAddress || "",
 			location: suggestion.location,
+			formattedAddress: suggestion.formattedAddress || "",
+			countryCode:
+				typeof suggestion.countryCode === "string" && suggestion.countryCode.trim()
+					? suggestion.countryCode.trim().toUpperCase()
+					: null,
+			source: suggestion.source || "mapbox",
 		};
 	}
 
