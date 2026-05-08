@@ -23,7 +23,7 @@ const readParamString = (value) => {
 export function usePaymentScreenModel() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { preferences } = usePreferences();
+  const { preferences, isLoading: isLoadingPrefs } = usePreferences();
   // PULLBACK NOTE: Phase 2 — invalidateActiveTrip replaces awaiting syncActiveTripsFromServer
   const invalidateActiveTrip = useInvalidateActiveTrip();
 
@@ -68,7 +68,7 @@ export function usePaymentScreenModel() {
     amount: cost?.totalCost ?? cost?.total_cost ?? 0,
     sourceCurrency: cost?.currency || 'USD',
     preferences,
-    enabled: !isManagementMode,
+    enabled: !isManagementMode && !isLoadingPrefs,
   });
 
   const displayCost = useMemo(

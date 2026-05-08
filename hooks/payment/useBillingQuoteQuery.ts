@@ -16,7 +16,7 @@ type UseBillingQuoteQueryArgs = {
   enabled?: boolean;
 };
 
-export function useBillingQuoteQuery({
+export function buildBillingQuoteQueryConfig({
   amount,
   sourceCurrency = "USD",
   preferences = null,
@@ -24,35 +24,15 @@ export function useBillingQuoteQuery({
   billingCurrencyCode = null,
   enabled = true,
 }: UseBillingQuoteQueryArgs) {
-  const billingCountryCodeOverride = useBillingQuoteStore(
-    (state) => state.billingCountryCodeOverride,
-  );
-  const billingCurrencyCodeOverride = useBillingQuoteStore(
-    (state) => state.billingCurrencyCodeOverride,
-  );
-
   const numericAmount = toMoneyNumber(amount);
   const normalizedSourceCurrency = resolveMoneyCurrency(sourceCurrency);
+  const context = buildBillingContext({
+    preferences,
+    billingCountryCode,
+    billingCurrencyCode,
+  });
 
-  const context = useMemo(
-    () =>
-      buildBillingContext({
-        preferences,
-        billingCountryCode:
-          billingCountryCode ?? billingCountryCodeOverride ?? null,
-        billingCurrencyCode:
-          billingCurrencyCode ?? billingCurrencyCodeOverride ?? null,
-      }),
-    [
-      billingCountryCode,
-      billingCountryCodeOverride,
-      billingCurrencyCode,
-      billingCurrencyCodeOverride,
-      preferences,
-    ],
-  );
-
-  return useQuery({
+  return {
     queryKey: [
       ...BILLING_QUOTE_QUERY_KEY,
       numericAmount ?? null,
@@ -73,8 +53,51 @@ export function useBillingQuoteQuery({
         billingCountryCode: context.billingCountryCode,
         billingCurrencyCode: context.billingCurrencyCode,
       }),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
+    staleTime: 30 * 1000, // 30 seconds - country changes should refresh quickly
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  };
 }
 
+export function useBillingQuoteQuery({
+  amount,
+  sourceCurrency = "USD",
+  preferences = null,
+  billingCountryCode = null,
+  billingCurrencyCode = null,
+  enabled = true,
+}: UseBillingQuoteQueryArgs) {
+  const billingCountryCodeOverride = useBillingQuoteStore(
+    (state) => state.billingCountryCodeOverride,
+  );
+  const billingCurrencyCodeOverride = useBillingQuoteStore(
+    (state) => state.billingCurrencyCodeOverride,
+  );
+
+  const queryConfig = useMemo(
+    () =>
+      buildBillingQuoteQueryConfig({
+        amount,
+        sourceCurrency,
+        preferences,
+        billingCountryCode:
+          billingCountryCode ?? billingCountryCodeOverride ?? null,
+        billingCurrencyCode:
+          billingCurrencyCode ?? billingCurrencyCodeOverride ?? null,
+        enabled,
+      }),
+    [
+      amount,
+      billingCountryCode,
+      billingCountryCodeOverride,
+      billingCurrencyCode,
+      billingCurrencyCodeOverride,
+      enabled,
+      preferences,
+      sourceCurrency,
+    ],
+  );
+
+  return useQuery({
+    ...queryConfig,
+  });
+}

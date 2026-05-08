@@ -36,7 +36,7 @@ export function usePaymentHistoryEntryQuery({
   requestId,
   localPaymentTotalLabel,
 }) {
-  const { preferences } = usePreferences();
+  const { preferences, isLoading: isLoadingPrefs } = usePreferences();
 
   const { data: fetchedEntry } = useQuery({
     queryKey: ["paymentHistoryEntry", paymentLookupKey ?? null],
@@ -57,7 +57,7 @@ export function usePaymentHistoryEntryQuery({
     amount: fetchedAmount,
     sourceCurrency: fetchedCurrency,
     preferences,
-    enabled: Boolean(paymentLookupKey) && fetchedAmount != null,
+    enabled: Boolean(paymentLookupKey) && fetchedAmount != null && !isLoadingPrefs,
   });
   const fetchedPriceLabel =
     fetchedAmount != null

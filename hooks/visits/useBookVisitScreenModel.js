@@ -75,7 +75,7 @@ export function useBookVisitScreenModel() {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
-  const { preferences } = usePreferences();
+  const { preferences, isLoading: isLoadingPrefs } = usePreferences();
   const { allHospitals, effectiveDemoModeEnabled } = useEmergency();
   const { addVisit } = useVisits();
   const userId = user?.id ? String(user.id) : null;
@@ -186,7 +186,7 @@ export function useBookVisitScreenModel() {
     amount: activeQuoteAmount,
     sourceCurrency: activeQuote?.currency || "USD",
     preferences,
-    enabled: shouldFetchQuote && activeQuoteAmount != null,
+    enabled: shouldFetchQuote && activeQuoteAmount != null && !isLoadingPrefs,
   });
   const displayQuoteData = useMemo(
     () => applyBillingQuoteToCost(activeQuote, displayQuote),
