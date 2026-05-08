@@ -3,6 +3,26 @@ import { Platform } from 'react-native';
 import { Marker, Polyline } from './MapComponents';
 import { COLORS } from "../../constants/colors";
 
+// PULLBACK NOTE: Add ambulance sprite dimension constants for platform-specific sizing
+// Following hospital marker fix pattern from EmergencyLocationPreviewMap.jsx
+// Hospital ratio: native ~1.9x web (54/28=1.93, 91/48=1.9). Applied to ambulance: 46*1.96≈90
+// OLD: No dimension constants, no imageSize on Marker
+// NEW: Added AMBULANCE_SPRITE_DIMENSIONS with web/native split using proportional sizing
+const AMBULANCE_SPRITE_DIMENSIONS = {
+  // Web: imageSize is respected, use design size
+  web: { width: 46, height: 46 },
+  // Native: PNG must be resized to ~90x90 to match hospital marker proportions
+  // Current 128x128 PNGs need regeneration at 90x90 for correct native sizing
+  native: { width: 90, height: 90 },
+};
+
+const getAmbulanceSpriteDimensions = () => {
+  const isWeb = Platform.OS === 'web';
+  return isWeb
+    ? AMBULANCE_SPRITE_DIMENSIONS.web
+    : AMBULANCE_SPRITE_DIMENSIONS.native;
+};
+
 const AMBULANCE_SPRITES = [
 	require("../../assets/map/ambulance-sprites/ambulance_00.png"),
 	require("../../assets/map/ambulance-sprites/ambulance_01.png"),
@@ -60,6 +80,11 @@ const RouteLayer = ({
                     anchor={{ x: 0.5, y: 0.5 }}
                     flat={true}
                     image={ambulanceSprite}
+                    // PULLBACK NOTE: Add platform-specific imageSize following hospital marker fix
+                    // OLD: No imageSize prop - native rendered at PNG bitmap size (128x128) incorrectly
+                    // NEW: Explicit imageSize - web 46x46, native 90x90 (matches hospital 1.96x ratio)
+                    // TODO: Regenerate ambulance PNGs from 128x128 to 90x90 for native builds
+                    imageSize={getAmbulanceSpriteDimensions()}
                     // optimize for Android by only tracking changes during animation
                     tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
                     zIndex={200}

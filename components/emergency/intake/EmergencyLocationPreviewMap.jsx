@@ -62,6 +62,19 @@ const HOSPITAL_MARKER_DIMENSIONS = {
   },
 };
 
+// PULLBACK NOTE: Add ambulance sprite dimension constants for platform-specific sizing
+// Following hospital marker fix pattern - web uses imageSize, native uses PNG bitmap size
+// Hospital ratio: native ~1.9x web (54/28=1.93, 91/48=1.9). Applied to ambulance: 46*1.96≈90
+// OLD: No ambulance sprite dimensions constant
+// NEW: Added AMBULANCE_SPRITE_DIMENSIONS with web/native split using proportional sizing
+const AMBULANCE_SPRITE_DIMENSIONS = {
+  // Web: imageSize is respected, use design size
+  web: { width: 46, height: 46 },
+  // Native: PNG must be resized to ~90x90 to match hospital marker proportions
+  // Current 128x128 PNGs need regeneration at 90x90 for correct native sizing
+  native: { width: 90, height: 90 },
+};
+
 const toCoordinate = normalizeCoordinate;
 
 function toMarkerPulseCoordinateKey(coordinate) {
@@ -285,6 +298,16 @@ function getHospitalMarkerCenterOffset(isSelected, isWeb) {
   };
 }
 
+// PULLBACK NOTE: Add helper to get platform-specific ambulance sprite dimensions
+// OLD: No helper function, imageSize was hardcoded to 46x46 for all platforms
+// NEW: Platform-aware helper that returns web (46x46) or native (90x90) sizes
+// NOTE: Native PNGs need resizing from 128x128 to 90x90 to match this contract
+function getAmbulanceSpriteDimensions(isWeb) {
+  return isWeb
+    ? AMBULANCE_SPRITE_DIMENSIONS.web
+    : AMBULANCE_SPRITE_DIMENSIONS.native;
+}
+
 function distanceMetersBetween(from, to) {
   if (!from || !to) return 0;
   const latScale = 111_320;
@@ -293,6 +316,48 @@ function distanceMetersBetween(from, to) {
   const dLat = (to.latitude - from.latitude) * latScale;
   const dLng = (to.longitude - from.longitude) * lngScale;
   return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+function extractDistanceKmFromLabel(distanceLabel) {
+  if (typeof distanceLabel !== "string") return null;
+  const kmMatch = distanceLabel.match(/(\d+(?:\.\d+)?)\s*km/i);
+  if (kmMatch?.[1]) {
+    const parsedKm = Number(kmMatch[1]);
+    return Number.isFinite(parsedKm) ? parsedKm : null;
+  }
+  const meterMatch = distanceLabel.match(/(\d+(?:\.\d+)?)\s*m/i);
+  if (meterMatch?.[1]) {
+    const parsedMeters = Number(meterMatch[1]);
+    return Number.isFinite(parsedMeters) ? parsedMeters / 1000 : null;
+  }
+  return null;
+}
+
+function getRecordedHospitalDistanceKm(hospital) {
+  const directDistanceKm = Number(
+    hospital?.distanceKm ?? hospital?.distance_km,
+  );
+  if (Number.isFinite(directDistanceKm) && directDistanceKm >= 0) {
+    return directDistanceKm;
+  }
+  return extractDistanceKmFromLabel(hospital?.distance);
+}
+
+function hasRouteTargetSessionMismatch(origin, destination, hospital) {
+  if (!origin || !destination || !hospital) return false;
+
+  const recordedDistanceKm = getRecordedHospitalDistanceKm(hospital);
+  if (!Number.isFinite(recordedDistanceKm) || recordedDistanceKm < 0) {
+    return false;
+  }
+
+  const directDistanceKm = calculateDistance(origin, destination);
+  if (!Number.isFinite(directDistanceKm) || directDistanceKm < 0) {
+    return false;
+  }
+
+  const mismatchThresholdKm = Math.max(25, recordedDistanceKm * 4 + 10);
+  return directDistanceKm > mismatchThresholdKm;
 }
 
 function normalizeRoutePayloadCoordinates(points = []) {
@@ -522,6 +587,15 @@ export default function EmergencyLocationPreviewMap({
   const routeDestinationCoordinate = useMemo(() => {
     return selectedHospitalCoordinate;
   }, [selectedHospitalCoordinate]);
+  const hasRouteTargetMismatch = useMemo(
+    () =>
+      hasRouteTargetSessionMismatch(
+        routeOriginCoordinate,
+        routeDestinationCoordinate,
+        selectedHospital,
+      ),
+    [routeDestinationCoordinate, routeOriginCoordinate, selectedHospital],
+  );
   const canonicalTrackingRouteCoordinates = useMemo(
     () => normalizeRoutePayloadCoordinates(trackingRouteCoordinates),
     [trackingRouteCoordinates],
@@ -547,6 +621,9 @@ export default function EmergencyLocationPreviewMap({
   const canReuseCanonicalTrackingRoute =
     activeTracking || hasActiveTrackingTimeline;
   const routeBoundsCoordinates = useMemo(() => {
+    if (hasRouteTargetMismatch) {
+      return [routeOriginCoordinate || routeDestinationCoordinate].filter(Boolean);
+    }
     if (
       activeTracking &&
       previewRouteCoordinates.length >= 2 &&
@@ -568,6 +645,7 @@ export default function EmergencyLocationPreviewMap({
     activeTracking,
     canReuseCanonicalTrackingRoute,
     canonicalTrackingRouteCoordinates,
+    hasRouteTargetMismatch,
     isFallbackRoute,
     previewRouteCoordinates,
     routeDestinationCoordinate,
@@ -575,8 +653,13 @@ export default function EmergencyLocationPreviewMap({
   ]);
   const fallbackRouteInfo = useMemo(
     () =>
-      buildFallbackRouteInfo(routeOriginCoordinate, routeDestinationCoordinate),
-    [routeDestinationCoordinate, routeOriginCoordinate],
+      hasRouteTargetMismatch
+        ? { durationSec: null, distanceMeters: null }
+        : buildFallbackRouteInfo(
+            routeOriginCoordinate,
+            routeDestinationCoordinate,
+          ),
+    [hasRouteTargetMismatch, routeDestinationCoordinate, routeOriginCoordinate],
   );
   const resolvedRouteInfo = useMemo(
     () => ({
@@ -753,12 +836,18 @@ export default function EmergencyLocationPreviewMap({
   const hasLocation = !!userCoordinate;
   const hasRouteTargets = Boolean(userCoordinate && selectedHospitalCoordinate);
   const routeReady = hasRouteTargets
-    ? routeBoundsCoordinates.length >= 2 && !isCalculatingRoute
+    ? routeBoundsCoordinates.length >= 2 &&
+      !isCalculatingRoute &&
+      !hasRouteTargetMismatch
     : !isCalculatingRoute;
   const occlusionSignature = `${Math.round(bottomSheetHeight)}|${Math.round(leftPanelWidth)}`;
 
   useEffect(() => {
-    if (routeOriginCoordinate && routeDestinationCoordinate) {
+    if (
+      routeOriginCoordinate &&
+      routeDestinationCoordinate &&
+      !hasRouteTargetMismatch
+    ) {
       calculateRoute(routeOriginCoordinate, routeDestinationCoordinate);
       return;
     }
@@ -767,6 +856,7 @@ export default function EmergencyLocationPreviewMap({
   }, [
     calculateRoute,
     clearRoute,
+    hasRouteTargetMismatch,
     routeDestinationCoordinate,
     routeOriginCoordinate,
   ]);
@@ -1131,7 +1221,11 @@ export default function EmergencyLocationPreviewMap({
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={140}
             image={effectiveAmbulanceMarkerImage}
-            imageSize={{ width: 46, height: 46 }}
+            // PULLBACK NOTE: Use platform-specific imageSize following hospital marker fix
+            // OLD: Hardcoded imageSize={{ width: 46, height: 46 }} for all platforms
+            // NEW: Platform-aware sizing - web 46x46, native 90x90 (matches hospital 1.96x ratio)
+            // TODO: Regenerate ambulance PNGs from 128x128 to 90x90 for native builds
+            imageSize={getAmbulanceSpriteDimensions(isWeb)}
             tracksViewChanges={tracksMarkerViews}
             opacity={serviceMarkerOpacity}
             title="Transport"

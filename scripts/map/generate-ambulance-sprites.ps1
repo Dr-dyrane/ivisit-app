@@ -3,7 +3,11 @@
   [string]$OutputDir = "assets/map/ambulance-sprites",
   [double]$BaseHeading = 135.0,
   [int]$Steps = 16,
-  [int]$CanvasSize = 128
+  # PULLBACK NOTE: Updated CanvasSize from 128 to 90 for proportional sizing
+  # Following hospital marker ratio: native ~1.9x web. Ambulance web 46x46 → native 90x90
+  # OLD: [int]$CanvasSize = 128
+  # NEW: [int]$CanvasSize = 90
+  [int]$CanvasSize = 90
 )
 
 Set-StrictMode -Version Latest
