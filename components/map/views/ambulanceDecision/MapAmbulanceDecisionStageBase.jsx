@@ -44,6 +44,7 @@ export default function MapAmbulanceDecisionStageBase({
 	onOpenServiceDetail,
 	onSelectService,
 	onSnapStateChange,
+	onChangePickup,
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
@@ -365,6 +366,7 @@ export default function MapAmbulanceDecisionStageBase({
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
 									pillSurfaceColor={pillSurfaceColor}
+									onChangePickup={onChangePickup}
 								/>
 
 								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
@@ -390,6 +392,7 @@ export default function MapAmbulanceDecisionStageBase({
 								mutedColor={mutedColor}
 								surfaceColor={nestedSurfaceColor}
 								pillSurfaceColor={pillSurfaceColor}
+								onChangePickup={onChangePickup}
 							/>
 						)}
 					</>

@@ -231,7 +231,7 @@ export function buildPhotoGallery(hospital) {
 	]).slice(0, 8);
 }
 
-export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading = false) {
+export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading = false, quotedPriceMap = {}) {
 	const rows = Array.isArray(pricingRows)
 		? pricingRows.filter((row) =>
 				String(row?.service_type || "").toLowerCase().startsWith("ambulance"),
@@ -254,18 +254,23 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 		);
 		const enabled = Boolean(row) || (tier.id === "basic" && hasAmbulances);
 		const title = tier.label;
-		const priceText = row
-			? formatPrice(
-					row.base_price,
-					null,
-					resolveMoneyCurrency(row?.currency, hospital?.currency),
+		// PULLBACK NOTE: Use quoted price from billing quote service if available
+		const rowId = row?.id;
+		const quotedPrice = rowId && quotedPriceMap?.[rowId];
+		const priceText = quotedPrice?.label
+			? quotedPrice.label
+			: row
+				? formatPrice(
+						row.base_price,
+						null,
+						resolveMoneyCurrency(row?.currency, hospital?.currency),
 				)
 			: enabled
 				? formatPrice(
-						hospital?.basePrice ?? hospital?.base_price,
-						null,
-						hospital?.currency,
-					)
+							hospital?.basePrice ?? hospital?.base_price,
+							null,
+							hospital?.currency,
+						)
 				: null;
 		return {
 			id: row?.id || tier.id,
@@ -289,7 +294,7 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 	return cards;
 }
 
-export function buildRoomServiceCards(hospital, roomRows = [], isLoading = false) {
+export function buildRoomServiceCards(hospital, roomRows = [], isLoading = false, quotedPriceMap = {}) {
 	const rows = Array.isArray(roomRows) ? roomRows : [];
 	const cards = ROOM_SERVICE_TYPES.map((type) => {
 		const row = rows.find((item) =>
@@ -314,18 +319,23 @@ export function buildRoomServiceCards(hospital, roomRows = [], isLoading = false
 		);
 		const enabled = Boolean(row) || (type.id === "standard" && Number.isFinite(available) && available > 0);
 		const title = type.label;
-		const priceText = row
-			? formatPrice(
-					row.base_price ?? row.price_per_night ?? row.price,
-					null,
-					resolveMoneyCurrency(row?.currency, hospital?.currency),
+		// PULLBACK NOTE: Use quoted price from billing quote service if available
+		const rowId = row?.id;
+		const quotedPrice = rowId && quotedPriceMap?.[rowId];
+		const priceText = quotedPrice?.label
+			? quotedPrice.label
+			: row
+				? formatPrice(
+						row.base_price ?? row.price_per_night ?? row.price,
+						null,
+						resolveMoneyCurrency(row?.currency, hospital?.currency),
 				)
 			: enabled
 				? formatPrice(
-						hospital?.basePrice ?? hospital?.base_price,
-						null,
-						hospital?.currency,
-					)
+							hospital?.basePrice ?? hospital?.base_price,
+							null,
+							hospital?.currency,
+						)
 				: null;
 
 		return {

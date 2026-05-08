@@ -350,6 +350,11 @@ export default function MapTrackingStageBase({
 
 	const expandedSnapContent = isExpanded ? (
 		<>
+			{/* PULLBACK NOTE: Tracking pickup edits removed.
+			    This action only changed local shell location state and never mutated
+			    the live tracked request destination, so it was misleading in an
+			    active trip. Pickup edits now stop at pre-tracking phases where route
+			    and quote truth can still be recomputed safely. */}
 			<TrackingRouteCard
 				elevatedSurfaceColor={themeTokens.elevatedSurfaceColor}
 				routeCardRadius={themeTokens.routeCardRadius}

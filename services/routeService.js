@@ -8,6 +8,20 @@ export const ROUTE_CACHE_TTL_MS = 2 * 60 * 1000;
 export const ROUTE_FALLBACK_CACHE_TTL_MS = 15 * 1000;
 export const ROUTE_CACHE_GC_MS = 10 * 60 * 1000;
 
+function isValidRouteCoordinate(coordinate) {
+  const latitude = Number(coordinate?.latitude);
+  const longitude = Number(coordinate?.longitude);
+
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
 export function buildRouteKey(origin, destination) {
   if (!origin || !destination) return null;
 
@@ -16,12 +30,7 @@ export function buildRouteKey(origin, destination) {
   const destinationLat = Number(destination.latitude);
   const destinationLng = Number(destination.longitude);
 
-  if (
-    !Number.isFinite(originLat) ||
-    !Number.isFinite(originLng) ||
-    !Number.isFinite(destinationLat) ||
-    !Number.isFinite(destinationLng)
-  ) {
+  if (!isValidRouteCoordinate(origin) || !isValidRouteCoordinate(destination)) {
     return null;
   }
 
@@ -90,19 +99,14 @@ export function buildFallbackRoute({
   reason = "unavailable",
   debug = false,
 }) {
-  const originLat = Number(origin?.latitude);
-  const originLng = Number(origin?.longitude);
-  const destinationLat = Number(destination?.latitude);
-  const destinationLng = Number(destination?.longitude);
-
-  if (
-    !Number.isFinite(originLat) ||
-    !Number.isFinite(originLng) ||
-    !Number.isFinite(destinationLat) ||
-    !Number.isFinite(destinationLng)
-  ) {
+  if (!isValidRouteCoordinate(origin) || !isValidRouteCoordinate(destination)) {
     return null;
   }
+
+  const originLat = Number(origin.latitude);
+  const originLng = Number(origin.longitude);
+  const destinationLat = Number(destination.latitude);
+  const destinationLng = Number(destination.longitude);
 
   const straightLineKm = calculateDistance(origin, destination);
   const estimatedRoadDistanceMeters = Math.max(
@@ -134,6 +138,12 @@ export function buildFallbackRoute({
 }
 
 async function getMapboxRoute({ origin, destination, timeoutMs }) {
+  // PULLBACK NOTE: Strict coordinate validation before network fetch
+  // Prevents 422/400 errors from Mapbox API with invalid coordinates
+  if (!isValidRouteCoordinate(origin) || !isValidRouteCoordinate(destination)) {
+    return null;
+  }
+
   const accessToken = mapboxService.accessToken;
   if (!accessToken) {
     console.warn("[routeService] Mapbox access token not available");
@@ -187,6 +197,12 @@ async function getOSRMRoute({
   isBrowserRuntime,
   debug = false,
 }) {
+  // PULLBACK NOTE: Strict coordinate validation before network fetch
+  // Prevents 400 errors from OSRM API with invalid coordinates
+  if (!isValidRouteCoordinate(origin) || !isValidRouteCoordinate(destination)) {
+    return null;
+  }
+
   if (isBrowserRuntime) {
     if (debug) {
       console.warn(
