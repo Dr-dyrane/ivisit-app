@@ -1,0 +1,84 @@
+{
+  "audit_id": "MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_2026-05-07",
+  "scope": "live_/map",
+  "status": "audit_only",
+  "issues": [
+    {
+      "id": "map_location_loading_deadlock",
+      "severity": "high",
+      "owner": [
+        "hooks/map/exploreFlow/useMapLoadingState.js",
+        "hooks/map/exploreFlow/mapExploreFlow.loading.js",
+        "screens/MapScreen.jsx"
+      ],
+      "root_cause": "requiresLocationSelection still coexists with a blocking loading overlay contract",
+      "replacement_rule": "missing_location_is_terminal_ui_state_not_loading_state"
+    },
+    {
+      "id": "map_nearby_count_selector_falsehood",
+      "severity": "high",
+      "owner": [
+        "hooks/map/exploreFlow/useMapDerivedData.js",
+        "hooks/map/exploreFlow/mapExploreFlow.derived.js"
+      ],
+      "root_cause": "nearbyHospitalCount counts all discovered hospitals instead of hospitals within a nearby radius",
+      "replacement_rule": "split_discovered_set_from_nearby_subset"
+    },
+    {
+      "id": "map_broad_hospital_discovery_first_choice",
+      "severity": "high",
+      "owner": [
+        "hooks/emergency/useHospitals.js",
+        "services/hospitalsService.js",
+        "supabase/functions/discovery/discover-hospitals/index.ts"
+      ],
+      "root_cause": "50km discovery radius plus merged provider/database limit can surface far hospitals as first visible candidates",
+      "replacement_rule": "derive_first_choice_from_local_candidate_lane"
+    },
+    {
+      "id": "map_route_invalid_input_leak",
+      "severity": "medium",
+      "owner": [
+        "services/routeService.js",
+        "hooks/emergency/useMapRoute.js",
+        "components/emergency/intake/EmergencyLocationPreviewMap.jsx"
+      ],
+      "root_cause": "finite-number route validation is too weak before network fetch",
+      "replacement_rule": "reject_invalid_or_degenerate_coordinates_pre_fetch"
+    },
+    {
+      "id": "map_stale_hospital_carryover_on_pickup_change",
+      "severity": "medium",
+      "owner": [
+        "hooks/map/exploreFlow/useMapLocation.js",
+        "hooks/map/exploreFlow/useMapExploreFlow.js",
+        "hooks/emergency/useHospitals.js",
+        "hooks/map/exploreFlow/useMapHospitalSelection.js",
+        "components/emergency/intake/EmergencyLocationPreviewMap.jsx"
+      ],
+      "root_cause": "fresh pickup changes could leave previous hospital focus or route targets alive long enough to trigger impossible cross-session route requests",
+      "replacement_rule": "pickup_change_clears_location_scoped_hospital_state_and_route_guard_rejects_cross_session_pairs"
+    },
+    {
+      "id": "search_blur_analytics_contract_violation",
+      "severity": "medium",
+      "owner": [
+        "services/discoveryService.js",
+        "contexts/SearchContext.jsx",
+        "hooks/search/useSearchRanking.js"
+      ],
+      "root_cause": "plain query commits were being inserted into search_selections without required result_type/result_id truth",
+      "replacement_rule": "query_commits_use_search_events_and_real_selections_use_search_selections"
+    },
+    {
+      "id": "billing_quote_not_adopted_in_ambulance_selection",
+      "severity": "medium",
+      "owner": [
+        "components/map/views/ambulanceDecision/mapAmbulanceDecision.helpers.js",
+        "components/map/surfaces/hospitals/mapHospitalDetail.helpers.js"
+      ],
+      "root_cause": "ambulance service cards still render canonical pricing instead of quoted display pricing",
+      "replacement_rule": "decision_cards_must_consume_display_quote_projection"
+    }
+  ]
+}

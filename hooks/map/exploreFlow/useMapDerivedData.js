@@ -8,6 +8,7 @@ import { buildActiveMapRequestModel } from "../../../components/map/core/mapActi
 import {
   getDiscoveredHospitals,
   getFeaturedHospitals,
+  getLocalNearbyHospitals,
   getNearbyBedHospitals,
   getNearbyHospitalCount,
   getNearestHospital,
@@ -34,6 +35,7 @@ export function useMapDerivedData({
   sheetPayload,
   featuredHospital,
   currentLocationDetails,
+  activeLocation,
   nowMs,
   visits,
 }) {
@@ -42,9 +44,44 @@ export function useMapDerivedData({
     [allHospitals, hospitals],
   );
 
+  const summaryHospitals = useMemo(
+    () =>
+      Array.isArray(allHospitals) && allHospitals.length > 0
+        ? allHospitals.filter(Boolean)
+        : discoveredHospitals,
+    [allHospitals, discoveredHospitals],
+  );
+
+  const localNearbyHospitals = useMemo(
+    () => getLocalNearbyHospitals(discoveredHospitals, activeLocation),
+    [activeLocation, discoveredHospitals],
+  );
+
+  const localNearbySummaryHospitals = useMemo(
+    () => getLocalNearbyHospitals(summaryHospitals, activeLocation),
+    [activeLocation, summaryHospitals],
+  );
+
   const nearestHospital = useMemo(
-    () => getNearestHospital(selectedHospital, discoveredHospitals),
-    [discoveredHospitals, selectedHospital],
+    () =>
+      getNearestHospital(
+        selectedHospital,
+        localNearbyHospitals,
+        discoveredHospitals,
+        activeLocation,
+      ),
+    [activeLocation, discoveredHospitals, localNearbyHospitals, selectedHospital],
+  );
+
+  const nearestSummaryHospital = useMemo(
+    () =>
+      getNearestHospital(
+        selectedHospital,
+        localNearbySummaryHospitals,
+        summaryHospitals,
+        activeLocation,
+      ),
+    [activeLocation, localNearbySummaryHospitals, selectedHospital, summaryHospitals],
   );
 
   const nearestHospitalMeta = useMemo(
@@ -52,19 +89,24 @@ export function useMapDerivedData({
     [nearestHospital],
   );
 
+  const nearestSummaryHospitalMeta = useMemo(
+    () => getNearestHospitalMeta(nearestSummaryHospital),
+    [nearestSummaryHospital],
+  );
+
   const nearbyHospitalCount = useMemo(
-    () => getNearbyHospitalCount(discoveredHospitals),
-    [discoveredHospitals],
+    () => getNearbyHospitalCount(localNearbyHospitals),
+    [localNearbyHospitals],
   );
 
   const totalAvailableBeds = useMemo(
-    () => getTotalAvailableBeds(discoveredHospitals),
-    [discoveredHospitals],
+    () => getTotalAvailableBeds(localNearbyHospitals),
+    [localNearbyHospitals],
   );
 
   const nearbyBedHospitals = useMemo(
-    () => getNearbyBedHospitals(discoveredHospitals),
-    [discoveredHospitals],
+    () => getNearbyBedHospitals(localNearbyHospitals),
+    [localNearbyHospitals],
   );
 
   const featuredHospitals = useMemo(
@@ -107,6 +149,8 @@ export function useMapDerivedData({
 
   return {
     discoveredHospitals,
+    nearestSummaryHospital,
+    nearestSummaryHospitalMeta,
     nearestHospital,
     nearestHospitalMeta,
     nearbyHospitalCount,

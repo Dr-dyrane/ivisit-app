@@ -81,6 +81,15 @@ const isDispatchableHospital = (hospital) => {
 			verificationStatus === "not_certified")
 	);
 };
+const sortHospitalsByDistance = (hospitals = []) =>
+	[...(Array.isArray(hospitals) ? hospitals : [])].sort((left, right) => {
+		const leftDistance = Number(left?.distanceKm ?? left?.distance_km ?? Number.MAX_SAFE_INTEGER);
+		const rightDistance = Number(right?.distanceKm ?? right?.distance_km ?? Number.MAX_SAFE_INTEGER);
+		if (leftDistance !== rightDistance) {
+			return leftDistance - rightDistance;
+		}
+		return String(left?.name || "").localeCompare(String(right?.name || ""));
+	});
 const facilityKeyFromHospital = (hospital) => {
 	return getHospitalFacilityKey(hospital) || `id:${toText(hospital?.id, "unknown")}`;
 };
@@ -447,6 +456,7 @@ export const hospitalsService = {
 		const importedFromGoogle = h?.google_only === true;
 		const importedFromMapbox = h?.mapbox_only === true;
 		const importStatus = (isVerified || verificationStatus === "verified") ? "verified" : "pending";
+		const isDispatchReady = isDispatchableHospital(h);
 
 		const image = toText(
 			h?.image,
@@ -528,6 +538,7 @@ export const hospitalsService = {
 			orgAdminId: toText(h?.org_admin_id),
 			organizationId: toText(h?.organization_id, toText(h?.organizationId)),
 			organization_id: toText(h?.organization_id, toText(h?.organizationId)),
+			isDispatchReady,
 			// Computed UI helpers
 			isCovered: isVerified && status === "available",
 			isGoogleOnly: h.google_only === true,
@@ -574,9 +585,7 @@ export const hospitalsService = {
 
 			if (error) throw error;
 			const hydrated = await this._hydrateHospitalRows(data || []);
-			return hydrated
-				.filter(isDispatchableHospital)
-				.map(h => this._mapHospital(h));
+			return sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
 		} catch (err) {
 			console.error("hospitalsService.listNearby error:", err);
 			throw err;
@@ -624,9 +633,7 @@ export const hospitalsService = {
 			}
 
 			const hydrated = await this._hydrateHospitalRows(rawHospitals);
-			return hydrated
-				.filter(isDispatchableHospital)
-				.map(h => this._mapHospital(h));
+			return sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
 
 		} catch (error) {
 			console.error("hospitalsService.discoverNearby error:", error);

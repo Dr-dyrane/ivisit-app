@@ -157,6 +157,7 @@ export function useHospitals(options = {}) {
 		const locationKey = buildLocationBucketKey(normalizedLocation);
 		const activeRequestId = ++requestSequenceRef.current;
 		const cachedSnapshot = globalHospitalCache.keyedSnapshots?.[locationKey] ?? null;
+		const isFreshLocationKey = globalHospitalCache.lastKey !== locationKey;
 
 		try {
 			if (cachedSnapshot?.hospitals?.length) {
@@ -165,6 +166,10 @@ export function useHospitals(options = {}) {
 				setCategories(cachedSnapshot.categories || {});
 				hasFetchedRef.current = true;
 				setIsLoading(false);
+			} else if (isFreshLocationKey) {
+				setAllHospitals([]);
+				setHospitals([]);
+				setCategories({});
 			} else if (!hasFetchedRef.current) {
 				setIsLoading(true);
 			}
@@ -222,8 +227,13 @@ export function useHospitals(options = {}) {
 				console.warn('[useHospitals] No hospitals found in 50km radius');
 			}
 
-			const categorized = categorizeHospitals(data);
-			const display = getDisplayHospitals(data, normalizedLocation);
+			const dispatchReadyHospitals = data.filter(
+				(hospital) => hospital?.isDispatchReady !== false,
+			);
+			const displaySource =
+				dispatchReadyHospitals.length > 0 ? dispatchReadyHospitals : data;
+			const categorized = categorizeHospitals(displaySource);
+			const display = getDisplayHospitals(displaySource, normalizedLocation);
 			const hospitalsWithWaitTimes = display.map(hospital => ({
 				...hospital,
 				dynamicWaitTime: hospitalsService.calculateDynamicWaitTime(hospital, normalizedLocation)

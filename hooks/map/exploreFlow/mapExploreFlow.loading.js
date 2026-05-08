@@ -3,6 +3,7 @@ export function buildMapLoadingState({
 	expectsRoute,
 	hasActiveLocation,
 	hasResolvedProviders,
+	requiresLocationSelection,
 	isBackgroundCoverageLoading,
 	isBackgroundRouteLoading,
 	isBootstrappingDemo,
@@ -15,7 +16,10 @@ export function buildMapLoadingState({
 	let title = "Preparing help";
 	let message = "";
 
-	if (!hasActiveLocation) {
+	if (requiresLocationSelection && !isLoadingLocation) {
+		title = "Set pickup area";
+		message = "Search or turn on location";
+	} else if (!hasActiveLocation) {
 		title = "Locating you";
 		message = "Nearby help";
 	} else if (isResolvingPlaceName) {

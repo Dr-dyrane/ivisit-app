@@ -1,0 +1,54 @@
+{
+  "audit_id": "nearest-hospital-selection-2026-05-07",
+  "scope": "live-map-explore-intent",
+  "problem": "far hospital can surface before closer local hospitals in Lagos",
+  "root_causes": [
+    {
+      "id": "radius_broad_default",
+      "file": "hooks/emergency/useHospitals.js",
+      "detail": "discovery fetch uses 50000 meters"
+    },
+    {
+      "id": "summary_bypasses_display_lane",
+      "files": [
+        "hooks/map/exploreFlow/useMapDerivedData.js",
+        "hooks/map/exploreFlow/mapExploreFlow.derived.js"
+      ],
+      "detail": "nearestHospital is selected from discoveredHospitals[0], and discoveredHospitals prefers allHospitals over curated hospitals"
+    },
+    {
+      "id": "dispatchability_rejects_secondary_rows",
+      "file": "services/hospitalsService.js",
+      "detail": "provider-shadow and pending verification hospitals are filtered out"
+    },
+    {
+      "id": "provider_discovery_skipped_too_early",
+      "file": "supabase/functions/discovery/discover-hospitals/index.ts",
+      "detail": "provider discovery is skipped once 5 dispatchable DB rows exist in the broad lane"
+    },
+    {
+      "id": "nearby_count_not_true_nearby",
+      "file": "hooks/map/exploreFlow/mapExploreFlow.derived.js",
+      "detail": "nearbyHospitalCount must be driven by a fixed <= 5km lane, not broad discovered coverage or fallback bands"
+    }
+  ],
+  "required_new_lanes": [
+    "canonicalDiscoveredHospitals",
+    "displayHospitals",
+    "localNearbyHospitals",
+    "nearestHospitalSummary"
+  ],
+  "implemented_slice": [
+    "preserve full nearby hospital lane with isDispatchReady metadata",
+    "keep dispatch-ready display lane for booking safety",
+    "drive explore-intent summary from the physically nearest lane",
+    "lock nearby truth to a fixed <= 5km lane and relabel wider coverage explicitly",
+    "only skip provider discovery when local dispatchable coverage is also sufficient"
+  ],
+  "implementation_order": [
+    "split nearest summary from raw canonical ordering",
+    "introduce strict nearby threshold lane",
+    "keep broad dispatchable lane for booking safety",
+    "decide whether secondary/provider hospitals should appear as visible non-primary options"
+  ]
+}

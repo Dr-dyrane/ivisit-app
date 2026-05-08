@@ -68,9 +68,28 @@ export function MapExploreIntentTopRow({
 					}
 					color={tokens.titleColor}
 				/>
-				<Text style={[styles.searchText, responsiveMetrics?.topRow?.searchTextStyle, { color: tokens.mutedText }]}>
-					{MAP_EXPLORE_INTENT_COPY.SEARCH}
-				</Text>
+				<View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+					<Text
+						style={[
+							styles.searchText,
+							responsiveMetrics?.topRow?.searchTextStyle,
+							{ color: tokens.mutedText },
+						]}
+						numberOfLines={1}
+					>
+						{MAP_EXPLORE_INTENT_COPY.SEARCH}
+					</Text>
+					<Text
+						style={[
+							styles.searchText,
+							responsiveMetrics?.topRow?.searchTextStyle,
+							{ color: tokens.mutedText, opacity: 0.64 },
+						]}
+						numberOfLines={1}
+					>
+						{MAP_EXPLORE_INTENT_COPY.CHANGE_LOCATION_HINT}
+					</Text>
+				</View>
 			</Pressable>
 
 			<MapExploreIntentProfileTrigger
@@ -167,6 +186,7 @@ export function buildMapExploreIntentScreenSections({
 					nearbyHospitalCount={nearbyHospitalCount}
 					totalAvailableBeds={totalAvailableBeds}
 					nearbyBedHospitals={nearbyBedHospitals}
+					hasHospitalNetwork={Boolean(nearestHospital?.id)}
 					titleColor={tokens.titleColor}
 					mutedColor={tokens.mutedText}
 					isDarkMode={isDarkMode}

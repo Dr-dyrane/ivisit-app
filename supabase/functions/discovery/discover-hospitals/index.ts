@@ -82,6 +82,8 @@ const normalizeFacilityText = (value: unknown): string =>
     .trim();
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
+const MAP_LOCAL_NEARBY_RADIUS_KM = 5;
+const MAP_LOCAL_NEARBY_COMFORT_THRESHOLD = 3;
 
 const coordinateKey = (value: unknown, precision = 3): string | null => {
   const n = toFiniteNumber(value);
@@ -154,6 +156,11 @@ const compareByDistance = (left: any, right: any): number => {
   return String(left?.name || "").localeCompare(String(right?.name || ""), undefined, {
     sensitivity: "base",
   });
+};
+
+const isWithinDistanceKm = (row: any, radiusKm: number): boolean => {
+  const distanceKm = parseDistanceKm(row);
+  return Number.isFinite(distanceKm) && Number(distanceKm) <= radiusKm;
 };
 
 const prioritizeDatabaseRows = (rows: any[]): any[] =>
@@ -657,11 +664,19 @@ serve(async (req) => {
     const dispatchableDbResults = dbResults.filter((row: any) =>
       isDispatchableDatabaseRow(row)
     );
+    const localDispatchableDbResults = dispatchableDbResults.filter((row: any) =>
+      isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
+    );
     const databaseComfortTarget =
       mode === "nearby" ? Math.min(limit, MAP_NEARBY_COMFORT_THRESHOLD) : limit;
+    const localComfortTarget =
+      mode === "nearby"
+        ? Math.min(limit, MAP_LOCAL_NEARBY_COMFORT_THRESHOLD)
+        : limit;
     const hasEnoughDbResults =
       mergeWithDatabase &&
-      dispatchableDbResults.length >= databaseComfortTarget;
+      dispatchableDbResults.length >= databaseComfortTarget &&
+      localDispatchableDbResults.length >= localComfortTarget;
     if (hasEnoughDbResults) {
       providerDiscoverySkipped = true;
       providerDiscoverySkipReason = "database_sufficient";
@@ -669,7 +684,10 @@ serve(async (req) => {
         reason: providerDiscoverySkipReason,
         dbCount: dbResults.length,
         dispatchableDbCount: dispatchableDbResults.length,
+        localDispatchableDbCount: localDispatchableDbResults.length,
         comfortTarget: databaseComfortTarget,
+        localComfortTarget,
+        localRadiusKm: MAP_LOCAL_NEARBY_RADIUS_KM,
       });
     }
 
@@ -893,11 +911,17 @@ serve(async (req) => {
           dispatchable_database_count: prioritizedDbResults.filter((row: any) =>
             isDispatchableDatabaseRow(row)
           ).length,
+          local_dispatchable_database_count: prioritizedDbResults.filter((row: any) =>
+            isDispatchableDatabaseRow(row) &&
+            isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
+          ).length,
           merged_count: limitedResults.length,
           provider_discovery_enabled: includeProviderDiscovery,
           provider_discovery_skipped: providerDiscoverySkipped,
           provider_discovery_skip_reason: providerDiscoverySkipReason || null,
           database_comfort_target: databaseComfortTarget,
+          local_database_comfort_target: localComfortTarget,
+          local_nearby_radius_km: MAP_LOCAL_NEARBY_RADIUS_KM,
           mapbox_enabled: includeMapboxPlaces,
           google_enabled: includeGooglePlaces,
           mode,

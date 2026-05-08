@@ -28,18 +28,34 @@ export function useMapHospitalSelection({
   // Auto-select the first hospital when the list first populates
   // or when the previously selected hospital leaves the discovered list
   useEffect(() => {
-    if (!Array.isArray(discoveredHospitals) || discoveredHospitals.length === 0)
+    if (!Array.isArray(discoveredHospitals) || discoveredHospitals.length === 0) {
+      if (selectedHospitalId || featuredHospital?.id) {
+        selectHospital(null);
+        setFeaturedHospital(null);
+      }
       return;
+    }
     if (
       selectedHospitalId &&
       discoveredHospitals.some((hospital) => hospital?.id === selectedHospitalId)
     ) {
       return;
     }
-    if (discoveredHospitals[0]?.id) {
-      selectHospital(discoveredHospitals[0].id);
+
+    const fallbackHospitalId =
+      nearestHospital?.id || discoveredHospitals[0]?.id || null;
+
+    if (fallbackHospitalId) {
+      selectHospital(fallbackHospitalId);
     }
-  }, [discoveredHospitals, selectHospital, selectedHospitalId]);
+  }, [
+    discoveredHospitals,
+    featuredHospital?.id,
+    nearestHospital?.id,
+    selectHospital,
+    selectedHospitalId,
+    setFeaturedHospital,
+  ]);
 
   const promoteHospitalSelection = useCallback(
     (hospital) => {

@@ -455,6 +455,7 @@ export default function MapExploreIntentCareSection({
 	nearbyHospitalCount = 0,
 	totalAvailableBeds = 0,
 	nearbyBedHospitals = 0,
+	hasHospitalNetwork = false,
 	titleColor,
 	mutedColor,
 	isDarkMode,
@@ -467,13 +468,16 @@ export default function MapExploreIntentCareSection({
 	const careRowStyle = responsiveMetrics?.care?.rowStyle || null;
 	const bedSubtext = getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals);
 	const ambulanceSubtext =
-		nearbyHospitalCount > 0 ? `${nearbyHospitalCount} nearby` : MAP_EXPLORE_INTENT_COPY.NEARBY_HELP;
+		nearbyHospitalCount > 0
+			? `${nearbyHospitalCount} nearby`
+			: MAP_EXPLORE_INTENT_COPY.WIDER_HELP;
 	const usesCanonicalOrbLayout =
 		layoutMode === "canonical" || layoutMode === "web_canonical";
 	// PULLBACK NOTE: Pass C — dim secondary/tertiary orbs while network data is not yet ready (E-2.10)
 	// OLD: secondary/tertiary orbs render at full hierarchy opacity regardless of data state
 	// NEW: when neither nearbyHospitalCount nor totalAvailableBeds has resolved, dim non-primary orbs
-	const isNetworkDataReady = nearbyHospitalCount > 0 || totalAvailableBeds > 0;
+	const isNetworkDataReady =
+		hasHospitalNetwork || nearbyHospitalCount > 0 || totalAvailableBeds > 0;
 	const notReadyStyle = !isNetworkDataReady && !selectedCare ? { opacity: 0.46 } : null;
 
 	if (layoutMode === "panel") {

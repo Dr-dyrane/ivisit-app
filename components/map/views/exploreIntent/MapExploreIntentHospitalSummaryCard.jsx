@@ -160,6 +160,11 @@ export default function MapExploreIntentHospitalSummaryCard({
 		currentLocation?.secondaryText ||
 		"Turn on location or enter a pickup area manually.";
 	const heroMeta = nearestHospitalMeta.filter(Boolean).join(" | ");
+	const hasNearbyHospitals = nearbyHospitalCount > 0;
+	const summaryEyebrow = hasNearbyHospitals
+		? MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL
+		: MAP_EXPLORE_INTENT_COPY.WIDER_CARE;
+	const summaryMetaText = nearestHospitalMeta.join(" | ");
 	const heroMetrics = [
 		{
 			label: "Closest route",
@@ -168,7 +173,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 		},
 		{
 			label: "Nearby hospitals",
-			value: nearbyHospitalCount > 0 ? String(nearbyHospitalCount) : "Loading",
+			value: hasNearbyHospitals ? String(nearbyHospitalCount) : "0",
 			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
 		},
 		{
@@ -314,19 +319,22 @@ export default function MapExploreIntentHospitalSummaryCard({
 					) : (
 						<>
 							<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
-								{MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL}
+								{summaryEyebrow}
 							</Text>
 							<Text numberOfLines={1} style={[styles.hospitalTitle, titleTextStyle, { color: tokens.titleColor }]}>
 								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
 							</Text>
 							<Text numberOfLines={1} style={[styles.hospitalMeta, metaTextStyle, { color: tokens.bodyText }]}>
-								{nearestHospitalMeta.join(" • ") || MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS}
+								{summaryMetaText ||
+									(hasNearbyHospitals
+										? MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS
+										: MAP_EXPLORE_INTENT_COPY.SEE_WIDER_HOSPITALS)}
 							</Text>
 						</>
 					)}
-					{nearbyHospitalCount > 0 || totalAvailableBeds > 0 ? (
+					{hasNearbyHospitals || totalAvailableBeds > 0 ? (
 						<View style={styles.intentSignalRow}>
-							{nearbyHospitalCount > 0 ? (
+							{hasNearbyHospitals ? (
 								<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
 									<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
 										{`${nearbyHospitalCount} nearby`}
@@ -406,7 +414,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 					) : (
 						<>
 							<Text style={[styles.summaryHeroEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
-								Closest hospital
+								{hasNearbyHospitals ? "Closest hospital" : MAP_EXPLORE_INTENT_COPY.WIDER_CARE}
 							</Text>
 							<Text numberOfLines={2} style={[styles.summaryHeroTitle, titleTextStyle, { color: tokens.titleColor }]}>
 								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
@@ -436,9 +444,9 @@ export default function MapExploreIntentHospitalSummaryCard({
 						<Ionicons name="arrow-forward" size={14} color={tokens.titleColor} />
 					</View>
 					<Text numberOfLines={1} style={[styles.summaryHeroHint, { color: tokens.mutedText }]}>
-						{nearbyHospitalCount > 0
-							? `${nearbyHospitalCount} options ready`
-							: "Loading nearby network"}
+						{hasNearbyHospitals
+							? `${nearbyHospitalCount} nearby`
+							: MAP_EXPLORE_INTENT_COPY.SHOWING_WIDER_OPTIONS}
 					</Text>
 				</View>
 			</Pressable>
@@ -473,13 +481,18 @@ export default function MapExploreIntentHospitalSummaryCard({
 				</SummaryIconTile>
 				<View style={styles.intentStatusCopy}>
 					<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
-						{MAP_EXPLORE_INTENT_COPY.NEARBY_CARE}
+						{hasNearbyHospitals
+							? MAP_EXPLORE_INTENT_COPY.NEARBY_CARE
+							: MAP_EXPLORE_INTENT_COPY.WIDER_CARE}
 					</Text>
 					<Text numberOfLines={1} style={[styles.intentStatusTitle, titleTextStyle, { color: tokens.titleColor }]}>
 						{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEARBY_HOSPITAL}
 					</Text>
 					<Text numberOfLines={1} style={[styles.intentStatusMeta, metaTextStyle, { color: tokens.bodyText }]}>
-						{nearestHospitalMeta.join(" | ") || MAP_EXPLORE_INTENT_COPY.SEE_NEARBY_HOSPITALS}
+						{summaryMetaText ||
+							(hasNearbyHospitals
+								? MAP_EXPLORE_INTENT_COPY.SEE_NEARBY_HOSPITALS
+								: MAP_EXPLORE_INTENT_COPY.SEE_WIDER_HOSPITALS)}
 					</Text>
 				</View>
 				<SummaryIconTile isDarkMode={isDarkMode} compact size={summaryCompactIconSize}>
@@ -490,9 +503,9 @@ export default function MapExploreIntentHospitalSummaryCard({
 			<View style={styles.intentSignalRow}>
 				<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
 					<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
-						{nearbyHospitalCount > 0
+						{hasNearbyHospitals
 							? `${nearbyHospitalCount} nearby`
-							: MAP_EXPLORE_INTENT_COPY.NEARBY_CARE}
+							: MAP_EXPLORE_INTENT_COPY.SHOWING_WIDER_OPTIONS}
 					</Text>
 				</View>
 				{totalAvailableBeds > 0 ? (

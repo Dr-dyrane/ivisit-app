@@ -16,6 +16,7 @@ export function useMapLoadingState({
   activeLocation,
   nearestHospital,
   discoveredHospitals,
+  requiresLocationSelection,
   mapReadiness,
   needsCoverageExpansion,
   isLoadingHospitals,
@@ -36,6 +37,10 @@ export function useMapLoadingState({
     activeLocation?.longitude &&
     nearestHospital?.id,
   );
+  // PULLBACK NOTE: Location-off terminal state — show manual-pickup UX instead of loading overlay
+  // When GPS is disabled/denied and we have no valid location, convert to interactive terminal state
+  const isLocationOffTerminal =
+    requiresLocationSelection && !isLoadingLocation && !hasActiveLocation;
   // Latch hasActiveLocation: once we've ever had a location this mount, treat as having one.
   // Prevents transient location-source nulls from blocking isMapFrameReady on iOS.
   const hadLocationLatchRef = useRef(false);
@@ -50,7 +55,12 @@ export function useMapLoadingState({
     expectsRoute &&
     (mapReadiness.isCalculatingRoute || !mapReadiness.routeReady);
   const isMapSurfaceReady = isMapFrameReady;
-  const shouldShowMapLoadingOverlay = !hasCompletedInitialMapLoad;
+  // PULLBACK NOTE: Don't show loading overlay when in location-off terminal state
+  // User should see manual-pickup UX instead of being trapped behind loading
+  const shouldShowMapLoadingOverlay =
+    !hasCompletedInitialMapLoad &&
+    !isLocationOffTerminal &&
+    !(requiresLocationSelection && !isLoadingLocation);
 
   useEffect(() => {
     if (isMapFrameReady && !hasCompletedInitialMapLoad) {
@@ -68,6 +78,7 @@ export function useMapLoadingState({
       expectsRoute,
       hasActiveLocation,
       hasResolvedProviders,
+      requiresLocationSelection,
       isBackgroundCoverageLoading,
       isBackgroundRouteLoading,
       isBootstrappingDemo,
@@ -82,6 +93,7 @@ export function useMapLoadingState({
     hasActiveLocation,
     hasCompletedInitialMapLoad,
     hasResolvedProviders,
+    requiresLocationSelection,
     isBackgroundCoverageLoading,
     isBackgroundRouteLoading,
     isBootstrappingDemo,
@@ -102,6 +114,7 @@ export function useMapLoadingState({
     isBackgroundCoverageLoading,
     isBackgroundRouteLoading,
     shouldShowMapLoadingOverlay,
+    isLocationOffTerminal,
     mapLoadingState,
   };
 }
