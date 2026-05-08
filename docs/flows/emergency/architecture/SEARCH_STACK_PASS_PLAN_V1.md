@@ -85,3 +85,12 @@ Explicitly deferred:
 - recent searches, discovery shortcuts, and result selection all still work
 - wide layout remains healthy at `1280`, `1440`, and `1920`
 - no activity-indicator-only loading states remain on the main search surface
+
+For better search-sheet UI/UX, the highest-value next moves are:
+
+Make the sheet clearly pickup-first when location is missing: open straight into location mode, not generic search mode.
+Add a compact helper row under the bar: Use device location and Enter manually.
+Show the current pickup as a small pinned summary at the top so users know what they are changing.
+Keep result groups tighter: Addresses, Recent, Nearby hospitals.
+Tighten empty-state copy to one short line, for example: Search a street, area, or landmark.
+After selection, show immediate feedbac

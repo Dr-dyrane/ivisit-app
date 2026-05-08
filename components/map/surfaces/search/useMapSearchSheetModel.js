@@ -60,7 +60,7 @@ export function useMapSearchSheetModel({
 	const manualEntryActionLabel =
 		currentLocation?.manualEntryActionLabel || "Enter address manually";
 	const searchPlaceholder = isLocationMode
-		? currentLocation?.searchPlaceholder || "Enter street, area, city, or landmark"
+		? currentLocation?.searchPlaceholder || "Search address or area"
 		: "Search hospitals, specialties, or area";
 	const locationPromptTitle = requiresLocationSelection
 		? "Set pickup area"

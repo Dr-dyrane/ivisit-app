@@ -35,7 +35,13 @@
     }
   ],
   "canonical_rules": {
-    "trusted_sources": ["manual", "device"],
+    "map_pickup_truth_order": [
+      "session_manual",
+      "device",
+      "saved_manual_fallback",
+      "saved_device_fallback",
+      "missing"
+    ],
     "hydrated_device_source": "persisted",
     "requires_location_selection_when": "no trusted pickup location exists",
     "manual_pickup_must_update": [
@@ -49,6 +55,7 @@
     "contexts/GlobalLocationContext.jsx",
     "hooks/emergency/useEmergencyLocationSync.js",
     "contexts/EmergencyContext.jsx",
+    "hooks/map/exploreFlow/mapPickupLocationTruth.js",
     "hooks/map/exploreFlow/useMapLocation.js",
     "hooks/map/exploreFlow/useMapExploreFlow.js",
     "screens/MapScreen.jsx",
@@ -72,7 +79,8 @@
     "remaining_invalid_setter_calls": 0
   },
   "remaining_work": [
-    "thread explicit change-pickup entry points into tracking/payment/detail surfaces",
+    "finish explicit change-pickup entry points in hospital detail and service detail",
+    "keep tracking read-only for pickup edits unless a real request-destination mutation lane is added",
     "continue reducing provider-local location state in favor of canonical shared store lanes",
     "complete broader /map modularization"
   ]

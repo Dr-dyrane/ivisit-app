@@ -301,7 +301,7 @@ export default function MapSearchSheetSections({ model }) {
 		<>
 			<View style={[styles.modeSwitchRow, responsiveStyles.modeSwitchRow]}>
 				<ModeChip
-					label="Care"
+					label="Find care"
 					iconName="medkit-outline"
 					active={!isLocationMode}
 					onPress={() => handleModeChange(MAP_SEARCH_SHEET_MODES.SEARCH)}
@@ -313,7 +313,7 @@ export default function MapSearchSheetSections({ model }) {
 					responsiveStyles={responsiveStyles}
 				/>
 				<ModeChip
-					label="Pickup"
+					label="Set pickup"
 					iconName="location-outline"
 					active={isLocationMode}
 					onPress={() => handleModeChange(MAP_SEARCH_SHEET_MODES.LOCATION)}
@@ -381,7 +381,13 @@ export default function MapSearchSheetSections({ model }) {
 										? "Use your device location for pickup."
 										: currentLocation?.secondaryText || "Use your device location"
 								}
-								meta={currentLocation?.secondaryText || locationPromptBody}
+								// PULLBACK NOTE: Don't show meta when it would duplicate subtitle
+								// Prevents repetition of the same address text
+								meta={
+									isLocationMode
+										? null
+										: null // Always null in non-location mode — subtitle already shows secondaryText
+								}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={cardSurface}

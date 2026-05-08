@@ -31,6 +31,7 @@ Parallel track for stack-owned screens (Profile, Settings, Emergency Contact, Pa
 - Pass 15: complete
 - Pass 16: map entity render hardening complete
 - Pass 17: CTA state contract hardening planned
+- Pass 18: pickup, nearby-hospital, and quote-truth hardening in progress
 
 ## Unified Surgical Mapping
 
@@ -236,6 +237,67 @@ Pass 17 proven when:
 
 - these surfaces expose `ready`, `recover`, or `unavailable` truth at the CTA layer
 - users no longer need to tap a red progress CTA just to discover the action cannot continue
+
+### Pass 18 Planned Slice
+
+Pass 18 is the next `/map` truth pass after CTA state hardening.
+
+Primary focus:
+
+- make pickup the canonical local context for live `/map`
+- stop calling a far broad-lane hospital "nearest" or "nearby"
+- finish quote adoption so every surfaced price row follows pickup-country billing
+- let users reopen pickup editing from deep phases and return to the same phase cleanly
+
+Primary references:
+
+- [`../../../audit/map/LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md`](../../../audit/map/LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md)
+- [`../../../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md`](../../../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md)
+- [`../../../audit/map/NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md`](../../../audit/map/NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md)
+- [`../../../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md`](../../../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md)
+- [`../../../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md`](../../../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md)
+
+Patch order:
+
+1. break the location-off loading deadlock and promote manual pickup to a first-class terminal state
+2. split `nearestHospitalSummary` away from raw canonical ordering and add a true `localNearbyHospitals` lane
+3. make `nearbyHospitalCount` and nearby bed labels use a fixed `<= 5km` nearby lane instead of the full discovered set or widening fallback bands
+4. keep the broad dispatchable lane for booking safety, but make any provider or secondary-hospital policy explicit
+5. harden route input validation so pickup or hospital changes cannot leak invalid coordinate calls into Mapbox or OSRM
+6. finish billing-quote adoption in hospital detail, ambulance decision, bed decision, service detail, and commit payment summary rows
+7. add the shared `open location edit and return` contract plus explicit `Change pickup` affordances in deep phases
+8. tighten explore-intent and search copy only after the flow and return contract are proven
+
+Pass 18 current implementation checkpoint:
+
+- canonical pickup truth now resolves through `mapPickupLocationTruth.js`
+- location-off can resolve into a manual-pickup terminal state instead of a perpetual loading state
+- `nearby` is now a fixed `<= 5km` lane
+- nearest summary selection is split from the broad dispatchable lane
+- route fetches reject invalid coordinates and stale pickup/hospital session mismatches earlier
+- search analytics now separates query commits from result selections
+- ambulance and bed decision surfaces now have quoted-price adoption
+- pickup edit is now wired with source-phase return for pre-tracking phases
+- tracking pickup edit was intentionally pulled back because it never mutated the live tracked request destination
+
+Pass 18 still remaining:
+
+- hospital detail quote adoption
+- service detail quote adoption and pickup affordance
+- hospital detail pickup affordance
+- manual address / `changeAddress` slice ownership decision and merge path
+- tighter explore-intent and search copy
+- explicit provider / secondary hospital visibility policy
+- separation of mixed-owner worktree changes into deterministic git-update buckets
+
+Pass 18 proven when:
+
+- location-off users do not get trapped behind a loading skeleton
+- explore intent surfaces a true local-nearest hospital instead of `allHospitals[0]`
+- `nearby` labels mean thresholded local nearby, not broad discovered coverage
+- pickup changes deterministically refresh hospitals, route context, and billing quotes together
+- hospital detail, decision, service detail, and payment can reopen pickup editing and return to the originating phase; tracking remains intentionally read-only for pickup edits
+- no map pricing surface in the live `/map` flow renders raw canonical currency text outside the shared quote lane
 
 ## Why This Exists
 

@@ -4,6 +4,14 @@ Audits for map screen, tracking sheet, visit detail, routing, and related flows.
 
 ## Files
 
+- `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` - Mixed-owner worktree checkpoint for Pass 18 with implemented-vs-needed status and deterministic staging buckets.
+- `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.json` - Machine-readable Pass 18 worktree checkpoint and git-update bucket manifest.
+- `NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md` - Audit for why a far hospital can beat a closer Lagos hospital and why current "nearby" semantics are false.
+- `NEAREST_HOSPITAL_SELECTION_MANIFEST_2026-05-07.json` - Machine-readable root-cause and fix-order manifest for local-nearest hospital truth.
+- `PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md` - Audit for pickup edit discoverability, return-contract needs, and incomplete billing-quote adoption in live `/map` phases.
+- `PICKUP_CONTROL_AND_QUOTE_ADOPTION_MANIFEST_2026-05-07.json` - Machine-readable manifest for quote-adoption gaps and pickup-edit state requirements.
+- `MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md` - Failure audit for location-off deadlock, broad/far hospital discovery, route API invalid-input leakage, and nearby-selector truth gaps.
+- `MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_MANIFEST_2026-05-07.json` - Machine-readable manifest for the current map fine-tuning defects and fix order.
 - `HOSPITAL_MARKER_RENDER_RULE_2026-05-06.md` - Cross-platform hospital-marker fix rule: web uses imageSize, native uses PNG bitmap size.
 - `HOSPITAL_MARKER_SIZE_CHECKPOINT.json` - Machine-readable checkpoint and rollback ledger for the current hospital-marker contract.
 - `LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` - Canonical location truth audit for location-off honesty, manual pickup UX, and nearest-hospital refresh.

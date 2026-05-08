@@ -12,6 +12,14 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [../audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json](../audit/map/HOSPITAL_MARKER_SIZE_CHECKPOINT.json): Machine-readable rollback and size contract ledger for the current hospital-marker checkpoint.
 - [../audit/map/LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md](../audit/map/LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md): Canonical location-control audit for live `/map`, manual pickup, and location-off honesty.
 - [../audit/map/LOCATION_CONTROL_REMEDIATION_MANIFEST_2026-05-07.json](../audit/map/LOCATION_CONTROL_REMEDIATION_MANIFEST_2026-05-07.json): Machine-readable remediation manifest for the live `/map` location-control pass.
+- [../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md](../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md): Fine-tuning audit for location-off deadlock, incorrect nearby semantics, route API invalid-input leaks, and broad hospital discovery.
+- [../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_MANIFEST_2026-05-07.json](../audit/map/MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_MANIFEST_2026-05-07.json): Machine-readable defect manifest and fix order for the current `/map` fine-tuning pass.
+- [../audit/map/NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md](../audit/map/NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md): Root-cause audit for why a far hospital can surface before a closer Lagos hospital.
+- [../audit/map/NEAREST_HOSPITAL_SELECTION_MANIFEST_2026-05-07.json](../audit/map/NEAREST_HOSPITAL_SELECTION_MANIFEST_2026-05-07.json): Machine-readable local-nearby selector and nearest-summary remediation ledger.
+- [../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md](../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md): Audit for pickup-change discoverability, return-contract state, and unfinished quote adoption in live `/map`.
+- [../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_MANIFEST_2026-05-07.json](../audit/map/PICKUP_CONTROL_AND_QUOTE_ADOPTION_MANIFEST_2026-05-07.json): Machine-readable manifest for the pickup-edit and quote-adoption pass.
+- [../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md](../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md): Current implementation-vs-plan checkpoint with deterministic staging buckets for the dirty Pass 18 worktree.
+- [../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.json](../audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.json): Machine-readable mixed-worktree checkpoint for the next `/map` git update.
 - [../audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](../audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md): Shared map route-state hardening, directions dedupe, and loop-fix checkpoint.
 - [../audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](../audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md): Marker/entity render hardening for hospital markers, user markers, and web marker stability.
 - [emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md](./emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md): Architecture contract for the full five-layer shared map route state.
@@ -52,6 +60,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [../audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the Help Support stack refactor.
 - [payment/workflow_map.md](./payment/workflow_map.md): Payment and wallet flows, including cash approval path.
 - [payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md](./payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md): Immediate formatter normalization plus the future server-backed FX quote lane.
+- [../audit/payment/BILLING_QUOTE_ADOPTION_GAP_2026-05-07.md](../audit/payment/BILLING_QUOTE_ADOPTION_GAP_2026-05-07.md): Remaining quote-adoption gap after SCC-058, especially in ambulance service selection.
 
 ## Existing Deep Dives (Keep Using These)
 

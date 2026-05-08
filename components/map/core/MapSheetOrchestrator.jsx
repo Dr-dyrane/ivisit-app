@@ -32,6 +32,8 @@ export default function MapSheetOrchestrator({
 	phase = mode,
 	snapState = MAP_SHEET_SNAP_STATES.HALF,
 	screenHeight,
+	summaryHospital = null,
+	summaryHospitalMeta = [],
 	nearestHospital,
 	nearestHospitalMeta = [],
 	selectedCare = null,
@@ -164,6 +166,13 @@ export default function MapSheetOrchestrator({
 						onOpenServiceDetail={onOpenServiceDetail}
 						onSelectService={onSelectHospitalService}
 						onSnapStateChange={onSnapStateChange}
+						onChangePickup={() =>
+							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+								sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
+								sourceSnapState: snapState,
+								sourcePayload: sheetPayload || null,
+							})
+						}
 					/>
 				</MapPhaseTransitionView>
 			);
@@ -214,6 +223,13 @@ export default function MapSheetOrchestrator({
 						onOpenServiceDetail={onOpenServiceDetail}
 						onSelectService={onSelectHospitalService}
 						onSnapStateChange={onSnapStateChange}
+						onChangePickup={() =>
+							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+								sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
+								sourceSnapState: snapState,
+								sourcePayload: sheetPayload || null,
+							})
+						}
 					/>
 				</MapPhaseTransitionView>
 			);
@@ -312,6 +328,13 @@ export default function MapSheetOrchestrator({
 						onOpenHospitalDetailFromPayment={onOpenHospitalDetailFromPayment}
 						onOpenTransportDetailFromPayment={onOpenTransportDetailFromPayment}
 						onCenterMapOnUserFromPayment={onCenterMapOnUserFromPayment}
+						onOpenLocationSearchFromPayment={() =>
+							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+								sourcePhase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
+								sourceSnapState: snapState,
+								sourcePayload: sheetPayload || null,
+							})
+						}
 					/>
 				</MapPhaseTransitionView>
 			);
@@ -458,8 +481,12 @@ export default function MapSheetOrchestrator({
 					<MapExploreIntentOrchestrator
 						sheetHeight={sheetHeight}
 						snapState={snapState}
-						nearestHospital={nearestHospital}
-						nearestHospitalMeta={nearestHospitalMeta}
+						nearestHospital={summaryHospital || nearestHospital}
+						nearestHospitalMeta={
+							Array.isArray(summaryHospitalMeta) && summaryHospitalMeta.length > 0
+								? summaryHospitalMeta
+								: nearestHospitalMeta
+						}
 						selectedCare={selectedCare}
 						onOpenSearch={onOpenSearch}
 						onOpenHospitals={onOpenHospitals}
