@@ -1,0 +1,82 @@
+{
+  "audit_id": "map-pickup-control-and-quote-adoption-2026-05-07",
+  "scope": "live-map-flow",
+  "canonical_rule": {
+    "location_state": "canonical",
+    "billing_quote_state": "derived_from_pickup_country"
+  },
+  "quote_adoption_gaps": [
+    {
+      "surface": "hospital_detail_service_rails",
+      "files": [
+        "components/map/surfaces/hospitals/mapHospitalDetail.helpers.js",
+        "components/map/surfaces/hospitals/MapHospitalDetailServiceRail.jsx"
+      ],
+      "status": "not_adopted"
+    },
+    {
+      "surface": "ambulance_decision",
+      "files": [
+        "components/map/views/ambulanceDecision/useMapAmbulanceDecisionModel.js",
+        "components/map/views/ambulanceDecision/mapAmbulanceDecision.helpers.js"
+      ],
+      "status": "adopted_in_local_worktree"
+    },
+    {
+      "surface": "bed_decision",
+      "files": [
+        "components/map/views/bedDecision/useMapBedDecisionModel.js",
+        "components/map/views/bedDecision/mapBedDecision.helpers.js"
+      ],
+      "status": "adopted_in_local_worktree"
+    },
+    {
+      "surface": "service_detail",
+      "files": [
+        "components/map/views/serviceDetail/MapServiceDetailStageBase.jsx",
+        "components/map/views/serviceDetail/MapServiceDetailStageParts.jsx"
+      ],
+      "status": "inherits_upstream_price_text"
+    },
+    {
+      "surface": "commit_payment_summary_rows",
+      "files": [
+        "components/map/views/commitPayment/MapCommitPaymentStageBase.jsx",
+        "components/map/views/commitPayment/useMapCommitPaymentController.js"
+      ],
+      "status": "partially_adopted_upstream_labels_pending"
+    }
+  ],
+  "pickup_change_gaps": [
+    {
+      "surface": "explore_intent",
+      "status": "discoverability_weak"
+    },
+    {
+      "surface": "hospital_detail",
+      "status": "missing_direct_affordance"
+    },
+    {
+      "surface": "service_detail",
+      "status": "missing_direct_affordance"
+    },
+    {
+      "surface": "commit_payment",
+      "status": "adopted_in_local_worktree"
+    },
+    {
+      "surface": "tracking",
+      "status": "intentionally_removed_pre_tracking_only"
+    }
+  ],
+  "required_return_state": [
+    "sourcePhase",
+    "sourceSnapState",
+    "sourcePayload"
+  ],
+  "next_pass_order": [
+    "hospital_detail_and_service_detail_quote_adoption",
+    "hospital_detail_and_service_detail_pickup_actions",
+    "copy_tightening"
+  ]
+}

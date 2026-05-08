@@ -1,0 +1,96 @@
+{
+  "checkpoint_id": "map-pass18-worktree-2026-05-07",
+  "scope": "live-map-pass18-and-adjacent-worktree",
+  "worktree_status": {
+    "modified": 71,
+    "untracked": 14,
+    "total_status_entries": 85,
+    "top_level_distribution": {
+      "modified_assets": 16,
+      "modified_components": 26,
+      "modified_docs": 6,
+      "modified_hooks": 16,
+      "modified_services": 3,
+      "modified_other": 4,
+      "untracked_docs": 10,
+      "untracked_other": 4
+    },
+    "ownership": "mixed"
+  },
+  "implemented_against_plan": [
+    "canonical_pickup_truth",
+    "location_off_terminal_state",
+    "nearby_lte_5km_truth",
+    "nearest_summary_split_from_broad_dispatch_lane",
+    "route_input_validation",
+    "stale_pickup_hospital_session_reset",
+    "search_analytics_schema_fix",
+    "quoted_pricing_in_ambulance_and_bed_decision_surfaces",
+    "pre_tracking_pickup_edit_return_contract",
+    "tracking_pickup_edit_pullback"
+  ],
+  "remaining_before_pass18_complete": [
+    "hospital_detail_quote_adoption",
+    "service_detail_quote_and_pickup_affordance",
+    "hospital_detail_pickup_affordance",
+    "explore_intent_and_search_copy_tightening",
+    "provider_secondary_visibility_policy",
+    "manual_address_change_address_ownership_decision",
+    "mixed_owner_worktree_separation"
+  ],
+  "staging_buckets": [
+    {
+      "id": "A",
+      "name": "pickup_truth_and_search_return_contract",
+      "focus": [
+        "canonical pickup truth",
+        "pre-tracking search return contract"
+      ]
+    },
+    {
+      "id": "B",
+      "name": "nearby_and_nearest_hospital_truth",
+      "focus": [
+        "strict nearby lane",
+        "local nearest summary",
+        "location-off terminal state"
+      ]
+    },
+    {
+      "id": "C",
+      "name": "route_and_search_hardening",
+      "focus": [
+        "route validation",
+        "stale session clearing",
+        "search analytics schema fix"
+      ]
+    },
+    {
+      "id": "D",
+      "name": "quote_adoption_and_pre_tracking_pickup_actions",
+      "focus": [
+        "quoted pricing in decision surfaces",
+        "pickup edit before tracking only",
+        "tracking pullback"
+      ]
+    },
+    {
+      "id": "E",
+      "name": "mixed_owner_or_out_of_slice_work",
+      "focus": [
+        "asset experiments",
+        "changeAddress manual-address slice",
+        "route-layer experiments",
+        "user-side changes",
+        "non-map payment follow-ons"
+      ]
+    }
+  ],
+  "git_update_flow": [
+    "pick exactly one bucket",
+    "stage only that bucket plus matching doc updates",
+    "run git diff --cached --check",
+    "confirm no unrelated assets, changeAddress, or payment-side files leaked into the staged set",
+    "commit the bucket before moving to the next one"
+  ]
+}
