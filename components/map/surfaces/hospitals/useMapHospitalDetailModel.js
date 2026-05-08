@@ -28,6 +28,10 @@ import {
 	getHospitalWebsiteBrowserOptions,
 	getHospitalWebsiteUrl,
 } from "./mapHospitalDetail.model";
+import { useQuotedPriceMap } from "../../../../hooks/payment/useQuotedPriceMap";
+import { usePreferences } from "../../../../contexts/PreferencesContext";
+import { useBillingQuoteStore } from "../../../../stores/billingQuoteStore";
+import { resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
 export default function useMapHospitalDetailModel({
 	visible,
@@ -226,18 +230,49 @@ export default function useMapHospitalDetailModel({
 		],
 	);
 
+	// PULLBACK NOTE: Billing quote integration for country-based pricing in service cards
+	// Same pattern as payment phase: use preferences (user billing context), not pickup location
+	// GUARDRAIL: Wait for preferences to load before enabling quotes to prevent race condition
+	const { preferences, isLoading: isLoadingPrefs } = usePreferences();
+	// CRITICAL FIX: Also read runtime billing overrides from Zustand store
+	// Location changes set overrides in store that must be respected for deterministic pricing
+	const billingCountryCodeOverride = useBillingQuoteStore((state) => state.billingCountryCodeOverride);
+	const billingCurrencyCodeOverride = useBillingQuoteStore((state) => state.billingCurrencyCodeOverride);
+	// Merge: store overrides take precedence over saved preferences (runtime > persisted)
+	const effectiveBillingCountryCode = billingCountryCodeOverride || preferences?.billingCountryCode || null;
+	const effectiveBillingCurrencyCode = billingCurrencyCodeOverride || preferences?.billingCurrencyCode || null;
+	const servicePricingQuoteMap = useQuotedPriceMap({
+		items: servicePricingRows,
+		getAmount: (row) => row?.base_price,
+		getCurrency: (row) => resolveMoneyCurrency(row?.currency, hospital?.currency),
+		billingCountryCode: effectiveBillingCountryCode,
+		billingCurrencyCode: effectiveBillingCurrencyCode,
+		preferences,
+		enabled: servicePricingRows.length > 0 && !isLoadingServiceRails && !isLoadingPrefs,
+	});
+	const roomPricingQuoteMap = useQuotedPriceMap({
+		items: hydratedRoomRows.length > 0 ? hydratedRoomRows : roomRows,
+		getAmount: (row) => row?.base_price ?? row?.price_per_night ?? row?.price,
+		getCurrency: (row) => resolveMoneyCurrency(row?.currency, hospital?.currency),
+		billingCountryCode: effectiveBillingCountryCode,
+		billingCurrencyCode: effectiveBillingCurrencyCode,
+		preferences,
+		enabled: (hydratedRoomRows.length > 0 || roomRows.length > 0) && !isLoadingServiceRails && !isLoadingPrefs,
+	});
+
 	const roomServiceCards = useMemo(
 		() =>
 			buildRoomServiceCards(
 				hospital,
 				hydratedRoomRows.length > 0 ? hydratedRoomRows : roomRows,
 				isLoadingServiceRails,
+				roomPricingQuoteMap,
 			),
-		[hospital, hydratedRoomRows, isLoadingServiceRails, roomRows],
+		[hospital, hydratedRoomRows, isLoadingServiceRails, roomRows, roomPricingQuoteMap],
 	);
 	const ambulanceServiceCards = useMemo(
-		() => buildAmbulanceServiceCards(hospital, servicePricingRows, isLoadingServiceRails),
-		[hospital, isLoadingServiceRails, servicePricingRows],
+		() => buildAmbulanceServiceCards(hospital, servicePricingRows, isLoadingServiceRails, servicePricingQuoteMap),
+		[hospital, isLoadingServiceRails, servicePricingRows, servicePricingQuoteMap],
 	);
 
 	const collapsedAction = useMemo(
