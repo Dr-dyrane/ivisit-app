@@ -61,9 +61,22 @@ export function useMapSheetNavigation({
     setSheetView,
   });
   const openSearchSheet = useCallback(
-    (nextMode = MAP_SEARCH_SHEET_MODES.SEARCH) => {
+    (
+      nextMode = MAP_SEARCH_SHEET_MODES.SEARCH,
+      {
+        sourcePhase = null,
+        sourceSnapState = null,
+        sourcePayload = null,
+      } = {},
+    ) => {
       setSearchSheetMode(nextMode);
-      transitionTo(buildSearchSheetView());
+      transitionTo(
+        buildSearchSheetView({
+          sourcePhase,
+          sourceSnapState,
+          sourcePayload,
+        }),
+      );
     },
     [setSearchSheetMode, transitionTo],
   );

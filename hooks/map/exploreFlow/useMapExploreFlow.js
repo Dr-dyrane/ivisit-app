@@ -3,6 +3,7 @@ import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { usePreferences } from "../../../contexts/PreferencesContext";
 import { useGlobalLocation } from "../../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../../contexts/EmergencyContext";
 import { useEmergencyTripStore } from "../../../stores/emergencyTripStore";
@@ -11,6 +12,7 @@ import { coverageModeService } from "../../../services/coverageModeService";
 import {
   MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
+import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
 import { useMapViewport } from "./useMapViewport";
 import { useMapLocation } from "./useMapLocation";
 import { useMapHospitalSelection } from "./useMapHospitalSelection";
@@ -44,6 +46,7 @@ import {
 
 export function useMapExploreFlow() {
   const { isDarkMode } = useTheme();
+  const { preferences } = usePreferences();
   const { width, height, viewportVariant, surfaceConfig, usesSidebarLayout, sidebarWidth } = useMapViewport();
   const {
     resetHeader,
@@ -75,8 +78,6 @@ export function useMapExploreFlow() {
     selectedHospital,
     selectHospital,
     setUserLocation,
-    userLocation: emergencyUserLocation,
-    userLocationSource: emergencyUserLocationSource,
     isLoadingHospitals,
     refreshHospitals,
     effectiveDemoModeEnabled,
@@ -173,6 +174,11 @@ export function useMapExploreFlow() {
     setSheetView,
     setRuntimeSlice,
   } = flowActions;
+  const clearLocationScopedMapState = useCallback(() => {
+    selectHospital(null);
+    setFeaturedHospital(null);
+    setSheetPayload(null);
+  }, [selectHospital, setFeaturedHospital, setSheetPayload]);
 
   const {
     activeLocation,
@@ -181,6 +187,7 @@ export function useMapExploreFlow() {
     handleSearchLocation,
     handleUseCurrentLocation,
     locationControl,
+    locationTruth,
   } = useMapLocation({
     globalUserLocation,
     globalLocationSource,
@@ -192,12 +199,13 @@ export function useMapExploreFlow() {
     requestLocationPermission,
     openLocationSettings,
     locationError,
-    emergencyUserLocation,
-    emergencyUserLocationSource,
     setUserLocation,
     manualLocation,
+    preferences,
     setManualLocation,
-    setSheetPhase,
+    sheetPayload,
+    setSheetView,
+    clearLocationScopedMapState,
     setMapReadiness,
     setHasCompletedInitialMapLoad,
     isDarkMode,
@@ -251,6 +259,8 @@ export function useMapExploreFlow() {
 
   const {
     discoveredHospitals,
+    nearestSummaryHospital,
+    nearestSummaryHospitalMeta,
     nearestHospital,
     nearestHospitalMeta,
     nearbyHospitalCount,
@@ -270,7 +280,7 @@ export function useMapExploreFlow() {
     sheetPayload,
     featuredHospital,
     currentLocationDetails,
-    locationControl,
+    activeLocation,
     nowMs: nowMsRef.current,
     visits,
   });
@@ -482,10 +492,15 @@ export function useMapExploreFlow() {
     isBootstrappingDemo,
   });
 
-  const { shouldShowMapLoadingOverlay, mapLoadingState } = useMapLoadingState({
+  const {
+    shouldShowMapLoadingOverlay,
+    isLocationOffTerminal,
+    mapLoadingState,
+  } = useMapLoadingState({
     activeLocation,
     nearestHospital,
     discoveredHospitals,
+    requiresLocationSelection: locationControl?.requiresLocationSelection,
     mapReadiness,
     needsCoverageExpansion,
     isLoadingHospitals,
@@ -497,12 +512,21 @@ export function useMapExploreFlow() {
     setHasCompletedInitialMapLoad,
   });
 
+  // PULLBACK NOTE: Auto-open location search when GPS is off (location-off terminal state)
+  // When user has no valid location and GPS is disabled, immediately show manual-pickup UX
+  useEffect(() => {
+    if (isLocationOffTerminal && !searchSheetVisible) {
+      openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+    }
+  }, [isLocationOffTerminal, searchSheetVisible, openSearchSheet]);
+
   return {
     activeLocation,
     authModalVisible,
     careHistoryVisible,
     currentLocationDetails,
     locationControl,
+    locationTruth,
     discoveredHospitals,
     guestProfileEmail,
     guestProfileVisible,
@@ -554,6 +578,7 @@ export function useMapExploreFlow() {
     serviceDetailVisible,
     isBootstrappingDemo,
     isLoadingHospitals,
+    isLocationOffTerminal,
     isMapFrameReady,
     isMapSurfaceReady,
     isSignedIn,
@@ -561,6 +586,8 @@ export function useMapExploreFlow() {
     manualLocation,
     mapLoadingState,
     mapReadiness,
+    nearestSummaryHospital,
+    nearestSummaryHospitalMeta,
     nearestHospital,
     nearestHospitalMeta,
     nearbyBedHospitals,

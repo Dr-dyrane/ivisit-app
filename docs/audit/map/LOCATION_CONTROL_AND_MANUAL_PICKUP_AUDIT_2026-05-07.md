@@ -52,6 +52,16 @@ This pass follows the location control doctrine:
 
 ### Canonical location truth
 
+- `hooks/map/exploreFlow/mapPickupLocationTruth.js`
+  - live `/map` pickup truth is now normalized through one pure resolver
+  - explicit trust order:
+    1. session manual pickup
+    2. live device location
+    3. saved manual fallback
+    4. saved device fallback
+    5. missing pickup
+  - raw context/store source strings no longer decide `/map` behavior directly
+
 - `stores/locationStore.js`
   - persisted device coordinates now hydrate as `persisted`, not `device`
   - only explicit manual selections remain trusted as manual across relaunch
@@ -67,10 +77,7 @@ This pass follows the location control doctrine:
 ### Live `/map` pickup control
 
 - `hooks/map/exploreFlow/useMapLocation.js`
-  - one canonical trust order:
-    - manual pickup
-    - trusted emergency store location
-    - trusted device location
+  - now consumes the normalized pickup truth contract instead of resolving competing sources inline
   - manual pickup writes directly to the shared location store
   - manual pickup updates billing-country override when country truth exists
   - current-location CTA uses returned permission truth instead of guesswork
@@ -124,7 +131,8 @@ This pass improves:
 
 This pass does **not** yet fully cover:
 
-- downstream `change location` affordances in every tracking/payment/detail surface
+- downstream `change location` affordances in hospital detail and service detail
+- upstream quoted-price propagation into hospital detail and service detail
 - full `/map` five-layer decomposition of camera, marker, route, and controls
 - retirement of legacy emergency intake owners
 
@@ -138,6 +146,7 @@ This pass does **not** yet fully cover:
 
 Recommended next pass after tester confirmation:
 
-1. add explicit `Change pickup` entry points in commit/tracking/payment surfaces
-2. finish location truth ownership migration so provider-local state shrinks further
-3. continue `/map` decomposition into clearer camera/marker/route controllers
+1. finish hospital detail and service detail pickup-edit affordances
+2. keep tracking read-only for pickup edits unless a real request-destination mutation path is added
+3. finish location truth ownership migration so provider-local state shrinks further
+4. continue `/map` decomposition into clearer camera/marker/route controllers

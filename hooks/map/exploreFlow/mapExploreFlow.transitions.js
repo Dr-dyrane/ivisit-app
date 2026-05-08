@@ -28,11 +28,21 @@ export function buildExploreIntentSheetView(defaultSnapState) {
   });
 }
 
-export function buildSearchSheetView() {
+export function buildSearchSheetView({
+  sourcePhase = null,
+  sourceSnapState = null,
+  sourcePayload = null,
+} = {}) {
   return buildSheetView({
     phase: MAP_SHEET_PHASES.SEARCH,
     snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
-    payload: null,
+    payload: sourcePhase
+      ? {
+          sourcePhase,
+          sourceSnapState,
+          sourcePayload,
+        }
+      : null,
   });
 }
 

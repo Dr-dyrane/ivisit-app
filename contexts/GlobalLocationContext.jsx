@@ -184,9 +184,21 @@ export function GlobalLocationProvider({ children }) {
 
   const openLocationSettings = useCallback(async () => {
     try {
-      await Linking.openSettings();
+      // PULLBACK NOTE: Platform-specific location settings
+      // Android: Open system location settings directly
+      // iOS: Open app settings (Apple doesn't allow direct location settings access)
+      if (Platform.OS === "android") {
+        await Linking.openURL("android.settings.LOCATION_SOURCE_SETTINGS");
+      } else {
+        await Linking.openSettings();
+      }
     } catch (_settingsError) {
-      // Settings open is best-effort only.
+      // Fallback to app settings if direct location settings fail
+      try {
+        await Linking.openSettings();
+      } catch (_fallbackError) {
+        // Settings open is best-effort only.
+      }
     }
   }, []);
 

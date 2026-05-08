@@ -100,6 +100,8 @@ export default function MapScreen() {
     loadingBackgroundImageUri,
     mapLoadingState,
     isSignedIn,
+    nearestSummaryHospital,
+    nearestSummaryHospitalMeta,
     nearestHospital,
     nearestHospitalMeta,
     nearbyBedHospitals,
@@ -547,14 +549,18 @@ export default function MapScreen() {
           mode={sheetMode}
           snapState={renderedSnapState}
           screenHeight={height}
+          summaryHospital={nearestSummaryHospital}
+          summaryHospitalMeta={nearestSummaryHospitalMeta}
           nearestHospital={nearestHospital}
           nearestHospitalMeta={nearestHospitalMeta}
           selectedCare={selectedCare}
-          onOpenSearch={() =>
+          onOpenSearch={(nextMode, options) =>
             openSearchSheet(
-              locationControl?.requiresLocationSelection
-                ? MAP_SEARCH_SHEET_MODES.LOCATION
-                : MAP_SEARCH_SHEET_MODES.SEARCH,
+              nextMode ||
+                (locationControl?.requiresLocationSelection
+                  ? MAP_SEARCH_SHEET_MODES.LOCATION
+                  : MAP_SEARCH_SHEET_MODES.SEARCH),
+              options,
             )
           }
           onOpenHospitals={openHospitalList}
@@ -606,7 +612,7 @@ export default function MapScreen() {
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}
           selectedHospitalId={mapFocusedHospitalId}
-          recommendedHospitalId={discoveredHospitals?.[0]?.id || null}
+          recommendedHospitalId={nearestHospital?.id || null}
           featuredHospital={featuredHospital}
           sheetPayload={sheetPayload}
           activeMapRequest={activeMapRequest}
