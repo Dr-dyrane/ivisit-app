@@ -11,6 +11,35 @@ const isMissingRelationError = (error, relationName) => {
 	return message.includes(relationName.toLowerCase()) && message.includes('does not exist');
 };
 
+const normalizeSearchQuery = (query) =>
+	typeof query === "string" && query.trim() ? query.trim().toLowerCase() : null;
+
+const normalizeSearchIdentifier = (value) => {
+	if (value === null || value === undefined) return null;
+	const next = String(value).trim();
+	return next || null;
+};
+
+const insertSearchEvent = async ({
+	query,
+	source = "search_screen",
+	selectedKey = null,
+	metadata = {},
+}) => {
+	const payload = {
+		query: normalizeSearchQuery(query),
+		source,
+		selected_key: normalizeSearchIdentifier(selectedKey),
+		metadata:
+			metadata && typeof metadata === "object" && !Array.isArray(metadata)
+				? metadata
+				: {},
+	};
+	const { error } = await supabase.from("search_events").insert(payload);
+	if (error) throw error;
+	return true;
+};
+
 export const discoveryService = {
 	/**
 	 * Get trending searches from console (via Supabase RPC)
@@ -42,31 +71,61 @@ export const discoveryService = {
 	 * @param {string} data.resultType - Type of result selected ('doctor', 'hospital', etc.)
 	 * @param {string} data.resultId - ID of selected result
 	 */
-	trackSearchSelection: async ({ query, source = 'search_screen', resultType, resultId }) => {
+	trackSearchSelection: async ({
+		query,
+		source = 'search_screen',
+		resultType,
+		resultId,
+		selectedKey = null,
+		metadata = null,
+	}) => {
 		try {
+			const normalizedQuery = normalizeSearchQuery(query);
+			const normalizedResultType = normalizeSearchIdentifier(resultType);
+			const normalizedResultId = normalizeSearchIdentifier(resultId);
+			const normalizedSelectedKey =
+				normalizeSearchIdentifier(selectedKey) || normalizedResultId;
+			const eventMetadata = {
+				...(metadata && typeof metadata === "object" && !Array.isArray(metadata)
+					? metadata
+					: {}),
+				...(normalizedResultType ? { result_type: normalizedResultType } : {}),
+				origin:
+					normalizedResultType && normalizedResultId
+						? 'search_selection'
+						: 'search_query_commit',
+			};
+
+			if (!normalizedResultType || !normalizedResultId) {
+				await insertSearchEvent({
+					query: normalizedQuery,
+					source,
+					selectedKey: normalizedSelectedKey,
+					metadata: eventMetadata,
+				});
+				return true;
+			}
+
 			const payload = {
-				query: typeof query === "string" ? query.toLowerCase() : null,
+				query: normalizedQuery,
 				source: source,
-				result_type: resultType,
-				result_id: resultId,
+				result_type: normalizedResultType,
+				result_id: normalizedResultId,
 				created_at: new Date().toISOString(),
 			};
 
 			const { error } = await supabase.from('search_selections').insert(payload);
 
 			if (error && isMissingRelationError(error, 'search_selections')) {
-				// Live schema no longer includes search_selections; keep analytics via search_events.
-				const { error: fallbackError } = await supabase.from('search_events').insert({
-					query: payload.query,
-					source: payload.source,
-					selected_key: payload.result_id,
+				await insertSearchEvent({
+					query: normalizedQuery,
+					source,
+					selectedKey: normalizedSelectedKey,
 					metadata: {
-						result_type: payload.result_type,
+						...eventMetadata,
 						origin: 'search_selection_fallback',
 					},
 				});
-
-				if (fallbackError) throw fallbackError;
 				return true;
 			}
 

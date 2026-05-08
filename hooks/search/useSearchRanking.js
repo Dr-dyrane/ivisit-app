@@ -41,19 +41,24 @@ export const useSearchRanking = () => {
 
   const isBedQuery = useMemo(() => isBedRelatedQuery(query), [query]);
 
-  const openHospitalInSOS = useCallback(
-    (hospitalName) => {
-      Haptics.selectionAsync();
-      const name = typeof hospitalName === "string" ? hospitalName : "";
-      commitQuery(name);
-      discoveryService.trackSearchSelection({
-        query: name,
-        source: "search_screen",
-        key: "hospital_result",
-        extra: { isBedQuery },
-      });
-      navigateToSOS({
-        router,
+	const openHospitalInSOS = useCallback(
+		(hospital) => {
+			Haptics.selectionAsync();
+			const id =
+				hospital?.id === null || hospital?.id === undefined
+					? null
+					: String(hospital.id);
+			const name = typeof hospital?.name === "string" ? hospital.name : "";
+			commitQuery(name);
+			discoveryService.trackSearchSelection({
+				query: name,
+				source: "search_screen",
+				resultType: "hospital",
+				resultId: id,
+				metadata: { isBedQuery },
+			});
+			navigateToSOS({
+				router,
         setEmergencyMode: setMode,
         setEmergencySearch: updateSearch,
         searchQuery: name,
@@ -177,7 +182,7 @@ export const useSearchRanking = () => {
           .join(" / "),
         icon: "business-outline",
         score,
-        onPress: () => openHospitalInSOS(name),
+        onPress: () => openHospitalInSOS(hospital),
       });
     }
 
