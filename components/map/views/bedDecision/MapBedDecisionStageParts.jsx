@@ -426,6 +426,7 @@ export function MapBedDecisionRouteCard({
   mutedColor,
   surfaceColor,
   pillSurfaceColor,
+  onChangePickup,
 }) {
   const routePanel = decision?.routePanel;
   const connectorColor = isDarkMode
@@ -527,6 +528,19 @@ export function MapBedDecisionRouteCard({
             >
               {routePanel.secondaryMetric}
             </Text>
+          ) : null}
+          {typeof onChangePickup === "function" ? (
+            <Pressable
+              onPress={onChangePickup}
+              accessibilityRole="button"
+              accessibilityLabel="Change pickup location"
+              style={({ pressed }) => [
+                styles.routeActionButton,
+                pressed ? styles.routeActionButtonPressed : null,
+              ]}
+            >
+              <Ionicons name="open-outline" size={18} color={COLORS.brandPrimary} />
+            </Pressable>
           ) : null}
         </View>
       </View>

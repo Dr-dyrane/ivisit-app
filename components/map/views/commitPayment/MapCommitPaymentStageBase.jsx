@@ -49,6 +49,7 @@ export default function MapCommitPaymentStageBase({
 	onOpenHospitalDetailFromPayment,
 	onOpenTransportDetailFromPayment,
 	onCenterMapOnUserFromPayment,
+	onOpenLocationSearchFromPayment,
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
@@ -326,7 +327,10 @@ export default function MapCommitPaymentStageBase({
 				imageStyle: styles.actionGroupAvatarImage,
 				icon: "person",
 				iconColor: isDarkMode ? "#CBD5E1" : "#475569",
-				onPress: () => onCenterMapOnUserFromPayment?.(),
+				onPress: () => onOpenLocationSearchFromPayment?.(),
+				accessibilityLabel: "Change pickup location",
+				trailingIconName: "open-outline",
+				trailingIconColor: isDarkMode ? "#CBD5E1" : "#475569",
 				disabled: false,
 			},
 		],
@@ -338,7 +342,7 @@ export default function MapCommitPaymentStageBase({
 			hospitalSubtitle,
 			isBedFlow,
 			isDarkMode,
-			onCenterMapOnUserFromPayment,
+			onOpenLocationSearchFromPayment,
 			onOpenHospitalDetailFromPayment,
 			onOpenTransportDetailFromPayment,
 			payload,

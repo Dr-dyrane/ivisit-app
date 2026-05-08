@@ -174,6 +174,8 @@ export function buildAmbulanceDecisionModel({
 	selectedServiceId = null,
 	isLoadingServices = false,
 	isCalculatingRoute = false,
+	// PULLBACK NOTE: quotedPriceMap provides country-based quoted prices for service options
+	quotedPriceMap = {},
 }) {
 	if (!hospital) {
 		return {
@@ -206,12 +208,32 @@ export function buildAmbulanceDecisionModel({
 
 	const { serviceOptions, enabledServiceOptions, recommendedService } =
 		getRecommendedAmbulanceService({
-		hospital,
-		pricingRows,
-		selectedServiceId,
-		isLoadingServices,
+			hospital,
+			pricingRows,
+			selectedServiceId,
+			isLoadingServices,
+		});
+
+	// PULLBACK NOTE: Inject quoted prices into service options for country-based currency display
+	// Preserve canonical amounts underneath, only override display label
+	const serviceOptionsWithQuotes = serviceOptions.map((option) => {
+		const quotedPrice = quotedPriceMap?.[option?.id];
+		if (!quotedPrice?.label) return option;
+		return {
+			...option,
+			// Override priceText with quoted display label
+			priceText: quotedPrice.label,
+			// Preserve canonical info for reference
+			canonicalPriceText: option.priceText,
+			quotedPrice,
+		};
 	});
-	const visualProfile = getAmbulanceVisualProfile(recommendedService);
+
+	const recommendedServiceWithQuote =
+		serviceOptionsWithQuotes.find((opt) => opt.id === recommendedService?.id) ||
+		recommendedService;
+
+	const visualProfile = getAmbulanceVisualProfile(recommendedServiceWithQuote);
 	const hospitalSummary = buildHospitalDetailSummary(hospital, routeInfo);
 	const etaLabel = getAmbulanceDecisionEtaLabel({
 		hospital,
@@ -219,8 +241,10 @@ export function buildAmbulanceDecisionModel({
 		isCalculatingRoute,
 	});
 	const distanceLabel = getAmbulanceDecisionDistanceLabel(hospital, routeInfo);
+	// PULLBACK NOTE: Use quoted price label if available, fall back to canonical price
 	const priceLabel =
-		recommendedService?.priceText || MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK;
+		recommendedServiceWithQuote?.priceText ||
+		MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK;
 	const features = buildAmbulanceDecisionFeatures({
 		hospital,
 		recommendedService,
@@ -230,14 +254,15 @@ export function buildAmbulanceDecisionModel({
 	return {
 		hospital,
 		hospitalSummary,
-		serviceOptions,
-		enabledServiceOptions,
-		recommendedService,
-		canConfirm: Boolean(enabledServiceOptions.length > 0 && recommendedService?.id),
+		// PULLBACK NOTE: Return quoted service options for country-based currency display
+		serviceOptions: serviceOptionsWithQuotes,
+		enabledServiceOptions: serviceOptionsWithQuotes.filter((opt) => opt?.enabled !== false),
+		recommendedService: recommendedServiceWithQuote,
+		canConfirm: Boolean(enabledServiceOptions.length > 0 && recommendedServiceWithQuote?.id),
 		visualProfile,
 		etaLabel,
 		distanceLabel,
-		crewPillLabel: buildCrewPillLabel(recommendedService, visualProfile),
+		crewPillLabel: buildCrewPillLabel(recommendedServiceWithQuote, visualProfile),
 		priceLabel,
 		confidenceLabel:
 			recommendedService?.source === "db"

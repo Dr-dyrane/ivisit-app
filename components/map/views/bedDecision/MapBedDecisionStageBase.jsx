@@ -52,6 +52,7 @@ export default function MapBedDecisionStageBase({
 	onOpenServiceDetail,
 	onSelectService,
 	onSnapStateChange,
+	onChangePickup,
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
@@ -408,6 +409,7 @@ export default function MapBedDecisionStageBase({
 									mutedColor={mutedColor}
 									surfaceColor={nestedSurfaceColor}
 									pillSurfaceColor={pillSurfaceColor}
+									onChangePickup={onChangePickup}
 								/>
 
 								<View style={[styles.sectionGap, stageMetrics.section.gapStyle]} />
@@ -433,6 +435,7 @@ export default function MapBedDecisionStageBase({
 								mutedColor={mutedColor}
 								surfaceColor={nestedSurfaceColor}
 								pillSurfaceColor={pillSurfaceColor}
+								onChangePickup={onChangePickup}
 							/>
 						)}
 					</>

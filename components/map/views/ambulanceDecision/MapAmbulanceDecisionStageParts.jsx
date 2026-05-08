@@ -344,6 +344,7 @@ export function MapAmbulanceDecisionRouteCard({
   mutedColor,
   surfaceColor,
   pillSurfaceColor,
+  onChangePickup,
 }) {
   const routePanel = decision?.routePanel;
   const connectorColor = isDarkMode
@@ -449,6 +450,23 @@ export function MapAmbulanceDecisionRouteCard({
             >
               {routePanel.secondaryMetric}
             </Text>
+          ) : null}
+          {typeof onChangePickup === "function" ? (
+            <Pressable
+              onPress={onChangePickup}
+              accessibilityRole="button"
+              accessibilityLabel="Change pickup location"
+              style={({ pressed }) => [
+                styles.routeActionButton,
+                pressed ? styles.routeActionButtonPressed : null,
+              ]}
+            >
+              <Ionicons
+                name="open-outline"
+                size={18}
+                color={decision.visualProfile.accent}
+              />
+            </Pressable>
           ) : null}
         </View>
       </View>

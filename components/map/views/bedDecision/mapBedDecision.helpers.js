@@ -144,6 +144,8 @@ export function buildBedDecisionModel({
 	selectedRoomServiceId = null,
 	isLoadingRooms = false,
 	isCalculatingRoute = false,
+	// PULLBACK NOTE: quotedPriceMap provides country-based quoted prices for room options
+	quotedPriceMap = {},
 }) {
 	if (!hospital) {
 		return {
@@ -181,7 +183,27 @@ export function buildBedDecisionModel({
 		selectedRoomServiceId,
 		isLoadingRooms,
 	});
-	const roomCopy = buildServiceCopy(recommendedRoom, "room");
+
+	// PULLBACK NOTE: Inject quoted prices into room options for country-based currency display
+	// Preserve canonical amounts underneath, only override display label
+	const roomOptionsWithQuotes = roomOptions.map((option) => {
+		const quotedPrice = quotedPriceMap?.[option?.id];
+		if (!quotedPrice?.label) return option;
+		return {
+			...option,
+			// Override priceText with quoted display label
+			priceText: quotedPrice.label,
+			// Preserve canonical info for reference
+			canonicalPriceText: option.priceText,
+			quotedPrice,
+		};
+	});
+
+	const recommendedRoomWithQuote =
+		roomOptionsWithQuotes.find((opt) => opt.id === recommendedRoom?.id) ||
+		recommendedRoom;
+
+	const roomCopy = buildServiceCopy(recommendedRoomWithQuote, "room");
 	const roomSummary = roomCopy?.summary || null;
 	const roomFeatures = buildRoomFeatures(recommendedRoom);
 	const hospitalSummary = buildHospitalDetailSummary(hospital, routeInfo);
@@ -191,36 +213,38 @@ export function buildBedDecisionModel({
 		isCalculatingRoute,
 	});
 	const distanceLabel = getBedDecisionDistanceLabel(hospital, routeInfo);
-	const availabilityLabel = recommendedRoom?.metaText || null;
+	const availabilityLabel = recommendedRoomWithQuote?.metaText || null;
+	// PULLBACK NOTE: Use quoted price label if available, fall back to canonical price
 	const priceLabel =
-		recommendedRoom?.priceText ||
+		recommendedRoomWithQuote?.priceText ||
 		formatPriceLabel(
-			recommendedRoom?.price ?? recommendedRoom?.base_price,
+			recommendedRoomWithQuote?.price ?? recommendedRoomWithQuote?.base_price,
 			null,
-			resolveMoneyCurrency(recommendedRoom?.currency, hospital?.currency),
+			resolveMoneyCurrency(recommendedRoomWithQuote?.currency, hospital?.currency),
 		);
 
 	return {
 		hospital,
 		careIntent,
 		hospitalSummary,
-		roomOptions,
-		enabledRoomOptions,
-		recommendedRoom,
-		canConfirm: Boolean(enabledRoomOptions.length > 0 && recommendedRoom?.id),
+		// PULLBACK NOTE: Return quoted room options for country-based currency display
+		roomOptions: roomOptionsWithQuotes,
+		enabledRoomOptions: roomOptionsWithQuotes.filter((opt) => opt?.enabled !== false),
+		recommendedRoom: recommendedRoomWithQuote,
+		canConfirm: Boolean(enabledRoomOptions.length > 0 && recommendedRoomWithQuote?.id),
 		availabilityLabel,
 		priceLabel,
 		availabilityShowsSkeleton: Boolean(
-			recommendedRoom?.showMetaSkeleton && !availabilityLabel,
+			recommendedRoomWithQuote?.showMetaSkeleton && !availabilityLabel,
 		),
-		priceShowsSkeleton: Boolean(recommendedRoom?.showPriceSkeleton && !priceLabel),
-		roomTitle: recommendedRoom?.title || "General ward",
+		priceShowsSkeleton: Boolean(recommendedRoomWithQuote?.showPriceSkeleton && !priceLabel),
+		roomTitle: recommendedRoomWithQuote?.title || "General ward",
 		roomSummary,
 		roomFeatures,
 		etaLabel,
 		distanceLabel,
 		confidenceLabel:
-			recommendedRoom?.source === "db"
+			recommendedRoomWithQuote?.source === "db"
 				? MAP_BED_DECISION_COPY.CONFIDENCE_LIVE
 				: MAP_BED_DECISION_COPY.CONFIDENCE_FALLBACK,
 		routePanel: buildBedDecisionRoutePanel({

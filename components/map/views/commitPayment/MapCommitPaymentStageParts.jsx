@@ -583,7 +583,9 @@ export function MapCommitPaymentActionGroupCard({
 						onPress={action.onPress}
 						disabled={action.disabled}
 						accessibilityRole="button"
-						accessibilityLabel={action.title || action.label}
+						accessibilityLabel={
+							action.accessibilityLabel || action.title || action.label
+						}
 						style={({ pressed }) => [
 							styles.actionGroupRow,
 							pressed && !action.disabled ? styles.actionGroupRowPressed : null,
@@ -630,6 +632,15 @@ export function MapCommitPaymentActionGroupCard({
 								) : null}
 							</View>
 						</View>
+						{action.trailingIconName ? (
+							<View style={styles.actionGroupTrailingIconWrap}>
+								<Ionicons
+									name={action.trailingIconName}
+									size={18}
+									color={action.trailingIconColor || titleColor}
+								/>
+							</View>
+						) : null}
 					</Pressable>
 					{index < actions.length - 1 ? (
 						<View

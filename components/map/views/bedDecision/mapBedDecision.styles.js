@@ -253,6 +253,21 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		maxWidth: 82,
 	},
+	routeActionButton: {
+		width: 36,
+		height: 36,
+		marginTop: 8,
+		alignItems: "center",
+		justifyContent: "center",
+		alignSelf: "flex-end",
+		borderRadius: 14,
+		borderCurve: "continuous",
+		backgroundColor: "rgba(134,16,14,0.08)",
+	},
+	routeActionButtonPressed: {
+		opacity: 0.88,
+		transform: [{ scale: 0.97 }],
+	},
 	routeMetricPrimary: {
 		fontSize: Platform.OS === "web" ? 15 : 16,
 		lineHeight: Platform.OS === "web" ? 19 : 20,

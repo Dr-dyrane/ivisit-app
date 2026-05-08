@@ -469,6 +469,13 @@ const styles = StyleSheet.create({
 		minWidth: 0,
 		justifyContent: "center",
 	},
+	actionGroupTrailingIconWrap: {
+		width: 32,
+		height: 32,
+		marginLeft: 10,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 	actionGroupLabel: {
 		fontSize: 17,
 		lineHeight: 21,
