@@ -2,7 +2,7 @@
 // Owns: canonical pickup-location resolution for the live /map flow,
 //       explicit location-access state, and the search/current-location handlers.
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useBillingQuoteStore } from "../../../stores/billingQuoteStore";
 import {
   buildHeaderLocationModel,
@@ -10,16 +10,20 @@ import {
 } from "../../../utils/map/mapLocationPresentation";
 import { hasMeaningfulLocationChange } from "./mapExploreFlow.helpers";
 import { MAP_SHEET_PHASES } from "../../../components/map/core/MapSheetOrchestrator";
+import {
+  MAP_PICKUP_LOCATION_SOURCES,
+  resolveMapPickupLocationTruth,
+} from "./mapPickupLocationTruth";
+import {
+  buildExploreIntentSheetView,
+  buildSourceReturnSheetView,
+} from "./mapExploreFlow.transitions";
 
-const TRUSTED_EMERGENCY_LOCATION_SOURCES = new Set(["device", "manual"]);
-
-function hasValidCoords(loc) {
-  return (
-    loc &&
-    Number.isFinite(Number(loc.latitude)) &&
-    Number.isFinite(Number(loc.longitude))
-  );
-}
+const PICKUP_EDIT_RETURN_PHASES = new Set([
+  MAP_SHEET_PHASES.AMBULANCE_DECISION,
+  MAP_SHEET_PHASES.BED_DECISION,
+  MAP_SHEET_PHASES.COMMIT_PAYMENT,
+]);
 
 export function useMapLocation({
   globalUserLocation,
@@ -32,12 +36,13 @@ export function useMapLocation({
   requestLocationPermission,
   openLocationSettings,
   locationError,
-  emergencyUserLocation,
-  emergencyUserLocationSource,
   setUserLocation,
   manualLocation,
   setManualLocation,
-  setSheetPhase,
+  sheetPayload,
+  defaultExploreSnapState,
+  setSheetView,
+  clearLocationScopedMapState,
   setMapReadiness,
   setHasCompletedInitialMapLoad,
   isDarkMode,
@@ -47,45 +52,87 @@ export function useMapLocation({
   const setBillingOverrides = useBillingQuoteStore(
     (state) => state.setBillingOverrides,
   );
+  const locationTruth = useMemo(
+    () =>
+      resolveMapPickupLocationTruth({
+        manualLocation,
+        globalUserLocation,
+        globalLocationSource,
+        resolvedPlace,
+      }),
+    [globalLocationSource, globalUserLocation, manualLocation, resolvedPlace],
+  );
+  const {
+    activeLocation,
+    currentCountryCode,
+    requiresLocationSelection,
+    source: activeLocationSource,
+  } = locationTruth;
 
-  const hasManualLocation = hasValidCoords(manualLocation?.location);
-  const hasTrustedEmergencyLocation =
-    hasValidCoords(emergencyUserLocation) &&
-    TRUSTED_EMERGENCY_LOCATION_SOURCES.has(emergencyUserLocationSource);
-  const hasTrustedGlobalLocation =
-    hasValidCoords(globalUserLocation) && globalLocationSource === "device";
+  // CRITICAL FIX: Sync location country to billing store on initial load and changes
+  // Ensures deterministic pricing even when location comes from GPS/saved fallback (not manual search)
+  useEffect(() => {
+    if (currentCountryCode) {
+      setBillingOverrides({
+        billingCountryCode: currentCountryCode,
+        billingCurrencyCode: null,
+      });
+    }
+  }, [currentCountryCode, setBillingOverrides]);
 
-  const activeLocation =
-    (hasManualLocation && manualLocation.location) ||
-    (hasTrustedEmergencyLocation && emergencyUserLocation) ||
-    (hasTrustedGlobalLocation && globalUserLocation) ||
-    null;
-
-  const requiresLocationSelection = !activeLocation;
   const shouldOpenSettings =
     globalLocationPermissionStatus === "denied" ||
     globalLocationPermissionStatus === "services_disabled";
-  const currentCountryCode =
-    manualLocation?.countryCode || resolvedPlace?.countryCode || null;
-  const activeLocationSource = hasManualLocation
-    ? "manual"
-    : hasTrustedEmergencyLocation
-      ? emergencyUserLocationSource
-      : hasTrustedGlobalLocation
-        ? globalLocationSource
-        : globalLocationSource || emergencyUserLocationSource || "missing";
 
   const currentLocationDetails = useMemo(() => {
-    if (hasManualLocation) {
+    if (
+      activeLocationSource === MAP_PICKUP_LOCATION_SOURCES.SESSION_MANUAL
+    ) {
       return buildHeaderLocationModel({
         ...manualLocation,
-        source: "manual",
+        source: activeLocationSource,
         countryCode: manualLocation?.countryCode || null,
         useCurrentLocationActionLabel: shouldOpenSettings
           ? "Turn on location"
           : "Use device location",
         manualEntryActionLabel: "Change address",
-        searchPlaceholder: "Enter street, area, city, or landmark",
+        searchPlaceholder: "Search address or area",
+      });
+    }
+
+    if (
+      activeLocationSource ===
+      MAP_PICKUP_LOCATION_SOURCES.SAVED_MANUAL_FALLBACK
+    ) {
+      return buildHeaderLocationModel({
+        primaryText: locationLabel || "Saved pickup area",
+        secondaryText: locationLabelDetail || "Using your saved pickup",
+        location: activeLocation,
+        source: activeLocationSource,
+        countryCode: currentCountryCode,
+        searchPlaceholder: "Change pickup or address",
+        useCurrentLocationActionLabel: shouldOpenSettings
+          ? "Turn on location"
+          : "Use device location",
+        manualEntryActionLabel: "Change address",
+      });
+    }
+
+    if (
+      activeLocationSource ===
+      MAP_PICKUP_LOCATION_SOURCES.SAVED_DEVICE_FALLBACK
+    ) {
+      return buildHeaderLocationModel({
+        primaryText: locationLabel || "Last known area",
+        secondaryText: locationLabelDetail || "Using saved location for now",
+        location: activeLocation,
+        source: activeLocationSource,
+        countryCode: currentCountryCode,
+        searchPlaceholder: "Change pickup or address",
+        useCurrentLocationActionLabel: shouldOpenSettings
+          ? "Turn on location"
+          : "Use device location",
+        manualEntryActionLabel: "Change address",
       });
     }
 
@@ -101,25 +148,17 @@ export function useMapLocation({
           ? "Turn on location"
           : "Use device location",
         manualEntryActionLabel: "Enter address manually",
-        searchPlaceholder: "Enter street, area, city, or landmark",
+        searchPlaceholder: "Search address or area",
       });
     }
 
     return buildHeaderLocationModel({
-      primaryText:
-        locationLabel ||
-        (hasTrustedEmergencyLocation && emergencyUserLocationSource === "manual"
-          ? "Saved pickup area"
-          : "Current location"),
-      secondaryText:
-        locationLabelDetail ||
-        (hasTrustedEmergencyLocation && emergencyUserLocationSource === "manual"
-          ? "Change anytime"
-          : ""),
+      primaryText: locationLabel || "Current location",
+      secondaryText: locationLabelDetail || "",
       location: activeLocation,
       source: activeLocationSource,
       countryCode: currentCountryCode,
-      searchPlaceholder: "Search hospitals, specialties, or area",
+      searchPlaceholder: "Change pickup or address",
       useCurrentLocationActionLabel: shouldOpenSettings
         ? "Turn on location"
         : "Use device location",
@@ -129,11 +168,7 @@ export function useMapLocation({
     activeLocationSource,
     activeLocation,
     currentCountryCode,
-    emergencyUserLocationSource,
     globalLocationPermissionStatus,
-    globalLocationSource,
-    hasManualLocation,
-    hasTrustedEmergencyLocation,
     locationLabel,
     locationLabelDetail,
     manualLocation,
@@ -170,6 +205,7 @@ export function useMapLocation({
   const resetMapForLocationChange = useCallback(
     (locationChanged) => {
       if (!locationChanged) return;
+      clearLocationScopedMapState?.();
       setHasCompletedInitialMapLoad(false);
       setMapReadiness({
         mapReady: false,
@@ -177,8 +213,30 @@ export function useMapLocation({
         isCalculatingRoute: false,
       });
     },
-    [setHasCompletedInitialMapLoad, setMapReadiness],
+    [
+      clearLocationScopedMapState,
+      setHasCompletedInitialMapLoad,
+      setMapReadiness,
+    ],
   );
+
+  const buildPickupReturnSheetView = useCallback(() => {
+    const sourcePhase = sheetPayload?.sourcePhase || null;
+    if (
+      sourcePhase &&
+      PICKUP_EDIT_RETURN_PHASES.has(sourcePhase)
+    ) {
+      return buildSourceReturnSheetView({
+        payload: sheetPayload,
+        fallbackPhase: sourcePhase,
+        fallbackSnapState:
+          sheetPayload?.sourceSnapState || defaultExploreSnapState,
+        fallbackPayload: sheetPayload?.sourcePayload || null,
+      });
+    }
+
+    return buildExploreIntentSheetView(defaultExploreSnapState);
+  }, [defaultExploreSnapState, sheetPayload]);
 
   const handleSearchLocation = useCallback(
     (nextLocation) => {
@@ -202,14 +260,15 @@ export function useMapLocation({
 
       resetMapForLocationChange(locationChanged);
       setManualLocation(nextLocation);
-      setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+      setSheetView(buildPickupReturnSheetView());
     },
     [
       activeLocation,
+      buildPickupReturnSheetView,
       resetMapForLocationChange,
       setBillingOverrides,
       setManualLocation,
-      setSheetPhase,
+      setSheetView,
       setUserLocation,
     ],
   );
@@ -221,9 +280,9 @@ export function useMapLocation({
     }
 
     const fallbackCurrentLocation =
-      (hasTrustedGlobalLocation && globalUserLocation) ||
-      (hasTrustedEmergencyLocation && emergencyUserLocation) ||
-      null;
+      activeLocationSource === MAP_PICKUP_LOCATION_SOURCES.DEVICE
+        ? globalUserLocation
+        : activeLocation;
     const locationChanged = manualLocation?.location
       ? hasMeaningfulLocationChange(
           manualLocation.location,
@@ -255,22 +314,21 @@ export function useMapLocation({
         null,
       billingCurrencyCode: null,
     });
-    setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+    setSheetView(buildPickupReturnSheetView());
   }, [
-    emergencyUserLocation,
+    activeLocation,
+    activeLocationSource,
+    buildPickupReturnSheetView,
     globalLocationPermissionStatus,
     globalUserLocation,
-    hasTrustedEmergencyLocation,
-    hasTrustedGlobalLocation,
     manualLocation?.location,
     openLocationSettings,
     refreshLocation,
     resolvedPlace?.countryCode,
     requestLocationPermission,
     resetMapForLocationChange,
-    setBillingOverrides,
     setManualLocation,
-    setSheetPhase,
+    setSheetView,
     setUserLocation,
     shouldOpenSettings,
   ]);
@@ -313,5 +371,6 @@ export function useMapLocation({
     handleSearchLocation,
     handleUseCurrentLocation,
     locationControl,
+    locationTruth,
   };
 }
