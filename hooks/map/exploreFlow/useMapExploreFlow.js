@@ -607,6 +607,7 @@ export function useMapExploreFlow() {
     setProfileModalVisible,
     setRecentVisitsVisible,
     setSheetMode,
+    setSheetPhase,
     setSheetPayload,
     setSheetSnapState,
     sheetMode,

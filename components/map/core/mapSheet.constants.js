@@ -1,5 +1,6 @@
 export const MAP_SHEET_PHASES = {
 	EXPLORE_INTENT: "explore_intent",
+	LOCATION_INTENT: "location_intent",
 	SEARCH: "search",
 	HOSPITAL_LIST: "hospital_list",
 	HOSPITAL_DETAIL: "hospital_detail",

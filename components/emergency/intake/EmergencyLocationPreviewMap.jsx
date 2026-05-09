@@ -15,6 +15,7 @@ import {
   PROVIDER_GOOGLE,
 } from "../../map/MapComponents";
 import MapControls from "../../map/chrome/MapControls";
+import LocationChrome from "../../map/chrome/LocationChrome";
 import { getMapRenderTokens } from "../../map/mapRenderTokens";
 import { getAmbulanceSpriteForHeading } from "../../map/RouteLayer";
 import {
@@ -444,6 +445,7 @@ export default function EmergencyLocationPreviewMap({
   onHospitalPress = null,
   onReadinessChange = null,
   onRouteInfoChange = null,
+  onLocationChromePress = null,
   showInternalSkeleton = true,
   showControls = true,
 }) {
@@ -1317,23 +1319,43 @@ export default function EmergencyLocationPreviewMap({
       />
 
       {hasLocation && showControls ? (
-        <MapControls
-          onRecenter={centerOnUser}
-          onExpand={fitNearbyHospitals}
-          isZoomedOut={isNearbyOverview}
-          isDarkMode={isDarkMode}
-          topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
-          bottomOffset={
-            controlsMode === "top"
-              ? undefined
-              : Math.max(
-                  bottomSheetHeight + 14,
-                  controlsBottomOffsetBase || 198,
-                )
-          }
-          rightOffset={controlsRightOffset}
-          secondaryIconName="scan-circle-outline"
-        />
+        <>
+          {/* PULLBACK NOTE: Add LocationChrome on left side opposite MapControls
+            OLD: No location affordance on map
+            NEW: Floating chrome on left showing location icon, tap to open location sheet
+            UPDATED: Icon-only (text removed for less distraction) */}
+          <LocationChrome
+            onPress={onLocationChromePress}
+            isDarkMode={isDarkMode}
+            topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
+            bottomOffset={
+              controlsMode === "top"
+                ? undefined
+                : Math.max(
+                    bottomSheetHeight + 14,
+                    controlsBottomOffsetBase || 198,
+                  )
+            }
+            leftOffset={14}
+          />
+          <MapControls
+            onRecenter={centerOnUser}
+            onExpand={fitNearbyHospitals}
+            isZoomedOut={isNearbyOverview}
+            isDarkMode={isDarkMode}
+            topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
+            bottomOffset={
+              controlsMode === "top"
+                ? undefined
+                : Math.max(
+                    bottomSheetHeight + 14,
+                    controlsBottomOffsetBase || 198,
+                  )
+            }
+            rightOffset={controlsRightOffset}
+            secondaryIconName="scan-circle-outline"
+          />
+        </>
       ) : null}
     </View>
   );

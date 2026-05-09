@@ -11,6 +11,7 @@ import MapExploreIntentOrchestrator from "../views/exploreIntent/MapExploreInten
 import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOrchestrator";
 import MapSearchOrchestrator from "../views/search/MapSearchOrchestrator";
 import MapServiceDetailOrchestrator from "../views/serviceDetail/MapServiceDetailOrchestrator";
+import MapLocationIntentOrchestrator from "../views/locationIntent/MapLocationIntentOrchestrator";
 import MapPhaseTransitionView from "../views/shared/MapPhaseTransitionView";
 import { MAP_SEARCH_SHEET_MODES } from "../surfaces/search/mapSearchSheet.helpers";
 import {
@@ -83,6 +84,7 @@ export default function MapSheetOrchestrator({
 	onConfirmServiceDetail = () => {},
 	onChangeServiceDetail = () => {},
 	onSelectHospitalService = () => {},
+	onCloseLocationIntent = () => {},
 	searchMode = MAP_SEARCH_SHEET_MODES.SEARCH,
 	hospitals = [],
 	selectedHospitalId = null,
@@ -473,6 +475,17 @@ export default function MapSheetOrchestrator({
 						onSnapStateChange={onSnapStateChange}
 					/>
 				</MapPhaseTransitionView>
+			);
+		case MAP_SHEET_PHASES.LOCATION_INTENT:
+			return (
+				<MapLocationIntentOrchestrator
+					sheetHeight={sheetHeight}
+					snapState={snapState}
+					onClose={onCloseLocationIntent}
+					onOpenSearch={() => onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION)}
+					onOpenProfile={onOpenProfile}
+					currentLocation={location}
+				/>
 			);
 		case MAP_SHEET_PHASES.EXPLORE_INTENT:
 		default:

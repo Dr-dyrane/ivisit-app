@@ -128,6 +128,7 @@ export default function MapScreen() {
     setProfileModalVisible,
     setRecentVisitsVisible,
     setSheetSnapState,
+    setSheetPhase,
     sheetMode,
     sheetSnapState,
     totalAvailableBeds,
@@ -453,6 +454,10 @@ export default function MapScreen() {
     visitsLoading,
   ]);
 
+  const handleOpenLocationSheet = useCallback(() => {
+    setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
+  }, [setSheetPhase]);
+
   const handleCloseRecentVisits = useCallback(() => {
     setRecentVisitsVisible(false);
     if (isRouteManagedRecentVisits) {
@@ -541,6 +546,7 @@ export default function MapScreen() {
           surfaceConfig.mapControlsBottomInsetBase + browserInsetBottom
         }
         onHospitalPress={handleMapHospitalPress}
+        onLocationChromePress={handleOpenLocationSheet}
         showInternalSkeleton={false}
       />
 
@@ -610,6 +616,7 @@ export default function MapScreen() {
           onConfirmServiceDetail={confirmServiceDetail}
           onChangeServiceDetail={changeServiceDetailService}
           onSelectHospitalService={setHospitalServiceSelection}
+          onCloseLocationIntent={() => setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT)}
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}
           selectedHospitalId={mapFocusedHospitalId}
