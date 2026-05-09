@@ -30,6 +30,8 @@ import { useMapUserData } from "./useMapUserData";
 import { useMapEffects } from "./useMapEffects";
 import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
+// PULLBACK NOTE: MapScreen decomposition Pass 9 — location intent race condition fix
+import { useMapLocationIntent } from "./useMapLocationIntent";
 import { useMapExploreFlowStore } from "../state/mapExploreFlow.store";
 import {
   selectMapExploreHasCompletedInitialMapLoad,
@@ -512,18 +514,16 @@ export function useMapExploreFlow() {
     hasCompletedInitialMapLoad,
     setHasCompletedInitialMapLoad,
   });
- // TODO: MOVE THIS OUT OF ORCHESTRATOR
-  // TODO: VIOLATION OF USEFFECT RULES UNDER GUARDRAILS
-  // PULLBACK NOTE: LocationIntent now owns pickup selection when location is unresolved.
-  useEffect(() => {
-    if (
-      isLocationOffTerminal &&
-      sheetPhase !== MAP_SHEET_PHASES.LOCATION_INTENT &&
-      sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT
-    ) {
-      setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
-    }
-  }, [isLocationOffTerminal, setSheetPhase, sheetPhase]);
+
+  // PULLBACK NOTE: MapScreen decomposition Pass 9 — location intent race condition fix
+  // Consolidates location-off-terminal and requiresLocationSelection transitions into single
+  // deterministic hook with priority-based logic (eliminates race condition)
+  useMapLocationIntent({
+    isLocationOffTerminal,
+    locationControl,
+    setSheetPhase,
+    sheetPhase,
+  });
 
   return {
     activeLocation,
