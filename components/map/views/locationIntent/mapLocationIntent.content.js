@@ -11,10 +11,16 @@ export const MAP_LOCATION_INTENT_COPY = {
 	deviceActionSubtitle: "Use GPS for live pickup.",
 	deviceSettingsTitle: "Turn on location",
 	deviceSettingsSubtitle: "Turn on GPS for live pickup.",
-	searchActionTitle: "Search address",
+	searchActionTitle: "Search address or place",
 	searchActionSubtitle: "Search a street, area, or landmark.",
 	savedActionTitle: "Saved places",
-	savedActionSubtitle: "Manage Home and Work in Profile.",
+	savedActionSubtitle: "Home, Work, Family, and custom places.",
+	placesOrbLabels: {
+		home: "Home",
+		work: "Work",
+		family: "Family",
+		add: "Add",
+	},
 	infoRows: {
 		nearby: "Nearby care",
 		pricing: "Pricing",

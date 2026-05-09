@@ -31,6 +31,7 @@ function MapSearchStageSurface({
 	onBrowseHospitals,
 	onUseCurrentLocation,
 	onSelectLocation,
+	onOpenLocationIntent,
 	onOpenProfile,
 	onSnapStateChange,
 	profileImageSource,
@@ -68,6 +69,7 @@ function MapSearchStageSurface({
 		onBrowseHospitals,
 		onUseCurrentLocation,
 		onSelectLocation,
+		onOpenLocationIntent,
 	});
 	const allowedSnapStates = useMemo(
 		() => [

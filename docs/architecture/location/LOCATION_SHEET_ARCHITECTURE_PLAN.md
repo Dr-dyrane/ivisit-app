@@ -567,15 +567,43 @@ screens/MapScreen.jsx                                        # Chrome + sheet wi
 ### ✅ Pass 1: Chrome Affordance - COMPLETE
 
 **What was built:**
-- LocationChrome component with binoculars-sharp icon (24px)
-- Integrated into EmergencyLocationPreviewMap (left side, 14px offset)
+- LocationChrome component as a progressive pickup chip with neutral compass-outline icon (24px)
+- Integrated into EmergencyLocationPreviewMap (left side on bottom-control layouts; right edge of left sidebar on wide/sidebar layouts)
 - Haptic feedback and scale animation on press
 - Wired to open LOCATION_INTENT sheet phase
 
 **Design decisions:**
-- Icon-only (Apple/Google pattern, not Uber/Lyft text bar)
-- Left positioning opposite MapControls for balance
+- Progressive disclosure: icon-only by default, pickup copy only after hint/intent.
+- The default state stays compact to protect explore intent hierarchy.
+- First tap expands the pickup chip.
+- When expanded, tapping the compass side collapses it; tapping the copy/chevron side opens LocationSheet.
+- The expanded chip copy is:
+
+```txt
+Pickup
+Hemet, CA
+›
+```
+
+- A one-time gentle peek can expand the chip briefly after map settle, then collapse.
+- Bottom-control layouts keep the affordance on the left for balance; wide/sidebar layouts attach it to the right edge of the left sidebar on the same vertical axis as the sidebar search/profile header, so it reads as contextual sheet chrome instead of a competing far-map control.
 - Dark/light mode support with proper tokens
+
+### ✅ Map Camera Control Toggle - COMPLETE
+
+**What was built:**
+- The nearby-overview map control is a true toggle:
+  - first tap frames the user plus nearby hospital candidates
+  - second tap restores the normal user-to-hospital route framing
+- The locate/user map control is also a toggle:
+  - first tap centers the camera on the user
+  - second tap restores the normal user-to-hospital route framing
+- Route, user, or hospital changes reset these camera toggle states so stale camera intent does not leak across contexts.
+
+**Design decisions:**
+- The controls should behave like reversible camera modes, not one-way jumps.
+- The canonical resting frame remains the route/user-hospital/polyline fit.
+- Nearby overview and user-centered mode stay independent, but either mode returns to the canonical route frame on second tap.
 
 ### ✅ Pass 2: Location Sheet Phase - COMPLETE
 
@@ -648,3 +676,229 @@ Refs: LOCATION_SHEET_ARCHITECTURE_PLAN.md
 - Revert commit to remove location sheet infrastructure
 - Chrome affordance and LOCATION_INTENT phase cleanly removable
 - No breaking changes to existing flows
+
+## Location Sheet Layout
+
+```txt
+LocationSheet
+
+1. Grabber and Header.
+
+2. Location input
+   [ Search address or place ] || Manual Input Icon to toggle location sheet phase to manual input state.
+
+3. Current location card - Reuse Card in Search sheet phase nothing extra.
+   - Current detected address
+   - Use current location
+   - Change location
+
+4. Places orb row
+   - Home
+   - Work
+   - Add
+
+5. Recents
+   - Marked location
+   - Recent address
+   - Recent hospital/location
+
+6. Manual fallback
+   - Can’t find it?
+   - Enter manually
+```
+
+## Location Sheet Snap Layout Contract
+
+This is the canonical layout rule for the next implementation passes. It adapts the strongest `/map` sheet patterns already used by explore intent, tracking, and commit payment:
+
+- Explore intent: half-snap shows only the core decision surfaces; expanded adds browsing depth.
+- Tracking: half-snap keeps the hero and operational CTAs visible; expanded adds route/details.
+- Commit payment: half-snap keeps the decisive pay CTA visible; expanded adds selector depth and cost breakdown.
+
+LocationSheet follows the same rule:
+
+```txt
+Half / idle default
+  Header
+  Search address or place [manual icon]
+  Current location card
+    Use current location
+    Adjust on map
+  Places orb row
+    Home
+    Work
+    Add
+  Manual fallback
+    Can't find it?
+    Enter manually
+
+Expanded / idle default
+  Everything in half / idle default
+  Recents
+    Marked location
+    Recent address
+    Recent hospital/location
+  Longer search/result depth where available
+```
+
+Core CTAs must never require expansion:
+
+- Search input is always visible in half-snap.
+- Manual entry is reachable from both the input trailing icon and the fallback row.
+- Use current location is visible in half-snap.
+- Adjust on map is visible in half-snap.
+- Home, Work, and Add are visible in half-snap.
+- Confirm selected location is visible in half-snap after any candidate is selected.
+
+Expanded state is only for depth, not permission:
+
+- More recents.
+- More address predictions.
+- Detail copy and secondary context.
+- Future saved-place management.
+
+Mode-specific layout replaces lower-priority browsing content rather than appending under it:
+
+```txt
+addressSearch
+  Header
+  Search input
+  Address/place predictions
+  Current location card, places, and manual fallback can remain below if space allows
+
+manualIntro
+  Header
+  Search input
+  Manual intro card
+    Back
+    Start
+
+manualStep
+  Header
+  Search input
+  Single guided field
+    Back
+    Next / Confirm on map
+
+placeSelected / pinAdjust / confirm
+  Header
+  Search input
+  Confirm selected location card
+    Use this location
+```
+
+Implementation rules:
+
+- Use the existing `MapSheetShell`, `MapStageBodyScroll`, and top-slot pattern.
+- Do not override shared map presentation mode: mobile renders as a bottom sheet, centered modal variants render as modal, and wide/sidebar variants render as the same left sidebar used by explore intent, tracking, payment, and detail phases.
+- Reuse visual primitives already established in the map sheets: grouped cards, action rows, orb/icon buttons, pressed opacity/scale feedback, and inline loading/confirm affordances.
+- Keep `LocationSheet` as the owner of address search and location candidate confirmation.
+- Keep SearchSheet, payment, tracking, hospital detail, and service detail as consumers/openers of the selected location, not owners of location search.
+- Do not add a separate second sheet system.
+- Do not make manual entry a multi-field visible form.
+- Manual low-confidence entries must eventually route through map confirmation before commit.
+
+## Interaction Architecture
+
+```ts
+type LocationSheetMode =
+  | "default"
+  | "addressSearch"
+  | "placeSelected"
+  | "manualIntro"
+  | "manualStep"
+  | "pinAdjust"
+  | "confirm";
+```
+
+## Flow
+
+```txt
+Default
+  ↓ tap input
+Address Search Mode
+  ↓ select prediction
+Place Selected Mode
+  ↓ optional refine
+Confirm
+
+Default
+  ↓ tap current location
+Confirm Current Location
+
+Default
+  ↓ tap orb place
+Confirm Saved Place
+
+Default
+  ↓ tap Enter manually
+Manual Guided Mode
+  ↓ step-by-step address capture
+Confirm
+
+Default
+  ↓ tap Adjust on map
+Pin Adjust Mode
+  ↓ drag pin
+Confirm
+```
+
+## Manual Address Nuance
+
+Manual entry should not be a visible multi-field form.
+
+It should be guided:
+
+```txt
+Step 1
+What country or region is this in?
+
+Step 2
+What city?
+
+Step 3
+Street address?
+
+Step 4
+Apartment, unit, or landmark?
+
+Step 5
+Any note for responders?
+
+Step 6
+Confirm on map
+```
+
+But only after:
+
+```txt
+Can’t find it?
+Enter manually
+```
+
+## Smart Address Search Inside Location Sheet
+
+This uses the existing address search logic, but the ownership changes:
+
+```txt
+Before:
+SearchSheet owns address search
+
+After:
+LocationSheet owns address search
+SearchSheet consumes selectedLocation
+```
+
+So:
+
+```ts
+selectedLocation = {
+  source: "current" | "saved" | "recent" | "search" | "manual" | "pin",
+  label: string,
+  address: string,
+  coords: { latitude: number; longitude: number },
+  confidence?: "high" | "medium" | "low",
+  unit?: string,
+  responderNote?: string,
+};
+```

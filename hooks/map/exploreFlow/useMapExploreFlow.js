@@ -10,6 +10,7 @@ import { useEmergencyTripStore } from "../../../stores/emergencyTripStore";
 import { useVisits } from "../../../contexts/VisitsContext";
 import { coverageModeService } from "../../../services/coverageModeService";
 import {
+  MAP_SHEET_PHASES,
   MAP_SHEET_SNAP_STATES,
 } from "../../../components/map/core/MapSheetOrchestrator";
 import { MAP_SEARCH_SHEET_MODES } from "../../../components/map/surfaces/search/mapSearchSheet.helpers";
@@ -511,14 +512,18 @@ export function useMapExploreFlow() {
     hasCompletedInitialMapLoad,
     setHasCompletedInitialMapLoad,
   });
-
-  // PULLBACK NOTE: Auto-open location search when GPS is off (location-off terminal state)
-  // When user has no valid location and GPS is disabled, immediately show manual-pickup UX
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
+  // TODO: VIOLATION OF USEFFECT RULES UNDER GUARDRAILS
+  // PULLBACK NOTE: LocationIntent now owns pickup selection when location is unresolved.
   useEffect(() => {
-    if (isLocationOffTerminal && !searchSheetVisible) {
-      openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+    if (
+      isLocationOffTerminal &&
+      sheetPhase !== MAP_SHEET_PHASES.LOCATION_INTENT &&
+      sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT
+    ) {
+      setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
     }
-  }, [isLocationOffTerminal, searchSheetVisible, openSearchSheet]);
+  }, [isLocationOffTerminal, setSheetPhase, sheetPhase]);
 
   return {
     activeLocation,

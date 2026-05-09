@@ -247,6 +247,10 @@ export function useMapLocation({
         nextLocation.location,
       );
       const emergencyLocation = toEmergencyLocation(nextLocation.location);
+      const nextSource =
+        typeof nextLocation?.source === "string" && nextLocation.source.trim()
+          ? nextLocation.source.trim()
+          : "manual";
 
       if (emergencyLocation) {
         setUserLocation(emergencyLocation, "manual");
@@ -259,7 +263,10 @@ export function useMapLocation({
       }
 
       resetMapForLocationChange(locationChanged);
-      setManualLocation(nextLocation);
+      setManualLocation({
+        ...nextLocation,
+        source: nextSource,
+      });
       setSheetView(buildPickupReturnSheetView());
     },
     [

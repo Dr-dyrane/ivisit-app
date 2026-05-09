@@ -81,7 +81,7 @@ export function getViewportSurfaceMetrics({
 			titleLineHeight: round(clamp(wideWidth * 0.056, 22, 28)),
 		},
 		map: {
-			sheetSideInset: round(clamp(safeWidth * 0.03, 12, 18)),
+			sheetSideInset: round(clamp(safeWidth * 0.02, 8, 14)),
 			handleWidth: round(clamp(wideWidth * 0.11, 44, 58)),
 			handleHeight: 5,
 			headerHeight: round(clamp(safeHeight * 0.09, 72, 92)),

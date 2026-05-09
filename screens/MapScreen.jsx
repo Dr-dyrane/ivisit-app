@@ -129,6 +129,7 @@ export default function MapScreen() {
     setRecentVisitsVisible,
     setSheetSnapState,
     setSheetPhase,
+    setSheetPayload,
     sheetMode,
     sheetSnapState,
     totalAvailableBeds,
@@ -261,7 +262,7 @@ export default function MapScreen() {
   const isRouteManagedRecentVisits = routeMapSheet === "recent_visits";
   const recentVisitsModalVisible =
     recentVisitsVisible || isRouteManagedRecentVisits;
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   useEffect(() => {
     const suppressionId = "map-modal-fab-suppression";
     if (hasActiveMapModal) {
@@ -276,7 +277,7 @@ export default function MapScreen() {
     unregisterFAB(suppressionId);
     return undefined;
   }, [hasActiveMapModal, registerFAB, unregisterFAB]);
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   // Hide the global FAB entirely on the Map screen as it is not part of the intent-based flow
   useEffect(() => {
     const hideId = "map-hide-global-fab";
@@ -404,7 +405,7 @@ export default function MapScreen() {
       [openVisitDetail, selectedHistoryVisitKey, visits],
     ),
   });
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;
     // PULLBACK NOTE: VD-2 — consolidated into single rating path via openRatingForVisit.
@@ -412,7 +413,7 @@ export default function MapScreen() {
     openRatingForVisit(selectedHistoryVisit);
     closeHistoryVisitDetails();
   }, [closeHistoryVisitDetails, openRatingForVisit, selectedHistoryVisit]);
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   useEffect(() => {
     const wantsRouteVisitDetail =
       routeMapSheet === "visit_detail" && Boolean(routeVisitKey);
@@ -454,17 +455,38 @@ export default function MapScreen() {
     visitsLoading,
   ]);
 
+  // TODO: MOVE THIS OUT OF ORCHESTRATOR
   const handleOpenLocationSheet = useCallback(() => {
     setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
   }, [setSheetPhase]);
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
+  const handleOpenLocationIntentFromSearch = useCallback(
+    (options = {}) => {
+      const preservedQuery =
+        typeof options?.query === "string" && options.query.trim().length > 0
+          ? options.query.trim()
+          : null;
+      setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
+      if (preservedQuery) {
+        setSheetPayload({
+          sourcePhase: MAP_SHEET_PHASES.SEARCH,
+          sourceSnapState: sheetSnapState,
+          sourcePayload: null,
+          intentMode: "addressSearch",
+          addressQuery: preservedQuery,
+        });
+      }
+    },
+    [setSheetPayload, setSheetPhase, sheetSnapState],
+  );
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   const handleCloseRecentVisits = useCallback(() => {
     setRecentVisitsVisible(false);
     if (isRouteManagedRecentVisits) {
       router.replace("/(user)");
     }
   }, [isRouteManagedRecentVisits, router, setRecentVisitsVisible]);
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   const handleRouteManagedHistoryFilterChange = useCallback(
     (nextFilter) => {
       if (!isRouteManagedRecentVisits) return;
@@ -486,7 +508,7 @@ export default function MapScreen() {
     },
     [isRouteManagedRecentVisits, router],
   );
-
+ // TODO: MOVE THIS OUT OF ORCHESTRATOR
   useEffect(() => {
     if (!locationControl?.requiresLocationSelection) {
       return;
@@ -499,10 +521,10 @@ export default function MapScreen() {
     }
 
     hasPromptedForPickupRef.current = true;
-    openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+    setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
   }, [
     locationControl?.requiresLocationSelection,
-    openSearchSheet,
+    setSheetPhase,
     sheetPhase,
   ]);
 
@@ -617,6 +639,7 @@ export default function MapScreen() {
           onChangeServiceDetail={changeServiceDetailService}
           onSelectHospitalService={setHospitalServiceSelection}
           onCloseLocationIntent={() => setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT)}
+          onOpenLocationIntent={handleOpenLocationIntentFromSearch}
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}
           selectedHospitalId={mapFocusedHospitalId}

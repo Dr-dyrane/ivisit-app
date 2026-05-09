@@ -95,6 +95,7 @@ export default function MapSheetOrchestrator({
 	onSelectHospital = () => {},
 	onUseCurrentLocation = () => {},
 	onSelectLocation = () => {},
+	onOpenLocationIntent = () => {},
 	onChangeHospitalLocation = () => {},
 	activeLocation = null,
 	sheetPayload = null,
@@ -390,6 +391,7 @@ export default function MapSheetOrchestrator({
 						onBrowseHospitals={onOpenHospitals}
 						onUseCurrentLocation={onUseCurrentLocation}
 						onSelectLocation={onSelectLocation}
+						onOpenLocationIntent={onOpenLocationIntent}
 						onOpenProfile={onOpenProfile}
 						onSnapStateChange={onSnapStateChange}
 						profileImageSource={
@@ -486,9 +488,11 @@ export default function MapSheetOrchestrator({
 							onOpenSearch={() => onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION)}
 							onOpenProfile={onOpenProfile}
 							onUseCurrentLocation={onUseCurrentLocation}
+							onSelectLocation={onSelectLocation}
 							onSnapStateChange={onSnapStateChange}
 							currentLocation={currentLocation}
 							locationControl={locationControl}
+							sheetPayload={sheetPayload}
 						/>
 					</MapPhaseTransitionView>
 				);

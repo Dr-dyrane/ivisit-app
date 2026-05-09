@@ -1,5 +1,23 @@
 import MAP_LOCATION_INTENT_COPY from "./mapLocationIntent.content";
 
+export const LOCATION_INTENT_MODES = Object.freeze({
+	DEFAULT: "default",
+	ADDRESS_SEARCH: "addressSearch",
+	PLACE_SELECTED: "placeSelected",
+	MANUAL_INTRO: "manualIntro",
+	MANUAL_STEP: "manualStep",
+	PIN_ADJUST: "pinAdjust",
+	CONFIRM: "confirm",
+});
+
+export const MANUAL_LOCATION_STEPS = [
+	{ key: "countryCode", label: "Country or region", placeholder: "US, NG, CA..." },
+	{ key: "city", label: "City", placeholder: "Enter city" },
+	{ key: "streetAddress", label: "Street address", placeholder: "123 Main Street" },
+	{ key: "unit", label: "Apartment, unit, or landmark", placeholder: "Apt 7B, near..." },
+	{ key: "responderNote", label: "Responder note", placeholder: "Gate code, entry notes..." },
+];
+
 function coerceText(value, fallback = "") {
 	return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
@@ -36,6 +54,7 @@ function buildSourceMeta({ source, requiresLocationSelection, shouldOpenSettings
 export function buildMapLocationIntentModel({
 	currentLocation,
 	locationControl,
+	mode = LOCATION_INTENT_MODES.DEFAULT,
 } = {}) {
 	const requiresLocationSelection = Boolean(
 		locationControl?.requiresLocationSelection ||
@@ -76,6 +95,9 @@ export function buildMapLocationIntentModel({
 	}
 
 	return {
+		mode,
+		requiresLocationSelection,
+		shouldOpenSettings,
 		headerTitle,
 		headerSubtitle,
 		sourceLabel: sourceMeta.label,
@@ -116,6 +138,13 @@ export function buildMapLocationIntentModel({
 				tone: "saved",
 			},
 		],
+		searchPlaceholder: "Search address or place",
+		recentsTitle: "Recents",
+		placesTitle: "Places",
+		manualIntroTitle: "Can't find it?",
+		manualIntroBody: "Enter location details one step at a time.",
+		manualActionLabel: "Enter manually",
+		adjustOnMapLabel: "Adjust on map",
 		info: {
 			title: requiresLocationSelection
 				? MAP_LOCATION_INTENT_COPY.infoTitleMissing

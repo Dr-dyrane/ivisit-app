@@ -459,6 +459,7 @@ export default function EmergencyLocationPreviewMap({
   );
   const [isMapReady, setIsMapReady] = useState(false);
   const [isNearbyOverview, setIsNearbyOverview] = useState(false);
+  const [isUserCentered, setIsUserCentered] = useState(false);
   const isAndroid = Platform.OS === "android";
   const isWeb = Platform.OS === "web";
   const {
@@ -899,6 +900,7 @@ export default function EmergencyLocationPreviewMap({
 
   useEffect(() => {
     setIsNearbyOverview(false);
+    setIsUserCentered(false);
   }, [
     selectedHospitalCoordinate?.latitude,
     selectedHospitalCoordinate?.longitude,
@@ -923,6 +925,7 @@ export default function EmergencyLocationPreviewMap({
           animated: true,
         });
         setIsNearbyOverview(false);
+        setIsUserCentered(false);
         return;
       }
 
@@ -937,6 +940,7 @@ export default function EmergencyLocationPreviewMap({
         320,
       );
       setIsNearbyOverview(false);
+      setIsUserCentered(false);
     },
     [
       bottomSheetHeight,
@@ -982,6 +986,7 @@ export default function EmergencyLocationPreviewMap({
         mapRef.current?.panByPixels?.(0, verticalPanOffset);
       }
       setIsNearbyOverview(false);
+      setIsUserCentered(false);
     } catch (_error) {
       // Keep the current camera if web pan is temporarily unavailable.
     }
@@ -1011,6 +1016,7 @@ export default function EmergencyLocationPreviewMap({
         animated: true,
       });
       setIsNearbyOverview(true);
+      setIsUserCentered(false);
       return;
     }
 
@@ -1025,6 +1031,7 @@ export default function EmergencyLocationPreviewMap({
       320,
     );
     setIsNearbyOverview(true);
+    setIsUserCentered(false);
   }, [
     bottomSheetHeight,
     hasLocation,
@@ -1034,12 +1041,49 @@ export default function EmergencyLocationPreviewMap({
     screenWidth,
   ]);
 
+  const toggleNearbyOverview = useCallback(() => {
+    if (isNearbyOverview) {
+      fitRoute(bottomSheetHeight, leftPanelWidth);
+      return;
+    }
+    fitNearbyHospitals();
+  }, [
+    bottomSheetHeight,
+    fitNearbyHospitals,
+    fitRoute,
+    isNearbyOverview,
+    leftPanelWidth,
+  ]);
+
+  const toggleUserCenteredCamera = useCallback(() => {
+    if (!mapRef.current || !userCoordinate) return;
+    if (isUserCentered) {
+      fitRoute(bottomSheetHeight, leftPanelWidth);
+      return;
+    }
+    mapRef.current?.animateToRegion?.(
+      buildUserCenteredRegion(userCoordinate, leftPanelWidth, screenWidth),
+      320,
+    );
+    setIsNearbyOverview(false);
+    setIsUserCentered(true);
+  }, [
+    bottomSheetHeight,
+    fitRoute,
+    isUserCentered,
+    leftPanelWidth,
+    screenWidth,
+    userCoordinate,
+  ]);
+
   const centerOnUser = useCallback(() => {
     if (!mapRef.current || !userCoordinate) return;
     mapRef.current?.animateToRegion?.(
       buildUserCenteredRegion(userCoordinate, leftPanelWidth, screenWidth),
       320,
     );
+    setIsNearbyOverview(false);
+    setIsUserCentered(true);
   }, [leftPanelWidth, screenWidth, userCoordinate]);
 
   useEffect(() => {
@@ -1320,14 +1364,20 @@ export default function EmergencyLocationPreviewMap({
 
       {hasLocation && showControls ? (
         <>
-          {/* PULLBACK NOTE: Add LocationChrome on left side opposite MapControls
+          {/* PULLBACK NOTE: Add LocationChrome near MapControls
             OLD: No location affordance on map
-            NEW: Floating chrome on left showing location icon, tap to open location sheet
-            UPDATED: Icon-only (text removed for less distraction) */}
+            NEW: Progressive pickup chip expands before opening location sheet
+            UPDATED: On wide/top-control layouts, it anchors to the right edge of the left sidebar */}
           <LocationChrome
             onPress={onLocationChromePress}
             isDarkMode={isDarkMode}
-            topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
+            topOffset={
+              controlsMode === "top"
+                ? (typeof controlsTopOffset === "number"
+                    ? Math.max(36, controlsTopOffset - 132)
+                    : 38)
+                : undefined
+            }
             bottomOffset={
               controlsMode === "top"
                 ? undefined
@@ -1336,11 +1386,14 @@ export default function EmergencyLocationPreviewMap({
                     controlsBottomOffsetBase || 198,
                   )
             }
-            leftOffset={14}
+            leftOffset={controlsMode === "top" ? leftPanelWidth + 10 : 14}
+            rightOffset={undefined}
+            pickupTitle="Pickup"
+            pickupSubtitle="Hemet, CA"
           />
           <MapControls
-            onRecenter={centerOnUser}
-            onExpand={fitNearbyHospitals}
+            onRecenter={toggleUserCenteredCamera}
+            onExpand={toggleNearbyOverview}
             isZoomedOut={isNearbyOverview}
             isDarkMode={isDarkMode}
             topOffset={controlsMode === "top" ? controlsTopOffset : undefined}
