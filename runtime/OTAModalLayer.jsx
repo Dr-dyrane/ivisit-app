@@ -3,7 +3,6 @@
 // OLD: OTA modals rendered directly in RootNavigator
 // NEW: Dedicated OTA modal layer for separation of concerns
 
-import React from "react";
 import { useOTAUpdates } from "../hooks/useOTAUpdates";
 import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
 
@@ -18,7 +17,13 @@ import UpdateAvailableModal from "../components/ui/UpdateAvailableModal";
  * to ensure modals appear above all navigation content.
  */
 export function OTAModalLayer() {
-	const { showModal, showSuccessModal, handleRestart, handleLater, handleDismissSuccess } = useOTAUpdates();
+	const {
+		showModal,
+		showSuccessModal,
+		handleRestart,
+		handleLater,
+		handleDismissSuccess,
+	} = useOTAUpdates();
 
 	return (
 		<>

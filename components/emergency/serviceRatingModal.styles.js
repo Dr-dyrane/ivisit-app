@@ -93,7 +93,7 @@ export const styles = StyleSheet.create({
 	
 	// Feedback Section
 	feedbackSection: {
-		marginBottom: 32,
+		marginBottom: 12,
 	},
 	feedbackLabel: {
 		fontSize: 16,
@@ -102,17 +102,43 @@ export const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	feedbackInput: {
+		marginTop: 10,
 		padding: 16,
 		fontSize: 16,
 		lineHeight: 22,
-		height: 100,
+		height: 88,
 		textAlignVertical: "top",
 		...squircle(22),
+	},
+	collapsibleRow: {
+		minHeight: 54,
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 12,
+		...squircle(22),
+	},
+	collapsibleCopy: {
+		flex: 1,
+		minWidth: 0,
+	},
+	collapsibleTitle: {
+		fontSize: 15,
+		lineHeight: 19,
+		fontWeight: "700",
+	},
+	collapsibleMeta: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
 	},
 	
 	// Tip Section
 	tipSection: {
-		marginBottom: 32,
+		marginBottom: 14,
 	},
 	tipLabel: {
 		fontSize: 16,
@@ -123,7 +149,8 @@ export const styles = StyleSheet.create({
 	tipDescription: {
 		fontSize: 14,
 		lineHeight: 20,
-		marginBottom: 16,
+		marginTop: 10,
+		marginBottom: 14,
 	},
 	tipButtonsRow: {
 		flexDirection: "row",
@@ -163,6 +190,7 @@ export const styles = StyleSheet.create({
 	actionsContainer: {
 		flexDirection: "row",
 		gap: 12,
+		paddingTop: 4,
 	},
 	actionButton: {
 		flex: 1,
@@ -234,7 +262,7 @@ export function getServiceRatingModalResponsiveStyles(viewportMetrics) {
 			lineHeight: Math.max(23, viewportMetrics.type.titleLineHeight + 1),
 		},
 		feedbackSection: {
-			marginBottom: Math.max(24, viewportMetrics.insets.largeGap),
+			marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
 		},
 		feedbackLabel: {
 			fontSize: Math.max(15, viewportMetrics.type.body),
@@ -242,13 +270,22 @@ export function getServiceRatingModalResponsiveStyles(viewportMetrics) {
 			marginBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
 		},
 		feedbackInput: {
+			marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 5),
 			padding: Math.max(14, viewportMetrics.insets.horizontal - 2),
 			fontSize: Math.max(15, viewportMetrics.type.body),
 			lineHeight: Math.max(21, viewportMetrics.type.bodyLineHeight - 1),
 			borderRadius: Math.max(20, viewportMetrics.radius.card - 2),
 		},
+		collapsibleTitle: {
+			fontSize: Math.max(14, viewportMetrics.type.caption + 2),
+			lineHeight: Math.max(18, viewportMetrics.type.captionLineHeight + 2),
+		},
+		collapsibleMeta: {
+			fontSize: Math.max(12, viewportMetrics.type.caption),
+			lineHeight: Math.max(16, viewportMetrics.type.captionLineHeight + 1),
+		},
 		tipSection: {
-			marginBottom: Math.max(24, viewportMetrics.insets.largeGap),
+			marginBottom: Math.max(12, viewportMetrics.insets.sectionGap),
 		},
 		tipLabel: {
 			fontSize: Math.max(15, viewportMetrics.type.body),
@@ -257,7 +294,8 @@ export function getServiceRatingModalResponsiveStyles(viewportMetrics) {
 		tipDescription: {
 			fontSize: Math.max(13, viewportMetrics.type.caption + 1),
 			lineHeight: Math.max(19, viewportMetrics.type.captionLineHeight + 3),
-			marginBottom: Math.max(14, viewportMetrics.insets.sectionGap),
+			marginTop: Math.max(8, viewportMetrics.insets.sectionGap - 5),
+			marginBottom: Math.max(12, viewportMetrics.insets.sectionGap - 2),
 		},
 		tipButtonsRow: {
 			marginBottom: Math.max(14, viewportMetrics.insets.sectionGap),

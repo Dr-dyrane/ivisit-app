@@ -405,6 +405,7 @@ export default function MapScreen() {
       [openVisitDetail, selectedHistoryVisitKey, visits],
     ),
   });
+
  // TODO: MOVE THIS OUT OF ORCHESTRATOR
   const handleRateHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id || !selectedHistoryVisit?.canRate) return;

@@ -14,9 +14,11 @@ import {
     Modal,
     Animated,
     Pressable,
+    Platform,
     Dimensions,
     StyleSheet,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -117,18 +119,122 @@ export default function UpdateAvailableModal({
     };
 
     const colors = {
-        bg: isDarkMode ? "#111827" : "#FFFFFF",
-        text: isDarkMode ? "#F9FAFB" : "#111827",
-        subtext: isDarkMode ? "#9CA3AF" : "#6B7280",
-        card: isDarkMode ? "#1F2937" : "#F3F4F6",
-        laterBtn: isDarkMode ? "#374151" : "#E5E7EB",
+        bg: isDarkMode ? "rgba(8,15,27,0.92)" : "rgba(255,255,255,0.92)",
+        text: isDarkMode ? "#F8FAFC" : "#0F172A",
+        subtext: isDarkMode ? "rgba(226,232,240,0.72)" : "rgba(71,85,105,0.76)",
+        card: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.06)",
+        laterBtn: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.07)",
+        closeBg: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.64)",
     };
+
+    const modalContent = (
+        <>
+            <View style={styles.indicator} />
+
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close update message"
+                onPress={() => handleDismiss(isCompleted ? onDismiss : onLater)}
+                style={({ pressed }) => [
+                    styles.closeButton,
+                    { backgroundColor: colors.closeBg, opacity: pressed ? 0.72 : 1 },
+                ]}
+            >
+                <Ionicons name="close" size={19} color={colors.text} />
+            </Pressable>
+
+            <View style={styles.content}>
+                <Animated.View
+                    style={[
+                        styles.iconContainer,
+                        {
+                            backgroundColor: isCompleted
+                                ? (isDarkMode ? "rgba(16,185,129,0.16)" : "#D1FAE5")
+                                : colors.card,
+                            transform: [{ scale: pulseAnim }],
+                        },
+                    ]}
+                >
+                    <Ionicons
+                        name={isCompleted ? "checkmark" : "arrow-down-circle"}
+                        size={28}
+                        color={isCompleted ? "#10B981" : COLORS.brandPrimary}
+                    />
+                </Animated.View>
+
+                <Text style={[styles.title, { color: colors.text }]}>
+                    {isCompleted ? "You're up to date" : "Update ready"}
+                </Text>
+
+                <Text style={[styles.description, { color: colors.subtext }]}>
+                    {isCompleted
+                        ? `iVisit is now running version ${VERSION}.`
+                        : "Restart to apply the latest improvements."
+                    }
+                </Text>
+
+                {isCompleted ? (
+                    <Pressable
+                        style={({ pressed }) => [
+                            styles.button,
+                            styles.fullWidthButton,
+                            {
+                                backgroundColor: COLORS.brandPrimary,
+                                opacity: pressed ? 0.9 : 1,
+                                transform: [{ scale: pressed ? 0.98 : 1 }],
+                            },
+                        ]}
+                        onPress={() => handleDismiss(onDismiss || onLater)}
+                    >
+                        <Text style={styles.buttonText}>Done</Text>
+                    </Pressable>
+                ) : (
+                    <View style={styles.actionRow}>
+                        <Pressable
+                            style={({ pressed }) => [
+                                styles.laterButton,
+                                {
+                                    backgroundColor: colors.laterBtn,
+                                    opacity: pressed ? 0.8 : 1,
+                                },
+                            ]}
+                            onPress={() => handleDismiss(onLater)}
+                        >
+                            <Text style={[styles.laterText, { color: colors.text }]}>Later</Text>
+                        </Pressable>
+
+                        <Pressable
+                            style={({ pressed }) => [
+                                styles.button,
+                                {
+                                    backgroundColor: COLORS.brandPrimary,
+                                    opacity: pressed ? 0.9 : 1,
+                                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                                },
+                            ]}
+                            onPress={() => handleDismiss(onRestart)}
+                        >
+                            <Ionicons name="refresh" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                            <Text style={styles.buttonText}>Restart</Text>
+                        </Pressable>
+                    </View>
+                )}
+
+                <Text style={[styles.versionText, { color: colors.subtext }]}>
+                    Version {VERSION}
+                </Text>
+            </View>
+        </>
+    );
 
     return (
         <Modal visible={visible} transparent animationType="none">
             <View style={styles.container}>
                 <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-                    <Pressable style={styles.backdropPress} onPress={() => handleDismiss(onLater)} />
+                    <Pressable
+                        style={styles.backdropPress}
+                        onPress={() => handleDismiss(isCompleted ? onDismiss : onLater)}
+                    />
                 </Animated.View>
 
                 <Animated.View
@@ -137,108 +243,18 @@ export default function UpdateAvailableModal({
                         {
                             transform: [{ translateY: slideAnim }],
                             backgroundColor: colors.bg,
-                            paddingBottom: insets.bottom + 12, // Large bottom padding for premium feel
+                            paddingBottom: insets.bottom + 12,
                         },
                     ]}
                 >
-                    <View style={styles.indicator} />
-
-                    <View style={styles.content}>
-                        {/* Icon with subtle pulse */}
-                        <Animated.View
-                            style={[
-                                styles.iconContainer,
-                                {
-                                    backgroundColor: isCompleted
-                                        ? (isDarkMode ? "#064E3B" : "#D1FAE5")
-                                        : (isDarkMode ? "#374151" : "#E5E7EB"),
-                                    transform: [{ scale: pulseAnim }],
-                                },
-                            ]}
-                        >
-                            <Ionicons
-                                name={isCompleted ? "checkmark-circle" : "sparkles"}
-                                size={32}
-                                color={isCompleted ? "#10B981" : COLORS.brandPrimary}
-                            />
-                        </Animated.View>
-
-                        <Text style={[styles.title, { color: colors.text }]}>
-                            {isCompleted ? "Update Complete" : "Update Ready"}
-                        </Text>
-
-                        <Text style={[styles.description, { color: colors.subtext }]}>
-                            {isCompleted
-                                ? `You're now running the latest version (${VERSION}).`
-                                : "Restart now to apply the latest improvements."
-                            }
-                        </Text>
-
-                        {isCompleted ? (
-                            /* Completed variant: single dismiss button */
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    styles.fullWidthButton,
-                                    {
-                                        backgroundColor: "#10B981",
-                                        opacity: pressed ? 0.9 : 1,
-                                        transform: [{ scale: pressed ? 0.98 : 1 }],
-                                    },
-                                ]}
-                                onPress={() => handleDismiss(onDismiss || onLater)}
-                            >
-                                <Text style={styles.buttonText}>Got it</Text>
-                            </Pressable>
-                        ) : (
-                            /* Available variant: restart/later buttons */
-                            <View className="flex-row items-center w-full" style={{ gap: 12 }}>
-                                {/* Secondary dismiss */}
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.laterButton,
-                                        {
-                                            backgroundColor: colors.laterBtn,
-                                            opacity: pressed ? 0.8 : 1,
-                                        },
-                                    ]}
-                                    onPress={() => handleDismiss(onLater)}
-                                >
-                                    <Text style={[styles.laterText, { color: colors.subtext }]}>Later</Text>
-                                </Pressable>
-
-                                {/* Primary action */}
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.button,
-                                        {
-                                            backgroundColor: COLORS.brandPrimary,
-                                            opacity: pressed ? 0.9 : 1,
-                                            transform: [{ scale: pressed ? 0.98 : 1 }],
-                                        },
-                                    ]}
-                                    onPress={() => handleDismiss(onRestart)}
-                                >
-                                    <Ionicons name="refresh" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                                    <Text style={styles.buttonText}>Restart</Text>
-                                </Pressable>
-                            </View>
-                        )}
-                    </View>
-
-                    <View
-                        style={{
-                            marginBottom: 24,
-                        }}
-                    >
-                        <Text
-                            style={{
-                                color: colors.subtext,
-                                textAlign: "center",
-                                fontSize: 12,
-                            }}
-                        >Version {VERSION}</Text>
-                    </View>
+                    {Platform.OS === "ios" ? (
+                        <BlurView
+                            intensity={isDarkMode ? 42 : 56}
+                            tint={isDarkMode ? "dark" : "light"}
+                            style={StyleSheet.absoluteFill}
+                        />
+                    ) : null}
+                    {modalContent}
                 </Animated.View>
             </View>
         </Modal>
@@ -258,11 +274,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     modalContainer: {
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        padding: 24,
+        borderTopLeftRadius: 34,
+        borderTopRightRadius: 34,
+        padding: 20,
         paddingTop: 12,
-        minHeight: 320,
+        minHeight: 268,
+        overflow: "hidden",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
@@ -272,67 +289,88 @@ const styles = StyleSheet.create({
     indicator: {
         width: 40,
         height: 5,
-        backgroundColor: "#E5E7EB",
+        backgroundColor: "rgba(148,163,184,0.34)",
         borderRadius: 100,
         alignSelf: "center",
-        marginBottom: 24,
+        marginBottom: 16,
+    },
+    closeButton: {
+        position: "absolute",
+        top: 16,
+        right: 18,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 2,
     },
     content: {
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: 0,
     },
     iconContainer: {
-        width: 72,
-        height: 72,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 20,
+        marginBottom: 14,
     },
     title: {
-        fontSize: 24,
-        fontWeight: "800",
-        marginBottom: 12,
+        fontSize: 22,
+        lineHeight: 27,
+        fontWeight: "700",
+        marginBottom: 8,
         textAlign: "center",
-        letterSpacing: -0.5,
     },
     description: {
-        fontSize: 16,
-        lineHeight: 24,
+        fontSize: 14,
+        lineHeight: 20,
         textAlign: "center",
-        marginBottom: 28,
-        paddingHorizontal: 16,
+        marginBottom: 20,
+        paddingHorizontal: 28,
+    },
+    actionRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        width: "100%",
+        gap: 10,
     },
     button: {
         flex: 1,
-        paddingVertical: 16,
-        borderRadius: 16,
+        minHeight: 50,
+        borderRadius: 24,
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",
-        shadowColor: COLORS.brandPrimary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
     buttonText: {
         color: "white",
-        fontSize: 17,
+        fontSize: 15,
+        lineHeight: 19,
         fontWeight: "700",
     },
     laterButton: {
         flex: 1,
-        paddingVertical: 14,
-        borderRadius: 14,
+        minHeight: 50,
+        borderRadius: 24,
         alignItems: "center",
         justifyContent: "center",
     },
     laterText: {
         fontSize: 15,
-        fontWeight: "600",
+        lineHeight: 19,
+        fontWeight: "700",
     },
     fullWidthButton: {
         width: '100%',
+    },
+    versionText: {
+        marginTop: 14,
+        textAlign: "center",
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: "500",
     },
 });

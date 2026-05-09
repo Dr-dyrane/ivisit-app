@@ -85,8 +85,6 @@ export const OTAUpdatesProvider = ({ children }) => {
         setShowSuccessModal(false);
     }, []);
 
-
-
     // Check for updates on mount
     useEffect(() => {
         const timer = setTimeout(() => {

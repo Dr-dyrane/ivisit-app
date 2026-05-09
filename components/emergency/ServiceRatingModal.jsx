@@ -2,6 +2,7 @@
 // Refactored to use StyleSheet instead of Tailwind for web responsiveness
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import React from "react";
 import {
 	View,
 	Text,
@@ -50,6 +51,13 @@ export function ServiceRatingModal({
 	const [walletLoading, setWalletLoading] = useState(false);
 	const [isSkipPending, setIsSkipPending] = useState(false);
 	const [isSubmitPending, setIsSubmitPending] = useState(false);
+	const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+	const [isTipExpanded, setIsTipExpanded] = useState(false);
+	const bodyScrollRef = React.useRef(null);
+	const noteInputRef = React.useRef(null);
+	const customTipInputRef = React.useRef(null);
+	const noteSectionYRef = React.useRef(0);
+	const tipSectionYRef = React.useRef(0);
 
 	// Get responsive viewport metrics
 	const viewportMetrics = useResponsiveSurfaceMetrics({
@@ -75,6 +83,8 @@ export function ServiceRatingModal({
 		setIsCustomTip(false);
 		setIsSkipPending(false);
 		setIsSubmitPending(false);
+		setIsNoteExpanded(false);
+		setIsTipExpanded(false);
 	}, [visible]);
 
 	useEffect(() => {
@@ -224,6 +234,15 @@ export function ServiceRatingModal({
 
 	const stars = useMemo(() => [1, 2, 3, 4, 5], []);
 
+	const noteSummary = comment.trim().length > 0 ? "Added" : "Optional";
+	const tipSummary = currentTipAmount > 0
+		? formatMoney(currentTipAmount, {
+			currency: tipCurrency,
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 2,
+		})
+		: "Optional";
+
 	const getServiceIcon = () => {
 		switch (serviceType) {
 			case "ambulance":
@@ -271,6 +290,36 @@ export function ServiceRatingModal({
 		}
 		void handleSkip();
 	}, [handleSkip, isSkipPending, isSubmitPending, keyboardHeight]);
+
+	const scrollToSection = useCallback((sectionY) => {
+		const y = Math.max(0, Number(sectionY || 0) - 18);
+		requestAnimationFrame(() => {
+			bodyScrollRef.current?.scrollTo?.({ y, animated: true });
+		});
+	}, []);
+
+	const openNoteSection = useCallback(() => {
+		setIsNoteExpanded((current) => {
+			const next = !current;
+			if (next) {
+				scrollToSection(noteSectionYRef.current);
+				setTimeout(() => {
+					noteInputRef.current?.focus?.();
+				}, 260);
+			}
+			return next;
+		});
+	}, [scrollToSection]);
+
+	const openTipSection = useCallback(() => {
+		setIsTipExpanded((current) => {
+			const next = !current;
+			if (next) {
+				scrollToSection(tipSectionYRef.current);
+			}
+			return next;
+		});
+	}, [scrollToSection]);
 
 	// Web ESC key support
 	useEffect(() => {
@@ -443,41 +492,105 @@ export function ServiceRatingModal({
 			</View>
 
 			{/* Feedback Section */}
-			<View style={[styles.feedbackSection, responsiveStyles.feedbackSection]}>
-				<Text
-					style={[
-						styles.feedbackLabel,
-						responsiveStyles.feedbackLabel,
-						{ color: colors.text },
+			<View
+				onLayout={(event) => {
+					noteSectionYRef.current = event?.nativeEvent?.layout?.y || 0;
+				}}
+				style={[styles.feedbackSection, responsiveStyles.feedbackSection]}
+			>
+				<Pressable
+					onPress={openNoteSection}
+					style={({ pressed }) => [
+						styles.collapsibleRow,
+						{ backgroundColor: colors.card, opacity: pressed ? 0.86 : 1 },
 					]}
 				>
-					Add a note
-				</Text>
-				<TextInput
-					value={comment}
-					onChangeText={setComment}
-					placeholder="Add a note"
-					placeholderTextColor={colors.subtext}
-					style={[
-						styles.feedbackInput,
-						responsiveStyles.feedbackInput,
-						{ color: colors.text, backgroundColor: colors.card },
-					]}
-					multiline
-				/>
+					<View style={styles.collapsibleCopy}>
+						<Text
+							style={[
+								styles.collapsibleTitle,
+								responsiveStyles.collapsibleTitle,
+								{ color: colors.text },
+							]}
+						>
+							Add a note
+						</Text>
+						<Text
+							style={[
+								styles.collapsibleMeta,
+								responsiveStyles.collapsibleMeta,
+								{ color: colors.subtext },
+							]}
+						>
+							{noteSummary}
+						</Text>
+					</View>
+					<Ionicons
+						name={isNoteExpanded ? "chevron-up" : "chevron-down"}
+						size={18}
+						color={colors.subtext}
+					/>
+				</Pressable>
+				{isNoteExpanded ? (
+					<TextInput
+						ref={noteInputRef}
+						value={comment}
+						onChangeText={setComment}
+						placeholder="Add a note"
+						placeholderTextColor={colors.subtext}
+						style={[
+							styles.feedbackInput,
+							responsiveStyles.feedbackInput,
+							{ color: colors.text, backgroundColor: colors.card },
+						]}
+						multiline
+					/>
+				) : null}
 			</View>
 
 			{/* Tip Section */}
-			<View style={[styles.tipSection, responsiveStyles.tipSection]}>
-				<Text
-					style={[
-						styles.tipLabel,
-						responsiveStyles.tipLabel,
-						{ color: colors.text },
+			<View
+				onLayout={(event) => {
+					tipSectionYRef.current = event?.nativeEvent?.layout?.y || 0;
+				}}
+				style={[styles.tipSection, responsiveStyles.tipSection]}
+			>
+				<Pressable
+					onPress={openTipSection}
+					style={({ pressed }) => [
+						styles.collapsibleRow,
+						{ backgroundColor: colors.card, opacity: pressed ? 0.86 : 1 },
 					]}
 				>
-					Add a tip (optional)
-				</Text>
+					<View style={styles.collapsibleCopy}>
+						<Text
+							style={[
+								styles.collapsibleTitle,
+								responsiveStyles.collapsibleTitle,
+								{ color: colors.text },
+							]}
+						>
+							Add a tip
+						</Text>
+						<Text
+							style={[
+								styles.collapsibleMeta,
+								responsiveStyles.collapsibleMeta,
+								{ color: colors.subtext },
+							]}
+						>
+							{tipSummary}
+						</Text>
+					</View>
+					<Ionicons
+						name={isTipExpanded ? "chevron-up" : "chevron-down"}
+						size={18}
+						color={colors.subtext}
+					/>
+				</Pressable>
+
+				{isTipExpanded ? (
+					<>
 				<Text
 					style={[
 						styles.tipDescription,
@@ -531,6 +644,10 @@ export function ServiceRatingModal({
 						onPress={() => {
 							setIsCustomTip(true);
 							setSelectedTip(0);
+							scrollToSection(tipSectionYRef.current);
+							setTimeout(() => {
+								customTipInputRef.current?.focus?.();
+							}, 260);
 						}}
 						style={[
 							styles.tipButton,
@@ -556,6 +673,7 @@ export function ServiceRatingModal({
 
 				{isCustomTip && (
 					<TextInput
+						ref={customTipInputRef}
 						value={customTip}
 						onChangeText={setCustomTip}
 						placeholder="Enter tip amount"
@@ -594,9 +712,14 @@ export function ServiceRatingModal({
 						Wallet is low. You can still continue and choose cash or card fallback next.
 					</Text>
 				) : null}
+					</>
+				) : null}
 			</View>
 
-			{/* Actions */}
+		</>
+	);
+
+	const ratingActions = (
 			<View style={[styles.actionsContainer, responsiveStyles.actionsContainer]}>
 				<Pressable
 					onPress={() => {
@@ -670,7 +793,6 @@ export function ServiceRatingModal({
 					</View>
 				</Pressable>
 			</View>
-		</>
 	);
 
 	return (
@@ -686,6 +808,7 @@ export function ServiceRatingModal({
 				preferDrawerPresentation ? "left-drawer" : "bottom-sheet"
 			}
 			scrollEnabled={false}
+			footerSlot={ratingActions}
 			contentContainerStyle={{
 				flex: 1,
 				paddingTop: 8,
@@ -693,9 +816,10 @@ export function ServiceRatingModal({
 		>
 			<KeyboardAvoidingView {...getKeyboardAvoidingViewProps()}>
 				<ScrollView
+					ref={bodyScrollRef}
 					{...getScrollViewProps()}
 					showsVerticalScrollIndicator={false}
-					contentContainerStyle={{ paddingBottom: 8 }}
+					contentContainerStyle={{ paddingBottom: 12 }}
 					keyboardShouldPersistTaps="handled"
 				>
 					{ratingBody}
