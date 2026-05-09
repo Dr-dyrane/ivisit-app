@@ -7,8 +7,7 @@ export const MAP_INTENT_VARIANTS = MAP_VIEWPORT_VARIANTS;
 export const getMapIntentVariant = getMapViewportVariant;
 
 export const MAP_EXPLORE_INTENT_COPY = {
-	SEARCH: "Search care",
-	CHANGE_LOCATION_HINT: "| Change location",
+	SEARCH: "iVisit Maps",
 	TERMS: "Terms of Service",
 	NEAREST_HOSPITAL: "Nearby now",
 	NEARBY_CARE: "Nearby care",

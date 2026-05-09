@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { database, StorageKeys } from "../database";
+import { isAddressValid, calculateAddressQuality } from "../utils/addressQualityValidator";
 
 const STORAGE_KEY = StorageKeys.LOCATION_CACHE;
 
@@ -17,6 +18,7 @@ const createInitialState = () => ({
   userLocationSource: null,
   locationPermission: null,
   isTrackingLocation: false,
+  savedLocations: [],
 });
 
 let hydrationPromise = null;
@@ -95,6 +97,67 @@ export const useLocationStore = create(
       });
     },
 
+    // Saved locations CRUD
+    setSavedLocations: (locations) => {
+      set((state) => {
+        state.savedLocations = Array.isArray(locations) ? locations : [];
+      });
+    },
+
+    addSavedLocation: (location) => {
+      set((state) => {
+        const newLocation = {
+          id: location?.id || `loc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          label: location?.label || 'other',
+          address: location?.address || '',
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          countryCode: location?.countryCode || null,
+          createdAt: location?.createdAt || Date.now(),
+        };
+
+        // Validate address quality before saving
+        const quality = calculateAddressQuality(newLocation.address);
+        if (!quality.isValid) {
+          console.warn(
+            `[LocationStore] Low quality address rejected: "${newLocation.address}"`,
+            `Score: ${quality.score}, Issues: ${quality.issues.join(', ')}`
+          );
+          // Don't save low-quality addresses
+          return;
+        }
+
+        // Prevent duplicates by address
+        const exists = state.savedLocations.some(
+          (loc) => loc.address?.toLowerCase() === newLocation.address?.toLowerCase()
+        );
+        if (!exists) {
+          state.savedLocations = [newLocation, ...state.savedLocations].slice(0, 20); // Max 20 saved locations
+        }
+      });
+    },
+
+    removeSavedLocation: (id) => {
+      set((state) => {
+        state.savedLocations = state.savedLocations.filter((loc) => loc.id !== id);
+      });
+    },
+
+    updateSavedLocation: (id, patch) => {
+      set((state) => {
+        const index = state.savedLocations.findIndex((loc) => loc.id === id);
+        if (index !== -1) {
+          Object.assign(state.savedLocations[index], patch);
+        }
+      });
+    },
+
+    clearSavedLocations: () => {
+      set((state) => {
+        state.savedLocations = [];
+      });
+    },
+
     hydrate: async () => {
       if (hydrationPromise) return hydrationPromise;
 
@@ -107,12 +170,16 @@ export const useLocationStore = create(
               : hydratedLocation
                 ? "persisted"
                 : null;
+          const hydratedSavedLocations = Array.isArray(saved.savedLocations)
+            ? saved.savedLocations
+            : [];
           set((state) => {
             state.userLocation = hydratedLocation ?? state.userLocation;
             state.userLocationSource =
               hydratedSource ?? state.userLocationSource;
             state.locationPermission =
               saved.locationPermission ?? state.locationPermission;
+            state.savedLocations = hydratedSavedLocations;
           });
         }
         set((state) => {
@@ -132,6 +199,7 @@ useLocationStore.subscribe((state) => {
     userLocation: state.userLocation,
     userLocationSource: state.userLocationSource,
     locationPermission: state.locationPermission,
+    savedLocations: state.savedLocations,
   });
 });
 

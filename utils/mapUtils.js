@@ -134,3 +134,27 @@ export const formatDistance = (meters) => {
 	}
 	return `${Math.round(meters)} m`;
 };
+
+/**
+ * Check if two locations are within a certain distance of each other
+ * @param {Object} loc1 - First location with lat/latitude and lng/longitude
+ * @param {Object} loc2 - Second location with lat/latitude and lng/longitude  
+ * @param {number} thresholdMeters - Distance threshold in meters (default 150m)
+ * @returns {boolean} True if locations are within threshold
+ */
+export const areLocationsNearby = (loc1, loc2, thresholdMeters = 150) => {
+	if (!loc1 || !loc2) return false;
+
+	const lat1 = loc1.latitude ?? loc1.lat;
+	const lng1 = loc1.longitude ?? loc1.lng;
+	const lat2 = loc2.latitude ?? loc2.lat;
+	const lng2 = loc2.longitude ?? loc2.lng;
+
+	if (!Number.isFinite(lat1) || !Number.isFinite(lng1) ||
+		!Number.isFinite(lat2) || !Number.isFinite(lng2)) {
+		return false;
+	}
+
+	const distance = calculateDistance(lat1, lng1, lat2, lng2);
+	return distance <= thresholdMeters;
+};

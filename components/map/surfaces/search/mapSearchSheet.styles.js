@@ -16,32 +16,24 @@ export const styles = StyleSheet.create({
 		marginTop: 0,
 		marginBottom: 0,
 	},
-	modeSwitchRow: {
-		flexDirection: "row",
-		gap: 10,
-	},
-	modeChip: {
-		flex: 1,
-		minHeight: 44,
-		paddingHorizontal: 14,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		gap: 8,
-		...squircle(16),
-	},
-	modeChipLabel: {
-		fontSize: 14,
-		lineHeight: 18,
-		fontWeight: "700",
-	},
 	section: {
 		gap: 12,
 	},
+	sectionHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingHorizontal: 4,
+	},
 	sectionTitle: {
-		fontSize: 18,
+		fontSize: 13,
 		lineHeight: 22,
-		fontWeight: "700",
+		fontWeight: "600",
+	},
+	clearText: {
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "500",
 	},
 	chipWrap: {
 		flexDirection: "row",
@@ -65,7 +57,14 @@ export const styles = StyleSheet.create({
 	},
 	resultGroup: {
 		overflow: "hidden",
-		...squircle(28),
+		// Glass-style shadow for depth (backgroundColor comes from model's groupedSurface)
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.08,
+		shadowRadius: 16,
+		shadowOffset: { width: 0, height: 4 },
+		elevation: 2,
+		// 3xl roundness (30px = MAP_SHEET_CARD_RADIUS)
+		...squircle(30),
 	},
 	resultRow: {
 		paddingHorizontal: 14,
@@ -213,6 +212,26 @@ export const styles = StyleSheet.create({
 		lineHeight: 18,
 		fontWeight: "400",
 	},
+	venueChip: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		...squircle(20),
+	},
+	venueChipLabel: {
+		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "500",
+	},
+	venueRow: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 8,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+	},
 });
 
 export function getMapSearchSheetResponsiveStyles(viewportMetrics) {
@@ -222,25 +241,19 @@ export function getMapSearchSheetResponsiveStyles(viewportMetrics) {
 			paddingBottom: Math.max(10, viewportMetrics.insets.sectionGap - 2),
 			gap: viewportMetrics.insets.largeGap,
 		},
-		modeSwitchRow: {
-			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
-		},
-		modeChip: {
-			minHeight: Math.max(42, viewportMetrics.cta.secondaryHeight - 4),
-			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
-			gap: Math.max(7, Math.round(viewportMetrics.insets.sectionGap * 0.62)),
-			borderRadius: viewportMetrics.radius.chip,
-		},
-		modeChipLabel: {
-			fontSize: Math.max(13, viewportMetrics.type.caption + 1),
-			lineHeight: Math.max(17, viewportMetrics.type.captionLineHeight + 1),
-		},
 		section: {
 			gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
+		},
+		sectionHeader: {
+			paddingHorizontal: Math.max(4, viewportMetrics.insets.horizontal - 10),
 		},
 		sectionTitle: {
 			fontSize: Math.max(16, viewportMetrics.type.title),
 			lineHeight: viewportMetrics.type.titleLineHeight,
+		},
+		clearText: {
+			fontSize: Math.max(14, viewportMetrics.type.caption + 1),
+			lineHeight: Math.max(18, viewportMetrics.type.captionLineHeight + 1),
 		},
 		chipWrap: {
 			gap: Math.max(8, viewportMetrics.insets.sectionGap - 4),
@@ -343,6 +356,20 @@ export function getMapSearchSheetResponsiveStyles(viewportMetrics) {
 		loadingText: {
 			fontSize: viewportMetrics.type.caption + 1,
 			lineHeight: viewportMetrics.type.captionLineHeight + 2,
+		},
+		venueChip: {
+			paddingHorizontal: Math.max(11, viewportMetrics.insets.horizontal - 3),
+			paddingVertical: Math.max(7, viewportMetrics.insets.sectionGap - 5),
+			borderRadius: Math.max(18, viewportMetrics.radius.chip - 2),
+		},
+		venueChipLabel: {
+			fontSize: Math.max(12, viewportMetrics.type.caption),
+			lineHeight: Math.max(15, viewportMetrics.type.captionLineHeight - 3),
+		},
+		venueRow: {
+			gap: Math.max(7, viewportMetrics.insets.sectionGap - 5),
+			paddingHorizontal: Math.max(13, viewportMetrics.insets.horizontal - 1),
+			paddingVertical: Math.max(10, viewportMetrics.insets.sectionGap - 2),
 		},
 	};
 }

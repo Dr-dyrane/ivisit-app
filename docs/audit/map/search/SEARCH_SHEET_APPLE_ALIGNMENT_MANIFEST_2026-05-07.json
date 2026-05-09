@@ -1,0 +1,419 @@
+{
+  "auditId": "SEARCH_SHEET_APPLE_ALIGNMENT_2026-05-07",
+  "title": "Search Sheet Apple Alignment Manifest",
+  "scope": "Map search sheet UI/UX alignment with Apple HIG and iVisit UI Rules",
+  "relatedAudit": "SEARCH_SHEET_APPLE_ALIGNMENT_AUDIT_2026-05-07.md",
+  "timestamp": "2026-05-07T23:57:00Z",
+  "status": "approved",
+  "priority": "p1",
+  
+  "currentState": {
+    "grade": "D+",
+    "score": 5.4,
+    "cognitiveLoad": "high",
+    "violations": [
+      {
+        "rule": "iVisit UI Rules: Prefer removal over addition",
+        "severity": "critical",
+        "current": "7 visible actions/sections",
+        "target": "3 maximum"
+      },
+      {
+        "rule": "iVisit UI Rules: Show only what is needed",
+        "severity": "critical",
+        "current": "Nearby now always visible",
+        "target": "Progressive disclosure"
+      },
+      {
+        "rule": "Apple HIG: Single primary action",
+        "severity": "critical",
+        "current": "Mode chips compete for attention",
+        "target": "One clear hero action"
+      },
+      {
+        "rule": "Apple HIG: Progressive disclosure",
+        "severity": "critical",
+        "current": "All sections visible on open",
+        "target": "Show only needed now"
+      },
+      {
+        "rule": "Apple HIG: Typography hierarchy",
+        "severity": "medium",
+        "current": "Section titles 18px/700",
+        "target": "13px/600 uppercase"
+      },
+      {
+        "rule": "iVisit UI Rules: Prioritize stressed users",
+        "severity": "critical",
+        "current": "Decision-heavy UI",
+        "target": "Calm, reduced-density"
+      }
+    ]
+  },
+  
+  "targetState": {
+    "grade": "B+",
+    "score": 8.5,
+    "cognitiveLoad": "low",
+    "principles": [
+      "Single primary action per context",
+      "Context-appropriate defaults",
+      "Progressive disclosure reveals depth",
+      "Typography creates clear hierarchy",
+      "Motion explains state changes",
+      "Calm confidence in emergency context"
+    ]
+  },
+  
+  "implementationPlan": {
+    "pass1": {
+      "name": "Foundation",
+      "duration": "Week 1",
+      "goal": "Add missing critical features",
+      "guardrails": {
+        "fourTracks": {
+          "stateManagement": "L5/UI only - savedLocations, showNearbyHospitals as UI state",
+          "uiQuality": "Apple HIG alignment - typography, spacing, mode chip removal",
+          "dryModular": "Extract RecentQueryRow, SavedLocationChip components",
+          "documentation": "Intent in this audit; outcome recorded post-pass"
+        },
+        "useEffectRule": "No new useEffect calls - all changes presentational",
+        "layerCompliance": "L5 (Jotai/UI) only - no L1-L4 changes"
+      },
+      "deliverables": [
+        {
+          "id": "p1-1",
+          "title": "Add Saved Locations (Home/Work)",
+          "description": "Pull from user profile saved addresses, show at top of search sheet, one-tap selection",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx",
+            "hooks/map/exploreFlow/useMapSearchSheetModel.js"
+          ],
+          "dependencies": ["Profile saved addresses integration"],
+          "effort": "6 hours",
+          "acceptance": "Home/Work visible at top if saved, tap to select"
+        },
+        {
+          "id": "p1-2",
+          "title": "Timestamp context for recent searches",
+          "description": "Convert chips to rows, show '2 hours ago', 'Yesterday', 44px touch targets",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx",
+            "components/map/surfaces/search/mapSearchSheet.styles.js"
+          ],
+          "effort": "4 hours",
+          "acceptance": "Recent as rows with timestamps, easy to tap"
+        },
+        {
+          "id": "p1-3",
+          "title": "Remove mode chips from default view",
+          "description": "Auto-select mode based on entry point, hide chips from default UI",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx"
+          ],
+          "effort": "2 hours",
+          "acceptance": "No mode chips visible, mode selected automatically"
+        }
+      ],
+      "successMetrics": {
+        "savedLocationsAvailable": true,
+        "recentAsRows": true,
+        "noModeChips": true
+      }
+    },
+    
+    "pass2": {
+      "name": "Enhance",
+      "duration": "Week 2",
+      "goal": "Hospital-specific and management features",
+      "guardrails": {
+        "fourTracks": {
+          "stateManagement": "L3 (SearchContext) - recentQueries management via existing pattern",
+          "uiQuality": "Venue suggestions - hospital entrance types, visual hierarchy",
+          "dryModular": "Extract buildVenueSuggestions() helper",
+          "documentation": "Post-pass outcome documentation"
+        },
+        "useEffectRule": "Follow existing SearchContext patterns",
+        "layerCompliance": "L3 (Zustand/Context) for search management, L5 for UI"
+      },
+      "deliverables": [
+        {
+          "id": "p2-1",
+          "title": "Hospital-specific venue suggestions",
+          "description": "Emergency Entrance, Main Entrance, Visitor Parking with icons, contextual to selected hospital",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx",
+            "components/map/surfaces/search/mapSearchSheet.helpers.js"
+          ],
+          "effort": "8 hours",
+          "acceptance": "Venue suggestions appear for hospitals with entrance types"
+        },
+        {
+          "id": "p2-2",
+          "title": "Enhanced recent search management",
+          "description": "Swipe to delete individual items, Clear all action, confirmation for bulk",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx",
+            "contexts/SearchContext.jsx"
+          ],
+          "effort": "6 hours",
+          "acceptance": "Users can delete individual or all recent searches"
+        },
+        {
+          "id": "p2-3",
+          "title": "Improve empty state copy",
+          "description": "Clear question 'Where should we pick you up?', primary CTA, secondary fallback",
+          "files": [
+            "components/map/surfaces/search/MapSearchSheetSections.jsx"
+          ],
+          "effort": "2 hours",
+          "acceptance": "Empty state guides action clearly"
+        }
+      ],
+      "successMetrics": {
+        "venueSuggestionsAvailable": true,
+        "searchManagement": true,
+        "clearEmptyState": true
+      }
+    },
+    
+    "pass3": {
+      "name": "Future",
+      "duration": "Weeks 3-4",
+      "goal": "Advanced interactions",
+      "status": "deferred",
+      "guardrails": {
+        "fourTracks": {
+          "stateManagement": "L2 (TanStack Query) for geocoding, L5 for drag state",
+          "uiQuality": "Map-first UX - requires user testing",
+          "dryModular": "DraggablePickupMap as reusable component",
+          "documentation": "Postponed until infrastructure ready"
+        },
+        "useEffectRule": "Map animations as real side-effects",
+        "layerCompliance": "L2 (Query) for reverse geocoding"
+      },
+      "deliverables": [
+        {
+          "id": "p3-1",
+          "title": "Map pin drag interaction",
+          "description": "Mini-map in search sheet, draggable pickup pin, real-time reverse-geocoding",
+          "files": [
+            "components/map/surfaces/search/DraggablePickupMap.jsx (new)",
+            "components/map/surfaces/search/MapSearchSheetSections.jsx"
+          ],
+          "effort": "16 hours",
+          "acceptance": "Visual map selection with draggable pin"
+        },
+        {
+          "id": "p3-2",
+          "title": "ML-powered smart defaults",
+          "description": "Learn from usage patterns, time-based suggestions, context-aware defaults",
+          "files": [
+            "hooks/map/exploreFlow/useMapSearchSheetModel.js",
+            "services/analyticsService.js"
+          ],
+          "dependencies": ["Analytics pipeline", "ML infrastructure"],
+          "effort": "24 hours",
+          "acceptance": "Smart suggestions based on time/context",
+          "deferred": true
+        }
+      ],
+      "successMetrics": {
+        "mapFirstSelection": true,
+        "smartDefaults": false
+      }
+    }
+  },
+  
+  "userFlowAnalysis": {
+    "scenarios": [
+      {
+        "id": "location-off",
+        "question": "I turn off my location to access iVisit, what happens?",
+        "currentBehavior": {
+          "steps": [
+            "App detects location services disabled",
+            "Shows 'Set pickup area' card in explore intent",
+            "Auto-opens search sheet in LOCATION mode",
+            "User sees: 'Turn on location or search manually'"
+          ],
+          "codePaths": [
+            "useMapLoadingState.js:42 - isLocationOffTerminal detected",
+            "useMapExploreFlow.js:517-521 - Auto-opens search sheet",
+            "MapExploreIntentHospitalSummaryCard.jsx:191-204 - Shows location setup card"
+          ],
+          "gaps": [
+            "No visual onboarding - dropped into search sheet without context",
+            "Turn on location button buried in card, not prominent",
+            "No explanation WHY location is needed"
+          ]
+        },
+        "recommendation": "Add full-screen onboarding explaining location value before forcing search sheet"
+      },
+      {
+        "id": "permission-denied",
+        "question": "I mistakenly deny location permission, what's my fate?",
+        "currentBehavior": {
+          "steps": [
+            "Permission denied on first launch",
+            "App shows 'Set pickup area' flow",
+            "Can proceed with manual location forever",
+            "No persistent reminder or re-prompt"
+          ],
+          "codePaths": [
+            "useMapLocation.js:83-85 - shouldOpenSettings when permission denied",
+            "useMapLocation.js:147-148 - Turn on location action label"
+          ],
+          "gaps": [
+            "No explanation of what user is missing",
+            "No re-prompt strategy (ever)",
+            "Turn on location sounds optional, not recommended"
+          ]
+        },
+        "recommendation": "Contextual upsell with value prop, periodic gentle reminders"
+      },
+      {
+        "id": "first-timer-change-location",
+        "question": "I want to change location in explore intent. First timer, no guide. Where do I go?",
+        "currentBehavior": {
+          "steps": [
+            "Sees 'iVisit Maps' search pill",
+            "Taps pill → Opens search sheet",
+            "Sees mode chips: [Find care] [Set pickup]",
+            "Must decide which mode",
+            "No clear 'Change pickup' affordance"
+          ],
+          "codePaths": [
+            "MapExploreIntentStageParts.jsx:45-93 - Search pill with 'iVisit Maps' text",
+            "MapSearchSheetSections.jsx:302-327 - Mode chips"
+          ],
+          "gaps": [
+            "Search pill text doesn't suggest location change",
+            "Mode chips require decision",
+            "No direct Change location action visible",
+            "Current location row looks like info, not action"
+          ]
+        },
+        "recommendation": "Search pill: '📍 Current Location' (tap to change), remove mode chips"
+      }
+    ]
+  },
+  
+  "guardrails": {
+    "uiRules": {
+      "reference": "ivisit/ui-rules.json v2.1",
+      "principles": [
+        "Reduce cognitive load",
+        "Prefer removal over addition",
+        "Show only what is needed",
+        "Make the next step unmistakable",
+        "Prioritize stressed users"
+      ]
+    },
+    "appleHIG": {
+      "reference": "Apple Human Interface Guidelines",
+      "principles": [
+        "Progressive disclosure",
+        "Single primary action per screen",
+        "Spatial continuity",
+        "Minimum 44px touch targets",
+        "Dynamic type support"
+      ]
+    },
+    "designTone": [
+      "minimal",
+      "calm",
+      "high-clarity",
+      "urgent-but-calm"
+    ]
+  },
+  
+  "filesAffected": {
+    "components": [
+      "components/map/surfaces/search/MapSearchSheetSections.jsx",
+      "components/map/surfaces/search/MapSearchSheet.jsx",
+      "components/map/surfaces/search/mapSearchSheet.styles.js",
+      "components/map/surfaces/search/useMapSearchSheetModel.js",
+      "components/map/surfaces/search/mapSearchSheet.helpers.js"
+    ],
+    "hooks": [
+      "hooks/map/exploreFlow/useMapLocation.js",
+      "hooks/map/exploreFlow/mapExploreFlow.transitions.js"
+    ],
+    "contexts": [
+      "contexts/SearchContext.jsx"
+    ],
+    "new": [
+      "components/map/surfaces/search/DraggablePickupMap.jsx"
+    ]
+  },
+  
+  "metrics": {
+    "current": {
+      "grade": "D+",
+      "score": 5.4,
+      "cognitiveLoad": 7,
+      "decisionPoints": 4,
+      "visibleElements": 7,
+      "timeToChangeLocation": "8-12 seconds"
+    },
+    "target": {
+      "grade": "B+",
+      "score": 8.5,
+      "cognitiveLoad": 3,
+      "decisionPoints": 1,
+      "visibleElements": 3,
+      "timeToChangeLocation": "4-6 seconds"
+    }
+  },
+  
+  "competitiveBenchmark": {
+    "uber": {
+      "strengths": ["Edit button discoverability", "Saved locations"],
+      "score": 8.2
+    },
+    "lyft": {
+      "strengths": ["Drag pin interaction", "Material Design award"],
+      "score": 8.5
+    },
+    "bolt": {
+      "strengths": ["Address bar familiarity"],
+      "score": 7.5
+    },
+    "appleMaps": {
+      "strengths": ["Map-first", "Minimal chrome", "Calm confidence"],
+      "score": 9.2
+    },
+    "ivisitTarget": 8.5
+  },
+  
+  "risks": {
+    "low": [
+      "Typography changes may feel too small initially",
+      "Users may miss mode chips if muscle memory exists"
+    ],
+    "medium": [
+      "Saved locations require profile integration dependency",
+      "Map-first selection adds complexity"
+    ],
+    "mitigation": [
+      "A/B test typography with beta users",
+      "Provide migration guide if mode chips removed",
+      "Phase 4 (Advanced) can be deferred if dependencies block"
+    ]
+  },
+  
+  "approval": {
+    "auditComplete": true,
+    "planApproved": true,
+    "readyForImplementation": true,
+    "startPass": "pass1",
+    "estimatedCompletion": "2026-06-04",
+    "workflow": {
+      "requireUserConfirmationBeforeChanges": true,
+      "requireUserConfirmationBeforeCommits": true,
+      "discussEachPassBeforeStarting": true,
+      "noSilentCommits": true
+    }
+  }
+}

@@ -68,28 +68,16 @@ export function MapExploreIntentTopRow({
 					}
 					color={tokens.titleColor}
 				/>
-				<View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-					<Text
-						style={[
-							styles.searchText,
-							responsiveMetrics?.topRow?.searchTextStyle,
-							{ color: tokens.mutedText },
-						]}
-						numberOfLines={1}
-					>
-						{MAP_EXPLORE_INTENT_COPY.SEARCH}
-					</Text>
-					<Text
-						style={[
-							styles.searchText,
-							responsiveMetrics?.topRow?.searchTextStyle,
-							{ color: tokens.mutedText, opacity: 0.64 },
-						]}
-						numberOfLines={1}
-					>
-						{MAP_EXPLORE_INTENT_COPY.CHANGE_LOCATION_HINT}
-					</Text>
-				</View>
+				<Text
+					style={[
+						styles.searchText,
+						responsiveMetrics?.topRow?.searchTextStyle,
+						{ color: tokens.mutedText },
+					]}
+					numberOfLines={1}
+				>
+					{MAP_EXPLORE_INTENT_COPY.SEARCH}
+				</Text>
 			</Pressable>
 
 			<MapExploreIntentProfileTrigger

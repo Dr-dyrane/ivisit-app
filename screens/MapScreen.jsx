@@ -104,6 +104,7 @@ export default function MapScreen() {
     nearestSummaryHospitalMeta,
     nearestHospital,
     nearestHospitalMeta,
+    trueNearestHospital,
     nearbyBedHospitals,
     nearbyHospitalCount,
     openSearchSheet,
@@ -612,7 +613,7 @@ export default function MapScreen() {
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}
           selectedHospitalId={mapFocusedHospitalId}
-          recommendedHospitalId={nearestHospital?.id || null}
+          recommendedHospitalId={trueNearestHospital?.id || null}
           featuredHospital={featuredHospital}
           sheetPayload={sheetPayload}
           activeMapRequest={activeMapRequest}

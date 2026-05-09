@@ -4,6 +4,19 @@ Audits for map screen, tracking sheet, visit detail, routing, and related flows.
 
 ## Files
 
+### Search Audits (`search/`)
+
+Unified search sheet, saved locations, and location-search integration audits.
+
+- `search/SEARCH_SHEET_APPLE_ALIGNMENT_AUDIT_2026-05-07.md` - Comprehensive audit for search sheet UI/UX alignment with Apple HIG and iVisit UI Rules v2.1. Includes user flow analysis for location-off, permission-denied, and first-timer scenarios.
+- `search/SEARCH_SHEET_APPLE_ALIGNMENT_MANIFEST_2026-05-07.json` - Machine-readable implementation manifest with 3-phase plan (Foundation/Enhance/Future), deliverables, and user flow scenarios.
+- `search/SEARCH_SHEET_APPLE_ALIGNMENT_VALIDATION_2026-05-08.md` - Validation report confirming audit soundness against REFACTORING_GUARDRAILS.md, docs authority hierarchy, and historical audit patterns. Grade: A+ (9.9/10).
+- `search/SAVED_LOCATIONS_DB_AUDIT_2026-05-08.md` - Database vs Zustand analysis for saved locations. Recommends `locationStore` extension over DB migration.
+- `search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture audit. Maps GPS → Search → Pickup flow.
+- `search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Complete search state flow from context → model → UI. Recommends mode chip removal.
+
+### Map & Location Audits
+
 - `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` - Mixed-owner worktree checkpoint for Pass 18 with implemented-vs-needed status and deterministic staging buckets.
 - `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.json` - Machine-readable Pass 18 worktree checkpoint and git-update bucket manifest.
 - `NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md` - Audit for why a far hospital can beat a closer Lagos hospital and why current "nearby" semantics are false.

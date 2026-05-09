@@ -3,6 +3,7 @@ import { useEmergencyContactsBootstrap } from "../hooks/emergency/useEmergencyCo
 import { useMapRouteBootstrap } from "../hooks/emergency/useMapRouteBootstrap";
 import { useMedicalProfileBootstrap } from "../hooks/medicalProfile/useMedicalProfileBootstrap";
 import { useNotificationsBootstrap } from "../hooks/notifications/useNotificationsBootstrap";
+import { useSavedLocationsBootstrap } from "../hooks/map/useSavedLocationsBootstrap";
 import { useVisitsBootstrap } from "../hooks/visits/useVisitsBootstrap";
 
 /**
@@ -14,6 +15,7 @@ import { useVisitsBootstrap } from "../hooks/visits/useVisitsBootstrap";
 export function RootBootstrapEffects() {
   useEmergencyContactsBootstrap();
   useNotificationsBootstrap();
+  useSavedLocationsBootstrap();
   useVisitsBootstrap();
   useMedicalProfileBootstrap();
   useMapRouteBootstrap();

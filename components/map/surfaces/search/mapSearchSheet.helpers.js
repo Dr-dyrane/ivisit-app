@@ -1,3 +1,5 @@
+// DEPRECATED: Mode switching removed in p3-1, kept for backward compatibility with mapExploreFlow.store.js
+// TODO: Remove after migrating mapExploreFlow.store.js to unified search model
 export const MAP_SEARCH_SHEET_MODES = Object.freeze({
 	SEARCH: "search",
 	LOCATION: "location",
@@ -133,6 +135,47 @@ export function buildLocalPopularSearches(hospitals, limit = 5) {
 	}
 
 	return ranked;
+}
+
+/**
+ * Build venue suggestions for a selected hospital
+ * Returns contextual entrance/parking options with icons
+ */
+export function buildVenueSuggestions(hospital) {
+	if (!hospital?.id) return [];
+
+	const isEmergency = hospital?.emergencyLevel === 'level_1' || 
+		hospital?.type === 'emergency' ||
+		hospital?.features?.includes('emergency');
+
+	const venues = [
+		{
+			id: `${hospital.id}_main`,
+			label: 'Main Entrance',
+			icon: 'business-outline',
+			type: 'entrance',
+			priority: 1,
+		},
+		{
+			id: `${hospital.id}_emergency`,
+			label: 'Emergency Entrance',
+			icon: 'medical-outline',
+			type: 'emergency',
+			priority: isEmergency ? 0 : 2, // Higher priority for emergency hospitals
+		},
+		{
+			id: `${hospital.id}_parking`,
+			label: 'Visitor Parking',
+			icon: 'car-outline',
+			type: 'parking',
+			priority: 3,
+		},
+	];
+
+	// Sort by priority and filter based on hospital context
+	return venues
+		.sort((a, b) => a.priority - b.priority)
+		.slice(0, isEmergency ? 3 : 2); // Show all 3 for emergency hospitals, 2 for others
 }
 
 export function scoreHospitalMatch(query, hospital) {

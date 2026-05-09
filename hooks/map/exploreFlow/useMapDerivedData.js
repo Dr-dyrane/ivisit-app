@@ -73,6 +73,18 @@ export function useMapDerivedData({
     [activeLocation, discoveredHospitals, localNearbyHospitals, selectedHospital],
   );
 
+  // True nearest for recommendation badge (ignores selection)
+  const trueNearestHospital = useMemo(
+    () =>
+      getNearestHospital(
+        null, // Don't consider selected hospital
+        localNearbyHospitals,
+        discoveredHospitals,
+        activeLocation,
+      ),
+    [activeLocation, discoveredHospitals, localNearbyHospitals],
+  );
+
   const nearestSummaryHospital = useMemo(
     () =>
       getNearestHospital(
@@ -158,6 +170,7 @@ export function useMapDerivedData({
     nearbyBedHospitals,
     featuredHospitals,
     recentVisits,
+    trueNearestHospital,
     activeMapRequest,
   };
 }

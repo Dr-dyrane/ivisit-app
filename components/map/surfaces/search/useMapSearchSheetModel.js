@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { useGlobalLocation } from "../../../../contexts/GlobalLocationContext";
 import { useSearch } from "../../../../contexts/SearchContext";
+import { useLocationStore } from "../../../../stores/locationStore";
 import mapboxService from "../../../../services/mapboxService";
+import { areLocationsNearby } from "../../../../utils/mapUtils";
 import {
 	buildHospitalMeta,
 	buildHospitalSubtitle,
@@ -9,14 +12,37 @@ import {
 	buildTrendingSubtitle,
 	humanizeQueryLabel,
 	mapSuggestionToLocation,
-	MAP_SEARCH_SHEET_MODES,
 	normalizeText,
 	scoreHospitalMatch,
 } from "./mapSearchSheet.helpers";
 
+// Query type detection for smart result ordering
+const ADDRESS_INDICATORS = [
+	/\d+/, // Contains numbers (street address)
+	/\b(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|ct|court|cir|circle|way|pl|place|trl|trail|hwy|highway)\b/i, // Street types
+	/\b\d{5}\b/, // Zip code
+	/\b(apt|suite|unit|#)\b/i, // Apartment/unit
+];
+
+const CARE_INDICATORS = [
+	/\b(hospital|clinic|urgent|emergency|er|care|medical|health|doctor|dr\.?|pediatric|cardiac|ortho|dental|vet|veterinary)\b/i,
+	/\b(urgent care|emergency room|walk-in|primary care|specialist)\b/i,
+];
+
+function detectQueryIntent(query) {
+	if (!query || query.length < 2) return "neutral";
+	const lower = query.toLowerCase();
+
+	const addressScore = ADDRESS_INDICATORS.filter((r) => r.test(lower)).length;
+	const careScore = CARE_INDICATORS.filter((r) => r.test(lower)).length;
+
+	if (addressScore > careScore) return "location";
+	if (careScore > addressScore) return "hospital";
+	return "neutral";
+}
+
 export function useMapSearchSheetModel({
 	visible,
-	mode = MAP_SEARCH_SHEET_MODES.SEARCH,
 	hospitals = [],
 	selectedHospitalId = null,
 	currentLocation = null,
@@ -26,6 +52,7 @@ export function useMapSearchSheetModel({
 	onUseCurrentLocation,
 	onSelectLocation,
 }) {
+	// Unified search model - no mode switching (mode chips removed per p3-1)
 	const { isDarkMode } = useTheme();
 	const {
 		query,
@@ -39,29 +66,36 @@ export function useMapSearchSheetModel({
 	const [isSearchingLocations, setIsSearchingLocations] = useState(false);
 	const [isResolvingLocation, setIsResolvingLocation] = useState(null);
 	const [locationError, setLocationError] = useState(null);
-	const [activeMode, setActiveMode] = useState(mode);
+	const [showNearbyHospitals, setShowNearbyHospitals] = useState(false);
 	const [isDismissing, setIsDismissing] = useState(false);
+	const [showClearConfirm, setShowClearConfirm] = useState(false);
 	const requestIdRef = useRef(0);
 	const sessionTokenRef = useRef(null);
 
-	const isLocationMode = activeMode === MAP_SEARCH_SHEET_MODES.LOCATION;
+	// Get saved locations from store
+	const savedLocations = useLocationStore((state) => state.savedLocations || []);
+	const { clearHistory } = useSearch();
 	const titleColor = isDarkMode ? "#F8FAFC" : "#0F172A";
 	const mutedColor = isDarkMode ? "#94A3B8" : "#64748B";
-	const groupedSurface = isDarkMode ? "rgba(255,255,255,0.055)" : "rgba(15,23,42,0.045)";
-	const cardSurface = isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.94)";
-	const activeChipSurface = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.98)";
-	const rowDividerColor = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)";
+	// Glass-style surfaces for better legibility (matching payment sheet)
+	const groupedSurface = isDarkMode
+		? "rgba(30, 41, 59, 0.72)"  // Dark: higher opacity for readability
+		: "rgba(255, 255, 255, 0.72)"; // Light: glass effect
+	const cardSurface = isDarkMode
+		? "rgba(30, 41, 59, 0.84)"
+		: "rgba(255, 255, 255, 0.94)";
+	const activeChipSurface = isDarkMode
+		? "rgba(51, 65, 85, 0.90)"
+		: "rgba(255, 255, 255, 0.98)";
+	const rowDividerColor = isDarkMode
+		? "rgba(255, 255, 255, 0.10)"
+		: "rgba(15, 23, 42, 0.08)";
 	const hasQuery = typeof query === "string" && query.trim().length > 0;
 	const trimmedQuery = String(query || "").trim();
 	const requiresLocationSelection = Boolean(currentLocation?.requiresLocationSelection);
-	const currentLocationActionLabel =
-		currentLocation?.useCurrentLocationActionLabel ||
-		(requiresLocationSelection ? "Turn on location" : "Use device location");
 	const manualEntryActionLabel =
 		currentLocation?.manualEntryActionLabel || "Enter address manually";
-	const searchPlaceholder = isLocationMode
-		? currentLocation?.searchPlaceholder || "Search address or area"
-		: "Search hospitals, specialties, or area";
+	const searchPlaceholder = "Search hospitals, addresses, or specialties";
 	const locationPromptTitle = requiresLocationSelection
 		? "Set pickup area"
 		: currentLocation?.primaryText || "Current location";
@@ -75,6 +109,22 @@ export function useMapSearchSheetModel({
 			: "Live";
 	const nearbyHospitals = Array.isArray(hospitals) ? hospitals.filter(Boolean).slice(0, 4) : [];
 	const locationBias = currentLocation?.location || currentLocation || null;
+
+	// Get device location to compare with current selected location
+	// PULLBACK NOTE: useGlobalLocation() returns userLocation directly, not wrapped in a location property.
+	// Previously incorrectly destructured as { location: deviceLocation } which returned undefined.
+	// Fixed to { userLocation: deviceLocation } to access the raw location object with latitude/longitude.
+	const { userLocation: deviceLocation } = useGlobalLocation();
+
+	// Determine if current location matches device location (within 150m threshold)
+	const isUsingDeviceLocation = useMemo(() => {
+		const currentCoords = currentLocation?.location || currentLocation;
+
+		if (!currentCoords || !deviceLocation) return false;
+
+		// Use the utility with 150m threshold (generous for GPS variance)
+		return areLocationsNearby(currentCoords, deviceLocation, 150);
+	}, [currentLocation, deviceLocation]);
 	const localPopularSearches = useMemo(
 		() => buildLocalPopularSearches(hospitals, 5),
 		[hospitals],
@@ -84,7 +134,7 @@ export function useMapSearchSheetModel({
 		if (!visible) {
 			setIsDismissing(false);
 			setSearchQuery("");
-			setActiveMode(mode);
+			setShowNearbyHospitals(false);
 			setLocationSuggestions([]);
 			setLocationError(null);
 			setIsSearchingLocations(false);
@@ -95,7 +145,7 @@ export function useMapSearchSheetModel({
 		}
 
 		sessionTokenRef.current = `${Date.now()}-${Math.round(Math.random() * 100000)}`;
-	}, [mode, setSearchQuery, visible]);
+	}, [setSearchQuery, visible]);
 
 	useEffect(() => {
 		return () => {
@@ -104,14 +154,9 @@ export function useMapSearchSheetModel({
 	}, [setSearchQuery]);
 
 	useEffect(() => {
-		if (!visible) return;
-		setActiveMode(mode);
-	}, [mode, visible]);
-
-	useEffect(() => {
 		if (!visible) return undefined;
 
-		if (!isLocationMode || trimmedQuery.length < 2) {
+		if (trimmedQuery.length < 2) {
 			setLocationSuggestions([]);
 			setLocationError(null);
 			setIsSearchingLocations(false);
@@ -142,7 +187,7 @@ export function useMapSearchSheetModel({
 		}, 240);
 
 		return () => clearTimeout(timeout);
-	}, [isLocationMode, locationBias, trimmedQuery, visible]);
+	}, [locationBias, trimmedQuery, visible]);
 
 	const visibleTrending = useMemo(() => {
 		const merged = [];
@@ -170,6 +215,24 @@ export function useMapSearchSheetModel({
 		return merged.slice(0, 5);
 	}, [localPopularSearches, trendingSearches]);
 
+	const orderedQuerySections = useMemo(() => {
+		if (!hasQuery) return [];
+		
+		// Smart ordering based on query intent
+		const intent = detectQueryIntent(trimmedQuery);
+		
+		if (intent === "location") {
+			// Address-like query: show areas first
+			return ["places", "hospitals"];
+		}
+		if (intent === "hospital") {
+			// Care-related query: show hospitals first
+			return ["hospitals", "places"];
+		}
+		// Neutral: hospitals first (default)
+		return ["hospitals", "places"];
+	}, [hasQuery, trimmedQuery]);
+
 	const hospitalResults = useMemo(() => {
 		if (!hasQuery) return [];
 
@@ -181,8 +244,9 @@ export function useMapSearchSheetModel({
 				key: hospital?.id || hospital?.name || `${hospital?.latitude}-${hospital?.longitude}`,
 			}))
 			.filter((entry) => entry.score > 0)
-			.sort((left, right) => right.score - left.score)
-			.slice(0, 10);
+			.sort((a, b) => b.score - a.score)
+			.slice(0, 5) // Cap at 5 to keep areas visible
+			.map((s) => ({ hospital: s.hospital, score: s.score }));
 	}, [hasQuery, hospitals, query]);
 
 	const placeResults = useMemo(
@@ -200,13 +264,22 @@ export function useMapSearchSheetModel({
 		onClose?.();
 	}, [isDismissing, onClose]);
 
-	const handleModeChange = useCallback(
-		(nextMode) => {
-			if (isDismissing) return;
-			setActiveMode(nextMode);
-		},
-		[isDismissing],
-	);
+	const handleBrowseNearby = useCallback(() => {
+		setShowNearbyHospitals(true);
+	}, []);
+
+	const handleClearHistory = useCallback(() => {
+		setShowClearConfirm(true);
+	}, []);
+
+	const handleConfirmClear = useCallback(() => {
+		clearHistory();
+		setShowClearConfirm(false);
+	}, [clearHistory]);
+
+	const handleCancelClear = useCallback(() => {
+		setShowClearConfirm(false);
+	}, []);
 
 	const handleOpenHospital = useCallback(
 		(hospital) => {
@@ -231,6 +304,11 @@ export function useMapSearchSheetModel({
 		onUseCurrentLocation?.();
 		handleDismiss();
 	}, [handleDismiss, onUseCurrentLocation]);
+
+	const handleChangeLocation = useCallback(() => {
+		// TODO: Implement change location flow
+		console.log("[MapSearchSheet] Change location clicked - implement location picker");
+	}, []);
 
 	const handleUseSuggestion = useCallback(
 		async (suggestion) => {
@@ -260,41 +338,48 @@ export function useMapSearchSheetModel({
 	);
 
 	return {
-		activeMode,
 		activeChipSurface,
 		cardSurface,
 		commitQuery,
 		currentLocation,
-		currentLocationActionLabel,
-		currentLocationBadgeLabel,
+		currentLocationActionLabel: currentLocation?.useCurrentLocationActionLabel || "Use device location",
 		groupedSurface,
+		handleBrowseNearby,
+		handleClearHistory,
+		handleConfirmClear,
+		handleCancelClear,
 		handleDismiss,
-		handleModeChange,
 		handleOpenHospital,
 		handleOpenHospitalList,
 		handleUseCurrent,
+		handleChangeLocation,
 		handleUseSuggestion,
 		hasQuery,
 		hospitalResults,
 		isDarkMode,
 		isDismissing,
 		isResolvingLocation,
+		isUsingDeviceLocation,
 		isSearchingLocations,
 		locationError,
 		locationPromptBody,
 		locationPromptTitle,
-		locationSectionTitle: isLocationMode ? "Areas" : "Places",
+		locationSectionTitle: "Places",
 		manualEntryActionLabel,
 		mutedColor,
 		nearbyHospitals,
-		orderedQuerySections: isLocationMode ? ["places", "hospitals"] : ["hospitals", "places"],
+		onClearHistory: handleClearHistory,
+		orderedQuerySections,
 		placeResults,
 		query,
 		recentQueries,
 		rowDividerColor,
+		savedLocations,
 		searchPlaceholder,
 		selectedHospitalId,
 		setSearchQuery,
+		showClearConfirm,
+		showNearbyHospitals,
 		titleColor,
 		trendingLoading,
 		visibleTrending,

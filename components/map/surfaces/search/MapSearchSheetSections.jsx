@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,9 +8,10 @@ import {
 	buildHospitalMeta,
 	buildHospitalSubtitle,
 	buildTrendingSubtitle,
-	MAP_SEARCH_SHEET_MODES,
+	buildVenueSuggestions,
 } from "./mapSearchSheet.helpers";
 import { getMapSearchSheetResponsiveStyles, styles } from "./mapSearchSheet.styles";
+import GlassConfirmDialog from "../../../../components/ui/GlassConfirmDialog";
 
 function SheetIconTile({ children, isDarkMode, responsiveStyles }) {
 	const colors = isDarkMode
@@ -43,13 +44,19 @@ function SearchResultRow({
 	meta = null,
 	titleColor,
 	mutedColor,
+	metaColor,
 	surfaceColor,
 	onPress,
 	isSelected = false,
 	badgeLabel = null,
 	isDarkMode,
 	responsiveStyles,
+	accessibilityLabel = null,
+	accessibilityHint = null,
 }) {
+	const finalMetaColor = metaColor || mutedColor;
+	const a11yLabel = accessibilityLabel || title;
+	const a11yHint = accessibilityHint || (subtitle ? `${subtitle}. Tap to select.` : "Tap to select.");
 	const renderIcon =
 		iconType === "material" ? (
 			<MaterialCommunityIcons name={iconName} size={18} color={COLORS.brandPrimary} />
@@ -58,7 +65,14 @@ function SearchResultRow({
 		);
 
 	return (
-		<Pressable onPress={onPress}>
+		<Pressable
+			onPress={onPress}
+			hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+			accessibilityLabel={a11yLabel}
+			accessibilityHint={a11yHint}
+			accessibilityRole="button"
+			accessibilityState={{ selected: isSelected }}
+		>
 			{({ pressed }) => (
 				<View
 					style={[
@@ -102,7 +116,7 @@ function SearchResultRow({
 							{meta ? (
 								<Text
 									numberOfLines={1}
-									style={[styles.resultMeta, responsiveStyles.resultMeta, { color: mutedColor }]}
+									style={[styles.resultMeta, responsiveStyles.resultMeta, { color: finalMetaColor }]}
 								>
 									{meta}
 								</Text>
@@ -149,8 +163,20 @@ function QueryChip({ label, onPress, titleColor, surfaceColor, responsiveStyles 
 }
 
 function ActionChip({ label, iconName, onPress, titleColor, surfaceColor, responsiveStyles }) {
+	const handlePress = useCallback((e) => {
+		// Stop propagation to prevent parent from receiving touch
+		e?.stopPropagation?.();
+		onPress?.(e);
+	}, [onPress]);
+
 	return (
-		<Pressable onPress={onPress}>
+		<Pressable
+			onPress={handlePress}
+			hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+			accessibilityLabel={label}
+			accessibilityHint={`Tap to ${label.toLowerCase()}`}
+			accessibilityRole="button"
+		>
 			{({ pressed }) => (
 				<View
 					style={[
@@ -175,45 +201,56 @@ function ActionChip({ label, iconName, onPress, titleColor, surfaceColor, respon
 	);
 }
 
-function ModeChip({
-	label,
-	iconName,
-	active = false,
-	onPress,
-	disabled = false,
-	titleColor,
-	mutedColor,
+function VenueChip({
+	venue,
 	surfaceColor,
-	activeSurfaceColor,
+	titleColor,
+	isDarkMode,
 	responsiveStyles,
+	onPress,
 }) {
+	const handlePress = useCallback((e) => {
+		// Stop propagation to prevent parent row from receiving touch
+		e?.stopPropagation?.();
+		onPress?.(e);
+	}, [onPress]);
+
 	return (
-		<Pressable disabled={disabled} onPress={onPress}>
+		<Pressable
+			onPress={handlePress}
+			hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+			accessibilityLabel={venue.label}
+			accessibilityHint={`Select ${venue.label} entrance`}
+			accessibilityRole="button"
+		>
 			{({ pressed }) => (
 				<View
 					style={[
-						styles.modeChip,
-						responsiveStyles.modeChip,
+						styles.venueChip,
+						responsiveStyles.venueChip,
 						{
-							backgroundColor: active ? activeSurfaceColor : surfaceColor,
-							opacity: disabled ? 0.55 : pressed ? 0.9 : 1,
-							transform: [{ scale: pressed ? 0.985 : 1 }],
+							backgroundColor: surfaceColor,
+							opacity: pressed ? 0.88 : 1,
+							transform: [{ scale: pressed ? 0.98 : 1 }],
 						},
 					]}
 				>
 					<Ionicons
-						name={iconName}
-						size={16}
-						color={active ? COLORS.brandPrimary : mutedColor}
+						name={venue.icon}
+						size={14}
+						color={venue.type === 'emergency' ? '#DC2626' : COLORS.brandPrimary}
 					/>
 					<Text
 						style={[
-							styles.modeChipLabel,
-							responsiveStyles.modeChipLabel,
-							{ color: active ? titleColor : mutedColor },
+							styles.venueChipLabel,
+							responsiveStyles.venueChipLabel,
+							{
+								color: venue.type === 'emergency' ? '#DC2626' : titleColor,
+								fontWeight: venue.type === 'emergency' ? '700' : '500',
+							},
 						]}
 					>
-						{label}
+						{venue.label}
 					</Text>
 				</View>
 			)}
@@ -259,14 +296,15 @@ export default function MapSearchSheetSections({ model }) {
 		[viewportMetrics],
 	);
 	const {
-		activeMode,
 		activeChipSurface,
 		cardSurface,
 		currentLocation,
 		currentLocationActionLabel,
-		currentLocationBadgeLabel,
 		groupedSurface,
-		handleModeChange,
+		handleBrowseNearby,
+		handleCancelClear,
+		handleChangeLocation,
+		handleConfirmClear,
 		handleOpenHospital,
 		handleOpenHospitalList,
 		handleUseCurrent,
@@ -277,148 +315,87 @@ export default function MapSearchSheetSections({ model }) {
 		isDismissing,
 		isResolvingLocation,
 		isSearchingLocations,
+		isUsingDeviceLocation,
 		locationError,
-		locationPromptBody,
-		locationPromptTitle,
-		locationSectionTitle,
-		manualEntryActionLabel,
 		mutedColor,
 		nearbyHospitals,
+		onClearHistory,
+		onSelectLocation,
 		orderedQuerySections,
 		placeResults,
 		recentQueries,
 		rowDividerColor,
+		savedLocations,
 		selectedHospitalId,
 		setSearchQuery,
+		showClearConfirm,
+		showNearbyHospitals,
 		titleColor,
 		trendingLoading,
 		visibleTrending,
 	} = model;
 
-	const isLocationMode = activeMode === MAP_SEARCH_SHEET_MODES.LOCATION;
+	const hasSavedLocations = savedLocations?.length > 0;
 
 	return (
 		<>
-			<View style={[styles.modeSwitchRow, responsiveStyles.modeSwitchRow]}>
-				<ModeChip
-					label="Find care"
-					iconName="medkit-outline"
-					active={!isLocationMode}
-					onPress={() => handleModeChange(MAP_SEARCH_SHEET_MODES.SEARCH)}
-					disabled={isDismissing}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					surfaceColor={groupedSurface}
-					activeSurfaceColor={activeChipSurface}
-					responsiveStyles={responsiveStyles}
-				/>
-				<ModeChip
-					label="Set pickup"
-					iconName="location-outline"
-					active={isLocationMode}
-					onPress={() => handleModeChange(MAP_SEARCH_SHEET_MODES.LOCATION)}
-					disabled={isDismissing}
-					titleColor={titleColor}
-					mutedColor={mutedColor}
-					surfaceColor={groupedSurface}
-					activeSurfaceColor={activeChipSurface}
-					responsiveStyles={responsiveStyles}
-				/>
-			</View>
-
 			{!hasQuery ? (
 				<>
-					{isLocationMode ? (
-						<View
-							style={[
-								styles.emptyState,
-								responsiveStyles.emptyState,
-								{ backgroundColor: groupedSurface },
-							]}
-						>
-							<View style={[styles.emptyIconWrap, responsiveStyles.emptyIconWrap]}>
-								<Ionicons
-									name="navigate-outline"
-									size={20}
-									color={COLORS.brandPrimary}
-								/>
-							</View>
-							<Text
-								style={[
-									styles.emptyTitle,
-									responsiveStyles.emptyTitle,
-									{ color: titleColor },
-								]}
-							>
-								{locationPromptTitle}
-							</Text>
-							<Text
-								style={[
-									styles.emptyBody,
-									responsiveStyles.emptyBody,
-									{ color: mutedColor },
-								]}
-							>
-								{locationPromptBody}
-							</Text>
-						</View>
-					) : null}
-
+					{/* Location Hero Blade - Current location + saved places */}
 					<View style={[styles.section, responsiveStyles.section]}>
-						<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
-							{isLocationMode ? "Pickup controls" : "Current area"}
-						</Text>
 						<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
+							{/* Current location row */}
 							<SearchResultRow
-								iconName="locate"
-								title={
-									isLocationMode
-										? currentLocationActionLabel
-										: currentLocation?.primaryText || "Current location"
-								}
-								subtitle={
-									isLocationMode
-										? "Use your device location for pickup."
-										: currentLocation?.secondaryText || "Use your device location"
-								}
-								// PULLBACK NOTE: Don't show meta when it would duplicate subtitle
-								// Prevents repetition of the same address text
-								meta={
-									isLocationMode
-										? null
-										: null // Always null in non-location mode — subtitle already shows secondaryText
-								}
+								iconName="locate-outline"
+								title={currentLocation?.primaryText || "Current location"}
+								subtitle={currentLocation?.secondaryText || "Using device location"}
+								meta={isUsingDeviceLocation ? "Change location" : "Use device location"}
+								metaColor={COLORS.brandPrimary}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={cardSurface}
 								isDarkMode={isDarkMode}
-								badgeLabel={currentLocationBadgeLabel}
-								onPress={handleUseCurrent}
+								onPress={isUsingDeviceLocation ? handleChangeLocation : handleUseCurrent}
 								responsiveStyles={responsiveStyles}
 							/>
+
+							{/* Saved locations (if present) */}
+							{hasSavedLocations ? (
+								<>
+									<View style={[styles.rowDivider, responsiveStyles.rowDivider, { backgroundColor: rowDividerColor }]} />
+									{savedLocations.slice(0, 3).map((loc, index) => (
+											<View key={loc.id}>
+												<SearchResultRow
+													iconName={loc.label === 'home' ? 'home-outline' : loc.label === 'work' ? 'briefcase-outline' : 'location-outline'}
+													title={loc.label.charAt(0).toUpperCase() + loc.label.slice(1)}
+													subtitle={loc.address}
+													meta={loc.countryCode}
+													titleColor={titleColor}
+													mutedColor={mutedColor}
+													surfaceColor={cardSurface}
+													isDarkMode={isDarkMode}
+													onPress={() => onSelectLocation?.(loc)}
+													responsiveStyles={responsiveStyles}
+												/>
+												{index < Math.min(savedLocations.length, 3) - 1 ? (
+													<View style={[styles.rowDivider, responsiveStyles.rowDivider, { backgroundColor: rowDividerColor }]} />
+												) : null}
+											</View>
+										))}
+								</>
+							) : null}
 						</View>
 					</View>
 
-					{isLocationMode ? (
-						<Text
-							style={[
-								styles.loadingText,
-								responsiveStyles.loadingText,
-								{ color: mutedColor },
-							]}
-						>
-							{`${manualEntryActionLabel}: type a street, area, city, or landmark above.`}
-						</Text>
-					) : null}
-
-					{nearbyHospitals.length > 0 ? (
+					{/* Nearby hospitals - shown only when explicitly browsing */}
+					{showNearbyHospitals && nearbyHospitals.length > 0 ? (
 						<ResultsSection
 							title="Nearby now"
 							items={nearbyHospitals.map((hospital, index) => ({
 								hospital,
 								key: hospital?.id || hospital?.name || `nearby-${index}`,
 							}))}
-							titleColor={titleColor}
+							titleColor={mutedColor}
 							groupedSurface={groupedSurface}
 							isDarkMode={isDarkMode}
 							rowDividerColor={rowDividerColor}
@@ -443,21 +420,43 @@ export default function MapSearchSheetSections({ model }) {
 						/>
 					) : null}
 
+					{/* Recent searches as rows for better touch targets */}
 					{recentQueries.length > 0 ? (
 						<View style={[styles.section, responsiveStyles.section]}>
-							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
-								Recent
-							</Text>
-							<View style={[styles.chipWrap, responsiveStyles.chipWrap]}>
-								{recentQueries.slice(0, 6).map((recentQuery, index) => (
-									<QueryChip
-										key={`${recentQuery}-${index}`}
-										label={recentQuery}
-										onPress={() => setSearchQuery(recentQuery)}
-										titleColor={titleColor}
-										surfaceColor={groupedSurface}
-										responsiveStyles={responsiveStyles}
-									/>
+							<View style={[styles.sectionHeader, responsiveStyles.sectionHeader]} accessibilityRole="header">
+								<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: mutedColor }]}>
+									Recent
+								</Text>
+								{onClearHistory ? (
+									<Pressable
+										onPress={onClearHistory}
+										accessibilityLabel="Clear recent searches"
+										accessibilityHint="Double tap to clear all recent search history"
+										accessibilityRole="button"
+									>
+										<Text style={[styles.clearText, responsiveStyles.clearText, { color: mutedColor }]}>Clear</Text>
+									</Pressable>
+								) : null}
+							</View>
+							<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
+								{recentQueries.slice(0, 12).map((recentQuery, index) => (
+									<View key={`${recentQuery}-${index}`}>
+										<SearchResultRow
+											iconName="time-outline"
+											title={recentQuery}
+											subtitle={null}
+											meta={null}
+											titleColor={titleColor}
+											mutedColor={mutedColor}
+											surfaceColor={cardSurface}
+											isDarkMode={isDarkMode}
+											onPress={() => setSearchQuery(recentQuery)}
+											responsiveStyles={responsiveStyles}
+										/>
+										{index < Math.min(recentQueries.length, 12) - 1 ? (
+											<View style={[styles.rowDivider, responsiveStyles.rowDivider, { backgroundColor: rowDividerColor }]} />
+										) : null}
+									</View>
 								))}
 							</View>
 						</View>
@@ -465,7 +464,7 @@ export default function MapSearchSheetSections({ model }) {
 
 					{visibleTrending.length > 0 || trendingLoading ? (
 						<View style={[styles.section, responsiveStyles.section]}>
-							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
+							<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: mutedColor }]}>
 								Popular
 							</Text>
 							<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
@@ -519,7 +518,7 @@ export default function MapSearchSheetSections({ model }) {
 											: `${hospitalResults.length} nearby hospital matches`
 									}
 									items={hospitalResults}
-									titleColor={titleColor}
+									titleColor={mutedColor}
 									groupedSurface={groupedSurface}
 									isDarkMode={isDarkMode}
 									rowDividerColor={rowDividerColor}
@@ -545,18 +544,53 @@ export default function MapSearchSheetSections({ model }) {
 							);
 						}
 
+						// Show venue suggestions for top hospital match
+						if (sectionKey === "hospitals" && hospitalResults.length > 0) {
+							const topHospital = hospitalResults[0]?.hospital;
+							const venues = buildVenueSuggestions(topHospital);
+							if (venues.length > 0) {
+								return (
+									<View key="venues" style={[styles.section, responsiveStyles.section]}>
+										<Text
+											style={[
+												styles.sectionTitle,
+												responsiveStyles.sectionTitle,
+												{ color: mutedColor, fontSize: 13, fontWeight: "500" },
+											]}
+										>
+											At {topHospital?.name || "hospital"}
+										</Text>
+										<View style={[styles.venueRow, { backgroundColor: groupedSurface }]}>
+											{venues.map((venue) => (
+												<VenueChip
+													key={venue.id}
+													venue={venue}
+													surfaceColor={cardSurface}
+													titleColor={titleColor}
+													isDarkMode={isDarkMode}
+													responsiveStyles={responsiveStyles}
+													onPress={() => handleOpenHospital(topHospital)}
+												/>
+											))}
+										</View>
+									</View>
+								);
+							}
+						}
+
+						// Places (location) results section
 						if (sectionKey === "places" && (placeResults.length > 0 || isSearchingLocations)) {
 							return (
 								<View key="places" style={[styles.section, responsiveStyles.section]}>
-									<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: titleColor }]}>
-										{locationSectionTitle}
+									<Text style={[styles.sectionTitle, responsiveStyles.sectionTitle, { color: mutedColor }]}>
+										Places
 									</Text>
 									<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
-										{placeResults.length === 0 && isSearchingLocations ? (
+										{isSearchingLocations && placeResults.length === 0 ? (
 											<View style={[styles.loadingRow, responsiveStyles.loadingRow]}>
 												<ActivityIndicator size="small" color={COLORS.brandPrimary} />
 												<Text style={[styles.loadingText, responsiveStyles.loadingText, { color: mutedColor }]}>
-													Looking for areas nearby
+													Looking for places nearby
 												</Text>
 											</View>
 										) : (
@@ -571,7 +605,7 @@ export default function MapSearchSheetSections({ model }) {
 														mutedColor={mutedColor}
 														surfaceColor={cardSurface}
 														isDarkMode={isDarkMode}
-														badgeLabel={index === 0 ? "Area" : null}
+														badgeLabel={index === 0 ? "Best match" : null}
 														onPress={() => handleUseSuggestion(item)}
 														isSelected={isResolvingLocation === item.placeId}
 														responsiveStyles={responsiveStyles}
@@ -605,27 +639,27 @@ export default function MapSearchSheetSections({ model }) {
 					{hospitalResults.length === 0 && placeResults.length === 0 && !isSearchingLocations ? (
 						<View style={[styles.emptyState, responsiveStyles.emptyState, { backgroundColor: groupedSurface }]}>
 							<View style={[styles.emptyIconWrap, responsiveStyles.emptyIconWrap]}>
-								<Ionicons name="search-outline" size={20} color={COLORS.brandPrimary} />
+								<Ionicons name="location-outline" size={24} color={COLORS.brandPrimary} />
 							</View>
 							<Text style={[styles.emptyTitle, responsiveStyles.emptyTitle, { color: titleColor }]}>
-								No matches nearby
+								Where should we pick you up?
 							</Text>
 							<Text style={[styles.emptyBody, responsiveStyles.emptyBody, { color: mutedColor }]}>
-								Try a hospital name, specialty, or another area.
+								Search hospitals, addresses, or use your current location.
 							</Text>
 							<View style={[styles.actionChipRow, responsiveStyles.actionChipRow]}>
 								<ActionChip
-									label="See all hospitals"
-									iconName="list-outline"
-									onPress={handleOpenHospitalList}
+									label={currentLocationActionLabel}
+									iconName="locate-outline"
+									onPress={handleUseCurrent}
 									titleColor={titleColor}
 									surfaceColor={cardSurface}
 									responsiveStyles={responsiveStyles}
 								/>
 								<ActionChip
-									label="Use current area"
-									iconName="locate-outline"
-									onPress={handleUseCurrent}
+									label="Enter address"
+									iconName="create-outline"
+									onPress={handleBrowseNearby}
 									titleColor={titleColor}
 									surfaceColor={cardSurface}
 									responsiveStyles={responsiveStyles}
@@ -635,6 +669,20 @@ export default function MapSearchSheetSections({ model }) {
 					) : null}
 				</>
 			)}
+
+			{/* Glass Confirm Dialog for Clear History */}
+			<GlassConfirmDialog
+				visible={showClearConfirm}
+				title="Clear Recent Searches"
+				message="Are you sure you want to clear your recent search history?"
+				confirmText="Clear"
+				cancelText="Cancel"
+				iconName="time-outline"
+				isDestructive={true}
+				isDarkMode={isDarkMode}
+				onConfirm={handleConfirmClear}
+				onCancel={handleCancelClear}
+			/>
 		</>
 	);
 }

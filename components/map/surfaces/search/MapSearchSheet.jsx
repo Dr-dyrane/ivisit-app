@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { SearchBoundary } from "../../../../contexts/SearchContext";
 import EmergencySearchBar from "../../../emergency/EmergencySearchBar";
 import MapModalShell from "../MapModalShell";
-import { MAP_SEARCH_SHEET_MODES } from "./mapSearchSheet.helpers";
 import MapSearchSheetSections from "./MapSearchSheetSections";
 import useMapSearchSheetModel from "./useMapSearchSheetModel";
 import { styles } from "./mapSearchSheet.styles";
@@ -10,7 +9,6 @@ import { styles } from "./mapSearchSheet.styles";
 function MapSearchSheetContent({
 	visible,
 	onClose,
-	mode = MAP_SEARCH_SHEET_MODES.SEARCH,
 	hospitals = [],
 	selectedHospitalId = null,
 	currentLocation = null,
@@ -21,7 +19,6 @@ function MapSearchSheetContent({
 }) {
 	const model = useMapSearchSheetModel({
 		visible,
-		mode,
 		hospitals,
 		selectedHospitalId,
 		currentLocation,
