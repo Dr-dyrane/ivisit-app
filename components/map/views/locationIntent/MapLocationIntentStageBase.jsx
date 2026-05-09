@@ -1,5 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
+import { Platform, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import {
+	GLASS_SURFACE_VARIANTS,
+	getGlassSurfaceTokens,
+} from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
@@ -8,12 +13,13 @@ import sheetStageStyles from "../shared/mapSheetStage.styles";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import buildMapLocationIntentModel from "./mapLocationIntent.model";
 import {
 	MapLocationIntentActiveTopRow,
 	MapLocationIntentBodyContent,
 	MapLocationIntentCollapsedTopRow,
-	getMapLocationIntentStageResponsiveStyles,
 } from "./MapLocationIntentStageParts";
+import styles from "./mapLocationIntent.styles";
 
 export default function MapLocationIntentStageBase({
 	sheetHeight,
@@ -21,30 +27,82 @@ export default function MapLocationIntentStageBase({
 	onClose,
 	onOpenSearch,
 	onOpenProfile,
+	onUseCurrentLocation,
+	onSnapStateChange,
 	currentLocation,
+	locationControl,
 }) {
 	const { isDarkMode } = useTheme();
 	const tokens = useMemo(() => getMapSheetTokens({ isDarkMode }), [isDarkMode]);
-	const { isSidebarPresentation, contentMaxWidth, presentationMode, shellWidth } =
-		useMapStageSurfaceLayout();
-	const responsiveStyles = useMemo(
-		() => getMapLocationIntentStageResponsiveStyles(presentationMode, contentMaxWidth),
-		[presentationMode, contentMaxWidth],
+	const glassTokens = useMemo(
+		() =>
+			getGlassSurfaceTokens({
+				isDarkMode,
+				variant: GLASS_SURFACE_VARIANTS.HEADER,
+			}),
+		[isDarkMode],
 	);
+	const {
+		isSidebarPresentation,
+		contentMaxWidth,
+		presentationMode,
+		shellWidth,
+		shouldUseWideStageInset,
+	} = useMapStageSurfaceLayout();
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
 			: null;
-	const shouldShowHeaderToggle = presentationMode === "sheet";
-	const isCollapsed = snapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
-	const closeSurfaceColor = isDarkMode
-		? "rgba(148,163,184,0.14)"
-		: "rgba(255,255,255,0.42)";
-	const allowedSnapStates = [
-		MAP_SHEET_SNAP_STATES.COLLAPSED,
-		MAP_SHEET_SNAP_STATES.HALF,
+	// Force sheet presentation mode to ensure drag bar is visible
+	const effectivePresentationMode = "sheet";
+	const topSlotContainerStyle = [
+		sheetStageStyles.topSlotContained,
+		presentationMode === "sheet" ? sheetStageStyles.topSlotSheet : null,
+		presentationMode === "modal" ? sheetStageStyles.topSlotModal : null,
+		isSidebarPresentation ? sheetStageStyles.topSlotSidebar : null,
+		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
+		modalContainedStyle,
 	];
-
+	const model = useMemo(
+		() =>
+			buildMapLocationIntentModel({
+				currentLocation,
+				locationControl,
+			}),
+		[currentLocation, locationControl],
+	);
+	const effectiveSnapState =
+		effectivePresentationMode === "sheet"
+			? snapState
+			: MAP_SHEET_SNAP_STATES.EXPANDED;
+	const shouldShowHeaderToggle = effectivePresentationMode === "sheet";
+	const isCollapsed = effectiveSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
+	const isExpanded = effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED;
+	const allowedSnapStates = useMemo(
+		() =>
+			effectivePresentationMode === "sheet"
+				? [
+						MAP_SHEET_SNAP_STATES.COLLAPSED,
+						MAP_SHEET_SNAP_STATES.HALF,
+						MAP_SHEET_SNAP_STATES.EXPANDED,
+					]
+				: [MAP_SHEET_SNAP_STATES.EXPANDED],
+		[effectivePresentationMode],
+	);
+	const heroSurfaceColor =
+		isDarkMode
+			? "rgba(255,255,255,0.075)"
+			: "rgba(255,255,255,0.66)";
+	const groupSurfaceColor =
+		isDarkMode
+			? "rgba(255,255,255,0.06)"
+			: "rgba(255,255,255,0.78)";
+	const infoSurfaceColor =
+		Platform.OS === "android"
+			? glassTokens.surfaceColor
+			: isDarkMode
+				? "rgba(255,255,255,0.06)"
+				: "rgba(255,255,255,0.58)";
 	const {
 		allowScrollDetents,
 		bodyScrollEnabled,
@@ -56,78 +114,126 @@ export default function MapLocationIntentStageBase({
 		handleSnapToggle,
 	} = useMapSheetDetents({
 		sheetHeight,
-		snapState,
+		snapState: effectiveSnapState,
+		presentationMode: effectivePresentationMode,
 		allowedSnapStates,
-		onSnapStateChange: () => {},
+		onSnapStateChange,
 	});
 
 	const {
-		handleAndroidExpandedCollapse,
-		shouldLockExpandedForAndroid,
+		androidExpandedBodyGesture,
+		androidExpandedBodyStyle,
+		handleAndroidCollapseScroll,
+		handleAndroidCollapseScrollBeginDrag,
 	} = useMapAndroidExpandedCollapse({
-		snapState,
-		allowedSnapStates,
-		onSnapStateChange: () => {},
+		snapState: effectiveSnapState,
+		onSnapStateChange,
+		bodyScrollRef,
+		onScroll: handleBodyScroll,
+		onScrollBeginDrag: handleBodyScrollBeginDrag,
 	});
 
-	const handleExpand = useCallback(() => {
-		// For now, just log - snap toggle will be handled by MapSheetShell
-		console.log("Location sheet expand tapped");
-	}, []);
+	const handleHeaderToggle = useCallback(() => {
+		if (!shouldShowHeaderToggle) return;
+		if (effectiveSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED) {
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+			return;
+		}
+		if (effectiveSnapState === MAP_SHEET_SNAP_STATES.HALF) {
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+			return;
+		}
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+	}, [effectiveSnapState, onSnapStateChange, shouldShowHeaderToggle]);
 
-	return (
+		return (
 		<MapSheetShell
 			sheetHeight={sheetHeight}
-			snapState={snapState}
-			presentationMode={presentationMode}
+			snapState={effectiveSnapState}
+			presentationMode={effectivePresentationMode}
 			shellWidth={shellWidth}
 			allowedSnapStates={allowedSnapStates}
-			handleFloatsOverContent={shouldShowHeaderToggle}
-			bodyGestureEnabled={!shouldLockExpandedForAndroid}
-			onHandlePress={() => {}}
+			onHandlePress={handleSnapToggle}
 			topSlot={
 				isCollapsed ? (
 					<MapLocationIntentCollapsedTopRow
-						responsiveStyles={responsiveStyles}
-						modalContainedStyle={modalContainedStyle}
-						tokens={tokens}
-						onExpand={handleExpand}
+						model={model}
+						titleColor={tokens.titleColor}
+						mutedColor={tokens.mutedText}
+						actionSurfaceColor={tokens.closeSurface}
+						onToggle={handleHeaderToggle}
+						toggleAccessibilityLabel="Expand location sheet"
+						toggleIconName="chevron-up"
 						onClose={onClose}
-						currentLocation={currentLocation}
-						isDarkMode={isDarkMode}
+						showToggle={shouldShowHeaderToggle}
 					/>
 				) : (
-					<MapLocationIntentActiveTopRow
-						responsiveStyles={responsiveStyles}
-						modalContainedStyle={modalContainedStyle}
-						tokens={tokens}
-						onClose={onClose}
-						currentLocation={currentLocation}
-						isDarkMode={isDarkMode}
-					/>
+					<View style={topSlotContainerStyle}>
+						<MapLocationIntentActiveTopRow
+							model={model}
+							titleColor={tokens.titleColor}
+							mutedColor={tokens.mutedText}
+							actionSurfaceColor={tokens.closeSurface}
+							onToggle={handleHeaderToggle}
+							toggleAccessibilityLabel={
+								isExpanded
+									? "Collapse location sheet"
+									: "Expand location sheet"
+							}
+							toggleIconName={isExpanded ? "chevron-down" : "chevron-up"}
+							onClose={onClose}
+							showToggle={shouldShowHeaderToggle}
+						/>
+					</View>
 				)
 			}
 		>
-			<MapStageBodyScroll
-				ref={bodyScrollRef}
-				style={sheetStageStyles.bodyScroll}
-				contentContainerStyle={sheetStageStyles.bodyScrollContent}
-				showsVerticalScrollIndicator={false}
-				enabled={bodyScrollEnabled}
-				onScroll={handleBodyScroll}
-				onScrollBeginDrag={handleBodyScrollBeginDrag}
-				onScrollEndDrag={handleBodyScrollEndDrag}
-				onWheel={handleBodyWheel}
-				snapToOffsets={allowScrollDetents ? [0] : undefined}
-			>
-				<MapLocationIntentBodyContent
-					responsiveStyles={responsiveStyles}
-					tokens={tokens}
-					onOpenSearch={onOpenSearch}
-					onOpenProfile={onOpenProfile}
-					isDarkMode={isDarkMode}
-				/>
-			</MapStageBodyScroll>
+			{isCollapsed ? null : (
+				<MapStageBodyScroll
+					bodyScrollRef={bodyScrollRef}
+					viewportStyle={sheetStageStyles.bodyScrollViewport}
+					contentContainerStyle={[
+						sheetStageStyles.bodyScrollContent,
+						sheetStageStyles.bodyScrollContentSheet,
+						effectivePresentationMode === "modal"
+							? sheetStageStyles.bodyScrollContentModal
+							: null,
+						false
+							? sheetStageStyles.bodyScrollContentPanel
+							: null,
+						false
+							? sheetStageStyles.bodyScrollContentSidebar
+							: null,
+						shouldUseWideStageInset
+							? sheetStageStyles.bodyScrollContentWide
+							: null,
+						modalContainedStyle,
+						styles.bodyScrollContent,
+					]}
+					isSidebarPresentation={false}
+					allowScrollDetents={allowScrollDetents}
+					handleBodyWheel={handleBodyWheel}
+					onScrollBeginDrag={handleAndroidCollapseScrollBeginDrag}
+					onScroll={handleAndroidCollapseScroll}
+					onScrollEndDrag={handleBodyScrollEndDrag}
+					scrollEnabled={bodyScrollEnabled}
+					androidExpandedBodyGesture={androidExpandedBodyGesture}
+					androidExpandedBodyStyle={androidExpandedBodyStyle}
+				>
+					<MapLocationIntentBodyContent
+						model={model}
+						titleColor={tokens.titleColor}
+						mutedColor={tokens.mutedText}
+						heroSurfaceColor={heroSurfaceColor}
+						groupSurfaceColor={groupSurfaceColor}
+						infoSurfaceColor={infoSurfaceColor}
+						onUseCurrentLocation={onUseCurrentLocation}
+						onOpenSearch={onOpenSearch}
+						onOpenProfile={onOpenProfile}
+						isDarkMode={isDarkMode}
+					/>
+				</MapStageBodyScroll>
+			)}
 		</MapSheetShell>
 	);
 }

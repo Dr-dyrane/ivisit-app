@@ -1,7 +1,7 @@
 # Location Sheet Architecture Plan
 
 **Date:** 2026-05-08
-**Status:** Pass 1 & 2 COMPLETE - Pass 3 & 4 Pending
+**Status:** Pass 1 & 2 COMPLETE - Baseline uplift COMPLETE - Pass 3 & 4 Pending
 **Objective:** Unified location sheet architecture with chrome affordance from explore intent
 
 ---
@@ -531,7 +531,6 @@ const handleChangeLocation = useCallback(() => {
 
 ### Core Architecture & Guardrails
 - `docs/README.md` - Authority hierarchy and repo boundaries
-- `docs/architecture/GUARDRAILS.md` - 5-layer architecture, useEffect decision tree, safe modularization
 - `docs/architecture/REFACTORING_GUARDRAILS.md` - State management layers, file size rules
 
 ### Search & Location Audits
@@ -552,6 +551,10 @@ components/emergency/intake/EmergencyLocationPreviewMap.jsx  # Chrome integratio
 components/map/core/mapSheet.constants.js                   # LOCATION_INTENT phase
 components/map/views/locationIntent/MapLocationIntentStageBase.jsx  # Pass 2: Sheet UI
 components/map/views/locationIntent/MapLocationIntentOrchestrator.jsx  # Pass 2: Orchestrator
+components/map/views/locationIntent/MapLocationIntentStageParts.jsx   # Baseline shared-surface UI
+components/map/views/locationIntent/mapLocationIntent.content.js      # Baseline copy map
+components/map/views/locationIntent/mapLocationIntent.model.js        # Baseline derived view model
+components/map/views/locationIntent/mapLocationIntent.styles.js       # Baseline styles
 components/map/core/MapSheetOrchestrator.jsx                # Sheet orchestration
 hooks/map/exploreFlow/useMapExploreFlow.js                   # setSheetPhase fix
 screens/MapScreen.jsx                                        # Chrome + sheet wiring
@@ -582,6 +585,21 @@ screens/MapScreen.jsx                                        # Chrome + sheet wi
 - MapLocationIntentOrchestrator for consistency
 - Proper MapSheetShell integration with header/close button
 - Production-ready placeholder with theme-sensitive UI
+
+**Baseline uplift (current turn):**
+- Split location intent into dedicated `content`, `model`, `styles`, and `parts` files
+- Replaced placeholder copy block with shared-sheet baseline surfaces:
+  top-slot orientation, actual location header, hero card, grouped action rows, support panel
+- Wired `locationControl`, `onUseCurrentLocation`, and snap-state toggling into LOCATION_INTENT
+- Aligned LOCATION_INTENT with the same transition wrapper used by other map sheet phases
+- Reused existing components (MapTrackingTopSlot, TrackingTeamHeroCard, etc.) with existing styles
+
+**Spacing & drag bar fixes (2026-05-08):**
+- Fixed drag bar visibility: forced sheet mode (sidebar mode hides drag bar)
+- Removed handleFloatsOverContent prop to match explore intent pattern
+- Reverted body padding to 6 (matching hospital detail/explore intent patterns)
+- Removed unnecessary wrapper View in collapsed state to eliminate double padding
+- Body content now uses proper wrapper with minimal padding
 
 **Architecture compliance:**
 - ✅ 5-layer architecture (L1-L5)

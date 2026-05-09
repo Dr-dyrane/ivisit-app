@@ -476,17 +476,22 @@ export default function MapSheetOrchestrator({
 					/>
 				</MapPhaseTransitionView>
 			);
-		case MAP_SHEET_PHASES.LOCATION_INTENT:
-			return (
-				<MapLocationIntentOrchestrator
-					sheetHeight={sheetHeight}
-					snapState={snapState}
-					onClose={onCloseLocationIntent}
-					onOpenSearch={() => onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION)}
-					onOpenProfile={onOpenProfile}
-					currentLocation={location}
-				/>
-			);
+			case MAP_SHEET_PHASES.LOCATION_INTENT:
+				return (
+					<MapPhaseTransitionView phaseKey={phase}>
+						<MapLocationIntentOrchestrator
+							sheetHeight={sheetHeight}
+							snapState={snapState}
+							onClose={onCloseLocationIntent}
+							onOpenSearch={() => onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION)}
+							onOpenProfile={onOpenProfile}
+							onUseCurrentLocation={onUseCurrentLocation}
+							onSnapStateChange={onSnapStateChange}
+							currentLocation={currentLocation}
+							locationControl={locationControl}
+						/>
+					</MapPhaseTransitionView>
+				);
 		case MAP_SHEET_PHASES.EXPLORE_INTENT:
 		default:
 			return (

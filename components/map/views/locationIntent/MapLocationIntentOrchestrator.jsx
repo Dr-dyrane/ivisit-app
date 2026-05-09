@@ -7,7 +7,10 @@ export default function MapLocationIntentOrchestrator({
 	onClose,
 	onOpenSearch,
 	onOpenProfile,
+	onUseCurrentLocation,
+	onSnapStateChange,
 	currentLocation,
+	locationControl,
 }) {
 	return (
 		<MapLocationIntentStageBase
@@ -16,7 +19,10 @@ export default function MapLocationIntentOrchestrator({
 			onClose={onClose}
 			onOpenSearch={onOpenSearch}
 			onOpenProfile={onOpenProfile}
+			onUseCurrentLocation={onUseCurrentLocation}
+			onSnapStateChange={onSnapStateChange}
 			currentLocation={currentLocation}
+			locationControl={locationControl}
 		/>
 	);
 }

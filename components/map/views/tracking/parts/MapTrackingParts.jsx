@@ -81,6 +81,9 @@ export function MapTrackingTopSlot({
   toggleAccessibilityLabel = "Toggle tracking sheet size",
   titleAnimatedStyle = null,
   // PULLBACK NOTE: Phase 8 — Separate text color from chevron/icon color
+  showClose = false,
+  onClose = null,
+  closeAccessibilityLabel = "Close sheet",
   titleTextColor = null,
 }) {
   const clampedProgress = Math.max(0, Math.min(1, Number(triageProgress) || 0));
@@ -145,51 +148,64 @@ export function MapTrackingTopSlot({
     outputRange: [1, 1.018],
   });
 
-  const rightAction = showTriage ? (
-    <Animated.View
-      style={[
-        styles.triageProgressWrap,
-        { transform: [{ scale: breathScale }] },
-      ]}
-    >
-      <Svg width={ringSize} height={ringSize} style={styles.triageProgressSvg}>
-        <Circle
-          cx={ringSize / 2}
-          cy={ringSize / 2}
-          r={radius}
-          stroke={
-            triageTrackColor ||
-            (triageComplete ? "rgba(22,163,74,0.35)" : "rgba(148,163,184,0.34)")
-          }
-          strokeWidth={strokeWidth}
-          fill="none"
+  let rightAction = <View style={styles.topSlotSpacer} />;
+  if (showTriage) {
+    rightAction = (
+      <Animated.View
+        style={[
+          styles.triageProgressWrap,
+          { transform: [{ scale: breathScale }] },
+        ]}
+      >
+        <Svg width={ringSize} height={ringSize} style={styles.triageProgressSvg}>
+          <Circle
+            cx={ringSize / 2}
+            cy={ringSize / 2}
+            r={radius}
+            stroke={
+              triageTrackColor ||
+              (triageComplete ? "rgba(22,163,74,0.35)" : "rgba(148,163,184,0.34)")
+            }
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          <AnimatedCircle
+            cx={ringSize / 2}
+            cy={ringSize / 2}
+            r={radius}
+            stroke={triageRingColor || (triageComplete ? "#16A34A" : COLORS.brandPrimary)}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={ringDashOffset}
+            transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+          />
+        </Svg>
+        <MapHeaderIconButton
+          onPress={onOpenTriage}
+          accessibilityLabel="Update your info"
+          backgroundColor={triageSurfaceColor || actionSurfaceColor}
+          color={triageIconColor || titleColor}
+          iconName={triageIconName}
+          pressableStyle={styles.topSlotAction}
+          style={styles.topSlotActionButton}
         />
-        <AnimatedCircle
-          cx={ringSize / 2}
-          cy={ringSize / 2}
-          r={radius}
-          stroke={triageRingColor || (triageComplete ? "#16A34A" : COLORS.brandPrimary)}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={ringDashOffset}
-          transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
-        />
-      </Svg>
+      </Animated.View>
+    );
+  } else if (showClose && typeof onClose === "function") {
+    rightAction = (
       <MapHeaderIconButton
-        onPress={onOpenTriage}
-        accessibilityLabel="Update your info"
-        backgroundColor={triageSurfaceColor || actionSurfaceColor}
-        color={triageIconColor || titleColor}
-        iconName={triageIconName}
+        onPress={onClose}
+        accessibilityLabel={closeAccessibilityLabel}
+        backgroundColor={actionSurfaceColor}
+        color={titleColor}
+        iconName="close"
         pressableStyle={styles.topSlotAction}
         style={styles.topSlotActionButton}
       />
-    </Animated.View>
-  ) : (
-    <View style={styles.topSlotSpacer} />
-  );
+    );
+  }
 
   return (
     <View style={styles.topSlot}>
