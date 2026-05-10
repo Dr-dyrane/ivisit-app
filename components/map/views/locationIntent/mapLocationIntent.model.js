@@ -11,7 +11,17 @@ export const LOCATION_INTENT_MODES = Object.freeze({
 });
 
 export const MANUAL_LOCATION_STEPS = [
-	{ key: "countryCode", label: "Country or region", placeholder: "US, NG, CA..." },
+	{
+		key: "country",
+		label: "Country or region",
+		placeholder: "Choose country or region",
+		inputType: "country",
+	},
+	{
+		key: "stateRegion",
+		label: "State, province, or region",
+		placeholder: "California",
+	},
 	{ key: "city", label: "City", placeholder: "Enter city" },
 	{ key: "streetAddress", label: "Street address", placeholder: "123 Main Street" },
 	{ key: "unit", label: "Apartment, unit, or landmark", placeholder: "Apt 7B, near..." },

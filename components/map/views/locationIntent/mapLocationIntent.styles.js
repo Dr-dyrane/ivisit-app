@@ -1,33 +1,55 @@
 import { StyleSheet } from "react-native";
 
+const squircle = (radius) => ({
+	borderRadius: radius,
+	borderCurve: "continuous",
+});
+
 const styles = StyleSheet.create({
 	bodyScrollContent: {
-		paddingTop: 6,
 		paddingBottom: 6,
+	},
+	topRow: {
+		flexDirection: "row",
+		alignItems: "center",
 		gap: 12,
+		marginTop: 6,
+		marginBottom: 20,
 	},
-	sectionGap: {
-		height: 12,
-	},
-	searchInputShell: {
-		height: 46,
-		borderRadius: 14,
-		borderCurve: "continuous",
-		paddingHorizontal: 14,
+	searchPill: {
+		flex: 1,
+		minHeight: 44,
+		paddingHorizontal: 15,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 9,
+		borderRadius: 22,
+		borderCurve: "continuous",
+	},
+	searchInputPill: {
+		paddingVertical: 0,
 	},
 	searchInput: {
 		flex: 1,
 		minWidth: 0,
 		paddingVertical: 0,
 		fontSize: 15,
+		lineHeight: 19,
+		fontWeight: "500",
 	},
-	searchInputIconButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+	searchText: {
+		fontSize: 15,
+		lineHeight: 19,
+		fontWeight: "500",
+	},
+	avatarPressable: {
+		width: 44,
+		height: 44,
+	},
+	avatarImageShell: {
+		width: 42,
+		height: 42,
+		borderRadius: 21,
 		alignItems: "center",
 		justifyContent: "center",
 	},
@@ -39,35 +61,99 @@ const styles = StyleSheet.create({
 		opacity: 0.88,
 		transform: [{ scale: 0.99 }],
 	},
-	sectionTitle: {
-		fontSize: 13,
-		fontWeight: "600",
+	sectionTriggerPressed: {
+		opacity: 0.78,
 	},
-	currentCard: {
-		borderRadius: 22,
-		borderCurve: "continuous",
-		padding: 14,
-		gap: 10,
+	sectionLabel: {
+		fontSize: 16,
+		lineHeight: 20,
+		fontWeight: "700",
 	},
-	currentCardRow: {
+	intentSectionHeader: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
+		gap: 10,
+		marginBottom: 16,
 	},
-	currentCardLabel: {
-		fontSize: 15,
-		fontWeight: "600",
+	intentSectionHeaderBiased: {
+		justifyContent: "flex-start",
+		alignSelf: "flex-start",
 	},
-	currentCardBadge: {
-		fontSize: 12,
-		fontWeight: "600",
+	intentSectionHeaderTrigger: {
+		marginBottom: 16,
+	},
+	currentCard: {
+		position: "relative",
+		overflow: "hidden",
+		paddingHorizontal: 14,
+		paddingVertical: 14,
+		marginBottom: 22,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.18,
+		shadowRadius: 20,
+		shadowOffset: { width: 0, height: 12 },
+		elevation: 8,
+		...squircle(26),
+	},
+	currentCardGradient: {
+		...StyleSheet.absoluteFillObject,
+		opacity: 0.95,
+	},
+	currentCardGlow: {
+		position: "absolute",
+		right: -36,
+		top: -42,
+		width: 112,
+		height: 112,
+		borderRadius: 999,
+		opacity: 0.28,
+	},
+	currentCardContent: {
+		position: "relative",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 11,
+		minHeight: 48,
+	},
+	currentCardAvatar: {
+		width: 44,
+		height: 44,
+		borderRadius: 999,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	currentCardCopy: {
+		flex: 1,
+		gap: 2,
+		minWidth: 0,
+	},
+	currentCardMeta: {
+		maxWidth: 104,
+		minHeight: 28,
+		paddingHorizontal: 9,
+		paddingVertical: 6,
+		borderRadius: 999,
+		borderCurve: "continuous",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+	},
+	currentCardMetaText: {
+		fontSize: 10,
+		lineHeight: 12,
+		fontWeight: "700",
+		textTransform: "uppercase",
 	},
 	currentCardAddress: {
-		fontSize: 14,
-		fontWeight: "600",
+		fontSize: 16,
+		lineHeight: 20,
+		fontWeight: "700",
 	},
 	currentCardBody: {
 		fontSize: 13,
+		lineHeight: 16,
+		fontWeight: "400",
 	},
 	currentCardActions: {
 		flexDirection: "row",
@@ -92,6 +178,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		justifyContent: "space-between",
 		gap: 12,
+		marginBottom: 18,
 	},
 	orbItem: {
 		flex: 1,
@@ -113,6 +200,15 @@ const styles = StyleSheet.create({
 		borderRadius: 22,
 		borderCurve: "continuous",
 		overflow: "hidden",
+	},
+	recentsSection: {
+		marginTop: 4,
+	},
+	emptyGroup: {
+		borderRadius: 22,
+		borderCurve: "continuous",
+		paddingHorizontal: 16,
+		paddingVertical: 14,
 	},
 	listRow: {
 		paddingVertical: 12,
@@ -138,17 +234,34 @@ const styles = StyleSheet.create({
 		marginLeft: 14,
 	},
 	manualIntroCard: {
-		borderRadius: 20,
+		flexDirection: "row",
+		alignItems: "center",
+		borderRadius: 22,
 		borderCurve: "continuous",
-		padding: 14,
-		gap: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 11,
+		gap: 10,
+		marginBottom: 20,
+	},
+	manualIntroIcon: {
+		width: 38,
+		height: 38,
+		borderRadius: 19,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	manualIntroCopy: {
+		flex: 1,
+		minWidth: 0,
 	},
 	manualTitle: {
 		fontSize: 14,
+		lineHeight: 18,
 		fontWeight: "700",
 	},
 	manualBody: {
 		fontSize: 12,
+		lineHeight: 16,
 	},
 	manualAction: {
 		marginTop: 4,
@@ -162,12 +275,30 @@ const styles = StyleSheet.create({
 		padding: 14,
 		gap: 10,
 	},
+	manualStepHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 10,
+	},
+	manualBackButton: {
+		minHeight: 32,
+		paddingHorizontal: 10,
+		borderRadius: 999,
+		borderCurve: "continuous",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+	},
 	manualStepLabel: {
-		fontSize: 13,
-		fontWeight: "600",
+		fontSize: 18,
+		lineHeight: 23,
+		fontWeight: "700",
 	},
 	manualStepProgress: {
 		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "600",
 	},
 	manualTextInput: {
 		minHeight: 46,
@@ -176,6 +307,24 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 14,
 		paddingVertical: 10,
 		fontSize: 15,
+	},
+	manualSelectInput: {
+		minHeight: 46,
+		borderRadius: 14,
+		borderCurve: "continuous",
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 10,
+	},
+	manualSelectText: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "500",
 	},
 	manualStepActions: {
 		flexDirection: "row",
@@ -191,6 +340,14 @@ const styles = StyleSheet.create({
 	manualStepButtonLabel: {
 		fontSize: 13,
 		fontWeight: "600",
+	},
+	confirmBackAction: {
+		marginRight: "auto",
+	},
+	confirmUseAction: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
 	},
 });
 

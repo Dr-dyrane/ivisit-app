@@ -13,11 +13,13 @@ import sheetStageStyles from "../shared/mapSheetStage.styles";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import useMapExploreIntentResponsiveMetrics from "../exploreIntent/useMapExploreIntentResponsiveMetrics";
 import buildMapLocationIntentModel from "./mapLocationIntent.model";
 import {
 	LOCATION_INTENT_MODES,
 	MANUAL_LOCATION_STEPS,
 } from "./mapLocationIntent.model";
+import buildLocationIntentThemeTokens from "./mapLocationIntent.theme";
 import mapboxService from "../../../../services/mapboxService";
 import { useLocationStore } from "../../../../stores/locationStore";
 import {
@@ -48,6 +50,10 @@ export default function MapLocationIntentStageBase({
 			}),
 		[isDarkMode],
 	);
+	const themeTokens = useMemo(
+		() => buildLocationIntentThemeTokens({ isDarkMode, tokens }),
+		[isDarkMode, tokens],
+	);
 	const {
 		isSidebarPresentation,
 		contentMaxWidth,
@@ -55,6 +61,7 @@ export default function MapLocationIntentStageBase({
 		shellWidth,
 		shouldUseWideStageInset,
 	} = useMapStageSurfaceLayout();
+	const responsiveMetrics = useMapExploreIntentResponsiveMetrics();
 	const modalContainedStyle =
 		presentationMode === "modal" && contentMaxWidth
 			? { width: "100%", maxWidth: contentMaxWidth, alignSelf: "center" }
@@ -73,7 +80,8 @@ export default function MapLocationIntentStageBase({
 	const [searchResults, setSearchResults] = useState([]);
 	const [manualStepIndex, setManualStepIndex] = useState(0);
 	const [manualDraft, setManualDraft] = useState({
-		countryCode: "",
+		country: "",
+		stateRegion: "",
 		city: "",
 		streetAddress: "",
 		unit: "",
@@ -233,11 +241,10 @@ export default function MapLocationIntentStageBase({
 			responderNote: payload?.responderNote || manualDraft.responderNote || undefined,
 			countryCode:
 				payload?.countryCode ||
-				manualDraft.countryCode ||
 				locationControl?.currentCountryCode ||
 				undefined,
 		}),
-		[currentLocation, locationControl?.currentCountryCode, manualDraft.responderNote, manualDraft.unit, manualDraft.countryCode],
+		[currentLocation, locationControl?.currentCountryCode, manualDraft.responderNote, manualDraft.unit],
 	);
 
 	const commitLocation = useCallback(
@@ -306,9 +313,9 @@ export default function MapLocationIntentStageBase({
 	);
 	const savedPlaces = useMemo(
 		() => [
-			{ key: "home", label: "Home" },
-			{ key: "work", label: "Work" },
-			{ key: "add", label: "Add" },
+			{ key: "home", label: "Home", hasLocation: false },
+			{ key: "work", label: "Work", hasLocation: false },
+			{ key: "add", label: "Add", hasLocation: false },
 		],
 		[],
 	);
@@ -393,9 +400,11 @@ export default function MapLocationIntentStageBase({
 						model={model}
 						titleColor={tokens.titleColor}
 						mutedColor={tokens.mutedText}
-						heroSurfaceColor={heroSurfaceColor}
-						groupSurfaceColor={groupSurfaceColor}
+						heroSurfaceColor={themeTokens.heroSurfaceColor}
+						groupSurfaceColor={themeTokens.groupSurfaceColor}
 						infoSurfaceColor={infoSurfaceColor}
+						heroGradientColors={themeTokens.heroGradientColors}
+						heroGlowColor={themeTokens.heroGlowColor}
 						onUseCurrentLocation={handleUseCurrentLocationCandidate}
 						onOpenSearch={() => setMode(LOCATION_INTENT_MODES.ADDRESS_SEARCH)}
 						onSelectSavedPlace={(place) => {
@@ -403,7 +412,8 @@ export default function MapLocationIntentStageBase({
 								(item) => String(item?.label || "").toLowerCase() === place.key,
 							);
 							if (!matched) {
-								setMode(LOCATION_INTENT_MODES.MANUAL_INTRO);
+								setManualStepIndex(0);
+								setMode(LOCATION_INTENT_MODES.MANUAL_STEP);
 								return;
 							}
 							const normalized = buildSelectedLocation({
@@ -435,7 +445,10 @@ export default function MapLocationIntentStageBase({
 							setSelectedLocation(normalized);
 							setMode(LOCATION_INTENT_MODES.CONFIRM);
 						}}
-						onOpenManualIntro={() => setMode(LOCATION_INTENT_MODES.MANUAL_INTRO)}
+						onOpenManualIntro={() => {
+							setManualStepIndex(0);
+							setMode(LOCATION_INTENT_MODES.MANUAL_STEP);
+						}}
 						onStartPinAdjust={() => {
 							const pinSelection = buildSelectedLocation({
 								source: "pin",
@@ -484,7 +497,8 @@ export default function MapLocationIntentStageBase({
 								const address = [
 									manualDraft.streetAddress,
 									manualDraft.city,
-									manualDraft.countryCode,
+									manualDraft.stateRegion,
+									manualDraft.country,
 								]
 									.filter(Boolean)
 									.join(", ");
@@ -492,7 +506,6 @@ export default function MapLocationIntentStageBase({
 									source: "manual",
 									label,
 									address,
-									countryCode: manualDraft.countryCode || null,
 									confidence: "low",
 								});
 								setSelectedLocation(normalized);
@@ -509,14 +522,19 @@ export default function MapLocationIntentStageBase({
 								return;
 							}
 							if (manualStepIndex <= 0) {
-								setMode(LOCATION_INTENT_MODES.MANUAL_INTRO);
+								setMode(LOCATION_INTENT_MODES.DEFAULT);
 								return;
 							}
 							setManualStepIndex((prev) => Math.max(0, prev - 1));
 						}}
+						onBackToDefault={() => {
+							setMode(LOCATION_INTENT_MODES.DEFAULT);
+							setManualStepIndex(0);
+						}}
 						manualStepIndex={manualStepIndex}
 						isExpanded={isExpanded}
 						isDarkMode={isDarkMode}
+						responsiveMetrics={responsiveMetrics}
 					/>
 				</MapStageBodyScroll>
 			)}

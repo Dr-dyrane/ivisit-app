@@ -1,13 +1,18 @@
 import React, { useMemo } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import MapVisitDetailCollapsedRow from "../visitDetail/MapVisitDetailCollapsedRow";
 import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
+import IntentOrb from "../../shared/IntentOrb";
+import MapHistoryGroup from "../../history/MapHistoryGroup";
 import styles from "./mapLocationIntent.styles";
 import {
 	LOCATION_INTENT_MODES,
 	MANUAL_LOCATION_STEPS,
 } from "./mapLocationIntent.model";
+import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
+import { getPlaceOrbHierarchy, getPlaceOrbSubtext } from "./mapLocationIntent.helpers";
 
 function buildCollapsedAction({
 	showToggle,
@@ -92,6 +97,28 @@ export function MapLocationIntentActiveTopRow({
 	);
 }
 
+export function MapLocationIntentHeroMeta({
+	label,
+	iconName = "radio-button-on",
+	titleColor,
+	mutedColor,
+	surfaceColor,
+}) {
+	if (!label) return null;
+
+	return (
+		<View style={[styles.currentCardMeta, { backgroundColor: surfaceColor }]}>
+			<Ionicons name={iconName} size={11} color={titleColor} />
+			<Text
+				style={[styles.currentCardMetaText, { color: mutedColor }]}
+				numberOfLines={1}
+			>
+				{label}
+			</Text>
+		</View>
+	);
+}
+
 export function MapLocationIntentBodyContent({
 	model,
 	titleColor,
@@ -99,6 +126,8 @@ export function MapLocationIntentBodyContent({
 	heroSurfaceColor,
 	groupSurfaceColor,
 	infoSurfaceColor,
+	heroGradientColors,
+	heroGlowColor,
 	onUseCurrentLocation,
 	onOpenSearch,
 	onSelectSavedPlace,
@@ -118,9 +147,11 @@ export function MapLocationIntentBodyContent({
 	onManualDraftChange,
 	onNextManualStep,
 	onPrevManualStep,
+	onBackToDefault,
 	manualStepIndex,
 	isExpanded,
 	isDarkMode,
+	responsiveMetrics,
 }) {
 	const currentManualStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
 	const permissionLabel = model?.sourceLabel || "Location state";
@@ -133,29 +164,75 @@ export function MapLocationIntentBodyContent({
 		mode === LOCATION_INTENT_MODES.PIN_ADJUST;
 	const showDefaultSections = !isManualIntro && !isManualStep && !isConfirming;
 	const visibleResults = isExpanded ? searchResults.slice(0, 7) : searchResults.slice(0, 4);
+	const sectionLabelStyle = responsiveMetrics?.section?.labelStyle || null;
+	const sectionTriggerStyle = responsiveMetrics?.section?.triggerStyle || null;
+	const recentLocationItems = recents.slice(0, 6).map((recent, index) => ({
+		id: recent.id || `${recent.address || recent.label || "recent"}-${index}`,
+		requestType: "visit",
+		title: recent.label || "Recent location",
+		subtitle: recent.address || "",
+		timeLabel: recent.timeLabel || "",
+		statusLabel: recent.kindLabel || "Recent",
+		statusTone: "default",
+		...recent,
+	}));
+	const recentRowMetrics = {
+		iconSize: 20,
+		orbSize: 40,
+		gap: 12,
+		titleSize: 15,
+		titleLineHeight: 20,
+		subtitleSize: 12,
+		subtitleLineHeight: 16,
+		chevronSize: 16,
+	};
 
 	return (
 		<View style={styles.bodyScrollContent}>
-			<View style={[styles.searchInputShell, { backgroundColor: groupSurfaceColor }]}>
-				<Ionicons name="search-outline" size={18} color={mutedColor} />
-				<TextInput
-					value={searchQuery}
-					onChangeText={onSearchQueryChange}
-					placeholder={model.searchPlaceholder}
-					placeholderTextColor={mutedColor}
-					style={[styles.searchInput, { color: titleColor }]}
-				/>
+			<View style={styles.topRow}>
+				{isSearching ? (
+					<View style={[styles.searchPill, styles.searchInputPill, { backgroundColor: groupSurfaceColor }]}>
+						<Ionicons name="search" size={19} color={titleColor} />
+						<TextInput
+							value={searchQuery}
+							onChangeText={onSearchQueryChange}
+							placeholder={model.searchPlaceholder}
+							placeholderTextColor={mutedColor}
+							autoFocus
+							style={[styles.searchInput, { color: titleColor }]}
+						/>
+					</View>
+				) : (
+					<Pressable
+						onPress={onOpenSearch}
+						accessibilityRole="button"
+						accessibilityLabel="Search address or place"
+						style={[styles.searchPill, { backgroundColor: groupSurfaceColor }]}
+					>
+						<Ionicons name="search" size={19} color={titleColor} />
+						<Text style={[styles.searchText, { color: mutedColor }]}>
+							{model.searchPlaceholder}
+						</Text>
+					</Pressable>
+				)}
+
 				<Pressable
 					onPress={onOpenManualIntro}
 					accessibilityRole="button"
 					accessibilityLabel="Enter address manually"
-					hitSlop={8}
 					style={({ pressed }) => [
-						styles.searchInputIconButton,
-						pressed ? styles.pressedScale : null,
+						styles.avatarPressable,
+						{ transform: [{ scale: pressed ? 0.96 : 1 }] },
 					]}
 				>
-					<Ionicons name="create-outline" size={19} color={titleColor} />
+					<LinearGradient
+						colors={["#60A5FA", "#3B82F6"]}
+						start={{ x: 0.18, y: 0.18 }}
+						end={{ x: 0.82, y: 0.9 }}
+						style={styles.avatarImageShell}
+					>
+						<MaterialCommunityIcons name="map-plus" size={22} color="#FFFFFF" />
+					</LinearGradient>
 				</Pressable>
 			</View>
 			{isSearching && visibleResults.length > 0 ? (
@@ -200,172 +277,155 @@ export function MapLocationIntentBodyContent({
 
 			{showDefaultSections ? (
 				<>
-					<View style={[styles.currentCard, { backgroundColor: heroSurfaceColor }]}>
-						<View style={styles.currentCardRow}>
-							<Text style={[styles.currentCardLabel, { color: titleColor }]}>
-								Current location
-							</Text>
-							<Text style={[styles.currentCardBadge, { color: mutedColor }]}>
-								{permissionLabel}
-							</Text>
-						</View>
-						<Text style={[styles.currentCardAddress, { color: titleColor }]}>
-							{model.headerTitle}
-						</Text>
-						<Text style={[styles.currentCardBody, { color: mutedColor }]}>
-							{model.headerSubtitle}
-						</Text>
-						<View style={styles.currentCardActions}>
-							<Pressable
-								onPress={onUseCurrentLocation}
-								style={({ pressed }) => [
-									styles.currentCardAction,
-									{ backgroundColor: groupSurfaceColor },
-									pressed ? styles.rowPressed : null,
-								]}
+					<Pressable
+						onPress={onUseCurrentLocation}
+						accessibilityRole="button"
+						accessibilityLabel={`Use pickup location: ${model.headerTitle}`}
+						style={({ pressed }) => [
+							styles.currentCard,
+							{ backgroundColor: heroSurfaceColor },
+							pressed ? styles.rowPressed : null,
+						]}
+					>
+						{heroGradientColors?.length ? (
+							<LinearGradient
+								pointerEvents="none"
+								colors={heroGradientColors}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={styles.currentCardGradient}
+							/>
+						) : null}
+						<View
+							pointerEvents="none"
+							style={[styles.currentCardGlow, { backgroundColor: heroGlowColor }]}
+						/>
+						<View style={styles.currentCardContent}>
+							<View
+								style={[styles.currentCardAvatar, { backgroundColor: groupSurfaceColor }]}
 							>
-								<Ionicons name="locate-outline" size={16} color={titleColor} />
-								<Text
-									style={[styles.currentCardActionLabel, { color: titleColor }]}
-								>
-									Use current location
+								<Ionicons name="locate-outline" size={20} color={titleColor} />
+							</View>
+							<View style={styles.currentCardCopy}>
+								<Text style={[styles.currentCardAddress, { color: titleColor }]}>
+									{model.headerTitle}
 								</Text>
-							</Pressable>
-							<Pressable
-								onPress={onStartPinAdjust}
-								style={({ pressed }) => [
-									styles.currentCardAction,
-									{ backgroundColor: groupSurfaceColor },
-									pressed ? styles.rowPressed : null,
-								]}
-							>
-								<Ionicons name="navigate-outline" size={16} color={titleColor} />
-								<Text
-									style={[styles.currentCardActionLabel, { color: titleColor }]}
-								>
-									Adjust on map
+								<Text style={[styles.currentCardBody, { color: mutedColor }]}>
+									{model.headerSubtitle}
 								</Text>
-							</Pressable>
+							</View>
+							<MapLocationIntentHeroMeta
+								label={permissionLabel}
+								titleColor={titleColor}
+								mutedColor={mutedColor}
+								surfaceColor={groupSurfaceColor}
+							/>
 						</View>
-					</View>
+					</Pressable>
 
-					<Text style={[styles.sectionTitle, { color: mutedColor }]}>
-						{model.placesTitle}
-					</Text>
+					<Pressable
+						style={({ pressed }) => [
+							styles.intentSectionHeader,
+							styles.intentSectionHeaderBiased,
+							styles.intentSectionHeaderTrigger,
+							sectionTriggerStyle,
+							pressed ? styles.sectionTriggerPressed : null,
+						]}
+						accessibilityRole="button"
+						accessibilityLabel="Manage saved places"
+					>
+						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
+							{model.placesTitle}
+						</Text>
+						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+					</Pressable>
 					<View style={styles.orbRow}>
-						{savedPlaces.slice(0, 3).map((place) => (
-							<Pressable
+						{savedPlaces.slice(0, 3).map((place, index) => (
+							<IntentOrb
 								key={place.key}
+								label={place.label}
+								subtext={getPlaceOrbSubtext(place)}
+								iconName={
+									place.key === "home"
+										? "home"
+										: place.key === "work"
+											? "briefcase"
+											: "plus"
+								}
+								colors={MAP_LOCATION_INTENT_COPY.placesOrbColors[place.key] || MAP_LOCATION_INTENT_COPY.placesOrbColors.add}
+								hierarchy={getPlaceOrbHierarchy(place, index, savedPlaces)}
+								actionBias={place.key === "add" ? "primary" : index === 0 ? "primary" : index === 1 ? "leading" : "trailing"}
 								onPress={() => onSelectSavedPlace(place)}
-								style={({ pressed }) => [
-									styles.orbItem,
-									pressed ? styles.pressedScale : null,
-								]}
-							>
-								<View
-									style={[
-										styles.orbCircle,
-										{ backgroundColor: groupSurfaceColor },
-									]}
-								>
-									<Ionicons
-										name={
-											place.key === "home"
-												? "home-outline"
-												: place.key === "work"
-													? "briefcase-outline"
-													: "add-outline"
-										}
-										size={18}
-										color={titleColor}
-									/>
-								</View>
-								<Text style={[styles.orbLabelBelow, { color: titleColor }]}>
-									{place.label}
-								</Text>
-							</Pressable>
+								titleColor={titleColor}
+								mutedColor={mutedColor}
+								primarySubtextColor={titleColor}
+								responsiveStyles={responsiveMetrics?.care?.orb}
+								isMutedOrb={!place.hasLocation}
+							/>
 						))}
 					</View>
 
 					<Pressable
 						onPress={onOpenManualIntro}
+						accessibilityRole="button"
+						accessibilityLabel="Enter address manually"
 						style={({ pressed }) => [
 							styles.manualIntroCard,
 							{ backgroundColor: groupSurfaceColor },
 							pressed ? styles.rowPressed : null,
 						]}
 					>
-						<Text style={[styles.manualTitle, { color: titleColor }]}>
-							{model.manualIntroTitle}
-						</Text>
-						<Text style={[styles.manualBody, { color: mutedColor }]}>
-							{model.manualIntroBody}
-						</Text>
-						<View style={styles.manualAction}>
-							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+						<View style={[styles.manualIntroIcon, { backgroundColor: infoSurfaceColor }]}>
+							<MaterialCommunityIcons name="map-marker-question-outline" size={20} color={titleColor} />
+						</View>
+						<View style={styles.manualIntroCopy}>
+							<Text style={[styles.manualTitle, { color: titleColor }]} numberOfLines={1}>
+								{model.manualIntroTitle}
+							</Text>
+							<Text style={[styles.manualBody, { color: mutedColor }]} numberOfLines={1}>
 								{model.manualActionLabel}
 							</Text>
-							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
 						</View>
+						<Ionicons name="chevron-forward" size={17} color={mutedColor} />
 					</Pressable>
 				</>
 			) : null}
 
 			{isExpanded && showDefaultSections ? (
-				<>
-					<Text style={[styles.sectionTitle, { color: mutedColor }]}>
-						{model.recentsTitle}
-					</Text>
-					<View style={[styles.listCard, { backgroundColor: groupSurfaceColor }]}>
-						{recents.length === 0 ? (
-							<View style={styles.listRow}>
-								<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
-									No recent locations yet.
-								</Text>
-							</View>
-						) : (
-							recents.slice(0, 6).map((recent, index) => (
-								<View key={`${recent.address || recent.label}-${index}`}>
-									<Pressable
-										onPress={() => onSelectRecentLocation(recent)}
-										style={({ pressed }) => [
-											styles.listRow,
-											pressed ? styles.rowPressed : null,
-										]}
-									>
-										<View style={styles.listRowTextWrap}>
-											<Text
-												style={[styles.listRowTitle, { color: titleColor }]}
-												numberOfLines={1}
-											>
-												{recent.label || "Recent location"}
-											</Text>
-											<Text
-												style={[styles.listRowSubtitle, { color: mutedColor }]}
-												numberOfLines={1}
-											>
-												{recent.address || ""}
-											</Text>
-										</View>
-										<Ionicons
-											name="chevron-forward"
-											size={16}
-											color={mutedColor}
-										/>
-									</Pressable>
-									{index < Math.min(6, recents.length) - 1 ? (
-										<View
-											style={[
-												styles.rowDivider,
-												{ backgroundColor: mutedColor + "35" },
-											]}
-										/>
-									) : null}
-								</View>
-							))
-						)}
-					</View>
-				</>
+				<View style={styles.recentsSection}>
+					<Pressable
+						style={({ pressed }) => [
+							styles.intentSectionHeader,
+							styles.intentSectionHeaderBiased,
+							styles.intentSectionHeaderTrigger,
+							sectionTriggerStyle,
+							pressed ? styles.sectionTriggerPressed : null,
+						]}
+						accessibilityRole="button"
+						accessibilityLabel="Open recent locations"
+					>
+						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
+							{model.recentsTitle}
+						</Text>
+						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+					</Pressable>
+					{recentLocationItems.length > 0 ? (
+						<MapHistoryGroup
+							items={recentLocationItems}
+							onSelectItem={onSelectRecentLocation}
+							metrics={recentRowMetrics}
+							containerRadius={22}
+							hideRowChevron
+							isDarkMode={isDarkMode}
+						/>
+					) : (
+						<View style={[styles.emptyGroup, { backgroundColor: groupSurfaceColor }]}>
+							<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
+								No recent locations yet.
+							</Text>
+						</View>
+					)}
+				</View>
 			) : null}
 
 			{isManualIntro ? (
@@ -416,24 +476,61 @@ export function MapLocationIntentBodyContent({
 						{ backgroundColor: groupSurfaceColor },
 					]}
 				>
-					<Text style={[styles.manualStepProgress, { color: mutedColor }]}>
-						Step {manualStepIndex + 1} of {MANUAL_LOCATION_STEPS.length}
-					</Text>
+					<View style={styles.manualStepHeader}>
+						<Pressable
+							onPress={onBackToDefault}
+							accessibilityRole="button"
+							accessibilityLabel="Back to pickup choices"
+							style={({ pressed }) => [
+								styles.manualBackButton,
+								{ backgroundColor: infoSurfaceColor },
+								pressed ? styles.rowPressed : null,
+							]}
+						>
+							<Ionicons name="chevron-back" size={16} color={titleColor} />
+							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+								Pickup
+							</Text>
+						</Pressable>
+						<Text style={[styles.manualStepProgress, { color: mutedColor }]}>
+							{manualStepIndex + 1} of {MANUAL_LOCATION_STEPS.length}
+						</Text>
+					</View>
 					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
 						{currentManualStep.label}
 					</Text>
-					<TextInput
-						value={manualDraft[currentManualStep.key] || ""}
-						onChangeText={(value) =>
-							onManualDraftChange(currentManualStep.key, value)
-						}
-						placeholder={currentManualStep.placeholder}
-						placeholderTextColor={mutedColor}
-						style={[
-							styles.manualTextInput,
-							{ backgroundColor: infoSurfaceColor, color: titleColor },
-						]}
-					/>
+					{currentManualStep.inputType === "country" ? (
+						<View
+							accessibilityLabel="Choose country or region"
+							style={[
+								styles.manualSelectInput,
+								{ backgroundColor: infoSurfaceColor },
+							]}
+						>
+							<Text
+								style={[
+									styles.manualSelectText,
+									{ color: manualDraft.country ? titleColor : mutedColor },
+								]}
+							>
+								{manualDraft.country || currentManualStep.placeholder}
+							</Text>
+							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+						</View>
+					) : (
+						<TextInput
+							value={manualDraft[currentManualStep.key] || ""}
+							onChangeText={(value) =>
+								onManualDraftChange(currentManualStep.key, value)
+							}
+							placeholder={currentManualStep.placeholder}
+							placeholderTextColor={mutedColor}
+							style={[
+								styles.manualTextInput,
+								{ backgroundColor: infoSurfaceColor, color: titleColor },
+							]}
+						/>
+					)}
 					<View style={styles.manualStepActions}>
 						<Pressable
 							style={[
@@ -470,12 +567,10 @@ export function MapLocationIntentBodyContent({
 			{mode === LOCATION_INTENT_MODES.CONFIRM ||
 			mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
 			mode === LOCATION_INTENT_MODES.PIN_ADJUST ? (
-				<Pressable
-					onPress={onConfirmSelection}
-					style={({ pressed }) => [
+				<View
+					style={[
 						styles.manualStepCard,
 						{ backgroundColor: groupSurfaceColor },
-						pressed ? styles.rowPressed : null,
 					]}
 				>
 					<Text style={[styles.manualTitle, { color: titleColor }]}>
@@ -487,12 +582,34 @@ export function MapLocationIntentBodyContent({
 							"Use this location for pickup, nearby care, and pricing."}
 					</Text>
 					<View style={styles.manualAction}>
-						<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-							Use this location
-						</Text>
-						<Ionicons name="checkmark-circle" size={17} color={titleColor} />
+						{selectedLocation?.source === "manual" ? (
+							<Pressable
+								onPress={onBackToDefault}
+								accessibilityRole="button"
+								accessibilityLabel="Back to pickup choices"
+								style={styles.confirmBackAction}
+							>
+								<Text style={[styles.manualStepButtonLabel, { color: mutedColor }]}>
+									Pickup
+								</Text>
+							</Pressable>
+						) : null}
+						<Pressable
+							onPress={onConfirmSelection}
+							accessibilityRole="button"
+							accessibilityLabel="Use this location"
+							style={({ pressed }) => [
+								styles.confirmUseAction,
+								pressed ? styles.rowPressed : null,
+							]}
+						>
+							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+								Use this location
+							</Text>
+							<Ionicons name="checkmark-circle" size={17} color={titleColor} />
+						</Pressable>
 					</View>
-				</Pressable>
+				</View>
 			) : null}
 		</View>
 	);

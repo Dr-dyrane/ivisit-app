@@ -19,7 +19,7 @@ export function getViewportSurfaceMetrics({
 	const contentInset = round(clamp(safeWidth * (isWide ? 0.03 : 0.046), 18, isWide ? 36 : 28));
 	const sectionGap = round(clamp(safeHeight * 0.016, 12, 18));
 	const largeGap = round(clamp(safeHeight * 0.022, 18, 24));
-	const sheetRadius = round(clamp(wideWidth * 0.082, 28, 38));
+	const sheetRadius = round(clamp(wideWidth * 0.092, 32, 42));
 	const cardRadius = round(clamp(wideWidth * 0.066, 22, 30));
 	const modalRadius = round(clamp(wideWidth * 0.074, 26, 36));
 	const chipRadius = round(clamp(wideWidth * 0.038, 14, 18));
@@ -81,7 +81,7 @@ export function getViewportSurfaceMetrics({
 			titleLineHeight: round(clamp(wideWidth * 0.056, 22, 28)),
 		},
 		map: {
-			sheetSideInset: round(clamp(safeWidth * 0.02, 8, 14)),
+			sheetSideInset: round(clamp(safeWidth * 0.02, 10, 14)),
 			handleWidth: round(clamp(wideWidth * 0.11, 44, 58)),
 			handleHeight: 5,
 			headerHeight: round(clamp(safeHeight * 0.09, 72, 92)),

@@ -21,6 +21,27 @@ export const MAP_LOCATION_INTENT_COPY = {
 		family: "Family",
 		add: "Add",
 	},
+	placesOrbColors: {
+		home: ["#A78BFA", "#7C3AED"], // Vibrant purple gradient
+		work: ["#FBBF24", "#D97706"], // Amber/orange gradient
+		family: ["#F472B6", "#DB2777"], // Pink/magenta gradient
+		add: ["#EF4444", "#DC2626"], // Bluish-red gradient (matches map polyline/hospital marker)
+	},
+	placesOrbSubtext: {
+		home: {
+			unset: "Add",
+			set: "Close by",
+		},
+		work: {
+			unset: "Add",
+			set: "Close by",
+		},
+		family: {
+			unset: "Add",
+			set: "Close by",
+		},
+		add: "",
+	},
 	infoRows: {
 		nearby: "Nearby care",
 		pricing: "Pricing",

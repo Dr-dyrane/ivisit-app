@@ -135,7 +135,7 @@ export default function useMapExploreIntentResponsiveMetrics() {
 								borderRadius: Math.round(orbSize / 2),
 						  }
 						: null,
-					iconSize: isTight ? orbIconSize : 38,
+					iconSize: isTight ? orbIconSize : 48,
 					labelStyle: isTight
 						? {
 								fontSize: isVeryTight ? 13 : 14,
