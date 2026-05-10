@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, View } from "react-native";
+import CountryPickerModal from "../../../register/CountryPickerModal";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import {
 	GLASS_SURFACE_VARIANTS,
@@ -15,18 +16,32 @@ import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import useMapExploreIntentResponsiveMetrics from "../exploreIntent/useMapExploreIntentResponsiveMetrics";
 import buildMapLocationIntentModel from "./mapLocationIntent.model";
-import {
-	LOCATION_INTENT_MODES,
-	MANUAL_LOCATION_STEPS,
-} from "./mapLocationIntent.model";
+import { MANUAL_LOCATION_STEPS } from "./mapLocationIntent.model";
+import { mapSuggestionToLocation } from "../../surfaces/search/mapSearchSheet.helpers";
 import buildLocationIntentThemeTokens from "./mapLocationIntent.theme";
+import {
+	buildManualAddressLabel,
+	buildManualAddressParts,
+	buildLocationIntentRecents,
+	buildLocationIntentSavedPlaces,
+	getManualStepActionLabel,
+	mapStoredLocationToCandidate,
+	validateManualLocationStep,
+} from "./mapLocationIntent.helpers";
 import mapboxService from "../../../../services/mapboxService";
+import {
+	mapCandidateToPickupPayload,
+	mapCandidateToSavedAddressPayload,
+	normalizeAddressCandidate,
+} from "../../../../services/locationAddressService";
 import { useLocationStore } from "../../../../stores/locationStore";
 import {
 	MapLocationIntentActiveTopRow,
 	MapLocationIntentBodyContent,
 	MapLocationIntentCollapsedTopRow,
 } from "./MapLocationIntentStageParts";
+import useAddressSearchController from "./useAddressSearchController";
+import useLocationSheetNavigation from "./useLocationSheetNavigation";
 import styles from "./mapLocationIntent.styles";
 
 export default function MapLocationIntentStageBase({
@@ -75,12 +90,10 @@ export default function MapLocationIntentStageBase({
 		shouldUseWideStageInset ? sheetStageStyles.topSlotWide : null,
 		modalContainedStyle,
 	];
-	const [mode, setMode] = useState(LOCATION_INTENT_MODES.DEFAULT);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [searchResults, setSearchResults] = useState([]);
 	const [manualStepIndex, setManualStepIndex] = useState(0);
 	const [manualDraft, setManualDraft] = useState({
 		country: "",
+		countryCode: "",
 		stateRegion: "",
 		city: "",
 		streetAddress: "",
@@ -88,19 +101,80 @@ export default function MapLocationIntentStageBase({
 		responderNote: "",
 	});
 	const [selectedLocation, setSelectedLocation] = useState(null);
+	const [manualError, setManualError] = useState(null);
+	const [isResolvingManual, setIsResolvingManual] = useState(false);
+	const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+	const [pendingPlaceLabel, setPendingPlaceLabel] = useState(null);
+	const [savedPlaceFeedback, setSavedPlaceFeedback] = useState(null);
 	const savedLocations = useLocationStore((state) => state.savedLocations || []);
 	const addSavedLocation = useLocationStore((state) => state.addSavedLocation);
+	const updateSavedLocation = useLocationStore((state) => state.updateSavedLocation);
+	const resetTransientStateForDefault = useCallback(() => {
+		setManualError(null);
+		setManualStepIndex(0);
+		setPendingPlaceLabel(null);
+		setSavedPlaceFeedback(null);
+	}, []);
+	const locationNavigation = useLocationSheetNavigation({
+		onResetToDefault: resetTransientStateForDefault,
+	});
+	const {
+		mode,
+		isSearchMode,
+		openAddressSearch: navigateToAddressSearch,
+		openManualStep: navigateToManualStep,
+		openConfirm: navigateToConfirm,
+		openPlaceSelected: navigateToPlaceSelected,
+		openPinAdjust: navigateToPinAdjust,
+		returnToDefault: navigateToDefault,
+	} = locationNavigation;
+	const openAddressSearch = useCallback(() => {
+		setSavedPlaceFeedback(null);
+		navigateToAddressSearch();
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+	}, [navigateToAddressSearch, onSnapStateChange]);
+	const locationBias = useMemo(
+		() => currentLocation?.location || currentLocation || null,
+		[currentLocation],
+	);
+	const {
+		searchQuery,
+		setSearchQuery,
+		clearSearch,
+		searchResults,
+		isSearchingLocations,
+		locationSearchError,
+		setLocationSearchError,
+		recentSearchQueries,
+		commitSearchQuery,
+	} = useAddressSearchController({
+		isActive: isSearchMode,
+		locationBias,
+		onOpenSearch: openAddressSearch,
+	});
+	const navigateToDefaultAndClearSearch = useCallback(() => {
+		clearSearch();
+		navigateToDefault();
+	}, [clearSearch, navigateToDefault]);
 
 	useEffect(() => {
 		const seededQuery =
-			typeof sheetPayload?.addressQuery === "string"
-				? sheetPayload.addressQuery.trim()
+			typeof sheetPayload?.addressQuery === "string" ||
+			typeof sheetPayload?.query === "string"
+				? String(sheetPayload.addressQuery || sheetPayload.query).trim()
 				: "";
 		if (seededQuery) {
-			setSearchQuery(seededQuery);
-			setMode(LOCATION_INTENT_MODES.ADDRESS_SEARCH);
+			setSearchQuery(seededQuery, { open: false });
+			openAddressSearch();
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 		}
-	}, [sheetPayload?.addressQuery]);
+	}, [
+		onSnapStateChange,
+		openAddressSearch,
+		sheetPayload?.addressQuery,
+		sheetPayload?.query,
+		setSearchQuery,
+	]);
 
 	const model = useMemo(
 		() =>
@@ -112,27 +186,6 @@ export default function MapLocationIntentStageBase({
 		[currentLocation, locationControl, mode],
 	);
 
-	useEffect(() => {
-		let active = true;
-		const run = async () => {
-			if (mode !== LOCATION_INTENT_MODES.ADDRESS_SEARCH) return;
-			const query = searchQuery.trim();
-			if (query.length < 2) {
-				setSearchResults([]);
-				return;
-			}
-			const suggestions = await mapboxService.suggestAddresses(
-				query,
-				currentLocation?.location || currentLocation || null,
-			);
-			if (!active) return;
-			setSearchResults(Array.isArray(suggestions) ? suggestions : []);
-		};
-		run();
-		return () => {
-			active = false;
-		};
-	}, [currentLocation, mode, searchQuery]);
 	const effectiveSnapState =
 		effectivePresentationMode === "sheet"
 			? snapState
@@ -208,66 +261,76 @@ export default function MapLocationIntentStageBase({
 		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 	}, [effectiveSnapState, onSnapStateChange, shouldShowHeaderToggle]);
 
+	const activeHeaderToggleHandler = isSearchMode
+		? navigateToDefaultAndClearSearch
+		: handleHeaderToggle;
+	const activeHeaderCloseHandler = isSearchMode
+		? navigateToDefaultAndClearSearch
+		: onClose;
+	const activeHeaderToggleIconName = isSearchMode
+		? "chevron-back"
+		: isExpanded
+			? "chevron-down"
+			: "chevron-up";
+	const activeHeaderToggleAccessibilityLabel = isSearchMode
+		? "Back to location choices"
+		: isExpanded
+			? "Collapse location sheet"
+			: "Expand location sheet";
+	const activeHeaderCloseAccessibilityLabel = isSearchMode
+		? "Close search"
+		: "Close location sheet";
+	const shouldShowActiveHeaderToggle = isSearchMode || shouldShowHeaderToggle;
+
 	const buildSelectedLocation = useCallback(
-		(payload) => ({
-			source: payload?.source || "manual",
-			label: payload?.label || payload?.primaryText || "Selected location",
-			address:
-				payload?.address ||
-				payload?.formattedAddress ||
-				payload?.secondaryText ||
-				payload?.label ||
-				"",
-			coords: {
-				latitude: Number(
-					payload?.coords?.latitude ??
-						payload?.location?.latitude ??
-						payload?.latitude ??
-						currentLocation?.location?.latitude ??
-						currentLocation?.latitude ??
-						0,
-				),
-				longitude: Number(
-					payload?.coords?.longitude ??
-						payload?.location?.longitude ??
-						payload?.longitude ??
-						currentLocation?.location?.longitude ??
-						currentLocation?.longitude ??
-						0,
-				),
-			},
-			confidence: payload?.confidence || "medium",
-			unit: payload?.unit || manualDraft.unit || undefined,
-			responderNote: payload?.responderNote || manualDraft.responderNote || undefined,
-			countryCode:
-				payload?.countryCode ||
-				locationControl?.currentCountryCode ||
-				undefined,
-		}),
-		[currentLocation, locationControl?.currentCountryCode, manualDraft.responderNote, manualDraft.unit],
+		(payload) =>
+			normalizeAddressCandidate(
+				{
+					...payload,
+					unit: payload?.unit || manualDraft.unit || undefined,
+					responderNote:
+						payload?.responderNote || manualDraft.responderNote || undefined,
+					pendingSaveCategory:
+						payload?.pendingSaveCategory ||
+						payload?.pendingPlaceLabel ||
+						pendingPlaceLabel ||
+						undefined,
+					countryCode:
+						payload?.countryCode ||
+						manualDraft.countryCode ||
+						locationControl?.currentCountryCode ||
+						undefined,
+				},
+				{
+					source: payload?.source || "manual",
+					confidence: payload?.confidence || "medium",
+				},
+			),
+		[
+			locationControl?.currentCountryCode,
+			manualDraft.countryCode,
+			manualDraft.responderNote,
+			manualDraft.unit,
+			pendingPlaceLabel,
+		],
 	);
 
 	const commitLocation = useCallback(
 		(nextSelection) => {
 			if (!nextSelection) return;
-			onSelectLocation?.({
-				primaryText: nextSelection.label,
-				secondaryText: nextSelection.address,
-				formattedAddress: nextSelection.address,
-				location: {
-					latitude: nextSelection.coords.latitude,
-					longitude: nextSelection.coords.longitude,
-				},
-				countryCode: nextSelection.countryCode || null,
-				source: nextSelection.source,
-			});
+			const pickupPayload = mapCandidateToPickupPayload(nextSelection);
+			if (!pickupPayload) return;
+			onSelectLocation?.(pickupPayload);
 			if (nextSelection.source === "manual" || nextSelection.source === "search") {
 				addSavedLocation?.({
 					label: nextSelection.source === "manual" ? "custom" : "recent",
+					category: nextSelection.source === "manual" ? "custom" : "recent",
 					address: nextSelection.address,
 					latitude: nextSelection.coords.latitude,
 					longitude: nextSelection.coords.longitude,
 					countryCode: nextSelection.countryCode || null,
+					unit: nextSelection.unit || null,
+					responderNote: nextSelection.responderNote || null,
 				});
 			}
 			onClose?.();
@@ -288,39 +351,205 @@ export default function MapLocationIntentStageBase({
 			countryCode: currentLocation?.countryCode || null,
 			confidence: "high",
 		});
+		if (!normalized) return;
 		setSelectedLocation(normalized);
-		setMode(LOCATION_INTENT_MODES.CONFIRM);
+		navigateToConfirm();
 	}, [
 		buildSelectedLocation,
 		currentLocation,
 		model.requiresLocationSelection,
 		model.shouldOpenSettings,
+		navigateToConfirm,
 		onUseCurrentLocation,
 	]);
 
 	const recents = useMemo(
-		() =>
-			savedLocations
-				.slice(0, 5)
-				.map((item) => ({
-					label: item?.label || "Recent",
-					address: item?.address || "",
-					latitude: item?.latitude,
-					longitude: item?.longitude,
-					countryCode: item?.countryCode || null,
-				})),
+		() => buildLocationIntentRecents(savedLocations),
 		[savedLocations],
 	);
 	const savedPlaces = useMemo(
-		() => [
-			{ key: "home", label: "Home", hasLocation: false },
-			{ key: "work", label: "Work", hasLocation: false },
-			{ key: "add", label: "Add", hasLocation: false },
-		],
-		[],
+		() => buildLocationIntentSavedPlaces(savedLocations),
+		[savedLocations],
 	);
 
-		return (
+	const handleOpenManualStep = useCallback(() => {
+		setManualError(null);
+		setManualStepIndex(0);
+		navigateToManualStep();
+	}, [navigateToManualStep]);
+
+	const handleManualCountrySelect = useCallback((country) => {
+		if (!country) return;
+		setManualDraft((prev) => ({
+			...prev,
+			country: country.name || prev.country,
+			countryCode: country.code || prev.countryCode || "",
+		}));
+		setManualError(null);
+		setManualStepIndex((prev) =>
+			prev === 0 ? Math.min(1, MANUAL_LOCATION_STEPS.length - 1) : prev,
+		);
+	}, []);
+
+	const handleManualConfirm = useCallback(async () => {
+		const requiredError = MANUAL_LOCATION_STEPS
+			.map((step) => validateManualLocationStep(step, manualDraft))
+			.find(Boolean);
+		if (requiredError) {
+			const nextIndex = MANUAL_LOCATION_STEPS.findIndex((step) =>
+				validateManualLocationStep(step, manualDraft),
+			);
+			setManualStepIndex(Math.max(0, nextIndex));
+			setManualError(requiredError);
+			return;
+		}
+
+		const label = buildManualAddressLabel(manualDraft);
+		const address = buildManualAddressParts(manualDraft).join(", ");
+
+		if (!address) {
+			setManualError("Add a little more detail so responders know where to go.");
+			return;
+		}
+
+		setIsResolvingManual(true);
+		setManualError(null);
+
+		try {
+			const geocoded = await mapboxService.geocodeAddress(address);
+			const latitude = Number(geocoded?.latitude);
+			const longitude = Number(geocoded?.longitude);
+			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+				throw new Error("manual_geocode_missing_coordinates");
+			}
+			const normalized = buildSelectedLocation({
+				source: "manual",
+				label,
+				address: geocoded?.formatted_address || address,
+				coords: { latitude, longitude },
+				countryCode: geocoded?.countryCode || manualDraft.countryCode || null,
+				confidence: "medium",
+			});
+			setSelectedLocation(normalized);
+			navigateToConfirm();
+		} catch (_error) {
+			setManualStepIndex(3);
+			setManualError(
+				"We couldn't place that pickup yet. Add a street number, place name, or nearby landmark.",
+			);
+		} finally {
+			setIsResolvingManual(false);
+		}
+	}, [buildSelectedLocation, manualDraft, navigateToConfirm]);
+
+	const handleManualDraftChange = useCallback((key, value) => {
+		setManualDraft((prev) => ({ ...prev, [key]: value }));
+		setManualError(null);
+	}, []);
+
+	const handleNextManualStep = useCallback(() => {
+		const currentStep = MANUAL_LOCATION_STEPS[manualStepIndex];
+		const validationError = validateManualLocationStep(currentStep, manualDraft);
+		if (validationError) {
+			setManualError(validationError);
+			return;
+		}
+
+		if (manualStepIndex >= MANUAL_LOCATION_STEPS.length - 1) {
+			handleManualConfirm();
+			return;
+		}
+
+		setManualError(null);
+		setManualStepIndex((prev) =>
+			Math.min(prev + 1, MANUAL_LOCATION_STEPS.length - 1),
+		);
+	}, [
+		handleManualConfirm,
+		manualDraft,
+		manualStepIndex,
+	]);
+
+	const handleSearchQueryChange = setSearchQuery;
+
+	const handlePickSearchResult = useCallback(
+		(item) => {
+			const mapped = mapSuggestionToLocation(item);
+			const candidateCoords = mapped?.location || item.location || {};
+			const latitude = Number(candidateCoords.latitude);
+			const longitude = Number(candidateCoords.longitude);
+			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+				setLocationSearchError("We couldn't place that address yet. Try another result.");
+				return;
+			}
+			const normalized = buildSelectedLocation({
+				source: "search",
+				label: mapped?.primaryText || item.primaryText || "Selected place",
+				address:
+					mapped?.formattedAddress ||
+					mapped?.secondaryText ||
+					item.formattedAddress ||
+					item.secondaryText ||
+					"",
+				coords: { latitude, longitude },
+				countryCode: mapped?.countryCode || item.countryCode || null,
+				confidence: "high",
+			});
+			setSelectedLocation(normalized);
+			commitSearchQuery(normalized.label);
+			navigateToPlaceSelected();
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+		},
+		[buildSelectedLocation, commitSearchQuery, navigateToPlaceSelected, onSnapStateChange],
+	);
+
+	const handleSaveSelectedLocationAs = useCallback(
+		(label) => {
+			if (!selectedLocation || !label) return;
+			const savedPayload = mapCandidateToSavedAddressPayload(selectedLocation, {
+				label,
+				category: label,
+			});
+			if (!savedPayload) return;
+			const existing = savedLocations.find(
+				(item) =>
+					String(item?.category || item?.label || "").toLowerCase() ===
+					String(label).toLowerCase(),
+			);
+			if (existing?.id) {
+				updateSavedLocation?.(existing.id, savedPayload);
+				setSavedPlaceFeedback(label);
+				return;
+			}
+			addSavedLocation?.(savedPayload);
+			setSavedPlaceFeedback(label);
+		},
+		[addSavedLocation, savedLocations, selectedLocation, updateSavedLocation],
+	);
+
+	const handlePrevManualStep = useCallback(() => {
+		setManualError(null);
+		if (manualStepIndex <= 0) {
+			navigateToDefaultAndClearSearch();
+			return;
+		}
+		setManualStepIndex((prev) => Math.max(0, prev - 1));
+	}, [manualStepIndex, navigateToDefaultAndClearSearch]);
+
+	const manualNextActionLabel = useMemo(
+		() =>
+			getManualStepActionLabel({
+				step: MANUAL_LOCATION_STEPS[manualStepIndex],
+				stepIndex: manualStepIndex,
+				stepCount: MANUAL_LOCATION_STEPS.length,
+				manualDraft,
+				isResolving: isResolvingManual,
+			}),
+		[isResolvingManual, manualDraft, manualStepIndex],
+	);
+
+	return (
+		<>
 		<MapSheetShell
 			sheetHeight={sheetHeight}
 			snapState={effectiveSnapState}
@@ -348,15 +577,12 @@ export default function MapLocationIntentStageBase({
 							titleColor={tokens.titleColor}
 							mutedColor={tokens.mutedText}
 							actionSurfaceColor={tokens.closeSurface}
-							onToggle={handleHeaderToggle}
-							toggleAccessibilityLabel={
-								isExpanded
-									? "Collapse location sheet"
-									: "Expand location sheet"
-							}
-							toggleIconName={isExpanded ? "chevron-down" : "chevron-up"}
-							onClose={onClose}
-							showToggle={shouldShowHeaderToggle}
+							onToggle={activeHeaderToggleHandler}
+							toggleAccessibilityLabel={activeHeaderToggleAccessibilityLabel}
+							toggleIconName={activeHeaderToggleIconName}
+							onClose={activeHeaderCloseHandler}
+							closeAccessibilityLabel={activeHeaderCloseAccessibilityLabel}
+							showToggle={shouldShowActiveHeaderToggle}
 						/>
 					</View>
 				)
@@ -406,131 +632,77 @@ export default function MapLocationIntentStageBase({
 						heroGradientColors={themeTokens.heroGradientColors}
 						heroGlowColor={themeTokens.heroGlowColor}
 						onUseCurrentLocation={handleUseCurrentLocationCandidate}
-						onOpenSearch={() => setMode(LOCATION_INTENT_MODES.ADDRESS_SEARCH)}
+						onOpenSearch={openAddressSearch}
 						onSelectSavedPlace={(place) => {
-							const matched = savedLocations.find(
-								(item) => String(item?.label || "").toLowerCase() === place.key,
-							);
-							if (!matched) {
-								setManualStepIndex(0);
-								setMode(LOCATION_INTENT_MODES.MANUAL_STEP);
+							if (place.key === "add") {
+								setPendingPlaceLabel("other");
+								openAddressSearch();
 								return;
 							}
-							const normalized = buildSelectedLocation({
-								source: "saved",
-								label: place.label,
-								address: matched.address,
-								coords: {
-									latitude: matched.latitude,
-									longitude: matched.longitude,
-								},
-								countryCode: matched.countryCode,
-								confidence: "high",
-							});
+							const candidate = mapStoredLocationToCandidate(place.location, place.label);
+							if (!candidate) {
+								setPendingPlaceLabel(place.key);
+								openAddressSearch();
+								return;
+							}
+							setPendingPlaceLabel(null);
+							const normalized = buildSelectedLocation(candidate);
+							if (!normalized) return;
 							setSelectedLocation(normalized);
-							setMode(LOCATION_INTENT_MODES.CONFIRM);
+							navigateToConfirm();
 						}}
 						onSelectRecentLocation={(recent) => {
+							const candidate = mapStoredLocationToCandidate(recent, recent.label || "Recent pickup");
+							if (!candidate) return;
+							setPendingPlaceLabel(null);
 							const normalized = buildSelectedLocation({
+								...candidate,
 								source: "recent",
-								label: recent.label || "Recent location",
-								address: recent.address,
-								coords: {
-									latitude: recent.latitude,
-									longitude: recent.longitude,
-								},
-								countryCode: recent.countryCode,
 								confidence: "medium",
 							});
+							if (!normalized) return;
 							setSelectedLocation(normalized);
-							setMode(LOCATION_INTENT_MODES.CONFIRM);
+							navigateToConfirm();
 						}}
-						onOpenManualIntro={() => {
-							setManualStepIndex(0);
-							setMode(LOCATION_INTENT_MODES.MANUAL_STEP);
-						}}
+						onOpenManualIntro={handleOpenManualStep}
 						onStartPinAdjust={() => {
 							const pinSelection = buildSelectedLocation({
 								source: "pin",
 								label: "Pin-adjusted location",
 								address: currentLocation?.formattedAddress || model.headerSubtitle,
+								coords: currentLocation?.location || currentLocation,
 								confidence: "medium",
 							});
+							if (!pinSelection) return;
 							setSelectedLocation(pinSelection);
-							setMode(LOCATION_INTENT_MODES.PIN_ADJUST);
+							navigateToPinAdjust();
 						}}
 						onConfirmSelection={() => commitLocation(selectedLocation)}
 						searchQuery={searchQuery}
-						onSearchQueryChange={(value) => {
-							setSearchQuery(value);
-							setMode(LOCATION_INTENT_MODES.ADDRESS_SEARCH);
-						}}
+						onSearchQueryChange={handleSearchQueryChange}
 						searchResults={searchResults}
-						selectedLocation={selectedLocation}
-						onPickSearchResult={(item) => {
-							const normalized = buildSelectedLocation({
-								source: "search",
-								label: item.primaryText || "Selected place",
-								address: item.formattedAddress || item.secondaryText || "",
-								coords: item.location,
-								countryCode: item.countryCode || null,
-								confidence: "high",
-							});
-							setSelectedLocation(normalized);
-							setMode(LOCATION_INTENT_MODES.PLACE_SELECTED);
+						recentSearchQueries={recentSearchQueries}
+						onSelectRecentSearch={(query) => {
+							setSearchQuery(query);
 						}}
+						isSearchingLocations={isSearchingLocations}
+						locationSearchError={locationSearchError}
+						selectedLocation={selectedLocation}
+						onPickSearchResult={handlePickSearchResult}
+						onSaveSelectedLocationAs={handleSaveSelectedLocationAs}
 						recents={recents}
 						savedPlaces={savedPlaces}
 						mode={mode}
 						manualDraft={manualDraft}
-						onManualDraftChange={(key, value) =>
-							setManualDraft((prev) => ({ ...prev, [key]: value }))
-						}
-						onNextManualStep={() => {
-							if (mode === LOCATION_INTENT_MODES.MANUAL_INTRO) {
-								setMode(LOCATION_INTENT_MODES.MANUAL_STEP);
-								setManualStepIndex(0);
-								return;
-							}
-							if (manualStepIndex >= MANUAL_LOCATION_STEPS.length - 1) {
-								const label = manualDraft.streetAddress || manualDraft.city || "Manual location";
-								const address = [
-									manualDraft.streetAddress,
-									manualDraft.city,
-									manualDraft.stateRegion,
-									manualDraft.country,
-								]
-									.filter(Boolean)
-									.join(", ");
-								const normalized = buildSelectedLocation({
-									source: "manual",
-									label,
-									address,
-									confidence: "low",
-								});
-								setSelectedLocation(normalized);
-								setMode(LOCATION_INTENT_MODES.CONFIRM);
-								return;
-							}
-							setManualStepIndex((prev) =>
-								Math.min(prev + 1, MANUAL_LOCATION_STEPS.length - 1),
-							);
-						}}
-						onPrevManualStep={() => {
-							if (mode === LOCATION_INTENT_MODES.MANUAL_INTRO) {
-								setMode(LOCATION_INTENT_MODES.DEFAULT);
-								return;
-							}
-							if (manualStepIndex <= 0) {
-								setMode(LOCATION_INTENT_MODES.DEFAULT);
-								return;
-							}
-							setManualStepIndex((prev) => Math.max(0, prev - 1));
-						}}
-						onBackToDefault={() => {
-							setMode(LOCATION_INTENT_MODES.DEFAULT);
-							setManualStepIndex(0);
-						}}
+						onManualDraftChange={handleManualDraftChange}
+						onNextManualStep={handleNextManualStep}
+						onPrevManualStep={handlePrevManualStep}
+						onBackToDefault={navigateToDefaultAndClearSearch}
+						onOpenCountryPicker={() => setCountryPickerVisible(true)}
+						manualError={manualError}
+						manualNextActionLabel={manualNextActionLabel}
+						isResolvingManual={isResolvingManual}
+						savedPlaceFeedback={savedPlaceFeedback}
 						manualStepIndex={manualStepIndex}
 						isExpanded={isExpanded}
 						isDarkMode={isDarkMode}
@@ -539,5 +711,14 @@ export default function MapLocationIntentStageBase({
 				</MapStageBodyScroll>
 			)}
 		</MapSheetShell>
+		<CountryPickerModal
+			visible={countryPickerVisible}
+			onClose={() => setCountryPickerVisible(false)}
+			onSelect={handleManualCountrySelect}
+			selectedCode={manualDraft.countryCode}
+			title="Country or region"
+			searchPlaceholder="Search country or region"
+		/>
+		</>
 	);
 }

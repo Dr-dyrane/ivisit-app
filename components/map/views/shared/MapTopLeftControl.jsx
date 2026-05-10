@@ -12,13 +12,18 @@ const RADIUS = SIZE / 2;
  * MapTopLeftControl
  *
  * Floating circle rendered directly on the map canvas — no wrapper, no card.
- * Visible only when the map sheet is in EXPLORE_INTENT (hasFocusedSheetPhase = false).
  *
- * - Unauthenticated: chevron-back → navigates back to Welcome
- * - Authenticated: user avatar circle → opens profile modal
+ * PULLBACK NOTE: UX-A — phase-aware visibility and back-nav
+ * OLD: visible only for unauthenticated users in EXPLORE_INTENT; authenticated = avatar always
+ * NEW:
+ *   - Unauthenticated: chevron-back in EXPLORE_INTENT → navigates back to Welcome
+ *   - Authenticated + isDecisionPhase: chevron-back → returns to previous phase
+ *   - Authenticated + !isDecisionPhase: avatar circle → opens profile modal
+ *   - Hidden in commit + tracking phases (MapScreen controls `visible` prop)
  */
 export default function MapTopLeftControl({
 	isSignedIn,
+	isDecisionPhase = false,
 	profileImageSource,
 	onBack,
 	onOpenProfile,
@@ -33,9 +38,14 @@ export default function MapTopLeftControl({
 
 	if (usesSidebarLayout && Platform.OS === "web") return null;
 
+	// PULLBACK NOTE: UX-A — authenticated back chevron in decision phases
+	// OLD: isSignedIn ? onOpenProfile() : onBack()
+	// NEW: (isSignedIn && !isDecisionPhase) ? onOpenProfile() : onBack()
+	const showAvatar = isSignedIn && !isDecisionPhase && profileImageSource;
+
 	const handlePress = () => {
 		Haptics.selectionAsync();
-		if (isSignedIn) {
+		if (showAvatar) {
 			onOpenProfile?.();
 		} else {
 			onBack?.();
@@ -53,22 +63,22 @@ export default function MapTopLeftControl({
 		<Pressable
 			onPress={handlePress}
 			accessibilityRole="button"
-			accessibilityLabel={isSignedIn ? "Open profile" : "Back to welcome"}
+			accessibilityLabel={showAvatar ? "Open profile" : isDecisionPhase ? "Back to map" : "Back to welcome"}
 			hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 			style={({ pressed }) => [
 				styles.root,
 				{ top: insets.top + 16, left: leftInset },
 				{ opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.94 : 1 }] },
-				!isSignedIn || !profileImageSource
+				!showAvatar
 					? { backgroundColor: bgColor }
 					: null,
 			]}
 		>
-			{isSignedIn && profileImageSource ? (
+			{showAvatar ? (
 				<Image source={profileImageSource} style={styles.fill} resizeMode="cover" />
 			) : (
 				<Ionicons
-					name={isSignedIn ? "person" : "chevron-back"}
+					name="chevron-back"
 					size={22}
 					color={iconColor}
 				/>

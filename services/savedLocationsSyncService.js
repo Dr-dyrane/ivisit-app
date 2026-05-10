@@ -13,6 +13,8 @@
 import { supabase } from "./supabase";
 import { isValidUUID } from "./displayIdService";
 import { useLocationStore } from "../stores/locationStore";
+import mapboxService from "./mapboxService";
+import { getSavedAddressKey } from "./locationAddressService";
 
 const VIEW_PREFS_KEY = "savedLocations";
 
@@ -81,6 +83,70 @@ async function loadFromServer() {
 	return mapFromViewPreferences(data?.view_preferences);
 }
 
+async function loadProfileAddress(userId) {
+	if (!userId || !isValidUUID(userId)) return null;
+
+	const { data, error } = await supabase
+		.from("profiles")
+		.select("address")
+		.eq("id", userId)
+		.single();
+
+	if (error) {
+		console.warn("[SavedLocationsSync] Failed to load profile address:", error.message);
+		return null;
+	}
+
+	return typeof data?.address === "string" && data.address.trim()
+		? data.address.trim()
+		: null;
+}
+
+async function seedHomeFromProfileAddress(userId) {
+	const store = useLocationStore.getState();
+	const hasHome = (store.savedLocations || []).some(
+		(location) => getSavedAddressKey(location) === "home",
+	);
+	if (hasHome) return false;
+
+	const profileAddress = await loadProfileAddress(userId);
+	if (!profileAddress) return false;
+
+	try {
+		// Rollback note: profile.address is only a legacy Home seed. Do not let
+		// this path overwrite an existing Home or create a coordinate-less saved
+		// address; both caused state-flow ambiguity in earlier sheet work.
+		const geocoded = await mapboxService.geocodeAddress(profileAddress);
+		const latitude = Number(geocoded?.latitude);
+		const longitude = Number(geocoded?.longitude);
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+			return false;
+		}
+
+		const result = store.addSavedLocation(
+			{
+				category: "home",
+				label: "Home",
+				address: geocoded?.formatted_address || profileAddress,
+				latitude,
+				longitude,
+				countryCode: geocoded?.countryCode || null,
+				provider: geocoded?.source || "mapbox",
+				sync: { status: "pendingCreate" },
+			},
+			{ ownerUserId: userId },
+		);
+
+		return result?.status === "created" || result?.status === "updated";
+	} catch (error) {
+		console.warn(
+			"[SavedLocationsSync] Could not seed Home from profile address:",
+			error.message,
+		);
+		return false;
+	}
+}
+
 /**
  * Initialize sync layer
  * - Hydrates savedLocations from server
@@ -92,13 +158,18 @@ export async function initializeSavedLocationsSync() {
 	isHydrating = true;
 
 	try {
+		const { data: { user } } = await supabase.auth.getUser();
+		const ownerUserId = user?.id && isValidUUID(user.id) ? user.id : "guest";
+
 		// Load from server and populate store
 		const serverLocations = await loadFromServer();
 		
 		if (serverLocations.length > 0) {
 			const store = useLocationStore.getState();
-			store.setSavedLocations(serverLocations);
+			store.setSavedLocations(serverLocations, { ownerUserId });
 		}
+
+		const seededHome = await seedHomeFromProfileAddress(ownerUserId);
 
 		// Subscribe to store changes for auto-sync
 		useLocationStore.subscribe((state, prevState) => {
@@ -111,6 +182,10 @@ export async function initializeSavedLocationsSync() {
 				}, SYNC_DEBOUNCE_MS);
 			}
 		});
+
+		if (seededHome) {
+			await syncToServer(useLocationStore.getState().savedLocations);
+		}
 
 	} finally {
 		isHydrating = false;

@@ -16,7 +16,8 @@ import { useAuth } from "../../contexts/AuthContext";
 let initialized = false;
 
 export function useSavedLocationsBootstrap() {
-	const { user, isAuthenticated } = useAuth();
+	const { user } = useAuth();
+	const isAuthenticated = user?.isAuthenticated === true;
 
 	useEffect(() => {
 		// Only initialize once when authenticated

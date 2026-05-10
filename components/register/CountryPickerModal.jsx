@@ -20,7 +20,14 @@ import { useAndroidKeyboardAwareModal } from "../../hooks/ui/useAndroidKeyboardA
 import countries from "../../data/countries";
 import CountryFlagGlyph from "./CountryFlagGlyph";
 
-export default function CountryPickerModal({ visible, onClose, onSelect }) {
+export default function CountryPickerModal({
+	visible,
+	onClose,
+	onSelect,
+	selectedCode,
+	title = "Select Region",
+	searchPlaceholder = "Search country or code",
+}) {
 	const { isDarkMode } = useTheme();
 	const { height: screenHeight, width: screenWidth } = useWindowDimensions();
 	const isWeb = Platform.OS === "web";
@@ -80,6 +87,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 		rowPressed: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.03)",
 	};
 
+	const normalizedSelectedCode = String(selectedCode || "").toUpperCase();
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		if (!q) return countries;
@@ -175,7 +183,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 					>
 						<View style={styles.headerRow}>
 							<Text style={[styles.title, { color: colors.text }]}>
-								Select Region
+								{title}
 							</Text>
 							<Pressable
 								onPress={handleClose}
@@ -195,7 +203,7 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 							<TextInput
 								value={query}
 								onChangeText={setQuery}
-								placeholder="Search country or code"
+								placeholder={searchPlaceholder}
 								placeholderTextColor={colors.muted}
 								autoCapitalize="none"
 								autoCorrect={false}
@@ -225,42 +233,52 @@ export default function CountryPickerModal({ visible, onClose, onSelect }) {
 							showsVerticalScrollIndicator={false}
 							contentContainerStyle={styles.listContent}
 							keyboardShouldPersistTaps="handled"
-							renderItem={({ item }) => (
-								<Pressable
-									onPress={() => {
-										Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-										onSelect?.(item);
-										handleClose();
-									}}
-									style={({ pressed }) => [
-										styles.countryRow,
-										{
-											borderBottomColor: colors.border,
-											backgroundColor: pressed ? colors.rowPressed : "transparent",
-										},
-									]}
-								>
-									<View style={styles.countryIdentity}>
-										<CountryFlagGlyph
-											flag={item.flag}
-											code={item.code}
-											size={24}
-											style={styles.countryFlag}
-										/>
-										<View style={styles.countryCopy}>
-											<Text
-												numberOfLines={1}
-												style={[styles.countryName, { color: colors.text }]}
-											>
-												{item.name}
-											</Text>
+							renderItem={({ item }) => {
+								const isSelected = item.code === normalizedSelectedCode;
+								return (
+									<Pressable
+										onPress={() => {
+											Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+											onSelect?.(item);
+											handleClose();
+										}}
+										style={({ pressed }) => [
+											styles.countryRow,
+											{
+												borderBottomColor: colors.border,
+												backgroundColor: pressed || isSelected
+													? colors.rowPressed
+													: "transparent",
+											},
+										]}
+									>
+										<View style={styles.countryIdentity}>
+											<CountryFlagGlyph
+												flag={item.flag}
+												code={item.code}
+												size={24}
+												style={styles.countryFlag}
+											/>
+											<View style={styles.countryCopy}>
+												<Text
+													numberOfLines={1}
+													style={[styles.countryName, { color: colors.text }]}
+												>
+													{item.name}
+												</Text>
+											</View>
 										</View>
-									</View>
-									<Text style={[styles.countryDial, { color: colors.primary }]}>
-										{item.dial_code}
-									</Text>
-								</Pressable>
-							)}
+										<View style={styles.countryMeta}>
+											<Text style={[styles.countryDial, { color: colors.primary }]}>
+												{item.dial_code}
+											</Text>
+											{isSelected ? (
+												<Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+											) : null}
+										</View>
+									</Pressable>
+								);
+							}}
 							ListEmptyComponent={
 								<View style={styles.emptyState}>
 									<Ionicons
@@ -430,6 +448,12 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		lineHeight: 20,
 		fontWeight: "900",
+	},
+	countryMeta: {
+		marginLeft: 12,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
 	},
 	emptyState: {
 		alignItems: "center",

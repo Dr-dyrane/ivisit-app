@@ -370,6 +370,16 @@ export default function MapScreen() {
 
   const hasFocusedSheetPhase = sheetPhase !== MAP_SHEET_PHASES.EXPLORE_INTENT;
 
+  // PULLBACK NOTE: UX-A — MapTopLeftControl back-nav expanded to authenticated users in decision phases
+  // OLD: visible only for unauthenticated users in EXPLORE_INTENT
+  // NEW: visible for authenticated users in AMBULANCE_DECISION, BED_DECISION, HOSPITAL_LIST, HOSPITAL_DETAIL
+  //      Hidden entirely in commit + tracking phases (COMMIT_PAYMENT excluded — WAITING_APPROVAL lock)
+  const isDecisionPhase =
+    sheetPhase === MAP_SHEET_PHASES.AMBULANCE_DECISION ||
+    sheetPhase === MAP_SHEET_PHASES.BED_DECISION ||
+    sheetPhase === MAP_SHEET_PHASES.HOSPITAL_LIST ||
+    sheetPhase === MAP_SHEET_PHASES.HOSPITAL_DETAIL;
+
   // PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
   const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } =
     useMapTrackingSync({
@@ -529,7 +539,12 @@ export default function MapScreen() {
           onSelectLocation={handleSearchLocation}
           onChangeHospitalLocation={() => {
             closeHospitalList();
-            openSearchSheet(MAP_SEARCH_SHEET_MODES.LOCATION);
+            setSheetPayload({
+              sourcePhase: MAP_SHEET_PHASES.HOSPITAL_LIST,
+              sourceSnapState: renderedSnapState,
+              sourcePayload: null,
+            });
+            setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
           }}
           onUseHospital={handleUseHospital}
           profileImageSource={profileImageSource}
@@ -586,15 +601,21 @@ export default function MapScreen() {
         submitTrackingRating={submitTrackingRating}
       />
 
-      {/* PULLBACK NOTE: MapTopLeftControl hidden for authenticated users */}
-      {/* OLD: visible for both auth + unauth (avatar duplicated sheet header TopRow) */}
-      {/* NEW: only rendered for unauthenticated users (back-to-welcome chevron) */}
+      {/* PULLBACK NOTE: UX-A — MapTopLeftControl phase-aware visibility */}
+      {/* Unauthenticated: back chevron in EXPLORE_INTENT only */}
+      {/* Authenticated: back chevron in decision phases; hidden in commit + tracking */}
       <MapTopLeftControl
         isSignedIn={isSignedIn}
+        isDecisionPhase={isDecisionPhase}
         profileImageSource={profileImageSource}
-        onBack={() => router.replace("/(auth)/")}
+        onBack={isSignedIn ? closeAmbulanceDecision : () => router.replace("/(auth)/")}
         onOpenProfile={handleOpenProfile}
-        visible={!isSignedIn && !hasFocusedSheetPhase && !mapLoadingState?.visible}
+        visible={
+          !mapLoadingState?.visible &&
+          (!isSignedIn
+            ? !hasFocusedSheetPhase
+            : isDecisionPhase)
+        }
         usesSidebarLayout={usesSidebarLayout}
         sidebarOcclusionWidth={sidebarOcclusionWidth}
       />

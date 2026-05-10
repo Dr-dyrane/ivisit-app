@@ -70,23 +70,38 @@ export default function useMapCommitTriageController({
     activeRequestId ||
       `${payload?.careIntent || "draft"}:${hospital?.id || "hospital"}`,
   );
+  // PULLBACK NOTE: UX-A — fresh triage initialization
+  // OLD: initialDraft populated from 11-chain fallback (includes trip-level triage)
+  // NEW: when isFreshSession, initialDraft forced to null — options start neutral
+  //      Resume path: payload?.triageDraft exists AND requestId matches an active trip
+  const isFreshSession = useMemo(
+    () =>
+      !payload?.triageDraft ||
+      (payload?.requestId != null &&
+        activeRequestId != null &&
+        String(payload.requestId) !== String(activeRequestId)),
+    [activeRequestId, payload?.requestId, payload?.triageDraft],
+  );
   const initialDraft = useMemo(
     () =>
-      normalizeCommitTriageDraft(
-        payload?.triageDraft ||
-          payload?.triageSnapshot?.signals?.userCheckin ||
-          activeAmbulanceTrip?.triage?.signals?.userCheckin ||
-          activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin ||
-          activeAmbulanceTrip?.triageCheckin ||
-          activeBedBooking?.triage?.signals?.userCheckin ||
-          activeBedBooking?.triageSnapshot?.signals?.userCheckin ||
-          activeBedBooking?.triageCheckin ||
-          pendingApproval?.triage?.signals?.userCheckin ||
-          pendingApproval?.triageSnapshot?.signals?.userCheckin ||
-          pendingApproval?.initiatedData?.triageCheckin ||
-          null,
-      ),
+      isFreshSession
+        ? null
+        : normalizeCommitTriageDraft(
+            payload?.triageDraft ||
+              payload?.triageSnapshot?.signals?.userCheckin ||
+              activeAmbulanceTrip?.triage?.signals?.userCheckin ||
+              activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin ||
+              activeAmbulanceTrip?.triageCheckin ||
+              activeBedBooking?.triage?.signals?.userCheckin ||
+              activeBedBooking?.triageSnapshot?.signals?.userCheckin ||
+              activeBedBooking?.triageCheckin ||
+              pendingApproval?.triage?.signals?.userCheckin ||
+              pendingApproval?.triageSnapshot?.signals?.userCheckin ||
+              pendingApproval?.initiatedData?.triageCheckin ||
+              null,
+          ),
     [
+      isFreshSession,
       activeAmbulanceTrip?.triage?.signals?.userCheckin,
       activeAmbulanceTrip?.triageCheckin,
       activeAmbulanceTrip?.triageSnapshot?.signals?.userCheckin,

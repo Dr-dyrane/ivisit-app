@@ -36,7 +36,7 @@ function SheetIconTile({ children, isDarkMode, responsiveStyles }) {
 	);
 }
 
-function SearchResultRow({
+export function SearchResultRow({
 	iconName = "search-outline",
 	iconType = "ion",
 	title,
@@ -258,7 +258,7 @@ function VenueChip({
 	);
 }
 
-function ResultsSection({
+export function ResultsSection({
 	title,
 	items,
 	titleColor,
@@ -307,6 +307,7 @@ export default function MapSearchSheetSections({ model }) {
 		handleConfirmClear,
 		handleOpenHospital,
 		handleOpenHospitalList,
+		handleSelectSavedLocation,
 		handleUseCurrent,
 		handleUseSuggestion,
 		hasQuery,
@@ -374,7 +375,7 @@ export default function MapSearchSheetSections({ model }) {
 													mutedColor={mutedColor}
 													surfaceColor={cardSurface}
 													isDarkMode={isDarkMode}
-													onPress={() => onSelectLocation?.(loc)}
+													onPress={() => handleSelectSavedLocation?.(loc)}
 													responsiveStyles={responsiveStyles}
 												/>
 												{index < Math.min(savedLocations.length, 3) - 1 ? (

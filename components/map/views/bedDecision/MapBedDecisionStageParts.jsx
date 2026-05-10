@@ -629,6 +629,46 @@ export function MapBedDecisionSavedTransportCard({
   );
 }
 
+// PULLBACK NOTE: UX-A — compact transport status strip for HALF snap
+// Replaces full MapBedDecisionSavedTransportCard when sheet is in HALF snap.
+// Full card preserved in EXPANDED (rendered by MapBedDecisionStageBase).
+export function MapBedDecisionTransportStatusStrip({
+  savedTransport,
+  titleColor,
+  onPress,
+}) {
+  const visualProfile = getAmbulanceVisualProfile({
+    tierKey: savedTransport?.tierKey,
+    service_type: savedTransport?.serviceType,
+    title: savedTransport?.title,
+    service_name: savedTransport?.title,
+  });
+  const label = savedTransport?.title
+    ? `Ambulance confirmed \u2014 ${savedTransport.title}`
+    : MAP_BED_DECISION_COPY.SAVED_TRANSPORT_TITLE;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.transportStripRow, { opacity: pressed ? 0.75 : 1 }]}
+    >
+      <Ionicons
+        name="checkmark-circle"
+        size={14}
+        color={visualProfile.accent}
+      />
+      <Text
+        style={[styles.transportStripLabel, { color: titleColor }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function MapBedDecisionExpandedRoomChoices({
   decision,
   stageMetrics,

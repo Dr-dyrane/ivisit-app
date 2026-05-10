@@ -9,9 +9,20 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { database, StorageKeys } from "../database";
-import { isAddressValid, calculateAddressQuality } from "../utils/addressQualityValidator";
+import {
+	getSavedAddressKey,
+	isSameSavedAddress,
+	normalizeSavedAddress,
+} from "../services/locationAddressService";
 
 const STORAGE_KEY = StorageKeys.LOCATION_CACHE;
+const MAX_SAVED_LOCATIONS = 20;
+
+const normalizeSavedLocationList = (locations, options = {}) =>
+	(Array.isArray(locations) ? locations : [])
+		.map((location) => normalizeSavedAddress(location, options))
+		.filter(Boolean)
+		.slice(0, MAX_SAVED_LOCATIONS);
 
 const createInitialState = () => ({
   userLocation: null,
@@ -98,43 +109,84 @@ export const useLocationStore = create(
     },
 
     // Saved locations CRUD
-    setSavedLocations: (locations) => {
+    setSavedLocations: (locations, options = {}) => {
       set((state) => {
-        state.savedLocations = Array.isArray(locations) ? locations : [];
+        state.savedLocations = normalizeSavedLocationList(locations, options);
       });
     },
 
-    addSavedLocation: (location) => {
+    addSavedLocation: (location, options = {}) => {
+      let result = { status: "invalid", location: null };
       set((state) => {
-        const newLocation = {
-          id: location?.id || `loc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          label: location?.label || 'other',
-          address: location?.address || '',
-          latitude: location?.latitude ?? null,
-          longitude: location?.longitude ?? null,
-          countryCode: location?.countryCode || null,
-          createdAt: location?.createdAt || Date.now(),
-        };
-
-        // Validate address quality before saving
-        const quality = calculateAddressQuality(newLocation.address);
-        if (!quality.isValid) {
-          console.warn(
-            `[LocationStore] Low quality address rejected: "${newLocation.address}"`,
-            `Score: ${quality.score}, Issues: ${quality.issues.join(', ')}`
-          );
-          // Don't save low-quality addresses
+        const newLocation = normalizeSavedAddress(location, options);
+        if (!newLocation) {
+          result = { status: "invalid", location: null };
           return;
         }
 
-        // Prevent duplicates by address
-        const exists = state.savedLocations.some(
-          (loc) => loc.address?.toLowerCase() === newLocation.address?.toLowerCase()
-        );
-        if (!exists) {
-          state.savedLocations = [newLocation, ...state.savedLocations].slice(0, 20); // Max 20 saved locations
+        if (!newLocation.quality?.isValid) {
+          console.warn(
+            `[LocationStore] Low quality address rejected: "${newLocation.address}"`,
+            `Score: ${newLocation.quality?.score}, Issues: ${(newLocation.quality?.issues || []).join(', ')}`
+          );
+          result = { status: "invalid", location: newLocation };
+          return;
         }
+
+        const existingIndex = state.savedLocations.findIndex((loc) => {
+          const existingKey = getSavedAddressKey(loc);
+          const nextKey = getSavedAddressKey(newLocation);
+          if (existingKey && nextKey && existingKey === nextKey) return true;
+          return isSameSavedAddress(loc, newLocation);
+        });
+
+        if (existingIndex !== -1) {
+          // Rollback note: Home/Work and same-coordinate saves update in place.
+          // This keeps the sheet decision tree deterministic and avoids duplicate
+          // saved places after search/manual flows retry the same candidate.
+          const existing = state.savedLocations[existingIndex];
+          const merged = normalizeSavedAddress({
+            ...existing,
+            ...newLocation,
+            id: existing.id,
+            createdAt: existing.createdAt,
+            usage: existing.usage,
+            sync: {
+              ...(existing.sync || {}),
+              status: existing.sync?.status === "synced" ? "pendingUpdate" : existing.sync?.status || "local",
+            },
+            updatedAt: Date.now(),
+          }, options);
+          state.savedLocations[existingIndex] = merged;
+          result = { status: "updated", location: merged };
+          return;
+        }
+
+        const nextLocation = normalizeSavedAddress({
+          ...newLocation,
+          sync: {
+            ...(newLocation.sync || {}),
+            status: newLocation.sync?.status || "pendingCreate",
+          },
+        }, options);
+
+        state.savedLocations = [nextLocation, ...state.savedLocations]
+          .map((item) => normalizeSavedAddress(item, options))
+          .filter(Boolean)
+          .slice(0, MAX_SAVED_LOCATIONS);
+        result = { status: "created", location: nextLocation };
       });
+      return result;
+    },
+
+    findSavedLocationByCategory: (category) => {
+      const key = String(category || "").trim().toLowerCase();
+      return useLocationStore
+        .getState()
+        .savedLocations.find(
+          (location) =>
+            String(location?.category || location?.label || "").trim().toLowerCase() === key,
+        );
     },
 
     removeSavedLocation: (id) => {
@@ -143,11 +195,48 @@ export const useLocationStore = create(
       });
     },
 
-    updateSavedLocation: (id, patch) => {
+    updateSavedLocation: (id, patch, options = {}) => {
+      let result = { status: "missing", location: null };
       set((state) => {
         const index = state.savedLocations.findIndex((loc) => loc.id === id);
         if (index !== -1) {
-          Object.assign(state.savedLocations[index], patch);
+          const existing = state.savedLocations[index];
+          const normalized = normalizeSavedAddress({
+            ...existing,
+            ...patch,
+            id: existing.id,
+            createdAt: existing.createdAt,
+            updatedAt: Date.now(),
+            sync: {
+              ...(existing.sync || {}),
+              ...(patch?.sync || {}),
+              status:
+                patch?.sync?.status ||
+                (existing.sync?.status === "synced"
+                  ? "pendingUpdate"
+                  : existing.sync?.status || "local"),
+            },
+          }, options);
+          if (normalized) {
+            state.savedLocations[index] = normalized;
+            result = { status: "updated", location: normalized };
+          } else {
+            result = { status: "invalid", location: null };
+          }
+        }
+      });
+      return result;
+    },
+
+    setSavedAddressSyncStatus: (id, syncPatch = {}) => {
+      set((state) => {
+        const index = state.savedLocations.findIndex((loc) => loc.id === id);
+        if (index !== -1) {
+          state.savedLocations[index].sync = {
+            ...(state.savedLocations[index].sync || {}),
+            ...syncPatch,
+          };
+          state.savedLocations[index].updatedAt = Date.now();
         }
       });
     },
@@ -179,7 +268,7 @@ export const useLocationStore = create(
               hydratedSource ?? state.userLocationSource;
             state.locationPermission =
               saved.locationPermission ?? state.locationPermission;
-            state.savedLocations = hydratedSavedLocations;
+            state.savedLocations = normalizeSavedLocationList(hydratedSavedLocations);
           });
         }
         set((state) => {
@@ -209,3 +298,23 @@ export const hydrateLocationStore = () => {
 };
 
 export const isLocationStoreHydrated = () => isHydrated;
+
+export const selectSavedLocations = (state) => state.savedLocations || [];
+
+export const selectSavedHomeLocation = (state) =>
+	(state.savedLocations || []).find((location) => getSavedAddressKey(location) === "home") || null;
+
+export const selectSavedWorkLocation = (state) =>
+	(state.savedLocations || []).find((location) => getSavedAddressKey(location) === "work") || null;
+
+export const selectSavedLocationsByCategory = (category) => (state) =>
+	(state.savedLocations || []).filter(
+		(location) =>
+			String(location?.category || location?.label || "").trim().toLowerCase() ===
+			String(category || "").trim().toLowerCase(),
+	);
+
+export const selectRecentAddressCandidates = (state) =>
+	(state.savedLocations || []).filter(
+		(location) => !["home", "work"].includes(getSavedAddressKey(location)),
+	);

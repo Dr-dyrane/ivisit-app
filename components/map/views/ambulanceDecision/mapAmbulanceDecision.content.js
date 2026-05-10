@@ -1,5 +1,6 @@
 export const MAP_AMBULANCE_DECISION_COPY = {
-  TITLE: "Dispatch choice",
+  // PULLBACK NOTE: UX-A — task language title (was "Dispatch choice", action verb now)
+  TITLE: "Select Transportation",
   SUMMARY: null,
   ETA_LABEL: "ETA",
   DISTANCE_LABEL: "Distance",

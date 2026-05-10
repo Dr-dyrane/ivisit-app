@@ -41,19 +41,23 @@ export function useSavedLocationRefresh() {
 
     try {
       // Reverse geocode the coordinates
-      const result = await mapboxService.reverseGeocode({
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
+      const result = await mapboxService.reverseGeocode(
+        location.latitude,
+        location.longitude,
+      );
+      const address =
+        typeof result === 'string'
+          ? result
+          : result?.address || result?.formattedAddress || result?.formatted_address;
 
-      if (!result || !result.address) {
+      if (!address || address === 'Unknown Address') {
         setRefreshError('Could not resolve address from coordinates');
         return false;
       }
 
       // Update the saved location with new address
       updateSavedLocation(locationId, {
-        address: result.address,
+        address,
         // Also update any other fields that might have changed
         ...(result.primaryText && { primaryText: result.primaryText }),
         ...(result.secondaryText && { secondaryText: result.secondaryText }),

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapVisitDetailCollapsedRow from "../visitDetail/MapVisitDetailCollapsedRow";
@@ -7,6 +7,15 @@ import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
 import IntentOrb from "../../shared/IntentOrb";
 import MapHistoryGroup from "../../history/MapHistoryGroup";
 import styles from "./mapLocationIntent.styles";
+import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
+import {
+	ResultsSection,
+	SearchResultRow,
+} from "../../surfaces/search/MapSearchSheetSections";
+import {
+	getMapSearchSheetResponsiveStyles,
+	styles as searchStyles,
+} from "../../surfaces/search/mapSearchSheet.styles";
 import {
 	LOCATION_INTENT_MODES,
 	MANUAL_LOCATION_STEPS,
@@ -30,6 +39,25 @@ function buildCollapsedAction({
 		icon: toggleIconName,
 		primary: false,
 	};
+}
+
+function formatLocationHeaderText(value) {
+	const text = String(value || "").trim();
+	if (!text) return "";
+
+	// UI-only rollback note: top-slot labels should read as headings even when
+	// data keys are lowercase. Keep this out of storage/address normalization so
+	// provider/user address casing remains untouched.
+	return text.replace(/\S+/g, (token) => {
+		const bare = token.replace(/[^A-Za-z]/g, "");
+		if (!bare) return token;
+		if (bare.length <= 3 && bare === bare.toUpperCase()) return token;
+
+		return token.replace(/[A-Za-z][A-Za-z']*/g, (word) => {
+			if (word.length <= 3 && word === word.toUpperCase()) return word;
+			return `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`;
+		});
+	});
 }
 
 export function MapLocationIntentCollapsedTopRow({
@@ -57,8 +85,8 @@ export function MapLocationIntentCollapsedTopRow({
 	return (
 		<MapVisitDetailCollapsedRow
 			action={action}
-			title={model.headerTitle}
-			subtitle={model.headerSubtitle}
+			title={formatLocationHeaderText(model.headerTitle)}
+			subtitle={formatLocationHeaderText(model.headerSubtitle)}
 			onExpand={onToggle}
 			onClose={onClose}
 			titleColor={titleColor}
@@ -77,12 +105,13 @@ export function MapLocationIntentActiveTopRow({
 	toggleAccessibilityLabel,
 	toggleIconName,
 	onClose,
+	closeAccessibilityLabel = "Close location sheet",
 	showToggle = true,
 }) {
 	return (
 		<MapTrackingTopSlot
-			title={model.headerTitle}
-			subtitle={model.headerSubtitle}
+			title={formatLocationHeaderText(model.headerTitle)}
+			subtitle={formatLocationHeaderText(model.headerSubtitle)}
 			titleColor={titleColor}
 			mutedColor={mutedColor}
 			actionSurfaceColor={actionSurfaceColor}
@@ -92,7 +121,7 @@ export function MapLocationIntentActiveTopRow({
 			toggleAccessibilityLabel={toggleAccessibilityLabel}
 			showClose
 			onClose={onClose}
-			closeAccessibilityLabel="Close location sheet"
+			closeAccessibilityLabel={closeAccessibilityLabel}
 		/>
 	);
 }
@@ -103,11 +132,11 @@ export function MapLocationIntentHeroMeta({
 	titleColor,
 	mutedColor,
 	surfaceColor,
+	onPress,
 }) {
 	if (!label) return null;
-
-	return (
-		<View style={[styles.currentCardMeta, { backgroundColor: surfaceColor }]}>
+	const content = (
+		<>
 			<Ionicons name={iconName} size={11} color={titleColor} />
 			<Text
 				style={[styles.currentCardMetaText, { color: mutedColor }]}
@@ -115,6 +144,29 @@ export function MapLocationIntentHeroMeta({
 			>
 				{label}
 			</Text>
+		</>
+	);
+
+	if (typeof onPress === "function") {
+		return (
+			<Pressable
+				onPress={onPress}
+				accessibilityRole="button"
+				accessibilityLabel={label}
+				style={({ pressed }) => [
+					styles.currentCardMeta,
+					{ backgroundColor: surfaceColor },
+					pressed ? styles.rowPressed : null,
+				]}
+			>
+				{content}
+			</Pressable>
+		);
+	}
+
+	return (
+		<View style={[styles.currentCardMeta, { backgroundColor: surfaceColor }]}>
+			{content}
 		</View>
 	);
 }
@@ -138,8 +190,13 @@ export function MapLocationIntentBodyContent({
 	searchQuery,
 	onSearchQueryChange,
 	searchResults,
+	recentSearchQueries,
+	onSelectRecentSearch,
+	isSearchingLocations,
+	locationSearchError,
 	selectedLocation,
 	onPickSearchResult,
+	onSaveSelectedLocationAs,
 	recents,
 	savedPlaces,
 	mode,
@@ -148,22 +205,34 @@ export function MapLocationIntentBodyContent({
 	onNextManualStep,
 	onPrevManualStep,
 	onBackToDefault,
+	onOpenCountryPicker,
+	manualError,
+	manualNextActionLabel,
+	isResolvingManual,
+	savedPlaceFeedback,
 	manualStepIndex,
 	isExpanded,
 	isDarkMode,
 	responsiveMetrics,
 }) {
+	const searchViewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "sheet" });
+	const searchResponsiveStyles = useMemo(
+		() => getMapSearchSheetResponsiveStyles(searchViewportMetrics),
+		[searchViewportMetrics],
+	);
 	const currentManualStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
 	const permissionLabel = model?.sourceLabel || "Location state";
 	const isSearching = mode === LOCATION_INTENT_MODES.ADDRESS_SEARCH;
-	const isManualIntro = mode === LOCATION_INTENT_MODES.MANUAL_INTRO;
 	const isManualStep = mode === LOCATION_INTENT_MODES.MANUAL_STEP;
 	const isConfirming =
 		mode === LOCATION_INTENT_MODES.CONFIRM ||
 		mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
 		mode === LOCATION_INTENT_MODES.PIN_ADJUST;
-	const showDefaultSections = !isManualIntro && !isManualStep && !isConfirming;
+	const showDefaultSections = !isSearching && !isManualStep && !isConfirming;
 	const visibleResults = isExpanded ? searchResults.slice(0, 7) : searchResults.slice(0, 4);
+	const visibleRecentSearches = Array.isArray(recentSearchQueries)
+		? recentSearchQueries.slice(0, isExpanded ? 8 : 4)
+		: [];
 	const sectionLabelStyle = responsiveMetrics?.section?.labelStyle || null;
 	const sectionTriggerStyle = responsiveMetrics?.section?.triggerStyle || null;
 	const recentLocationItems = recents.slice(0, 6).map((recent, index) => ({
@@ -186,6 +255,37 @@ export function MapLocationIntentBodyContent({
 		subtitleLineHeight: 16,
 		chevronSize: 16,
 	};
+	const isDevicePickup = model?.sourceLabel === MAP_LOCATION_INTENT_COPY.sourceLabels.device;
+	const heroActionLabel = model?.shouldOpenSettings
+		? "Settings"
+		: isDevicePickup
+			? "Change"
+			: "Use device";
+	const handleHeroAction = isDevicePickup ? onOpenSearch : onUseCurrentLocation;
+	const pendingPlaceLabel = selectedLocation?.pendingPlaceLabel;
+	const pendingPlaceTitle =
+		pendingPlaceLabel === "home"
+			? "Set Home"
+			: pendingPlaceLabel === "work"
+				? "Set Work"
+				: pendingPlaceLabel === "other"
+					? "Save place"
+					: null;
+	const savedPlaceText =
+		savedPlaceFeedback === "home"
+			? "Saved Home"
+			: savedPlaceFeedback === "work"
+				? "Saved Work"
+				: savedPlaceFeedback
+					? "Saved place"
+					: null;
+	const canSaveCandidate = ["manual", "search", "recent"].includes(
+		selectedLocation?.source,
+	);
+	const primaryCandidateActionLabel = pendingPlaceTitle || "Use this location";
+	const handlePrimaryCandidateAction = pendingPlaceLabel
+		? () => onSaveSelectedLocationAs?.(pendingPlaceLabel)
+		: onConfirmSelection;
 
 	return (
 		<View style={styles.bodyScrollContent}>
@@ -235,56 +335,121 @@ export function MapLocationIntentBodyContent({
 					</LinearGradient>
 				</Pressable>
 			</View>
-			{isSearching && visibleResults.length > 0 ? (
-				<View style={[styles.listCard, { backgroundColor: groupSurfaceColor }]}>
-					{visibleResults.map((item, index) => (
-						<View key={`${item.placeId || item.primaryText}-${index}`}>
-							<Pressable
-								onPress={() => onPickSearchResult(item)}
-								style={({ pressed }) => [
-									styles.listRow,
-									pressed ? styles.rowPressed : null,
-								]}
-							>
-								<View style={styles.listRowTextWrap}>
-									<Text
-										style={[styles.listRowTitle, { color: titleColor }]}
-										numberOfLines={1}
-									>
-										{item.primaryText || "Selected place"}
-									</Text>
-									<Text
-										style={[styles.listRowSubtitle, { color: mutedColor }]}
-										numberOfLines={1}
-									>
-										{item.secondaryText || item.formattedAddress || ""}
-									</Text>
-								</View>
-								<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-							</Pressable>
-							{index < visibleResults.length - 1 ? (
-								<View
-									style={[
-										styles.rowDivider,
-										{ backgroundColor: mutedColor + "35" },
-									]}
-								/>
-							) : null}
+			{isSearching ? (
+				<View style={styles.searchModeBody}>
+					{searchQuery.trim().length < 2 ? (
+						<View style={[searchStyles.resultGroup, { backgroundColor: groupSurfaceColor }]}>
+							<SearchResultRow
+								iconName="locate-outline"
+								title={model.headerTitle}
+								subtitle={model.headerSubtitle}
+								meta="Current pickup"
+								titleColor={titleColor}
+								mutedColor={mutedColor}
+								surfaceColor={heroSurfaceColor}
+								isDarkMode={isDarkMode}
+								onPress={onUseCurrentLocation}
+								responsiveStyles={searchResponsiveStyles}
+							/>
 						</View>
-					))}
+					) : null}
+					{visibleResults.length > 0 ? (
+						<ResultsSection
+							title="Places"
+							items={visibleResults.map((item, index) => ({
+								...item,
+								key: item?.placeId || item?.primaryText || `place-${index}`,
+							}))}
+							titleColor={mutedColor}
+							groupedSurface={groupSurfaceColor}
+							isDarkMode={isDarkMode}
+							rowDividerColor={mutedColor + "30"}
+							responsiveStyles={searchResponsiveStyles}
+							renderItem={(item, index) => (
+								<SearchResultRow
+									iconName="location-outline"
+									title={item?.primaryText || "Selected location"}
+									subtitle={item?.secondaryText || item?.formattedAddress || ""}
+									meta={index === 0 ? "Best match" : "Use this place"}
+									titleColor={titleColor}
+									mutedColor={mutedColor}
+									surfaceColor={heroSurfaceColor}
+									isDarkMode={isDarkMode}
+									onPress={() => onPickSearchResult(item)}
+									responsiveStyles={searchResponsiveStyles}
+								/>
+							)}
+						/>
+					) : null}
+					{visibleRecentSearches.length > 0 ? (
+						<ResultsSection
+							title="Recent"
+							items={visibleRecentSearches.map((query, index) => ({
+								key: `${query}-${index}`,
+								query,
+							}))}
+							titleColor={mutedColor}
+							groupedSurface={groupSurfaceColor}
+							isDarkMode={isDarkMode}
+							rowDividerColor={mutedColor + "30"}
+							responsiveStyles={searchResponsiveStyles}
+							renderItem={(item) => (
+								<SearchResultRow
+									iconName="time-outline"
+									title={item.query}
+									titleColor={titleColor}
+									mutedColor={mutedColor}
+									surfaceColor={heroSurfaceColor}
+									isDarkMode={isDarkMode}
+									onPress={() => onSelectRecentSearch?.(item.query)}
+									responsiveStyles={searchResponsiveStyles}
+								/>
+							)}
+						/>
+					) : null}
+					{isSearchingLocations && visibleResults.length === 0 ? (
+						<View style={[searchStyles.resultGroup, { backgroundColor: groupSurfaceColor }]}>
+							<View style={[searchStyles.loadingRow, searchResponsiveStyles.loadingRow]}>
+								<ActivityIndicator size="small" color={titleColor} />
+								<Text style={[searchStyles.loadingText, searchResponsiveStyles.loadingText, { color: mutedColor }]}>
+									Looking for places nearby
+								</Text>
+							</View>
+						</View>
+					) : null}
+					{locationSearchError ? (
+						<Text style={[styles.manualErrorText, { color: "#EF4444" }]}>
+							{locationSearchError}
+						</Text>
+					) : null}
+					{searchQuery.trim().length >= 2 &&
+					!isSearchingLocations &&
+					visibleResults.length === 0 &&
+					!locationSearchError ? (
+						<View style={[searchStyles.emptyState, searchResponsiveStyles.emptyState, { backgroundColor: groupSurfaceColor }]}>
+							<View style={[searchStyles.emptyIconWrap, searchResponsiveStyles.emptyIconWrap]}>
+								<Ionicons name="location-outline" size={22} color={titleColor} />
+							</View>
+							<Text style={[searchStyles.emptyTitle, searchResponsiveStyles.emptyTitle, { color: titleColor }]}>
+								No address match yet
+							</Text>
+							<Text style={[searchStyles.emptyBody, searchResponsiveStyles.emptyBody, { color: mutedColor }]}>
+								Try a street, landmark, city, or enter the pickup manually.
+							</Text>
+						</View>
+					) : null}
 				</View>
 			) : null}
 
 			{showDefaultSections ? (
 				<>
 					<Pressable
-						onPress={onUseCurrentLocation}
+						onPress={handleHeroAction}
 						accessibilityRole="button"
 						accessibilityLabel={`Use pickup location: ${model.headerTitle}`}
-						style={({ pressed }) => [
+						style={[
 							styles.currentCard,
 							{ backgroundColor: heroSurfaceColor },
-							pressed ? styles.rowPressed : null,
 						]}
 					>
 						{heroGradientColors?.length ? (
@@ -315,10 +480,11 @@ export function MapLocationIntentBodyContent({
 								</Text>
 							</View>
 							<MapLocationIntentHeroMeta
-								label={permissionLabel}
+								label={heroActionLabel || permissionLabel}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								surfaceColor={groupSurfaceColor}
+								onPress={handleHeroAction}
 							/>
 						</View>
 					</Pressable>
@@ -428,47 +594,6 @@ export function MapLocationIntentBodyContent({
 				</View>
 			) : null}
 
-			{isManualIntro ? (
-				<View style={[styles.manualStepCard, { backgroundColor: groupSurfaceColor }]}>
-					<Text style={[styles.manualTitle, { color: titleColor }]}>
-						{model.manualIntroTitle}
-					</Text>
-					<Text style={[styles.manualBody, { color: mutedColor }]}>
-						{model.manualIntroBody}
-					</Text>
-					<View style={styles.manualStepActions}>
-						<Pressable
-							onPress={onPrevManualStep}
-							style={({ pressed }) => [
-								styles.manualStepButton,
-								{ backgroundColor: infoSurfaceColor },
-								pressed ? styles.rowPressed : null,
-							]}
-						>
-							<Text
-								style={[styles.manualStepButtonLabel, { color: titleColor }]}
-							>
-								Back
-							</Text>
-						</Pressable>
-						<Pressable
-							onPress={onNextManualStep}
-							style={({ pressed }) => [
-								styles.manualStepButton,
-								{ backgroundColor: infoSurfaceColor },
-								pressed ? styles.rowPressed : null,
-							]}
-						>
-							<Text
-								style={[styles.manualStepButtonLabel, { color: titleColor }]}
-							>
-								Start
-							</Text>
-						</Pressable>
-					</View>
-				</View>
-			) : null}
-
 			{isManualStep && currentManualStep ? (
 				<View
 					style={[
@@ -497,14 +622,36 @@ export function MapLocationIntentBodyContent({
 						</Text>
 					</View>
 					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
-						{currentManualStep.label}
+						{currentManualStep.question || currentManualStep.label}
 					</Text>
+					{currentManualStep.helperText ? (
+						<Text style={[styles.manualStepHelper, { color: mutedColor }]}>
+							{currentManualStep.helperText}
+						</Text>
+					) : null}
+					<View style={styles.manualProgressTrack} accessibilityElementsHidden>
+						{MANUAL_LOCATION_STEPS.map((step, index) => (
+							<View
+								key={step.key}
+								style={[
+									styles.manualProgressSegment,
+									{
+										backgroundColor:
+											index <= manualStepIndex ? titleColor : mutedColor + "30",
+									},
+								]}
+							/>
+						))}
+					</View>
 					{currentManualStep.inputType === "country" ? (
-						<View
+						<Pressable
+							onPress={onOpenCountryPicker}
+							accessibilityRole="button"
 							accessibilityLabel="Choose country or region"
-							style={[
+							style={({ pressed }) => [
 								styles.manualSelectInput,
 								{ backgroundColor: infoSurfaceColor },
+								pressed ? styles.rowPressed : null,
 							]}
 						>
 							<Text
@@ -515,22 +662,51 @@ export function MapLocationIntentBodyContent({
 							>
 								{manualDraft.country || currentManualStep.placeholder}
 							</Text>
+							{manualDraft.countryCode ? (
+								<Text style={[styles.manualSelectMeta, { color: mutedColor }]}>
+									{manualDraft.countryCode}
+								</Text>
+							) : null}
 							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-						</View>
+						</Pressable>
 					) : (
 						<TextInput
+							key={currentManualStep.key}
 							value={manualDraft[currentManualStep.key] || ""}
 							onChangeText={(value) =>
 								onManualDraftChange(currentManualStep.key, value)
 							}
 							placeholder={currentManualStep.placeholder}
 							placeholderTextColor={mutedColor}
+							autoCapitalize={currentManualStep.autoCapitalize || "sentences"}
+							autoCorrect={false}
+							autoFocus
+							multiline={Boolean(currentManualStep.multiline)}
+							returnKeyType={
+								manualStepIndex >= MANUAL_LOCATION_STEPS.length - 1
+									? "done"
+									: "next"
+							}
+							onSubmitEditing={
+								currentManualStep.multiline ? undefined : onNextManualStep
+							}
 							style={[
 								styles.manualTextInput,
+								currentManualStep.multiline ? styles.manualTextInputMultiline : null,
 								{ backgroundColor: infoSurfaceColor, color: titleColor },
 							]}
 						/>
 					)}
+					{currentManualStep.optional ? (
+						<Text style={[styles.manualOptionalText, { color: mutedColor }]}>
+							Optional
+						</Text>
+					) : null}
+					{manualError ? (
+						<Text style={[styles.manualErrorText, { color: "#EF4444" }]}>
+							{manualError}
+						</Text>
+					) : null}
 					<View style={styles.manualStepActions}>
 						<Pressable
 							style={[
@@ -546,18 +722,21 @@ export function MapLocationIntentBodyContent({
 							</Text>
 						</Pressable>
 						<Pressable
-							style={[
+							disabled={isResolvingManual}
+							style={({ pressed }) => [
 								styles.manualStepButton,
+								styles.manualStepButtonPrimary,
 								{ backgroundColor: infoSurfaceColor },
+								pressed ? styles.rowPressed : null,
+								isResolvingManual ? styles.manualStepButtonDisabled : null,
 							]}
 							onPress={onNextManualStep}
 						>
-							<Text
-								style={[styles.manualStepButtonLabel, { color: titleColor }]}
-							>
-								{manualStepIndex >= MANUAL_LOCATION_STEPS.length - 1
-									? "Confirm on map"
-									: "Next"}
+							{isResolvingManual ? (
+								<ActivityIndicator size="small" color={titleColor} />
+							) : null}
+							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+								{manualNextActionLabel || "Next"}
 							</Text>
 						</Pressable>
 					</View>
@@ -567,47 +746,130 @@ export function MapLocationIntentBodyContent({
 			{mode === LOCATION_INTENT_MODES.CONFIRM ||
 			mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
 			mode === LOCATION_INTENT_MODES.PIN_ADJUST ? (
-				<View
-					style={[
-						styles.manualStepCard,
-						{ backgroundColor: groupSurfaceColor },
-					]}
-				>
-					<Text style={[styles.manualTitle, { color: titleColor }]}>
-						Confirm selected location
-					</Text>
-					<Text style={[styles.manualBody, { color: mutedColor }]}>
-						{selectedLocation?.address ||
-							selectedLocation?.label ||
-							"Use this location for pickup, nearby care, and pricing."}
-					</Text>
-					<View style={styles.manualAction}>
-						{selectedLocation?.source === "manual" ? (
-							<Pressable
-								onPress={onBackToDefault}
-								accessibilityRole="button"
-								accessibilityLabel="Back to pickup choices"
-								style={styles.confirmBackAction}
-							>
-								<Text style={[styles.manualStepButtonLabel, { color: mutedColor }]}>
-									Pickup
-								</Text>
-							</Pressable>
-						) : null}
+				<View style={styles.candidateDecisionStack}>
+					<View style={[searchStyles.resultGroup, { backgroundColor: groupSurfaceColor }]}>
+						<SearchResultRow
+							iconName="location-outline"
+							title={selectedLocation?.label || pendingPlaceTitle || "Selected location"}
+							subtitle={
+								selectedLocation?.address ||
+								"Use this location for pickup, nearby care, and pricing."
+							}
+							meta={pendingPlaceTitle || "Selected address"}
+							titleColor={titleColor}
+							mutedColor={mutedColor}
+							surfaceColor={heroSurfaceColor}
+							isDarkMode={isDarkMode}
+							isSelected
+							responsiveStyles={searchResponsiveStyles}
+						/>
+					</View>
+
+					<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
 						<Pressable
-							onPress={onConfirmSelection}
+							onPress={handlePrimaryCandidateAction}
 							accessibilityRole="button"
-							accessibilityLabel="Use this location"
+							accessibilityLabel={primaryCandidateActionLabel}
 							style={({ pressed }) => [
-								styles.confirmUseAction,
+								styles.candidateActionRow,
 								pressed ? styles.rowPressed : null,
 							]}
 						>
-							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-								Use this location
+							<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+								<Ionicons name="checkmark-circle-outline" size={18} color={titleColor} />
+							</View>
+							<Text style={[styles.candidateActionText, { color: titleColor }]}>
+								{primaryCandidateActionLabel}
 							</Text>
-							<Ionicons name="checkmark-circle" size={17} color={titleColor} />
+							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
 						</Pressable>
+
+						{canSaveCandidate && !savedPlaceText ? (
+							<>
+								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+								<Pressable
+									onPress={() => onSaveSelectedLocationAs?.("home")}
+									style={({ pressed }) => [
+										styles.candidateActionRow,
+										pressed ? styles.rowPressed : null,
+									]}
+								>
+									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+										<Ionicons name="home-outline" size={18} color={titleColor} />
+									</View>
+									<Text style={[styles.candidateActionText, { color: titleColor }]}>
+										Set as Home
+									</Text>
+									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+								</Pressable>
+								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+								<Pressable
+									onPress={() => onSaveSelectedLocationAs?.("work")}
+									style={({ pressed }) => [
+										styles.candidateActionRow,
+										pressed ? styles.rowPressed : null,
+									]}
+								>
+									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+										<Ionicons name="briefcase-outline" size={18} color={titleColor} />
+									</View>
+									<Text style={[styles.candidateActionText, { color: titleColor }]}>
+										Set as Work
+									</Text>
+									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+								</Pressable>
+								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+								<Pressable
+									onPress={() => onSaveSelectedLocationAs?.("other")}
+									style={({ pressed }) => [
+										styles.candidateActionRow,
+										pressed ? styles.rowPressed : null,
+									]}
+								>
+									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+										<Ionicons name="bookmark-outline" size={18} color={titleColor} />
+									</View>
+									<Text style={[styles.candidateActionText, { color: titleColor }]}>
+										Save place
+									</Text>
+									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+								</Pressable>
+							</>
+						) : null}
+
+						{savedPlaceText ? (
+							<>
+								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+								<View style={styles.candidateActionRow}>
+									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+										<Ionicons name="checkmark-circle" size={18} color={titleColor} />
+									</View>
+									<Text style={[styles.candidateActionText, { color: titleColor }]}>
+										{savedPlaceText}
+									</Text>
+								</View>
+							</>
+						) : null}
+
+						{canSaveCandidate ? (
+							<>
+								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+								<Pressable
+									onPress={onBackToDefault}
+									style={({ pressed }) => [
+										styles.candidateActionRow,
+										pressed ? styles.rowPressed : null,
+									]}
+								>
+									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
+										<Ionicons name="chevron-back" size={18} color={titleColor} />
+									</View>
+									<Text style={[styles.candidateActionText, { color: mutedColor }]}>
+										Pick another location
+									</Text>
+								</Pressable>
+							</>
+						) : null}
 					</View>
 				</View>
 			) : null}

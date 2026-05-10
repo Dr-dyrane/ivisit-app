@@ -324,7 +324,7 @@ export function MapAmbulanceDecisionSwitchRow({
                   color: isActive ? "#FFFFFF" : visualProfile.accent,
                 },
               ]}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {option?.title || visualProfile.shortLabel}
             </Text>
@@ -546,7 +546,7 @@ export function MapAmbulanceDecisionExpandedChoices({
                 stageMetrics?.expanded?.metaStyle,
                 { color: mutedColor },
               ]}
-              numberOfLines={2}
+              numberOfLines={3}
             >
               {subtext}
             </Text>

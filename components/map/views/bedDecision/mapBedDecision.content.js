@@ -1,4 +1,6 @@
 export const MAP_BED_DECISION_COPY = {
+  // PULLBACK NOTE: UX-A — task language title added
+  TITLE: "Choose Your Room",
   AVAILABILITY_FALLBACK: "Check availability",
   ETA_FALLBACK: "Nearby",
   ROUTE_PENDING: "Route updating",

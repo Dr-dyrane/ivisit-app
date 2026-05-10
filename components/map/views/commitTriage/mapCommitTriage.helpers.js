@@ -97,6 +97,15 @@ export function buildMapCommitTriageSteps(showExtendedComplaints = false) {
 	];
 }
 
+// PULLBACK NOTE: UX-A — fresh triage draft builder
+// Returns an empty dict keyed to all step IDs for the session-key reset path.
+export function buildFreshTriageDraft(steps = []) {
+	return steps.reduce((acc, step) => {
+		acc[step.field] = undefined;
+		return acc;
+	}, {});
+}
+
 export function buildCommitTriageSelectionState(step, draft, option) {
 	if (!step || !draft) return false;
 	if (step.type === "multi") {

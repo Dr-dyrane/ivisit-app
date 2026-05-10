@@ -84,7 +84,7 @@ class MapboxService {
      */
     async geocodeAddress(address) {
         if (!this.accessToken) {
-            throw new Error('Mapbox access token is missing');
+            return this.geocodeAddressWithOpenStreetMap(address);
         }
 
         try {
@@ -109,6 +109,55 @@ class MapboxService {
             };
         } catch (error) {
             console.error('MapboxService.geocodeAddress error:', error);
+            return this.geocodeAddressWithOpenStreetMap(address);
+        }
+    }
+
+    async geocodeAddressWithOpenStreetMap(address) {
+        const trimmed = typeof address === 'string' ? address.trim() : '';
+        if (!trimmed) {
+            throw new Error('Address is required');
+        }
+
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(trimmed)}`,
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'Accept-Language': 'en',
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(`OpenStreetMap geocode failed with ${response.status}`);
+            }
+
+            const data = await response.json();
+            const feature = Array.isArray(data) ? data[0] : null;
+            const latitude = Number(feature?.lat);
+            const longitude = Number(feature?.lon);
+
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                throw new Error('No coordinates found for this address');
+            }
+
+            const countryCode =
+                typeof feature?.address?.country_code === 'string'
+                    ? feature.address.country_code.trim().toUpperCase()
+                    : null;
+
+            return {
+                latitude,
+                longitude,
+                formatted_address: feature?.display_name || trimmed,
+                countryCode,
+                feature,
+                source: 'openstreetmap',
+            };
+        } catch (error) {
+            console.error('MapboxService.geocodeAddressWithOpenStreetMap error:', error);
             throw error;
         }
     }
@@ -121,7 +170,13 @@ class MapboxService {
             return [];
         }
 
-        const trimmed = query?.trim();
+        const request =
+            query && typeof query === "object"
+                ? query
+                : { query, proximity };
+        const trimmed = request.query?.trim();
+        const locationBias =
+            request.proximity || request.locationBias || request.location || proximity;
         if (!trimmed) {
             return [];
         }
@@ -134,8 +189,8 @@ class MapboxService {
                 `limit=5&` +
                 `types=address,place`;
 
-            if (proximity?.latitude && proximity?.longitude) {
-                url += `&proximity=${proximity.longitude},${proximity.latitude}`;
+            if (locationBias?.latitude && locationBias?.longitude) {
+                url += `&proximity=${locationBias.longitude},${locationBias.latitude}`;
             }
 
             const response = await fetch(url);
@@ -174,8 +229,10 @@ class MapboxService {
         }
 
         try {
+            const latitude = typeof lat === 'object' ? lat?.latitude : lat;
+            const longitude = typeof lat === 'object' ? lat?.longitude : lng;
             const response = await fetch(
-                `${this.baseUrl}/geocoding/v5/mapbox.places/${lng},${lat}.json?` +
+                `${this.baseUrl}/geocoding/v5/mapbox.places/${longitude},${latitude}.json?` +
                 `access_token=${this.accessToken}&` +
                 `limit=1`
             );

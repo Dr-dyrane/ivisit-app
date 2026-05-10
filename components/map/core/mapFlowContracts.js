@@ -38,6 +38,7 @@ const PAYLOAD_OPTIONAL_OBJECT_PHASES = new Set([
 	MAP_SHEET_PHASES.CARE_HISTORY,
 	MAP_SHEET_PHASES.RECENT_VISITS,
 	MAP_SHEET_PHASES.HOSPITAL_PREVIEW,
+	MAP_SHEET_PHASES.LOCATION_INTENT,
 	MAP_SHEET_PHASES.COMMIT_AUTH,
 ]);
 
@@ -116,6 +117,11 @@ export const MAP_FLOW_PHASE_CONTRACTS = {
 		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
 		payload: "optional_object",
 		description: "Legacy preview bridge.",
+	},
+	[MAP_SHEET_PHASES.LOCATION_INTENT]: {
+		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
+		payload: "optional_object",
+		description: "Unified pickup location management and source-return handoff.",
 	},
 	[MAP_SHEET_PHASES.COMMIT_AUTH]: {
 		family: MAP_FLOW_PHASE_FAMILIES.COMMIT,

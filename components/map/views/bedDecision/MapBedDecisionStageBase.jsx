@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import {
 	GLASS_SURFACE_VARIANTS,
 	getGlassSurfaceTokens,
 } from "../../../../constants/surfaces";
+import { Ionicons } from "@expo/vector-icons";
 import MapSheetShell from "../../MapSheetShell";
 import { buildBedDecisionSourcePayload } from "../../core/mapSheetFlowPayloads";
 import {
@@ -28,6 +29,7 @@ import {
 	MapBedDecisionRoomSwitchRow,
 	MapBedDecisionSavedTransportCard,
 	MapBedDecisionTopSlot,
+	MapBedDecisionTransportStatusStrip,
 } from "./MapBedDecisionStageParts";
 import { MAP_BED_DECISION_COPY } from "./mapBedDecision.content";
 import styles from "./mapBedDecision.styles";
@@ -357,16 +359,26 @@ export default function MapBedDecisionStageBase({
 						{careIntent === "both" ? (
 							<>
 								<View style={styles.sectionGap} />
-								<MapBedDecisionSavedTransportCard
-									savedTransport={savedTransport}
-									glassTokens={glassTokens}
-									isDarkMode={isDarkMode}
-									stageMetrics={stageMetrics}
-									titleColor={titleColor}
-									mutedColor={mutedColor}
-									surfaceColor={nestedSurfaceColor}
-									pillSurfaceColor={pillSurfaceColor}
-								/>
+								{/* PULLBACK NOTE: UX-A — SavedTransportCard demoted to status strip in HALF snap */}
+								{/* OLD: full glass panel always; NEW: strip in HALF, full card in EXPANDED */}
+								{isExpanded ? (
+									<MapBedDecisionSavedTransportCard
+										savedTransport={savedTransport}
+										glassTokens={glassTokens}
+										isDarkMode={isDarkMode}
+										stageMetrics={stageMetrics}
+										titleColor={titleColor}
+										mutedColor={mutedColor}
+										surfaceColor={nestedSurfaceColor}
+										pillSurfaceColor={pillSurfaceColor}
+									/>
+								) : (
+									<MapBedDecisionTransportStatusStrip
+										savedTransport={savedTransport}
+										titleColor={titleColor}
+										onPress={onClose}
+									/>
+								)}
 							</>
 						) : null}
 
@@ -425,19 +437,21 @@ export default function MapBedDecisionStageBase({
 									pillSurfaceColor={pillSurfaceColor}
 								/>
 							</>
-						) : (
-							<MapBedDecisionRouteCard
-								decision={decision}
-								glassTokens={glassTokens}
-								isDarkMode={isDarkMode}
-								stageMetrics={stageMetrics}
-								titleColor={titleColor}
-								mutedColor={mutedColor}
-								surfaceColor={nestedSurfaceColor}
-								pillSurfaceColor={pillSurfaceColor}
-								onChangePickup={onChangePickup}
-							/>
-						)}
+						) : null}
+
+						{/* PULLBACK NOTE: UX-A — RouteCard moved to EXPANDED-only */}
+						{/* OLD: RouteCard in HALF else; NEW: expand affordance in HALF */}
+						{!isExpanded ? (
+							<Pressable
+								onPress={handleHeaderToggle}
+								accessibilityRole="button"
+								accessibilityLabel="Show more details"
+								style={({ pressed }) => [styles.expandAffordance, { opacity: pressed ? 0.7 : 1 }]}
+							>
+								<Ionicons name="chevron-down" size={14} color={mutedColor} />
+								<Text style={[styles.expandAffordanceLabel, { color: mutedColor }]}>More details</Text>
+							</Pressable>
+						) : null}
 					</>
 				) : (
 					<MapBedDecisionEmptyState

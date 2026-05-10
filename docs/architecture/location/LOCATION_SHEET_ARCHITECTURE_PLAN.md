@@ -1,8 +1,10 @@
 # Location Sheet Architecture Plan
 
 **Date:** 2026-05-08
-**Status:** Pass 1 & 2 COMPLETE - Baseline uplift COMPLETE - Pass 3 & 4 Pending
+**Status:** Pass 1 & 2 COMPLETE - Baseline uplift COMPLETE - Full management pass IN PROGRESS
 **Objective:** Unified location sheet architecture with chrome affordance from explore intent
+
+**Canonical saved-address/data-flow companion:** [`LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md`](./LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md)
 
 ---
 
@@ -639,6 +641,27 @@ Hemet, CA
 
 ### 🔄 Pass 4: All Pickup Locations Redirect - PENDING
 
+### 🔄 Full Location Management Pass - ACTIVE
+
+**Implementation baseline added after `085ba39`:**
+
+- `LOCATION_INTENT` now accepts optional object payloads in `mapFlowContracts`, so source-return metadata and preserved address queries survive normalization.
+- LocationIntent owns pickup candidate confirmation for current/device pickup, saved Home/Work places, recent pickups, address-search predictions, and guided manual entry.
+- Manual entry now uses a guided sequence with plain-language country selection: country/region, state/province/region, city, street address, apartment/landmark, and responder note.
+- Country selection reuses the existing registration `CountryPickerModal` rather than introducing a second picker.
+- Manual address confirmation geocodes through Mapbox first and falls back to OpenStreetMap/Nominatim when Mapbox is unavailable.
+- Manual confirmation no longer fabricates `0,0` coordinates. If no real coordinate can be resolved, the sheet keeps the user in manual correction instead of committing false pickup truth.
+- Search sheet saved-location rows now normalize into the canonical `onSelectLocation` shape.
+- Search sheet `Change location` now redirects into LocationIntent instead of logging a TODO.
+- Hospital list `Change location` now redirects into LocationIntent with source-return payload.
+- Location edits can return to supported source phases through the shared pickup return model.
+
+**Still intentionally deferred:**
+
+- Full saved-place management modal for editing Home/Work/Add labels.
+- True map pin-drag UI for `pinAdjust`.
+- Tracking pickup mutation; tracking remains read-only unless a backend request-destination mutation path is added.
+
 ---
 
 ## Commit References
@@ -722,8 +745,7 @@ Half / idle default
   Header
   Search address or place [manual icon]
   Current location card
-    Use current location
-    Adjust on map
+    Right meta CTA: Change / Use device / Settings
   Places orb row
     Home
     Work
@@ -745,10 +767,11 @@ Core CTAs must never require expansion:
 
 - Search input is always visible in half-snap.
 - Manual entry is reachable from both the input trailing icon and the fallback row.
-- Use current location is visible in half-snap.
-- Adjust on map is visible in half-snap.
+- The current-location hero decision is visible in half-snap through the right meta CTA.
 - Home, Work, and Add are visible in half-snap.
 - Confirm selected location is visible in half-snap after any candidate is selected.
+- Terminal decision CTAs belong in a sticky footer outside the scroll body when the sheet content can scroll.
+- Expanded state must not bury the active decision CTA beneath recents, predictions, edit fields, or explanatory copy.
 
 Expanded state is only for depth, not permission:
 
@@ -759,6 +782,14 @@ Expanded state is only for depth, not permission:
 
 Mode-specific layout replaces lower-priority browsing content rather than appending under it:
 
+- Sheet phase changes use the shared map phase transition language.
+- Keep the sheet shell mounted while the body refocuses.
+- Never show a blank white body between modes on web or mobile.
+- Loading states should match the destination layout shape:
+  - search uses result-shaped rows
+  - manual geocoding keeps the manual/review body with inline progress
+  - save/update/remove keeps the address group with CTA pending state
+
 ```txt
 addressSearch
   Header
@@ -766,19 +797,13 @@ addressSearch
   Address/place predictions
   Current location card, places, and manual fallback can remain below if space allows
 
-manualIntro
-  Header
-  Search input
-  Manual intro card
-    Back
-    Start
-
 manualStep
   Header
   Search input
   Single guided field
-    Back
-    Next / Confirm on map
+    Back to pickup choices
+    Previous step
+    Next / Skip / Review pickup
 
 placeSelected / pinAdjust / confirm
   Header
@@ -796,7 +821,8 @@ Implementation rules:
 - Keep SearchSheet, payment, tracking, hospital detail, and service detail as consumers/openers of the selected location, not owners of location search.
 - Do not add a separate second sheet system.
 - Do not make manual entry a multi-field visible form.
-- Manual low-confidence entries must eventually route through map confirmation before commit.
+- Manual entries must never commit fabricated coordinates. If geocoding cannot resolve a real coordinate, keep the user in manual correction until true map pin confirmation exists.
+- Manual low-confidence entries must eventually route through map confirmation before commit once `pinAdjust` has a draggable pin implementation.
 
 ## Interaction Architecture
 
@@ -805,7 +831,6 @@ type LocationSheetMode =
   | "default"
   | "addressSearch"
   | "placeSelected"
-  | "manualIntro"
   | "manualStep"
   | "pinAdjust"
   | "confirm";
@@ -851,22 +876,24 @@ It should be guided:
 
 ```txt
 Step 1
-What country or region is this in?
+Which country or region?
 
 Step 2
-What city?
+State, province, or region?
 
 Step 3
-Street address?
+What city?
 
 Step 4
-Apartment, unit, or landmark?
+Street address or landmark?
 
 Step 5
-Any note for responders?
+Apartment, unit, or landmark?
 
 Step 6
-Confirm on map
+Any note for responders?
+
+Review pickup
 ```
 
 But only after:
@@ -875,6 +902,17 @@ But only after:
 Can’t find it?
 Enter manually
 ```
+
+Production rules:
+
+- Tapping manual entry opens Step 1 directly. Do not render a separate "Start" intro state.
+- Country selection uses the existing registration country picker, with location-specific title/search copy and selected-state feedback.
+- Required fields: country/region, city, and street address/place/landmark.
+- State/region is shown as its own step because users expect it, but it is not hard-required globally.
+- Unit/landmark detail and responder note are optional; the primary action changes to `Skip` when optional input is empty.
+- `Review pickup` geocodes the composed address through Mapbox, with OpenStreetMap fallback only when Mapbox is unavailable.
+- If neither provider returns finite coordinates, keep the user on the street-address step with a correction message. Never fall back to stale/current GPS for a different manual pickup.
+- `selectedLocation` carries `countryCode`, `unit`, `responderNote`, and `confidence` forward so SearchSheet and downstream flows consume the same canonical pickup shape.
 
 ## Smart Address Search Inside Location Sheet
 
@@ -902,3 +940,77 @@ selectedLocation = {
   responderNote?: string,
 };
 ```
+
+## Top-To-Bottom Full Feature Pass
+
+Build the sheet in the same order the user sees it. Each pass must finish UI, state behavior, data flow, and side effects before moving to the next pass.
+
+### Pass A - Search
+
+Scope:
+
+- Focusing the search field expands the sheet and switches the body into `addressSearch`.
+- Search state replaces default content; it must not push the hero, places, manual, or recents downward.
+- Reuse SearchSheet primitives: grouped result surfaces, result rows, loading rows, empty states, address result grouping, and saved/current-location blades where appropriate.
+- Reuse the existing location search query path and suggestion mapper; normalize `mapboxService.suggestAddresses` call shape before adding deeper search behavior.
+- Do not add a LocationSheet-only search hook, provider adapter, or result mapper.
+- Address suggestions are location candidates, not final commits.
+- Selecting a result creates a candidate and collapses the sheet to a decision state.
+- Candidate decision actions:
+  - Use as pickup.
+  - Set/update Home.
+  - Set/update Work.
+  - Save as another place.
+- Committing pickup uses the canonical `selectedLocation` shape.
+- Saving a place uses the same candidate object and saved-location store; Home/Work update existing entries instead of creating duplicate labels.
+
+Deferred inside Pass A:
+
+- Preview-only map camera state. Until a non-committing map preview API exists, selecting a result can collapse into candidate decision UI, but final pickup mutation happens only from `Use as pickup`.
+
+### Pass B - Hero Card
+
+Scope:
+
+- The hero card stays simple and comparable to the SearchSheet location blade.
+- Remove extra CTA rows below the hero.
+- The right meta slot owns the current decision copy:
+  - Device pickup active: `Change`.
+  - Manual/saved pickup active: `Use device`.
+  - Permission blocked: `Settings`.
+- `Adjust on map` remains documented for future pin-adjust work, but is not a primary visible CTA.
+
+### Pass C - Places
+
+Scope:
+
+- Audit saved-location storage and normalize Home/Work/Other labels.
+- Keep `locationStore.savedLocations` and `savedLocationsSyncService` as the existing ownership lane; do not add a parallel saved-address store or cloud writer.
+- Reuse LocationSheet states for CRUD; do not create separate CRUD modals.
+- Place actions:
+  - Use saved place as pickup.
+  - Add Home/Work/Other from search/manual candidate.
+  - Update Home/Work if an entry already exists.
+  - Rename/delete saved places in a later manage state.
+
+### Pass D - Manual
+
+Scope:
+
+- Manual entry remains guided and single-field.
+- Manual assistance should reuse the same address/geocode services and candidate normalization as search.
+- Address quality checks should be context-aware; POIs, landmarks, hospitals, apartments, and international addresses cannot be rejected only because they lack a US-style street number/type.
+- After manual geocode succeeds, it uses the same candidate decision state as search:
+  - Use as pickup.
+  - Set/update Home.
+  - Set/update Work.
+  - Save as another place.
+- Manual entries never commit fabricated coordinates.
+
+### Pass E - Recents
+
+Scope:
+
+- Recents combine recent searches, manual pickups, saved-location uses, and visited locations when available.
+- Reuse existing grouped list design from ExploreIntent/RecentVisits rather than creating a new row language.
+- Selecting a recent location creates the same candidate decision state.

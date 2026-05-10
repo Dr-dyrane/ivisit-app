@@ -16,6 +16,9 @@ const styles = StyleSheet.create({
 		marginTop: 6,
 		marginBottom: 20,
 	},
+	searchModeBody: {
+		gap: 12,
+	},
 	searchPill: {
 		flex: 1,
 		minHeight: 44,
@@ -155,25 +158,6 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "400",
 	},
-	currentCardActions: {
-		flexDirection: "row",
-		gap: 8,
-	},
-	currentCardAction: {
-		flex: 1,
-		borderRadius: 12,
-		borderCurve: "continuous",
-		paddingVertical: 10,
-		paddingHorizontal: 10,
-		alignItems: "center",
-		justifyContent: "center",
-		flexDirection: "row",
-		gap: 6,
-	},
-	currentCardActionLabel: {
-		fontSize: 12,
-		fontWeight: "600",
-	},
 	orbRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
@@ -295,10 +279,25 @@ const styles = StyleSheet.create({
 		lineHeight: 23,
 		fontWeight: "700",
 	},
+	manualStepHelper: {
+		marginTop: -4,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "600",
+	},
 	manualStepProgress: {
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "600",
+	},
+	manualProgressTrack: {
+		height: 3,
+		flexDirection: "row",
+		gap: 4,
+	},
+	manualProgressSegment: {
+		flex: 1,
+		borderRadius: 999,
 	},
 	manualTextInput: {
 		minHeight: 46,
@@ -307,6 +306,10 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 14,
 		paddingVertical: 10,
 		fontSize: 15,
+	},
+	manualTextInputMultiline: {
+		minHeight: 84,
+		textAlignVertical: "top",
 	},
 	manualSelectInput: {
 		minHeight: 46,
@@ -326,6 +329,23 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "500",
 	},
+	manualSelectMeta: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "800",
+	},
+	manualOptionalText: {
+		marginTop: -5,
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "700",
+		textTransform: "uppercase",
+	},
+	manualErrorText: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "600",
+	},
 	manualStepActions: {
 		flexDirection: "row",
 		gap: 8,
@@ -336,6 +356,16 @@ const styles = StyleSheet.create({
 		borderCurve: "continuous",
 		paddingVertical: 10,
 		alignItems: "center",
+		justifyContent: "center",
+		minHeight: 40,
+		flexDirection: "row",
+		gap: 6,
+	},
+	manualStepButtonPrimary: {
+		minHeight: 42,
+	},
+	manualStepButtonDisabled: {
+		opacity: 0.72,
 	},
 	manualStepButtonLabel: {
 		fontSize: 13,
@@ -348,6 +378,61 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 6,
+	},
+	saveDecisionRow: {
+		marginTop: 4,
+		flexDirection: "row",
+		gap: 8,
+	},
+	saveDecisionChip: {
+		flex: 1,
+		minHeight: 36,
+		borderRadius: 12,
+		borderCurve: "continuous",
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 6,
+		paddingHorizontal: 10,
+	},
+	saveDecisionText: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "700",
+	},
+	candidateDecisionStack: {
+		gap: 12,
+	},
+	candidateActionGroup: {
+		overflow: "hidden",
+		borderRadius: 24,
+		borderCurve: "continuous",
+	},
+	candidateActionRow: {
+		minHeight: 54,
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+	},
+	candidateActionIcon: {
+		width: 34,
+		height: 34,
+		borderRadius: 17,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	candidateActionText: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 14,
+		lineHeight: 18,
+		fontWeight: "700",
+	},
+	candidateActionDivider: {
+		height: StyleSheet.hairlineWidth,
+		marginLeft: 60,
 	},
 });
 

@@ -51,6 +51,7 @@ export function useMapSearchSheetModel({
 	onBrowseHospitals,
 	onUseCurrentLocation,
 	onSelectLocation,
+	onOpenLocationIntent,
 }) {
 	// Unified search model - no mode switching (mode chips removed per p3-1)
 	const { isDarkMode } = useTheme();
@@ -306,9 +307,30 @@ export function useMapSearchSheetModel({
 	}, [handleDismiss, onUseCurrentLocation]);
 
 	const handleChangeLocation = useCallback(() => {
-		// TODO: Implement change location flow
-		console.log("[MapSearchSheet] Change location clicked - implement location picker");
-	}, []);
+		handleDismiss();
+		setTimeout(() => {
+			onOpenLocationIntent?.({ query: trimmedQuery });
+		}, 80);
+	}, [handleDismiss, onOpenLocationIntent, trimmedQuery]);
+
+	const handleSelectSavedLocation = useCallback(
+		(location) => {
+			if (!location) return;
+			onSelectLocation?.({
+				primaryText: location.label || "Saved pickup",
+				secondaryText: location.address || "",
+				formattedAddress: location.address || "",
+				location: {
+					latitude: location.latitude,
+					longitude: location.longitude,
+				},
+				countryCode: location.countryCode || null,
+				source: "saved",
+			});
+			handleDismiss();
+		},
+		[handleDismiss, onSelectLocation],
+	);
 
 	const handleUseSuggestion = useCallback(
 		async (suggestion) => {
@@ -353,6 +375,7 @@ export function useMapSearchSheetModel({
 		handleOpenHospitalList,
 		handleUseCurrent,
 		handleChangeLocation,
+		handleSelectSavedLocation,
 		handleUseSuggestion,
 		hasQuery,
 		hospitalResults,

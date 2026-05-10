@@ -548,6 +548,34 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		color: COLORS.brandPrimary,
 	},
+	// PULLBACK NOTE: UX-A — expand affordance (HALF snap "More details" row)
+	expandAffordance: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 5,
+		paddingVertical: 10,
+		paddingHorizontal: 16,
+	},
+	expandAffordanceLabel: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "500",
+	},
+	// PULLBACK NOTE: UX-A — transport status strip (compact row, HALF snap only)
+	transportStripRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 7,
+		paddingHorizontal: 4,
+		paddingVertical: 6,
+	},
+	transportStripLabel: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "500",
+		flex: 1,
+	},
 });
 
 export default styles;
