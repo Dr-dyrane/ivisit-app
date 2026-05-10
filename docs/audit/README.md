@@ -15,3 +15,4 @@ System-wide audit reports, implementation checkpoints, and UI/UX reviews.
 | [checkpoints/](checkpoints/) | Key implementation checkpoints |
 | [planning/](planning/) | Refactor plans, roadmaps, orchestration |
 | [inventory/](inventory/) | Codebase analysis snapshots |
+| [demo/](demo/) | Demo bootstrap duplicate hospital bug — 5-pass fix audit |

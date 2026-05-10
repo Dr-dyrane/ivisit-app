@@ -1,14 +1,14 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-05-01
+Last Updated: 2026-05-10
 
 ## Quick Rules Reference
 
 | Rule Type          | Source                                                                        | Authority                                         |
 | ------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------- |
-| **System Rules**   | [`rules.json`](./rules.json)                                                  | **Tiebreaker** � HIG compliance, product doctrine |
-| **Blueprint**      | [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md)                                | Locked � Product vision                           |
-| **Sprint State**   | [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md)                                    | Mutable � Current priorities                      |
+| **System Rules**   | [`rules.json`](./rules.json)                                                  | **Tiebreaker** � HIG compliance, product doctrine |
+| **Blueprint**      | [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md)                                | Locked � Product vision                           |
+| **Sprint State**   | [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md)                                    | Mutable � Current priorities                      |
 | **Code Standards** | [`.agent/workflows/code-standards.md`](../.agent/workflows/code-standards.md) | Development patterns                              |
 | **Doc Model**      | [`README.md`](./README.md)                                                    | Folder roles, routing rules                       |
 
@@ -104,6 +104,14 @@ docs/
     VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md
     ivisit_full_system_reconstruction_report_2026-03-02.md
     (+ JSON schema/rpc artifacts from 2026-03-02)
+    DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md
+    demo/
+      README.md
+      PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md
+      PASS_2_SERVER_CROSS_ORG_SWEEP.md
+      PASS_3_DB_CLEANUP_MIGRATION.md
+      PASS_4_CLIENT_COVERAGE_GATE.md
+      PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md
 
   archive/
     historical/
@@ -114,6 +122,20 @@ docs/
       PAYMENT_CONTROLLER_REFACTOR_PLAN.md
       ROOT_README.md
     legacy_specs/
+
+  architecture/
+    ux/
+      UX_ISSUES_SUBPASS_PLAN_2026-05-10.md
+      IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md
+      APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md
+      MODAL_RECOVERY_PASS_OTA_RATING_V1.md
+      passes/
+        README.md
+        UX_A_DECISION_SURFACE_LAYOUT.md
+        UX_B_VISUAL_HIERARCHY.md
+        UX_C_PAYMENT_SURFACE.md
+        UX_D_STATE_LAYER.md
+        UX_E_LOCATION_SHEET.md
 
   console/
   deployment/
@@ -144,6 +166,8 @@ docs/
 - Emergency doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - Demo coverage and cleanup: [flows/emergency/DEMO_MODE_COVERAGE_FLOW.md](./flows/emergency/DEMO_MODE_COVERAGE_FLOW.md)
 - Demo bootstrap remediation checkpoint: [./audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](./audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md)
+- Demo bootstrap duplicate hospital bug audit: [./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
+- Demo bootstrap 5-pass fix index: [./audit/demo/README.md](./audit/demo/README.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Map sheet notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Map route-state hardening checkpoint: [./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)
@@ -184,6 +208,17 @@ docs/
 - Help Support comparison audit: [./audit/screens/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - Help Support implementation checkpoint: [./audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/HELP_SUPPORT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 
+### UX Issues (2026-05-10)
+
+- UX issue register: [architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md](./architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md)
+- UX sub-pass plan: [architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md](./architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md)
+- UX pass index: [architecture/ux/passes/README.md](./architecture/ux/passes/README.md)
+- UX-A Decision Surface Layout: [architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md](./architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md)
+- UX-B Visual Hierarchy: [architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md](./architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md)
+- UX-C Payment Surface: [architecture/ux/passes/UX_C_PAYMENT_SURFACE.md](./architecture/ux/passes/UX_C_PAYMENT_SURFACE.md)
+- UX-D State Layer Completion: [architecture/ux/passes/UX_D_STATE_LAYER.md](./architecture/ux/passes/UX_D_STATE_LAYER.md)
+- UX-E LocationSheet + Mini Profile (deferred): [architecture/ux/passes/UX_E_LOCATION_SHEET.md](./architecture/ux/passes/UX_E_LOCATION_SHEET.md)
+
 ### Architecture
 
 - **Gold standard state roadmap**: [./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md)
@@ -211,8 +246,8 @@ docs/
 
 | Doc                                                                                                                                    | Status                                                              |
 | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/map/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                               | ? All passes complete (VD-A�G)                                     |
-| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                                           | ? All passes complete (A�G)                                        |
+| [VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md](./audit/map/VISIT_DETAIL_PHASE_AUDIT_2026-04-27.md)                                               | ? All passes complete (VD-A�G)                                     |
+| [TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)                                           | ? All passes complete (A�G)                                        |
 | [EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md](./audit/emergency/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md)                                   | Pre-pass five-layer baseline                                        |
 | [MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)                       | Shared route-state hardening and loop-fix pass                      |
 | [MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](./audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md)                           | Marker/entity render hardening after route-state completion         |
@@ -242,9 +277,34 @@ docs/
 | [SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/SETTINGS_STACK_COMPARISON_AUDIT_2026-04-29.md)                                 | Settings vs payment/emergency/profile baseline                      |
 | [SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)               | Settings stack implementation checkpoint                            |
 | [PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md](./audit/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md)                                   | ? Reference                                                        |
-| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                                         | R1�R10 tracker                                                      |
+| [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                                         | R1�R10 tracker                                                      |
 | [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                                     |                                                                     |
 | [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                                       |                                                                     |
+
+### UX Issues Pass Plan (2026-05-10)
+
+| Doc | Status |
+| --- | ------ |
+| [architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md](./architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md) | Source issue register — Issues 1–12 |
+| [architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md](./architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md) | Full sub-pass plan — ground truth, deferred items, all passes |
+| [architecture/ux/passes/README.md](./architecture/ux/passes/README.md) | Pass index — issue map, deferred assignments, pre-flight line counts |
+| [architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md](./architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md) | PLANNED — triage init, HALF snap, transport strip, back-nav |
+| [architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md](./architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md) | PLANNED — badge hierarchy, entity data boundary, OTP timing, transitions |
+| [architecture/ux/passes/UX_C_PAYMENT_SURFACE.md](./architecture/ux/passes/UX_C_PAYMENT_SURFACE.md) | PLANNED — sticky CTA, FINALIZING_DISPATCH, wallet caption, ETA null |
+| [architecture/ux/passes/UX_D_STATE_LAYER.md](./architecture/ux/passes/UX_D_STATE_LAYER.md) | PLANNED — commitFlow → Jotai, TanStack Query, isSubmitting removal |
+| [architecture/ux/passes/UX_E_LOCATION_SHEET.md](./architecture/ux/passes/UX_E_LOCATION_SHEET.md) | DEFERRED — mini profile address entry (blocked on Location passes) |
+
+### Demo Bootstrap Duplicate Hospital Bug (2026-05-10)
+
+| Doc | Status |
+| --- | ------ |
+| [DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md) | Root-cause audit + 5-pass plan |
+| [audit/demo/README.md](./audit/demo/README.md) | Pass index — deploy groupings, invariants, acceptance checks |
+| [audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md](./audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md) | PLANNED — `resolveDemoSeedScopeKey` → user slug |
+| [audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md](./audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md) | PLANNED — cross-org 16 km retirement sweep |
+| [audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md](./audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md) | PLANNED — coordinate-scoped row retirement SQL |
+| [audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md](./audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md) | PLANNED — coverage gate owner scoping |
+| [audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md](./audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md) | PLANNED — doc update + post-deploy migration |
 
 ### Orchestrator Refactor (2026-04-25)
 
@@ -270,7 +330,7 @@ docs/
 - [audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - [audit/ivisit_full_system_reconstruction_report_2026-03-02.md](./audit/ivisit_full_system_reconstruction_report_2026-03-02.md)
 - JSON artifacts: `flow_dependency_graph`, `rpc_dependency_graph`, `ui_db_parity_matrix`, `live_schema_inventory`, etc.
-- [archive/historical/](./archive/historical/) � superseded checkpoints and refactor notices
+- [archive/historical/](./archive/historical/) � superseded checkpoints and refactor notices
 
 ---
 
