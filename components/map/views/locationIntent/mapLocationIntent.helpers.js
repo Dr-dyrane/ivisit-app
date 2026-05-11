@@ -157,6 +157,75 @@ export function getManualStepActionLabel({
 	return stepIndex >= stepCount - 1 ? "Review pickup" : "Next";
 }
 
+export function buildSaveCategoryActions() {
+	// Rollback note: category choice belongs to the sheet phase, not a separate
+	// modal. Home/Work remain fast identity slots; the rest are saved-place
+	// families that preserve the candidate label.
+	return [
+		{
+			id: "save-home",
+			label: "Home",
+			iconName: "home-outline",
+			tone: "home",
+			category: "home",
+			requiresDetails: false,
+		},
+		{
+			id: "save-work",
+			label: "Work",
+			iconName: "briefcase-outline",
+			tone: "work",
+			category: "work",
+			requiresDetails: false,
+		},
+		{
+			id: "save-family",
+			label: "Family",
+			iconName: "people-outline",
+			tone: "family",
+			category: "family",
+			requiresDetails: true,
+		},
+		{
+			id: "save-school",
+			label: "School",
+			iconName: "school-outline",
+			tone: "school",
+			category: "school",
+			requiresDetails: true,
+		},
+		{
+			id: "save-pharmacy",
+			label: "Pharmacy",
+			iconName: "medkit-outline",
+			tone: "pharmacy",
+			category: "pharmacy",
+			requiresDetails: true,
+		},
+		{
+			id: "save-care",
+			label: "Care",
+			iconName: "medical-outline",
+			tone: "care",
+			category: "care",
+			requiresDetails: true,
+		},
+		{
+			id: "save-other",
+			label: "Other",
+			iconName: "bookmark-outline",
+			tone: "saved",
+			category: "other",
+			requiresDetails: true,
+		},
+	];
+}
+
+export function getSaveCategoryAction(category) {
+	const normalizedCategory = normalizeAddressCategory(category, "other");
+	return buildSaveCategoryActions().find((action) => action.category === normalizedCategory) || null;
+}
+
 export function buildCandidateDecisionActions({
 	selectedLocation,
 	pendingPlaceLabel,
@@ -189,7 +258,7 @@ export function buildCandidateDecisionActions({
 		label: pendingTitle || "Use as Pickup",
 		iconName: pendingPlaceLabel ? "bookmark-outline" : "navigate-circle-outline",
 		tone: pendingPlaceLabel ? "saved" : "pickup",
-		type: pendingPlaceLabel ? "save" : "pickup",
+		type: pendingPlaceLabel === "other" ? "saveCategory" : pendingPlaceLabel ? "save" : "pickup",
 		saveLabel: pendingPlaceLabel || null,
 	});
 
@@ -216,7 +285,7 @@ export function buildCandidateDecisionActions({
 				label: "Save Place",
 				iconName: "bookmark-outline",
 				tone: "saved",
-				type: "save",
+				type: "saveCategory",
 				saveLabel: "other",
 			},
 		);

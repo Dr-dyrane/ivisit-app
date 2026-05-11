@@ -7,6 +7,8 @@ export const LOCATION_INTENT_MODES = Object.freeze({
 	MANUAL_STEP: "manualStep",
 	PIN_ADJUST: "pinAdjust",
 	CONFIRM: "confirm",
+	SAVE_CATEGORY: "saveCategory",
+	SAVE_DETAILS: "saveDetails",
 });
 
 export const MANUAL_LOCATION_STEPS = [

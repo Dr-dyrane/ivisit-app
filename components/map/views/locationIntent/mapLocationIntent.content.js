@@ -25,6 +25,9 @@ export const MAP_LOCATION_INTENT_COPY = {
 		home: ["#A78BFA", "#7C3AED"], // Vibrant purple gradient
 		work: ["#FBBF24", "#D97706"], // Amber/orange gradient
 		family: ["#F472B6", "#DB2777"], // Pink/magenta gradient
+		school: ["#38BDF8", "#0284C7"],
+		pharmacy: ["#34D399", "#059669"],
+		care: ["#FB7185", "#E11D48"],
 		add: ["#EF4444", "#DC2626"], // Bluish-red gradient (matches map polyline/hospital marker)
 	},
 	placesOrbSubtext: {

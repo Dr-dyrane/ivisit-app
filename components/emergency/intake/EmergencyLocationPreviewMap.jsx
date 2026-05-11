@@ -1389,7 +1389,7 @@ export default function EmergencyLocationPreviewMap({
             leftOffset={controlsMode === "top" ? leftPanelWidth + 10 : 14}
             rightOffset={undefined}
             pickupTitle="Pickup"
-            pickupSubtitle="Hemet, CA"
+            pickupSubtitle={placeLabel || "Set location"}
           />
           <MapControls
             onRecenter={toggleUserCenteredCamera}

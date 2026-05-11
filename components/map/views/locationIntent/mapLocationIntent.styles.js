@@ -408,6 +408,32 @@ const styles = StyleSheet.create({
 		borderRadius: 24,
 		borderCurve: "continuous",
 	},
+	saveDetailsCard: {
+		borderRadius: 24,
+		borderCurve: "continuous",
+		padding: 14,
+		gap: 10,
+	},
+	saveDetailsHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		marginBottom: 2,
+	},
+	saveDetailsCopy: {
+		flex: 1,
+		minWidth: 0,
+	},
+	saveDetailsPrimaryAction: {
+		minHeight: 44,
+		borderRadius: 14,
+		borderCurve: "continuous",
+		paddingHorizontal: 14,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+	},
 	candidateActionRow: {
 		minHeight: 54,
 		paddingHorizontal: 14,

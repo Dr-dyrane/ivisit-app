@@ -4,6 +4,7 @@ import { LOCATION_INTENT_MODES } from "./mapLocationIntent.model";
 const NAV_ACTIONS = Object.freeze({
 	PUSH: "push",
 	REPLACE: "replace",
+	REPLACE_STACK: "replaceStack",
 	RESET: "reset",
 	BACK: "back",
 });
@@ -32,6 +33,11 @@ function locationSheetNavigationReducer(state, action) {
 				...state,
 				mode: action.mode || LOCATION_INTENT_MODES.DEFAULT,
 			};
+		case NAV_ACTIONS.REPLACE_STACK:
+			return {
+				mode: action.mode || LOCATION_INTENT_MODES.DEFAULT,
+				stack: Array.isArray(action.stack) ? action.stack : [],
+			};
 		case NAV_ACTIONS.BACK: {
 			if (!state.stack.length) {
 				return createInitialState();
@@ -58,6 +64,10 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 
 	const replaceMode = useCallback((mode) => {
 		dispatch({ type: NAV_ACTIONS.REPLACE, mode });
+	}, []);
+
+	const replaceModeStack = useCallback((mode, stack = []) => {
+		dispatch({ type: NAV_ACTIONS.REPLACE_STACK, mode, stack });
 	}, []);
 
 	const returnToDefault = useCallback(() => {
@@ -89,6 +99,14 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 		openMode(LOCATION_INTENT_MODES.PIN_ADJUST);
 	}, [openMode]);
 
+	const openSaveCategory = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.SAVE_CATEGORY);
+	}, [openMode]);
+
+	const openSaveDetails = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.SAVE_DETAILS);
+	}, [openMode]);
+
 	return useMemo(
 		() => ({
 			mode: state.mode,
@@ -101,7 +119,10 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openConfirm,
 			openPlaceSelected,
 			openPinAdjust,
+			openSaveCategory,
+			openSaveDetails,
 			replaceMode,
+			replaceModeStack,
 			returnToDefault,
 			goBack,
 		}),
@@ -112,7 +133,10 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openManualStep,
 			openPinAdjust,
 			openPlaceSelected,
+			openSaveCategory,
+			openSaveDetails,
 			replaceMode,
+			replaceModeStack,
 			returnToDefault,
 			state.mode,
 			state.stack,

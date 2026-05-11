@@ -965,6 +965,9 @@ Scope:
 - Saving a place uses the same candidate object and saved-location store.
 - Home/Work are singleton identity slots and update existing entries instead of creating duplicate labels.
 - Generic saved places preserve the candidate display label and only dedupe through same-address or same-coordinate store rules.
+- `Save Place` opens an in-sheet category phase, keeps the selected address group visible, and uses the top-left back affordance to return to the candidate decision.
+- Home/Work save from category as fast paths; Family, School, Pharmacy, Care, and Other continue to a details phase for label, unit/landmark, and responder note before saving.
+- Successful category/details saves return to the selected-address decision surface with saved feedback instead of leaving the user inside the nested save flow.
 
 Deferred inside Pass A:
 

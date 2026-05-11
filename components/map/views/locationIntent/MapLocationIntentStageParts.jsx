@@ -23,6 +23,7 @@ import {
 import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
 import {
 	buildCandidateDecisionActions,
+	buildSaveCategoryActions,
 	getPlaceOrbHierarchy,
 	getPlaceOrbSubtext,
 } from "./mapLocationIntent.helpers";
@@ -76,6 +77,10 @@ function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedC
 	const toneColors = {
 		home: MAP_LOCATION_INTENT_COPY.placesOrbColors.home?.[1],
 		work: MAP_LOCATION_INTENT_COPY.placesOrbColors.work?.[1],
+		family: MAP_LOCATION_INTENT_COPY.placesOrbColors.family?.[1],
+		school: MAP_LOCATION_INTENT_COPY.placesOrbColors.school?.[1],
+		pharmacy: MAP_LOCATION_INTENT_COPY.placesOrbColors.pharmacy?.[1],
+		care: MAP_LOCATION_INTENT_COPY.placesOrbColors.care?.[1],
 		saved: MAP_LOCATION_INTENT_COPY.placesOrbColors.add?.[1],
 		pickup: "#2563EB",
 		success: "#059669",
@@ -216,6 +221,7 @@ export function MapLocationIntentBodyContent({
 	onOpenManualIntro,
 	onStartPinAdjust,
 	onConfirmSelection,
+	onOpenSaveCategory,
 	searchQuery,
 	onSearchQueryChange,
 	searchResults,
@@ -226,11 +232,15 @@ export function MapLocationIntentBodyContent({
 	selectedLocation,
 	onPickSearchResult,
 	onSaveSelectedLocationAs,
+	onSelectSaveCategory,
 	recents,
 	savedPlaces,
 	mode,
 	manualDraft,
+	saveDetailsDraft,
 	onManualDraftChange,
+	onSaveDetailsDraftChange,
+	onConfirmSaveDetails,
 	onNextManualStep,
 	onPrevManualStep,
 	onBackToDefault,
@@ -239,6 +249,7 @@ export function MapLocationIntentBodyContent({
 	manualNextActionLabel,
 	isResolvingManual,
 	savedPlaceFeedback,
+	pendingSaveCategory,
 	manualStepIndex,
 	isExpanded,
 	isDarkMode,
@@ -256,7 +267,11 @@ export function MapLocationIntentBodyContent({
 	const isConfirming =
 		mode === LOCATION_INTENT_MODES.CONFIRM ||
 		mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
-		mode === LOCATION_INTENT_MODES.PIN_ADJUST;
+		mode === LOCATION_INTENT_MODES.PIN_ADJUST ||
+		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
+		mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
+	const isSaveCategory = mode === LOCATION_INTENT_MODES.SAVE_CATEGORY;
+	const isSaveDetails = mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
 	const showDefaultSections = !isSearching && !isManualStep && !isConfirming;
 	const visibleResults = isExpanded ? searchResults.slice(0, 7) : searchResults.slice(0, 4);
 	const visibleRecentSearches = Array.isArray(recentSearchQueries)
@@ -304,10 +319,18 @@ export function MapLocationIntentBodyContent({
 	const pendingPlaceTitle = candidateActions[0]?.saveLabel
 		? candidateActions[0]?.label
 		: null;
+	const saveCategoryActions = useMemo(() => buildSaveCategoryActions(), []);
+	const selectedSaveCategoryAction =
+		saveCategoryActions.find((action) => action.category === pendingSaveCategory) ||
+		saveCategoryActions.find((action) => action.category === "other");
 	const handleCandidateAction = (action) => {
 		if (!action || action.type === "status") return;
 		if (action.type === "pickup") {
 			onConfirmSelection?.();
+			return;
+		}
+		if (action.type === "saveCategory") {
+			onOpenSaveCategory?.();
 			return;
 		}
 		if (action.type === "save") {
@@ -775,9 +798,7 @@ export function MapLocationIntentBodyContent({
 				</View>
 			) : null}
 
-			{mode === LOCATION_INTENT_MODES.CONFIRM ||
-			mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
-			mode === LOCATION_INTENT_MODES.PIN_ADJUST ? (
+			{isConfirming ? (
 				<View style={styles.candidateDecisionStack}>
 					<View style={[searchStyles.resultGroup, { backgroundColor: groupSurfaceColor }]}>
 						<SearchResultRow
@@ -797,7 +818,149 @@ export function MapLocationIntentBodyContent({
 						/>
 					</View>
 
-					<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
+					{isSaveCategory ? (
+						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
+							{saveCategoryActions.map((action, index) => {
+								const actionTone = resolveCandidateActionTone(
+									action,
+									infoSurfaceColor,
+									titleColor,
+									mutedColor,
+								);
+
+								return (
+									<React.Fragment key={action.id}>
+										{index > 0 ? (
+											<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+										) : null}
+										<Pressable
+											onPress={() => onSelectSaveCategory?.(action.category)}
+											accessibilityRole="button"
+											accessibilityLabel={`Save as ${action.label}`}
+											style={({ pressed }) => [
+												styles.candidateActionRow,
+												pressed ? styles.rowPressed : null,
+											]}
+										>
+											<View
+												style={[
+													styles.candidateActionIcon,
+													{ backgroundColor: actionTone.iconBackgroundColor },
+												]}
+											>
+												<Ionicons
+													name={action.iconName}
+													size={18}
+													color={actionTone.iconColor}
+												/>
+											</View>
+											<Text
+												style={[
+													styles.candidateActionText,
+													{ color: actionTone.textColor },
+												]}
+											>
+												{action.label}
+											</Text>
+											<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+										</Pressable>
+									</React.Fragment>
+								);
+							})}
+						</View>
+					) : isSaveDetails ? (
+						<View style={[styles.saveDetailsCard, { backgroundColor: groupSurfaceColor }]}>
+							<View style={styles.saveDetailsHeader}>
+								{(() => {
+									const actionTone = resolveCandidateActionTone(
+										selectedSaveCategoryAction,
+										infoSurfaceColor,
+										titleColor,
+										mutedColor,
+									);
+									return (
+										<View
+											style={[
+												styles.candidateActionIcon,
+												{ backgroundColor: actionTone.iconBackgroundColor },
+											]}
+										>
+											<Ionicons
+												name={selectedSaveCategoryAction?.iconName || "bookmark-outline"}
+												size={18}
+												color={actionTone.iconColor}
+											/>
+										</View>
+									);
+								})()}
+								<View style={styles.saveDetailsCopy}>
+									<Text style={[styles.manualTitle, { color: titleColor }]}>
+										{selectedSaveCategoryAction?.label || "Saved Place"}
+									</Text>
+									<Text style={[styles.manualBody, { color: mutedColor }]}>
+										Name it so it is easy to recognize later.
+									</Text>
+								</View>
+							</View>
+							<TextInput
+								value={saveDetailsDraft?.label || ""}
+								onChangeText={(value) => onSaveDetailsDraftChange?.("label", value)}
+								placeholder="Place name"
+								placeholderTextColor={mutedColor}
+								autoCapitalize="words"
+								autoCorrect={false}
+								autoFocus
+								style={[
+									styles.manualTextInput,
+									{ backgroundColor: infoSurfaceColor, color: titleColor },
+								]}
+							/>
+							<TextInput
+								value={saveDetailsDraft?.unit || ""}
+								onChangeText={(value) => onSaveDetailsDraftChange?.("unit", value)}
+								placeholder="Apartment, unit, or landmark"
+								placeholderTextColor={mutedColor}
+								autoCapitalize="sentences"
+								autoCorrect={false}
+								style={[
+									styles.manualTextInput,
+									{ backgroundColor: infoSurfaceColor, color: titleColor },
+								]}
+							/>
+							<TextInput
+								value={saveDetailsDraft?.responderNote || ""}
+								onChangeText={(value) =>
+									onSaveDetailsDraftChange?.("responderNote", value)
+								}
+								placeholder="Note for responders"
+								placeholderTextColor={mutedColor}
+								autoCapitalize="sentences"
+								autoCorrect={false}
+								multiline
+								style={[
+									styles.manualTextInput,
+									styles.manualTextInputMultiline,
+									{ backgroundColor: infoSurfaceColor, color: titleColor },
+								]}
+							/>
+							<Pressable
+								onPress={onConfirmSaveDetails}
+								accessibilityRole="button"
+								accessibilityLabel="Save place details"
+								style={({ pressed }) => [
+									styles.saveDetailsPrimaryAction,
+									{ backgroundColor: infoSurfaceColor },
+									pressed ? styles.rowPressed : null,
+								]}
+							>
+								<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+									Save Place
+								</Text>
+								<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+							</Pressable>
+						</View>
+					) : (
+						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
 						{candidateActions.map((action, index) => {
 							const isStatus = action.type === "status";
 							const actionTone = resolveCandidateActionTone(
@@ -857,7 +1020,8 @@ export function MapLocationIntentBodyContent({
 								</React.Fragment>
 							);
 						})}
-					</View>
+						</View>
+					)}
 				</View>
 			) : null}
 		</View>
