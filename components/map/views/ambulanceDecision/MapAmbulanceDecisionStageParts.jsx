@@ -208,6 +208,29 @@ export function MapAmbulanceDecisionHero({
             >
               {decision.serviceTitle}
             </Text>
+            {/* PULLBACK NOTE: UX-A Issue 7 — hero description (serviceSummary, numberOfLines={3}) */}
+            {/* serviceSummary existed in model but was never rendered in the hero card */}
+            {/* "See full details →" affordance taps onOpenServiceDetails when available */}
+            {decision.serviceSummary ? (
+              <Text
+                numberOfLines={3}
+                style={[
+                  styles.heroSummary,
+                  stageMetrics?.hero?.summaryStyle,
+                  { color: titleColor, opacity: 0.72, marginTop: 5 },
+                ]}
+              >
+                {decision.serviceSummary}
+                {canOpenServiceDetails ? (
+                  <Text
+                    onPress={onOpenServiceDetails}
+                    style={[styles.heroSummary, { color: decision.visualProfile.accent, opacity: 1 }]}
+                  >
+                    {" See full details →"}
+                  </Text>
+                ) : null}
+              </Text>
+            ) : null}
             <View
               style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}
             >

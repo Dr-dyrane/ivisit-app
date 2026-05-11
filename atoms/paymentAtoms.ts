@@ -88,14 +88,17 @@ export const totalCostLabelAtom = atom((get) => {
 // TRANSACTION/SUBMISSION STATE
 // =============================================================================
 
+// PULLBACK NOTE: UX-D D-6 type fix — aligned with MAP_COMMIT_PAYMENT_TRANSACTION_STATES runtime values
+// OLD: "submitting" | "processing" | "awaiting_approval" | "completed" | "dismissed" (stale, never used at runtime)
+// NEW: exact mirror of mapCommitPayment.transaction.js constants
 export type SubmissionStateKind =
   | "idle"
-  | "submitting"
-  | "processing"
-  | "awaiting_approval"
-  | "completed"
+  | "waiting_approval"
+  | "processing_payment"
+  | "finalizing_dispatch"
+  | "dispatched"
   | "failed"
-  | "dismissed";
+  | "payment_declined";
 
 export interface SubmissionState {
   kind: SubmissionStateKind;
@@ -193,10 +196,16 @@ export const canSubmitPaymentAtom = atom((get) => {
   );
 });
 
+// PULLBACK NOTE: UX-D D-6 type fix — "completed" replaced with "dispatched" (runtime constant)
+// "completed" was a stale kind that never maps to any MAP_COMMIT_PAYMENT_TRANSACTION_STATES value
 /**
- * Whether payment flow is in a terminal state (completed/failed)
+ * Whether payment flow is in a terminal state (dispatched/failed/payment_declined)
  */
 export const isPaymentTerminalStateAtom = atom((get) => {
   const state = get(paymentSubmissionStateAtom);
-  return state.kind === "completed" || state.kind === "failed";
+  return (
+    state.kind === "dispatched" ||
+    state.kind === "failed" ||
+    state.kind === "payment_declined"
+  );
 });
