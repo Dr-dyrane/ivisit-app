@@ -2,7 +2,7 @@
 
 **Priority:** LOW — blocked on LocationSheet stability
 **Date:** 2026-05-10
-**Status:** DEFERRED — gate check 2026-05-10: prerequisites not met (Location passes not shipped)
+**Status:** COMPLETE — 2026-05-10: Location passes A–E shipped; Issue 11 implemented
 **Depends on:** UX-D complete + Location passes shipped
 **Blocks:** nothing
 
@@ -18,11 +18,11 @@
 
 ## Prerequisites (Must Be Met Before Starting This Pass)
 
-- [ ] LocationSheet decision tree is stable and shipped: search → candidate → save category → save details → pickup commit
-- [ ] LocationSheet has a single owner (not multiple modals competing for control)
-- [ ] All Location passes have shipped
-- [ ] UX-A through UX-D are complete
-- [ ] No open LocationSheet regression from other passes
+- [x] LocationSheet decision tree is stable and shipped: search → candidate → save category → save details → pickup commit
+- [x] LocationSheet has a single owner (not multiple modals competing for control)
+- [x] All Location passes have shipped
+- [x] UX-A through UX-D are complete
+- [x] No open LocationSheet regression from other passes
 
 **Do not begin UX-E until all boxes above are checked.** This pass depends on the LocationSheet being the stable, sole owner of address entry. If Location passes have not shipped, this pass cannot be implemented correctly.
 
@@ -93,13 +93,13 @@ grep -rn "miniProfile\|MiniProfile\|mini_profile" components/ screens/
 
 ## Verification Checklist (When Unblocked)
 
-- [ ] Prerequisites confirmed — all Location passes shipped
-- [ ] Mini profile surface file identified
-- [ ] `"Address & Location"` row visible in mini profile action group
-- [ ] Tapping row opens LocationSheet (not a new modal)
-- [ ] LocationSheet close with `sourcePhase === "miniProfile"` → returns to mini profile
-- [ ] LocationSheet close from all other source phases → unaffected (regression guard)
-- [ ] PULLBACK NOTE on close handler change
+- [x] Prerequisites confirmed — all Location passes shipped
+- [x] Mini profile surface file identified (components/emergency/MiniProfileModal.jsx)
+- [x] `"Address & Location"` row visible in mini profile action group
+- [x] Tapping row opens LocationSheet (not a new modal)
+- [x] LocationSheet close with `sourcePhase === "miniProfile"` → returns to mini profile
+- [x] LocationSheet close from all other source phases → unaffected (regression guard)
+- [x] PULLBACK NOTE on close handler change
 
 ---
 

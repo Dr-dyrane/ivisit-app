@@ -511,6 +511,14 @@ export default function MapScreen() {
           onCloseLocationIntent={() => {
             const returnPhase = sheetPayload?.sourcePhase;
             const returnPayload = sheetPayload?.sourcePayload || null;
+            // PULLBACK NOTE: UX-E Issue 11 — miniProfile is a modal, not a sheet phase
+            // Re-open the profile modal so the user returns to mini profile on LocationSheet close
+            if (returnPhase === "miniProfile") {
+              setSheetPayload(null);
+              setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+              setTimeout(() => setProfileModalVisible(true), 120);
+              return;
+            }
             if (
               returnPhase &&
               returnPhase !== MAP_SHEET_PHASES.SEARCH &&
@@ -613,6 +621,7 @@ export default function MapScreen() {
         closeTrackingRating={closeTrackingRating}
         skipTrackingRating={skipTrackingRating}
         submitTrackingRating={submitTrackingRating}
+        onOpenLocationIntent={handleOpenLocationIntentFromSearch}
       />
 
       {/* PULLBACK NOTE: UX-A — MapTopLeftControl phase-aware visibility */}

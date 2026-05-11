@@ -67,6 +67,10 @@ export function getMiniProfileTones(isDarkMode) {
 			bg: isDarkMode ? "rgba(251,146,60,0.16)" : "rgba(251,146,60,0.12)",
 			icon: isDarkMode ? "#FDBA74" : "#EA580C",
 		},
+		location: {
+			bg: isDarkMode ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.12)",
+			icon: isDarkMode ? "#93C5FD" : "#2563EB",
+		},
 		destructive: {
 			bg: isDarkMode ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.08)",
 			icon: isDarkMode ? "#FCA5A5" : "#EF4444",

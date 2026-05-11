@@ -41,6 +41,7 @@ import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
  * @param {Function} props.setCareHistoryVisible - Set care history visibility
  * @param {Function} props.setRecentVisitsVisible - Set recent visits visibility
  * @param {Function} props.handleProfileSignOut - Profile sign-out handler
+ * @param {Function} props.onOpenLocationIntent - Opens LocationSheet from mini profile (UX-E)
  * @param {Function} props.handleChooseCare - Choose care handler
  * @param {Function} props.handleBookVisitFromCare - Book visit from care handler
  * @param {Function} props.handleSelectHistoryItem - Select history item handler
@@ -106,6 +107,10 @@ export default function MapModalOrchestrator({
   closeTrackingRating,
   skipTrackingRating,
   submitTrackingRating,
+
+  // UX-E: Location sheet entry point from mini profile
+  // PULLBACK NOTE: UX-E Issue 11 — passed through from MapScreen to MiniProfileModal
+  onOpenLocationIntent,
 }) {
   return (
     <>
@@ -114,6 +119,7 @@ export default function MapModalOrchestrator({
         onClose={() => setProfileModalVisible(false)}
         onSignOut={handleProfileSignOut}
         onOpenRecentVisits={() => setRecentVisitsVisible(true)}
+        onOpenLocationIntent={onOpenLocationIntent}
         showMapShortcut={false}
         preferDrawerPresentation={usesSidebarLayout}
       />

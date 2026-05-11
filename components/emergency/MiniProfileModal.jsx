@@ -34,6 +34,9 @@ export default function MiniProfileModal({
 	onClose,
 	onSignOut,
 	onOpenRecentVisits,
+	// PULLBACK NOTE: UX-E Issue 11 — address entry point in mini profile
+	// LocationSheet is the sole owner; this prop opens it with sourcePhase="miniProfile"
+	onOpenLocationIntent = null,
 	showMapShortcut = true,
 	preferDrawerPresentation = false,
 }) {
@@ -103,6 +106,17 @@ export default function MiniProfileModal({
 			afterClose: () => router.replace("/(user)"),
 		});
 	}, [isSigningOut, requestClose, router]);
+
+	// PULLBACK NOTE: UX-E Issue 11 — address entry point; closes modal and opens LocationSheet
+	// onOpenLocationIntent is called after close so LocationSheet opens on clean z-stack
+	const handleOpenLocationIntent = useCallback(() => {
+		if (isSigningOut || typeof onOpenLocationIntent !== "function") return;
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+		requestClose({
+			withHaptic: false,
+			afterClose: () => onOpenLocationIntent({ sourcePhase: "miniProfile" }),
+		});
+	}, [isSigningOut, onOpenLocationIntent, requestClose]);
 
 	const handleSignOut = useCallback(async () => {
 		if (isSigningOut || typeof onSignOut !== "function") return;
@@ -189,6 +203,20 @@ export default function MiniProfileModal({
 				badge: contactsLoading ? "..." : formatCountBadge(contactsCount, null),
 				onPress: () => executeNav(navigateToEmergencyContacts),
 			},
+			// PULLBACK NOTE: UX-E Issue 11 — address entry point added to Essentials group
+			// Opens LocationSheet (sole owner) with sourcePhase="miniProfile" for correct return routing
+			...(typeof onOpenLocationIntent === "function"
+				? [
+						{
+							key: "address-location",
+							label: "Address & Location",
+							icon: "location",
+							tone: tones.location,
+							badge: null,
+							onPress: handleOpenLocationIntent,
+						},
+					]
+				: []),
 		]);
 
 		// Group 4: System
@@ -209,6 +237,8 @@ export default function MiniProfileModal({
 		contactsLoading,
 		executeNav,
 		executeRecentVisits,
+		handleOpenLocationIntent,
+		onOpenLocationIntent,
 		tones,
 		historyCount,
 	]);
