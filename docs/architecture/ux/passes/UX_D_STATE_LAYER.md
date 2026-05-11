@@ -2,7 +2,7 @@
 
 **Priority:** MEDIUM — correctness and cold-start safety
 **Date:** 2026-05-10
-**Status:** PLANNED — awaiting execution approval
+**Status:** COMPLETE — D-1 through D-6 executed (D-4 skipped: stash not found)
 **Depends on:** UX-C (must have `isSubmitting` consumer catalogue before removing the boolean)
 **Blocks:** nothing — but is the highest blast-radius pass; must come last in the main sequence
 **Note:** Do NOT combine any sub-step in this pass with another. One stash file adopted per commit.

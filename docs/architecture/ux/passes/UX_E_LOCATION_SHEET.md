@@ -2,7 +2,7 @@
 
 **Priority:** LOW — blocked on LocationSheet stability
 **Date:** 2026-05-10
-**Status:** DEFERRED — do not begin until prerequisites are met
+**Status:** DEFERRED — gate check 2026-05-10: prerequisites not met (Location passes not shipped)
 **Depends on:** UX-D complete + Location passes shipped
 **Blocks:** nothing
 
