@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { GLASS_SURFACE_VARIANTS, getGlassSurfaceTokens } from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
@@ -383,17 +384,15 @@ export default function MapAmbulanceDecisionStageBase({
 								/>
 							</>
 						) : (
-							<MapAmbulanceDecisionRouteCard
-								decision={decision}
-								glassTokens={glassTokens}
-								isDarkMode={isDarkMode}
-								stageMetrics={stageMetrics}
-								titleColor={titleColor}
-								mutedColor={mutedColor}
-								surfaceColor={nestedSurfaceColor}
-								pillSurfaceColor={pillSurfaceColor}
-								onChangePickup={onChangePickup}
-							/>
+							<Pressable
+								onPress={handleHeaderToggle}
+								accessibilityRole="button"
+								accessibilityLabel="Show more details"
+								style={({ pressed }) => [styles.expandAffordance, { opacity: pressed ? 0.7 : 1 }]}
+							>
+								<Ionicons name="chevron-down" size={14} color={mutedColor} />
+								<Text style={[styles.expandAffordanceLabel, { color: mutedColor }]}>More details</Text>
+							</Pressable>
 						)}
 					</>
 				) : (

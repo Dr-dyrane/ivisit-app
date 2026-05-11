@@ -527,24 +527,37 @@ const styles = StyleSheet.create({
 		paddingTop: 8,
 		paddingBottom: 10,
 	},
+	// PULLBACK NOTE: UX bed footer — horizontal row layout
+	// OLD: primaryButton width 100% + secondaryAction stacked with marginTop
+	// NEW: footerRow flex-row, secondaryAction shrinks left, primaryButtonFlex grows right
+	footerRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
 	primaryButton: {
-		width: "100%",
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 18,
+	},
+	primaryButtonFlex: {
+		flex: 1,
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 18,
 	},
 	secondaryAction: {
-		height: 46,
-		marginTop: 10,
-		borderRadius: 23,
+		height: 50,
+		paddingHorizontal: 14,
+		borderRadius: 25,
 		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
-		gap: 8,
+		gap: 6,
+		flexShrink: 0,
 	},
 	secondaryActionText: {
-		fontSize: 15,
-		lineHeight: 20,
+		fontSize: 14,
+		lineHeight: 18,
 		fontWeight: "700",
 		color: COLORS.brandPrimary,
 	},

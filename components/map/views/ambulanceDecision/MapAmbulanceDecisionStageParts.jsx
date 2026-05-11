@@ -21,6 +21,13 @@ function getAmbulanceTierIconName(visualProfile, isActive = false) {
   return isActive ? "medkit" : "medkit-outline";
 }
 
+// PULLBACK NOTE: UX-A — MetaSkeleton added to match bed decision pattern for loading states
+// OLD: no skeleton — PRICE_FALLBACK string always shown
+// NEW: skeleton while loading, pill hidden when no real price
+function MetaSkeleton({ style }) {
+  return <View style={[styles.metaSkeleton, style]} />;
+}
+
 function toAccentRgba(color, alpha) {
   if (typeof color !== "string" || !color.startsWith("#")) {
     return `rgba(134,16,14,${alpha})`;
@@ -208,29 +215,9 @@ export function MapAmbulanceDecisionHero({
             >
               {decision.serviceTitle}
             </Text>
-            {/* PULLBACK NOTE: UX-A Issue 7 — hero description (serviceSummary, numberOfLines={3}) */}
-            {/* serviceSummary existed in model but was never rendered in the hero card */}
-            {/* "See full details →" affordance taps onOpenServiceDetails when available */}
-            {decision.serviceSummary ? (
-              <Text
-                numberOfLines={3}
-                style={[
-                  styles.heroSummary,
-                  stageMetrics?.hero?.summaryStyle,
-                  { color: titleColor, opacity: 0.72, marginTop: 5 },
-                ]}
-              >
-                {decision.serviceSummary}
-                {canOpenServiceDetails ? (
-                  <Text
-                    onPress={onOpenServiceDetails}
-                    style={[styles.heroSummary, { color: decision.visualProfile.accent, opacity: 1 }]}
-                  >
-                    {" See full details →"}
-                  </Text>
-                ) : null}
-              </Text>
-            ) : null}
+            {/* PULLBACK NOTE: UX-A ambulance hero — serviceSummary block removed */}
+            {/* OLD: serviceSummary text + "See full details →" raw arrow inline */}
+            {/* NEW: info icon in heroHeader is the only detail affordance (matches bed pattern) */}
             <View
               style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}
             >
@@ -268,15 +255,20 @@ export function MapAmbulanceDecisionHero({
                   size={14}
                   color={decision.visualProfile.accent}
                 />
-                <Text
-                  style={[
-                    styles.metaLabel,
-                    stageMetrics?.hero?.metaLabelStyle,
-                    { color: titleColor },
-                  ]}
-                >
-                  {decision.priceLabel}
-                </Text>
+                {decision.priceShowsSkeleton ? (
+                  <MetaSkeleton style={styles.metaSkeletonMedium} />
+                ) : decision.priceLabel && decision.priceLabel !== "Shown before payment" ? (
+                  <Text
+                    style={[
+                      styles.metaLabel,
+                      stageMetrics?.hero?.metaLabelStyle,
+                      { color: titleColor },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {decision.priceLabel}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -725,6 +717,9 @@ export function MapAmbulanceDecisionFooter({
   const primaryDisabled = isAdvancing || (!canConfirm && !usesRecoveryAction);
 
   return (
+    // PULLBACK NOTE: UX service selection footer — horizontal row CTA
+    // OLD: full-width primary stacked above secondary below
+    // NEW: secondary pill left + primary right in a single flex row
     <View
       style={[
         styles.footerDock,
@@ -732,38 +727,40 @@ export function MapAmbulanceDecisionFooter({
         modalContainedStyle,
       ]}
     >
-      <EntryActionButton
-        label={primaryLabel}
-        onPress={primaryPress}
-        variant={canConfirm || usesRecoveryAction ? "primary" : "secondary"}
-        height={stageMetrics?.footer?.buttonHeight || 50}
-        radius={stageMetrics?.footer?.buttonRadius || 24}
-        fullWidth
-        disabled={primaryDisabled}
-        loading={isAdvancing}
-        style={styles.primaryButton}
-      />
-      {canBrowseHospitals && canConfirm ? (
-        <Pressable
-          onPress={onOpenHospitals}
-          style={({ pressed }) => [
-            styles.secondaryAction,
-            {
-              opacity: pressed ? 0.88 : 1,
-              backgroundColor: "rgba(134,16,14,0.08)",
-            },
-          ]}
-        >
-          <Text style={styles.secondaryActionText}>
-            {MAP_AMBULANCE_DECISION_COPY.OTHER_HOSPITALS_CTA}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={COLORS.brandPrimary}
-          />
-        </Pressable>
-      ) : null}
+      <View style={styles.footerRow}>
+        {canBrowseHospitals && canConfirm ? (
+          <Pressable
+            onPress={onOpenHospitals}
+            style={({ pressed }) => [
+              styles.secondaryAction,
+              {
+                opacity: pressed ? 0.88 : 1,
+                backgroundColor: "rgba(134,16,14,0.08)",
+              },
+            ]}
+          >
+            <Text style={styles.secondaryActionText} numberOfLines={1}>
+              {MAP_AMBULANCE_DECISION_COPY.OTHER_HOSPITALS_CTA}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={COLORS.brandPrimary}
+            />
+          </Pressable>
+        ) : null}
+        <EntryActionButton
+          label={primaryLabel}
+          onPress={primaryPress}
+          variant={canConfirm || usesRecoveryAction ? "primary" : "secondary"}
+          height={stageMetrics?.footer?.buttonHeight || 50}
+          radius={stageMetrics?.footer?.buttonRadius || 24}
+          fullWidth={!(canBrowseHospitals && canConfirm)}
+          disabled={primaryDisabled}
+          loading={isAdvancing}
+          style={canBrowseHospitals && canConfirm ? styles.primaryButtonFlex : styles.primaryButton}
+        />
+      </View>
     </View>
   );
 }

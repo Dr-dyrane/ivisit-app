@@ -190,6 +190,7 @@ export function buildAmbulanceDecisionModel({
 			distanceLabel: null,
 			crewPillLabel: "Crew ready",
 			priceLabel: MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK,
+			priceShowsSkeleton: false,
 			confidenceLabel: MAP_AMBULANCE_DECISION_COPY.CONFIDENCE_FALLBACK,
 			serviceTitle: "Standard ambulance",
 			serviceSummary: MAP_AMBULANCE_DECISION_COPY.SUMMARY,
@@ -264,6 +265,10 @@ export function buildAmbulanceDecisionModel({
 		distanceLabel,
 		crewPillLabel: buildCrewPillLabel(recommendedServiceWithQuote, visualProfile),
 		priceLabel,
+		// PULLBACK NOTE: UX-A — priceShowsSkeleton: true when loading services and no real priceText yet
+		// OLD: no skeleton guard — PRICE_FALLBACK string always shown in pill
+		// NEW: skeleton shown while loading; pill hidden entirely when not loading and no real price
+		priceShowsSkeleton: isLoadingServices && !recommendedServiceWithQuote?.priceText,
 		confidenceLabel:
 			recommendedService?.source === "db"
 				? MAP_AMBULANCE_DECISION_COPY.CONFIDENCE_LIVE

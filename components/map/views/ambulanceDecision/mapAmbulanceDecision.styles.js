@@ -427,26 +427,63 @@ const styles = StyleSheet.create({
 		paddingTop: 8,
 		paddingBottom: 10,
 	},
+	// PULLBACK NOTE: UX footer — horizontal row layout
+	// OLD: primaryButton fullWidth + secondaryAction stacked below
+	// NEW: footerRow flex-row, secondaryAction pill shrinks left, primaryButtonFlex grows right
+	footerRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
 	primaryButton: {
-		width: "100%",
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 18,
+	},
+	primaryButtonFlex: {
+		flex: 1,
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 18,
 	},
 	secondaryAction: {
-		height: 46,
-		marginTop: 10,
-		borderRadius: 23,
+		height: 50,
+		paddingHorizontal: 14,
+		borderRadius: 25,
 		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
-		gap: 8,
+		gap: 6,
+		flexShrink: 0,
 	},
 	secondaryActionText: {
-		fontSize: 15,
-		lineHeight: 20,
+		fontSize: 14,
+		lineHeight: 18,
 		fontWeight: "700",
 		color: COLORS.brandPrimary,
+	},
+	// PULLBACK NOTE: UX-A — skeleton + expand affordance styles added (mirrors bed decision)
+	// OLD: missing — caused RN warning on undefined style key
+	// NEW: matches bed metaSkeleton / expandAffordance definitions exactly
+	metaSkeleton: {
+		height: 10,
+		borderRadius: 999,
+		backgroundColor: "rgba(148,163,184,0.32)",
+	},
+	metaSkeletonMedium: {
+		width: 66,
+	},
+	expandAffordance: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 6,
+		paddingVertical: 10,
+		paddingHorizontal: 16,
+	},
+	expandAffordanceLabel: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "500",
 	},
 });
 

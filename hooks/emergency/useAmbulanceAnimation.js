@@ -256,7 +256,13 @@ export const useAmbulanceAnimation = ({
 	onAmbulanceUpdate,
 }) => {
 	const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
-	const [ambulanceHeading, setAmbulanceHeading] = useState(0);
+	// PULLBACK NOTE: UX ambulance sprite initial heading
+	// OLD: useState(0) — always faces north regardless of actual responder heading
+	// NEW: lazy initializer seeds from responderHeading if finite, falls back to 0
+	// Matches useMapFocusedState.js bearing logic — prevents wrong initial sprite direction
+	const [ambulanceHeading, setAmbulanceHeading] = useState(() =>
+		Number.isFinite(responderHeading) ? responderHeading : 0,
+	);
 	const ambulanceTimerRef = useRef(null);
 	const animationRunIdRef = useRef(0);
 	const animationStartTimeRef = useRef(null);

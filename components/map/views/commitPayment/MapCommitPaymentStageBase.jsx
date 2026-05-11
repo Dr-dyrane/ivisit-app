@@ -327,11 +327,14 @@ export default function MapCommitPaymentStageBase({
 				imageStyle: styles.actionGroupAvatarImage,
 				icon: "person",
 				iconColor: isDarkMode ? "#CBD5E1" : "#475569",
-				onPress: () => onOpenLocationSearchFromPayment?.(),
-				accessibilityLabel: "Change pickup location",
-				trailingIconName: "open-outline",
-				trailingIconColor: isDarkMode ? "#CBD5E1" : "#475569",
-				disabled: false,
+				// PULLBACK NOTE: UX payment location row — location open disabled
+				// OLD: onPress: () => onOpenLocationSearchFromPayment?.() + trailingIconName: "open-outline"
+				// NEW: onPress removed, trailing icon removed — row is informational only
+				// Root cause: return chain via buildSourceReturnSheetView drops payment payload
+				// causing payment sheet to remount empty. Fix deferred to future pass.
+				onPress: undefined,
+				trailingIconName: undefined,
+				disabled: true,
 			},
 		],
 		[

@@ -245,11 +245,6 @@ export default function MapLocationIntentStageBase({
 	if (Platform.OS === "android" && keyboardHeight === 0) {
 		preKeyboardScreenHeightRef.current = screenHeight;
 	}
-	const resolvedSheetHeight =
-		modeRequiresExpanded && Platform.OS === "android"
-			? getMapSheetHeight(preKeyboardScreenHeightRef.current, MAP_SHEET_SNAP_STATES.EXPANDED)
-			: keyboardAwareSheetHeight;
-
 	const openAddressSearch = useCallback(() => {
 		setSavedPlaceFeedback(null);
 		navigateToAddressSearch();
@@ -333,6 +328,13 @@ export default function MapLocationIntentStageBase({
 	const modeRequiresExpanded =
 		effectivePresentationMode === "sheet" &&
 		LOCATION_INTENT_MODE_SNAP_POLICY[mode] === MAP_SHEET_SNAP_STATES.EXPANDED;
+	// PULLBACK NOTE: [keyboard-collapse-fix TDZ fix]
+	// OLD: resolvedSheetHeight was above modeRequiresExpanded → TDZ ReferenceError on line 249
+	// NEW: moved here, after modeRequiresExpanded is declared
+	const resolvedSheetHeight =
+		modeRequiresExpanded && Platform.OS === "android"
+			? getMapSheetHeight(preKeyboardScreenHeightRef.current, MAP_SHEET_SNAP_STATES.EXPANDED)
+			: keyboardAwareSheetHeight;
 	const effectiveSnapState = modeRequiresExpanded
 		? MAP_SHEET_SNAP_STATES.EXPANDED
 		: effectivePresentationMode === "sheet"

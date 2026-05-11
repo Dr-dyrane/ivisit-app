@@ -6,7 +6,7 @@ export const MAP_BED_DECISION_COPY = {
   ROUTE_PENDING: "Route updating",
   CONFIDENCE_LIVE: "Live hospital availability",
   CONFIDENCE_FALLBACK: "Hospital fallback",
-  CONFIRM_BED_CTA: "Continue to bed booking",
+  CONFIRM_BED_CTA: "Confirm & continue",
   CONTINUING_CTA: "Continuing...",
   RECOVER_CTA: "Choose another hospital",
   UNAVAILABLE_CTA: "No bed available",

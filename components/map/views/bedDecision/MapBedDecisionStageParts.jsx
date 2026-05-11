@@ -48,6 +48,7 @@ function getRoomDecisionVisual(item) {
       accent: "#B91C1C",
       activeIconName: "pulse",
       inactiveIconName: "pulse-outline",
+      iconLibrary: "Ionicons",
     };
   }
   if (/private/.test(raw)) {
@@ -55,6 +56,7 @@ function getRoomDecisionVisual(item) {
       accent: "#0F766E",
       activeIconName: "shield-checkmark",
       inactiveIconName: "shield-checkmark-outline",
+      iconLibrary: "Ionicons",
     };
   }
   if (/maternity/.test(raw)) {
@@ -62,6 +64,7 @@ function getRoomDecisionVisual(item) {
       accent: "#BE185D",
       activeIconName: "heart",
       inactiveIconName: "heart-outline",
+      iconLibrary: "Ionicons",
     };
   }
   if (/children|pediatric/.test(raw)) {
@@ -69,17 +72,30 @@ function getRoomDecisionVisual(item) {
       accent: "#2563EB",
       activeIconName: "happy",
       inactiveIconName: "happy-outline",
+      iconLibrary: "Ionicons",
     };
   }
+  // PULLBACK NOTE: default room icon
+  // OLD: Ionicons "bed" / "bed-outline" — generic sleeping/home bed
+  // NEW: MaterialCommunityIcons "bed" — matches hero pill + explore intent orb
   return {
     accent: "#64748B",
     activeIconName: "bed",
-    inactiveIconName: "bed-outline",
+    inactiveIconName: "bed",
+    iconLibrary: "MaterialCommunityIcons",
   };
 }
 
 function getRoomIconName(roomVisual, isActive = false) {
   return isActive ? roomVisual.activeIconName : roomVisual.inactiveIconName;
+}
+
+function RoomIcon({ roomVisual, isActive = false, size, color }) {
+  const name = getRoomIconName(roomVisual, isActive);
+  if (roomVisual.iconLibrary === "MaterialCommunityIcons") {
+    return <MaterialCommunityIcons name={name} size={size} color={color} />;
+  }
+  return <Ionicons name={name} size={size} color={color} />;
 }
 
 function formatRoomMeta(option, fallbackPrice) {
@@ -258,8 +274,11 @@ export function MapBedDecisionHero({
                   { backgroundColor: heroPillSurfaceColor },
                 ]}
               >
-                <Ionicons
-                  name="bed-outline"
+                {/* PULLBACK NOTE: availability pill icon */}
+                {/* OLD: Ionicons bed-outline → MaterialCommunityIcons hospital-bed */}
+                {/* NEW: MaterialCommunityIcons bed — matches IntentOrb/IntentCard bed icon in explore intent */}
+                <MaterialCommunityIcons
+                  name="bed"
                   size={14}
                   color={COLORS.brandPrimary}
                 />
@@ -382,8 +401,9 @@ export function MapBedDecisionRoomSwitchRow({
                 },
               ]}
             >
-              <Ionicons
-                name={getRoomIconName(roomVisual, isActive)}
+              <RoomIcon
+                roomVisual={roomVisual}
+                isActive={isActive}
                 size={14}
                 color={
                   isActive
@@ -720,8 +740,9 @@ export function MapBedDecisionExpandedRoomChoices({
                   { backgroundColor: toAccentRgba(roomVisual.accent, 0.12) },
                 ]}
               >
-                <Ionicons
-                  name={getRoomIconName(roomVisual)}
+                <RoomIcon
+                  roomVisual={roomVisual}
+                  isActive={false}
                   size={18}
                   color={roomVisual.accent}
                 />
@@ -895,6 +916,9 @@ export function MapBedDecisionFooter({
   const primaryDisabled = isAdvancing || (!canConfirm && !usesRecoveryAction);
 
   return (
+    // PULLBACK NOTE: UX bed footer — horizontal row CTA
+    // OLD: full-width primary stacked above secondary below
+    // NEW: secondary pill left + primary right in a single flex row
     <View
       style={[
         styles.footerDock,
@@ -902,38 +926,40 @@ export function MapBedDecisionFooter({
         modalContainedStyle,
       ]}
     >
-      <EntryActionButton
-        label={primaryLabel}
-        onPress={primaryPress}
-        variant={canConfirm || usesRecoveryAction ? "primary" : "secondary"}
-        height={stageMetrics?.footer?.buttonHeight || 50}
-        radius={stageMetrics?.footer?.buttonRadius || 24}
-        fullWidth
-        disabled={primaryDisabled}
-        loading={isAdvancing}
-        style={styles.primaryButton}
-      />
-      {canBrowseHospitals && canConfirm ? (
-        <Pressable
-          onPress={onOpenHospitals}
-          style={({ pressed }) => [
-            styles.secondaryAction,
-            {
-              opacity: pressed ? 0.88 : 1,
-              backgroundColor: "rgba(134,16,14,0.08)",
-            },
-          ]}
-        >
-          <Text style={styles.secondaryActionText}>
-            {MAP_BED_DECISION_COPY.OTHER_HOSPITALS_CTA}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={COLORS.brandPrimary}
-          />
-        </Pressable>
-      ) : null}
+      <View style={styles.footerRow}>
+        {canBrowseHospitals && canConfirm ? (
+          <Pressable
+            onPress={onOpenHospitals}
+            style={({ pressed }) => [
+              styles.secondaryAction,
+              {
+                opacity: pressed ? 0.88 : 1,
+                backgroundColor: "rgba(134,16,14,0.08)",
+              },
+            ]}
+          >
+            <Text style={styles.secondaryActionText} numberOfLines={1}>
+              {MAP_BED_DECISION_COPY.OTHER_HOSPITALS_CTA}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={COLORS.brandPrimary}
+            />
+          </Pressable>
+        ) : null}
+        <EntryActionButton
+          label={primaryLabel}
+          onPress={primaryPress}
+          variant={canConfirm || usesRecoveryAction ? "primary" : "secondary"}
+          height={stageMetrics?.footer?.buttonHeight || 50}
+          radius={stageMetrics?.footer?.buttonRadius || 24}
+          fullWidth={!(canBrowseHospitals && canConfirm)}
+          disabled={primaryDisabled}
+          loading={isAdvancing}
+          style={canBrowseHospitals && canConfirm ? styles.primaryButtonFlex : styles.primaryButton}
+        />
+      </View>
     </View>
   );
 }
