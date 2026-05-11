@@ -559,5 +559,144 @@ See `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` for full migratio
 
 ---
 
-**Last Updated**: 2026-04-26  
+## 15. The `useEffect + setTimeout` Fetch Exception
+
+> **Why this section exists**: During the LocationSheet search fix (2026-05-11), `useAddressSearchController` was
+> migrated *away* from TanStack Query back to a direct `useEffect + setTimeout` debounce because the TanStack
+> approach produced silent empty results. That choice was justified — but it is a **narrow exception** that carries
+> its own failure modes. This section documents when the pattern is valid, what guards are mandatory, and how to
+> detect the same silent-failure class elsewhere.
+
+---
+
+### When `useEffect + setTimeout` is valid for a fetch
+
+This pattern is acceptable **only when all of the following are true**:
+
+| Condition | Explanation |
+|---|---|
+| The fetch is **UI-local** | Results are displayed only in the current component/hook scope. No other surface needs the same data simultaneously. |
+| The data is **non-cacheable** | Results are query-specific and ephemeral — caching them across sessions or across identical queries has no product value (e.g. live autocomplete suggestions). |
+| The trigger is **user input** | The effect re-runs on every keystroke/query change. A query key in TanStack would change just as often, eliminating deduplication gains. |
+| **`enabled` gating is complex or stateful** | e.g. the query should only fire when a navigation mode flag (`isActive`) is also `true`. TanStack's `enabled` is evaluated once per render; layering multiple runtime conditions on it creates subtle race windows. |
+| The failure mode is **visible** | If the fetch silently fails, the UI shows empty state or an inline error — not a cached stale result. |
+
+If **any** condition above is false → use TanStack Query (L2) instead.
+
+---
+
+### Mandatory safety guards for this pattern
+
+Every `useEffect + setTimeout` fetch **must** include all of the following:
+
+```js
+// 1. Request ID ref — cancels stale responses after component re-renders
+const requestIdRef = useRef(0);
+
+useEffect(() => {
+  const trimmed = query.trim();
+
+  // 2. Early-exit guard — clears state and skips fetch when not ready
+  if (!isActive || trimmed.length < 2) {
+    setResults([]);
+    setIsLoading(false);
+    setError(null);
+    return;  // ← no timeout started, no stale state
+  }
+
+  // 3. Increment before async work — each render gets a unique ID
+  const requestId = ++requestIdRef.current;
+
+  const timeout = setTimeout(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await service.fetch(trimmed, context);
+
+      // 4. Stale check — discard if a newer request has fired
+      if (requestIdRef.current !== requestId) return;
+      setResults(Array.isArray(data) ? data : []);
+    } catch (_err) {
+      if (requestIdRef.current !== requestId) return;
+      setResults([]);
+      setError(ERROR_COPY);  // ← always a user-readable string, never raw error
+    } finally {
+      // 5. Loading flag reset only for the owning request
+      if (requestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
+    }
+  }, DEBOUNCE_MS);  // ← always a named constant, never a magic number
+
+  // 6. Cleanup — clears timeout if deps change before it fires
+  return () => clearTimeout(timeout);
+}, [isActive, query, context]);  // ← all inputs that affect what is fetched
+```
+
+**Additionally**, the `clearSearch` / reset path must increment `requestIdRef.current` to cancel any in-flight request:
+
+```js
+const clearSearch = useCallback(() => {
+  setQuery("");
+  setResults([]);
+  setError(null);
+  requestIdRef.current += 1;  // ← cancels any pending timeout callback
+}, []);
+```
+
+---
+
+### Silent failure signals — how this pattern breaks
+
+| Symptom | Root cause |
+|---|---|
+| Search always returns empty, no error shown | Early-exit guard too broad — `isActive` or another flag never becomes `true` |
+| Results flash then disappear | Stale-check ID mismatch — `requestIdRef` incremented too aggressively (e.g. on every render, not just on clear/reset) |
+| Old results shown after clearing | Missing `requestIdRef.current += 1` in the clear/reset path |
+| Loading spinner never stops | `finally` block guarded by stale-check that is always false |
+| Searches fire on every render, not on input | Effect deps include unstable object references (e.g. `locationBias` object instead of `locationBias?.latitude, locationBias?.longitude`) |
+| No error shown on network failure | `catch` block sets `setError(err)` with a raw `Error` object instead of a user-readable string |
+
+---
+
+### Audit grep — find this pattern in the codebase
+
+```bash
+# Find all useEffect blocks that contain both setTimeout and a service/fetch call
+# These are candidates for either correct implementation or silent-failure risk
+rg -n "setTimeout" hooks/ components/ --include="*.js" --include="*.jsx" -l
+
+# Within those files, check for missing requestIdRef
+rg -n "requestIdRef" hooks/ components/ --include="*.js" --include="*.jsx"
+
+# Find async fetches inside useEffect without a requestId guard
+rg -A 20 "useEffect.*=>" hooks/ --include="*.js" | grep -A 10 "async"
+```
+
+Any file returned by the first grep that is **not** returned by the second grep is a missing-stale-guard candidate.
+
+---
+
+### Layer decision summary (updated)
+
+```
+"I need to fetch data when the user types"
+         │
+         ▼
+Is the result needed by >1 component or surface simultaneously?
+  → YES → TanStack Query — shared cache, single network request (L2)
+
+Is the result cacheable across sessions or identical queries?
+  → YES → TanStack Query — staleTime + placeholderData give this for free (L2)
+
+Is the enabled condition simple (single boolean, no navigation mode)?
+  → YES → TanStack Query with enabled: Boolean(flag) (L2)
+
+Is the UI-local, non-cacheable, enabled condition complex/stateful?
+  → YES → useEffect + setTimeout with ALL guards from Section 15 ✓
+```
+
+---
+
+**Last Updated**: 2026-05-11  
 **Applies To**: All hooks, contexts, components, and screen files in ivisit-app

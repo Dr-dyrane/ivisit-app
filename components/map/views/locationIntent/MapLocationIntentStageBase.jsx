@@ -530,6 +530,7 @@ export default function MapLocationIntentStageBase({
 			});
 			setActiveCandidate(normalized);
 			navigateToCandidateDecision();
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 		} catch (_error) {
 			const placeIndex = MANUAL_LOCATION_STEPS.findIndex(
 				(step) => step.key === "placeOrAddress",
@@ -695,7 +696,7 @@ export default function MapLocationIntentStageBase({
 			setActiveCandidate(normalized);
 			commitSearchQuery(normalized.label);
 			navigateToCandidateDecision();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 		},
 		[buildSelectedLocation, commitSearchQuery, navigateToCandidateDecision, onSnapStateChange, pendingPlaceLabel, setActiveCandidate],
 	);
@@ -1013,7 +1014,7 @@ export default function MapLocationIntentStageBase({
 							setActiveCandidate(normalized);
 							clearSearch();
 							navigateToCandidateDecision();
-							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 						}}
 						onOpenManualIntro={handleOpenManualStep}
 						onOpenPlacesHub={openPlacesHub}
@@ -1029,6 +1030,7 @@ export default function MapLocationIntentStageBase({
 							if (!pinSelection) return;
 							setActiveCandidate(pinSelection);
 							navigateToCandidateDecision();
+							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 						}}
 						onConfirmSelection={() => commitLocation(selectedLocation)}
 						onFindNearbyHospitals={onFindNearbyHospitals}
