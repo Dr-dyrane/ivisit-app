@@ -49,6 +49,10 @@ import {
   buildQuotedMoneyLabel,
 } from "../../../../utils/billingQuotePresentation";
 import { useBillingQuoteQuery } from "../../../../hooks/payment/useBillingQuoteQuery";
+// PULLBACK NOTE: UX-D D-3 — payment methods migrated to TanStack Query
+// OLD: refreshPaymentMethodSnapshot() imperative fetch in useMapCommitPaymentController
+// NEW: usePaymentMethodsQuery() — TanStack Query with automatic refetch on invalidation
+import { usePaymentMethodsQuery, useInvalidatePaymentMethods } from "../../../../hooks/payment/usePaymentMethodsQuery";
 import {
   MAP_COMMIT_PAYMENT_METHOD_KINDS,
   MAP_COMMIT_PAYMENT_TRANSACTION_STATES,
@@ -208,6 +212,12 @@ export function useMapCommitPaymentController({
     preferences,
     enabled: Number.isFinite(totalCostValue) && totalCostValue >= 0,
   });
+  // UX-D D-3 — TanStack Query for raw payment methods (invalidation target)
+  // refreshPaymentMethodSnapshot continues to serve the business-logic layer (eligibility, wallet synthesis)
+  // until D-5 wallet migration completes; invalidatePaymentMethods is wired here to drive cache-first refresh.
+  const { data: rawPaymentMethodsData } = usePaymentMethodsQuery();
+  const invalidatePaymentMethods = useInvalidatePaymentMethods();
+
   const displayEstimatedCost = useMemo(
     () => applyBillingQuoteToCost(estimatedCost, costQuote),
     [costQuote, estimatedCost],

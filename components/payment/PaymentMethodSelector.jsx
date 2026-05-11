@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
+import { useInvalidatePaymentMethods } from '../../hooks/payment/usePaymentMethodsQuery';
 import { database, StorageKeys } from '../../database';
 import AddPaymentMethodModal from './AddPaymentMethodModal';
 
@@ -40,6 +41,7 @@ const PaymentMethodSelector = ({
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const invalidatePaymentMethods = useInvalidatePaymentMethods();
   const [addingMethod, setAddingMethod] = useState(false);
   const [isCashEligible, setIsCashEligible] = useState(true);
   const [checkingCash, setCheckingCash] = useState(false);
@@ -149,6 +151,7 @@ const PaymentMethodSelector = ({
       setPaymentMethods(prev => [newMethod, ...prev]);
       setShowAddModal(false);
       onMethodSelect(newMethod);
+      invalidatePaymentMethods();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Alert.alert('System Error', error.message);
@@ -162,6 +165,7 @@ const PaymentMethodSelector = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await paymentService.setDefaultPaymentMethod(method.id);
       loadPaymentMethods();
+      invalidatePaymentMethods();
       Alert.alert("Success", "Default payment method updated");
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -198,6 +202,7 @@ const PaymentMethodSelector = ({
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
               await paymentService.removePaymentMethod(method.id);
               loadPaymentMethods();
+              invalidatePaymentMethods();
               if (selectedMethod?.id === method.id) {
                 onMethodSelect(null);
               }
