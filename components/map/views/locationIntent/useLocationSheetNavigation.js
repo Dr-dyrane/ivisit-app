@@ -91,8 +91,8 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 		openMode(LOCATION_INTENT_MODES.CONFIRM);
 	}, [openMode]);
 
-	const openPlaceSelected = useCallback(() => {
-		openMode(LOCATION_INTENT_MODES.PLACE_SELECTED);
+	const openCandidateDecision = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.CANDIDATE_DECISION);
 	}, [openMode]);
 
 	const openPinAdjust = useCallback(() => {
@@ -121,7 +121,7 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openAddressSearch,
 			openManualStep,
 			openConfirm,
-			openPlaceSelected,
+			openCandidateDecision,
 			openPinAdjust,
 			openSaveCategory,
 			openSaveDetails,
@@ -137,7 +137,7 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openConfirm,
 			openManualStep,
 			openPinAdjust,
-			openPlaceSelected,
+			openCandidateDecision,
 			openSaveCategory,
 			openSaveDetails,
 			openSavedManage,

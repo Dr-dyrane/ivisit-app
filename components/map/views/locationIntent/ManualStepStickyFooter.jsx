@@ -1,5 +1,6 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * ManualStepStickyFooter
@@ -30,8 +31,9 @@ export default function ManualStepStickyFooter({
 	infoSurfaceColor,
 	accentColor,
 }) {
+	const insets = useSafeAreaInsets();
 	return (
-		<View style={styles.footer}>
+		<View style={[styles.footer, { paddingBottom: Math.max(12, insets.bottom) }]}>
 			{/* Ghost back button */}
 			<Pressable
 				onPress={onBack}
@@ -56,7 +58,7 @@ export default function ManualStepStickyFooter({
 				style={({ pressed }) => [
 					styles.button,
 					styles.buttonPrimary,
-					{ backgroundColor: accentColor || "#3B82F6" },
+					{ backgroundColor: accentColor },
 					pressed && !isDisabled && !isLoading ? styles.buttonPressed : null,
 					isDisabled || isLoading ? styles.buttonDisabled : null,
 				]}
@@ -76,12 +78,9 @@ const styles = StyleSheet.create({
 		gap: 10,
 		paddingHorizontal: 14,
 		paddingTop: 10,
-		paddingBottom: 8,
 	},
 	button: {
-		minHeight: 46,
-		borderRadius: 14,
-		borderCurve: "continuous",
+		height: 46,
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
@@ -89,9 +88,13 @@ const styles = StyleSheet.create({
 	},
 	buttonBack: {
 		flex: 1,
+		borderRadius: 999,
+		borderCurve: "continuous",
 	},
 	buttonPrimary: {
-		flex: 2,
+		flex: 2.5,
+		borderRadius: 22,
+		borderCurve: "continuous",
 	},
 	buttonPressed: {
 		opacity: 0.82,
@@ -104,13 +107,13 @@ const styles = StyleSheet.create({
 		marginRight: 2,
 	},
 	buttonLabel: {
-		fontSize: 15,
-		lineHeight: 20,
+		fontSize: 14,
+		lineHeight: 19,
 		fontWeight: "600",
 	},
 	buttonPrimaryLabel: {
-		fontSize: 15,
-		lineHeight: 20,
+		fontSize: 14,
+		lineHeight: 19,
 		fontWeight: "700",
 		color: "#ffffff",
 	},

@@ -1,4 +1,4 @@
-# Manual Address Entry — Select/Search Drop States Redesign
+# Manual Address Entry — Apple-Standard Progressive Address Resolution Redesign
 
 **Date:** 2026-05-10
 **Status:** PLANNED — ready to implement
@@ -7,360 +7,550 @@
 
 ---
 
-## Problem
+# Philosophy
 
-The current manual entry flow is a full-screen stepped wizard: one blank `TextInput` per step, tapped through linearly. This is functional but it violates several guardrails from `IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md`:
+This redesign shifts manual address entry away from:
 
-- **Issue 3**: step-driven instead of state-driven — the user cannot see where they are in context
-- **Issue 7**: no accordion / no one-active-context rule — every step feels identical in weight
-- **Issue 8**: no sticky terminal CTA — the primary action is buried inside a card that can scroll
-- **Issue 9**: back from any step resets to default instead of to the previous step
-- **Issue 12**: no graceful transition between steps — hard swap feels abrupt
+* bureaucratic address forms,
+* hard validation,
+* and modal-heavy flows
 
-The bigger gap: for **city**, **state**, and **country**, a blank `TextInput` is the wrong affordance. These are known sets. Users expect iOS Settings-style grouped selection — scroll/search a known set, tap to confirm, return.
+toward:
+
+* calm progressive disclosure,
+* guided location confidence,
+* and Apple-standard contextual refinement.
+
+The goal is not:
+
+> “collect a perfect postal address.”
+
+The goal is:
+
+> “help responders reliably find the user.”
+
+The flow should feel:
+
+* lightweight,
+* forgiving,
+* map-native,
+* and emotionally calm under stress.
 
 ---
 
-## Concept: Select/Search Drop States
+# Core UX Principle
 
-Each manual step field gets one of three affordances depending on its data nature:
+Manual entry is:
 
-| Step | Field | Affordance |
-|---|---|---|
-| 1 | Country or region | **Select + Search** — searchable list, modal drop-state |
-| 2 | State / Province | **Select + Search** — searchable list, scoped to chosen country |
-| 3 | City | **Search drop** — Mapbox suggestions scoped to country + state |
-| 4 | Street address | **Search drop** — Mapbox full address suggestions |
-| 5 | Unit / Landmark | **Text input** — free text, optional |
-| 6 | Responder note | **Text area** — free text, optional, multiline |
+## a guided location refinement system
 
-A "drop state" means: the field row expands inline into a focused search/select surface within the same sheet. The surrounding sheet context (header, progress, already-filled steps as compact summaries) stays visible. No modal is pushed. The sheet raises to expanded snap when the drop opens.
+NOT:
+
+## a traditional address form.
+
+The system should:
+
+* progressively improve search confidence,
+* preserve flow continuity,
+* and gracefully degrade into map confirmation.
+
+Final dispatch truth becomes:
+
+```txt
+Confirmed map pin
++ structured admin hierarchy
++ landmark/place context
++ responder notes
+```
+
+—not strict street validation.
 
 ---
 
-## Navigation Rules (from guardrails)
+# Problem
 
-Strictly follows `Issue 9 — Navigation stack resets too aggressively`:
+The current manual entry flow is a full-screen stepped wizard:
 
+* one blank `TextInput` per step,
+* linear progression,
+* and no structured contextual refinement.
+
+This creates several problems:
+
+* administrative fields use the wrong affordance
+* users type information that should be selected
+* no visual confidence hierarchy exists
+* no contextual narrowing occurs between steps
+* Mapbox alone is unreliable for global street validation
+* worldwide address systems vary dramatically
+
+The larger architectural issue:
+
+> the system currently treats manual entry like a postal form instead of a location-resolution flow.
+
+---
+
+# New Address Architecture
+
+## Hybrid Worldwide Address Resolution System
+
+iVisit will use:
+
+| Responsibility                | Source                 |
+| ----------------------------- | ---------------------- |
+| Country hierarchy             | Static dataset         |
+| Region / state / province     | OSM-derived dataset    |
+| City / area hierarchy         | OSM-derived dataset    |
+| Street / landmark suggestions | Mapbox + OSM/Nominatim |
+| Final truth                   | User-confirmed map pin |
+
+---
+
+# Important Direction
+
+Mapbox is NOT the sole authority anymore.
+
+Instead:
+
+```txt
+Structured hierarchy
+↓
+OSM-derived datasets
+
+Street/place refinement
+↓
+Mapbox + OSM search
+
+Final dispatch truth
+↓
+Confirmed pin
 ```
-Manual entry entry point (default body row)
-  ↓ tap "Enter manually"
-Step 1 — Country (select/search drop)
-  ↓ select country → Step 2
-Step 2 — State/province (select/search drop, scoped)
-  ↓ fill or skip → Step 3
-Step 3 — City (search drop, Mapbox scoped)
-  ↓ select → Step 4
-Step 4 — Street address (search drop, Mapbox full)
-  ↓ select → Step 5
-Step 5 — Unit/Landmark (text input, optional)
-  ↓ Next or Skip → Step 6
-Step 6 — Responder note (text area, optional)
-  ↓ Review pickup
-Candidate decision state (same as search result)
-  ↓ Use as pickup / Set Home / Set Work / Save place
+
+This removes dependency on perfect street indexing globally.
+
+---
+
+# Progressive Step Flow
+
+```txt
+Where should help come?
+
+[ Use Current Location ]
+[ Search Address or Landmark ]
+[ Enter Manually ]
 ```
+
+---
+
+# Manual Flow Structure
+
+```txt
+Step 1 — Country
+Step 2 — Region / State / Province
+Step 3 — City / Area
+Step 4 — Street, Landmark, or Nearby Place
+Step 5 — Apartment / Directions
+Step 6 — Confirm Pin on Map
+```
+
+---
+
+# Critical Worldwide Rule
+
+The system must NEVER assume:
+
+* all countries have states,
+* all users know postal addresses,
+* or all streets are indexed.
+
+Therefore:
+
+* labels adapt dynamically,
+* validation remains forgiving,
+* and street matching is assistive, not mandatory.
+
+---
+
+# Dynamic Administrative Labels
+
+Internally:
+
+```js
+adminLevel1
+adminLevel2
+```
+
+UI labels adapt by country.
+
+Examples:
+
+| Country | Label           |
+| ------- | --------------- |
+| USA     | State           |
+| Canada  | Province        |
+| UK      | Region / County |
+| Japan   | Prefecture      |
+| UAE     | Emirate         |
+| Nigeria | State           |
+
+---
+
+# Step Affordance Model
+
+| Step | Field                            | Affordance       |
+| ---- | -------------------------------- | ---------------- |
+| 1    | Country                          | Select + Search  |
+| 2    | Region / Province / State        | Select + Search  |
+| 3    | City / Area                      | Select + Search  |
+| 4    | Street / Landmark / Nearby place | Search drop      |
+| 5    | Apartment / Directions           | Free text        |
+| 6    | Confirm location                 | Map confirmation |
+
+---
+
+# Drop State Concept
+
+A “drop state” means:
+
+* inline expansion inside the same sheet,
+* no pushed modal,
+* one active context at a time,
+* surrounding progress remains visible.
+
+The active field expands inline while previous fields collapse into compact summaries.
+
+This preserves:
+
+* continuity,
+* orientation,
+* and calmness.
+
+---
+
+# Apple-Standard Interaction Philosophy
+
+The system should ask:
+
+```txt
+Help us find you
+```
+
+NOT:
+
+```txt
+Enter your full address
+```
+
+The tone throughout should feel:
+
+* assistive,
+* low-pressure,
+* and forgiving.
+
+---
+
+# Layout Contract
+
+```txt
+Header
+Progress track
+Completed step summaries
+Active expanded step
+Sticky footer CTA
+```
+
+The footer CTA is ALWAYS visible.
+
+---
+
+# Completed Step Summaries
+
+Completed steps collapse into compact rows:
+
+```txt
+🌍 United States                ✓
+📍 California                   ✓
+🏙 Los Angeles                  ✓
+📌 Street or landmark           ← active
+```
+
+Tapping a summary reopens that step inline.
+
+Only ONE expanded context may exist at a time.
+
+---
+
+# Country / Region / City Steps
+
+## Affordance
+
+```txt
+Searchable select list
+```
+
+NOT:
+
+```txt
+free text input
+```
+
+---
+
+# Data Source
+
+These steps use:
+
+* OSM-derived datasets,
+* local indexed hierarchy,
+* or cached structured data.
+
+NOT Mapbox.
+
+This ensures:
+
+* deterministic hierarchy,
+* fast filtering,
+* predictable UX,
+* and lower API dependency.
+
+---
+
+# Step 4 — Street / Landmark / Nearby Place
+
+This is the only true geocoder-assisted step.
+
+Label:
+
+```txt
+Street, landmark, or nearby place
+```
+
+Examples:
+
+* Allen Avenue
+* Near Shoprite
+* Blue Gate Estate
+* Opposite City Mall
+* LASUTH
+* St. Mary Church
+
+---
+
+# Search Logic
+
+Structured query assembled progressively:
+
+```js
+[
+  place,
+  city,
+  region,
+  country
+]
+.filter(Boolean)
+.join(", ")
+```
+
+Example:
+
+```txt
+Admiralty Way, Lekki, Lagos, Nigeria
+```
+
+or:
+
+```txt
+Near Shoprite, Lekki, Lagos, Nigeria
+```
+
+---
+
+# Search Providers
+
+## Primary
+
+Mapbox
+
+## Fallback
+
+OpenStreetMap / Nominatim
+
+---
+
+# Search Resolution Strategy
+
+```txt
+1. Try Mapbox
+2. If confidence weak → try OSM/Nominatim
+3. If unresolved → center map on selected city/region
+4. User adjusts pin manually
+5. Save responder notes
+```
+
+The flow must NEVER dead-end because a street was not found.
+
+---
+
+# Apartment / Directions Step
+
+Free text.
+
+Examples:
+
+* Apt 4B
+* Blue gate
+* Third floor
+* Beside pharmacy
+* Back entrance
+
+This field is critical for responders.
+
+---
+
+# Confirm Pin Step
+
+This is the final truth layer.
+
+The user sees:
+
+* resolved map location,
+* nearby roads/landmarks,
+* and can adjust the pin manually.
+
+CTA:
+
+```txt
+Confirm pickup location
+```
+
+---
+
+# Error Philosophy
+
+Never show:
+
+```txt
+Invalid address
+```
+
+Instead:
+
+```txt
+We couldn’t verify the exact location.
+Place the pin as close as possible and add directions for responders.
+```
+
+---
+
+# Navigation Rules
 
 Back navigation:
-- Step N → Back → Step N-1 (preserves draft — never resets)
-- Step 1 → Back → default body (preserves nothing, clean state)
-- Candidate → Back → Step 6 (returns to review, preserves draft)
-- Sheet header back-chevron pops one mode state via `useLocationSheetNavigation` (existing)
+
+* preserves draft state,
+* preserves selected hierarchy,
+* preserves expanded step,
+* never resets the flow unintentionally.
+
+Completed steps remain editable.
 
 ---
 
-## Layout Contract
+# Transition Rules
 
-Follows `LOCATION_SHEET_ARCHITECTURE_PLAN.md §Location Sheet Snap Layout Contract` and `APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md §Sticky Terminal Actions`:
+Step transitions:
 
-```
-Half snap — active step visible, progress track visible, primary CTA always visible
-  Header (← / ✕)
-  Progress track (6 segments, filled to current step)
-  Completed steps — compact summary rows (read-only, grey)
-  Active step — expanded drop or text input
-  [Back]  [Next / Skip / Review pickup]  ← sticky, outside scroll body
-
-Expanded snap — drops open here for long lists (country, city)
-  Same structure, scroll body has more room for results
-  CTA remains docked at bottom of sheet shell
-```
-
-Key rule: **CTA is always visible**. It is docked in a footer slot outside `MapStageBodyScroll`. This satisfies Issue 8 directly.
+* subtle horizontal spring motion,
+* surrounding shell remains mounted,
+* no blank flashes,
+* reduced-motion fallback supported.
 
 ---
 
-## Completed Steps as Compact Summaries
+# Auto-Fill Cascade
 
-Once the user passes step N, step N renders as a compact locked row above the active step:
+Selecting a full place result cascades upward silently:
 
+```txt
+street/place
+→ city
+→ region
+→ country
 ```
-[🌍] Nigeria                              ✓
-[📍] Lagos                                ✓
-[🏙] City  ← active step (drop open)
-```
 
-Tapping a completed step row reopens it as the active step (returns to that step, preserving draft below). This replaces the need for a multi-step back chain for edits.
+Only fills EMPTY fields.
 
-This follows Issue 7 (one active context) and Issue 2 (single expanded surface).
+Never overwrites user-confirmed data.
 
 ---
 
-## Drop State Design (per step)
+# Geocode Commit Rules
 
-### Country / State — Select + Search drop
+Manual entry NEVER directly mutates pickup state.
 
+Instead:
+
+```txt
+Manual draft
+→ geocode
+→ candidate state
+→ explicit confirmation
+→ commit pickup
 ```
-Active step card (expanded):
-  ─────────────────────────────────────────
-  Which country or region?
-  [🔍 Search countries...          ]
-  ─────────────────────────────────────────
-  🇳🇬  Nigeria
-  🇺🇸  United States
-  🇬🇧  United Kingdom
-  🇨🇦  Canada
-  … (scrollable, filtered by search)
-  ─────────────────────────────────────────
-```
-
-- Sheet auto-expands to EXPANDED snap when drop opens
-- List is flat-scroll, NOT a modal push
-- `SearchResultRow` primitives reused for each country row (existing component)
-- Selecting an item fills the step and advances to next step with a spring transition
-- Uses existing `CountryPickerModal` data source but renders inline, not as a modal
-
-### City / Street — Search drop (Mapbox)
-
-```
-Active step card:
-  ─────────────────────────────────────────
-  What city?
-  [🔍 Enter city...                ]
-  ─────────────────────────────────────────
-  📍  Lagos, Lagos State, Nigeria
-  📍  Lagos de Moreno, Jalisco, Mexico
-  📍  Lagos, Portugal
-  ─────────────────────────────────────────
-```
-
-- Reuses `useAddressSearchController` (already in `MapLocationIntentStageBase`)
-- Scopes Mapbox suggestions by `countryCode` (already supported by `mapboxService.suggestAddresses`)
-- For step 3 (city): type `"place"` or `"region"` Mapbox filter
-- For step 4 (street): type `"address"` or `"poi"` Mapbox filter
-- Selecting a suggestion fills the step label AND pre-fills downstream steps from the suggestion components (e.g. selecting a full address in step 4 can auto-fill city + state)
-- Sheet stays in EXPANDED snap while drop is active; collapses to HALF on selection
-
-### Unit / Note — Text input (unchanged pattern)
-
-- Same `TextInput` / multiline `TextInput` as current implementation
-- Auto-focused on step activation
-- No drop state — free text only
-- "Optional" badge remains
-- Skip CTA replaces Next when field is empty
 
 ---
 
-## Auto-Fill Cascade
+# State Architecture
 
-When a full address suggestion is selected in any step, fill downstream steps silently:
-
-```
-User selects "27 Admiralty Way, Lekki Phase 1, Lagos, Nigeria" at Step 4
-→ streetAddress = "27 Admiralty Way, Lekki Phase 1"
-→ city = "Lagos" (auto-fill Step 3 if empty)
-→ stateRegion = "Lagos State" (auto-fill Step 2 if empty)
-→ country = "Nigeria" (auto-fill Step 1 if empty)
-→ countryCode = "NG"
-→ Advance to Step 5 (unit)
-```
-
-Rule: auto-fill only fills **empty** fields. Never silently overwrite a field the user already filled.
-
-This is handled in `handlePickSearchResult`-equivalent logic in the manual step controller.
-
----
-
-## Transition Between Steps
-
-Follows Issue 12 (`MapPhaseTransitionView` or equivalent):
-
-- Step advance: new step card slides in from the right (or fades in if motion is reduced)
-- Step back: previous step slides back in from the left
-- Completed step collapses to summary row with a micro-spring
-- No hard-swap — the surrounding card shell stays mounted
-
-Implementation: wrap step card body in a lightweight `Animated.View` with translate-X spring. Use `useRef` for direction (forward / backward). Do not add a new animation system — reuse the existing `Animated.spring` already used in `LocationChrome`.
-
----
-
-## Geocode and Candidate Transition
-
-When the user taps "Review pickup" on Step 6:
-
-1. CTA enters `loading` state (spinner, disabled) — inline, not a new surface
-2. Geocode runs: Mapbox first → OSM fallback (existing `handleManualConfirm` logic)
-3. On success → transition to `PLACE_SELECTED` mode (existing candidate decision state)
-4. On failure → stay on Step 4 (street address step) with inline error message
-5. Never commit `0,0` coordinates (existing guard)
-
-No blank frame during geocode — the step card stays visible with the CTA in loading state (Issue 12).
-
----
-
-## State Architecture
-
-### What changes
-
-**`MANUAL_LOCATION_STEPS` in `mapLocationIntent.model.js`** — add `affordance` field:
+## Manual Draft
 
 ```js
-{ key: "country",       affordance: "select-search", ... }
-{ key: "stateRegion",   affordance: "select-search", ... }
-{ key: "city",          affordance: "search-drop",   mapboxTypes: ["place","region"], ... }
-{ key: "streetAddress", affordance: "search-drop",   mapboxTypes: ["address","poi"],  ... }
-{ key: "unit",          affordance: "text",          ... }
-{ key: "responderNote", affordance: "textarea",      ... }
+{
+  country,
+  countryCode,
+  adminLevel1,
+  adminLevel2,
+  placeOrLandmark,
+  apartmentDetails,
+  responderNote,
+  coordinates
+}
 ```
 
-**`MapLocationIntentStageParts.jsx`** — `isManualStep` branch:
+---
 
-Replace the single flat step card with:
+# Important Architectural Principle
 
-1. `ManualStepCompletedSummaries` — renders completed steps N < current as compact rows
-2. `ManualStepActiveField` — renders current step affordance (select-search / search-drop / text / textarea)
-3. Sticky footer CTA outside `MapStageBodyScroll`
+This system is:
 
-**`MapLocationIntentStageBase.jsx`** — add:
+## location-confidence-driven
 
-- `manualDropQuery` state (search string for active drop)
-- `manualDropResults` state (suggestions for city/street)
-- `handleManualDropSelect(key, value, cascadeFields)` — fills step + cascades
-- `handleManualDropQueryChange(query)` — debounced, scoped to active step type
+NOT:
 
-**No new hooks** — extend the existing manual step state in `MapLocationIntentStageBase`. Total new state: 2 `useState` calls.
+## postal-address-validation-driven.
 
-### What does NOT change
-
-- `LOCATION_INTENT_MODES` — no new mode; manual steps stay inside `MANUAL_STEP`
-- `useLocationSheetNavigation` — no changes; back/forward is handled by step index
-- `validateManualLocationStep` — no changes; validation logic is correct
-- `handleManualConfirm` — no changes; geocode logic is correct
-- Candidate decision state — identical to search result candidate; no changes
-- `locationAddressService` / `mapboxService` — no new provider adapters
+That distinction defines the entire UX quality of the flow.
 
 ---
 
-## New Component Breakdown
+# Final UX Goal
 
-All new components live in `components/map/views/locationIntent/`:
+The manual flow should feel:
 
-### `ManualStepCompletedSummaries.jsx`
-- Props: `{ steps, manualDraft, onEditStep, titleColor, mutedColor, infoSurfaceColor }`
-- Renders one compact row per completed step (step index < current)
-- Each row: icon + step label + filled value + "✓" or edit chevron
-- Tapping a row calls `onEditStep(stepIndex)` — sets `manualStepIndex` back to that step
-- Uses existing `SearchResultRow` shape or a simpler variant
-- ~60 lines
+* calm,
+* modern,
+* forgiving,
+* globally adaptable,
+* and Apple-grade.
 
-### `ManualStepActiveField.jsx`
-- Props: `{ step, value, query, results, isLoading, onQueryChange, onSelect, onTextChange, isDarkMode, titleColor, mutedColor, infoSurfaceColor }`
-- Switches on `step.affordance`:
-  - `"select-search"` → inline search bar + flat list of `CountryRow` or `StateRow` items
-  - `"search-drop"` → inline search bar + `SearchResultRow` list (Mapbox results)
-  - `"text"` → auto-focused `TextInput` (existing)
-  - `"textarea"` → auto-focused multiline `TextInput` (existing)
-- ~120 lines
+The user should never feel:
 
-### `ManualStepStickyFooter.jsx`
-- Props: `{ onBack, onNext, nextLabel, isLoading, isDisabled }`
-- Docked below `MapStageBodyScroll` inside `MapLocationIntentStageBase`
-- Mirrors existing `manualStepActions` styles but rendered outside scroll body
-- Replaces the current `manualStepActions` row inside `MapLocationIntentStageParts`
-- ~40 lines
+* trapped in a form,
+* punished by validation,
+* or blocked by imperfect address systems.
 
----
+The experience should instead communicate:
 
-## Styles
-
-New style keys to add to `mapLocationIntent.styles.js`:
-
-```js
-manualCompletedRow     // compact completed step row
-manualCompletedIcon    // 28px icon tile
-manualCompletedLabel   // muted step label text
-manualCompletedValue   // title-color filled value text
-manualDropSearch       // inline search pill (reuses searchPill shape)
-manualDropList         // container for drop results
-manualDropItem         // single drop result row
-manualStickyFooter     // docked CTA bar outside scroll body
+```txt
+Help us understand where you are.
+We’ll work with you to locate you accurately.
 ```
-
-~40 lines of new styles. Reuses `squircle`, `searchPill`, `rowPressed`, and existing tokens throughout.
-
----
-
-## Files Changed
-
-| File | Change | Lines delta |
-|---|---|---|
-| `mapLocationIntent.model.js` | Add `affordance` + `mapboxTypes` to each step | +6 |
-| `mapLocationIntent.styles.js` | Add 8 new style keys | +40 |
-| `MapLocationIntentStageParts.jsx` | Replace manual step card body with new components; add sticky footer slot | −60 / +20 |
-| `MapLocationIntentStageBase.jsx` | Add `manualDropQuery`, `manualDropResults`, `handleManualDropSelect`, `handleManualDropQueryChange` | +40 |
-| `ManualStepCompletedSummaries.jsx` | New component | +60 |
-| `ManualStepActiveField.jsx` | New component | +120 |
-| `ManualStepStickyFooter.jsx` | New component | +40 |
-
-**Total:** ~+260 lines net (existing manual step card body is ~95 lines — net ~+165)
-
----
-
-## Guardrail Compliance Checklist
-
-| Guardrail | How satisfied |
-|---|---|
-| One active decision context (Issue 2, 7) | Only one step's drop is open at a time; completed steps are compact |
-| State-driven not step-driven (Issue 3) | Steps are mode states of `MANUAL_STEP`; nav stack stays flat |
-| Sticky terminal CTA (Issue 8) | `ManualStepStickyFooter` outside scroll body |
-| Back preserves state (Issue 9) | `manualStepIndex` decrements; `manualDraft` never reset on Back |
-| No blank frames (Issue 12) | Step card stays mounted; CTA enters loading state during geocode |
-| No direct pickup mutation on selection (Issue 1 guardrail) | Drop selection fills `manualDraft`, not pickup; only "Review pickup" → geocode → candidate → explicit commit |
-| No new modal pushed (LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE) | All drops are inline; `CountryPickerModal` replaced by inline drop |
-| Reuse existing components (APP_WIDE_SURFACE_AUDIT) | `SearchResultRow`, `useAddressSearchController`, `mapboxService`, `Animated.spring` |
-| LocationSheet sole owner (Pass 3) | No new modal; stays inside `MANUAL_STEP` mode of LocationSheet |
-| No new provider adapters | `mapboxService.suggestAddresses` reused with existing `countryCode` scope |
-
----
-
-## Execution Order
-
-```
-Step 1  model.js — add affordance + mapboxTypes fields
-Step 2  styles.js — add 8 new style keys
-Step 3  ManualStepCompletedSummaries.jsx — new component
-Step 4  ManualStepActiveField.jsx — new component (text/textarea affordances only first)
-Step 5  ManualStepStickyFooter.jsx — new component
-Step 6  MapLocationIntentStageBase.jsx — add drop state + handlers
-Step 7  ManualStepActiveField.jsx — add select-search + search-drop affordances
-Step 8  MapLocationIntentStageParts.jsx — wire new components, remove old card body
-Step 9  Verify: back/forward nav, auto-fill cascade, geocode → candidate, sticky CTA
-```
-
-Steps 3–5 are independent and can be built in parallel.
-Step 7 depends on Step 6 (needs `handleManualDropSelect`).
-Step 8 depends on all prior steps.
-
----
-
-## Deferred
-
-- **Map pin-adjust** (`PIN_ADJUST` mode) — separate pass, not part of this plan
-- **Saved-place management CRUD modal** — separate pass
-- **State/province list data** — if a hardcoded list is needed for Step 2 select-search, use ISO 3166-2 data from an existing package or a static JSON. Do not add a new API for this. If no package exists, Step 2 falls back to free `TextInput` (already implemented) until a list is available.
-
----
-
-## Navigation
-← [Location Sheet Architecture Plan](./LOCATION_SHEET_ARCHITECTURE_PLAN.md)
-← [Location Address Management Architecture](./LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md)

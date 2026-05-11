@@ -37,6 +37,23 @@ class MapboxService {
         return rawCode.trim().slice(0, 2).toUpperCase();
     }
 
+    extractContextText(feature, prefixes = []) {
+        if (!feature || typeof feature !== 'object') return null;
+        const normalizedPrefixes = prefixes
+            .map((prefix) => String(prefix || '').trim())
+            .filter(Boolean);
+        const candidates = [
+            feature,
+            ...(Array.isArray(feature.context) ? feature.context : []),
+        ];
+        const match = candidates.find((item) => {
+            const id = String(item?.id || '');
+            return normalizedPrefixes.some((prefix) => id.startsWith(`${prefix}.`));
+        });
+        const text = match?.text || match?.name || null;
+        return typeof text === 'string' && text.trim() ? text.trim() : null;
+    }
+
     /**
      * Search for nearby hospitals using Mapbox Search API (v1)
      * This is much cheaper than Google Places for hospital discovery.
@@ -82,17 +99,23 @@ class MapboxService {
     /**
      * Geocode address to coordinates using Mapbox Geocoding API
      */
-    async geocodeAddress(address) {
+    async geocodeAddress(address, { proximity = null, countryCode = null } = {}) {
         if (!this.accessToken) {
-            return this.geocodeAddressWithOpenStreetMap(address);
+            return this.geocodeAddressWithOpenStreetMap(address, { proximity, countryCode });
         }
 
         try {
-            const response = await fetch(
+            let url =
                 `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?` +
                 `access_token=${this.accessToken}&` +
-                `limit=1`
-            );
+                `limit=1`;
+            if (proximity?.latitude && proximity?.longitude) {
+                url += `&proximity=${proximity.longitude},${proximity.latitude}`;
+            }
+            if (countryCode) {
+                url += `&country=${String(countryCode).toLowerCase()}`;
+            }
+            const response = await fetch(url);
 
             const data = await response.json();
 
@@ -105,23 +128,33 @@ class MapboxService {
                 latitude: feature.center[1],
                 longitude: feature.center[0],
                 formatted_address: feature.place_name,
-                feature: feature
+                relevance: typeof feature.relevance === "number" ? feature.relevance : null,
+                countryCode: this.extractCountryCode(feature),
+                feature: feature,
+                source: "mapbox",
             };
         } catch (error) {
             console.error('MapboxService.geocodeAddress error:', error);
-            return this.geocodeAddressWithOpenStreetMap(address);
+            return this.geocodeAddressWithOpenStreetMap(address, { proximity, countryCode });
         }
     }
 
-    async geocodeAddressWithOpenStreetMap(address) {
+    async geocodeAddressWithOpenStreetMap(address, { proximity = null, countryCode = null } = {}) {
         const trimmed = typeof address === 'string' ? address.trim() : '';
         if (!trimmed) {
             throw new Error('Address is required');
         }
 
         try {
+            let osmUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(trimmed)}`;
+            if (countryCode) {
+                osmUrl += `&countrycodes=${String(countryCode).toLowerCase()}`;
+            }
+            if (proximity?.latitude && proximity?.longitude) {
+                osmUrl += `&viewbox=${proximity.longitude - 1},${proximity.latitude + 1},${proximity.longitude + 1},${proximity.latitude - 1}&bounded=0`;
+            }
             const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(trimmed)}`,
+                osmUrl,
                 {
                     headers: {
                         Accept: 'application/json',
@@ -216,6 +249,9 @@ class MapboxService {
                 source: 'mapbox',
                 requiresDetails: false,
                 countryCode: this.extractCountryCode(feature),
+                city: this.extractContextText(feature, ['place']),
+                districtArea: this.extractContextText(feature, ['district', 'locality', 'neighborhood']),
+                state: this.extractContextText(feature, ['region']),
             }));
         } catch (error) {
             console.error('MapboxService.suggestAddresses error:', error);

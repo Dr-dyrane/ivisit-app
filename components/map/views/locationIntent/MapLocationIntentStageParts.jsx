@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,15 +23,15 @@ import {
 import {
 	LOCATION_INTENT_MODES,
 	MANUAL_LOCATION_STEPS,
+	getAreaLabelForCountry,
+	getSubdivisionLabelForCountry,
 } from "./mapLocationIntent.model";
 import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
 import {
-	buildCandidateDecisionActions,
-	buildSaveCategoryActions,
-	buildSavedPlaceManageActions,
 	getPlaceOrbHierarchy,
 	getPlaceOrbSubtext,
 } from "./mapLocationIntent.helpers";
+import MapLocationIntentCandidatePanel from "./MapLocationIntentCandidatePanel";
 
 function buildCollapsedAction({
 	showToggle,
@@ -70,35 +70,6 @@ function formatLocationHeaderText(value) {
 	});
 }
 
-function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedColor) {
-	if (action?.tone === "neutral") {
-		return {
-			iconBackgroundColor: infoSurfaceColor,
-			iconColor: mutedColor,
-			textColor: mutedColor,
-		};
-	}
-
-	const toneColors = {
-		home: MAP_LOCATION_INTENT_COPY.placesOrbColors.home?.[1],
-		work: MAP_LOCATION_INTENT_COPY.placesOrbColors.work?.[1],
-		family: MAP_LOCATION_INTENT_COPY.placesOrbColors.family?.[1],
-		school: MAP_LOCATION_INTENT_COPY.placesOrbColors.school?.[1],
-		pharmacy: MAP_LOCATION_INTENT_COPY.placesOrbColors.pharmacy?.[1],
-		care: MAP_LOCATION_INTENT_COPY.placesOrbColors.care?.[1],
-		saved: MAP_LOCATION_INTENT_COPY.placesOrbColors.add?.[1],
-		pickup: "#2563EB",
-		success: "#059669",
-		danger: "#DC2626",
-	};
-	const accentColor = toneColors[action?.tone] || titleColor;
-
-	return {
-		iconBackgroundColor: `${accentColor}18`,
-		iconColor: accentColor,
-		textColor: titleColor,
-	};
-}
 
 export function MapLocationIntentCollapsedTopRow({
 	model,
@@ -147,11 +118,13 @@ export function MapLocationIntentActiveTopRow({
 	onClose,
 	closeAccessibilityLabel = "Close location sheet",
 	showToggle = true,
+	titleOverride = null,
+	subtitleOverride = null,
 }) {
 	return (
 		<MapTrackingTopSlot
-			title={formatLocationHeaderText(model.headerTitle)}
-			subtitle={formatLocationHeaderText(model.headerSubtitle)}
+			title={titleOverride ?? formatLocationHeaderText(model.headerTitle)}
+			subtitle={subtitleOverride ?? formatLocationHeaderText(model.headerSubtitle)}
 			titleColor={titleColor}
 			mutedColor={mutedColor}
 			actionSurfaceColor={actionSurfaceColor}
@@ -227,6 +200,7 @@ export function MapLocationIntentBodyContent({
 	onOpenManualIntro,
 	onStartPinAdjust,
 	onConfirmSelection,
+	onFindNearbyHospitals,
 	onOpenSaveCategory,
 	searchQuery,
 	onSearchQueryChange,
@@ -255,9 +229,11 @@ export function MapLocationIntentBodyContent({
 	onBackToPreviousStep,
 	manualDropQuery,
 	manualDropResults,
+	isSearchingManualDrop,
 	manualDropContextHint,
 	onManualDropQueryChange,
 	onManualDropSelect,
+	onManualUseTypedQuery,
 	onManualCountrySelectInline,
 	accentColor,
 	manualError,
@@ -277,21 +253,42 @@ export function MapLocationIntentBodyContent({
 		() => getMapSearchSheetResponsiveStyles(searchViewportMetrics),
 		[searchViewportMetrics],
 	);
-	const currentManualStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
-	const permissionLabel = model?.sourceLabel || "Location state";
 	const isSearching = mode === LOCATION_INTENT_MODES.ADDRESS_SEARCH;
 	const isManualStep = mode === LOCATION_INTENT_MODES.MANUAL_STEP;
-	const isConfirming =
+	const isDecisionMode =
 		mode === LOCATION_INTENT_MODES.CONFIRM ||
-		mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
+		mode === LOCATION_INTENT_MODES.CANDIDATE_DECISION ||
 		mode === LOCATION_INTENT_MODES.PIN_ADJUST ||
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
 		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
 		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
-	const isSaveCategory = mode === LOCATION_INTENT_MODES.SAVE_CATEGORY;
-	const isSaveDetails = mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
-	const isSavedManage = mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
-	const showDefaultSections = !isSearching && !isManualStep && !isConfirming;
+	const showDefaultSections = !isSearching && !isManualStep && !isDecisionMode;
+	const permissionLabel = model?.sourceLabel || "Location state";
+	const currentManualStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
+	const subdivisionOverride = currentManualStep?.key === 'adminArea'
+		? getSubdivisionLabelForCountry(manualDraft?.countryCode)
+		: currentManualStep?.key === "districtArea"
+			? getAreaLabelForCountry(manualDraft?.countryCode)
+			: null;
+	const effectiveStep = subdivisionOverride
+		? {
+				...currentManualStep,
+				label: subdivisionOverride.label,
+				question: subdivisionOverride.question,
+				placeholder: subdivisionOverride.placeholder,
+				...(subdivisionOverride.helperText !== null
+					? { helperText: subdivisionOverride.helperText }
+					: { helperText: undefined }),
+			}
+		: currentManualStep;
+	const stepLabelOverrides = useMemo(() => {
+		const sub = getSubdivisionLabelForCountry(manualDraft?.countryCode);
+		const area = getAreaLabelForCountry(manualDraft?.countryCode);
+		return {
+			...(sub ? { adminArea: sub.label } : {}),
+			...(area ? { districtArea: area.label } : {}),
+		};
+	}, [manualDraft?.countryCode]);
 	const visibleResults = isExpanded ? searchResults.slice(0, 7) : searchResults.slice(0, 4);
 	const visibleRecentSearches = Array.isArray(recentSearchQueries)
 		? recentSearchQueries.slice(0, isExpanded ? 8 : 4)
@@ -364,93 +361,63 @@ export function MapLocationIntentBodyContent({
 			: "Use device";
 	const handleHeroAction = isDevicePickup ? onOpenSearch : onUseCurrentLocation;
 	const pendingPlaceLabel = selectedLocation?.pendingPlaceLabel;
-	const candidateActions = useMemo(
-		() =>
-			buildCandidateDecisionActions({
-				selectedLocation,
-				pendingPlaceLabel,
-				savedPlaceFeedback,
-			}),
-		[pendingPlaceLabel, savedPlaceFeedback, selectedLocation],
-	);
-	const pendingPlaceTitle = candidateActions[0]?.saveLabel
-		? candidateActions[0]?.label
-		: null;
-	const saveCategoryActions = useMemo(() => buildSaveCategoryActions(), []);
-	const selectedSaveCategoryAction =
-		saveCategoryActions.find((action) => action.category === pendingSaveCategory) ||
-		saveCategoryActions.find((action) => action.category === "other");
-	const savedManageActions = useMemo(
-		() => buildSavedPlaceManageActions({ confirmRemove: isConfirmingSavedRemove }),
-		[isConfirmingSavedRemove],
-	);
-	const handleCandidateAction = (action) => {
-		if (!action || action.type === "status") return;
-		if (action.type === "pickup") {
-			onConfirmSelection?.();
-			return;
-		}
-		if (action.type === "saveCategory") {
-			onOpenSaveCategory?.();
-			return;
-		}
-		if (action.type === "save") {
-			onSaveSelectedLocationAs?.(action.saveLabel);
-			return;
-		}
-		if (action.type === "back") {
-			onBackToPreviousStep?.();
-		}
-	};
 
 	return (
 		<View style={styles.bodyScrollContent}>
-			<View style={styles.topRow}>
-				{isSearching ? (
-					<View style={[styles.searchPill, styles.searchInputPill, { backgroundColor: groupSurfaceColor }]}>
-						<Ionicons name="search" size={19} color={titleColor} />
-						<TextInput
-							value={searchQuery}
-							onChangeText={onSearchQueryChange}
-							placeholder={model.searchPlaceholder}
-							placeholderTextColor={mutedColor}
-							autoFocus
-							style={[styles.searchInput, { color: titleColor }]}
-						/>
-					</View>
-				) : (
-					<Pressable
-						onPress={onOpenSearch}
-						accessibilityRole="button"
-						accessibilityLabel="Search address or place"
-						style={[styles.searchPill, { backgroundColor: groupSurfaceColor }]}
-					>
-						<Ionicons name="search" size={19} color={titleColor} />
-						<Text style={[styles.searchText, { color: mutedColor }]}>
-							{model.searchPlaceholder}
-						</Text>
-					</Pressable>
-				)}
-
-				<Pressable
-					onPress={onOpenManualIntro}
-					accessibilityRole="button"
-					accessibilityLabel="Enter address manually"
-					style={({ pressed }) => [
-						styles.avatarPressable,
-						{ transform: [{ scale: pressed ? 0.96 : 1 }] },
-					]}
-				>
-					<LinearGradient
-						colors={["#60A5FA", "#3B82F6"]}
-						start={{ x: 0.18, y: 0.18 }}
-						end={{ x: 0.82, y: 0.9 }}
-						style={styles.avatarImageShell}
-					>
-						<MaterialCommunityIcons name="map-plus" size={22} color="#FFFFFF" />
-					</LinearGradient>
-				</Pressable>
-			</View>
+			{!isManualStep ? (
+				<View style={styles.topRow}>
+					{isSearching ? (
+						<View style={[styles.searchPill, styles.searchInputPill, { backgroundColor: groupSurfaceColor }]}>
+							<Ionicons name="search" size={19} color={mutedColor} />
+							<TextInput
+								value={searchQuery}
+								onChangeText={onSearchQueryChange}
+								placeholder={model.searchPlaceholder}
+								placeholderTextColor={mutedColor}
+								autoFocus
+								style={[styles.searchInput, { color: titleColor }]}
+							/>
+							{searchQuery.length > 0 ? (
+								<Pressable onPress={() => onSearchQueryChange('')} hitSlop={10}>
+									<Ionicons name="close-circle" size={18} color={mutedColor} />
+								</Pressable>
+							) : null}
+						</View>
+					) : (
+						<>
+							<Pressable
+								onPress={onOpenSearch}
+								accessibilityRole="button"
+								accessibilityLabel="Search address or place"
+								style={[styles.searchPill, { backgroundColor: groupSurfaceColor }]}
+							>
+								<Ionicons name="search" size={19} color={mutedColor} />
+								<Text style={[styles.searchText, { color: mutedColor }]}>
+									{model.searchPlaceholder}
+								</Text>
+							</Pressable>
+							<Pressable
+								onPress={onOpenManualIntro}
+								accessibilityRole="button"
+								accessibilityLabel="Enter address manually"
+								style={({ pressed }) => [
+									styles.avatarPressable,
+									{ transform: [{ scale: pressed ? 0.96 : 1 }] },
+								]}
+							>
+								<LinearGradient
+									colors={["#60A5FA", "#3B82F6"]}
+									start={{ x: 0.18, y: 0.18 }}
+									end={{ x: 0.82, y: 0.9 }}
+									style={styles.avatarImageShell}
+								>
+									<MaterialCommunityIcons name="map-plus" size={22} color="#FFFFFF" />
+								</LinearGradient>
+							</Pressable>
+						</>
+					)}
+				</View>
+			) : null}
 			{isSearching ? (
 				<View style={styles.searchModeBody}>
 					{searchQuery.trim().length < 2 ? (
@@ -775,29 +742,8 @@ export function MapLocationIntentBodyContent({
 			) : null}
 
 			{isManualStep && currentManualStep ? (
-				<View
-					style={[styles.manualStepCard, { backgroundColor: groupSurfaceColor }]}
-				>
-					{/* Header: back-to-pickup pill only — no noisy step counter */}
-					<View style={styles.manualStepHeader}>
-						<Pressable
-							onPress={onBackToDefault}
-							accessibilityRole="button"
-							accessibilityLabel="Back to pickup choices"
-							style={({ pressed }) => [
-								styles.manualBackButton,
-								{ backgroundColor: infoSurfaceColor },
-								pressed ? styles.rowPressed : null,
-							]}
-						>
-							<Ionicons name="chevron-back" size={16} color={titleColor} />
-							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-								Pickup
-							</Text>
-						</Pressable>
-					</View>
-
-					{/* Completed steps — live address pill + locked editable rows */}
+				<View style={styles.manualStepBody}>
+					{/* Completed steps - locked editable rows */}
 					<ManualStepCompletedSummaries
 						manualDraft={manualDraft}
 						currentStepIndex={manualStepIndex}
@@ -807,27 +753,27 @@ export function MapLocationIntentBodyContent({
 						titleColor={titleColor}
 						mutedColor={mutedColor}
 						infoSurfaceColor={infoSurfaceColor}
-						accentColor={accentColor}
+						stepLabelOverrides={stepLabelOverrides}
 					/>
 
 					{/* Active step question */}
-					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
-						{currentManualStep.question || currentManualStep.label}
+					<Text style={[styles.manualStepQuestion, { color: titleColor }]}>
+						{effectiveStep.question || effectiveStep.label}
 					</Text>
-					{currentManualStep.helperText ? (
+					{effectiveStep.helperText ? (
 						<Text style={[styles.manualStepHelper, { color: mutedColor }]}>
-							{currentManualStep.helperText}
+							{effectiveStep.helperText}
 						</Text>
 					) : null}
 
-					{/* Active step affordance — select-search / search-drop / text / textarea */}
+					{/* Active step affordance */}
 					<ManualStepActiveField
-						step={currentManualStep}
+						step={effectiveStep}
 						draftValue={manualDraft[currentManualStep.key] || ''}
 						draftCountryCode={manualDraft.countryCode}
 						dropQuery={manualDropQuery}
 						dropResults={manualDropResults}
-						isDropLoading={isResolvingManual}
+						isDropLoading={isSearchingManualDrop}
 						contextHint={manualDropContextHint}
 						onQueryChange={onManualDropQueryChange}
 						onDropSelect={(item) =>
@@ -836,10 +782,14 @@ export function MapLocationIntentBodyContent({
 								item.primaryText || item.name || '',
 								{
 									city: item.city || null,
-									stateRegion: item.state || null,
+									districtArea: item.districtArea || null,
+									adminArea: item.state || null,
 									countryCode: item.countryCode || null,
 								},
 							)
+						}
+						onUseTypedQuery={(value) =>
+							onManualUseTypedQuery?.(currentManualStep.key, value)
 						}
 						onCountrySelect={onManualCountrySelectInline}
 						onTextChange={(value) =>
@@ -849,302 +799,53 @@ export function MapLocationIntentBodyContent({
 						titleColor={titleColor}
 						mutedColor={mutedColor}
 						infoSurfaceColor={infoSurfaceColor}
+						accentColor={accentColor}
 					/>
 
 					{/* Optional badge */}
 					{currentManualStep.optional ? (
 						<Text style={[styles.manualOptionalText, { color: mutedColor }]}>
-							Optional
+							Optional - skip if not needed
 						</Text>
 					) : null}
 
 					{/* Inline error */}
 					{manualError ? (
-						<Text style={[styles.manualErrorText, { color: "#EF4444" }]}>
-							{manualError}
-						</Text>
+						<View style={styles.manualErrorRow}>
+							<Ionicons name="alert-circle-outline" size={15} color="#EF4444" />
+							<Text style={styles.manualErrorText}>
+								{manualError}
+							</Text>
+						</View>
 					) : null}
 				</View>
 			) : null}
 
-			{isConfirming ? (
-				<View style={styles.candidateDecisionStack}>
-					<View style={[searchStyles.resultGroup, { backgroundColor: groupSurfaceColor }]}>
-						<SearchResultRow
-							iconName="location-outline"
-							title={selectedLocation?.label || pendingPlaceTitle || "Selected location"}
-							subtitle={
-								selectedLocation?.address ||
-								"Use this location for pickup, nearby care, and pricing."
-							}
-							meta={pendingPlaceTitle || "Selected address"}
-							titleColor={titleColor}
-							mutedColor={mutedColor}
-							surfaceColor={heroSurfaceColor}
-							isDarkMode={isDarkMode}
-							isSelected
-							responsiveStyles={searchResponsiveStyles}
-						/>
-					</View>
+			<MapLocationIntentCandidatePanel
+				mode={mode}
+				selectedLocation={selectedLocation}
+				pendingSaveCategory={pendingSaveCategory}
+				savedPlaceFeedback={savedPlaceFeedback}
+				isConfirmingSavedRemove={isConfirmingSavedRemove}
+				saveDetailsDraft={saveDetailsDraft}
+				titleColor={titleColor}
+				mutedColor={mutedColor}
+				groupSurfaceColor={groupSurfaceColor}
+				infoSurfaceColor={infoSurfaceColor}
+				heroSurfaceColor={heroSurfaceColor}
+				isDarkMode={isDarkMode}
+				accentColor={accentColor}
+				onConfirmSelection={onConfirmSelection}
+				onFindNearbyHospitals={onFindNearbyHospitals}
+				onOpenSaveCategory={onOpenSaveCategory}
+				onSaveSelectedLocationAs={onSaveSelectedLocationAs}
+				onSelectSaveCategory={onSelectSaveCategory}
+				onSavedManageAction={onSavedManageAction}
+				onSaveDetailsDraftChange={onSaveDetailsDraftChange}
+				onConfirmSaveDetails={onConfirmSaveDetails}
+				onBackToPreviousStep={onBackToPreviousStep}
+			/>
 
-					{isSavedManage ? (
-						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
-							{savedManageActions.map((action, index) => {
-								const actionTone = resolveCandidateActionTone(
-									action,
-									infoSurfaceColor,
-									titleColor,
-									mutedColor,
-								);
-
-								return (
-									<React.Fragment key={action.id}>
-										{index > 0 ? (
-											<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-										) : null}
-										<Pressable
-											onPress={() => onSavedManageAction?.(action)}
-											accessibilityRole="button"
-											accessibilityLabel={action.label}
-											style={({ pressed }) => [
-												styles.candidateActionRow,
-												pressed ? styles.rowPressed : null,
-											]}
-										>
-											<View
-												style={[
-													styles.candidateActionIcon,
-													{ backgroundColor: actionTone.iconBackgroundColor },
-												]}
-											>
-												<Ionicons
-													name={action.iconName}
-													size={18}
-													color={actionTone.iconColor}
-												/>
-											</View>
-											<Text
-												style={[
-													styles.candidateActionText,
-													{ color: actionTone.textColor },
-												]}
-											>
-												{action.label}
-											</Text>
-											{action.type === "remove" && isConfirmingSavedRemove ? null : (
-												<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-											)}
-										</Pressable>
-									</React.Fragment>
-								);
-							})}
-						</View>
-					) : isSaveCategory ? (
-						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
-							{saveCategoryActions.map((action, index) => {
-								const actionTone = resolveCandidateActionTone(
-									action,
-									infoSurfaceColor,
-									titleColor,
-									mutedColor,
-								);
-
-								return (
-									<React.Fragment key={action.id}>
-										{index > 0 ? (
-											<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-										) : null}
-										<Pressable
-											onPress={() => onSelectSaveCategory?.(action.category)}
-											accessibilityRole="button"
-											accessibilityLabel={`Save as ${action.label}`}
-											style={({ pressed }) => [
-												styles.candidateActionRow,
-												pressed ? styles.rowPressed : null,
-											]}
-										>
-											<View
-												style={[
-													styles.candidateActionIcon,
-													{ backgroundColor: actionTone.iconBackgroundColor },
-												]}
-											>
-												<Ionicons
-													name={action.iconName}
-													size={18}
-													color={actionTone.iconColor}
-												/>
-											</View>
-											<Text
-												style={[
-													styles.candidateActionText,
-													{ color: actionTone.textColor },
-												]}
-											>
-												{action.label}
-											</Text>
-											<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-										</Pressable>
-									</React.Fragment>
-								);
-							})}
-						</View>
-					) : isSaveDetails ? (
-						<View style={[styles.saveDetailsCard, { backgroundColor: groupSurfaceColor }]}>
-							<View style={styles.saveDetailsHeader}>
-								{(() => {
-									const actionTone = resolveCandidateActionTone(
-										selectedSaveCategoryAction,
-										infoSurfaceColor,
-										titleColor,
-										mutedColor,
-									);
-									return (
-										<View
-											style={[
-												styles.candidateActionIcon,
-												{ backgroundColor: actionTone.iconBackgroundColor },
-											]}
-										>
-											<Ionicons
-												name={selectedSaveCategoryAction?.iconName || "bookmark-outline"}
-												size={18}
-												color={actionTone.iconColor}
-											/>
-										</View>
-									);
-								})()}
-								<View style={styles.saveDetailsCopy}>
-									<Text style={[styles.manualTitle, { color: titleColor }]}>
-										{selectedSaveCategoryAction?.label || "Saved Place"}
-									</Text>
-									<Text style={[styles.manualBody, { color: mutedColor }]}>
-										Name it so it is easy to recognize later.
-									</Text>
-								</View>
-							</View>
-							<TextInput
-								value={saveDetailsDraft?.label || ""}
-								onChangeText={(value) => onSaveDetailsDraftChange?.("label", value)}
-								placeholder="Place name"
-								placeholderTextColor={mutedColor}
-								autoCapitalize="words"
-								autoCorrect={false}
-								autoFocus
-								style={[
-									styles.manualTextInput,
-									{ backgroundColor: infoSurfaceColor, color: titleColor },
-								]}
-							/>
-							<TextInput
-								value={saveDetailsDraft?.unit || ""}
-								onChangeText={(value) => onSaveDetailsDraftChange?.("unit", value)}
-								placeholder="Apartment, unit, or landmark"
-								placeholderTextColor={mutedColor}
-								autoCapitalize="sentences"
-								autoCorrect={false}
-								style={[
-									styles.manualTextInput,
-									{ backgroundColor: infoSurfaceColor, color: titleColor },
-								]}
-							/>
-							<TextInput
-								value={saveDetailsDraft?.responderNote || ""}
-								onChangeText={(value) =>
-									onSaveDetailsDraftChange?.("responderNote", value)
-								}
-								placeholder="Note for responders"
-								placeholderTextColor={mutedColor}
-								autoCapitalize="sentences"
-								autoCorrect={false}
-								multiline
-								style={[
-									styles.manualTextInput,
-									styles.manualTextInputMultiline,
-									{ backgroundColor: infoSurfaceColor, color: titleColor },
-								]}
-							/>
-							<Pressable
-								onPress={onConfirmSaveDetails}
-								accessibilityRole="button"
-								accessibilityLabel="Save place details"
-								style={({ pressed }) => [
-									styles.saveDetailsPrimaryAction,
-									{ backgroundColor: infoSurfaceColor },
-									pressed ? styles.rowPressed : null,
-								]}
-							>
-								<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-									Save Place
-								</Text>
-								<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-							</Pressable>
-						</View>
-					) : (
-						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
-						{candidateActions.map((action, index) => {
-							const isStatus = action.type === "status";
-							const actionTone = resolveCandidateActionTone(
-								action,
-								infoSurfaceColor,
-								titleColor,
-								mutedColor,
-							);
-							const content = (
-								<>
-									<View
-										style={[
-											styles.candidateActionIcon,
-											{ backgroundColor: actionTone.iconBackgroundColor },
-										]}
-									>
-										<Ionicons
-											name={action.iconName}
-											size={18}
-											color={actionTone.iconColor}
-										/>
-									</View>
-									<Text
-										style={[
-											styles.candidateActionText,
-											{ color: actionTone.textColor },
-										]}
-									>
-										{action.label}
-									</Text>
-									{isStatus || action.type === "back" ? null : (
-										<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-									)}
-								</>
-							);
-
-							return (
-								<React.Fragment key={action.id}>
-									{index > 0 ? (
-										<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-									) : null}
-									{isStatus ? (
-										<View style={styles.candidateActionRow}>{content}</View>
-									) : (
-										<Pressable
-											onPress={() => handleCandidateAction(action)}
-											accessibilityRole="button"
-											accessibilityLabel={action.label}
-											style={({ pressed }) => [
-												styles.candidateActionRow,
-												pressed ? styles.rowPressed : null,
-											]}
-										>
-											{content}
-										</Pressable>
-									)}
-								</React.Fragment>
-							);
-						})}
-						</View>
-					)}
-				</View>
-			) : null}
 		</View>
 	);
 }

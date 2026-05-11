@@ -182,16 +182,17 @@ export function getManualDraftValue(manualDraft = {}, stepKey) {
 
 export function buildManualAddressParts(manualDraft = {}) {
 	return [
-		getManualDraftValue(manualDraft, "streetAddress"),
+		getManualDraftValue(manualDraft, "placeOrAddress"),
+		getManualDraftValue(manualDraft, "districtArea"),
 		getManualDraftValue(manualDraft, "city"),
-		getManualDraftValue(manualDraft, "stateRegion"),
+		getManualDraftValue(manualDraft, "adminArea"),
 		getManualDraftValue(manualDraft, "country"),
 	].filter(Boolean);
 }
 
 export function buildManualAddressLabel(manualDraft = {}) {
 	return (
-		getManualDraftValue(manualDraft, "streetAddress") ||
+		getManualDraftValue(manualDraft, "placeOrAddress") ||
 		getManualDraftValue(manualDraft, "city") ||
 		"Manual pickup"
 	);
@@ -204,7 +205,7 @@ export function validateManualLocationStep(step, manualDraft = {}) {
 
 	if (step.key === "country") return "Choose a country or region first.";
 	if (step.key === "city") return "Add the city for this pickup.";
-	if (step.key === "streetAddress") return "Add a street address, place name, or landmark.";
+	if (step.key === "placeOrAddress") return "Add a street, landmark, or nearby place name.";
 	return "Add this detail before continuing.";
 }
 
@@ -320,6 +321,7 @@ export function buildCandidateDecisionActions({
 	selectedLocation,
 	pendingPlaceLabel,
 	savedPlaceFeedback,
+	canFindNearby = false,
 } = {}) {
 	// Rollback note: keep the selected-address decision tree data-only so the
 	// sheet can swap row styling without leaking save/pickup branching into JSX.
@@ -398,6 +400,18 @@ export function buildCandidateDecisionActions({
 			iconName: "search-outline",
 			tone: "neutral",
 			type: "back",
+		});
+	}
+
+	// PULLBACK NOTE: [LS-6] NEW: findNearby CTA — lets user jump to hospital search
+	// anchored at the confirmed candidate location without leaving the flow.
+	if (canFindNearby && selectedLocation?.coords?.latitude && !pendingPlaceLabel) {
+		actions.push({
+			id: "findNearbyHospitals",
+			label: "Find Nearby Hospitals",
+			iconName: "medkit-outline",
+			tone: "neutral",
+			type: "findNearby",
 		});
 	}
 

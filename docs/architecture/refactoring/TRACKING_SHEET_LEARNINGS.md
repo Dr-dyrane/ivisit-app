@@ -550,6 +550,147 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 
 ---
 
+### 2.18 Direct provider API calls from a render component (LocationSheet, 2026-05-10)
+
+**Pattern**: A React component or stage base calls `mapboxService.suggestAddresses()` directly inside a `useEffect` with a manual timer ref for debounce. The plan mandates an app-owned service boundary (`addressAssistService`) between components and provider APIs.
+
+**Symptoms**:
+- Provider API details (Mapbox types, proximity, countryCode) leak into JSX-level logic.
+- Debounce timer is re-created on every render that touches the ref.
+- Search results are not cached — same query fires again if the component remounts.
+- Provider swap (Mapbox → OSM) requires editing the component, not the service.
+
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 554–591 — `useEffect` + `manualDropTimerRef` calling `mapboxService.suggestAddresses` for manual step `search-drop` fields. This is the same anti-pattern as the old `SearchSheet` debounce loop the architecture plan explicitly called out.
+
+**Fix recipe**:
+1. Create `services/addressAssistService.js` wrapping `mapboxService` with typed methods: `suggestRegions`, `suggestCities`, `suggestStreetsOrPlaces`, `resolveManualDraft`.
+2. Create `hooks/map/locationIntent/useManualDropController.js` — owns query state + uses `useLocationSearchQuery` (TanStack) pattern, not a raw `useEffect` timer.
+3. Stage base receives `{ manualDropResults, isSearchingManualDrop, setManualDropQuery }` from the controller hook only.
+4. No component ever imports `mapboxService` directly for UI-driven suggestions.
+
+**Rule**: Components never call provider APIs directly. They call app service methods. Service methods call providers.
+
+---
+
+### 2.19 Multi-mode workaround instead of canonical mode (LocationSheet, 2026-05-10)
+
+**Pattern**: A new product concept (candidate decision surface) is implemented by composing three existing mode constants (`PLACE_SELECTED || CONFIRM || PIN_ADJUST`) into a derived boolean rather than adding the canonical mode the plan calls for (`CANDIDATE_DECISION`).
+
+**Symptoms**:
+- `isCandidateDecisionMode` appears in 6+ places across the stage base.
+- Navigation back-stack logic branches on all three modes independently.
+- Adding a new candidate source requires updating every branch.
+- The mode constant `PLACE_SELECTED` does not match what the screen is actually doing (deciding on a candidate, not selecting a place).
+
+**Diagnosis**: `MapLocationIntentStageBase.jsx` line 296 — `isCandidateDecisionMode = mode === PLACE_SELECTED || mode === CONFIRM || mode === PIN_ADJUST`. This is a symptom of deferring mode rename while adding behavior.
+
+**Fix recipe**:
+1. Add `CANDIDATE_DECISION: "candidateDecision"` to `LOCATION_INTENT_MODES`.
+2. Keep `PLACE_SELECTED` as a PULLBACK alias temporarily: `PLACE_SELECTED: "candidateDecision"`.
+3. Replace all `isCandidateDecisionMode` checks with `mode === LOCATION_INTENT_MODES.CANDIDATE_DECISION`.
+4. Update `useLocationSheetNavigation` — `openPlaceSelected` → `openCandidateDecision`.
+5. Remove the alias once all callers are migrated.
+
+**Rule**: When the plan names a mode, add the mode. Never substitute a composed boolean that duplicates the same test in N places.
+
+---
+
+### 2.20 Ephemeral sheet state in `useState` instead of Jotai atoms (LocationSheet, 2026-05-10)
+
+**Pattern**: State that must survive sheet snap collapse and Metro remount is stored in component-local `useState`. The LocationSheet can collapse to a minimised snap state and re-expand; any `useState` inside the stage base resets on that cycle.
+
+**Symptoms**:
+- User starts to save a place (chooses category), collapses the sheet accidentally, re-expands — `pendingSaveCategory` is null, flow resets to default.
+- User fills in save details, swaps app, returns — `saveDetailsDraft` is empty.
+- `savedPlaceFeedback` (confirmation copy) disappears on layout transition.
+
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 115–122 — `pendingPlaceLabel`, `savedPlaceFeedback`, `pendingSaveCategory`, `saveDetailsDraft` are all raw `useState`. Per the 5-layer rule: ephemeral UI state that must survive remount belongs in Jotai (L5).
+
+**Fix recipe**:
+1. Create `store/atoms/locationIntentAtoms.js`.
+2. Bundle related fields: `locationCandidateAtom` (active candidate + source), `locationSaveFlowAtom` (pendingCategory, saveDetailsDraft, savedPlaceFeedback, isConfirmingRemove).
+3. Read via `useAtomValue`, write via `useSetAtom`.
+4. Reset atoms on `returnToDefault` / sheet close — do not rely on component unmount.
+
+**Rule**: If state must survive snap collapse or Metro restart, it is Jotai (L5), not `useState`.
+
+---
+
+### 2.21 Store CRUD actions called directly from stage component (LocationSheet, 2026-05-10)
+
+**Pattern**: `addSavedLocation`, `updateSavedLocation`, `removeSavedLocation` are imported from a Zustand store and called directly inside a 1,100-line stage base component. No CRUD status machine exists — success/failure is tracked with ad-hoc `useState` strings (`savedPlaceFeedback`).
+
+**Symptoms**:
+- No Idle → Saving → Saved/Failed transitions. UI cannot show a pending save state.
+- Error recovery from a failed save is impossible (no `failed` state to render from).
+- Home/Work update-in-place logic is spread across the component instead of owned by one hook.
+- Every new save action type requires editing the stage base.
+
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 124–126 — direct store action calls without a controller layer.
+
+**Fix recipe**:
+1. Create `hooks/map/locationIntent/useSavedAddressActions.js`.
+2. Hook owns: `save(candidate, options)`, `update(id, patch)`, `remove(id)`, `crudStatus` (Idle → Draft → Validating → Saving → Saved/Failed).
+3. Home/Work singleton upsert logic lives in the hook, not JSX.
+4. Stage base receives `{ save, update, remove, crudStatus }` only.
+
+**Rule**: Store mutation actions are never called from a render component. They go through a controller hook that owns the CRUD state machine.
+
+---
+
+### 2.22 File size violation accepted as temporary — becomes permanent (LocationSheet, 2026-05-10)
+
+**Pattern**: A stage base grows beyond the 450-line guardrail during feature development. The plan defers extraction because "the hooks haven't landed yet." The hooks then land inside the same file as convenience additions rather than extractions, and the file ends at 1,100+ lines.
+
+**Symptoms**:
+- `MapLocationIntentStageBase.jsx` at 1,108 lines — mandatory refactor candidate per guardrails.
+- `MapLocationIntentStageParts.jsx` at 1,151 lines — exceeds 950-line extraction threshold.
+- Every new feature pass adds to already-bloated files rather than creating dedicated files.
+
+**Fix recipe**:
+1. Do not merge hooks into the stage base as a "quick fix." Create the file.
+2. After each hook extraction (LS-1 through LS-4), measure the stage base line count. Stop adding to it when it reaches 450.
+3. Split `MapLocationIntentStageParts.jsx` into: `MapLocationIntentCandidateParts.jsx`, `MapLocationIntentManageParts.jsx`, `MapLocationIntentStageParts.jsx` (default/search/manual only).
+
+**Rule**: Extracting a hook does not count as done if the hook body is pasted into the same file. A new file is required.
+
+---
+
+## LocationSheet Execution Guardrails (Applied to LS-1 through LS-8)
+
+These guardrails apply to every LocationSheet pass. Check before starting each pass, not after.
+
+**Before writing any new `useEffect`:**
+- Walk the decision tree (Quick Reference at top of this file).
+- Manual drop search → TanStack query via `useManualDropController`, not a timer ref.
+- Candidate map preview → stable callback, not an effect triggered by `selectedLocation` object identity.
+
+**Before adding any `useState`:**
+- Ask: does this need to survive snap collapse? → Jotai atom.
+- Ask: is this CRUD status? → state machine in `useSavedAddressActions`, not ad-hoc string.
+- Ask: is this derived from existing state? → `useMemo` or inline const.
+
+**Before calling a store action from a component:**
+- Route through the appropriate controller hook.
+- CRUD operations go through `useSavedAddressActions`.
+- Pickup commits go through `useMapLocation` / `mapCandidateToPickupPayload` pipeline.
+
+**Before adding a new mode branch:**
+- Check `LOCATION_INTENT_MODES` — the mode should already exist or needs to be added canonically.
+- Never compose 3 existing modes into a derived boolean as a substitute for naming the concept.
+
+**Before adding behavior to `MapLocationIntentStageBase.jsx`:**
+- Check current line count. If >450, the behavior belongs in a new hook or extracted part file.
+- A feature that touches candidate state → `useAddressCandidateController`.
+- A feature that touches saved address CRUD → `useSavedAddressActions`.
+- A feature that touches manual field assistance → `useManualDropController`.
+
+**Before calling any provider API (`mapboxService`, `nominatimService`) from a component:**
+- Route through `addressAssistService`.
+- If `addressAssistService` doesn't have the method yet, add it there first.
+
+---
+
 ## 6. Update This Document
 
 Every future pass that uncovers a new defect class should append to this file. This is the canonical record of "lessons we paid for."

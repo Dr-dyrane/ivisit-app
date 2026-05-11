@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -12,9 +12,9 @@ import { Ionicons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import countries from "../../../../data/countries";
 
-// ── Country inline select-search ─────────────────────────────────────────────
+// -- Country row ---------------------------------------------------------------
 
-function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, infoSurfaceColor }) {
+function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, accentColor }) {
 	return (
 		<Pressable
 			onPress={() => onSelect(item)}
@@ -22,20 +22,22 @@ function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, infoSu
 			accessibilityLabel={item.name}
 			accessibilityState={{ selected: isSelected }}
 			style={({ pressed }) => [
-				styles.dropItem,
-				{ backgroundColor: pressed || isSelected ? infoSurfaceColor : "transparent" },
+				styles.resultRow,
+				pressed ? styles.resultRowPressed : null,
 			]}
 		>
-			<CountryFlagGlyph flag={item.flag} code={item.code} size={20} />
-			<Text numberOfLines={1} style={[styles.dropItemLabel, { color: titleColor }]}>
+			<CountryFlagGlyph flag={item.flag} code={item.code} size={22} />
+			<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
 				{item.name}
 			</Text>
 			{isSelected ? (
-				<Ionicons name="checkmark-circle" size={16} color={titleColor} />
+				<Ionicons name="checkmark-circle" size={18} color={accentColor || titleColor} />
 			) : null}
 		</Pressable>
 	);
 }
+
+// -- Country select-search -----------------------------------------------------
 
 function SelectSearchDrop({
 	step,
@@ -44,6 +46,7 @@ function SelectSearchDrop({
 	titleColor,
 	mutedColor,
 	infoSurfaceColor,
+	accentColor,
 }) {
 	const [query, setQuery] = useState("");
 
@@ -65,54 +68,65 @@ function SelectSearchDrop({
 		[onSelect],
 	);
 
+	const handleClear = useCallback(() => setQuery(""), []);
+
 	return (
-		<View style={styles.dropContainer}>
-			<View style={[styles.dropSearch, { backgroundColor: infoSurfaceColor }]}>
-				<Ionicons name="search-outline" size={16} color={mutedColor} />
+		<View style={styles.fieldBlock}>
+			{/* Search bar */}
+			<View style={[styles.searchBar, { backgroundColor: infoSurfaceColor }]}>
+				<Ionicons name="search-outline" size={17} color={mutedColor} />
 				<TextInput
 					value={query}
 					onChangeText={setQuery}
 					placeholder={step.placeholder}
 					placeholderTextColor={mutedColor}
 					autoFocus
-					autoCapitalize="none"
+					autoCapitalize={step.autoCapitalize || "words"}
 					autoCorrect={false}
-					style={[styles.dropSearchInput, { color: titleColor }]}
+					style={[styles.searchInput, { color: titleColor }]}
 				/>
 				{query.length > 0 ? (
-					<Pressable onPress={() => setQuery("")} hitSlop={8}>
-						<Ionicons name="close-circle" size={16} color={mutedColor} />
+					<Pressable onPress={handleClear} hitSlop={10}>
+						<Ionicons name="close-circle" size={17} color={mutedColor} />
 					</Pressable>
 				) : null}
 			</View>
+
+			{/* Results */}
 			<ScrollView
-				style={styles.dropList}
+				style={styles.resultList}
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={false}
 				nestedScrollEnabled
 			>
-				{list.map((item) => (
-					<CountryRow
-						key={item.code}
-						item={item}
-						isSelected={Boolean(draftCountryCode && item.code === draftCountryCode)}
-						onSelect={handleSelect}
-						titleColor={titleColor}
-						mutedColor={mutedColor}
-						infoSurfaceColor={infoSurfaceColor}
-					/>
+				{list.map((item, idx) => (
+					<View key={item.code}>
+						<CountryRow
+							item={item}
+							isSelected={Boolean(draftCountryCode && item.code === draftCountryCode)}
+							onSelect={handleSelect}
+							titleColor={titleColor}
+							mutedColor={mutedColor}
+							accentColor={accentColor}
+						/>
+						{idx < list.length - 1 ? (
+							<View style={[styles.divider, { backgroundColor: mutedColor + "18" }]} />
+						) : null}
+					</View>
 				))}
 				{list.length === 0 ? (
-					<Text style={[styles.dropEmpty, { color: mutedColor }]}>No results</Text>
+					<View style={styles.emptyState}>
+						<Text style={[styles.emptyText, { color: mutedColor }]}>No countries match</Text>
+					</View>
 				) : null}
 			</ScrollView>
 		</View>
 	);
 }
 
-// ── Mapbox search-drop (state / city / street) ───────────────────────────────
+// -- Mapbox search-drop (state / city / street) -------------------------------
 
-function SearchDropResult({ item, onSelect, titleColor, mutedColor, infoSurfaceColor }) {
+function PlaceRow({ item, onSelect, titleColor, mutedColor }) {
 	const primary = item.primaryText || item.name || "";
 	const secondary = item.secondaryText || item.description || "";
 
@@ -122,17 +136,19 @@ function SearchDropResult({ item, onSelect, titleColor, mutedColor, infoSurfaceC
 			accessibilityRole="button"
 			accessibilityLabel={primary}
 			style={({ pressed }) => [
-				styles.dropItem,
-				{ backgroundColor: pressed ? infoSurfaceColor : "transparent" },
+				styles.resultRow,
+				pressed ? styles.resultRowPressed : null,
 			]}
 		>
-			<Ionicons name="location-outline" size={16} color={mutedColor} style={styles.resultIcon} />
-			<View style={styles.dropItemCopy}>
-				<Text numberOfLines={1} style={[styles.dropItemLabel, { color: titleColor }]}>
+			<View style={[styles.resultIconWrap, { backgroundColor: mutedColor + "18" }]}>
+				<Ionicons name="location-outline" size={15} color={mutedColor} />
+			</View>
+			<View style={styles.resultCopy}>
+				<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
 					{primary}
 				</Text>
 				{secondary ? (
-					<Text numberOfLines={1} style={[styles.dropItemSub, { color: mutedColor }]}>
+					<Text numberOfLines={1} style={[styles.resultSecondary, { color: mutedColor }]}>
 						{secondary}
 					</Text>
 				) : null}
@@ -148,98 +164,116 @@ function SearchDrop({
 	isDropLoading,
 	onQueryChange,
 	onSelect,
+	onUseTypedQuery,
 	contextHint,
 	titleColor,
 	mutedColor,
 	infoSurfaceColor,
+	accentColor,
 }) {
-	// Placeholder shows "Search states…  · Nigeria" so user knows it's scoped
-	const placeholder = contextHint
-		? `${step.placeholder}  ·  ${contextHint}`
-		: step.placeholder;
+	const trimmedQuery = String(dropQuery || "").trim();
+	const placeholder = step.placeholder;
+
+	const handleClear = useCallback(() => onQueryChange(""), [onQueryChange]);
+	const handleUseTypedQuery = useCallback(() => {
+		if (!trimmedQuery || typeof onUseTypedQuery !== "function") return;
+		onUseTypedQuery(trimmedQuery);
+	}, [onUseTypedQuery, trimmedQuery]);
 
 	return (
-		<View style={styles.dropContainer}>
-			<View style={[styles.dropSearch, { backgroundColor: infoSurfaceColor }]}>
-				<Ionicons name="search-outline" size={16} color={mutedColor} />
+		<View style={styles.fieldBlock}>
+			{/* Search bar */}
+			<View style={[styles.searchBar, { backgroundColor: infoSurfaceColor }]}>
+				<Ionicons name="search-outline" size={17} color={mutedColor} />
 				<TextInput
 					value={dropQuery}
 					onChangeText={onQueryChange}
 					placeholder={placeholder}
 					placeholderTextColor={mutedColor}
 					autoFocus
-					autoCapitalize="none"
+					autoCapitalize={step.autoCapitalize || "words"}
 					autoCorrect={false}
-					style={[styles.dropSearchInput, { color: titleColor }]}
+					style={[styles.searchInput, { color: titleColor }]}
 				/>
 				{isDropLoading ? (
 					<ActivityIndicator size="small" color={mutedColor} />
 				) : dropQuery.length > 0 ? (
-					<Pressable onPress={() => onQueryChange("")} hitSlop={8}>
-						<Ionicons name="close-circle" size={16} color={mutedColor} />
+					<Pressable onPress={handleClear} hitSlop={10}>
+						<Ionicons name="close-circle" size={17} color={mutedColor} />
 					</Pressable>
 				) : null}
 			</View>
 
+			{/* Results */}
+			{isDropLoading && dropResults.length === 0 ? (
+				<View style={styles.loadingState}>
+					<ActivityIndicator size="small" color={mutedColor} />
+					<Text style={[styles.emptyText, { color: mutedColor }]}>
+						Searching nearby matches
+					</Text>
+				</View>
+			) : null}
 			{dropResults.length > 0 ? (
 				<ScrollView
-					style={styles.dropList}
+					style={styles.resultList}
 					keyboardShouldPersistTaps="handled"
 					showsVerticalScrollIndicator={false}
 					nestedScrollEnabled
 				>
 					{dropResults.map((item, idx) => (
 						<View key={item.placeId || item.key || idx}>
-							<SearchDropResult
+							<PlaceRow
 								item={item}
 								onSelect={onSelect}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
-								infoSurfaceColor={infoSurfaceColor}
 							/>
 							{idx < dropResults.length - 1 ? (
-								<View
-									style={[styles.dropDivider, { backgroundColor: mutedColor + "22" }]}
-								/>
+								<View style={[styles.divider, { backgroundColor: mutedColor + "18" }]} />
 							) : null}
 						</View>
 					))}
 				</ScrollView>
-			) : dropQuery.length >= 2 && !isDropLoading ? (
-				<Text style={[styles.dropEmpty, { color: mutedColor }]}>
-					No results — try a different search.
-				</Text>
+			) : trimmedQuery.length >= 2 && !isDropLoading ? (
+				<View style={styles.emptyState}>
+					<Text style={[styles.emptyText, { color: mutedColor }]}>
+						No exact match yet.
+					</Text>
+				</View>
+			) : null}
+			{trimmedQuery.length >= 2 && !isDropLoading ? (
+				<Pressable
+					onPress={handleUseTypedQuery}
+					accessibilityRole="button"
+					accessibilityLabel={`Continue with ${trimmedQuery}`}
+					style={({ pressed }) => [
+						styles.useTypedRow,
+						{
+							backgroundColor:
+								dropResults.length > 0 ? "transparent" : infoSurfaceColor,
+						},
+						pressed ? styles.resultRowPressed : null,
+					]}
+				>
+					<View style={[styles.resultIconWrap, { backgroundColor: (accentColor || mutedColor) + "18" }]}>
+						<Ionicons name="create-outline" size={15} color={accentColor || mutedColor} />
+					</View>
+					<View style={styles.resultCopy}>
+						<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
+							Continue with "{trimmedQuery}"
+						</Text>
+						<Text numberOfLines={1} style={[styles.resultSecondary, { color: mutedColor }]}>
+							We will check the pickup area next
+						</Text>
+					</View>
+				</Pressable>
 			) : null}
 		</View>
 	);
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// -- Main export ---------------------------------------------------------------
 
-/**
- * ManualStepActiveField
- *
- * Renders the correct affordance for the active manual step:
- *   select-search  → inline searchable country list
- *   search-drop    → Mapbox live suggestion drop (state/city/street)
- *   text           → auto-focused TextInput
- *   textarea       → auto-focused multiline TextInput
- *
- * Props
- * ─────
- * step              MANUAL_LOCATION_STEPS[index] with .affordance
- * draftValue        string — current field value in manualDraft
- * draftCountryCode  string — for country selection highlight
- * dropQuery         string — live query for search-drop
- * dropResults       array  — Mapbox results for search-drop
- * isDropLoading     bool
- * contextHint       string — e.g. "Nigeria" or "Lagos, Nigeria" shown in placeholder
- * onQueryChange     (query) => void
- * onDropSelect      (item) => void
- * onCountrySelect   ({ name, code, flag }) => void
- * onTextChange      (value) => void
- * onSubmitEditing   () => void
- */
 export default function ManualStepActiveField({
 	step,
 	draftValue,
@@ -250,12 +284,14 @@ export default function ManualStepActiveField({
 	contextHint,
 	onQueryChange,
 	onDropSelect,
+	onUseTypedQuery,
 	onCountrySelect,
 	onTextChange,
 	onSubmitEditing,
 	titleColor,
 	mutedColor,
 	infoSurfaceColor,
+	accentColor,
 }) {
 	const affordance = step?.affordance;
 
@@ -268,6 +304,7 @@ export default function ManualStepActiveField({
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				infoSurfaceColor={infoSurfaceColor}
+				accentColor={accentColor}
 			/>
 		);
 	}
@@ -281,10 +318,12 @@ export default function ManualStepActiveField({
 				isDropLoading={isDropLoading}
 				onQueryChange={onQueryChange}
 				onSelect={onDropSelect}
+				onUseTypedQuery={onUseTypedQuery}
 				contextHint={contextHint}
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				infoSurfaceColor={infoSurfaceColor}
+				accentColor={accentColor}
 			/>
 		);
 	}
@@ -304,8 +343,8 @@ export default function ManualStepActiveField({
 			returnKeyType={step.multiline ? "default" : "next"}
 			onSubmitEditing={step.multiline ? undefined : onSubmitEditing}
 			style={[
-				styles.textInput,
-				step.multiline ? styles.textInputMultiline : null,
+				styles.freeInput,
+				step.multiline ? styles.freeInputMultiline : null,
 				{ backgroundColor: infoSurfaceColor, color: titleColor },
 			]}
 		/>
@@ -313,79 +352,106 @@ export default function ManualStepActiveField({
 }
 
 const styles = StyleSheet.create({
-	dropContainer: {
-		gap: 4,
+	fieldBlock: {
+		gap: 6,
 	},
-	dropSearch: {
-		minHeight: 46,
-		borderRadius: 14,
+	searchBar: {
+		height: 48,
+		borderRadius: 999,
 		borderCurve: "continuous",
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	dropSearchInput: {
-		flex: 1,
-		minWidth: 0,
-		fontSize: 15,
-		lineHeight: 20,
-		fontWeight: "500",
-	},
-	dropList: {
-		maxHeight: 220,
-	},
-	dropItem: {
-		minHeight: 48,
+		paddingHorizontal: 16,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
+	},
+	searchInput: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 16,
+		lineHeight: 21,
+		fontWeight: "400",
+	},
+	resultList: {
+		flexGrow: 1,
+	},
+	loadingState: {
+		minHeight: 48,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+		paddingVertical: 10,
+	},
+	useTypedRow: {
+		minHeight: 50,
+		borderRadius: 16,
+		borderCurve: "continuous",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+	},
+	resultRow: {
+		minHeight: 56,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
 		paddingHorizontal: 4,
 		paddingVertical: 10,
-		borderRadius: 10,
-		borderCurve: "continuous",
 	},
-	resultIcon: {
+	resultRowPressed: {
+		opacity: 0.6,
+	},
+	resultIconWrap: {
+		width: 30,
+		height: 30,
+		borderRadius: 15,
+		alignItems: "center",
+		justifyContent: "center",
 		flexShrink: 0,
 	},
-	dropItemCopy: {
+	resultCopy: {
 		flex: 1,
 		minWidth: 0,
 	},
-	dropItemLabel: {
+	resultPrimary: {
 		fontSize: 15,
 		lineHeight: 20,
 		fontWeight: "600",
 	},
-	dropItemSub: {
+	resultSecondary: {
 		marginTop: 2,
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "400",
 	},
-	dropDivider: {
+	divider: {
 		height: StyleSheet.hairlineWidth,
-		marginLeft: 36,
+		marginLeft: 46,
 	},
-	dropEmpty: {
-		paddingVertical: 14,
+	emptyState: {
+		paddingVertical: 20,
 		paddingHorizontal: 4,
-		fontSize: 13,
-		lineHeight: 17,
+		alignItems: "center",
+	},
+	emptyText: {
+		fontSize: 14,
+		lineHeight: 19,
 		fontWeight: "400",
 	},
-	textInput: {
-		minHeight: 46,
-		borderRadius: 14,
+	freeInput: {
+		minHeight: 50,
+		borderRadius: 22,
 		borderCurve: "continuous",
-		paddingHorizontal: 14,
-		paddingVertical: 10,
-		fontSize: 15,
-		fontWeight: "500",
+		paddingHorizontal: 16,
+		paddingVertical: 13,
+		fontSize: 16,
+		lineHeight: 21,
+		fontWeight: "400",
 	},
-	textInputMultiline: {
-		minHeight: 84,
+	freeInputMultiline: {
+		minHeight: 96,
 		textAlignVertical: "top",
 	},
 });

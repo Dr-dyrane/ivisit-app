@@ -5,17 +5,6 @@ import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import { MANUAL_LOCATION_STEPS } from "./mapLocationIntent.model";
 import countries from "../../../../data/countries";
 
-// Build a human-readable one-liner from whatever fields are filled
-function buildAddressLine(draft) {
-	const parts = [
-		draft.streetAddress,
-		draft.city,
-		draft.stateRegion,
-		draft.country,
-	].filter(Boolean);
-	return parts.join(", ");
-}
-
 function findCountryFlag(countryCode) {
 	if (!countryCode) return null;
 	const match = countries.find(
@@ -26,9 +15,9 @@ function findCountryFlag(countryCode) {
 
 const STEP_ICONS = {
 	country: "globe-outline",
-	stateRegion: "map-outline",
+	adminArea: "map-outline",
 	city: "business-outline",
-	streetAddress: "location-outline",
+	placeOrAddress: "location-outline",
 	unit: "home-outline",
 	responderNote: "chatbubble-ellipses-outline",
 };
@@ -36,10 +25,8 @@ const STEP_ICONS = {
 /**
  * ManualStepCompletedSummaries
  *
- * Renders two zones:
- *  1. Live address pill — grows as fields are filled, sits at the top of the
- *     card so the user always sees what they've built so far.
- *  2. Locked field rows — one per completed step, tappable to edit.
+ * Renders locked, tappable rows for every completed step above the active one.
+ * Tapping a row re-opens that step for editing.
  */
 export default function ManualStepCompletedSummaries({
 	manualDraft,
@@ -48,96 +35,64 @@ export default function ManualStepCompletedSummaries({
 	titleColor,
 	mutedColor,
 	infoSurfaceColor,
-	accentColor,
+	stepLabelOverrides = {},
 }) {
 	const completedSteps = MANUAL_LOCATION_STEPS.slice(0, currentStepIndex).filter(
 		(step) => manualDraft[step.key],
 	);
 
-	const addressLine = buildAddressLine(manualDraft);
 	const countryGlyph = findCountryFlag(manualDraft.countryCode);
 
 	if (completedSteps.length === 0) return null;
 
 	return (
 		<View style={styles.container}>
-			{/* ── Live address pill ─────────────────────────────── */}
-			{addressLine ? (
-				<View style={[styles.addressPill, { backgroundColor: infoSurfaceColor }]}>
-					{countryGlyph ? (
-						<CountryFlagGlyph
-							flag={countryGlyph.flag}
-							code={countryGlyph.code}
-							size={16}
-							style={styles.pillFlag}
-						/>
-					) : (
-						<Ionicons name="location" size={14} color={accentColor} style={styles.pillIcon} />
-					)}
-					<Text
-						numberOfLines={2}
-						style={[styles.addressPillText, { color: titleColor }]}
+			{completedSteps.map((step, idx) => {
+				const value = manualDraft[step.key];
+				const isCountry = step.key === "country";
+				const iconName = STEP_ICONS[step.key] || "ellipse-outline";
+
+				return (
+					<Pressable
+						key={step.key}
+						onPress={() => onEditStep(idx)}
+						accessibilityRole="button"
+						accessibilityLabel={`Edit ${step.label}: ${value}`}
+						style={({ pressed }) => [
+							styles.row,
+							{ backgroundColor: pressed ? infoSurfaceColor : "transparent" },
+						]}
 					>
-						{addressLine}
-					</Text>
-				</View>
-			) : null}
+						{/* Icon / flag tile */}
+						<View style={[styles.iconTile, { backgroundColor: infoSurfaceColor }]}>
+							{isCountry && countryGlyph ? (
+								<CountryFlagGlyph
+									flag={countryGlyph.flag}
+									code={countryGlyph.code}
+									size={16}
+								/>
+							) : (
+								<Ionicons name={iconName} size={15} color={mutedColor} />
+							)}
+						</View>
 
-			{/* ── Locked field rows ─────────────────────────────── */}
-			<View style={styles.lockedRows}>
-				{completedSteps.map((step, idx) => {
-					const value = manualDraft[step.key];
-					const isCountry = step.key === "country";
-					const iconName = STEP_ICONS[step.key] || "ellipse-outline";
+						{/* Label + value */}
+						<View style={styles.rowCopy}>
+							<Text numberOfLines={1} style={[styles.rowLabel, { color: mutedColor }]}>
+								{stepLabelOverrides[step.key] || step.label}
+							</Text>
+							<Text numberOfLines={1} style={[styles.rowValue, { color: titleColor }]}>
+								{value}
+							</Text>
+						</View>
 
-					return (
-						<Pressable
-							key={step.key}
-							onPress={() => onEditStep(idx)}
-							accessibilityRole="button"
-							accessibilityLabel={`Edit ${step.label}: ${value}`}
-							style={({ pressed }) => [
-								styles.row,
-								{ backgroundColor: pressed ? infoSurfaceColor : "transparent" },
-							]}
-						>
-							{/* Icon / flag tile */}
-							<View style={[styles.iconTile, { backgroundColor: infoSurfaceColor }]}>
-								{isCountry && countryGlyph ? (
-									<CountryFlagGlyph
-										flag={countryGlyph.flag}
-										code={countryGlyph.code}
-										size={14}
-									/>
-								) : (
-									<Ionicons name={iconName} size={13} color={mutedColor} />
-								)}
-							</View>
+						{/* Edit affordance */}
+						<Ionicons name="chevron-forward" size={14} color={mutedColor + "80"} />
+					</Pressable>
+				);
+			})}
 
-							{/* Label + value */}
-							<View style={styles.rowCopy}>
-								<Text
-									numberOfLines={1}
-									style={[styles.rowLabel, { color: mutedColor }]}
-								>
-									{step.label}
-								</Text>
-								<Text
-									numberOfLines={1}
-									style={[styles.rowValue, { color: titleColor }]}
-								>
-									{value}
-								</Text>
-							</View>
-
-							{/* Edit chevron */}
-							<Ionicons name="pencil-outline" size={13} color={mutedColor} />
-						</Pressable>
-					);
-				})}
-			</View>
-
-			{/* Separator before active field */}
+			{/* Separator before active step */}
 			<View style={[styles.divider, { backgroundColor: mutedColor + "20" }]} />
 		</View>
 	);
@@ -145,51 +100,23 @@ export default function ManualStepCompletedSummaries({
 
 const styles = StyleSheet.create({
 	container: {
-		gap: 6,
-		marginBottom: 4,
-	},
-	// Address pill
-	addressPill: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		borderRadius: 14,
-		borderCurve: "continuous",
-	},
-	pillFlag: {
-		flexShrink: 0,
-	},
-	pillIcon: {
-		flexShrink: 0,
-	},
-	addressPillText: {
-		flex: 1,
-		minWidth: 0,
-		fontSize: 13,
-		lineHeight: 18,
-		fontWeight: "600",
-		letterSpacing: -0.1,
-	},
-	// Locked rows
-	lockedRows: {
-		gap: 0,
+		gap: 2,
+		marginBottom: 6,
 	},
 	row: {
-		minHeight: 40,
+		minHeight: 52,
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 10,
-		paddingVertical: 5,
-		paddingHorizontal: 4,
-		borderRadius: 10,
+		gap: 12,
+		paddingVertical: 8,
+		paddingHorizontal: 2,
+		borderRadius: 12,
 		borderCurve: "continuous",
 	},
 	iconTile: {
-		width: 26,
-		height: 26,
-		borderRadius: 13,
+		width: 32,
+		height: 32,
+		borderRadius: 16,
 		alignItems: "center",
 		justifyContent: "center",
 		flexShrink: 0,
@@ -203,15 +130,17 @@ const styles = StyleSheet.create({
 		lineHeight: 14,
 		fontWeight: "500",
 		textTransform: "uppercase",
-		letterSpacing: 0.3,
+		letterSpacing: 0.4,
 	},
 	rowValue: {
-		fontSize: 13,
-		lineHeight: 17,
+		marginTop: 1,
+		fontSize: 14,
+		lineHeight: 19,
 		fontWeight: "600",
 	},
 	divider: {
 		height: StyleSheet.hairlineWidth,
-		marginTop: 4,
+		marginTop: 2,
+		marginBottom: 4,
 	},
 });
