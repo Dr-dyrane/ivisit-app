@@ -137,32 +137,51 @@ export function getDestinationCoordinate(hospital) {
 }
 
 export function buildHeroBadges(hospital) {
+	// PULLBACK NOTE: UX-B Issue 4 — badge priority reorder
+	// OLD: Verified first (trust signal), then emergencyLevel, then serviceType
+	// NEW: Decision-critical signals first (emergencyLevel → serviceType), trust signal last (Verified)
+	// Verified moved to end — it is a trust signal, not a decision signal
+	// "Standard" serviceType rendered as tone:"secondary" (muted) — signals absence of specialty
 	const items = [];
-	if (hospital?.verified) {
-		items.push({
-			label: "Verified",
-			icon: "shield-checkmark",
-			iconType: "ion",
-			tone: "verified",
-		});
-	}
 
 	const emergencyLevel = toDisplayText(
 		hospital?.emergencyLevel || hospital?.emergency_level,
 	);
 	if (emergencyLevel) {
-		items.push({ label: emergencyLevel, icon: "flash", iconType: "ion", tone: "alert" });
+		items.push({
+			label: emergencyLevel,
+			icon: "flash",
+			iconType: "ion",
+			tone: "alert",
+			accessibilityHint: "Emergency care designation level",
+		});
 	}
 
 	const serviceType = toStringList(
 		hospital?.serviceTypes || hospital?.service_types,
 	)[0];
 	if (serviceType) {
+		const serviceLabel = toDisplayText(serviceType);
+		const isStandard = serviceLabel.toLowerCase() === "standard";
 		items.push({
-			label: toDisplayText(serviceType),
+			label: serviceLabel,
 			icon: "layers-outline",
 			iconType: "ion",
-			tone: "neutral",
+			// Standard signals absence of specialty — render muted/secondary
+			tone: isStandard ? "secondary" : "neutral",
+			accessibilityHint: isStandard
+				? "General-purpose facility — no specialty trauma designation"
+				: "Specialty service type",
+		});
+	}
+
+	if (hospital?.verified) {
+		items.push({
+			label: "Verified",
+			icon: "shield-checkmark",
+			iconType: "ion",
+			tone: "verified",
+			accessibilityHint: "Verified facility",
 		});
 	}
 

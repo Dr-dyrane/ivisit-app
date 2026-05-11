@@ -165,21 +165,14 @@ export default function MapExploreIntentHospitalSummaryCard({
 		? MAP_EXPLORE_INTENT_COPY.NEAREST_HOSPITAL
 		: MAP_EXPLORE_INTENT_COPY.WIDER_CARE;
 	const summaryMetaText = nearestHospitalMeta.join(" | ");
+	// PULLBACK NOTE: UX-B Issue 5 — hospital card data boundary
+	// OLD: heroMetrics included network-level "Nearby hospitals" + "Beds open" tiles
+	// NEW: hospital cards show only hospital-specific data; network totals belong in orb subtexts
 	const heroMetrics = [
 		{
 			label: "Closest route",
 			value: nearestHospitalMeta[0] || "Live route",
 			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(134,16,14,0.08)",
-		},
-		{
-			label: "Nearby hospitals",
-			value: hasNearbyHospitals ? String(nearbyHospitalCount) : "0",
-			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
-		},
-		{
-			label: "Beds open",
-			value: totalAvailableBeds > 0 ? String(totalAvailableBeds) : "Checking",
-			surfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.05)",
 		},
 	];
 
@@ -332,24 +325,9 @@ export default function MapExploreIntentHospitalSummaryCard({
 							</Text>
 						</>
 					)}
-					{hasNearbyHospitals || totalAvailableBeds > 0 ? (
-						<View style={styles.intentSignalRow}>
-							{hasNearbyHospitals ? (
-								<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
-									<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
-										{`${nearbyHospitalCount} nearby`}
-									</Text>
-								</View>
-							) : null}
-							{totalAvailableBeds > 0 ? (
-								<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
-									<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
-										{`${totalAvailableBeds} beds`}
-									</Text>
-								</View>
-							) : null}
-						</View>
-					) : null}
+					{/* PULLBACK NOTE: UX-B Issue 5 — network-level counts removed from hospital card body */}
+					{/* OLD: nearbyHospitalCount + totalAvailableBeds signal pills shown on card */}
+					{/* NEW: hospital cards show only hospital-specific data; network totals live in orb subtexts */}
 				</View>
 				<SummaryIconTile isDarkMode={isDarkMode} compact size={summaryCompactIconSize}>
 					<Ionicons name="chevron-forward" size={isTightViewport ? 14 : 15} color={tokens.titleColor} />
@@ -443,11 +421,8 @@ export default function MapExploreIntentHospitalSummaryCard({
 						</Text>
 						<Ionicons name="arrow-forward" size={14} color={tokens.titleColor} />
 					</View>
-					<Text numberOfLines={1} style={[styles.summaryHeroHint, { color: tokens.mutedText }]}>
-						{hasNearbyHospitals
-							? `${nearbyHospitalCount} nearby`
-							: MAP_EXPLORE_INTENT_COPY.SHOWING_WIDER_OPTIONS}
-					</Text>
+					{/* PULLBACK NOTE: UX-B Issue 5 — nearbyHospitalCount hint removed from hero card footer */}
+					{/* Network count belongs in orb subtext, not in individual hospital card */}
 				</View>
 			</Pressable>
 		);
@@ -500,22 +475,9 @@ export default function MapExploreIntentHospitalSummaryCard({
 				</SummaryIconTile>
 			</View>
 
-			<View style={styles.intentSignalRow}>
-				<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
-					<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
-						{hasNearbyHospitals
-							? `${nearbyHospitalCount} nearby`
-							: MAP_EXPLORE_INTENT_COPY.SHOWING_WIDER_OPTIONS}
-					</Text>
-				</View>
-				{totalAvailableBeds > 0 ? (
-					<View style={[styles.intentSignalPill, signalPillStyle, { backgroundColor: tokens.mutedCardSurface }]}>
-						<Text numberOfLines={1} style={[styles.intentSignalText, signalTextStyle, { color: tokens.titleColor }]}>
-							{`${totalAvailableBeds} beds`}
-						</Text>
-					</View>
-				) : null}
-			</View>
+			{/* PULLBACK NOTE: UX-B Issue 5 — network-level signal pills removed from status card */}
+			{/* OLD: nearbyHospitalCount/SHOWING_WIDER_OPTIONS pill + totalAvailableBeds pill */}
+			{/* NEW: hospital cards show only hospital-specific data; network totals in orb subtexts */}
 		</Pressable>
 	);
 }

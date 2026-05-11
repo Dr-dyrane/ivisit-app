@@ -6,9 +6,12 @@ import EntryActionButton from "../../entry/EntryActionButton";
 import { MAP_APPLE_EASE } from "../tokens/mapMotionTokens";
 
 const DEFAULT_SLIDE_TRAVEL = 8;
-const ACTION_SLIDE_IN_MS = 2000;
-const ACTION_SLIDE_OUT_MS = 2000;
-const ACTION_PULSE_MS = 2000;
+// PULLBACK NOTE: UX-B Issue 10 — CTA animation duration compressed
+// OLD: 2000ms (debug value) — delayed visual feedback and made OTP round-trip feel slow
+// NEW: 180ms slide-in, 140ms slide-out, 160ms pulse — fast, snappy, non-blocking
+const ACTION_SLIDE_IN_MS = 180;
+const ACTION_SLIDE_OUT_MS = 140;
+const ACTION_PULSE_MS = 160;
 
 export default function MapInlineActionInput({
 	value,
