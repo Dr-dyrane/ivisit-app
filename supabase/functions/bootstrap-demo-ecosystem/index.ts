@@ -713,8 +713,14 @@ const findCityDemoFallbackCatalog = (
 };
 
 const resolveDemoSeedScopeKey = (ctx: DemoContext) => {
-  const catalog = findCityDemoFallbackCatalog(ctx);
-  return catalog ? `city_${catalog.key}` : ctx.coverageKey;
+  // PULLBACK NOTE: Scope key was previously coordinate-based (ctx.coverageKey)
+  // for non-catalog locations. This caused a new org + 5-6 new hospitals on every
+  // ~1km GPS drift, accumulating duplicates worldwide (confirmed: Toronto user).
+  // Changed to ctx.userSlug — stable across all sessions and all cities.
+  // OLD: const catalog = findCityDemoFallbackCatalog(ctx);
+  //      return catalog ? `city_${catalog.key}` : ctx.coverageKey;
+  // NEW: return ctx.userSlug;
+  return ctx.userSlug;
 };
 
 const getCatalogSeedHospitals = (ctx: DemoContext) => {
@@ -1494,7 +1500,46 @@ const ensureDemoHospitals = async (
     }
   }
 
-  const { data: activeHospitals, error: activeHospitalsError } = await admin
+  // PULLBACK NOTE: Added cross-org geographic retirement sweep.
+  // Retires demo hospitals from old coordinate-scoped orgs within ~16km bounding box.
+  // These rows accumulate from pre-Pass-1 bootstraps where scope = GPS coords.
+  // Retirement = status 'full' — never DELETE, consistent with active pool rule.
+  // OLD: sweep was organization_id-scoped only.
+  // NEW: sweep also covers demo rows from other orgs within 0.15° bounding box.
+  const STALE_SWEEP_RADIUS_DEG = 0.15; // ~16.6 km at equator, ~11 km at 48°N (Toronto)
+
+  const { data: crossOrgStaleRows, error: crossOrgSweepError } = await admin
+    .from("hospitals")
+    .select("id,place_id,organization_id")
+    .like("place_id", "demo:%")
+    .eq("status", "available")
+    .neq("organization_id", organizationId)
+    .gte("latitude", ctx.latitude - STALE_SWEEP_RADIUS_DEG)
+    .lte("latitude", ctx.latitude + STALE_SWEEP_RADIUS_DEG)
+    .gte("longitude", ctx.longitude - STALE_SWEEP_RADIUS_DEG)
+    .lte("longitude", ctx.longitude + STALE_SWEEP_RADIUS_DEG);
+
+  if (crossOrgSweepError) {
+    // Non-fatal: log and continue. A sweep failure should not block the user's bootstrap.
+    console.warn("[bootstrap] cross-org sweep failed:", crossOrgSweepError.message);
+  } else {
+    const crossOrgStaleIds = (Array.isArray(crossOrgStaleRows) ? crossOrgStaleRows : [])
+      .map((row) => row.id)
+      .filter(Boolean);
+
+    if (crossOrgStaleIds.length > 0) {
+      const { error: crossOrgRetireError } = await admin
+        .from("hospitals")
+        .update({ status: "full", updated_at: nowIso() })
+        .in("id", crossOrgStaleIds);
+
+      if (crossOrgRetireError) {
+        console.warn("[bootstrap] cross-org retirement failed:", crossOrgRetireError.message);
+      }
+    }
+  }
+
+    const { data: activeHospitals, error: activeHospitalsError } = await admin
     .from("hospitals")
     .select(
       "id,name,place_id,organization_id,latitude,longitude,features,verified,verification_status,status",

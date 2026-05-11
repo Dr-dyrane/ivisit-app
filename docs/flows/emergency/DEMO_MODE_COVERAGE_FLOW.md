@@ -69,7 +69,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - If the local `0-8 km` window is thin, bootstrap should run again even when the broader city already has a healthy demo inventory.
 - This rule is generic and exists to stop one citywide bootstrap pack from masking neighborhood-level thin coverage in any metro, not only Lagos.
 
-## Metro Catalog Rule (2026-04-11)
+## Metro Catalog Rule (2026-04-11, updated 2026-05-10)
 
 - Demo bootstrap may maintain a shared metro-level fallback catalog for dense cities when a single neighborhood pack would be too brittle.
 - A metro catalog is stored once under a shared demo scope (for example `city_lagos`) and contains many real hospital identities distributed across the city.
@@ -78,14 +78,16 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
   - `nearby_hospitals` and app discovery choose the location-relevant subset
 - Two users in the same city may therefore share the same backing catalog while still seeing different nearby hospital sets if they are far enough apart.
 - Legacy per-bucket demo rows that are replaced by a metro catalog should be retired out of active coverage rather than left available beside the new catalog rows.
+- **Scope key identity (2026-05-10):** `resolveDemoSeedScopeKey` now returns `ctx.userSlug` — the deterministic user identifier — rather than a coordinate-derived key (`city_${catalog.key}` or `ctx.coverageKey`). This prevents duplicate `demo:` hospital rows from accumulating across slightly different GPS readings in the same metro. The `demo_scope:${ctx.coverageKey}` feature tag written by the server is intentionally unchanged; it is used only by cleanup scripts and as a passthrough guard, not for production query filtering.
 
-## Active Demo Pool Rule (2026-05-01)
+## Active Demo Pool Rule (2026-05-01, updated 2026-05-10)
 
 - Only demo hospitals with `status = available` count as the active bootstrap pool.
 - `bootstrap-demo-ecosystem` must not feed staffing or pricing repair from the full same-org demo catalog.
 - Same-org demo hospitals that are no longer part of the selected active pack must be retired out of the active pool by setting `status = full`.
 - `ensureDemoStaff` and downstream maintenance must run only against the active selected pack returned by the current bootstrap cycle.
 - Historical demo hospitals may remain in `status = full` when they are still referenced by visits or emergency requests, but they must not generate new doctors, drivers, or ambulances.
+- **Cross-org geographic sweep (2026-05-10):** During `ensureDemoHospitals`, after same-org stale rows are retired, a secondary sweep retires `status = available` demo hospitals (`place_id LIKE 'demo:%'`) from **other** organizations that fall within a `±0.15°` bounding box (~16 km at the equator). This eliminates ghost packs left by earlier coordinate-scoped bootstrap sessions under different org identities. The sweep is non-fatal — a query or update failure logs a warning and does not block the user's bootstrap cycle. Retired cross-org rows are set to `status = full`; they are never deleted.
 
 ## Demo Cleanup Runbook (2026-05-01)
 
@@ -186,6 +188,8 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 20. When no trustworthy real image exists, the hospital still renders via deterministic fallback rather than blank media.
 21. Repeated bootstrap in the same metro scope must not keep growing active demo hospital count beyond the intended `5-6` pack.
 22. Historical full demo hospitals must not generate new doctor, driver, or ambulance records during later bootstrap cycles.
+23. Two bootstrap runs by the same user at GPS coordinates a few hundred metres apart must produce the same set of `demo:` hospital `place_id` values (scope key is user-slug-stable, not coordinate-derived).
+24. After a fresh bootstrap, no `status = available` demo hospital rows owned by a different organization must exist within `~16 km` of the user's location (cross-org sweep has retired them to `status = full`).
 
 ## Failure Handling
 
