@@ -137,20 +137,38 @@ export const useLocationStore = create(
           const existingKey = getSavedAddressKey(loc);
           const nextKey = getSavedAddressKey(newLocation);
           if (existingKey && nextKey && existingKey === nextKey) return true;
+          if (existingKey || nextKey) return false;
+
+          const existingCategory = String(loc?.category || "").trim().toLowerCase();
+          const nextCategory = String(newLocation?.category || "").trim().toLowerCase();
+          if (!existingCategory || !nextCategory || existingCategory !== nextCategory) {
+            return false;
+          }
+
           return isSameSavedAddress(loc, newLocation);
         });
 
         if (existingIndex !== -1) {
-          // Rollback note: Home/Work and same-coordinate saves update in place.
-          // This keeps the sheet decision tree deterministic and avoids duplicate
-          // saved places after search/manual flows retry the same candidate.
+          // Rollback note: Home/Work are singleton slots. Other categories only
+          // dedupe inside their own family, so the same address can be Home and
+          // Family without one identity overwriting the other.
           const existing = state.savedLocations[existingIndex];
+          const nextUsage = newLocation.usage || {};
+          const existingUseCount = Number(existing.usage?.useCount || 0);
+          const nextUseCount = Number(nextUsage.useCount || 0);
           const merged = normalizeSavedAddress({
             ...existing,
             ...newLocation,
             id: existing.id,
             createdAt: existing.createdAt,
-            usage: existing.usage,
+            usage: {
+              lastUsedAt:
+                nextUsage.lastUsedAt ||
+                newLocation.lastUsedAt ||
+                existing.usage?.lastUsedAt ||
+                null,
+              useCount: existingUseCount + nextUseCount,
+            },
             sync: {
               ...(existing.sync || {}),
               status: existing.sync?.status === "synced" ? "pendingUpdate" : existing.sync?.status || "local",

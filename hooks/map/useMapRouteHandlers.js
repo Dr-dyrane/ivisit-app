@@ -134,8 +134,9 @@ export function useMapRouteHandlers({
 
   // Handler: Open location sheet
   const handleOpenLocationSheet = useCallback(() => {
+    setSheetPayload(null);
     setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
-  }, [setSheetPhase]);
+  }, [setSheetPayload, setSheetPhase]);
 
   // Handler: Open location intent from search (preserves query)
   const handleOpenLocationIntentFromSearch = useCallback(
@@ -144,16 +145,19 @@ export function useMapRouteHandlers({
         typeof options?.query === "string" && options.query.trim().length > 0
           ? options.query.trim()
           : null;
+      const sourcePhase =
+        typeof options?.sourcePhase === "string"
+          ? options.sourcePhase
+          : MAP_SHEET_PHASES.SEARCH;
+      const sourceSnapState = options?.sourceSnapState || sheetSnapState;
+      setSheetPayload({
+        sourcePhase,
+        sourceSnapState,
+        sourcePayload: options?.sourcePayload || null,
+        intentMode: preservedQuery ? "addressSearch" : options?.intentMode || null,
+        addressQuery: preservedQuery,
+      });
       setSheetPhase(MAP_SHEET_PHASES.LOCATION_INTENT);
-      if (preservedQuery) {
-        setSheetPayload({
-          sourcePhase: MAP_SHEET_PHASES.SEARCH,
-          sourceSnapState: sheetSnapState,
-          sourcePayload: null,
-          intentMode: "addressSearch",
-          addressQuery: preservedQuery,
-        });
-      }
     },
     [setSheetPayload, setSheetPhase, sheetSnapState],
   );

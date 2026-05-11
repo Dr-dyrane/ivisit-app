@@ -433,10 +433,14 @@ const handleChangeLocation = useCallback(() => {
 ```
 
 **Pass 4 Checklist:**
-- [ ] Update search sheet handleChangeLocation to open location sheet
-- [ ] Update tracking sheet pickup address to open location sheet
-- [ ] Update hospital detail pickup to open location sheet
-- [ ] Update service detail pickup to open location sheet
+- [x] Update search sheet handleChangeLocation to open location sheet
+- [x] Update ambulance decision pickup CTA to open location sheet
+- [x] Update bed decision pickup CTA to open location sheet
+- [x] Update payment pickup CTA to open location sheet
+- [x] Preserve source phase payload so closing LocationSheet can return to the launching phase
+- [ ] Tracking pickup address remains read-only unless backend request-destination mutation is added
+- [ ] Add hospital detail pickup CTA when that surface gets a pickup row
+- [ ] Add service detail pickup CTA when that surface gets a pickup row
 - [ ] Test all redirects to location sheet
 - [ ] Test location sheet consistency across all entry points
 
@@ -969,6 +973,8 @@ Scope:
 - Home/Work save from category as fast paths; Family, School, Pharmacy, Care, and Other continue to a details phase for label, unit/landmark, and responder note before saving.
 - Successful category/details saves return to the selected-address decision surface with saved feedback instead of leaving the user inside the nested save flow.
 - Existing saved places open an in-sheet manage phase from the Places orbs. Manage supports use as pickup, edit details through the same details surface, and a two-tap remove confirmation without a separate modal.
+- Expanded LocationSheet also surfaces non-Home/Work saved places as a grouped list so Family, School, Pharmacy, Care, and Other saves remain manageable instead of becoming write-only data.
+- Home and Work are singleton identity slots. Other saved-place families can coexist at the same address; dedupe only happens inside the same non-singleton category/address pair.
 - Recents are pickup memory only. Search/manual pickup commits write `category: "recent"` entries, while saved-place families stay out of the Recents group and are owned by saved-place management.
 - Empty address search can surface recent pickup address candidates in the same grouped result language as predictions; selecting one enters the candidate decision loop instead of committing immediately.
 
@@ -1022,3 +1028,6 @@ Scope:
 - Recents combine recent searches, manual pickups, saved-location uses, and visited locations when available.
 - Reuse existing grouped list design from ExploreIntent/RecentVisits rather than creating a new row language.
 - Selecting a recent location creates the same candidate decision state.
+- Recent pickup memory is stored as normalized address candidates, sorted by latest use, and hidden when an equivalent saved place already owns the same address.
+- Saved-place pickup use writes a lightweight recent snapshot for operational memory while keeping saved-place management as the identity owner.
+- Recent visit rows join the default Recents list only when a facility address and coordinate are available.

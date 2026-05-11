@@ -170,7 +170,7 @@ export default function MapSheetOrchestrator({
 						onSelectService={onSelectHospitalService}
 						onSnapStateChange={onSnapStateChange}
 						onChangePickup={() =>
-							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+							onOpenLocationIntent({
 								sourcePhase: MAP_SHEET_PHASES.AMBULANCE_DECISION,
 								sourceSnapState: snapState,
 								sourcePayload: sheetPayload || null,
@@ -227,7 +227,7 @@ export default function MapSheetOrchestrator({
 						onSelectService={onSelectHospitalService}
 						onSnapStateChange={onSnapStateChange}
 						onChangePickup={() =>
-							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+							onOpenLocationIntent({
 								sourcePhase: MAP_SHEET_PHASES.BED_DECISION,
 								sourceSnapState: snapState,
 								sourcePayload: sheetPayload || null,
@@ -332,7 +332,7 @@ export default function MapSheetOrchestrator({
 						onOpenTransportDetailFromPayment={onOpenTransportDetailFromPayment}
 						onCenterMapOnUserFromPayment={onCenterMapOnUserFromPayment}
 						onOpenLocationSearchFromPayment={() =>
-							onOpenSearch(MAP_SEARCH_SHEET_MODES.LOCATION, {
+							onOpenLocationIntent({
 								sourcePhase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
 								sourceSnapState: snapState,
 								sourcePayload: sheetPayload || null,

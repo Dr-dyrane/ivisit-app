@@ -508,7 +508,21 @@ export default function MapScreen() {
           onConfirmServiceDetail={confirmServiceDetail}
           onChangeServiceDetail={changeServiceDetailService}
           onSelectHospitalService={setHospitalServiceSelection}
-          onCloseLocationIntent={() => setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT)}
+          onCloseLocationIntent={() => {
+            const returnPhase = sheetPayload?.sourcePhase;
+            const returnPayload = sheetPayload?.sourcePayload || null;
+            if (
+              returnPhase &&
+              returnPhase !== MAP_SHEET_PHASES.SEARCH &&
+              returnPhase !== MAP_SHEET_PHASES.LOCATION_INTENT
+            ) {
+              setSheetPayload(returnPayload);
+              setSheetPhase(returnPhase);
+              return;
+            }
+            setSheetPayload(null);
+            setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+          }}
           onOpenLocationIntent={handleOpenLocationIntentFromSearch}
           searchMode={searchSheetMode}
           hospitals={discoveredHospitals}

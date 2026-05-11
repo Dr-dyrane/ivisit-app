@@ -2,8 +2,10 @@
  * Helper functions for MapLocationIntent business logic
  */
 import {
+	getSavedAddressCategoryMeta,
 	getSavedAddressDisplayLabel,
 	getSavedAddressKey,
+	isSameSavedAddress,
 	normalizeAddressCandidate,
 	normalizeAddressCategory,
 } from "../../../../services/locationAddressService";
@@ -90,7 +92,16 @@ export function buildLocationIntentSavedPlaces(savedLocations = []) {
 }
 
 export function buildLocationIntentRecents(savedLocations = []) {
-	return (Array.isArray(savedLocations) ? savedLocations : [])
+	const safeLocations = Array.isArray(savedLocations) ? savedLocations : [];
+	const savedPlaceLocations = safeLocations.filter((item) => {
+		if (!item) return false;
+		const category = normalizeAddressCategory(item.category || item.label, null);
+		const source = String(item.source || "").trim().toLowerCase();
+		const rawLabel = String(item.label || "").trim().toLowerCase();
+		return category && category !== "recent" && source !== "recent" && rawLabel !== "recent";
+	});
+
+	return safeLocations
 		.filter((item) => {
 			if (!item || getSavedLocationKey(item) !== null) return false;
 			const category = normalizeAddressCategory(item.category || item.label, null);
@@ -100,7 +111,20 @@ export function buildLocationIntentRecents(savedLocations = []) {
 			// Rollback note: Recents are pickup memory, not the overflow bucket for
 			// saved-place categories. Keep Family/School/etc. out of this list so
 			// saved-place management owns saved identities.
-			return category === "recent" || source === "recent" || rawLabel === "recent";
+			if (!(category === "recent" || source === "recent" || rawLabel === "recent")) {
+				return false;
+			}
+
+			return !savedPlaceLocations.some((savedPlace) => isSameSavedAddress(savedPlace, item));
+		})
+		.sort((left, right) => {
+			const leftTime = Number(
+				left?.usage?.lastUsedAt || left?.lastUsedAt || left?.updatedAt || left?.createdAt || 0,
+			);
+			const rightTime = Number(
+				right?.usage?.lastUsedAt || right?.lastUsedAt || right?.updatedAt || right?.createdAt || 0,
+			);
+			return rightTime - leftTime;
 		})
 		.slice(0, 6)
 		.map((item) => ({
@@ -110,7 +134,37 @@ export function buildLocationIntentRecents(savedLocations = []) {
 		}));
 }
 
+export function buildLocationIntentManagedSavedPlaces(savedLocations = []) {
+	return (Array.isArray(savedLocations) ? savedLocations : [])
+		.filter((item) => {
+			if (!item) return false;
+			if (getSavedLocationKey(item)) return false;
+			const category = normalizeAddressCategory(item.category || item.label, null);
+			const source = String(item.source || "").trim().toLowerCase();
+			const rawLabel = String(item.label || "").trim().toLowerCase();
+			return category && category !== "recent" && source !== "recent" && rawLabel !== "recent";
+		})
+		.slice(0, 6)
+		.map((item) => {
+			const category = normalizeAddressCategory(item.category || item.label, "other");
+			const meta = getSavedAddressCategoryMeta(category);
+			return {
+				...item,
+				id: item.id || `${category}-${item.address || item.label || "saved-place"}`,
+				requestType: "visit",
+				title: getSavedAddressDisplayLabel(item, meta.label),
+				subtitle: item.address || "",
+				timeLabel: "",
+				statusLabel: meta.label,
+				statusTone: "default",
+			};
+		});
+}
+
 export function mapStoredLocationToCandidate(location, fallbackLabel = "Saved place") {
+	// Guard: location is null for empty Home/Work slots (hasLocation: false)
+	// Callers handle null return via: if (!candidate) { setPendingPlaceLabel; openAddressSearch; }
+	if (!location) return null;
 	return normalizeAddressCandidate(
 		{
 			...location,
@@ -271,7 +325,7 @@ export function buildCandidateDecisionActions({
 	// sheet can swap row styling without leaking save/pickup branching into JSX.
 	const actions = [];
 	const source = selectedLocation?.source;
-	const canSaveCandidate = ["manual", "search", "recent"].includes(source);
+	const canSaveCandidate = ["manual", "search", "recent", "visit"].includes(source);
 	const pendingTitle =
 		pendingPlaceLabel === "home"
 			? "Set as Home"

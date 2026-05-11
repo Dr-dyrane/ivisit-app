@@ -126,6 +126,15 @@ const LocationChrome = ({
         expand();
     }, [collapse, expand, isExpanded]);
 
+    const handleChromeHoverIn = useCallback(() => {
+        expand({ autoCollapse: false });
+    }, [expand]);
+
+    const handleChromeHoverOut = useCallback(() => {
+        clearCollapseTimer();
+        collapseTimerRef.current = setTimeout(collapse, 900);
+    }, [clearCollapseTimer, collapse]);
+
     const handleOpenPress = useCallback(() => {
         if (!isExpanded) {
             expand();
@@ -180,6 +189,8 @@ const LocationChrome = ({
                     <Pressable
                         onPress={handleIconPress}
                         onPressIn={() => triggerPress("light")}
+                        onHoverIn={handleChromeHoverIn}
+                        onHoverOut={handleChromeHoverOut}
                         style={({ pressed }) => [
                             styles.iconButton,
                             { transform: [{ scale: pressed ? 0.95 : 1 }] }
@@ -201,6 +212,8 @@ const LocationChrome = ({
                     <Pressable
                         onPress={handleOpenPress}
                         onPressIn={() => triggerPress("light")}
+                        onHoverIn={handleChromeHoverIn}
+                        onHoverOut={handleChromeHoverOut}
                         style={styles.copyButton}
                         disabled={!isExpanded}
                         accessibilityRole="button"
