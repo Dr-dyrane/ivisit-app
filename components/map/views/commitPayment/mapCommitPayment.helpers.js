@@ -237,7 +237,10 @@ export function buildCommitPaymentCompletionPayload({
 		bedType: initiatedRequest?.bedType || null,
 		bedNumber: initiatedRequest?.bedNumber || null,
 		serviceType,
-		estimatedArrival: result?.estimatedArrival || hospital?.eta || "8 mins",
+		// PULLBACK NOTE: UX-C PT-11 — fabricated ETA fallback removed (patient safety)
+		// OLD: result?.estimatedArrival || hospital?.eta || "8 mins"
+		// NEW: null — caller must handle null ETA with "Calculating…" display or omit pill
+		estimatedArrival: result?.estimatedArrival || hospital?.eta || null,
 		etaSeconds: Number.isFinite(result?.etaSeconds) ? result.etaSeconds : null,
 		hospitalCoordinate: getDestinationCoordinate(hospital),
 		patientLocation: initiatedRequest?.patientLocation || null,

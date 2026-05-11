@@ -514,16 +514,6 @@ export default function MapCommitPaymentStageBase({
 						{infoMessage}
 					</Text>
 				) : null}
-
-				<MapCommitPaymentFooter
-					label={footerActionLabel}
-					onPress={handleFooterPress}
-					loading={isSubmitting || isPaymentMethodSnapshotPending}
-					disabled={footerActionDisabled}
-					modalContainedStyle={modalContainedStyle}
-					contentInsetStyle={webWideInsetStyle}
-					inline
-				/>
 			</View>
 		) : (
 			<View style={styles.sectionStack}>
@@ -586,7 +576,21 @@ export default function MapCommitPaymentStageBase({
 					/>
 				</View>
 			}
-			footerSlot={null}
+			footerSlot={
+				/* PULLBACK NOTE: UX-C Issue 8 — payment CTA moved to sticky footer outside scroll body */
+				/* OLD: MapCommitPaymentFooter rendered inside scroll body (below fold on HALF snap) */
+				/* NEW: sticky footerSlot — always visible, never occluded by scroll content */
+				isIdleState ? (
+					<MapCommitPaymentFooter
+						label={footerActionLabel}
+						onPress={handleFooterPress}
+						loading={isSubmitting || isPaymentMethodSnapshotPending}
+						disabled={footerActionDisabled}
+						modalContainedStyle={modalContainedStyle}
+						contentInsetStyle={webWideInsetStyle}
+					/>
+				) : null
+			}
 			onHandlePress={handleHeaderSnapToggle}
 			bodyGestureEnabled={false}
 		>
