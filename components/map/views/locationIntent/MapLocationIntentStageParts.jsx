@@ -21,7 +21,11 @@ import {
 	MANUAL_LOCATION_STEPS,
 } from "./mapLocationIntent.model";
 import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
-import { getPlaceOrbHierarchy, getPlaceOrbSubtext } from "./mapLocationIntent.helpers";
+import {
+	buildCandidateDecisionActions,
+	getPlaceOrbHierarchy,
+	getPlaceOrbSubtext,
+} from "./mapLocationIntent.helpers";
 
 function buildCollapsedAction({
 	showToggle,
@@ -58,6 +62,31 @@ function formatLocationHeaderText(value) {
 			return `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`;
 		});
 	});
+}
+
+function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedColor) {
+	if (action?.tone === "neutral") {
+		return {
+			iconBackgroundColor: infoSurfaceColor,
+			iconColor: mutedColor,
+			textColor: mutedColor,
+		};
+	}
+
+	const toneColors = {
+		home: MAP_LOCATION_INTENT_COPY.placesOrbColors.home?.[1],
+		work: MAP_LOCATION_INTENT_COPY.placesOrbColors.work?.[1],
+		saved: MAP_LOCATION_INTENT_COPY.placesOrbColors.add?.[1],
+		pickup: "#2563EB",
+		success: "#059669",
+	};
+	const accentColor = toneColors[action?.tone] || titleColor;
+
+	return {
+		iconBackgroundColor: `${accentColor}18`,
+		iconColor: accentColor,
+		textColor: titleColor,
+	};
 }
 
 export function MapLocationIntentCollapsedTopRow({
@@ -263,29 +292,32 @@ export function MapLocationIntentBodyContent({
 			: "Use device";
 	const handleHeroAction = isDevicePickup ? onOpenSearch : onUseCurrentLocation;
 	const pendingPlaceLabel = selectedLocation?.pendingPlaceLabel;
-	const pendingPlaceTitle =
-		pendingPlaceLabel === "home"
-			? "Set Home"
-			: pendingPlaceLabel === "work"
-				? "Set Work"
-				: pendingPlaceLabel === "other"
-					? "Save place"
-					: null;
-	const savedPlaceText =
-		savedPlaceFeedback === "home"
-			? "Saved Home"
-			: savedPlaceFeedback === "work"
-				? "Saved Work"
-				: savedPlaceFeedback
-					? "Saved place"
-					: null;
-	const canSaveCandidate = ["manual", "search", "recent"].includes(
-		selectedLocation?.source,
+	const candidateActions = useMemo(
+		() =>
+			buildCandidateDecisionActions({
+				selectedLocation,
+				pendingPlaceLabel,
+				savedPlaceFeedback,
+			}),
+		[pendingPlaceLabel, savedPlaceFeedback, selectedLocation],
 	);
-	const primaryCandidateActionLabel = pendingPlaceTitle || "Use this location";
-	const handlePrimaryCandidateAction = pendingPlaceLabel
-		? () => onSaveSelectedLocationAs?.(pendingPlaceLabel)
-		: onConfirmSelection;
+	const pendingPlaceTitle = candidateActions[0]?.saveLabel
+		? candidateActions[0]?.label
+		: null;
+	const handleCandidateAction = (action) => {
+		if (!action || action.type === "status") return;
+		if (action.type === "pickup") {
+			onConfirmSelection?.();
+			return;
+		}
+		if (action.type === "save") {
+			onSaveSelectedLocationAs?.(action.saveLabel);
+			return;
+		}
+		if (action.type === "back") {
+			onBackToDefault?.();
+		}
+	};
 
 	return (
 		<View style={styles.bodyScrollContent}>
@@ -766,110 +798,65 @@ export function MapLocationIntentBodyContent({
 					</View>
 
 					<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
-						<Pressable
-							onPress={handlePrimaryCandidateAction}
-							accessibilityRole="button"
-							accessibilityLabel={primaryCandidateActionLabel}
-							style={({ pressed }) => [
-								styles.candidateActionRow,
-								pressed ? styles.rowPressed : null,
-							]}
-						>
-							<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-								<Ionicons name="checkmark-circle-outline" size={18} color={titleColor} />
-							</View>
-							<Text style={[styles.candidateActionText, { color: titleColor }]}>
-								{primaryCandidateActionLabel}
-							</Text>
-							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-						</Pressable>
+						{candidateActions.map((action, index) => {
+							const isStatus = action.type === "status";
+							const actionTone = resolveCandidateActionTone(
+								action,
+								infoSurfaceColor,
+								titleColor,
+								mutedColor,
+							);
+							const content = (
+								<>
+									<View
+										style={[
+											styles.candidateActionIcon,
+											{ backgroundColor: actionTone.iconBackgroundColor },
+										]}
+									>
+										<Ionicons
+											name={action.iconName}
+											size={18}
+											color={actionTone.iconColor}
+										/>
+									</View>
+									<Text
+										style={[
+											styles.candidateActionText,
+											{ color: actionTone.textColor },
+										]}
+									>
+										{action.label}
+									</Text>
+									{isStatus || action.type === "back" ? null : (
+										<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+									)}
+								</>
+							);
 
-						{canSaveCandidate && !savedPlaceText ? (
-							<>
-								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-								<Pressable
-									onPress={() => onSaveSelectedLocationAs?.("home")}
-									style={({ pressed }) => [
-										styles.candidateActionRow,
-										pressed ? styles.rowPressed : null,
-									]}
-								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-										<Ionicons name="home-outline" size={18} color={titleColor} />
-									</View>
-									<Text style={[styles.candidateActionText, { color: titleColor }]}>
-										Set as Home
-									</Text>
-									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-								</Pressable>
-								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-								<Pressable
-									onPress={() => onSaveSelectedLocationAs?.("work")}
-									style={({ pressed }) => [
-										styles.candidateActionRow,
-										pressed ? styles.rowPressed : null,
-									]}
-								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-										<Ionicons name="briefcase-outline" size={18} color={titleColor} />
-									</View>
-									<Text style={[styles.candidateActionText, { color: titleColor }]}>
-										Set as Work
-									</Text>
-									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-								</Pressable>
-								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-								<Pressable
-									onPress={() => onSaveSelectedLocationAs?.("other")}
-									style={({ pressed }) => [
-										styles.candidateActionRow,
-										pressed ? styles.rowPressed : null,
-									]}
-								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-										<Ionicons name="bookmark-outline" size={18} color={titleColor} />
-									</View>
-									<Text style={[styles.candidateActionText, { color: titleColor }]}>
-										Save place
-									</Text>
-									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-								</Pressable>
-							</>
-						) : null}
-
-						{savedPlaceText ? (
-							<>
-								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-								<View style={styles.candidateActionRow}>
-									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-										<Ionicons name="checkmark-circle" size={18} color={titleColor} />
-									</View>
-									<Text style={[styles.candidateActionText, { color: titleColor }]}>
-										{savedPlaceText}
-									</Text>
-								</View>
-							</>
-						) : null}
-
-						{canSaveCandidate ? (
-							<>
-								<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
-								<Pressable
-									onPress={onBackToDefault}
-									style={({ pressed }) => [
-										styles.candidateActionRow,
-										pressed ? styles.rowPressed : null,
-									]}
-								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: infoSurfaceColor }]}>
-										<Ionicons name="chevron-back" size={18} color={titleColor} />
-									</View>
-									<Text style={[styles.candidateActionText, { color: mutedColor }]}>
-										Pick another location
-									</Text>
-								</Pressable>
-							</>
-						) : null}
+							return (
+								<React.Fragment key={action.id}>
+									{index > 0 ? (
+										<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+									) : null}
+									{isStatus ? (
+										<View style={styles.candidateActionRow}>{content}</View>
+									) : (
+										<Pressable
+											onPress={() => handleCandidateAction(action)}
+											accessibilityRole="button"
+											accessibilityLabel={action.label}
+											style={({ pressed }) => [
+												styles.candidateActionRow,
+												pressed ? styles.rowPressed : null,
+											]}
+										>
+											{content}
+										</Pressable>
+									)}
+								</React.Fragment>
+							);
+						})}
 					</View>
 				</View>
 			) : null}

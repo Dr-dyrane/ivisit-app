@@ -89,6 +89,19 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Historical demo hospitals may remain in `status = full` when they are still referenced by visits or emergency requests, but they must not generate new doctors, drivers, or ambulances.
 - **Cross-org geographic sweep (2026-05-10):** During `ensureDemoHospitals`, after same-org stale rows are retired, a secondary sweep retires `status = available` demo hospitals (`place_id LIKE 'demo:%'`) from **other** organizations that fall within a `±0.15°` bounding box (~16 km at the equator). This eliminates ghost packs left by earlier coordinate-scoped bootstrap sessions under different org identities. The sweep is non-fatal — a query or update failure logs a warning and does not block the user's bootstrap cycle. Retired cross-org rows are set to `status = full`; they are never deleted.
 
+## User-Scoped Bootstrap Rule (2026-05-10)
+
+- Demo bootstrap scope is user-identity-based, not coordinate-based.
+- The scope key is `ctx.userSlug` (derived from the authenticated user ID).
+- Each user has exactly one demo org, stable across all sessions and all cities.
+- Moving cities does not create a new org or a new set of `place_id` values.
+- Slot-based fallback hospitals update coordinates in-place via upsert when the user moves to a new city.
+- Source-based hospitals are retired by the same-org stale sweep when no longer in range.
+- This rule applies worldwide — no per-city catalog entry is required to benefit from a stable scope.
+- `CITY_DEMO_FALLBACK_CATALOGS` remain valid as seed data sources for hospital names and coordinates; they no longer override the scope key.
+- The duplicate-hospital acceptance check (check 21) is enforced by org stability: one user → one org → one upsert pass per bootstrap cycle.
+- The client-side coverage gate (`getPersistedDemoCoverageForLocation`) filters by owner slug so another user's nearby demo pack cannot satisfy the current user's bootstrap threshold.
+
 ## Demo Cleanup Runbook (2026-05-01)
 
 - Prevention first:

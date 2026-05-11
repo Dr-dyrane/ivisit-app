@@ -962,7 +962,9 @@ Scope:
   - Set/update Work.
   - Save as another place.
 - Committing pickup uses the canonical `selectedLocation` shape.
-- Saving a place uses the same candidate object and saved-location store; Home/Work update existing entries instead of creating duplicate labels.
+- Saving a place uses the same candidate object and saved-location store.
+- Home/Work are singleton identity slots and update existing entries instead of creating duplicate labels.
+- Generic saved places preserve the candidate display label and only dedupe through same-address or same-coordinate store rules.
 
 Deferred inside Pass A:
 

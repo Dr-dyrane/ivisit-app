@@ -210,10 +210,13 @@ export const demoEcosystemService = {
 		const featureList = Array.isArray(hospital?.features)
 			? hospital.features.map((feature) => String(feature).trim().toLowerCase())
 			: [];
-		if (
-			featureList.includes("demo_shared") ||
-			featureList.some((feature) => feature.startsWith("demo_scope:"))
-		) {
+		// PULLBACK NOTE (EC-5): Previously also returned true for any hospital with a
+		// demo_scope: tag, regardless of which user's scope it was. That allowed
+		// cross-user hospital rows to pass the ownership gate. Now only demo_shared
+		// (explicitly shared inventory) bypasses the slug check.
+		// OLD: featureList.includes("demo_shared") || featureList.some((f) => f.startsWith("demo_scope:"))
+		// NEW: featureList.includes("demo_shared") only.
+		if (featureList.includes("demo_shared")) {
 			return true;
 		}
 		const normalizedOwnerSlug = String(ownerSlug || "").trim().toLowerCase();
@@ -254,6 +257,12 @@ export const demoEcosystemService = {
 		latitude,
 		longitude,
 		minimumHospitals = DEMO_PERSISTED_COVERAGE_THRESHOLD,
+		// PULLBACK NOTE: ownerSlug added so coverage gate counts only this user's
+		// demo hospitals. Without it, User B's nearby pack could satisfy User A's
+		// coverage check and skip bootstrap, leaving A with no usable hospitals.
+		// OLD: no ownerSlug param; all status=available demo rows counted.
+		// NEW: rows not passing matchesDemoOwner(row, ownerSlug) are excluded.
+		ownerSlug = null,
 	} = {}) {
 		const coords = normalizeCoordinates({ latitude, longitude });
 		const coverageKey = toCoverageKey(coords);
@@ -293,6 +302,7 @@ export const demoEcosystemService = {
 				);
 			})
 			.filter((row) => this.countsAsDemoCoverage(row))
+			.filter((row) => !ownerSlug || this.matchesDemoOwner(row, ownerSlug))
 			.forEach((row) => {
 				const key = getHospitalFacilityKey(row) || String(row?.id || "");
 				if (!key || buckets.has(key)) return;
@@ -419,12 +429,14 @@ export const demoEcosystemService = {
 	}) {
 		const coords = normalizeCoordinates({ latitude, longitude });
 		const provisioningUserId = await resolveProvisioningUserId(userId);
+		const ownerSlug = toProvisioningOwnerSlug(provisioningUserId);
 		const lastBootstrapState = await this.getBootstrapState(provisioningUserId);
 		const persistedCoverage = force
 			? null
 			: await this.getPersistedDemoCoverageForLocation({
 					latitude: coords.latitude,
 					longitude: coords.longitude,
+					ownerSlug,
 			  });
 
 		if (!force && persistedCoverage?.sufficient) {

@@ -506,16 +506,28 @@ export default function MapLocationIntentStageBase({
 	const handleSaveSelectedLocationAs = useCallback(
 		(label) => {
 			if (!selectedLocation || !label) return;
+			const normalizedLabel = String(label).trim().toLowerCase();
+			const shouldUpdateCategorySlot =
+				normalizedLabel === "home" || normalizedLabel === "work";
+			const displayLabel =
+				normalizedLabel === "other"
+					? selectedLocation.label || selectedLocation.address || "Saved place"
+					: label;
 			const savedPayload = mapCandidateToSavedAddressPayload(selectedLocation, {
-				label,
-				category: label,
+				label: displayLabel,
+				category: normalizedLabel,
 			});
 			if (!savedPayload) return;
-			const existing = savedLocations.find(
-				(item) =>
-					String(item?.category || item?.label || "").toLowerCase() ===
-					String(label).toLowerCase(),
-			);
+			// Rollback note: Home/Work are singleton identity slots. Generic saved
+			// places are not; they should preserve the selected place name and let
+			// the store dedupe only by same address/coords.
+			const existing = shouldUpdateCategorySlot
+				? savedLocations.find(
+						(item) =>
+							String(item?.category || item?.label || "").toLowerCase() ===
+							normalizedLabel,
+					)
+				: null;
 			if (existing?.id) {
 				updateSavedLocation?.(existing.id, savedPayload);
 				setSavedPlaceFeedback(label);

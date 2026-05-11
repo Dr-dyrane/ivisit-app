@@ -156,3 +156,91 @@ export function getManualStepActionLabel({
 	if (step?.optional && !value) return "Skip";
 	return stepIndex >= stepCount - 1 ? "Review pickup" : "Next";
 }
+
+export function buildCandidateDecisionActions({
+	selectedLocation,
+	pendingPlaceLabel,
+	savedPlaceFeedback,
+} = {}) {
+	// Rollback note: keep the selected-address decision tree data-only so the
+	// sheet can swap row styling without leaking save/pickup branching into JSX.
+	const actions = [];
+	const source = selectedLocation?.source;
+	const canSaveCandidate = ["manual", "search", "recent"].includes(source);
+	const pendingTitle =
+		pendingPlaceLabel === "home"
+			? "Set as Home"
+			: pendingPlaceLabel === "work"
+				? "Set as Work"
+				: pendingPlaceLabel === "other"
+					? "Save Place"
+					: null;
+	const savedPlaceText =
+		savedPlaceFeedback === "home"
+			? "Saved Home"
+			: savedPlaceFeedback === "work"
+				? "Saved Work"
+				: savedPlaceFeedback
+					? "Saved Place"
+					: null;
+
+	actions.push({
+		id: pendingPlaceLabel ? `save-${pendingPlaceLabel}` : "useAsPickup",
+		label: pendingTitle || "Use as Pickup",
+		iconName: pendingPlaceLabel ? "bookmark-outline" : "navigate-circle-outline",
+		tone: pendingPlaceLabel ? "saved" : "pickup",
+		type: pendingPlaceLabel ? "save" : "pickup",
+		saveLabel: pendingPlaceLabel || null,
+	});
+
+	if (canSaveCandidate && !savedPlaceText) {
+		actions.push(
+			{
+				id: "setHome",
+				label: "Set as Home",
+				iconName: "home-outline",
+				tone: "home",
+				type: "save",
+				saveLabel: "home",
+			},
+			{
+				id: "setWork",
+				label: "Set as Work",
+				iconName: "briefcase-outline",
+				tone: "work",
+				type: "save",
+				saveLabel: "work",
+			},
+			{
+				id: "savePlace",
+				label: "Save Place",
+				iconName: "bookmark-outline",
+				tone: "saved",
+				type: "save",
+				saveLabel: "other",
+			},
+		);
+	}
+
+	if (savedPlaceText) {
+		actions.push({
+			id: "savedFeedback",
+			label: savedPlaceText,
+			iconName: "checkmark-circle",
+			tone: "success",
+			type: "status",
+		});
+	}
+
+	if (canSaveCandidate) {
+		actions.push({
+			id: "pickAnother",
+			label: "Pick Another Location",
+			iconName: "search-outline",
+			tone: "neutral",
+			type: "back",
+		});
+	}
+
+	return actions;
+}
