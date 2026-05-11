@@ -21,6 +21,8 @@ const styles = StyleSheet.create({
 	},
 	searchPill: {
 		flex: 1,
+		flexShrink: 1,
+		minWidth: 0,
 		minHeight: 44,
 		paddingHorizontal: 15,
 		flexDirection: "row",
@@ -31,6 +33,7 @@ const styles = StyleSheet.create({
 	},
 	searchInputPill: {
 		paddingVertical: 0,
+		minWidth: 0,
 	},
 	searchInput: {
 		flex: 1,
@@ -233,6 +236,27 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 14,
 	},
+	recentsEmptyGroup: {
+		marginTop: 4,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+	emptyGroupCopy: {
+		flex: 1,
+		minWidth: 0,
+	},
+	emptyGroupTitle: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "700",
+	},
+	emptyGroupBody: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "400",
+	},
 	listRow: {
 		paddingVertical: 12,
 		paddingHorizontal: 14,
@@ -266,6 +290,10 @@ const styles = StyleSheet.create({
 		gap: 10,
 		marginBottom: 20,
 	},
+	manualFallbackCard: {
+		marginTop: 0,
+		marginBottom: 18,
+	},
 	manualIntroIcon: {
 		width: 38,
 		height: 38,
@@ -287,10 +315,15 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 	},
 	manualAction: {
-		marginTop: 4,
 		flexDirection: "row",
 		alignItems: "center",
-		justifyContent: "space-between",
+		gap: 4,
+		flexShrink: 0,
+	},
+	manualActionLabel: {
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "700",
 	},
 	manualStepBody: {
 		gap: 12,
@@ -458,7 +491,7 @@ const styles = StyleSheet.create({
 		height: StyleSheet.hairlineWidth,
 		marginLeft: 60,
 	},
-	// ── Manual step redesign styles ──────────────────────────────────────────
+	// Manual step redesign styles
 	manualCompletedRow: {
 		minHeight: 44,
 		flexDirection: "row",

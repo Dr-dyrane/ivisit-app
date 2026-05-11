@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -660,6 +660,36 @@ export function MapLocationIntentBodyContent({
 					</View>
 
 					<Pressable
+						onPress={onOpenManualIntro}
+						accessibilityRole="button"
+						accessibilityLabel="Enter address manually"
+						style={({ pressed }) => [
+							styles.manualIntroCard,
+							styles.manualFallbackCard,
+							{ backgroundColor: groupSurfaceColor },
+							pressed ? styles.rowPressed : null,
+						]}
+					>
+						<View style={[styles.manualIntroIcon, { backgroundColor: infoSurfaceColor }]}>
+							<MaterialCommunityIcons name="map-plus" size={18} color={mutedColor} />
+						</View>
+						<View style={styles.manualIntroCopy}>
+							<Text style={[styles.manualTitle, { color: titleColor }]}>
+								{model.manualIntroTitle}
+							</Text>
+							<Text style={[styles.manualBody, { color: mutedColor }]}>
+								{model.manualIntroBody}
+							</Text>
+						</View>
+						<View style={styles.manualAction}>
+							<Text numberOfLines={1} style={[styles.manualActionLabel, { color: titleColor }]}>
+								{model.manualActionLabel}
+							</Text>
+							<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
+						</View>
+					</Pressable>
+
+					<Pressable
 						onPress={onOpenRecentsHub}
 						style={({ pressed }) => [
 							styles.intentSectionHeader,
@@ -687,7 +717,19 @@ export function MapLocationIntentBodyContent({
 								isDarkMode={isDarkMode}
 							/>
 						</View>
-					) : null}
+					) : (
+						<View style={[styles.emptyGroup, styles.recentsEmptyGroup, { backgroundColor: groupSurfaceColor }]}>
+							<MaterialCommunityIcons name="clock-outline" size={18} color={mutedColor} />
+							<View style={styles.emptyGroupCopy}>
+								<Text style={[styles.emptyGroupTitle, { color: titleColor }]}>
+									No Recent Pickups
+								</Text>
+								<Text style={[styles.emptyGroupBody, { color: mutedColor }]}>
+									Selected pickup locations will appear here.
+								</Text>
+							</View>
+						</View>
+					)}
 				</>
 			) : null}
 

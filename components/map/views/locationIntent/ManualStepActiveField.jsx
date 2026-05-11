@@ -1,6 +1,7 @@
-﻿import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
+	Platform,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -83,6 +84,9 @@ function SelectSearchDrop({
 					autoFocus
 					autoCapitalize={step.autoCapitalize || "words"}
 					autoCorrect={false}
+					keyboardAppearance={Platform.OS === "ios" ? "default" : undefined}
+					returnKeyType="search"
+					blurOnSubmit={false}
 					style={[styles.searchInput, { color: titleColor }]}
 				/>
 				{query.length > 0 ? (
@@ -193,6 +197,10 @@ function SearchDrop({
 					autoFocus
 					autoCapitalize={step.autoCapitalize || "words"}
 					autoCorrect={false}
+					keyboardAppearance={Platform.OS === "ios" ? "default" : undefined}
+					returnKeyType="search"
+					blurOnSubmit={false}
+					onSubmitEditing={handleUseTypedQuery}
 					style={[styles.searchInput, { color: titleColor }]}
 				/>
 				{isDropLoading ? (
@@ -339,8 +347,10 @@ export default function ManualStepActiveField({
 			autoCapitalize={step.autoCapitalize || "sentences"}
 			autoCorrect={false}
 			autoFocus
+			keyboardAppearance={Platform.OS === "ios" ? "default" : undefined}
 			multiline={Boolean(step.multiline)}
 			returnKeyType={step.multiline ? "default" : "next"}
+			blurOnSubmit={!step.multiline}
 			onSubmitEditing={step.multiline ? undefined : onSubmitEditing}
 			style={[
 				styles.freeInput,

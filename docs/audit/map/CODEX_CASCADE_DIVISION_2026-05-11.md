@@ -245,7 +245,7 @@ export default function useCandidateHandlers({
 ```
 
 **Why Codex**: Pure hook extraction, no JSX, no icon/style changes.  
-**Status**: DONE - Completed by Cascade (2026-05-11). Hook created at `hooks/map/locationIntent/useCandidateHandlers.js` (310 lines). StageBase reduced 884→708 lines. No owned state moved — all save state stays in `useSavedAddressActions`; hook is a pure handler factory.
+**Status**: DONE - Completed by Cascade/Codex (2026-05-11). Hook created at `hooks/map/locationIntent/useCandidateHandlers.js` (310 lines). No owned state moved - all save state stays in `useSavedAddressActions`; hook is a pure handler factory.
 
 ---
 
@@ -360,6 +360,29 @@ useEffect(() => {
 
 ---
 
+### X-10 - Restore manual fallback, recents empty state, and keyboard-aware sheet
+**Files**:
+- `components/map/views/locationIntent/MapLocationIntentStageBase.jsx`
+- `components/map/views/locationIntent/MapLocationIntentStageParts.jsx`
+- `components/map/views/locationIntent/MapLocationIntentRecentsHubPanel.jsx`
+- `components/map/views/locationIntent/ManualStepActiveField.jsx`
+- `components/map/views/locationIntent/mapLocationIntent.styles.js`
+
+**Change**:
+- Restored the explicit "Can't find it? / Enter manually" fallback row in the default LocationSheet state.
+- Added empty recents UI in the default sheet and the Recents Hub.
+- Added keyboard-aware sheet resizing for search/manual phases using the app's existing `useAndroidKeyboardAwareModal` pattern.
+- Added platform-aware keyboard props to manual active inputs.
+
+**Why**:
+- The manual fallback became too hidden as a small search-row icon.
+- Empty recents need to explain state without looking broken.
+- Manual entry must keep the sticky CTA and active field visible when the keyboard is open.
+
+**Status**: DONE
+
+---
+
 ## Collision Avoidance Map
 
 | File | Owner | Other agent: hands off until DONE |
@@ -383,11 +406,11 @@ useEffect(() => {
 
 ## Recommended Parallel Execution Order
 
-**Cascade**: C-1 DONE, C-2 DONE, C-3 DONE, C-4 DONE, X-2 DONE, X-3 DONE → **NOW: C-5** (visual QA — `subtextColor` contrast on "Add" orbs).
+**Cascade**: C-1 DONE, C-2 DONE, C-3 DONE, C-4 DONE, C-5 DONE, X-2 DONE, X-3 DONE -> NOW: review X-10 UI result if continuing visual QA.
 
-**Codex**: X-1 DONE, X-3 DONE, X-4 DONE, X-5 DONE, X-6 DONE, X-7 DONE, X-8 DONE, X-9 DONE -> NOW: free to pick up new audit items or verify C-5 fallout.
+**Codex**: X-1 DONE, X-3 DONE, X-4 DONE, X-5 DONE, X-6 DONE, X-7 DONE, X-8 DONE, X-9 DONE, X-10 DONE -> NOW: keep listening for Cascade updates.
 
-**Sync point**: StageBase is under 700 lines. Cascade does C-5 visual QA. Codex can begin any new audit pass independently.
+**Sync point**: StageBase is 727 lines after X-10 restored the manual fallback UI and keyboard-aware shell behavior. Cascade can review X-10 visually; Codex can begin any new audit pass independently.
 
 ---
 

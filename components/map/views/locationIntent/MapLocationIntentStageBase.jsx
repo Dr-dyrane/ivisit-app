@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform, View } from "react-native";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Platform, View, useWindowDimensions } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import {
 	GLASS_SURFACE_VARIANTS,
 	getGlassSurfaceTokens,
 } from "../../../../constants/surfaces";
 import MapSheetShell from "../../MapSheetShell";
-import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
+import { getMapSheetHeight, MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
 import useMapSheetDetents from "../../core/useMapSheetDetents";
 import { getMapSheetTokens } from "../../tokens/mapSheetTokens";
 import sheetStageStyles from "../shared/mapSheetStage.styles";
@@ -39,7 +39,22 @@ import useSavedAddressActions from "../../../../hooks/map/locationIntent/useSave
 import useManualDropController from "../../../../hooks/map/locationIntent/useManualDropController";
 import useManualEntryHandlers from "../../../../hooks/map/locationIntent/useManualEntryHandlers";
 import useCandidateHandlers from "../../../../hooks/map/locationIntent/useCandidateHandlers";
+import { useAndroidKeyboardAwareModal } from "../../../../hooks/ui/useAndroidKeyboardAwareModal";
 import styles from "./mapLocationIntent.styles";
+
+const LOCATION_INTENT_MODE_SNAP_POLICY = Object.freeze({
+	[LOCATION_INTENT_MODES.DEFAULT]: MAP_SHEET_SNAP_STATES.HALF,
+	[LOCATION_INTENT_MODES.ADDRESS_SEARCH]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.MANUAL_STEP]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.PLACES_HUB]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.RECENTS_HUB]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.CANDIDATE_DECISION]: MAP_SHEET_SNAP_STATES.HALF,
+	[LOCATION_INTENT_MODES.CONFIRM]: MAP_SHEET_SNAP_STATES.HALF,
+	[LOCATION_INTENT_MODES.PIN_ADJUST]: MAP_SHEET_SNAP_STATES.HALF,
+	[LOCATION_INTENT_MODES.SAVE_CATEGORY]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.SAVE_DETAILS]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.SAVED_MANAGE]: MAP_SHEET_SNAP_STATES.EXPANDED,
+});
 
 export default function MapLocationIntentStageBase({
 	sheetHeight,
@@ -183,6 +198,57 @@ export default function MapLocationIntentStageBase({
 		goBack: navigateBack,
 		stack: navigationStack,
 	} = locationNavigation;
+	const {
+		keyboardHeight,
+		modalHeight: keyboardAwareModalHeight,
+	} = useAndroidKeyboardAwareModal({
+		defaultHeight: Number.isFinite(Number(sheetHeight)) ? Number(sheetHeight) : undefined,
+		maxHeightPercentage: 0.92,
+	});
+	// PULLBACK NOTE: [keyboard-collapse-fix v2] Android-only gate.
+	// OLD: Platform.OS !== "web" — fired on iOS too via keyboardWillShow,
+	//      setting keyboardHeight>0 before keyboard animation and causing
+	//      unintended sheet height mutations on a platform that handles
+	//      keyboard avoidance natively.
+	// NEW: Platform.OS === "android" only — matches the hook's own guard
+	//      (modalHeight is only mutated inside Platform.OS === 'android' blocks).
+	// PULLBACK NOTE: [keyboard-collapse-fix v3] Only shrink sheet height when
+	// mode does NOT require EXPANDED. EXPANDED-policy modes (ADDRESS_SEARCH,
+	// MANUAL_STEP, etc.) lock the sheet at full height; shrinking the sheetHeight
+	// prop cascades into MapSheetShell and triggers the collapse we're fixing.
+	// Non-EXPANDED modes (DEFAULT→HALF) can still benefit from keyboard resize.
+	// OLD: any mode with keyboard visible could trigger shrink
+	// NEW: shrink only when policy is NOT EXPANDED (i.e. DEFAULT/HALF modes)
+	const modeSnapPolicy = LOCATION_INTENT_MODE_SNAP_POLICY[mode] ?? MAP_SHEET_SNAP_STATES.HALF;
+	const shouldApplyKeyboardResize =
+		Platform.OS === "android" &&
+		keyboardHeight > 0 &&
+		modeSnapPolicy !== MAP_SHEET_SNAP_STATES.EXPANDED;
+	const keyboardAwareSheetHeight =
+		shouldApplyKeyboardResize && Number.isFinite(Number(sheetHeight))
+			? Math.max(320, Math.min(Number(sheetHeight), keyboardAwareModalHeight))
+			: sheetHeight;
+	const keyboardAwareBodyPadding = shouldApplyKeyboardResize
+		? { paddingBottom: Platform.OS === "android" ? 32 : 24 }
+		: null;
+	// PULLBACK NOTE: [keyboard-collapse-fix v4] Android sheetHeight freeze.
+	// Root cause: useMapSheetShell useEffect([sheetHeight]) springs the Animated.Value
+	// to the prop. On Android, keyboard open shrinks useWindowDimensions().height ->
+	// orchestrator recomputes sheetHeight smaller -> spring animates sheet DOWN.
+	// snapState/allowedSnapStates guards don't help — collapse is at Animated layer.
+	// Fix: freeze pre-keyboard screenHeight in a ref (Android only), use it to
+	// recompute EXPANDED sheetHeight so the Animated target never shrinks.
+	// iOS: screenHeight stable on keyboard open — no freeze needed.
+	// Web: Keyboard API no-op, keyboardHeight always 0 — freeze would never activate.
+	const { height: screenHeight } = useWindowDimensions();
+	const preKeyboardScreenHeightRef = useRef(screenHeight);
+	if (Platform.OS === "android" && keyboardHeight === 0) {
+		preKeyboardScreenHeightRef.current = screenHeight;
+	}
+	const resolvedSheetHeight =
+		modeRequiresExpanded && Platform.OS === "android"
+			? getMapSheetHeight(preKeyboardScreenHeightRef.current, MAP_SHEET_SNAP_STATES.EXPANDED)
+			: keyboardAwareSheetHeight;
 
 	const openAddressSearch = useCallback(() => {
 		setSavedPlaceFeedback(null);
@@ -255,25 +321,56 @@ export default function MapLocationIntentStageBase({
 			}),
 		[currentLocation, locationControl, mode],
 	);
+	const lastSnapPolicyKeyRef = useRef(null);
 
-	const effectiveSnapState =
-		effectivePresentationMode === "sheet"
+	// PULLBACK NOTE: [keyboard-collapse-fix v2] mirror MapCommitDetailsStageBase pattern.
+	// OLD: effectiveSnapState derived from snapState prop + keyboard guard → fragile race window
+	//      because keyboardRequiresExpanded was false until keyboardDidShow fired.
+	// NEW: modeRequiresExpanded derived purely from snap policy (no keyboard dep).
+	//      When true: hardcode EXPANDED constant + restrict allowedSnapStates to [EXPANDED],
+	//      so panResponder, detents, and parent prop cannot produce a down-snap.
+	//      Identical to how MapCommitDetailsStageBase locks its sheet.
+	const modeRequiresExpanded =
+		effectivePresentationMode === "sheet" &&
+		LOCATION_INTENT_MODE_SNAP_POLICY[mode] === MAP_SHEET_SNAP_STATES.EXPANDED;
+	const effectiveSnapState = modeRequiresExpanded
+		? MAP_SHEET_SNAP_STATES.EXPANDED
+		: effectivePresentationMode === "sheet"
 			? snapState
 			: MAP_SHEET_SNAP_STATES.EXPANDED;
 	const shouldShowHeaderToggle = effectivePresentationMode === "sheet";
 	const isCollapsed = effectiveSnapState === MAP_SHEET_SNAP_STATES.COLLAPSED;
 	const isExpanded = effectiveSnapState === MAP_SHEET_SNAP_STATES.EXPANDED;
 	const allowedSnapStates = useMemo(
-		() =>
-			effectivePresentationMode === "sheet"
-				? [
-						MAP_SHEET_SNAP_STATES.COLLAPSED,
-						MAP_SHEET_SNAP_STATES.HALF,
-						MAP_SHEET_SNAP_STATES.EXPANDED,
-					]
-				: [MAP_SHEET_SNAP_STATES.EXPANDED],
-		[effectivePresentationMode],
+		() => {
+			if (modeRequiresExpanded) return [MAP_SHEET_SNAP_STATES.EXPANDED];
+			if (effectivePresentationMode === "sheet") {
+				return [
+					MAP_SHEET_SNAP_STATES.COLLAPSED,
+					MAP_SHEET_SNAP_STATES.HALF,
+					MAP_SHEET_SNAP_STATES.EXPANDED,
+				];
+			}
+			return [MAP_SHEET_SNAP_STATES.EXPANDED];
+		},
+		[effectivePresentationMode, modeRequiresExpanded],
 	);
+	useLayoutEffect(() => {
+		if (effectivePresentationMode !== "sheet") return;
+		const policyKey = `${mode}:${effectivePresentationMode}`;
+		if (lastSnapPolicyKeyRef.current === policyKey) return;
+		lastSnapPolicyKeyRef.current = policyKey;
+		const requestedSnapState =
+			LOCATION_INTENT_MODE_SNAP_POLICY[mode] || MAP_SHEET_SNAP_STATES.HALF;
+		if (requestedSnapState !== snapState) {
+			onSnapStateChange?.(requestedSnapState);
+		}
+	// PULLBACK NOTE: [keyboard-collapse-fix] removed snapState from deps.
+	// OLD: [..., snapState] — caused re-runs on every parent render while
+	//      keyboard was open, creating a race window where stale HALF prop
+	//      slipped through when policyKey was already cached.
+	// NEW: mode + presentationMode only — the policyKey gate is sufficient.
+	}, [effectivePresentationMode, mode, onSnapStateChange]);
 	const heroSurfaceColor =
 		isDarkMode
 			? "rgba(255,255,255,0.075)"
@@ -504,7 +601,7 @@ export default function MapLocationIntentStageBase({
 	return (
 		<>
 		<MapSheetShell
-			sheetHeight={sheetHeight}
+			sheetHeight={resolvedSheetHeight}
 			snapState={effectiveSnapState}
 			presentationMode={effectivePresentationMode}
 			shellWidth={shellWidth}
@@ -579,6 +676,7 @@ export default function MapLocationIntentStageBase({
 							? sheetStageStyles.bodyScrollContentWide
 							: null,
 						modalContainedStyle,
+						keyboardAwareBodyPadding,
 						styles.bodyScrollContent,
 					]}
 					isSidebarPresentation={isSidebarPresentation}
@@ -630,7 +728,7 @@ export default function MapLocationIntentStageBase({
 							setActiveCandidate(normalized);
 							clearSearch();
 							navigateToCandidateDecision();
-							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 						}}
 						onOpenManualIntro={handleOpenManualStep}
 						onOpenPlacesHub={openPlacesHub}
@@ -646,7 +744,7 @@ export default function MapLocationIntentStageBase({
 							if (!pinSelection) return;
 							setActiveCandidate(pinSelection);
 							navigateToCandidateDecision();
-							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 						}}
 						onConfirmSelection={() => commitLocation(selectedLocation)}
 						onFindNearbyHospitals={onFindNearbyHospitals}

@@ -4,6 +4,7 @@ const sheetStageStyles = StyleSheet.create({
 	bodyScrollViewport: {
 		flex: 1,
 		minHeight: 0,
+		overflow: "hidden",
 	},
 	bodyScrollContent: {
 		paddingBottom: 6,

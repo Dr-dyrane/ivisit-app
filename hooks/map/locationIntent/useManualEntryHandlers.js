@@ -137,7 +137,7 @@ export default function useManualEntryHandlers({
 				});
 				setActiveCandidate(fallbackNormalized);
 				navigateToCandidateDecision();
-				onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+				onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 				return;
 			}
 
@@ -155,7 +155,7 @@ export default function useManualEntryHandlers({
 			});
 			setActiveCandidate(normalized);
 			navigateToCandidateDecision();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 		} catch (_error) {
 			const placeIndex = MANUAL_LOCATION_STEPS.findIndex(
 				(step) => step.key === "placeOrAddress",

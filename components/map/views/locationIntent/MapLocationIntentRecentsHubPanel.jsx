@@ -1,6 +1,6 @@
 // PULLBACK NOTE: [LS-11] NEW: Recents Hub panel extracted from MapLocationIntentBodyContent
 // OLD: recents section lived inline in expanded DEFAULT view only
-// NEW: dedicated RECENTS_HUB mode — full list, own panel, back chrome
+// NEW: dedicated RECENTS_HUB mode - full list, own panel, back chrome
 
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -119,14 +119,16 @@ export default function MapLocationIntentRecentsHubPanel({
 			) : null}
 
 			{isEmpty ? (
-				<View style={[styles.emptyGroup, { backgroundColor: groupSurfaceColor }]}>
-					<MaterialCommunityIcons name="clock-outline" size={22} color={mutedColor} style={{ marginBottom: 8 }} />
-					<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
-						No recent locations yet.
-					</Text>
-					<Text style={[styles.listRowSubtitle, { color: mutedColor, marginTop: 4 }]}>
-						Your pickup history will appear here.
-					</Text>
+				<View style={[styles.emptyGroup, styles.recentsEmptyGroup, { backgroundColor: groupSurfaceColor }]}>
+					<MaterialCommunityIcons name="clock-outline" size={18} color={mutedColor} />
+					<View style={styles.emptyGroupCopy}>
+						<Text style={[styles.emptyGroupTitle, { color: titleColor }]}>
+							No Recent Locations
+						</Text>
+						<Text style={[styles.emptyGroupBody, { color: mutedColor }]}>
+							Pickups and recent visits will appear here.
+						</Text>
+					</View>
 				</View>
 			) : null}
 		</View>

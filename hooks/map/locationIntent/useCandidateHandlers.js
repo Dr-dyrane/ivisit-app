@@ -138,7 +138,7 @@ export default function useCandidateHandlers({
 			setActiveCandidate(normalized);
 			commitSearchQuery(normalized.label);
 			navigateToCandidateDecision();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 		},
 		[buildSelectedLocation, commitSearchQuery, navigateToCandidateDecision, onSnapStateChange, pendingPlaceLabel, setActiveCandidate, setLocationSearchError],
 	);
