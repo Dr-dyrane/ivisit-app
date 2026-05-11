@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { commitFlowAtom } from "../../../../atoms/commitAtoms";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
@@ -146,7 +146,9 @@ export function useMapCommitPaymentController({
   const [submissionState, setSubmissionState] = useAtom(
     paymentSubmissionStateAtom,
   );
-  const [isSubmitting, setIsSubmitting] = useAtom(isSubmittingPaymentAtom);
+  // PULLBACK NOTE: UX-D D-6 — isSubmitting is now derived from submissionState.kind (read-only)
+  // isSubmitting = processing_payment || finalizing_dispatch || waiting_approval (PT-C lock preserved)
+  const isSubmitting = useAtomValue(isSubmittingPaymentAtom);
   const [errorMessage, setErrorMessage] = useAtom(paymentErrorMessageAtom);
   const [infoMessage, setInfoMessage] = useAtom(paymentInfoMessageAtom);
   const [estimatedCost, setEstimatedCost] = useAtom(estimatedCostAtom);
@@ -636,7 +638,7 @@ export function useMapCommitPaymentController({
     const isCardSelected =
       submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
 
-    setIsSubmitting(true);
+    // UX-D D-6: isSubmitting derived from state machine; PROCESSING_PAYMENT / WAITING_APPROVAL drives UI lock
     setErrorMessage("");
     setInfoMessage("");
     const pendingStartedAt = Date.now();
@@ -755,7 +757,6 @@ export function useMapCommitPaymentController({
                   "Hospital approval is still pending.",
                 );
                 if (isMountedRef.current) {
-                  setIsSubmitting(false);
                   setErrorMessage(nextMessage);
                   showToast(nextMessage, "error");
                 }
@@ -926,11 +927,8 @@ export function useMapCommitPaymentController({
     } finally {
       submitLockRef.current = false;
       // PULLBACK NOTE: PT-C — skip isSubmitting reset while WAITING_APPROVAL window is open
-      // OLD: always setIsSubmitting(false) in finally
-      // NEW: skip reset if awaitingApprovalRef.current — reset happens in .then()/.catch() when approval resolves
-      if (isMountedRef.current && !awaitingApprovalRef.current) {
-        setIsSubmitting(false);
-      }
+      // PULLBACK NOTE: UX-D D-6 — isSubmitting is now derived; no manual reset needed
+      // setTransactionState(FAILED/DISPATCHED) will cause isSubmittingPaymentAtom to return false automatically
     }
   }, [
     clearCommitFlow,

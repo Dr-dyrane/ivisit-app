@@ -114,9 +114,20 @@ export const paymentSubmissionStateAtom = atom<SubmissionState>({
 });
 
 /**
- * Whether payment is currently being submitted
+ * Whether payment is currently being submitted.
+ * PULLBACK NOTE: UX-D D-6 — isSubmitting removed as writable atom; derived from submissionState.kind
+ * OLD: atom(false) — set imperatively via setIsSubmitting() in useMapCommitPaymentController
+ * NEW: derived — true when state is processing_payment, finalizing_dispatch, or waiting_approval
+ *   (WAITING_APPROVAL included to preserve PT-C lock: CTA stays locked during approval window)
  */
-export const isSubmittingPaymentAtom = atom(false);
+export const isSubmittingPaymentAtom = atom((get) => {
+  const kind = get(paymentSubmissionStateAtom).kind;
+  return (
+    kind === "processing_payment" ||
+    kind === "finalizing_dispatch" ||
+    kind === "waiting_approval"
+  );
+});
 
 /**
  * Current submission error message
