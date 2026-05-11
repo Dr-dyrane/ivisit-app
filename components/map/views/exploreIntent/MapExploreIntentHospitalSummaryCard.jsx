@@ -151,10 +151,15 @@ export default function MapExploreIntentHospitalSummaryCard({
 	const requiresLocationSelection = Boolean(
 		locationControl?.requiresLocationSelection,
 	);
+	// PULLBACK NOTE (Pass 3): locationActionLabel, manualActionLabel, locationHint were used
+	// by the inline location setup card. Kept as dead vars for rollback safety.
+	// eslint-disable-next-line no-unused-vars
 	const locationActionLabel =
 		locationControl?.currentLocationActionLabel || "Use device location";
+	// eslint-disable-next-line no-unused-vars
 	const manualActionLabel =
 		locationControl?.manualEntryActionLabel || "Enter address manually";
+	// eslint-disable-next-line no-unused-vars
 	const locationHint =
 		locationControl?.locationError ||
 		currentLocation?.secondaryText ||
@@ -182,102 +187,15 @@ export default function MapExploreIntentHospitalSummaryCard({
 		: MAP_EXPLORE_INTENT_COPY.TAP_TO_SEE_HOSPITALS;
 
 	if (requiresLocationSelection) {
-		return (
-			<View
-				style={[
-					styles.hospitalCard,
-					styles.locationSetupCard,
-					isCentered ? styles.hospitalCardCentered : null,
-					isCentered && maxWidth ? { maxWidth } : null,
-					{
-						borderRadius: tokens.cardRadius,
-						borderCurve: "continuous",
-						backgroundColor: tokens.strongCardSurface,
-					},
-					canonicalCardResponsiveStyle,
-				]}
-			>
-				<SummaryIconTile isDarkMode={isDarkMode} size={summaryIconSize}>
-					<Ionicons
-						name={locationControl?.shouldOpenSettings ? "location-outline" : "locate"}
-						size={isTightViewport ? 16 : 18}
-						color={isDarkMode ? "#F8FAFC" : "#86100E"}
-					/>
-				</SummaryIconTile>
-				<View style={styles.hospitalCardCopy}>
-					<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
-						Pickup area
-					</Text>
-					<Text
-						numberOfLines={1}
-						style={[styles.hospitalTitle, titleTextStyle, { color: tokens.titleColor }]}
-					>
-						{currentLocation?.primaryText || "Set pickup area"}
-					</Text>
-					<Text
-						style={[styles.hospitalMeta, metaTextStyle, { color: tokens.bodyText }]}
-					>
-						{locationHint}
-					</Text>
-					<View style={styles.locationSetupActionRow}>
-						<Pressable
-							onPress={onUseCurrentLocation}
-							onPressIn={() => triggerPress("medium")}
-							style={({ pressed }) => [
-								styles.locationSetupPrimaryAction,
-								{
-									backgroundColor: isDarkMode
-										? "rgba(134,16,14,0.24)"
-										: "rgba(134,16,14,0.10)",
-									opacity: pressed ? 0.9 : 1,
-								},
-							]}
-						>
-							<Ionicons
-								name={locationControl?.shouldOpenSettings ? "settings-outline" : "locate-outline"}
-								size={14}
-								color={tokens.titleColor}
-							/>
-							<Text
-								style={[
-									styles.locationSetupPrimaryText,
-									{ color: tokens.titleColor },
-								]}
-							>
-								{locationActionLabel}
-							</Text>
-						</Pressable>
-						<Pressable
-							onPress={onOpenLocationSearch}
-							onPressIn={() => triggerPress("light")}
-							style={({ pressed }) => [
-								styles.locationSetupSecondaryAction,
-								{
-									backgroundColor: tokens.mutedCardSurface,
-									opacity: pressed ? 0.92 : 1,
-								},
-							]}
-						>
-							<Ionicons
-								name="search-outline"
-								size={14}
-								color={tokens.titleColor}
-							/>
-							<Text
-								style={[
-									styles.locationSetupSecondaryText,
-									{ color: tokens.titleColor },
-								]}
-							>
-								{manualActionLabel}
-							</Text>
-						</Pressable>
-					</View>
-				</View>
-			</View>
-		);
+		// PULLBACK NOTE (Pass 3 — Explore Intent Decongestion):
+		// OLD: Rendered an inline location setup card with primary/secondary action CTAs.
+		// NEW: Return null — useMapLocationIntent auto-transitions the sheet to
+		// LOCATION_INTENT phase, which is now the sole owner of pickup location entry.
+		// The LocationChrome chip above the sheet remains visible for change affordance.
+		return null;
 	}
 
+	if (usesCanonicalSummaryLayout)
 	if (usesCanonicalSummaryLayout) {
 		return (
 			<Pressable
