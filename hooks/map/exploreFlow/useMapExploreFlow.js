@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useAtom } from "jotai";
+import { commitFlowAtom } from "../../../atoms/commitAtoms";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -111,11 +113,13 @@ export function useMapExploreFlow() {
   const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
   const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
   const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
-  const commitFlow = useEmergencyTripStore((s) => s.commitFlow);
-  const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
+  // PULLBACK NOTE: UX-D D-2 — commitFlow migrated from Zustand to Jotai
+  // OLD: useEmergencyTripStore selectors for commitFlow/setCommitFlow/clearCommitFlow
+  // NEW: Jotai atom — session-ephemeral, resets on restart (not persisted)
+  const [commitFlow, setCommitFlow] = useAtom(commitFlowAtom);
   const patchActiveAmbulanceTrip = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
   const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
-  const clearCommitFlow = useEmergencyTripStore((s) => s.clearCommitFlow);
+  const clearCommitFlow = () => setCommitFlow(null);
 
   const { state: flowState, actions: flowActions } = useMapExploreFlowStore({
     usesSidebarLayout,

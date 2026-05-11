@@ -55,7 +55,6 @@ const createInitialTripState = () => ({
   activeAmbulanceTrip: null,
   activeBedBooking: null,
   pendingApproval: null,
-  commitFlow: null,
 });
 
 // Event gate for realtime ordering
@@ -118,13 +117,6 @@ export const useEmergencyTripStore = create(
       });
     },
 
-    setCommitFlow: (nextValueOrUpdater) => {
-      set((state) => {
-        const prev = state.commitFlow;
-        const next = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
-        if (!areRuntimeStateValuesEqual(next, prev)) state.commitFlow = next;
-      });
-    },
     
     // Patch methods (partial updates) — also preserve startedAt invariant.
     patchActiveAmbulanceTrip: (updates) => {
@@ -202,11 +194,6 @@ export const useEmergencyTripStore = create(
       });
     },
     
-    clearCommitFlow: () => {
-      set((state) => {
-        state.commitFlow = null;
-      });
-    },
     
     // Event gate management
     shouldApplyAmbulanceEvent: (record, fallbackMs = Date.now()) => {
@@ -282,7 +269,6 @@ export const useEmergencyTripStore = create(
             if (normalized.activeAmbulanceTrip?.requestId) state.activeAmbulanceTrip = normalized.activeAmbulanceTrip;
             if (normalized.activeBedBooking?.requestId) state.activeBedBooking = normalized.activeBedBooking;
             if (normalized.pendingApproval?.requestId) state.pendingApproval = normalized.pendingApproval;
-            if (normalized.commitFlow?.phase) state.commitFlow = normalized.commitFlow;
             if (storedState.eventGates) state.eventGates = storedState.eventGates;
           });
         }
@@ -308,7 +294,6 @@ export const useEmergencyTripStore = create(
           activeAmbulanceTrip: state.activeAmbulanceTrip,
           activeBedBooking: state.activeBedBooking,
           pendingApproval: state.pendingApproval,
-          commitFlow: state.commitFlow,
           eventGates: state.eventGates,
         });
         await database.write(STORAGE_KEY, toStore);
@@ -377,7 +362,6 @@ useEmergencyTripStore.subscribe((state) => {
     activeAmbulanceTrip: state.activeAmbulanceTrip,
     activeBedBooking: state.activeBedBooking,
     pendingApproval: state.pendingApproval,
-    commitFlow: state.commitFlow,
     eventGates: state.eventGates,
   };
   if (
@@ -385,7 +369,6 @@ useEmergencyTripStore.subscribe((state) => {
     lastPersistedSnapshot.activeAmbulanceTrip === snapshot.activeAmbulanceTrip &&
     lastPersistedSnapshot.activeBedBooking === snapshot.activeBedBooking &&
     lastPersistedSnapshot.pendingApproval === snapshot.pendingApproval &&
-    lastPersistedSnapshot.commitFlow === snapshot.commitFlow &&
     lastPersistedSnapshot.eventGates === snapshot.eventGates
   ) {
     return;

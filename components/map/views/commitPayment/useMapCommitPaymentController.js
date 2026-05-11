@@ -1,4 +1,5 @@
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
+import { commitFlowAtom } from "../../../../atoms/commitAtoms";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
 // PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
@@ -99,7 +100,8 @@ export function useMapCommitPaymentController({
   const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
   const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
   const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
-  const clearCommitFlow = useEmergencyTripStore((s) => s.clearCommitFlow);
+  const setClearCommitFlowAtom = useSetAtom(commitFlowAtom);
+  const clearCommitFlow = () => setClearCommitFlowAtom(null);
   const emergencyContacts = useEmergencyContactsStore(
     selectReachableEmergencyContacts,
   );

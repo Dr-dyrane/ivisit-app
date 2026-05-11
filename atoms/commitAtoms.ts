@@ -140,3 +140,37 @@ export const commitCanGoBackAtom = atom((get) => {
   const history = get(commitStepHistoryAtom);
   return history.length > 0;
 });
+
+// =============================================================================
+// COMMIT FLOW STATE
+// =============================================================================
+
+/**
+ * CommitFlow — navigation context for the active commit phase.
+ * Session-ephemeral: resets on app restart (not persisted like Zustand store).
+ *
+ * PULLBACK NOTE: UX-D D-2 — commitFlow migrated from Zustand to Jotai
+ * OLD: commitFlow field in emergencyTripStore.js (persisted across app restarts via initFromStorage)
+ * NEW: commitFlow in Jotai atom (atoms/commitAtoms.ts) — session-ephemeral, resets on restart
+ */
+export interface CommitFlow {
+  phase: string;
+  phaseSnapState?: string | null;
+  hospital?: Record<string, unknown> | null;
+  hospitalId?: string | number | null;
+  transport?: string | null;
+  draft?: Record<string, unknown> | null;
+  triageDraft?: Record<string, unknown> | null;
+  triageSnapshot?: Record<string, unknown> | null;
+  pricingSnapshot?: Record<string, unknown> | null;
+  activeStep?: string | null;
+  showExtendedComplaints?: boolean;
+  sourcePhase?: string | null;
+  sourceSnapState?: string | null;
+  sourcePayload?: Record<string, unknown> | null;
+  careIntent?: string | null;
+  roomId?: string | number | null;
+  room?: Record<string, unknown> | null;
+}
+
+export const commitFlowAtom = atom<CommitFlow | null>(null);

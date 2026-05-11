@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSetAtom } from "jotai";
+import { commitFlowAtom } from "../../../../atoms/commitAtoms";
 import { useAuth } from "../../../../contexts/AuthContext";
 // PULLBACK NOTE: Phase 5f — setCommitFlow moved off EmergencyContext
 // OLD: useEmergency() for setCommitFlow — caused context-wide re-renders on every trip update
@@ -33,7 +35,7 @@ export default function useMapCommitDetailsController({
 	onConfirm,
 }) {
 	const { user, syncUserData } = useAuth();
-	const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
+	const setCommitFlow = useSetAtom(commitFlowAtom);
 	const {
 		country: phoneCountry,
 		setCountry: setPhoneCountry,

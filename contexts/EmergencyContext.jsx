@@ -29,10 +29,10 @@ export function EmergencyProvider({ children }) {
 	const {
 		mode, setMode, serviceType, selectedSpecialty, viewMode,
 		selectedHospitalId, setSelectedHospitalId,
-		activeAmbulanceTrip, activeBedBooking, pendingApproval, commitFlow,
+		activeAmbulanceTrip, activeBedBooking, pendingApproval,
 		hasActiveFilters,
 		activeAmbulanceTripRef, activeBedBookingRef,
-		setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval, setCommitFlow,
+		setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval,
 		patchActiveAmbulanceTrip, patchActiveBedBooking, patchPendingApproval,
 		toggleMode, selectHospital, clearSelectedHospital,
 		selectSpecialty, selectServiceType, toggleViewMode, resetFilters,

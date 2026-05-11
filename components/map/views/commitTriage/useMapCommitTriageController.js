@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSetAtom } from "jotai";
+import { commitFlowAtom } from "../../../../atoms/commitAtoms";
 import { Animated, Easing } from "react-native";
 import * as Haptics from "expo-haptics";
 // PULLBACK NOTE: Phase 5d — raw trip reads moved off EmergencyContext
@@ -51,7 +53,7 @@ export default function useMapCommitTriageController({
   const patchPendingApproval = useEmergencyTripStore(
     (s) => s.patchPendingApproval,
   );
-  const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
+  const setCommitFlow = useSetAtom(commitFlowAtom);
   const emergencyContacts = useEmergencyContactsStore(
     selectReachableEmergencyContacts,
   );

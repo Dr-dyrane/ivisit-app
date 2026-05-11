@@ -12,6 +12,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useAtom } from "jotai";
+import { commitFlowAtom } from "../../atoms/commitAtoms";
 import { EmergencyMode } from "../../constants/emergency";
 import {
 	useEmergencyTripStore,
@@ -43,12 +45,11 @@ export function useEmergencyTripState() {
 	const activeAmbulanceTrip = useEmergencyTripStore((s) => s.activeAmbulanceTrip);
 	const activeBedBooking = useEmergencyTripStore((s) => s.activeBedBooking);
 	const pendingApproval = useEmergencyTripStore((s) => s.pendingApproval);
-	const commitFlow = useEmergencyTripStore((s) => s.commitFlow);
+	const [commitFlow, setCommitFlow] = useAtom(commitFlowAtom);
 
 	const setActiveAmbulanceTrip = useEmergencyTripStore((s) => s.setActiveAmbulanceTrip);
 	const setActiveBedBooking = useEmergencyTripStore((s) => s.setActiveBedBooking);
 	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
-	const setCommitFlow = useEmergencyTripStore((s) => s.setCommitFlow);
 	const patchActiveAmbulanceTripStore = useEmergencyTripStore((s) => s.patchActiveAmbulanceTrip);
 	const patchActiveBedBookingStore = useEmergencyTripStore((s) => s.patchActiveBedBooking);
 	const patchPendingApprovalStore = useEmergencyTripStore((s) => s.patchPendingApproval);
