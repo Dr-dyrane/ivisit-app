@@ -30,7 +30,8 @@ export const MANUAL_LOCATION_STEPS = [
 		helperText: "Helpful for addresses that repeat across cities.",
 		placeholder: "Search states or provinces…",
 		autoCapitalize: "words",
-		affordance: "select-search",
+		affordance: "search-drop",
+		mapboxTypes: ["region", "district"],
 	},
 	{
 		key: "city",

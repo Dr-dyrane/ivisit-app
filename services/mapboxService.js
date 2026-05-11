@@ -187,7 +187,7 @@ class MapboxService {
                 `access_token=${this.accessToken}&` +
                 `autocomplete=true&` +
                 `limit=5&` +
-                `types=address,place`;
+                `types=${Array.isArray(request.types) && request.types.length ? request.types.join(",") : "address,place"}`;
 
             if (locationBias?.latitude && locationBias?.longitude) {
                 url += `&proximity=${locationBias.longitude},${locationBias.latitude}`;

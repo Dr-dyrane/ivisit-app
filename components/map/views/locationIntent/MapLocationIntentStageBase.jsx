@@ -24,6 +24,7 @@ import buildLocationIntentThemeTokens from "./mapLocationIntent.theme";
 import {
 	buildManualAddressLabel,
 	buildManualAddressParts,
+	buildLocationIntentManagedSavedPlaces,
 	buildLocationIntentRecents,
 	buildLocationIntentSavedPlaces,
 	getManualStepActionLabel,
@@ -422,6 +423,10 @@ export default function MapLocationIntentStageBase({
 		() => buildLocationIntentSavedPlaces(savedLocations),
 		[savedLocations],
 	);
+	const managedSavedPlaces = useMemo(
+		() => buildLocationIntentManagedSavedPlaces(savedLocations),
+		[savedLocations],
+	);
 
 	const handleOpenManualStep = useCallback(() => {
 		setManualError(null);
@@ -548,6 +553,7 @@ export default function MapLocationIntentStageBase({
 					query: trimmed,
 					proximity: locationBias || null,
 					countryCode: manualDraft.countryCode || undefined,
+					types: currentStep.mapboxTypes || undefined,
 				});
 				setManualDropResults(Array.isArray(results) ? results : []);
 			} catch {
@@ -779,6 +785,17 @@ export default function MapLocationIntentStageBase({
 		(action) => {
 			if (!action) return;
 			if (action.type === "pickup") {
+				if (selectedLocation?.id) {
+					const existingSavedLocation = savedLocations.find(
+						(item) => item?.id === selectedLocation.id,
+					);
+					updateSavedLocation?.(selectedLocation.id, {
+						usage: {
+							lastUsedAt: Date.now(),
+							useCount: Number(existingSavedLocation?.usage?.useCount || 0) + 1,
+						},
+					});
+				}
 				commitLocation(selectedLocation);
 				return;
 			}
@@ -794,7 +811,9 @@ export default function MapLocationIntentStageBase({
 			commitLocation,
 			handleEditSavedLocationDetails,
 			handleRemoveSavedLocation,
+			savedLocations,
 			selectedLocation,
+			updateSavedLocation,
 		],
 	);
 
@@ -1016,6 +1035,7 @@ export default function MapLocationIntentStageBase({
 						onSavedManageAction={handleSavedManageAction}
 						recents={recents}
 						savedPlaces={savedPlaces}
+						managedSavedPlaces={managedSavedPlaces}
 						mode={mode}
 						manualDraft={manualDraft}
 						onManualDraftChange={handleManualDraftChange}
