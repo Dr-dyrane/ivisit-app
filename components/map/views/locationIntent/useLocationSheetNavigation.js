@@ -107,6 +107,10 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 		openMode(LOCATION_INTENT_MODES.SAVE_DETAILS);
 	}, [openMode]);
 
+	const openSavedManage = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.SAVED_MANAGE);
+	}, [openMode]);
+
 	return useMemo(
 		() => ({
 			mode: state.mode,
@@ -121,6 +125,7 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openPinAdjust,
 			openSaveCategory,
 			openSaveDetails,
+			openSavedManage,
 			replaceMode,
 			replaceModeStack,
 			returnToDefault,
@@ -135,6 +140,7 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openPlaceSelected,
 			openSaveCategory,
 			openSaveDetails,
+			openSavedManage,
 			replaceMode,
 			replaceModeStack,
 			returnToDefault,

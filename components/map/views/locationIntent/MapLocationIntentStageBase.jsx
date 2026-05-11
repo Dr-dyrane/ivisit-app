@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import CountryPickerModal from "../../../register/CountryPickerModal";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -15,8 +15,10 @@ import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import useMapExploreIntentResponsiveMetrics from "../exploreIntent/useMapExploreIntentResponsiveMetrics";
-import buildMapLocationIntentModel from "./mapLocationIntent.model";
-import { MANUAL_LOCATION_STEPS } from "./mapLocationIntent.model";
+import buildMapLocationIntentModel, {
+	LOCATION_INTENT_MODES,
+	MANUAL_LOCATION_STEPS,
+} from "./mapLocationIntent.model";
 import { mapSuggestionToLocation } from "../../surfaces/search/mapSearchSheet.helpers";
 import buildLocationIntentThemeTokens from "./mapLocationIntent.theme";
 import {
@@ -26,6 +28,7 @@ import {
 	buildLocationIntentSavedPlaces,
 	getManualStepActionLabel,
 	getSaveCategoryAction,
+	getSavedLocationKey,
 	mapStoredLocationToCandidate,
 	validateManualLocationStep,
 } from "./mapLocationIntent.helpers";
@@ -41,6 +44,7 @@ import {
 	MapLocationIntentBodyContent,
 	MapLocationIntentCollapsedTopRow,
 } from "./MapLocationIntentStageParts";
+import ManualStepStickyFooter from "./ManualStepStickyFooter";
 import useAddressSearchController from "./useAddressSearchController";
 import useLocationSheetNavigation from "./useLocationSheetNavigation";
 import styles from "./mapLocationIntent.styles";
@@ -104,7 +108,9 @@ export default function MapLocationIntentStageBase({
 	const [selectedLocation, setSelectedLocation] = useState(null);
 	const [manualError, setManualError] = useState(null);
 	const [isResolvingManual, setIsResolvingManual] = useState(false);
-	const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+	const [manualDropQuery, setManualDropQuery] = useState('');
+	const [manualDropResults, setManualDropResults] = useState([]);
+		const [countryPickerVisible, setCountryPickerVisible] = useState(false);
 	const [pendingPlaceLabel, setPendingPlaceLabel] = useState(null);
 	const [savedPlaceFeedback, setSavedPlaceFeedback] = useState(null);
 	const [pendingSaveCategory, setPendingSaveCategory] = useState(null);
@@ -116,6 +122,8 @@ export default function MapLocationIntentStageBase({
 	const savedLocations = useLocationStore((state) => state.savedLocations || []);
 	const addSavedLocation = useLocationStore((state) => state.addSavedLocation);
 	const updateSavedLocation = useLocationStore((state) => state.updateSavedLocation);
+	const removeSavedLocation = useLocationStore((state) => state.removeSavedLocation);
+	const [isConfirmingSavedRemove, setIsConfirmingSavedRemove] = useState(false);
 	const resetTransientStateForDefault = useCallback(() => {
 		setManualError(null);
 		setManualStepIndex(0);
@@ -123,6 +131,7 @@ export default function MapLocationIntentStageBase({
 		setSavedPlaceFeedback(null);
 		setPendingSaveCategory(null);
 		setSaveDetailsDraft({ label: "", unit: "", responderNote: "" });
+		setIsConfirmingSavedRemove(false);
 	}, []);
 	const locationNavigation = useLocationSheetNavigation({
 		onResetToDefault: resetTransientStateForDefault,
@@ -137,9 +146,11 @@ export default function MapLocationIntentStageBase({
 		openPinAdjust: navigateToPinAdjust,
 		openSaveCategory: navigateToSaveCategory,
 		openSaveDetails: navigateToSaveDetails,
+		openSavedManage: navigateToSavedManage,
 		replaceModeStack: replaceNavigationStack,
 		returnToDefault: navigateToDefault,
 		goBack: navigateBack,
+		stack: navigationStack,
 	} = locationNavigation;
 	const openAddressSearch = useCallback(() => {
 		setSavedPlaceFeedback(null);
@@ -169,6 +180,13 @@ export default function MapLocationIntentStageBase({
 		clearSearch();
 		navigateToDefault();
 	}, [clearSearch, navigateToDefault]);
+	const navigateBackWithinLocationLoop = useCallback(() => {
+		if (navigationStack.length > 0) {
+			navigateBack();
+			return;
+		}
+		navigateToDefaultAndClearSearch();
+	}, [navigateBack, navigateToDefaultAndClearSearch, navigationStack.length]);
 
 	useEffect(() => {
 		const seededQuery =
@@ -274,35 +292,45 @@ export default function MapLocationIntentStageBase({
 		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 	}, [effectiveSnapState, onSnapStateChange, shouldShowHeaderToggle]);
 
+	const isCandidateDecisionMode =
+		mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
+		mode === LOCATION_INTENT_MODES.CONFIRM ||
+		mode === LOCATION_INTENT_MODES.PIN_ADJUST;
 	const isNestedDecisionMode =
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
-		mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
+		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
+		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 	const activeHeaderToggleHandler = isSearchMode
 		? navigateToDefaultAndClearSearch
-		: isNestedDecisionMode
-			? navigateBack
+		: isCandidateDecisionMode || isNestedDecisionMode
+			? navigateBackWithinLocationLoop
 			: handleHeaderToggle;
-	const activeHeaderCloseHandler = isSearchMode || isNestedDecisionMode
+	const activeHeaderCloseHandler = isSearchMode || isCandidateDecisionMode || isNestedDecisionMode
 		? navigateToDefaultAndClearSearch
 		: onClose;
-	const activeHeaderToggleIconName = isSearchMode || isNestedDecisionMode
+	const activeHeaderToggleIconName = isSearchMode || isCandidateDecisionMode || isNestedDecisionMode
 		? "chevron-back"
 		: isExpanded
 			? "chevron-down"
 			: "chevron-up";
 	const activeHeaderToggleAccessibilityLabel = isSearchMode
 			? "Back to location choices"
+		: isCandidateDecisionMode
+			? "Back to previous location step"
 		: isNestedDecisionMode
 			? mode === LOCATION_INTENT_MODES.SAVE_DETAILS
 				? "Back to save categories"
+				: mode === LOCATION_INTENT_MODES.SAVED_MANAGE
+					? "Back to saved places"
 				: "Back to selected address"
 		: isExpanded
 			? "Collapse location sheet"
 			: "Expand location sheet";
-	const activeHeaderCloseAccessibilityLabel = isSearchMode || isNestedDecisionMode
+	const activeHeaderCloseAccessibilityLabel = isSearchMode || isCandidateDecisionMode || isNestedDecisionMode
 		? "Close location choices"
 		: "Close location sheet";
-	const shouldShowActiveHeaderToggle = isSearchMode || isNestedDecisionMode || shouldShowHeaderToggle;
+	const shouldShowActiveHeaderToggle =
+		isSearchMode || isCandidateDecisionMode || isNestedDecisionMode || shouldShowHeaderToggle;
 
 	const buildSelectedLocation = useCallback(
 		(payload) =>
@@ -345,14 +373,15 @@ export default function MapLocationIntentStageBase({
 			onSelectLocation?.(pickupPayload);
 			if (nextSelection.source === "manual" || nextSelection.source === "search") {
 				addSavedLocation?.({
-					label: nextSelection.source === "manual" ? "custom" : "recent",
-					category: nextSelection.source === "manual" ? "custom" : "recent",
+					label: nextSelection.label || "Recent pickup",
+					category: "recent",
 					address: nextSelection.address,
 					latitude: nextSelection.coords.latitude,
 					longitude: nextSelection.coords.longitude,
 					countryCode: nextSelection.countryCode || null,
 					unit: nextSelection.unit || null,
 					responderNote: nextSelection.responderNote || null,
+					source: "recent",
 				});
 			}
 			onClose?.();
@@ -465,9 +494,82 @@ export default function MapLocationIntentStageBase({
 	}, [buildSelectedLocation, manualDraft, navigateToConfirm]);
 
 	const handleManualDraftChange = useCallback((key, value) => {
+		// Intercept __jumpTo__ sentinel from ManualStepCompletedSummaries edit-tap
+		if (key === '__jumpTo__') {
+			const targetIdx = Number(value);
+			if (Number.isFinite(targetIdx)) {
+				setManualError(null);
+				setManualStepIndex(targetIdx);
+			}
+			return;
+		}
 		setManualDraft((prev) => ({ ...prev, [key]: value }));
 		setManualError(null);
 	}, []);
+	const handleManualDropQueryChange = useCallback((query) => {
+		setManualDropQuery(query);
+		setManualError(null);
+	}, []);
+
+	const handleManualDropSelect = useCallback((key, value, cascadeFields) => {
+		setManualDraft((prev) => {
+			const next = { ...prev, [key]: value };
+			if (cascadeFields) {
+				Object.entries(cascadeFields).forEach(([cKey, cVal]) => {
+					if (!prev[cKey]) next[cKey] = cVal;
+				});
+			}
+			return next;
+		});
+		setManualDropQuery('');
+		setManualDropResults([]);
+		setManualError(null);
+		// Advance to next step after selection
+		setManualStepIndex((prev) => Math.min(prev + 1, MANUAL_LOCATION_STEPS.length - 1));
+	}, []);
+
+	// Debounced Mapbox search for city/street drop steps (affordance: "search-drop")
+	const manualDropTimerRef = useRef(null);
+	useEffect(() => {
+		const currentStep = MANUAL_LOCATION_STEPS[manualStepIndex];
+		if (!currentStep || currentStep.affordance !== 'search-drop') {
+			setManualDropResults([]);
+			return;
+		}
+		const trimmed = manualDropQuery.trim();
+		if (trimmed.length < 2) {
+			setManualDropResults([]);
+			return;
+		}
+		if (manualDropTimerRef.current) clearTimeout(manualDropTimerRef.current);
+		manualDropTimerRef.current = setTimeout(async () => {
+			try {
+				const results = await mapboxService.suggestAddresses({
+					query: trimmed,
+					proximity: locationBias || null,
+					countryCode: manualDraft.countryCode || undefined,
+				});
+				setManualDropResults(Array.isArray(results) ? results : []);
+			} catch {
+				setManualDropResults([]);
+			}
+		}, 320);
+		return () => {
+			if (manualDropTimerRef.current) clearTimeout(manualDropTimerRef.current);
+		};
+	}, [manualDropQuery, manualStepIndex, locationBias, manualDraft.countryCode]);
+
+	const handleManualCountrySelectInline = useCallback(({ name, code }) => {
+		if (!name) return;
+		setManualDraft((prev) => ({
+			...prev,
+			country: name,
+			countryCode: code || prev.countryCode || '',
+		}));
+		setManualError(null);
+		setManualStepIndex((prev) => (prev === 0 ? 1 : prev));
+	}, []);
+
 
 	const handleNextManualStep = useCallback(() => {
 		const currentStep = MANUAL_LOCATION_STEPS[manualStepIndex];
@@ -550,6 +652,17 @@ export default function MapLocationIntentStageBase({
 				},
 			);
 			if (!savedPayload) return false;
+			if (details.savedLocationId) {
+				updateSavedLocation?.(details.savedLocationId, savedPayload);
+				setSelectedLocation(
+					normalizeAddressCandidate(
+						{ ...savedPayload, id: details.savedLocationId, source: "saved" },
+						{ source: "saved", confidence: "high" },
+					) || selectedLocation,
+				);
+				setSavedPlaceFeedback(label);
+				return true;
+			}
 			// Rollback note: Home/Work are singleton identity slots. Generic saved
 			// places are not; they should preserve the selected place name and let
 			// the store dedupe only by same address/coords.
@@ -613,28 +726,113 @@ export default function MapLocationIntentStageBase({
 		[handleSaveSelectedLocationAs, navigateToSaveDetails, selectedLocation],
 	);
 
+	const openSavedLocationManage = useCallback(
+		(place) => {
+			const candidate = mapStoredLocationToCandidate(place.location, place.label);
+			if (!candidate) return;
+			setPendingPlaceLabel(null);
+			setPendingSaveCategory(null);
+			setSavedPlaceFeedback(null);
+			setIsConfirmingSavedRemove(false);
+			const normalized = buildSelectedLocation({
+				...candidate,
+				source: "saved",
+				confidence: "high",
+			});
+			if (!normalized) return;
+			setSelectedLocation(normalized);
+			navigateToSavedManage();
+		},
+		[buildSelectedLocation, navigateToSavedManage],
+	);
+
+	const handleEditSavedLocationDetails = useCallback(() => {
+		if (!selectedLocation?.id) return;
+		const category = getSavedLocationKey(selectedLocation) || selectedLocation.category || "other";
+		setPendingSaveCategory(category);
+		setSaveDetailsDraft({
+			label: selectedLocation.label || selectedLocation.address || "Saved place",
+			unit: selectedLocation.unit || "",
+			responderNote: selectedLocation.responderNote || "",
+		});
+		setIsConfirmingSavedRemove(false);
+		navigateToSaveDetails();
+	}, [navigateToSaveDetails, selectedLocation]);
+
+	const handleRemoveSavedLocation = useCallback(() => {
+		if (!selectedLocation?.id) return;
+		if (!isConfirmingSavedRemove) {
+			setIsConfirmingSavedRemove(true);
+			return;
+		}
+		removeSavedLocation?.(selectedLocation.id);
+		setIsConfirmingSavedRemove(false);
+		navigateToDefaultAndClearSearch();
+	}, [
+		isConfirmingSavedRemove,
+		navigateToDefaultAndClearSearch,
+		removeSavedLocation,
+		selectedLocation?.id,
+	]);
+
+	const handleSavedManageAction = useCallback(
+		(action) => {
+			if (!action) return;
+			if (action.type === "pickup") {
+				commitLocation(selectedLocation);
+				return;
+			}
+			if (action.type === "edit") {
+				handleEditSavedLocationDetails();
+				return;
+			}
+			if (action.type === "remove") {
+				handleRemoveSavedLocation();
+			}
+		},
+		[
+			commitLocation,
+			handleEditSavedLocationDetails,
+			handleRemoveSavedLocation,
+			selectedLocation,
+		],
+	);
+
 	const handleSaveDetailsDraftChange = useCallback((key, value) => {
 		setSaveDetailsDraft((prev) => ({ ...prev, [key]: value }));
 	}, []);
 
 	const handleConfirmSaveDetails = useCallback(() => {
 		const category = pendingSaveCategory || "other";
+		const savedLocationId =
+			mode === LOCATION_INTENT_MODES.SAVE_DETAILS && selectedLocation?.source === "saved"
+				? selectedLocation.id
+				: null;
 		if (
 			saveSelectedLocationAs(category, {
 				label: saveDetailsDraft.label,
 				unit: saveDetailsDraft.unit,
 				responderNote: saveDetailsDraft.responderNote,
+				savedLocationId,
 			})
 		) {
+			if (savedLocationId) {
+				replaceNavigationStack(LOCATION_INTENT_MODES.SAVED_MANAGE, []);
+				return;
+			}
 			returnToCandidateDecision();
 		}
 	}, [
+		mode,
 		pendingSaveCategory,
+		replaceNavigationStack,
 		returnToCandidateDecision,
 		saveDetailsDraft.label,
 		saveDetailsDraft.responderNote,
 		saveDetailsDraft.unit,
 		saveSelectedLocationAs,
+		selectedLocation?.id,
+		selectedLocation?.source,
 	]);
 
 	const handlePrevManualStep = useCallback(() => {
@@ -697,6 +895,18 @@ export default function MapLocationIntentStageBase({
 					</View>
 				)
 			}
+			footerSlot={
+				mode === "manualStep" ? (
+					<ManualStepStickyFooter
+						onBack={handlePrevManualStep}
+						onNext={handleNextManualStep}
+						nextLabel={manualNextActionLabel || "Next"}
+						isLoading={isResolvingManual}
+						titleColor={tokens.titleColor}
+						infoSurfaceColor={infoSurfaceColor}
+					/>
+				) : null
+			}
 		>
 			{isCollapsed ? null : (
 				<MapStageBodyScroll
@@ -755,16 +965,13 @@ export default function MapLocationIntentStageBase({
 								openAddressSearch();
 								return;
 							}
-							setPendingPlaceLabel(null);
-							const normalized = buildSelectedLocation(candidate);
-							if (!normalized) return;
-							setSelectedLocation(normalized);
-							navigateToConfirm();
+							openSavedLocationManage(place);
 						}}
 						onSelectRecentLocation={(recent) => {
 							const candidate = mapStoredLocationToCandidate(recent, recent.label || "Recent pickup");
 							if (!candidate) return;
 							setPendingPlaceLabel(null);
+							setSavedPlaceFeedback(null);
 							const normalized = buildSelectedLocation({
 								...candidate,
 								source: "recent",
@@ -772,7 +979,9 @@ export default function MapLocationIntentStageBase({
 							});
 							if (!normalized) return;
 							setSelectedLocation(normalized);
-							navigateToConfirm();
+							clearSearch();
+							navigateToPlaceSelected();
+							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 						}}
 						onOpenManualIntro={handleOpenManualStep}
 						onStartPinAdjust={() => {
@@ -804,6 +1013,7 @@ export default function MapLocationIntentStageBase({
 						onOpenSaveCategory={navigateToSaveCategory}
 						onSaveDetailsDraftChange={handleSaveDetailsDraftChange}
 						onConfirmSaveDetails={handleConfirmSaveDetails}
+						onSavedManageAction={handleSavedManageAction}
 						recents={recents}
 						savedPlaces={savedPlaces}
 						mode={mode}
@@ -812,13 +1022,19 @@ export default function MapLocationIntentStageBase({
 						onNextManualStep={handleNextManualStep}
 						onPrevManualStep={handlePrevManualStep}
 						onBackToDefault={navigateToDefaultAndClearSearch}
-						onOpenCountryPicker={() => setCountryPickerVisible(true)}
+						onBackToPreviousStep={navigateBackWithinLocationLoop}
+						manualDropQuery={manualDropQuery}
+						manualDropResults={manualDropResults}
+						onManualDropQueryChange={handleManualDropQueryChange}
+						onManualDropSelect={handleManualDropSelect}
+						onManualCountrySelectInline={handleManualCountrySelectInline}
 						manualError={manualError}
 						manualNextActionLabel={manualNextActionLabel}
 						isResolvingManual={isResolvingManual}
 						savedPlaceFeedback={savedPlaceFeedback}
 						pendingSaveCategory={pendingSaveCategory}
 						saveDetailsDraft={saveDetailsDraft}
+						isConfirmingSavedRemove={isConfirmingSavedRemove}
 						manualStepIndex={manualStepIndex}
 						isExpanded={isExpanded}
 						isDarkMode={isDarkMode}
@@ -827,14 +1043,7 @@ export default function MapLocationIntentStageBase({
 				</MapStageBodyScroll>
 			)}
 		</MapSheetShell>
-		<CountryPickerModal
-			visible={countryPickerVisible}
-			onClose={() => setCountryPickerVisible(false)}
-			onSelect={handleManualCountrySelect}
-			selectedCode={manualDraft.countryCode}
-			title="Country or region"
-			searchPlaceholder="Search country or region"
-		/>
+		{/* CountryPickerModal removed — country selection is now inline in ManualStepActiveField */}
 		</>
 	);
 }

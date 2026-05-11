@@ -124,6 +124,7 @@ export function normalizeAddressCandidate(payload = {}, options = {}) {
 		address,
 		coords,
 		countryCode: normalizeCountryCode(payload.countryCode),
+		category: payload.category || null,
 		confidence: payload.confidence || options.confidence || "medium",
 		unit: payload.unit || null,
 		responderNote: payload.responderNote || null,

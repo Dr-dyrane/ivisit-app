@@ -91,12 +91,22 @@ export function buildLocationIntentSavedPlaces(savedLocations = []) {
 
 export function buildLocationIntentRecents(savedLocations = []) {
 	return (Array.isArray(savedLocations) ? savedLocations : [])
-		.filter((item) => item && getSavedLocationKey(item) === null)
+		.filter((item) => {
+			if (!item || getSavedLocationKey(item) !== null) return false;
+			const category = normalizeAddressCategory(item.category || item.label, null);
+			const source = String(item.source || "").trim().toLowerCase();
+			const rawLabel = String(item.label || "").trim().toLowerCase();
+
+			// Rollback note: Recents are pickup memory, not the overflow bucket for
+			// saved-place categories. Keep Family/School/etc. out of this list so
+			// saved-place management owns saved identities.
+			return category === "recent" || source === "recent" || rawLabel === "recent";
+		})
 		.slice(0, 6)
 		.map((item) => ({
 			...item,
 			label: getSavedAddressDisplayLabel(item, "Recent pickup"),
-			kindLabel: "Pickup",
+			kindLabel: "Recent Pickup",
 		}));
 }
 
@@ -226,6 +236,32 @@ export function getSaveCategoryAction(category) {
 	return buildSaveCategoryActions().find((action) => action.category === normalizedCategory) || null;
 }
 
+export function buildSavedPlaceManageActions({ confirmRemove = false } = {}) {
+	return [
+		{
+			id: "useSavedAsPickup",
+			label: "Use as Pickup",
+			iconName: "navigate-circle-outline",
+			tone: "pickup",
+			type: "pickup",
+		},
+		{
+			id: "editSavedDetails",
+			label: "Edit Details",
+			iconName: "create-outline",
+			tone: "saved",
+			type: "edit",
+		},
+		{
+			id: "removeSavedPlace",
+			label: confirmRemove ? "Confirm Remove" : "Remove",
+			iconName: confirmRemove ? "trash" : "trash-outline",
+			tone: "danger",
+			type: "remove",
+		},
+	];
+}
+
 export function buildCandidateDecisionActions({
 	selectedLocation,
 	pendingPlaceLabel,
@@ -304,7 +340,7 @@ export function buildCandidateDecisionActions({
 	if (canSaveCandidate) {
 		actions.push({
 			id: "pickAnother",
-			label: "Pick Another Location",
+			label: source === "search" ? "Back to Search" : "Choose Another Location",
 			iconName: "search-outline",
 			tone: "neutral",
 			type: "back",

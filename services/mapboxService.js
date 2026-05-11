@@ -192,6 +192,9 @@ class MapboxService {
             if (locationBias?.latitude && locationBias?.longitude) {
                 url += `&proximity=${locationBias.longitude},${locationBias.latitude}`;
             }
+            if (request.countryCode) {
+                url += `&country=${String(request.countryCode).toLowerCase()}`;
+            }
 
             const response = await fetch(url);
             const data = await response.json();

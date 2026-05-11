@@ -119,6 +119,15 @@ const styles = StyleSheet.create({
 		gap: 11,
 		minHeight: 48,
 	},
+	currentCardMainAction: {
+		flex: 1,
+		minWidth: 0,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 11,
+		borderRadius: 18,
+		borderCurve: "continuous",
+	},
 	currentCardAvatar: {
 		width: 44,
 		height: 44,
@@ -460,6 +469,89 @@ const styles = StyleSheet.create({
 		height: StyleSheet.hairlineWidth,
 		marginLeft: 60,
 	},
+	// ── Manual step redesign styles ──────────────────────────────────────────
+	manualCompletedRow: {
+		minHeight: 44,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		paddingHorizontal: 2,
+		paddingVertical: 8,
+	},
+	manualCompletedIcon: {
+		width: 30,
+		height: 30,
+		borderRadius: 15,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	manualCompletedLabel: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "500",
+	},
+	manualCompletedValue: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "700",
+		flexShrink: 0,
+	},
+	manualDropSearch: {
+		minHeight: 46,
+		borderRadius: 14,
+		borderCurve: "continuous",
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	manualDropSearchInput: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "500",
+	},
+	manualDropList: {
+		marginTop: 4,
+		gap: 0,
+	},
+	manualDropItem: {
+		minHeight: 48,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		paddingHorizontal: 2,
+		paddingVertical: 10,
+	},
+	manualDropItemLabel: {
+		flex: 1,
+		minWidth: 0,
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "600",
+	},
+	manualDropItemSub: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "400",
+	},
+	manualDropDivider: {
+		height: StyleSheet.hairlineWidth,
+		marginLeft: 40,
+	},
+	manualStickyFooter: {
+		flexDirection: "row",
+		gap: 8,
+		paddingHorizontal: 14,
+		paddingTop: 10,
+		paddingBottom: 8,
+	},
 });
+
 
 export default styles;

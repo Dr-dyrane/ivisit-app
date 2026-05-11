@@ -968,6 +968,9 @@ Scope:
 - `Save Place` opens an in-sheet category phase, keeps the selected address group visible, and uses the top-left back affordance to return to the candidate decision.
 - Home/Work save from category as fast paths; Family, School, Pharmacy, Care, and Other continue to a details phase for label, unit/landmark, and responder note before saving.
 - Successful category/details saves return to the selected-address decision surface with saved feedback instead of leaving the user inside the nested save flow.
+- Existing saved places open an in-sheet manage phase from the Places orbs. Manage supports use as pickup, edit details through the same details surface, and a two-tap remove confirmation without a separate modal.
+- Recents are pickup memory only. Search/manual pickup commits write `category: "recent"` entries, while saved-place families stay out of the Recents group and are owned by saved-place management.
+- Empty address search can surface recent pickup address candidates in the same grouped result language as predictions; selecting one enters the candidate decision loop instead of committing immediately.
 
 Deferred inside Pass A:
 

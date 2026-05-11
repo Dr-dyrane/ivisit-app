@@ -9,6 +9,7 @@ export const LOCATION_INTENT_MODES = Object.freeze({
 	CONFIRM: "confirm",
 	SAVE_CATEGORY: "saveCategory",
 	SAVE_DETAILS: "saveDetails",
+	SAVED_MANAGE: "savedManage",
 });
 
 export const MANUAL_LOCATION_STEPS = [
@@ -17,8 +18,9 @@ export const MANUAL_LOCATION_STEPS = [
 		label: "Country or region",
 		question: "Which country or region?",
 		helperText: "This keeps pickup, pricing, and responders in the right region.",
-		placeholder: "Choose country or region",
+		placeholder: "Search countries…",
 		inputType: "country",
+		affordance: "select-search",
 		required: true,
 	},
 	{
@@ -26,25 +28,30 @@ export const MANUAL_LOCATION_STEPS = [
 		label: "State or province",
 		question: "State, province, or region?",
 		helperText: "Helpful for addresses that repeat across cities.",
-		placeholder: "California",
+		placeholder: "Search states or provinces…",
 		autoCapitalize: "words",
+		affordance: "select-search",
 	},
 	{
 		key: "city",
 		label: "City",
 		question: "What city?",
-		placeholder: "Enter city",
+		placeholder: "Search city…",
 		required: true,
 		autoCapitalize: "words",
+		affordance: "search-drop",
+		mapboxTypes: ["place", "region"],
 	},
 	{
 		key: "streetAddress",
 		label: "Street address",
 		question: "Street address or landmark?",
 		helperText: "Use the place name if there is no house number.",
-		placeholder: "123 Main Street",
+		placeholder: "Search street or place…",
 		required: true,
 		autoCapitalize: "words",
+		affordance: "search-drop",
+		mapboxTypes: ["address", "poi"],
 	},
 	{
 		key: "unit",
@@ -52,6 +59,7 @@ export const MANUAL_LOCATION_STEPS = [
 		question: "Apartment, unit, or landmark?",
 		placeholder: "Apt 7B, near the front desk",
 		autoCapitalize: "sentences",
+		affordance: "text",
 		optional: true,
 	},
 	{
@@ -60,6 +68,7 @@ export const MANUAL_LOCATION_STEPS = [
 		question: "Any note for responders?",
 		placeholder: "Gate code, entry notes, or safest entrance",
 		autoCapitalize: "sentences",
+		affordance: "textarea",
 		multiline: true,
 		optional: true,
 	},

@@ -7,6 +7,8 @@ import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
 import IntentOrb from "../../shared/IntentOrb";
 import MapHistoryGroup from "../../history/MapHistoryGroup";
 import styles from "./mapLocationIntent.styles";
+import ManualStepCompletedSummaries from "./ManualStepCompletedSummaries";
+import ManualStepActiveField from "./ManualStepActiveField";
 import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 import {
 	ResultsSection,
@@ -24,6 +26,7 @@ import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
 import {
 	buildCandidateDecisionActions,
 	buildSaveCategoryActions,
+	buildSavedPlaceManageActions,
 	getPlaceOrbHierarchy,
 	getPlaceOrbSubtext,
 } from "./mapLocationIntent.helpers";
@@ -84,6 +87,7 @@ function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedC
 		saved: MAP_LOCATION_INTENT_COPY.placesOrbColors.add?.[1],
 		pickup: "#2563EB",
 		success: "#059669",
+		danger: "#DC2626",
 	};
 	const accentColor = toneColors[action?.tone] || titleColor;
 
@@ -241,15 +245,22 @@ export function MapLocationIntentBodyContent({
 	onManualDraftChange,
 	onSaveDetailsDraftChange,
 	onConfirmSaveDetails,
+	onSavedManageAction,
 	onNextManualStep,
 	onPrevManualStep,
 	onBackToDefault,
-	onOpenCountryPicker,
+	onBackToPreviousStep,
+	manualDropQuery,
+	manualDropResults,
+	onManualDropQueryChange,
+	onManualDropSelect,
+	onManualCountrySelectInline,
 	manualError,
 	manualNextActionLabel,
 	isResolvingManual,
 	savedPlaceFeedback,
 	pendingSaveCategory,
+	isConfirmingSavedRemove,
 	manualStepIndex,
 	isExpanded,
 	isDarkMode,
@@ -269,14 +280,18 @@ export function MapLocationIntentBodyContent({
 		mode === LOCATION_INTENT_MODES.PLACE_SELECTED ||
 		mode === LOCATION_INTENT_MODES.PIN_ADJUST ||
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
-		mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
+		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
+		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 	const isSaveCategory = mode === LOCATION_INTENT_MODES.SAVE_CATEGORY;
 	const isSaveDetails = mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
+	const isSavedManage = mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 	const showDefaultSections = !isSearching && !isManualStep && !isConfirming;
 	const visibleResults = isExpanded ? searchResults.slice(0, 7) : searchResults.slice(0, 4);
 	const visibleRecentSearches = Array.isArray(recentSearchQueries)
 		? recentSearchQueries.slice(0, isExpanded ? 8 : 4)
 		: [];
+	const visibleRecentAddressCandidates =
+		searchQuery.trim().length < 2 ? recents.slice(0, isExpanded ? 4 : 3) : [];
 	const sectionLabelStyle = responsiveMetrics?.section?.labelStyle || null;
 	const sectionTriggerStyle = responsiveMetrics?.section?.triggerStyle || null;
 	const recentLocationItems = recents.slice(0, 6).map((recent, index) => ({
@@ -323,6 +338,10 @@ export function MapLocationIntentBodyContent({
 	const selectedSaveCategoryAction =
 		saveCategoryActions.find((action) => action.category === pendingSaveCategory) ||
 		saveCategoryActions.find((action) => action.category === "other");
+	const savedManageActions = useMemo(
+		() => buildSavedPlaceManageActions({ confirmRemove: isConfirmingSavedRemove }),
+		[isConfirmingSavedRemove],
+	);
 	const handleCandidateAction = (action) => {
 		if (!action || action.type === "status") return;
 		if (action.type === "pickup") {
@@ -338,7 +357,7 @@ export function MapLocationIntentBodyContent({
 			return;
 		}
 		if (action.type === "back") {
-			onBackToDefault?.();
+			onBackToPreviousStep?.();
 		}
 	};
 
@@ -436,9 +455,37 @@ export function MapLocationIntentBodyContent({
 							)}
 						/>
 					) : null}
+					{visibleRecentAddressCandidates.length > 0 ? (
+						<ResultsSection
+							title="Recent Pickups"
+							items={visibleRecentAddressCandidates.map((recent, index) => ({
+								...recent,
+								key: recent?.id || recent?.address || `recent-pickup-${index}`,
+							}))}
+							titleColor={mutedColor}
+							groupedSurface={groupSurfaceColor}
+							isDarkMode={isDarkMode}
+							rowDividerColor={mutedColor + "30"}
+							responsiveStyles={searchResponsiveStyles}
+							renderItem={(item) => (
+								<SearchResultRow
+									iconName="time-outline"
+									title={item?.label || "Recent pickup"}
+									subtitle={item?.address || ""}
+									meta="Recent pickup"
+									titleColor={titleColor}
+									mutedColor={mutedColor}
+									surfaceColor={heroSurfaceColor}
+									isDarkMode={isDarkMode}
+									onPress={() => onSelectRecentLocation?.(item)}
+									responsiveStyles={searchResponsiveStyles}
+								/>
+							)}
+						/>
+					) : null}
 					{visibleRecentSearches.length > 0 ? (
 						<ResultsSection
-							title="Recent"
+							title="Recent Searches"
 							items={visibleRecentSearches.map((query, index) => ({
 								key: `${query}-${index}`,
 								query,
@@ -498,10 +545,7 @@ export function MapLocationIntentBodyContent({
 
 			{showDefaultSections ? (
 				<>
-					<Pressable
-						onPress={handleHeroAction}
-						accessibilityRole="button"
-						accessibilityLabel={`Use pickup location: ${model.headerTitle}`}
+					<View
 						style={[
 							styles.currentCard,
 							{ backgroundColor: heroSurfaceColor },
@@ -521,19 +565,29 @@ export function MapLocationIntentBodyContent({
 							style={[styles.currentCardGlow, { backgroundColor: heroGlowColor }]}
 						/>
 						<View style={styles.currentCardContent}>
-							<View
-								style={[styles.currentCardAvatar, { backgroundColor: groupSurfaceColor }]}
+							<Pressable
+								onPress={handleHeroAction}
+								accessibilityRole="button"
+								accessibilityLabel={`Use pickup location: ${model.headerTitle}`}
+								style={({ pressed }) => [
+									styles.currentCardMainAction,
+									pressed ? styles.rowPressed : null,
+								]}
 							>
-								<Ionicons name="locate-outline" size={20} color={titleColor} />
-							</View>
-							<View style={styles.currentCardCopy}>
-								<Text style={[styles.currentCardAddress, { color: titleColor }]}>
-									{model.headerTitle}
-								</Text>
-								<Text style={[styles.currentCardBody, { color: mutedColor }]}>
-									{model.headerSubtitle}
-								</Text>
-							</View>
+								<View
+									style={[styles.currentCardAvatar, { backgroundColor: groupSurfaceColor }]}
+								>
+									<Ionicons name="locate-outline" size={20} color={titleColor} />
+								</View>
+								<View style={styles.currentCardCopy}>
+									<Text style={[styles.currentCardAddress, { color: titleColor }]}>
+										{model.headerTitle}
+									</Text>
+									<Text style={[styles.currentCardBody, { color: mutedColor }]}>
+										{model.headerSubtitle}
+									</Text>
+								</View>
+							</Pressable>
 							<MapLocationIntentHeroMeta
 								label={heroActionLabel || permissionLabel}
 								titleColor={titleColor}
@@ -542,7 +596,7 @@ export function MapLocationIntentBodyContent({
 								onPress={handleHeroAction}
 							/>
 						</View>
-					</Pressable>
+					</View>
 
 					<Pressable
 						style={({ pressed }) => [
@@ -651,11 +705,9 @@ export function MapLocationIntentBodyContent({
 
 			{isManualStep && currentManualStep ? (
 				<View
-					style={[
-						styles.manualStepCard,
-						{ backgroundColor: groupSurfaceColor },
-					]}
+					style={[styles.manualStepCard, { backgroundColor: groupSurfaceColor }]}
 				>
+					{/* Header: back-to-pickup pill + step counter */}
 					<View style={styles.manualStepHeader}>
 						<Pressable
 							onPress={onBackToDefault}
@@ -676,14 +728,8 @@ export function MapLocationIntentBodyContent({
 							{manualStepIndex + 1} of {MANUAL_LOCATION_STEPS.length}
 						</Text>
 					</View>
-					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
-						{currentManualStep.question || currentManualStep.label}
-					</Text>
-					{currentManualStep.helperText ? (
-						<Text style={[styles.manualStepHelper, { color: mutedColor }]}>
-							{currentManualStep.helperText}
-						</Text>
-					) : null}
+
+					{/* Progress track */}
 					<View style={styles.manualProgressTrack} accessibilityElementsHidden>
 						{MANUAL_LOCATION_STEPS.map((step, index) => (
 							<View
@@ -698,103 +744,73 @@ export function MapLocationIntentBodyContent({
 							/>
 						))}
 					</View>
-					{currentManualStep.inputType === "country" ? (
-						<Pressable
-							onPress={onOpenCountryPicker}
-							accessibilityRole="button"
-							accessibilityLabel="Choose country or region"
-							style={({ pressed }) => [
-								styles.manualSelectInput,
-								{ backgroundColor: infoSurfaceColor },
-								pressed ? styles.rowPressed : null,
-							]}
-						>
-							<Text
-								style={[
-									styles.manualSelectText,
-									{ color: manualDraft.country ? titleColor : mutedColor },
-								]}
-							>
-								{manualDraft.country || currentManualStep.placeholder}
-							</Text>
-							{manualDraft.countryCode ? (
-								<Text style={[styles.manualSelectMeta, { color: mutedColor }]}>
-									{manualDraft.countryCode}
-								</Text>
-							) : null}
-							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-						</Pressable>
-					) : (
-						<TextInput
-							key={currentManualStep.key}
-							value={manualDraft[currentManualStep.key] || ""}
-							onChangeText={(value) =>
-								onManualDraftChange(currentManualStep.key, value)
-							}
-							placeholder={currentManualStep.placeholder}
-							placeholderTextColor={mutedColor}
-							autoCapitalize={currentManualStep.autoCapitalize || "sentences"}
-							autoCorrect={false}
-							autoFocus
-							multiline={Boolean(currentManualStep.multiline)}
-							returnKeyType={
-								manualStepIndex >= MANUAL_LOCATION_STEPS.length - 1
-									? "done"
-									: "next"
-							}
-							onSubmitEditing={
-								currentManualStep.multiline ? undefined : onNextManualStep
-							}
-							style={[
-								styles.manualTextInput,
-								currentManualStep.multiline ? styles.manualTextInputMultiline : null,
-								{ backgroundColor: infoSurfaceColor, color: titleColor },
-							]}
-						/>
-					)}
+
+					{/* Active step question */}
+					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
+						{currentManualStep.question || currentManualStep.label}
+					</Text>
+					{currentManualStep.helperText ? (
+						<Text style={[styles.manualStepHelper, { color: mutedColor }]}>
+							{currentManualStep.helperText}
+						</Text>
+					) : null}
+
+					{/* Completed steps as compact summary rows */}
+					<ManualStepCompletedSummaries
+						manualDraft={manualDraft}
+						currentStepIndex={manualStepIndex}
+						onEditStep={(idx) => {
+							// Signal parent to jump to step idx via special sentinel key
+							onManualDraftChange('__jumpTo__', String(idx));
+						}}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						infoSurfaceColor={infoSurfaceColor}
+					/>
+
+					{/* Active step affordance — select-search / search-drop / text / textarea */}
+					<ManualStepActiveField
+						step={currentManualStep}
+						draftValue={manualDraft[currentManualStep.key] || ''}
+						draftCountryCode={manualDraft.countryCode}
+						dropQuery={manualDropQuery}
+						dropResults={manualDropResults}
+						isDropLoading={isResolvingManual}
+						onQueryChange={onManualDropQueryChange}
+						onDropSelect={(item) =>
+							onManualDropSelect(
+								currentManualStep.key,
+								item.primaryText || item.name || '',
+								{
+									city: item.city || null,
+									stateRegion: item.state || null,
+									countryCode: item.countryCode || null,
+								},
+							)
+						}
+						onCountrySelect={onManualCountrySelectInline}
+						onTextChange={(value) =>
+							onManualDraftChange(currentManualStep.key, value)
+						}
+						onSubmitEditing={onNextManualStep}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						infoSurfaceColor={infoSurfaceColor}
+					/>
+
+					{/* Optional badge */}
 					{currentManualStep.optional ? (
 						<Text style={[styles.manualOptionalText, { color: mutedColor }]}>
 							Optional
 						</Text>
 					) : null}
+
+					{/* Inline error */}
 					{manualError ? (
 						<Text style={[styles.manualErrorText, { color: "#EF4444" }]}>
 							{manualError}
 						</Text>
 					) : null}
-					<View style={styles.manualStepActions}>
-						<Pressable
-							style={[
-								styles.manualStepButton,
-								{ backgroundColor: infoSurfaceColor },
-							]}
-							onPress={onPrevManualStep}
-						>
-							<Text
-								style={[styles.manualStepButtonLabel, { color: titleColor }]}
-							>
-								Back
-							</Text>
-						</Pressable>
-						<Pressable
-							disabled={isResolvingManual}
-							style={({ pressed }) => [
-								styles.manualStepButton,
-								styles.manualStepButtonPrimary,
-								{ backgroundColor: infoSurfaceColor },
-								pressed ? styles.rowPressed : null,
-								isResolvingManual ? styles.manualStepButtonDisabled : null,
-							]}
-							onPress={onNextManualStep}
-						>
-							{isResolvingManual ? (
-								<ActivityIndicator size="small" color={titleColor} />
-							) : null}
-							<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-								{manualNextActionLabel || "Next"}
-							</Text>
-						</Pressable>
-					</View>
 				</View>
 			) : null}
 
@@ -818,7 +834,59 @@ export function MapLocationIntentBodyContent({
 						/>
 					</View>
 
-					{isSaveCategory ? (
+					{isSavedManage ? (
+						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
+							{savedManageActions.map((action, index) => {
+								const actionTone = resolveCandidateActionTone(
+									action,
+									infoSurfaceColor,
+									titleColor,
+									mutedColor,
+								);
+
+								return (
+									<React.Fragment key={action.id}>
+										{index > 0 ? (
+											<View style={[styles.candidateActionDivider, { backgroundColor: mutedColor + "25" }]} />
+										) : null}
+										<Pressable
+											onPress={() => onSavedManageAction?.(action)}
+											accessibilityRole="button"
+											accessibilityLabel={action.label}
+											style={({ pressed }) => [
+												styles.candidateActionRow,
+												pressed ? styles.rowPressed : null,
+											]}
+										>
+											<View
+												style={[
+													styles.candidateActionIcon,
+													{ backgroundColor: actionTone.iconBackgroundColor },
+												]}
+											>
+												<Ionicons
+													name={action.iconName}
+													size={18}
+													color={actionTone.iconColor}
+												/>
+											</View>
+											<Text
+												style={[
+													styles.candidateActionText,
+													{ color: actionTone.textColor },
+												]}
+											>
+												{action.label}
+											</Text>
+											{action.type === "remove" && isConfirmingSavedRemove ? null : (
+												<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+											)}
+										</Pressable>
+									</React.Fragment>
+								);
+							})}
+						</View>
+					) : isSaveCategory ? (
 						<View style={[styles.candidateActionGroup, { backgroundColor: groupSurfaceColor }]}>
 							{saveCategoryActions.map((action, index) => {
 								const actionTone = resolveCandidateActionTone(
