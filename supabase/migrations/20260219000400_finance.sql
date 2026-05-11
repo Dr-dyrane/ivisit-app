@@ -977,6 +977,9 @@ DECLARE
     v_display_amount NUMERIC := 0;
     v_is_stale BOOLEAN := false;
     v_resolution_source TEXT := 'default_usd';
+    -- PULLBACK NOTE: Nigerian regional pricing discount variables
+    v_regional_discount_factor NUMERIC := 0.10;
+    v_regional_discount_country TEXT := 'NG';
 BEGIN
     IF p_amount_usd IS NULL OR p_amount_usd < 0 THEN
         RETURN jsonb_build_object(
@@ -1035,6 +1038,21 @@ BEGIN
     END IF;
 
     v_display_amount := ROUND(v_amount_usd * v_rate, 2);
+
+    -- PULLBACK NOTE: Nigerian regional pricing discount
+    -- OLD: no regional discount applied
+    -- NEW: 90% discount for NG billing country (pay 10% of converted amount)
+    --      e.g. $100 USD × ~1500 NGN/USD = ₦150,000 → × 0.10 = ₦15,000
+    --      To adjust: change v_regional_discount_factor (e.g. 0.20 = 80% off)
+    --      To remove: delete this block
+    IF v_target_country_code = v_regional_discount_country AND v_display_currency <> 'USD' THEN
+        v_display_amount := ROUND(v_display_amount * v_regional_discount_factor, 2);
+        v_metadata := v_metadata || jsonb_build_object(
+            'regional_discount_applied', true,
+            'regional_discount_factor', v_regional_discount_factor,
+            'pre_discount_amount', ROUND(v_amount_usd * v_rate, 2)
+        );
+    END IF;
 
     RETURN jsonb_build_object(
         'success', true,
