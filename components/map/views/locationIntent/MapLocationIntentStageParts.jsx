@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useVisits } from "../../../../contexts/VisitsContext";
+import { selectRecentHistoryPreview } from "../../../../hooks/visits/useVisitHistorySelectors";
 import MapVisitDetailCollapsedRow from "../visitDetail/MapVisitDetailCollapsedRow";
 import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
 import IntentOrb from "../../shared/IntentOrb";
@@ -239,6 +241,7 @@ export function MapLocationIntentBodyContent({
 	onSelectSaveCategory,
 	recents,
 	savedPlaces,
+	managedSavedPlaces,
 	mode,
 	manualDraft,
 	saveDetailsDraft,
@@ -252,9 +255,11 @@ export function MapLocationIntentBodyContent({
 	onBackToPreviousStep,
 	manualDropQuery,
 	manualDropResults,
+	manualDropContextHint,
 	onManualDropQueryChange,
 	onManualDropSelect,
 	onManualCountrySelectInline,
+	accentColor,
 	manualError,
 	manualNextActionLabel,
 	isResolvingManual,
@@ -266,6 +271,7 @@ export function MapLocationIntentBodyContent({
 	isDarkMode,
 	responsiveMetrics,
 }) {
+	const { visits = [] } = useVisits();
 	const searchViewportMetrics = useResponsiveSurfaceMetrics({ presentationMode: "sheet" });
 	const searchResponsiveStyles = useMemo(
 		() => getMapSearchSheetResponsiveStyles(searchViewportMetrics),
@@ -304,6 +310,42 @@ export function MapLocationIntentBodyContent({
 		statusTone: "default",
 		...recent,
 	}));
+	const recentVisitLocationItems = useMemo(
+		() =>
+			selectRecentHistoryPreview(visits, 6)
+				.filter((item) => item?.facilityCoordinate && item?.facilityAddress)
+				.map((item) => ({
+					id: `visit-location-${item.id}`,
+					requestType: item.requestType || "visit",
+					title: item.facilityName || item.title || "Recent visit",
+					label: item.facilityName || item.title || "Recent visit",
+					subtitle: item.facilityAddress,
+					address: item.facilityAddress,
+					statusLabel: "Recent Visit",
+					statusTone: item.statusTone || "default",
+					timeLabel: item.timeLabel || "",
+					source: "visit",
+					coords: item.facilityCoordinate,
+					latitude: item.facilityCoordinate.latitude,
+					longitude: item.facilityCoordinate.longitude,
+					countryCode: null,
+				})),
+		[visits],
+	);
+	const combinedRecentLocationItems = useMemo(() => {
+		const seen = new Set();
+		return [...recentLocationItems, ...recentVisitLocationItems]
+			.filter((item) => {
+				const key = `${String(item.address || item.subtitle || "").trim().toLowerCase()}|${Number(item.latitude || item.coords?.latitude || 0).toFixed(5)}|${Number(item.longitude || item.coords?.longitude || 0).toFixed(5)}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.slice(0, 6);
+	}, [recentLocationItems, recentVisitLocationItems]);
+	const managedSavedPlaceItems = Array.isArray(managedSavedPlaces)
+		? managedSavedPlaces.slice(0, 6)
+		: [];
 	const recentRowMetrics = {
 		iconSize: 20,
 		orbSize: 40,
@@ -667,47 +709,76 @@ export function MapLocationIntentBodyContent({
 			) : null}
 
 			{isExpanded && showDefaultSections ? (
-				<View style={styles.recentsSection}>
-					<Pressable
-						style={({ pressed }) => [
-							styles.intentSectionHeader,
-							styles.intentSectionHeaderBiased,
-							styles.intentSectionHeaderTrigger,
-							sectionTriggerStyle,
-							pressed ? styles.sectionTriggerPressed : null,
-						]}
-						accessibilityRole="button"
-						accessibilityLabel="Open recent locations"
-					>
-						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
-							{model.recentsTitle}
-						</Text>
-						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-					</Pressable>
-					{recentLocationItems.length > 0 ? (
-						<MapHistoryGroup
-							items={recentLocationItems}
-							onSelectItem={onSelectRecentLocation}
-							metrics={recentRowMetrics}
-							containerRadius={22}
-							hideRowChevron
-							isDarkMode={isDarkMode}
-						/>
-					) : (
-						<View style={[styles.emptyGroup, { backgroundColor: groupSurfaceColor }]}>
-							<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
-								No recent locations yet.
-							</Text>
+				<>
+					{managedSavedPlaceItems.length > 0 ? (
+						<View style={styles.recentsSection}>
+							<Pressable
+								style={({ pressed }) => [
+									styles.intentSectionHeader,
+									styles.intentSectionHeaderBiased,
+									styles.intentSectionHeaderTrigger,
+									sectionTriggerStyle,
+									pressed ? styles.sectionTriggerPressed : null,
+								]}
+								accessibilityRole="button"
+								accessibilityLabel="Manage saved places"
+							>
+								<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
+									Saved Places
+								</Text>
+								<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+							</Pressable>
+							<MapHistoryGroup
+								items={managedSavedPlaceItems}
+								onSelectItem={(item) => onSelectSavedPlace?.({ label: item.title, location: item })}
+								metrics={recentRowMetrics}
+								containerRadius={22}
+								isDarkMode={isDarkMode}
+							/>
 						</View>
-					)}
-				</View>
+					) : null}
+					<View style={styles.recentsSection}>
+						<Pressable
+							style={({ pressed }) => [
+								styles.intentSectionHeader,
+								styles.intentSectionHeaderBiased,
+								styles.intentSectionHeaderTrigger,
+								sectionTriggerStyle,
+								pressed ? styles.sectionTriggerPressed : null,
+							]}
+							accessibilityRole="button"
+							accessibilityLabel="Open recent locations"
+						>
+							<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
+								{model.recentsTitle}
+							</Text>
+							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+						</Pressable>
+						{combinedRecentLocationItems.length > 0 ? (
+							<MapHistoryGroup
+								items={combinedRecentLocationItems}
+								onSelectItem={onSelectRecentLocation}
+								metrics={recentRowMetrics}
+								containerRadius={22}
+								hideRowChevron
+								isDarkMode={isDarkMode}
+							/>
+						) : (
+							<View style={[styles.emptyGroup, { backgroundColor: groupSurfaceColor }]}>
+								<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
+									No recent locations yet.
+								</Text>
+							</View>
+						)}
+					</View>
+				</>
 			) : null}
 
 			{isManualStep && currentManualStep ? (
 				<View
 					style={[styles.manualStepCard, { backgroundColor: groupSurfaceColor }]}
 				>
-					{/* Header: back-to-pickup pill + step counter */}
+					{/* Header: back-to-pickup pill only — no noisy step counter */}
 					<View style={styles.manualStepHeader}>
 						<Pressable
 							onPress={onBackToDefault}
@@ -724,26 +795,20 @@ export function MapLocationIntentBodyContent({
 								Pickup
 							</Text>
 						</Pressable>
-						<Text style={[styles.manualStepProgress, { color: mutedColor }]}>
-							{manualStepIndex + 1} of {MANUAL_LOCATION_STEPS.length}
-						</Text>
 					</View>
 
-					{/* Progress track */}
-					<View style={styles.manualProgressTrack} accessibilityElementsHidden>
-						{MANUAL_LOCATION_STEPS.map((step, index) => (
-							<View
-								key={step.key}
-								style={[
-									styles.manualProgressSegment,
-									{
-										backgroundColor:
-											index <= manualStepIndex ? titleColor : mutedColor + "30",
-									},
-								]}
-							/>
-						))}
-					</View>
+					{/* Completed steps — live address pill + locked editable rows */}
+					<ManualStepCompletedSummaries
+						manualDraft={manualDraft}
+						currentStepIndex={manualStepIndex}
+						onEditStep={(idx) => {
+							onManualDraftChange('__jumpTo__', String(idx));
+						}}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						infoSurfaceColor={infoSurfaceColor}
+						accentColor={accentColor}
+					/>
 
 					{/* Active step question */}
 					<Text style={[styles.manualStepLabel, { color: titleColor }]}>
@@ -755,19 +820,6 @@ export function MapLocationIntentBodyContent({
 						</Text>
 					) : null}
 
-					{/* Completed steps as compact summary rows */}
-					<ManualStepCompletedSummaries
-						manualDraft={manualDraft}
-						currentStepIndex={manualStepIndex}
-						onEditStep={(idx) => {
-							// Signal parent to jump to step idx via special sentinel key
-							onManualDraftChange('__jumpTo__', String(idx));
-						}}
-						titleColor={titleColor}
-						mutedColor={mutedColor}
-						infoSurfaceColor={infoSurfaceColor}
-					/>
-
 					{/* Active step affordance — select-search / search-drop / text / textarea */}
 					<ManualStepActiveField
 						step={currentManualStep}
@@ -776,6 +828,7 @@ export function MapLocationIntentBodyContent({
 						dropQuery={manualDropQuery}
 						dropResults={manualDropResults}
 						isDropLoading={isResolvingManual}
+						contextHint={manualDropContextHint}
 						onQueryChange={onManualDropQueryChange}
 						onDropSelect={(item) =>
 							onManualDropSelect(

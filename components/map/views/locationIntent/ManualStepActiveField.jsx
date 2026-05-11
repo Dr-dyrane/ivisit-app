@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import countries from "../../../../data/countries";
 
-// ── Country / State inline select-search ────────────────────────────────────
+// ── Country inline select-search ─────────────────────────────────────────────
 
 function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, infoSurfaceColor }) {
 	return (
@@ -27,10 +27,7 @@ function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, infoSu
 			]}
 		>
 			<CountryFlagGlyph flag={item.flag} code={item.code} size={20} />
-			<Text
-				numberOfLines={1}
-				style={[styles.dropItemLabel, { color: titleColor }]}
-			>
+			<Text numberOfLines={1} style={[styles.dropItemLabel, { color: titleColor }]}>
 				{item.name}
 			</Text>
 			{isSelected ? (
@@ -42,7 +39,6 @@ function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, infoSu
 
 function SelectSearchDrop({
 	step,
-	draftValue,
 	draftCountryCode,
 	onSelect,
 	titleColor,
@@ -51,8 +47,6 @@ function SelectSearchDrop({
 }) {
 	const [query, setQuery] = useState("");
 
-	// Country and state reuse the same countries dataset for now.
-	// State/province: if no country selected yet, show all country names as regions.
 	const list = useMemo(() => {
 		const q = query.trim().toLowerCase();
 		if (!q) return countries;
@@ -65,16 +59,11 @@ function SelectSearchDrop({
 
 	const handleSelect = useCallback(
 		(item) => {
-			// For country step: pass { name, code }
-			// For state step: treat country name as state value (best-effort for MVP)
-			onSelect({ name: item.name, code: item.code });
+			onSelect({ name: item.name, code: item.code, flag: item.flag });
 			setQuery("");
 		},
 		[onSelect],
 	);
-
-	const selectedCode =
-		step.key === "country" ? draftCountryCode : null;
 
 	return (
 		<View style={styles.dropContainer}>
@@ -106,7 +95,7 @@ function SelectSearchDrop({
 					<CountryRow
 						key={item.code}
 						item={item}
-						isSelected={Boolean(selectedCode && item.code === selectedCode)}
+						isSelected={Boolean(draftCountryCode && item.code === draftCountryCode)}
 						onSelect={handleSelect}
 						titleColor={titleColor}
 						mutedColor={mutedColor}
@@ -114,16 +103,14 @@ function SelectSearchDrop({
 					/>
 				))}
 				{list.length === 0 ? (
-					<Text style={[styles.dropEmpty, { color: mutedColor }]}>
-						No results
-					</Text>
+					<Text style={[styles.dropEmpty, { color: mutedColor }]}>No results</Text>
 				) : null}
 			</ScrollView>
 		</View>
 	);
 }
 
-// ── City / Street Mapbox search-drop ────────────────────────────────────────
+// ── Mapbox search-drop (state / city / street) ───────────────────────────────
 
 function SearchDropResult({ item, onSelect, titleColor, mutedColor, infoSurfaceColor }) {
 	const primary = item.primaryText || item.name || "";
@@ -139,7 +126,7 @@ function SearchDropResult({ item, onSelect, titleColor, mutedColor, infoSurfaceC
 				{ backgroundColor: pressed ? infoSurfaceColor : "transparent" },
 			]}
 		>
-			<Ionicons name="location-outline" size={16} color={mutedColor} />
+			<Ionicons name="location-outline" size={16} color={mutedColor} style={styles.resultIcon} />
 			<View style={styles.dropItemCopy}>
 				<Text numberOfLines={1} style={[styles.dropItemLabel, { color: titleColor }]}>
 					{primary}
@@ -161,10 +148,16 @@ function SearchDrop({
 	isDropLoading,
 	onQueryChange,
 	onSelect,
+	contextHint,
 	titleColor,
 	mutedColor,
 	infoSurfaceColor,
 }) {
+	// Placeholder shows "Search states…  · Nigeria" so user knows it's scoped
+	const placeholder = contextHint
+		? `${step.placeholder}  ·  ${contextHint}`
+		: step.placeholder;
+
 	return (
 		<View style={styles.dropContainer}>
 			<View style={[styles.dropSearch, { backgroundColor: infoSurfaceColor }]}>
@@ -172,7 +165,7 @@ function SearchDrop({
 				<TextInput
 					value={dropQuery}
 					onChangeText={onQueryChange}
-					placeholder={step.placeholder}
+					placeholder={placeholder}
 					placeholderTextColor={mutedColor}
 					autoFocus
 					autoCapitalize="none"
@@ -187,6 +180,7 @@ function SearchDrop({
 					</Pressable>
 				) : null}
 			</View>
+
 			{dropResults.length > 0 ? (
 				<ScrollView
 					style={styles.dropList}
@@ -204,7 +198,9 @@ function SearchDrop({
 								infoSurfaceColor={infoSurfaceColor}
 							/>
 							{idx < dropResults.length - 1 ? (
-								<View style={[styles.dropDivider, { backgroundColor: mutedColor + "22" }]} />
+								<View
+									style={[styles.dropDivider, { backgroundColor: mutedColor + "22" }]}
+								/>
 							) : null}
 						</View>
 					))}
@@ -218,14 +214,14 @@ function SearchDrop({
 	);
 }
 
-// ── Main export ──────────────────────────────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────────────────────
 
 /**
  * ManualStepActiveField
  *
  * Renders the correct affordance for the active manual step:
- *   select-search  → inline searchable country/region list
- *   search-drop    → Mapbox live suggestion drop
+ *   select-search  → inline searchable country list
+ *   search-drop    → Mapbox live suggestion drop (state/city/street)
  *   text           → auto-focused TextInput
  *   textarea       → auto-focused multiline TextInput
  *
@@ -233,15 +229,16 @@ function SearchDrop({
  * ─────
  * step              MANUAL_LOCATION_STEPS[index] with .affordance
  * draftValue        string — current field value in manualDraft
- * draftCountryCode  string — for scoping country drop selection state
+ * draftCountryCode  string — for country selection highlight
  * dropQuery         string — live query for search-drop
  * dropResults       array  — Mapbox results for search-drop
  * isDropLoading     bool
- * onQueryChange     (query) => void  — search-drop query change
- * onDropSelect      (item) => void   — search-drop result selected
- * onCountrySelect   ({ name, code }) => void
- * onTextChange      (value) => void  — text/textarea change
- * onSubmitEditing   () => void — return key handler for text
+ * contextHint       string — e.g. "Nigeria" or "Lagos, Nigeria" shown in placeholder
+ * onQueryChange     (query) => void
+ * onDropSelect      (item) => void
+ * onCountrySelect   ({ name, code, flag }) => void
+ * onTextChange      (value) => void
+ * onSubmitEditing   () => void
  */
 export default function ManualStepActiveField({
 	step,
@@ -250,6 +247,7 @@ export default function ManualStepActiveField({
 	dropQuery,
 	dropResults,
 	isDropLoading,
+	contextHint,
 	onQueryChange,
 	onDropSelect,
 	onCountrySelect,
@@ -265,7 +263,6 @@ export default function ManualStepActiveField({
 		return (
 			<SelectSearchDrop
 				step={step}
-				draftValue={draftValue}
 				draftCountryCode={draftCountryCode}
 				onSelect={onCountrySelect}
 				titleColor={titleColor}
@@ -284,6 +281,7 @@ export default function ManualStepActiveField({
 				isDropLoading={isDropLoading}
 				onQueryChange={onQueryChange}
 				onSelect={onDropSelect}
+				contextHint={contextHint}
 				titleColor={titleColor}
 				mutedColor={mutedColor}
 				infoSurfaceColor={infoSurfaceColor}
@@ -348,6 +346,9 @@ const styles = StyleSheet.create({
 		borderRadius: 10,
 		borderCurve: "continuous",
 	},
+	resultIcon: {
+		flexShrink: 0,
+	},
 	dropItemCopy: {
 		flex: 1,
 		minWidth: 0,
@@ -381,6 +382,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 14,
 		paddingVertical: 10,
 		fontSize: 15,
+		fontWeight: "500",
 	},
 	textInputMultiline: {
 		minHeight: 84,

@@ -372,7 +372,7 @@ export default function MapLocationIntentStageBase({
 			const pickupPayload = mapCandidateToPickupPayload(nextSelection);
 			if (!pickupPayload) return;
 			onSelectLocation?.(pickupPayload);
-			if (nextSelection.source === "manual" || nextSelection.source === "search") {
+			if (["manual", "search", "recent", "saved", "visit", "pin"].includes(nextSelection.source)) {
 				addSavedLocation?.({
 					label: nextSelection.label || "Recent pickup",
 					category: "recent",
@@ -383,6 +383,12 @@ export default function MapLocationIntentStageBase({
 					unit: nextSelection.unit || null,
 					responderNote: nextSelection.responderNote || null,
 					source: "recent",
+					recentSource: nextSelection.source,
+					sourceSavedAddressId: nextSelection.source === "saved" ? nextSelection.id || null : null,
+					usage: {
+						lastUsedAt: Date.now(),
+						useCount: 1,
+					},
 				});
 			}
 			onClose?.();
@@ -533,7 +539,18 @@ export default function MapLocationIntentStageBase({
 		setManualStepIndex((prev) => Math.min(prev + 1, MANUAL_LOCATION_STEPS.length - 1));
 	}, []);
 
-	// Debounced Mapbox search for city/street drop steps (affordance: "search-drop")
+	// Build contextual hint for placeholder + query scoping (e.g. "Lagos, Nigeria")
+	const manualDropContextHint = useMemo(() => {
+		const parts = [
+			manualDraft.city,
+			manualDraft.stateRegion,
+			manualDraft.country,
+		].filter(Boolean);
+		return parts.length > 0 ? parts.join(', ') : '';
+	}, [manualDraft.city, manualDraft.stateRegion, manualDraft.country]);
+
+	// Debounced Mapbox search for state/city/street drop steps (affordance: "search-drop")
+	// Appends city + state + country context to the query for scoped results.
 	const manualDropTimerRef = useRef(null);
 	useEffect(() => {
 		const currentStep = MANUAL_LOCATION_STEPS[manualStepIndex];
@@ -546,11 +563,20 @@ export default function MapLocationIntentStageBase({
 			setManualDropResults([]);
 			return;
 		}
+		// Append context so Mapbox scopes results — e.g. "Victoria Lagos Nigeria"
+		const contextParts = [
+			manualDraft.city,
+			manualDraft.stateRegion,
+			manualDraft.country,
+		].filter(Boolean);
+		const contextSuffix = contextParts.length > 0 ? ' ' + contextParts.join(' ') : '';
+		const contextualQuery = trimmed + contextSuffix;
+
 		if (manualDropTimerRef.current) clearTimeout(manualDropTimerRef.current);
 		manualDropTimerRef.current = setTimeout(async () => {
 			try {
 				const results = await mapboxService.suggestAddresses({
-					query: trimmed,
+					query: contextualQuery,
 					proximity: locationBias || null,
 					countryCode: manualDraft.countryCode || undefined,
 					types: currentStep.mapboxTypes || undefined,
@@ -563,7 +589,15 @@ export default function MapLocationIntentStageBase({
 		return () => {
 			if (manualDropTimerRef.current) clearTimeout(manualDropTimerRef.current);
 		};
-	}, [manualDropQuery, manualStepIndex, locationBias, manualDraft.countryCode]);
+	}, [
+		manualDropQuery,
+		manualStepIndex,
+		locationBias,
+		manualDraft.countryCode,
+		manualDraft.country,
+		manualDraft.stateRegion,
+		manualDraft.city,
+	]);
 
 	const handleManualCountrySelectInline = useCallback(({ name, code }) => {
 		if (!name) return;
@@ -922,7 +956,9 @@ export default function MapLocationIntentStageBase({
 						nextLabel={manualNextActionLabel || "Next"}
 						isLoading={isResolvingManual}
 						titleColor={tokens.titleColor}
+						mutedColor={tokens.mutedText}
 						infoSurfaceColor={infoSurfaceColor}
+						accentColor={themeTokens.accentColor}
 					/>
 				) : null
 			}
@@ -993,7 +1029,7 @@ export default function MapLocationIntentStageBase({
 							setSavedPlaceFeedback(null);
 							const normalized = buildSelectedLocation({
 								...candidate,
-								source: "recent",
+								source: recent?.source === "visit" ? "visit" : "recent",
 								confidence: "medium",
 							});
 							if (!normalized) return;
@@ -1045,9 +1081,11 @@ export default function MapLocationIntentStageBase({
 						onBackToPreviousStep={navigateBackWithinLocationLoop}
 						manualDropQuery={manualDropQuery}
 						manualDropResults={manualDropResults}
+						manualDropContextHint={manualDropContextHint}
 						onManualDropQueryChange={handleManualDropQueryChange}
 						onManualDropSelect={handleManualDropSelect}
 						onManualCountrySelectInline={handleManualCountrySelectInline}
+						accentColor={themeTokens.accentColor}
 						manualError={manualError}
 						manualNextActionLabel={manualNextActionLabel}
 						isResolvingManual={isResolvingManual}
