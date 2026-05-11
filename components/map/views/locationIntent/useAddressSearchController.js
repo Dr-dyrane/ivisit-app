@@ -16,6 +16,12 @@ export default function useAddressSearchController({
 	const [isSearchingLocations, setIsSearchingLocations] = useState(false);
 	const [selectionError, setSelectionError] = useState(null);
 	const requestIdRef = useRef(0);
+	const locationBiasLatitude = Number.isFinite(Number(locationBias?.latitude))
+		? Number(locationBias.latitude)
+		: null;
+	const locationBiasLongitude = Number.isFinite(Number(locationBias?.longitude))
+		? Number(locationBias.longitude)
+		: null;
 
 	useEffect(() => {
 		const trimmed = searchQuery.trim();
@@ -29,10 +35,14 @@ export default function useAddressSearchController({
 		const requestId = ++requestIdRef.current;
 
 		const timeout = setTimeout(async () => {
+			const stableLocationBias =
+				locationBiasLatitude !== null && locationBiasLongitude !== null
+					? { latitude: locationBiasLatitude, longitude: locationBiasLongitude }
+					: null;
 			setIsSearchingLocations(true);
 			setSelectionError(null);
 			try {
-				const results = await mapboxService.suggestAddresses(trimmed, locationBias);
+				const results = await mapboxService.suggestAddresses(trimmed, stableLocationBias);
 				if (requestIdRef.current !== requestId) return;
 				setSearchResults(Array.isArray(results) ? results : []);
 			} catch (_err) {
@@ -47,7 +57,7 @@ export default function useAddressSearchController({
 		}, DEBOUNCE_MS);
 
 		return () => clearTimeout(timeout);
-	}, [isActive, locationBias, searchQuery]);
+	}, [isActive, locationBiasLatitude, locationBiasLongitude, searchQuery]);
 
 	const setSearchQuery = useCallback(
 		(value, options = {}) => {

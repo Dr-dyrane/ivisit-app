@@ -73,3 +73,30 @@
 **Risk:** Low. No DB changes, no API changes.
 
 **Ready to implement.**
+
+---
+
+## 2026-05-11 Re-Audit Required After LocationSheet Work
+
+This search audit predates the recent LocationSheet implementation passes. The architecture now has both historical SearchSheet search behavior and newer LocationSheet-owned location search/manual-address behavior.
+
+Current app-state additions:
+
+- LocationSheet now owns selected-location decision states.
+- Search result selection should create an address candidate, not commit pickup.
+- Manual address search uses `addressAssistService` and `useManualDropController`.
+- Manual typed fallback now allows continuing when provider suggestions are weak.
+- Saved places, recents, and recent visits are rendered inside LocationSheet surfaces.
+
+Re-audit required:
+
+- Confirm SearchSheet and LocationSheet do not maintain duplicate provider-search contracts.
+- Confirm suggestion mapping is not duplicated across SearchSheet, LocationSheet, emergency intake search, and legacy location modals.
+- Confirm recent query history and recent pickup history remain separate.
+- Confirm saved places do not leak into recents except through explicit recent-use records.
+- Confirm LocationSheet search row visuals reuse SearchSheet surfaces rather than inventing a parallel row grammar.
+- Confirm no location result commits pickup without the candidate decision CTA.
+
+Cross-track audit:
+
+- [`../LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md`](../LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)

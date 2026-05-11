@@ -168,6 +168,8 @@ docs/
 - Demo bootstrap remediation checkpoint: [./audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](./audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md)
 - Demo bootstrap duplicate hospital bug audit: [./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
 - Demo bootstrap 5-pass fix index: [./audit/demo/README.md](./audit/demo/README.md)
+- Last 24h location/search/UX/demo deep audit plan: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
+- Last 24h location/search/UX/demo deep audit findings: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Map sheet notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Map route-state hardening checkpoint: [./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)

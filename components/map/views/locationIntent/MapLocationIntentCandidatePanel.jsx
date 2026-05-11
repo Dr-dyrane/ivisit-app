@@ -4,7 +4,7 @@
 
 import React, { useMemo } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
 	ResultsSection,
 	SearchResultRow,
@@ -189,7 +189,7 @@ export default function MapLocationIntentCandidatePanel({
 										{action.label}
 									</Text>
 									{action.type === "remove" && isConfirmingSavedRemove ? null : (
-										<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+										<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 									)}
 								</Pressable>
 							</React.Fragment>
@@ -225,7 +225,7 @@ export default function MapLocationIntentCandidatePanel({
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
 									</Text>
-									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+									<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 								</Pressable>
 							</React.Fragment>
 						);
@@ -327,7 +327,7 @@ export default function MapLocationIntentCandidatePanel({
 									{action.label}
 								</Text>
 								{isStatus || action.type === "back" ? null : (
-									<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+									<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 								)}
 							</>
 						);

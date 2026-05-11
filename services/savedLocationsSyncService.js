@@ -23,6 +23,7 @@ const SYNC_DEBOUNCE_MS = 2000;
 
 let syncTimeout = null;
 let isHydrating = false;
+let savedLocationsUnsubscribe = null;
 
 /**
  * Map saved locations to view_preferences format
@@ -47,18 +48,38 @@ async function syncToServer(savedLocations) {
 	const { data: { user } } = await supabase.auth.getUser();
 	if (!user || !isValidUUID(user.id)) return;
 
-	const viewPrefs = mapToViewPreferences(savedLocations);
+	const { data: existingPreferences, error: readError } = await supabase
+		.from("preferences")
+		.select("view_preferences")
+		.eq("user_id", user.id)
+		.maybeSingle();
+
+	if (readError) {
+		console.warn("[SavedLocationsSync] Failed to read existing preferences:", readError.message);
+		throw readError;
+	}
+
+	const existingViewPrefs =
+		existingPreferences?.view_preferences &&
+		typeof existingPreferences.view_preferences === "object"
+			? existingPreferences.view_preferences
+			: {};
+	const viewPrefs = {
+		...existingViewPrefs,
+		...mapToViewPreferences(savedLocations),
+	};
 
 	const { error } = await supabase
 		.from("preferences")
-		.update({
+		.upsert({
+			user_id: user.id,
 			view_preferences: viewPrefs,
 			updated_at: new Date().toISOString(),
-		})
-		.eq("user_id", user.id);
+		}, { onConflict: "user_id" });
 
 	if (error) {
 		console.warn("[SavedLocationsSync] Failed to sync:", error.message);
+		throw error;
 	}
 }
 
@@ -171,14 +192,21 @@ export async function initializeSavedLocationsSync() {
 
 		const seededHome = await seedHomeFromProfileAddress(ownerUserId);
 
-		// Subscribe to store changes for auto-sync
-		useLocationStore.subscribe((state, prevState) => {
+		// Subscribe to store changes for auto-sync. Reset old subscriptions when
+		// auth identity changes so one runtime never syncs another user's state.
+		if (typeof savedLocationsUnsubscribe === "function") {
+			savedLocationsUnsubscribe();
+			savedLocationsUnsubscribe = null;
+		}
+		savedLocationsUnsubscribe = useLocationStore.subscribe((state, prevState) => {
 			// Only sync if savedLocations actually changed
 			if (state.savedLocations !== prevState.savedLocations) {
 				// Debounce to prevent excessive API calls
 				if (syncTimeout) clearTimeout(syncTimeout);
 				syncTimeout = setTimeout(() => {
-					syncToServer(state.savedLocations);
+					syncToServer(state.savedLocations).catch((error) => {
+						console.warn("[SavedLocationsSync] Failed to auto-sync:", error.message);
+					});
 				}, SYNC_DEBOUNCE_MS);
 			}
 		});
@@ -198,6 +226,18 @@ export async function initializeSavedLocationsSync() {
 export async function forceSyncSavedLocations() {
 	const store = useLocationStore.getState();
 	await syncToServer(store.savedLocations);
+}
+
+export function resetSavedLocationsSyncRuntime() {
+	if (syncTimeout) {
+		clearTimeout(syncTimeout);
+		syncTimeout = null;
+	}
+	if (typeof savedLocationsUnsubscribe === "function") {
+		savedLocationsUnsubscribe();
+		savedLocationsUnsubscribe = null;
+	}
+	isHydrating = false;
 }
 
 /**

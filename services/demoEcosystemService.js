@@ -221,7 +221,31 @@ export const demoEcosystemService = {
 		}
 		const normalizedOwnerSlug = String(ownerSlug || "").trim().toLowerCase();
 		if (!normalizedOwnerSlug) return false;
-		const hospitalOwner = String(hospital?.demoOwner || "").trim().toLowerCase();
+		const featureOwner =
+			featureList
+				.find((feature) => feature.startsWith("demo_owner:"))
+				?.split(":")[1] || "";
+		const placeIdOwner =
+			String(hospital?.place_id || hospital?.placeId || "")
+				.trim()
+				.toLowerCase()
+				.split(":")[0] === "demo"
+				? String(hospital?.place_id || hospital?.placeId || "")
+						.trim()
+						.toLowerCase()
+						.split(":")[1] || ""
+				: "";
+		const hospitalOwner = String(
+			hospital?.demoOwner ||
+				hospital?.demo_owner ||
+				hospital?.demoOwnerSlug ||
+				hospital?.demo_owner_slug ||
+				featureOwner ||
+				placeIdOwner ||
+				"",
+		)
+			.trim()
+			.toLowerCase();
 		return hospitalOwner.length > 0 && hospitalOwner === normalizedOwnerSlug;
 	},
 

@@ -1,9 +1,51 @@
-# Manual Address Entry — Apple-Standard Progressive Address Resolution Redesign
+# Manual Address Entry - Apple-Standard Progressive Address Resolution Redesign
 
 **Date:** 2026-05-10
-**Status:** PLANNED — ready to implement
+**Status:** PARTIALLY IMPLEMENTED - audit required before next feature pass
 **Owner:** `components/map/views/locationIntent/`
-**Depends on:** LocationSheet Pass 1–3 complete, `LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md`
+**Depends on:** LocationSheet Pass 1-3 complete, `LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md`
+
+---
+
+## 2026-05-11 Implementation Checkpoint
+
+The manual address flow is now partially implemented in `components/map/views/locationIntent/`.
+
+Implemented:
+
+- Inline country search.
+- Country-specific region/state label overrides.
+- Nigeria-specific correction:
+  - Step 1: Country
+  - Step 2: State
+  - Step 3: City
+  - Step 4: LGA or area
+  - Step 5: Street, landmark, or place
+- Manual search context now includes previous fields:
+  - `districtArea`
+  - `city`
+  - `adminArea`
+  - `country`
+- Typed fallback exists for weak/no provider results.
+- Pressing `Next` with a typed search query can advance the flow.
+- Changing earlier geography clears dependent later fields.
+- The sheet header owns manual mode identity:
+  - active step as heading
+  - `Manual Entry - Step x of y` as subheading
+- Helper copy has been reduced.
+- Mojibake in touched manual/location files was normalized to plain ASCII where possible.
+
+Still not complete:
+
+- Confirm-pin fallback is not yet a fully implemented recovery phase.
+- Provider result confidence is not yet visibly reviewed in a final map-confirmation state.
+- Keyboard and sticky footer behavior need runtime validation on mobile web and device.
+- Manual field components need decomposition before adding more country-specific cases.
+
+Audit required:
+
+- Run the manual-address slice in the deep audit plan before adding more features.
+- See [`../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md`](../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md).
 
 ---
 
@@ -23,11 +65,11 @@ toward:
 
 The goal is not:
 
-> “collect a perfect postal address.”
+> "collect a perfect postal address."
 
 The goal is:
 
-> “help responders reliably find the user.”
+> "help responders reliably find the user."
 
 The flow should feel:
 
@@ -63,7 +105,7 @@ Confirmed map pin
 + responder notes
 ```
 
-—not strict street validation.
+-not strict street validation.
 
 ---
 
@@ -114,15 +156,15 @@ Instead:
 
 ```txt
 Structured hierarchy
-↓
+down
 OSM-derived datasets
 
 Street/place refinement
-↓
+down
 Mapbox + OSM search
 
 Final dispatch truth
-↓
+down
 Confirmed pin
 ```
 
@@ -133,7 +175,7 @@ This removes dependency on perfect street indexing globally.
 # Progressive Step Flow
 
 ```txt
-Where should help come?
+Where should help come
 
 [ Use Current Location ]
 [ Search Address or Landmark ]
@@ -145,12 +187,12 @@ Where should help come?
 # Manual Flow Structure
 
 ```txt
-Step 1 — Country
-Step 2 — Region / State / Province
-Step 3 — City / Area
-Step 4 — Street, Landmark, or Nearby Place
-Step 5 — Apartment / Directions
-Step 6 — Confirm Pin on Map
+Step 1 - Country
+Step 2 - Region / State / Province
+Step 3 - City / Area
+Step 4 - Street, Landmark, or Nearby Place
+Step 5 - Apartment / Directions
+Step 6 - Confirm Pin on Map
 ```
 
 ---
@@ -210,7 +252,7 @@ Examples:
 
 # Drop State Concept
 
-A “drop state” means:
+A "drop state" means:
 
 * inline expansion inside the same sheet,
 * no pushed modal,
@@ -268,10 +310,10 @@ The footer CTA is ALWAYS visible.
 Completed steps collapse into compact rows:
 
 ```txt
-🌍 United States                ✓
-📍 California                   ✓
-🏙 Los Angeles                  ✓
-📌 Street or landmark           ← active
+Country: United States                done
+Region: California                   done
+City: Los Angeles                  done
+Place: Street or landmark           <- active
 ```
 
 Tapping a summary reopens that step inline.
@@ -315,7 +357,7 @@ This ensures:
 
 ---
 
-# Step 4 — Street / Landmark / Nearby Place
+# Step 4 - Street / Landmark / Nearby Place
 
 This is the only true geocoder-assisted step.
 
@@ -381,8 +423,8 @@ OpenStreetMap / Nominatim
 
 ```txt
 1. Try Mapbox
-2. If confidence weak → try OSM/Nominatim
-3. If unresolved → center map on selected city/region
+2. If confidence weak -> try OSM/Nominatim
+3. If unresolved -> center map on selected city/region
 4. User adjusts pin manually
 5. Save responder notes
 ```
@@ -436,7 +478,7 @@ Invalid address
 Instead:
 
 ```txt
-We couldn’t verify the exact location.
+We couldn't verify the exact location.
 Place the pin as close as possible and add directions for responders.
 ```
 
@@ -472,9 +514,9 @@ Selecting a full place result cascades upward silently:
 
 ```txt
 street/place
-→ city
-→ region
-→ country
+-> city
+-> region
+-> country
 ```
 
 Only fills EMPTY fields.
@@ -491,10 +533,10 @@ Instead:
 
 ```txt
 Manual draft
-→ geocode
-→ candidate state
-→ explicit confirmation
-→ commit pickup
+-> geocode
+-> candidate state
+-> explicit confirmation
+-> commit pickup
 ```
 
 ---
@@ -552,5 +594,5 @@ The experience should instead communicate:
 
 ```txt
 Help us understand where you are.
-We’ll work with you to locate you accurately.
+We'll work with you to locate you accurately.
 ```

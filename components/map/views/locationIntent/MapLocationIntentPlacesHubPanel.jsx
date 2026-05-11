@@ -4,7 +4,7 @@
 
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LOCATION_INTENT_MODES } from "./mapLocationIntent.model";
 import { getPlaceOrbSubtext } from "./mapLocationIntent.helpers";
 import { getSavedAddressCategoryMeta } from "../../../../services/locationAddressService";
@@ -44,7 +44,7 @@ function PlacesHubRow({
 					</Text>
 				) : null}
 			</View>
-			<Ionicons name="chevron-forward" size={16} color={isMuted ? mutedColor + "60" : mutedColor} />
+			<MaterialCommunityIcons name="chevron-right" size={16} color={isMuted ? mutedColor + "60" : mutedColor} />
 		</Pressable>
 	);
 }
@@ -182,7 +182,7 @@ export default function MapLocationIntentPlacesHubPanel({
 						Search and save as Home, Work, or a custom place.
 					</Text>
 				</View>
-				<Ionicons name="chevron-forward" size={17} color={mutedColor} />
+				<MaterialCommunityIcons name="chevron-right" size={17} color={mutedColor} />
 			</Pressable>
 
 			{/* -- Empty state -- */}

@@ -1,6 +1,6 @@
 ﻿import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useVisits } from "../../../../contexts/VisitsContext";
 import { selectRecentHistoryPreview } from "../../../../hooks/visits/useVisitHistorySelectors";
@@ -143,7 +143,7 @@ export function MapLocationIntentActiveTopRow({
 
 export function MapLocationIntentHeroMeta({
 	label,
-	iconName = "radio-button-on",
+	iconName = "record-circle-outline",
 	titleColor,
 	mutedColor,
 	surfaceColor,
@@ -152,7 +152,7 @@ export function MapLocationIntentHeroMeta({
 	if (!label) return null;
 	const content = (
 		<>
-			<Ionicons name={iconName} size={11} color={titleColor} />
+			<MaterialCommunityIcons name={iconName} size={11} color={titleColor} />
 			<Text
 				style={[styles.currentCardMetaText, { color: mutedColor }]}
 				numberOfLines={1}
@@ -374,7 +374,7 @@ export function MapLocationIntentBodyContent({
 				<View style={styles.topRow}>
 					{isSearching ? (
 						<View style={[styles.searchPill, styles.searchInputPill, { backgroundColor: groupSurfaceColor }]}>
-							<Ionicons name="search" size={19} color={mutedColor} />
+							<MaterialCommunityIcons name="magnify" size={19} color={mutedColor} />
 							<TextInput
 								value={searchQuery}
 								onChangeText={onSearchQueryChange}
@@ -385,7 +385,7 @@ export function MapLocationIntentBodyContent({
 							/>
 							{searchQuery.length > 0 ? (
 								<Pressable onPress={() => onSearchQueryChange('')} hitSlop={10}>
-									<Ionicons name="close-circle" size={18} color={mutedColor} />
+									<MaterialCommunityIcons name="close-circle" size={18} color={mutedColor} />
 								</Pressable>
 							) : null}
 						</View>
@@ -397,7 +397,7 @@ export function MapLocationIntentBodyContent({
 								accessibilityLabel="Search address or place"
 								style={[styles.searchPill, { backgroundColor: groupSurfaceColor }]}
 							>
-								<Ionicons name="search" size={19} color={mutedColor} />
+								<MaterialCommunityIcons name="magnify" size={19} color={mutedColor} />
 								<Text style={[styles.searchText, { color: mutedColor }]}>
 									{model.searchPlaceholder}
 								</Text>
@@ -545,7 +545,7 @@ export function MapLocationIntentBodyContent({
 					!locationSearchError ? (
 						<View style={[searchStyles.emptyState, searchResponsiveStyles.emptyState, { backgroundColor: groupSurfaceColor }]}>
 							<View style={[searchStyles.emptyIconWrap, searchResponsiveStyles.emptyIconWrap]}>
-								<Ionicons name="location-outline" size={22} color={titleColor} />
+								<MaterialCommunityIcons name="map-marker-outline" size={22} color={titleColor} />
 							</View>
 							<Text style={[searchStyles.emptyTitle, searchResponsiveStyles.emptyTitle, { color: titleColor }]}>
 								No address match yet
@@ -592,7 +592,7 @@ export function MapLocationIntentBodyContent({
 								<View
 									style={[styles.currentCardAvatar, { backgroundColor: groupSurfaceColor }]}
 								>
-									<Ionicons name="locate-outline" size={20} color={titleColor} />
+									<MaterialCommunityIcons name="crosshairs-gps" size={20} color={titleColor} />
 								</View>
 								<View style={styles.currentCardCopy}>
 									<Text style={[styles.currentCardAddress, { color: titleColor }]}>
@@ -628,7 +628,7 @@ export function MapLocationIntentBodyContent({
 						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 							{model.placesTitle}
 						</Text>
-						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+						<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 					</Pressable>
 					<View style={styles.orbRow}>
 						{savedPlaces.slice(0, 3).map((place, index) => (
@@ -651,39 +651,13 @@ export function MapLocationIntentBodyContent({
 								mutedColor={mutedColor}
 								primarySubtextColor={titleColor}
 								subtextColor={
-									!place.hasLocation && place.key !== "add"
-										? (MAP_LOCATION_INTENT_COPY.placesOrbColors[place.key] || MAP_LOCATION_INTENT_COPY.placesOrbColors.add)[0]
-										: place.key === "add" ? accentColor : null
+									!place.hasLocation && place.key !== "add" ? mutedColor : null
 								}
 								responsiveStyles={responsiveMetrics?.care?.orb}
 								isMutedOrb={!place.hasLocation}
 							/>
 						))}
 					</View>
-
-					<Pressable
-						onPress={onOpenManualIntro}
-						accessibilityRole="button"
-						accessibilityLabel="Enter address manually"
-						style={({ pressed }) => [
-							styles.manualIntroCard,
-							{ backgroundColor: groupSurfaceColor },
-							pressed ? styles.rowPressed : null,
-						]}
-					>
-						<View style={[styles.manualIntroIcon, { backgroundColor: infoSurfaceColor }]}>
-							<MaterialCommunityIcons name="map-marker-question-outline" size={20} color={titleColor} />
-						</View>
-						<View style={styles.manualIntroCopy}>
-							<Text style={[styles.manualTitle, { color: titleColor }]} numberOfLines={1}>
-								{model.manualIntroTitle}
-							</Text>
-							<Text style={[styles.manualBody, { color: mutedColor }]} numberOfLines={1}>
-								{model.manualActionLabel}
-							</Text>
-						</View>
-						<Ionicons name="chevron-forward" size={17} color={mutedColor} />
-					</Pressable>
 
 					<Pressable
 						onPress={onOpenRecentsHub}
@@ -700,7 +674,7 @@ export function MapLocationIntentBodyContent({
 						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 							{model.recentsTitle}
 						</Text>
-						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+						<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 					</Pressable>
 					{combinedRecentLocationItems.length > 0 ? (
 						<View style={styles.recentsSection}>
@@ -789,7 +763,7 @@ export function MapLocationIntentBodyContent({
 					{/* Inline error */}
 					{manualError ? (
 						<View style={styles.manualErrorRow}>
-							<Ionicons name="alert-circle-outline" size={15} color="#EF4444" />
+							<MaterialCommunityIcons name="alert-circle-outline" size={15} color="#EF4444" />
 							<Text style={styles.manualErrorText}>
 								{manualError}
 							</Text>

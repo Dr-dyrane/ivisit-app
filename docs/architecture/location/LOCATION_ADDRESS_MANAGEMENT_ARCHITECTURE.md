@@ -26,6 +26,33 @@ UX guardrail companion:
 
 ## Current Audit Findings
 
+### 2026-05-11 Current Implementation Checkpoint
+
+Rapid implementation passes have moved this plan from pure architecture into partial working code.
+
+Current app state:
+
+- LocationSheet now owns location selection phases instead of SearchSheet owning pickup address selection.
+- Search result selection creates an address candidate and renders a decision tree instead of directly committing pickup.
+- Candidate decision, save category, save details, saved manage, manual step, and default states are wired through `MapLocationIntentStageBase.jsx`.
+- Address candidate state is backed by `useAddressCandidateController`.
+- Saved address actions are routed through `useSavedAddressActions`.
+- Manual provider search is routed through `useManualDropController` and `addressAssistService`.
+- Manual geocoding now passes selected `countryCode` into Mapbox and OSM fallback.
+- Manual typed fallback exists so weak provider suggestions do not block progress.
+- Manual administrative order now supports `country -> state/region -> city -> LGA/area -> place`.
+
+Audit required before further expansion:
+
+- `MapLocationIntentStageBase.jsx` is now over the documented 1000-line violation threshold.
+- `MapLocationIntentStageParts.jsx` is above 800 lines and should be decomposed before more UI states are added.
+- Candidate, saved-address, manual, and search logic now touch multiple state layers and require a state-ownership audit.
+- Search/LocationSheet reuse must be audited so a second search architecture does not emerge.
+
+Deep audit companion:
+
+- [`../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md`](../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
+
 ### What Exists
 
 - `stores/locationStore.js`

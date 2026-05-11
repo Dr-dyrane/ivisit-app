@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { locationSaveFlowAtom, LOCATION_SAVE_FLOW_RESET } from "../../../atoms/locationIntentAtoms";
 import { useLocationStore } from "../../../stores/locationStore";
 import { mapCandidateToSavedAddressPayload } from "../../../services/locationAddressService";
+import { forceSyncSavedLocations } from "../../../services/savedLocationsSyncService";
 
 // PULLBACK NOTE: [LS-2]
 // OLD: addSavedLocation/updateSavedLocation/removeSavedLocation called directly from
@@ -76,7 +77,7 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 	// Core save — handles Home/Work singleton upsert and generic add.
 	// Returns true on success, false on validation failure.
 	const save = useCallback(
-		(label, details = {}) => {
+		async (label, details = {}) => {
 			if (!candidate || !label) return false;
 			const normalizedLabel = String(label).trim().toLowerCase();
 			const isCategorySlot = normalizedLabel === "home" || normalizedLabel === "work";
@@ -99,7 +100,11 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 			dispatchCrud({ type: "SAVE_START" });
 			try {
 				if (details.savedLocationId) {
-					updateSavedLocation?.(details.savedLocationId, savedPayload);
+					const result = updateSavedLocation?.(details.savedLocationId, savedPayload);
+					if (result?.status === "invalid" || result?.status === "missing") {
+						throw new Error("Saved place could not be updated.");
+					}
+					await forceSyncSavedLocations();
 					dispatchCrud({ type: "SAVE_SUCCESS", label });
 					setSavedPlaceFeedback(label);
 					return true;
@@ -111,10 +116,17 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 						)
 					: null;
 				if (existing?.id) {
-					updateSavedLocation?.(existing.id, savedPayload);
+					const result = updateSavedLocation?.(existing.id, savedPayload);
+					if (result?.status === "invalid" || result?.status === "missing") {
+						throw new Error("Saved place could not be updated.");
+					}
 				} else {
-					addSavedLocation?.(savedPayload);
+					const result = addSavedLocation?.(savedPayload);
+					if (result?.status === "invalid") {
+						throw new Error("Saved place could not be saved.");
+					}
 				}
+				await forceSyncSavedLocations();
 				dispatchCrud({ type: "SAVE_SUCCESS", label });
 				setSavedPlaceFeedback(label);
 				return true;
@@ -128,11 +140,15 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 
 	// Patch an existing saved location by id.
 	const update = useCallback(
-		(id, patch) => {
+		async (id, patch) => {
 			if (!id) return;
 			dispatchCrud({ type: "SAVE_START" });
 			try {
-				updateSavedLocation?.(id, patch);
+				const result = updateSavedLocation?.(id, patch);
+				if (result?.status === "invalid" || result?.status === "missing") {
+					throw new Error("Saved place could not be updated.");
+				}
+				await forceSyncSavedLocations();
 				dispatchCrud({ type: "SAVE_SUCCESS", label: patch?.label || "Updated" });
 			} catch (err) {
 				dispatchCrud({ type: "SAVE_FAILED", error: err?.message });
@@ -143,7 +159,7 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 
 	// Remove a saved location. Two-tap confirmation is managed via isConfirmingSavedRemove atom.
 	const remove = useCallback(
-		(id) => {
+		async (id) => {
 			if (!id) return false;
 			if (!saveFlow.isConfirmingSavedRemove) {
 				setIsConfirmingSavedRemove(true);
@@ -152,6 +168,7 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 			dispatchCrud({ type: "SAVE_START" });
 			try {
 				removeSavedLocation?.(id);
+				await forceSyncSavedLocations();
 				setIsConfirmingSavedRemove(false);
 				dispatchCrud({ type: "SAVE_SUCCESS", label: "removed" });
 				return true;

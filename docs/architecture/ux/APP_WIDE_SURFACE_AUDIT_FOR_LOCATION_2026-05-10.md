@@ -73,6 +73,37 @@ It should compose from these existing families:
 
 ---
 
+## 2026-05-11 Implementation Checkpoint
+
+Recent code now partially follows this audit:
+
+- Manual step identity moved into the sheet header.
+- Body-level manual progress dots were removed.
+- Manual input helper copy was shortened.
+- Context summaries were removed from input placeholders where completed summaries already render that context.
+- Typed fallback was added as a recovery path for weak/no provider search results.
+- Manual search state now uses a TanStack-query-backed controller instead of component-owned provider timers.
+
+New audit risk:
+
+- The functional fixes are useful, but the LocationSheet implementation is now large enough to hide UI-surface drift.
+- `MapLocationIntentStageBase.jsx`, `MapLocationIntentStageParts.jsx`, and `mapLocationIntent.styles.js` need decomposition checks before new subphases are added.
+- Every LocationSheet subphase should own the sheet header:
+  - address search
+  - candidate decision
+  - save category
+  - save details
+  - saved manage
+  - manual step
+  - future pin adjust
+- Each subphase must be compared against the existing search, mini profile, tracking, payment, and modal recovery surface families.
+
+Deep audit companion:
+
+- [`../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md`](../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
+
+---
+
 ## Global Rules Extracted
 
 ### Persistent Shell

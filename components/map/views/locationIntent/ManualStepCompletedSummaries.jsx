@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import { MANUAL_LOCATION_STEPS } from "./mapLocationIntent.model";
 import countries from "../../../../data/countries";
@@ -14,12 +14,12 @@ function findCountryFlag(countryCode) {
 }
 
 const STEP_ICONS = {
-	country: "globe-outline",
+	country: "earth",
 	adminArea: "map-outline",
-	city: "business-outline",
-	placeOrAddress: "location-outline",
+	city: "city-variant-outline",
+	placeOrAddress: "map-marker-outline",
 	unit: "home-outline",
-	responderNote: "chatbubble-ellipses-outline",
+	responderNote: "message-outline",
 };
 
 /**
@@ -72,7 +72,7 @@ export default function ManualStepCompletedSummaries({
 									size={16}
 								/>
 							) : (
-								<Ionicons name={iconName} size={15} color={mutedColor} />
+								<MaterialCommunityIcons name={iconName} size={15} color={mutedColor} />
 							)}
 						</View>
 
@@ -87,7 +87,7 @@ export default function ManualStepCompletedSummaries({
 						</View>
 
 						{/* Edit affordance */}
-						<Ionicons name="chevron-forward" size={14} color={mutedColor + "80"} />
+						<MaterialCommunityIcons name="chevron-right" size={14} color={mutedColor + "80"} />
 					</Pressable>
 				);
 			})}

@@ -10,6 +10,7 @@ export default function MapLocationIntentOrchestrator({
 	onOpenProfile,
 	onUseCurrentLocation,
 	onSelectLocation,
+	onFindNearbyHospitals,
 	onSnapStateChange,
 	currentLocation,
 	locationControl,
@@ -25,6 +26,7 @@ export default function MapLocationIntentOrchestrator({
 				onOpenProfile={onOpenProfile}
 				onUseCurrentLocation={onUseCurrentLocation}
 				onSelectLocation={onSelectLocation}
+				onFindNearbyHospitals={onFindNearbyHospitals}
 				onSnapStateChange={onSnapStateChange}
 				currentLocation={currentLocation}
 				locationControl={locationControl}

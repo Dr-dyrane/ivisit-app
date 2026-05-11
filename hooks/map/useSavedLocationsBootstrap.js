@@ -10,27 +10,47 @@
  */
 
 import { useEffect } from "react";
-import { initializeSavedLocationsSync } from "../../services/savedLocationsSyncService";
+import {
+	initializeSavedLocationsSync,
+	resetSavedLocationsSyncRuntime,
+} from "../../services/savedLocationsSyncService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLocationStore } from "../../stores/locationStore";
 
-let initialized = false;
+let initializedUserId = null;
 
 export function useSavedLocationsBootstrap() {
 	const { user } = useAuth();
 	const isAuthenticated = user?.isAuthenticated === true;
+	const activeUserId = isAuthenticated && user?.id ? user.id : null;
 
 	useEffect(() => {
-		// Only initialize once when authenticated
-		if (!isAuthenticated || !user || initialized) return;
+		if (!activeUserId) {
+			if (initializedUserId !== null) {
+				resetSavedLocationsSyncRuntime();
+				useLocationStore.getState().setSavedLocations([], { ownerUserId: "guest" });
+			}
+			initializedUserId = null;
+			return;
+		}
 
-		initialized = true;
+		// PULLBACK NOTE: saved address sync is keyed by auth identity, not by
+		// process lifetime. The old module boolean skipped hydration after an
+		// account switch and could leave the previous user's places in memory.
+		if (initializedUserId === activeUserId) return;
+
+		resetSavedLocationsSyncRuntime();
+		initializedUserId = activeUserId;
 		
 		// Initialize sync layer (hydrate + subscribe)
 		initializeSavedLocationsSync().catch((error) => {
 			console.warn("[useSavedLocationsBootstrap] Init failed:", error.message);
+			if (initializedUserId === activeUserId) {
+				initializedUserId = null;
+			}
 		});
 
-	}, [isAuthenticated, user]);
+	}, [activeUserId]);
 }
 
 export default useSavedLocationsBootstrap;

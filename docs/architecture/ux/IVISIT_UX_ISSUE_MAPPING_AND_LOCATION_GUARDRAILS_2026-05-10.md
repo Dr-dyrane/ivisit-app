@@ -26,6 +26,39 @@ Location management must follow these rules from the beginning so it does not in
 
 ---
 
+## 2026-05-11 Current App-State Addendum
+
+Recent LocationSheet and manual-address implementation passes added working behavior, but also created a new audit requirement.
+
+Current location UI state:
+
+- Manual subphases now own the sheet header instead of relying on body-level progress widgets.
+- Search inputs no longer repeat completed-summary context inside the placeholder.
+- Manual helper copy has been reduced.
+- Typed fallback now exists for search-drop fields so weak provider results do not trap the user.
+- Sticky footer behavior exists for manual step actions.
+
+UX risks that must be audited:
+
+- The fallback row can still become visually noisy if provider results and typed fallback compete.
+- Manual entry has more steps after adding LGA/area, so each step must feel lightweight.
+- Candidate decision, save category, save details, and saved manage states must each own the sheet header.
+- Loading states must preserve the shell and avoid blank white transitions.
+- Expanded sheets must never hide terminal CTAs under scroll.
+- Wide web sidebar mode must preserve the same hierarchy and action ownership as mobile.
+
+Implementation risks that can become UX regressions:
+
+- `MapLocationIntentStageBase.jsx` and `MapLocationIntentStageParts.jsx` are now large enough to hide flow divergence.
+- Search and LocationSheet may duplicate row/result logic if not audited.
+- Manual, saved-place, and recents flows can duplicate address identity if ownership is unclear.
+
+Deep audit companion:
+
+- [`../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md`](../../audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
+
+---
+
 ## Issue 1 - Triage Questions Auto-Selected By Default
 
 Observed issue:

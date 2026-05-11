@@ -4,7 +4,7 @@
 
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useVisits } from "../../../../contexts/VisitsContext";
 import { selectRecentHistoryPreview } from "../../../../hooks/visits/useVisitHistorySelectors";
 import MapHistoryGroup from "../../history/MapHistoryGroup";

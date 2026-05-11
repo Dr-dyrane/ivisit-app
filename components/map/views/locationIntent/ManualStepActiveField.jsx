@@ -8,7 +8,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import countries from "../../../../data/countries";
 
@@ -31,7 +31,7 @@ function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, accent
 				{item.name}
 			</Text>
 			{isSelected ? (
-				<Ionicons name="checkmark-circle" size={18} color={accentColor || titleColor} />
+				<MaterialCommunityIcons name="check-circle" size={18} color={accentColor || titleColor} />
 			) : null}
 		</Pressable>
 	);
@@ -74,7 +74,7 @@ function SelectSearchDrop({
 		<View style={styles.fieldBlock}>
 			{/* Search bar */}
 			<View style={[styles.searchBar, { backgroundColor: infoSurfaceColor }]}>
-				<Ionicons name="search-outline" size={17} color={mutedColor} />
+				<MaterialCommunityIcons name="magnify" size={17} color={mutedColor} />
 				<TextInput
 					value={query}
 					onChangeText={setQuery}
@@ -87,7 +87,7 @@ function SelectSearchDrop({
 				/>
 				{query.length > 0 ? (
 					<Pressable onPress={handleClear} hitSlop={10}>
-						<Ionicons name="close-circle" size={17} color={mutedColor} />
+						<MaterialCommunityIcons name="close-circle" size={17} color={mutedColor} />
 					</Pressable>
 				) : null}
 			</View>
@@ -141,7 +141,7 @@ function PlaceRow({ item, onSelect, titleColor, mutedColor }) {
 			]}
 		>
 			<View style={[styles.resultIconWrap, { backgroundColor: mutedColor + "18" }]}>
-				<Ionicons name="location-outline" size={15} color={mutedColor} />
+				<MaterialCommunityIcons name="map-marker-outline" size={15} color={mutedColor} />
 			</View>
 			<View style={styles.resultCopy}>
 				<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
@@ -184,7 +184,7 @@ function SearchDrop({
 		<View style={styles.fieldBlock}>
 			{/* Search bar */}
 			<View style={[styles.searchBar, { backgroundColor: infoSurfaceColor }]}>
-				<Ionicons name="search-outline" size={17} color={mutedColor} />
+				<MaterialCommunityIcons name="magnify" size={17} color={mutedColor} />
 				<TextInput
 					value={dropQuery}
 					onChangeText={onQueryChange}
@@ -199,7 +199,7 @@ function SearchDrop({
 					<ActivityIndicator size="small" color={mutedColor} />
 				) : dropQuery.length > 0 ? (
 					<Pressable onPress={handleClear} hitSlop={10}>
-						<Ionicons name="close-circle" size={17} color={mutedColor} />
+						<MaterialCommunityIcons name="close-circle" size={17} color={mutedColor} />
 					</Pressable>
 				) : null}
 			</View>
@@ -256,7 +256,7 @@ function SearchDrop({
 					]}
 				>
 					<View style={[styles.resultIconWrap, { backgroundColor: (accentColor || mutedColor) + "18" }]}>
-						<Ionicons name="create-outline" size={15} color={accentColor || mutedColor} />
+						<MaterialCommunityIcons name="pencil-outline" size={15} color={accentColor || mutedColor} />
 					</View>
 					<View style={styles.resultCopy}>
 						<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
