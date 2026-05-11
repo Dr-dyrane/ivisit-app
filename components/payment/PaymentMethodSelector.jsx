@@ -20,6 +20,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../constants/colors';
 import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
 import { useInvalidatePaymentMethods } from '../../hooks/payment/usePaymentMethodsQuery';
+import { useInvalidateWalletBalance } from '../../hooks/payment/useWalletBalanceQuery';
 import { database, StorageKeys } from '../../database';
 import AddPaymentMethodModal from './AddPaymentMethodModal';
 
@@ -42,6 +43,7 @@ const PaymentMethodSelector = ({
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const invalidatePaymentMethods = useInvalidatePaymentMethods();
+  const invalidateWalletBalance = useInvalidateWalletBalance();
   const [addingMethod, setAddingMethod] = useState(false);
   const [isCashEligible, setIsCashEligible] = useState(true);
   const [checkingCash, setCheckingCash] = useState(false);
@@ -152,6 +154,7 @@ const PaymentMethodSelector = ({
       setShowAddModal(false);
       onMethodSelect(newMethod);
       invalidatePaymentMethods();
+      invalidateWalletBalance();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Alert.alert('System Error', error.message);
@@ -166,6 +169,7 @@ const PaymentMethodSelector = ({
       await paymentService.setDefaultPaymentMethod(method.id);
       loadPaymentMethods();
       invalidatePaymentMethods();
+      invalidateWalletBalance();
       Alert.alert("Success", "Default payment method updated");
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -203,6 +207,7 @@ const PaymentMethodSelector = ({
               await paymentService.removePaymentMethod(method.id);
               loadPaymentMethods();
               invalidatePaymentMethods();
+              invalidateWalletBalance();
               if (selectedMethod?.id === method.id) {
                 onMethodSelect(null);
               }

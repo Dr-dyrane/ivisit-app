@@ -53,6 +53,10 @@ import { useBillingQuoteQuery } from "../../../../hooks/payment/useBillingQuoteQ
 // OLD: refreshPaymentMethodSnapshot() imperative fetch in useMapCommitPaymentController
 // NEW: usePaymentMethodsQuery() — TanStack Query with automatic refetch on invalidation
 import { usePaymentMethodsQuery, useInvalidatePaymentMethods } from "../../../../hooks/payment/usePaymentMethodsQuery";
+// PULLBACK NOTE: UX-D D-5 — wallet balance migrated to TanStack Query
+// OLD: paymentService.getWalletBalance() imperative call inside refreshPaymentMethodSnapshot
+// NEW: useWalletBalanceQuery() — TanStack Query; eligibility filter walletBalance >= checkoutTotal preserved
+import { useWalletBalanceQuery, useInvalidateWalletBalance } from "../../../../hooks/payment/useWalletBalanceQuery";
 import {
   MAP_COMMIT_PAYMENT_METHOD_KINDS,
   MAP_COMMIT_PAYMENT_TRANSACTION_STATES,
@@ -217,6 +221,9 @@ export function useMapCommitPaymentController({
   // until D-5 wallet migration completes; invalidatePaymentMethods is wired here to drive cache-first refresh.
   const { data: rawPaymentMethodsData } = usePaymentMethodsQuery();
   const invalidatePaymentMethods = useInvalidatePaymentMethods();
+  // UX-D D-5 — wallet balance from TanStack cache; safety invariant: walletBalance >= checkoutTotal preserved in eligibility filter
+  const { data: walletBalanceData } = useWalletBalanceQuery();
+  const invalidateWalletBalance = useInvalidateWalletBalance();
 
   const displayEstimatedCost = useMemo(
     () => applyBillingQuoteToCost(estimatedCost, costQuote),
