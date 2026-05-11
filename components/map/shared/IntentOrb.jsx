@@ -28,6 +28,7 @@ export default function IntentOrb({
 	responsiveStyles = null,
 	isMutedOrb = false,
 	primarySubtextColor = null,
+	subtextColor = null,
 }) {
 	const iconSize = responsiveStyles?.iconSize || 48;
 	const resolvedColors = Array.isArray(colors) && colors.length > 0 ? colors : [titleColor, titleColor];
@@ -168,7 +169,7 @@ export default function IntentOrb({
 					style={[
 						intentOrbStyles.subtext,
 						responsiveStyles?.subtextStyle,
-						{ color: hierarchy === "primary" ? resolvedPrimarySubtextColor : mutedColor },
+						{ color: subtextColor ?? (hierarchy === "primary" ? resolvedPrimarySubtextColor : mutedColor) },
 					]}
 				>
 					{subtext}

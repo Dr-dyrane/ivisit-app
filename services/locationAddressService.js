@@ -14,15 +14,15 @@ export const SAVED_ADDRESS_CATEGORIES = Object.freeze({
 });
 
 const CATEGORY_META = Object.freeze({
-	home: { label: "Home", iconName: "home-outline", colorKey: "home" },
-	work: { label: "Work", iconName: "briefcase-outline", colorKey: "work" },
-	family: { label: "Family", iconName: "people-outline", colorKey: "family" },
-	school: { label: "School", iconName: "school-outline", colorKey: "school" },
-	pharmacy: { label: "Pharmacy", iconName: "medkit-outline", colorKey: "pharmacy" },
-	care: { label: "Care", iconName: "medical-outline", colorKey: "care" },
-	other: { label: "Saved place", iconName: "bookmark-outline", colorKey: "other" },
-	recent: { label: "Recent pickup", iconName: "time-outline", colorKey: "recent" },
-	custom: { label: "Saved place", iconName: "location-outline", colorKey: "other" },
+	home: { label: "Home", iconName: "home-outline", solidIconName: "home", colorKey: "home" },
+	work: { label: "Work", iconName: "briefcase-outline", solidIconName: "briefcase", colorKey: "work" },
+	family: { label: "Family", iconName: "account-group-outline", solidIconName: "account-group", colorKey: "family" },
+	school: { label: "School", iconName: "school-outline", solidIconName: "school", colorKey: "school" },
+	pharmacy: { label: "Pharmacy", iconName: "medical-bag", solidIconName: "medical-bag", colorKey: "pharmacy" },
+	care: { label: "Care", iconName: "hospital-box-outline", solidIconName: "hospital-box", colorKey: "care" },
+	other: { label: "Saved place", iconName: "bookmark-outline", solidIconName: "bookmark", colorKey: "other" },
+	recent: { label: "Recent pickup", iconName: "clock-outline", solidIconName: "clock", colorKey: "recent" },
+	custom: { label: "Saved place", iconName: "map-marker-outline", solidIconName: "map-marker", colorKey: "other" },
 });
 
 const PLACE_CONTEXT_SOURCES = new Set(["search", "manual", "saved", "recent", "visit", "pin"]);

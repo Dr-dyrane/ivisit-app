@@ -19,14 +19,17 @@ const STALE_TIME = 60 * 1000; // 1 minute
  */
 export function useLocationSearchQuery(query, locationBias = null, options = {}) {
   const trimmedQuery = query?.trim() || '';
-  
+  const { enabled: enabledOption, ...restOptions } = options;
+  const enabled =
+    trimmedQuery.length >= 2 && (enabledOption === undefined || enabledOption !== false);
+
   return useQuery({
     queryKey: ['locationSuggestions', trimmedQuery, locationBias?.latitude, locationBias?.longitude],
     queryFn: () => mapboxService.suggestAddresses(trimmedQuery, locationBias),
-    enabled: trimmedQuery.length >= 2 && options.enabled !== false,
+    enabled,
     staleTime: STALE_TIME,
-    placeholderData: (previousData) => previousData, // Keep previous while fetching
-    ...options,
+    placeholderData: (previousData) => previousData,
+    ...restOptions,
   });
 }
 

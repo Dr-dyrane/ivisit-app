@@ -111,6 +111,14 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 		openMode(LOCATION_INTENT_MODES.SAVED_MANAGE);
 	}, [openMode]);
 
+	const openPlacesHub = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.PLACES_HUB);
+	}, [openMode]);
+
+	const openRecentsHub = useCallback(() => {
+		openMode(LOCATION_INTENT_MODES.RECENTS_HUB);
+	}, [openMode]);
+
 	return useMemo(
 		() => ({
 			mode: state.mode,
@@ -126,6 +134,8 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openSaveCategory,
 			openSaveDetails,
 			openSavedManage,
+			openPlacesHub,
+			openRecentsHub,
 			replaceMode,
 			replaceModeStack,
 			returnToDefault,
@@ -141,6 +151,8 @@ export default function useLocationSheetNavigation({ onResetToDefault } = {}) {
 			openSaveCategory,
 			openSaveDetails,
 			openSavedManage,
+			openPlacesHub,
+			openRecentsHub,
 			replaceMode,
 			replaceModeStack,
 			returnToDefault,

@@ -11,6 +11,10 @@ export const LOCATION_INTENT_MODES = Object.freeze({
 	SAVE_CATEGORY: "saveCategory",
 	SAVE_DETAILS: "saveDetails",
 	SAVED_MANAGE: "savedManage",
+	// PULLBACK NOTE: [LS-10] NEW: dedicated places hub phase
+	PLACES_HUB: "placesHub",
+	// PULLBACK NOTE: [LS-11] NEW: dedicated recents hub phase
+	RECENTS_HUB: "recentsHub",
 });
 
 // Per-country override for the "state / province" subdivision level.

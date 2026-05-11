@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
 		opacity: 0.78,
 	},
 	sectionLabel: {
-		fontSize: 16,
-		lineHeight: 20,
-		fontWeight: "700",
+		fontSize: 13,
+		lineHeight: 18,
+		fontWeight: "600",
 	},
 	intentSectionHeader: {
 		flexDirection: "row",
@@ -196,6 +196,36 @@ const styles = StyleSheet.create({
 	},
 	recentsSection: {
 		marginTop: 4,
+	},
+	recentsHubBody: {
+		gap: 12,
+		paddingBottom: 8,
+	},
+	placesHubBody: {
+		gap: 12,
+		paddingBottom: 8,
+	},
+	placesHubSectionBlock: {
+		gap: 6,
+		marginTop: 4,
+	},
+	placesHubSectionHeading: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 6,
+		paddingHorizontal: 4,
+	},
+	placesHubSectionIconOrb: {
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	placesHubSectionLabel: {
+		fontSize: 12,
+		fontWeight: "600",
+		letterSpacing: 0.1,
 	},
 	emptyGroup: {
 		borderRadius: 22,

@@ -22,8 +22,8 @@ export const MAP_LOCATION_INTENT_COPY = {
 		add: "Add",
 	},
 	placesOrbColors: {
-		home: ["#A78BFA", "#7C3AED"], // Vibrant purple gradient
-		work: ["#FBBF24", "#D97706"], // Amber/orange gradient
+		home: ["#FB923C", "#F97316"], // Orange — home warmth
+		work: ["#A78BFA", "#8B5CF6"], // Purple — work
 		family: ["#F472B6", "#DB2777"], // Pink/magenta gradient
 		school: ["#38BDF8", "#0284C7"],
 		pharmacy: ["#34D399", "#059669"],

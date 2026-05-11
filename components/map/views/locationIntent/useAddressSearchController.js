@@ -1,10 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearch } from "../../../../contexts/SearchContext";
-import { useLocationSearchQuery } from "../../../../hooks/search/useLocationSearchQuery";
-import useDebounce from "../../../../hooks/ui/useDebounce";
-import { DEBOUNCE_MS } from "../../../../services/addressAssistService";
+import mapboxService from "../../../../services/mapboxService";
 
 const SEARCH_ERROR_COPY = "We couldn't search locations right now.";
+const DEBOUNCE_MS = 240;
 
 export default function useAddressSearchController({
 	isActive = false,
@@ -13,23 +12,42 @@ export default function useAddressSearchController({
 } = {}) {
 	const { recentQueries = [], commitQuery } = useSearch();
 	const [searchQuery, setSearchQueryState] = useState("");
+	const [searchResults, setSearchResults] = useState([]);
+	const [isSearchingLocations, setIsSearchingLocations] = useState(false);
 	const [selectionError, setSelectionError] = useState(null);
-	// PULLBACK NOTE: debounce gap fix — OLD: raw searchQuery passed directly → new query key on every keystroke
-	// NEW: debouncedQuery gates the query key, searchQuery stays raw for the visible input value.
-	const debouncedQuery = useDebounce(searchQuery, DEBOUNCE_MS);
-	const trimmedQuery = debouncedQuery.trim();
-	const shouldSearch = isActive && trimmedQuery.length >= 2;
-	// Rollback note: search is server/cache state, not a render effect. Keep
-	// provider requests on the shared TanStack hook so LocationSheet does not
-	// recreate the old SearchSheet/manual `useEffect` race pattern.
-	const suggestionsQuery = useLocationSearchQuery(debouncedQuery, locationBias, {
-		enabled: shouldSearch,
-	});
+	const requestIdRef = useRef(0);
 
-	const searchResults = useMemo(
-		() => (Array.isArray(suggestionsQuery.data) ? suggestionsQuery.data : []),
-		[suggestionsQuery.data],
-	);
+	useEffect(() => {
+		const trimmed = searchQuery.trim();
+		if (!isActive || trimmed.length < 2) {
+			setSearchResults([]);
+			setIsSearchingLocations(false);
+			setSelectionError(null);
+			return;
+		}
+
+		const requestId = ++requestIdRef.current;
+
+		const timeout = setTimeout(async () => {
+			setIsSearchingLocations(true);
+			setSelectionError(null);
+			try {
+				const results = await mapboxService.suggestAddresses(trimmed, locationBias);
+				if (requestIdRef.current !== requestId) return;
+				setSearchResults(Array.isArray(results) ? results : []);
+			} catch (_err) {
+				if (requestIdRef.current !== requestId) return;
+				setSearchResults([]);
+				setSelectionError(SEARCH_ERROR_COPY);
+			} finally {
+				if (requestIdRef.current === requestId) {
+					setIsSearchingLocations(false);
+				}
+			}
+		}, DEBOUNCE_MS);
+
+		return () => clearTimeout(timeout);
+	}, [isActive, locationBias, searchQuery]);
 
 	const setSearchQuery = useCallback(
 		(value, options = {}) => {
@@ -44,7 +62,9 @@ export default function useAddressSearchController({
 
 	const clearSearch = useCallback(() => {
 		setSearchQueryState("");
+		setSearchResults([]);
 		setSelectionError(null);
+		requestIdRef.current += 1;
 	}, []);
 
 	const commitSearchQuery = useCallback(
@@ -59,9 +79,8 @@ export default function useAddressSearchController({
 		setSearchQuery,
 		clearSearch,
 		searchResults,
-		isSearchingLocations: shouldSearch && suggestionsQuery.isFetching,
-		locationSearchError:
-			selectionError || (suggestionsQuery.isError ? SEARCH_ERROR_COPY : null),
+		isSearchingLocations,
+		locationSearchError: selectionError,
 		setLocationSearchError: setSelectionError,
 		recentSearchQueries: recentQueries,
 		commitSearchQuery,

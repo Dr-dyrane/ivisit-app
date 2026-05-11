@@ -244,12 +244,10 @@ export function getMapSearchSheetResponsiveStyles(viewportMetrics) {
 		section: {
 			gap: Math.max(10, viewportMetrics.insets.sectionGap - 2),
 		},
-		sectionHeader: {
-			paddingHorizontal: Math.max(4, viewportMetrics.insets.horizontal - 10),
-		},
+		sectionHeader: {},
 		sectionTitle: {
-			fontSize: Math.max(16, viewportMetrics.type.title),
-			lineHeight: viewportMetrics.type.titleLineHeight,
+			fontSize: 13,
+			lineHeight: 18,
 		},
 		clearText: {
 			fontSize: Math.max(14, viewportMetrics.type.caption + 1),

@@ -44,6 +44,8 @@ export default function useMapSheetDetents({
 	const scrollSnapHandledRef = useRef(false);
 	const wheelSnapAccumRef = useRef(0);
 	const lastWheelSnapAtRef = useRef(0);
+	const contentHeightRef = useRef(0);
+	const layoutHeightRef = useRef(0);
 	const topThreshold = sheetScrollMotion.topThreshold;
 	const expandOffset = sheetScrollMotion.expandOffset;
 	const expandCommitOffset =
@@ -132,6 +134,10 @@ export default function useMapSheetDetents({
 			lastScrollOffsetYRef.current = offsetY;
 			maxScrollOffsetYRef.current = Math.max(maxScrollOffsetYRef.current, offsetY);
 			minScrollOffsetYRef.current = Math.min(minScrollOffsetYRef.current, offsetY);
+			const contentH = event?.nativeEvent?.contentSize?.height;
+			const layoutH = event?.nativeEvent?.layoutMeasurement?.height;
+			if (contentH > 0) contentHeightRef.current = contentH;
+			if (layoutH > 0) layoutHeightRef.current = layoutH;
 			if (offsetY > topThreshold) {
 				wheelSnapAccumRef.current = 0;
 			}
@@ -165,6 +171,26 @@ export default function useMapSheetDetents({
 
 			if (isSidebarPresentation || !allowScrollDetents || scrollSnapHandledRef.current) return;
 			const startedNearTop = scrollStartOffsetYRef.current <= topThreshold;
+
+			// Expand when user scrolls to bottom of content while sheet is HALF.
+			// Requires meaningful content (>80px scrollable) and user actually scrolled
+			// at least 40px so a short tap-release doesn't fire this.
+			const contentH = contentHeightRef.current;
+			const layoutH = layoutHeightRef.current;
+			const hasScrollableContent = contentH > 0 && layoutH > 0 && contentH > layoutH + 80;
+			const isAtBottom = hasScrollableContent && offsetY + layoutH >= contentH - 4;
+			const scrolledEnough = peakOffsetY - scrollStartOffsetYRef.current >= 40;
+			if (
+				snapState === MAP_SHEET_SNAP_STATES.HALF &&
+				canExpand &&
+				isAtBottom &&
+				scrolledEnough &&
+				!scrollSnapHandledRef.current
+			) {
+				triggerScrollSnap(getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates));
+				return;
+			}
+
 			if (!startedNearTop) return;
 
 			if (snapState === MAP_SHEET_SNAP_STATES.HALF && canExpand && (strongExpand || velocityExpand)) {
@@ -238,6 +264,7 @@ export default function useMapSheetDetents({
 					? wheelSnapAccumRef.current + deltaY
 					: deltaY;
 
+			// Collapse: scroll down (negative deltaY accumulation)
 			if (
 				snapState === MAP_SHEET_SNAP_STATES.EXPANDED &&
 				canCollapse &&
@@ -259,11 +286,37 @@ export default function useMapSheetDetents({
 				triggerScrollSnap(
 					getNextAllowedMapSheetSnapStateDown(snapState, orderedSnapStates),
 				);
+				return;
+			}
+
+			// Expand: scroll up (positive deltaY accumulation)
+			if (
+				snapState === MAP_SHEET_SNAP_STATES.HALF &&
+				canExpand &&
+				wheelSnapAccumRef.current >= Math.abs(halfCollapseWheelThreshold)
+			) {
+				lastWheelSnapAtRef.current = now;
+				triggerScrollSnap(
+					getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates),
+				);
+				return;
+			}
+
+			if (
+				snapState === MAP_SHEET_SNAP_STATES.COLLAPSED &&
+				canExpand &&
+				wheelSnapAccumRef.current >= Math.abs(expandedCollapseWheelThreshold)
+			) {
+				lastWheelSnapAtRef.current = now;
+				triggerScrollSnap(
+					getNextAllowedMapSheetSnapStateUp(snapState, orderedSnapStates),
+				);
 			}
 		},
 		[
 			allowWheelDetents,
 			canCollapse,
+			canExpand,
 			expandedCollapseWheelThreshold,
 			halfCollapseWheelThreshold,
 			isSidebarPresentation,
@@ -276,12 +329,9 @@ export default function useMapSheetDetents({
 		],
 	);
 
-	const bodyScrollEnabled =
-		isSidebarPresentation ||
-		isExpanded ||
-		allowScrollDetents ||
-		allowWheelDetents ||
-		extraScrollEnabled;
+	// Scroll is always enabled — detents fire on release, not during scroll,
+	// so content browsing and sheet snapping do not fight each other.
+	const bodyScrollEnabled = true;
 
 	return {
 		allowScrollDetents,

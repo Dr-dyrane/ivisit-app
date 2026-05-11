@@ -4,7 +4,7 @@
 
 import React, { useMemo } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import {
 	ResultsSection,
 	SearchResultRow,
@@ -183,7 +183,7 @@ export default function MapLocationIntentCandidatePanel({
 									]}
 								>
 									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-										<Ionicons name={action.iconName} size={18} color={actionTone.iconColor} />
+										<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
 									</View>
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
@@ -220,7 +220,7 @@ export default function MapLocationIntentCandidatePanel({
 									]}
 								>
 									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-										<Ionicons name={action.iconName} size={18} color={actionTone.iconColor} />
+										<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
 									</View>
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
@@ -243,8 +243,8 @@ export default function MapLocationIntentCandidatePanel({
 							);
 							return (
 								<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-									<Ionicons
-										name={selectedSaveCategoryAction?.iconName || "bookmark-outline"}
+									<MaterialCommunityIcons
+										name={selectedSaveCategoryAction?.iconName || "bookmark"}
 										size={18}
 										color={actionTone.iconColor}
 									/>
@@ -321,7 +321,7 @@ export default function MapLocationIntentCandidatePanel({
 						const content = (
 							<>
 								<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-									<Ionicons name={action.iconName} size={18} color={actionTone.iconColor} />
+									<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
 								</View>
 								<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 									{action.label}

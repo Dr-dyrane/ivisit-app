@@ -32,6 +32,8 @@ import {
 	getPlaceOrbSubtext,
 } from "./mapLocationIntent.helpers";
 import MapLocationIntentCandidatePanel from "./MapLocationIntentCandidatePanel";
+import MapLocationIntentPlacesHubPanel from "./MapLocationIntentPlacesHubPanel";
+import MapLocationIntentRecentsHubPanel from "./MapLocationIntentRecentsHubPanel";
 
 function buildCollapsedAction({
 	showToggle,
@@ -202,6 +204,8 @@ export function MapLocationIntentBodyContent({
 	onConfirmSelection,
 	onFindNearbyHospitals,
 	onOpenSaveCategory,
+	onOpenPlacesHub,
+	onOpenRecentsHub,
 	searchQuery,
 	onSearchQueryChange,
 	searchResults,
@@ -261,7 +265,9 @@ export function MapLocationIntentBodyContent({
 		mode === LOCATION_INTENT_MODES.PIN_ADJUST ||
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
 		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
-		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
+		mode === LOCATION_INTENT_MODES.SAVED_MANAGE ||
+		mode === LOCATION_INTENT_MODES.PLACES_HUB ||
+		mode === LOCATION_INTENT_MODES.RECENTS_HUB;
 	const showDefaultSections = !isSearching && !isManualStep && !isDecisionMode;
 	const permissionLabel = model?.sourceLabel || "Location state";
 	const currentManualStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
@@ -608,6 +614,7 @@ export function MapLocationIntentBodyContent({
 					</View>
 
 					<Pressable
+						onPress={onOpenPlacesHub}
 						style={({ pressed }) => [
 							styles.intentSectionHeader,
 							styles.intentSectionHeaderBiased,
@@ -631,9 +638,9 @@ export function MapLocationIntentBodyContent({
 								subtext={getPlaceOrbSubtext(place)}
 								iconName={
 									place.key === "home"
-										? "home"
+										? (place.hasLocation ? "home" : "home-outline")
 										: place.key === "work"
-											? "briefcase"
+											? (place.hasLocation ? "briefcase" : "briefcase-outline")
 											: "plus"
 								}
 								colors={MAP_LOCATION_INTENT_COPY.placesOrbColors[place.key] || MAP_LOCATION_INTENT_COPY.placesOrbColors.add}
@@ -643,6 +650,11 @@ export function MapLocationIntentBodyContent({
 								titleColor={titleColor}
 								mutedColor={mutedColor}
 								primarySubtextColor={titleColor}
+								subtextColor={
+									!place.hasLocation && place.key !== "add"
+										? (MAP_LOCATION_INTENT_COPY.placesOrbColors[place.key] || MAP_LOCATION_INTENT_COPY.placesOrbColors.add)[0]
+										: place.key === "add" ? accentColor : null
+								}
 								responsiveStyles={responsiveMetrics?.care?.orb}
 								isMutedOrb={!place.hasLocation}
 							/>
@@ -672,74 +684,39 @@ export function MapLocationIntentBodyContent({
 						</View>
 						<Ionicons name="chevron-forward" size={17} color={mutedColor} />
 					</Pressable>
-				</>
-			) : null}
 
-			{isExpanded && showDefaultSections ? (
-				<>
-					{managedSavedPlaceItems.length > 0 ? (
+					<Pressable
+						onPress={onOpenRecentsHub}
+						style={({ pressed }) => [
+							styles.intentSectionHeader,
+							styles.intentSectionHeaderBiased,
+							styles.intentSectionHeaderTrigger,
+							sectionTriggerStyle,
+							pressed ? styles.sectionTriggerPressed : null,
+						]}
+						accessibilityRole="button"
+						accessibilityLabel="Open recent locations"
+					>
+						<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
+							{model.recentsTitle}
+						</Text>
+						<Ionicons name="chevron-forward" size={16} color={mutedColor} />
+					</Pressable>
+					{combinedRecentLocationItems.length > 0 ? (
 						<View style={styles.recentsSection}>
-							<Pressable
-								style={({ pressed }) => [
-									styles.intentSectionHeader,
-									styles.intentSectionHeaderBiased,
-									styles.intentSectionHeaderTrigger,
-									sectionTriggerStyle,
-									pressed ? styles.sectionTriggerPressed : null,
-								]}
-								accessibilityRole="button"
-								accessibilityLabel="Manage saved places"
-							>
-								<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
-									Saved Places
-								</Text>
-								<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-							</Pressable>
 							<MapHistoryGroup
-								items={managedSavedPlaceItems}
-								onSelectItem={(item) => onSelectSavedPlace?.({ label: item.title, location: item })}
-								metrics={recentRowMetrics}
-								containerRadius={22}
-								isDarkMode={isDarkMode}
-							/>
-						</View>
-					) : null}
-					<View style={styles.recentsSection}>
-						<Pressable
-							style={({ pressed }) => [
-								styles.intentSectionHeader,
-								styles.intentSectionHeaderBiased,
-								styles.intentSectionHeaderTrigger,
-								sectionTriggerStyle,
-								pressed ? styles.sectionTriggerPressed : null,
-							]}
-							accessibilityRole="button"
-							accessibilityLabel="Open recent locations"
-						>
-							<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
-								{model.recentsTitle}
-							</Text>
-							<Ionicons name="chevron-forward" size={16} color={mutedColor} />
-						</Pressable>
-						{combinedRecentLocationItems.length > 0 ? (
-							<MapHistoryGroup
-								items={combinedRecentLocationItems}
+								items={combinedRecentLocationItems.slice(0, 3)}
 								onSelectItem={onSelectRecentLocation}
 								metrics={recentRowMetrics}
 								containerRadius={22}
 								hideRowChevron
 								isDarkMode={isDarkMode}
 							/>
-						) : (
-							<View style={[styles.emptyGroup, { backgroundColor: groupSurfaceColor }]}>
-								<Text style={[styles.listRowSubtitle, { color: mutedColor }]}>
-									No recent locations yet.
-								</Text>
-							</View>
-						)}
-					</View>
+						</View>
+					) : null}
 				</>
 			) : null}
+
 
 			{isManualStep && currentManualStep ? (
 				<View style={styles.manualStepBody}>
@@ -820,6 +797,28 @@ export function MapLocationIntentBodyContent({
 					) : null}
 				</View>
 			) : null}
+
+			<MapLocationIntentPlacesHubPanel
+				mode={mode}
+				savedPlaces={savedPlaces}
+				managedSavedPlaces={managedSavedPlaces}
+				titleColor={titleColor}
+				mutedColor={mutedColor}
+				groupSurfaceColor={groupSurfaceColor}
+				infoSurfaceColor={infoSurfaceColor}
+				onSelectSavedPlace={onSelectSavedPlace}
+				onAddPlace={onOpenPlacesHub ? () => { onSelectSavedPlace?.({ key: "add", hasLocation: false, label: "Add" }); } : undefined}
+			/>
+
+			<MapLocationIntentRecentsHubPanel
+				mode={mode}
+				recents={recents}
+				titleColor={titleColor}
+				mutedColor={mutedColor}
+				groupSurfaceColor={groupSurfaceColor}
+				isDarkMode={isDarkMode}
+				onSelectRecentLocation={onSelectRecentLocation}
+			/>
 
 			<MapLocationIntentCandidatePanel
 				mode={mode}

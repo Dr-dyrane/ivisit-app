@@ -230,7 +230,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-home",
 			label: "Home",
-			iconName: "home-outline",
+			iconName: "home",
+			solidIcon: "home",
 			tone: "home",
 			category: "home",
 			requiresDetails: false,
@@ -238,7 +239,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-work",
 			label: "Work",
-			iconName: "briefcase-outline",
+			iconName: "briefcase",
+			solidIcon: "briefcase",
 			tone: "work",
 			category: "work",
 			requiresDetails: false,
@@ -246,7 +248,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-family",
 			label: "Family",
-			iconName: "people-outline",
+			iconName: "account-group",
+			solidIcon: "account-group",
 			tone: "family",
 			category: "family",
 			requiresDetails: true,
@@ -254,7 +257,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-school",
 			label: "School",
-			iconName: "school-outline",
+			iconName: "school",
+			solidIcon: "school",
 			tone: "school",
 			category: "school",
 			requiresDetails: true,
@@ -262,7 +266,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-pharmacy",
 			label: "Pharmacy",
-			iconName: "medkit-outline",
+			iconName: "medical-bag",
+			solidIcon: "medical-bag",
 			tone: "pharmacy",
 			category: "pharmacy",
 			requiresDetails: true,
@@ -270,7 +275,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-care",
 			label: "Care",
-			iconName: "medical-outline",
+			iconName: "hospital-box",
+			solidIcon: "hospital-box",
 			tone: "care",
 			category: "care",
 			requiresDetails: true,
@@ -278,7 +284,8 @@ export function buildSaveCategoryActions() {
 		{
 			id: "save-other",
 			label: "Other",
-			iconName: "bookmark-outline",
+			iconName: "bookmark",
+			solidIcon: "bookmark",
 			tone: "saved",
 			category: "other",
 			requiresDetails: true,
@@ -296,21 +303,21 @@ export function buildSavedPlaceManageActions({ confirmRemove = false } = {}) {
 		{
 			id: "useSavedAsPickup",
 			label: "Use as Pickup",
-			iconName: "navigate-circle-outline",
+			iconName: "navigation",
 			tone: "pickup",
 			type: "pickup",
 		},
 		{
 			id: "editSavedDetails",
 			label: "Edit Details",
-			iconName: "create-outline",
+			iconName: "pencil",
 			tone: "saved",
 			type: "edit",
 		},
 		{
 			id: "removeSavedPlace",
 			label: confirmRemove ? "Confirm Remove" : "Remove",
-			iconName: confirmRemove ? "trash" : "trash-outline",
+			iconName: confirmRemove ? "trash-can" : "trash-can-outline",
 			tone: "danger",
 			type: "remove",
 		},
@@ -348,7 +355,7 @@ export function buildCandidateDecisionActions({
 	actions.push({
 		id: pendingPlaceLabel ? `save-${pendingPlaceLabel}` : "useAsPickup",
 		label: pendingTitle || "Use as Pickup",
-		iconName: pendingPlaceLabel ? "bookmark-outline" : "navigate-circle-outline",
+		iconName: pendingPlaceLabel ? "bookmark" : "navigation",
 		tone: pendingPlaceLabel ? "saved" : "pickup",
 		type: pendingPlaceLabel === "other" ? "saveCategory" : pendingPlaceLabel ? "save" : "pickup",
 		saveLabel: pendingPlaceLabel || null,
@@ -359,7 +366,8 @@ export function buildCandidateDecisionActions({
 			{
 				id: "setHome",
 				label: "Set as Home",
-				iconName: "home-outline",
+				iconName: "home",
+				solidIcon: "home",
 				tone: "home",
 				type: "save",
 				saveLabel: "home",
@@ -367,7 +375,8 @@ export function buildCandidateDecisionActions({
 			{
 				id: "setWork",
 				label: "Set as Work",
-				iconName: "briefcase-outline",
+				iconName: "briefcase",
+				solidIcon: "briefcase",
 				tone: "work",
 				type: "save",
 				saveLabel: "work",
@@ -375,7 +384,8 @@ export function buildCandidateDecisionActions({
 			{
 				id: "savePlace",
 				label: "Save Place",
-				iconName: "bookmark-outline",
+				iconName: "bookmark",
+				solidIcon: "bookmark",
 				tone: "saved",
 				type: "saveCategory",
 				saveLabel: "other",
@@ -387,7 +397,7 @@ export function buildCandidateDecisionActions({
 		actions.push({
 			id: "savedFeedback",
 			label: savedPlaceText,
-			iconName: "checkmark-circle",
+			iconName: "check-circle",
 			tone: "success",
 			type: "status",
 		});
@@ -397,7 +407,7 @@ export function buildCandidateDecisionActions({
 		actions.push({
 			id: "pickAnother",
 			label: source === "search" ? "Back to Search" : "Choose Another Location",
-			iconName: "search-outline",
+			iconName: "map-search",
 			tone: "neutral",
 			type: "back",
 		});
@@ -409,7 +419,7 @@ export function buildCandidateDecisionActions({
 		actions.push({
 			id: "findNearbyHospitals",
 			label: "Find Nearby Hospitals",
-			iconName: "medkit-outline",
+			iconName: "medical-bag",
 			tone: "neutral",
 			type: "findNearby",
 		});

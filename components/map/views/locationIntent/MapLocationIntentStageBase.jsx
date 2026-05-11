@@ -172,6 +172,8 @@ export default function MapLocationIntentStageBase({
 		openSaveCategory: navigateToSaveCategory,
 		openSaveDetails: navigateToSaveDetails,
 		openSavedManage: navigateToSavedManage,
+		openPlacesHub: navigateToPlacesHub,
+		openRecentsHub: navigateToRecentsHub,
 		replaceModeStack: replaceNavigationStack,
 		returnToDefault: navigateToDefault,
 		goBack: navigateBack,
@@ -183,6 +185,17 @@ export default function MapLocationIntentStageBase({
 		navigateToAddressSearch();
 		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 	}, [navigateToAddressSearch, onSnapStateChange, setSavedPlaceFeedback]);
+
+	const openPlacesHub = useCallback(() => {
+		navigateToPlacesHub();
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+	}, [navigateToPlacesHub, onSnapStateChange]);
+
+	const openRecentsHub = useCallback(() => {
+		navigateToRecentsHub();
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
+	}, [navigateToRecentsHub, onSnapStateChange]);
+
 	const {
 		searchQuery,
 		setSearchQuery,
@@ -322,16 +335,19 @@ export default function MapLocationIntentStageBase({
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
 		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
 		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
+	const isHubMode =
+		mode === LOCATION_INTENT_MODES.PLACES_HUB ||
+		mode === LOCATION_INTENT_MODES.RECENTS_HUB;
 	const isManualMode = mode === LOCATION_INTENT_MODES.MANUAL_STEP;
 	const activeHeaderToggleHandler = isSearchMode || isManualMode
 		? navigateToDefaultAndClearSearch
-		: isCandidateDecisionMode || isNestedDecisionMode
+		: isCandidateDecisionMode || isNestedDecisionMode || isHubMode
 			? navigateBackWithinLocationLoop
 			: handleHeaderToggle;
-	const activeHeaderCloseHandler = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode
+	const activeHeaderCloseHandler = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode || isHubMode
 		? navigateToDefaultAndClearSearch
 		: onClose;
-	const activeHeaderToggleIconName = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode
+	const activeHeaderToggleIconName = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode || isHubMode
 		? "chevron-back"
 		: isExpanded
 			? "chevron-down"
@@ -348,14 +364,16 @@ export default function MapLocationIntentStageBase({
 				: mode === LOCATION_INTENT_MODES.SAVED_MANAGE
 					? "Back to saved places"
 				: "Back to selected address"
+		: isHubMode
+			? "Back to location choices"
 		: isExpanded
 			? "Collapse location sheet"
 			: "Expand location sheet";
-	const activeHeaderCloseAccessibilityLabel = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode
+	const activeHeaderCloseAccessibilityLabel = isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode || isHubMode
 		? "Close location choices"
 		: "Close location sheet";
 	const shouldShowActiveHeaderToggle =
-		isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode || shouldShowHeaderToggle;
+		isSearchMode || isManualMode || isCandidateDecisionMode || isNestedDecisionMode || isHubMode || shouldShowHeaderToggle;
 
 	const addToRecents = useLocationStore((s) => s.addSavedLocation);
 
@@ -856,7 +874,11 @@ export default function MapLocationIntentStageBase({
 	const manualHeaderTitle =
 		mode === LOCATION_INTENT_MODES.MANUAL_STEP && manualHeaderStep
 			? manualHeaderStep.label || "Manual Entry"
-			: null;
+			: mode === LOCATION_INTENT_MODES.PLACES_HUB
+				? "Saved Places"
+				: mode === LOCATION_INTENT_MODES.RECENTS_HUB
+					? "Recent Locations"
+					: null;
 	const manualHeaderSubtitle =
 		mode === LOCATION_INTENT_MODES.MANUAL_STEP && manualHeaderStep
 			? `Manual Entry · Step ${manualStepIndex + 1} of ${MANUAL_LOCATION_STEPS.length}`
@@ -994,6 +1016,8 @@ export default function MapLocationIntentStageBase({
 							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 						}}
 						onOpenManualIntro={handleOpenManualStep}
+						onOpenPlacesHub={openPlacesHub}
+						onOpenRecentsHub={openRecentsHub}
 						onStartPinAdjust={() => {
 							const pinSelection = buildSelectedLocation({
 								source: "pin",
