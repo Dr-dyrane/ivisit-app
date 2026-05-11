@@ -191,6 +191,16 @@ export const useEmergencyTripStore = create(
         state.pendingApproval = null;
       });
     },
+
+    // PULLBACK NOTE: UX-D D-1 — atomic transitionPendingToActive action
+    // OLD: trip state updated in multiple writes across call-site (setActiveAmbulanceTrip + clearPendingApproval)
+    // NEW: single atomic Zustand action — one write, no partial state window
+    transitionPendingToActive: (trip) => {
+      set((state) => {
+        state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, trip);
+        state.pendingApproval = null;
+      });
+    },
     
     clearCommitFlow: () => {
       set((state) => {
