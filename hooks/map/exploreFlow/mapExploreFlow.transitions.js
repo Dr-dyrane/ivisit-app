@@ -237,6 +237,7 @@ export function buildCommitPaymentTransition({
   defaultExploreSnapState,
   currentSnapState,
   usesSidebarLayout,
+  __hospitalOverride = null,
 }) {
   const payloadObject = asPayloadObject(payload) || {};
   const resolvedSourcePhase =
@@ -250,13 +251,17 @@ export function buildCommitPaymentTransition({
     ? MAP_SHEET_SNAP_STATES.EXPANDED
     : MAP_SHEET_SNAP_STATES.HALF;
 
+  // PULLBACK NOTE: Use __hospitalOverride if hospital resolution failed
+  // This preserves hospital from previous stage even if not in discoveredHospitals yet
+  const resolvedHospital = hospital || __hospitalOverride || payloadObject.__hospitalOverride || null;
+
   return {
     sheetView: buildSheetView({
       phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
       snapState: phaseSnapState,
       payload: {
         ...payloadObject,
-        hospital: hospital || null,
+        hospital: resolvedHospital,
         transport: transport || null,
         sourcePhase: resolvedSourcePhase,
         sourceSnapState: resolvedSourceSnapState,
@@ -266,8 +271,8 @@ export function buildCommitPaymentTransition({
     commitFlow: {
       phase: MAP_SHEET_PHASES.COMMIT_PAYMENT,
       phaseSnapState,
-      hospital: hospital || null,
-      hospitalId: hospital?.id || null,
+      hospital: resolvedHospital,
+      hospitalId: resolvedHospital?.id || null,
       transport: transport || null,
       draft: payloadObject.draft || null,
       triageDraft: payloadObject.triageDraft || null,

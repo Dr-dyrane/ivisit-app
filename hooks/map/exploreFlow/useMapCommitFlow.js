@@ -169,6 +169,8 @@ export function useMapCommitFlow({
         defaultExploreSnapState,
         currentSnapState: sheetSnapState,
         usesSidebarLayout,
+        // Ensure hospital is preserved even if not in discoveredHospitals yet
+        __hospitalOverride: nextHospital || null,
       });
       setSheetView(transition.sheetView);
       setCommitFlow(transition.commitFlow);
