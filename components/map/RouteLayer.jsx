@@ -1,6 +1,6 @@
-import React, { memo } from 'react';
-import { Platform } from 'react-native';
-import { Marker, Polyline } from './MapComponents';
+import React, { memo, useMemo } from "react";
+import { Platform } from "react-native";
+import { Marker, Polyline } from "./MapComponents";
 import { COLORS } from "../../constants/colors";
 
 // PULLBACK NOTE: Add ambulance sprite dimension constants for platform-specific sizing
@@ -16,12 +16,10 @@ const AMBULANCE_SPRITE_DIMENSIONS = {
   native: { width: 90, height: 90 },
 };
 
-const getAmbulanceSpriteDimensions = () => {
-  const isWeb = Platform.OS === 'web';
-  return isWeb
-    ? AMBULANCE_SPRITE_DIMENSIONS.web
-    : AMBULANCE_SPRITE_DIMENSIONS.native;
-};
+const getAmbulanceSpriteDimensions = () =>
+	Platform.OS === "web"
+		? AMBULANCE_SPRITE_DIMENSIONS.web
+		: AMBULANCE_SPRITE_DIMENSIONS.native;
 
 const AMBULANCE_SPRITES = [
 	require("../../assets/map/ambulance-sprites/ambulance_00.png"),
@@ -48,35 +46,40 @@ const normalizeHeading = (heading) => {
 	return ((heading % 360) + 360) % 360;
 };
 
-export const getAmbulanceSpriteForHeading = (heading) => {
+export const getAmbulanceSpriteBucketForHeading = (heading) => {
 	const normalized = normalizeHeading(heading);
-
-	// ambulance_00.png points North.
-	// Map bearing 0° also means North.
-	// Therefore no 180° flip is needed.
-	const bucket =
+	return (
 		Math.round(normalized / HEADING_BUCKET_SIZE) %
-		AMBULANCE_SPRITES.length;
+		AMBULANCE_SPRITES.length
+	);
+};
 
-	if (__DEV__) {
-		console.log("[SPRITE]", {
-			heading,
-			normalized,
-			bucket,
-			sprite: `ambulance_${String(bucket).padStart(2, "0")}`,
-		});
-	}
-
+export const getAmbulanceSpriteForHeading = (heading) => {
+	const bucket = getAmbulanceSpriteBucketForHeading(heading);
 	return AMBULANCE_SPRITES[bucket];
 };
 
 const RouteLayer = ({
-    routeCoordinates,
-    ambulanceCoordinate,
-    ambulanceHeading,
-    animateAmbulance
+	routeCoordinates,
+	ambulanceCoordinate,
+	ambulanceHeading,
+	animateAmbulance,
 }) => {
-    const ambulanceSprite = getAmbulanceSpriteForHeading(ambulanceHeading);
+	const ambulanceSpriteBucket = useMemo(
+		() => getAmbulanceSpriteBucketForHeading(ambulanceHeading),
+		[ambulanceHeading],
+	);
+
+	const ambulanceSprite = AMBULANCE_SPRITES[ambulanceSpriteBucket];
+
+	if (__DEV__) {
+		console.log("[ROUTE-LAYER-SPRITE]", {
+			ambulanceHeading,
+			ambulanceSpriteBucket,
+			sprite: `ambulance_${String(ambulanceSpriteBucket).padStart(2, "0")}`,
+			ambulanceCoordinate,
+		});
+	}
 
     return (
         <>
@@ -90,22 +93,18 @@ const RouteLayer = ({
                 />
             )}
 
-            {ambulanceCoordinate && (
-                <Marker
-                    coordinate={ambulanceCoordinate}
-                    anchor={{ x: 0.5, y: 0.5 }}
-                    flat={true}
-                    image={ambulanceSprite}
-                    // PULLBACK NOTE: Add platform-specific imageSize following hospital marker fix
-                    // OLD: No imageSize prop - native rendered at PNG bitmap size (128x128) incorrectly
-                    // NEW: Explicit imageSize - web 46x46, native 90x90 (matches hospital 1.96x ratio)
-                    // TODO: Regenerate ambulance PNGs from 128x128 to 90x90 for native builds
-                    imageSize={getAmbulanceSpriteDimensions()}
-                    // optimize for Android by only tracking changes during animation
-                    tracksViewChanges={Platform.OS === "ios" || animateAmbulance}
-                    zIndex={200}
-                />
-            )}
+			{ambulanceCoordinate && (
+				<Marker
+					key={`ambulance-${ambulanceSpriteBucket}`}
+					coordinate={ambulanceCoordinate}
+					anchor={{ x: 0.5, y: 0.5 }}
+					flat
+					image={ambulanceSprite}
+					imageSize={getAmbulanceSpriteDimensions()}
+					tracksViewChanges
+					zIndex={200}
+				/>
+			)}
         </>
     );
 };

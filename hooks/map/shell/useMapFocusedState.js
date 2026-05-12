@@ -116,7 +116,12 @@ export function useMapFocusedState({
   const mapServiceMarkerCoordinate = useMemo(() => {
     const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
     if (activeAmbulance?.currentResponderLocation) return activeAmbulance.currentResponderLocation;
-    if (mapServiceMarkerKind === "ambulance") return mapFocusedHospitalCoordinate;
+    // PULLBACK NOTE: Only show ambulance marker if we have valid hospital coordinates
+    // OLD: Returned null coordinate causing heading calculation to fail
+    // NEW: Guard against missing coordinates — no marker if no hospital location
+    if (mapServiceMarkerKind === "ambulance" && mapFocusedHospitalCoordinate) {
+      return mapFocusedHospitalCoordinate;
+    }
     return null;
   }, [
     activeMapRequest?.raw?.activeAmbulanceTrip,

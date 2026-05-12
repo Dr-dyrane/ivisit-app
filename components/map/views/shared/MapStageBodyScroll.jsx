@@ -46,14 +46,14 @@ export default function MapStageBodyScroll({
 			overScrollMode={isSidebarPresentation || !allowScrollDetents ? "auto" : "always"}
 			directionalLockEnabled
 			scrollEventThrottle={16}
-			onWheel={handleBodyWheel}
-			onScrollBeginDrag={onScrollBeginDrag}
-			onScroll={onScroll}
-			onScrollEndDrag={onScrollEndDrag}
-			onMomentumScrollEnd={onScrollEndDrag}
+			onWheel={handleBodyWheel ?? undefined}
+			onScrollBeginDrag={onScrollBeginDrag ?? undefined}
+			onScroll={onScroll ?? undefined}
+			onScrollEndDrag={onScrollEndDrag ?? undefined}
+			onMomentumScrollEnd={onScrollEndDrag ?? undefined}
 			scrollEnabled={scrollEnabled}
-			automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
-			maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: null }}
+			automaticallyAdjustKeyboardInsets={Boolean(automaticallyAdjustKeyboardInsets)}
+			maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
 		>
 			{content}
 		</ScrollView>
