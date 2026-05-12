@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "date": "2026-05-11",
+  "title": "Location Sheet Fixes",
+  "summary": "Improved manual address entry and keyboard handling",
+  "changes": [
+    {
+      "type": "fix",
+      "message": "Fixed search mode missing 'Enter manually' button — now always available"
+    },
+    {
+      "type": "fix",
+      "message": "Fixed manual input hidden under keyboard on iOS — auto-scrolls to active field"
+    },
+    {
+      "type": "feature",
+      "message": "Added 'Use device location' restore option in search when using manual pickup"
+    },
+    {
+      "type": "fix",
+      "message": "Search query now clears when switching to manual entry"
+    },
+    {
+      "type": "fix",
+      "message": "Keyboard dismisses before navigating back from manual entry"
+    },
+    {
+      "type": "feature",
+      "message": "New OTA update changelog — see what's new before restarting"
+    },
+    {
+      "type": "improvement",
+      "message": "Liquid glass UI polish on update modal with squircle buttons"
+    }
+  ]
+}

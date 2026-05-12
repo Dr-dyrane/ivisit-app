@@ -5,6 +5,7 @@
 //      can also read it), setters are passed into this hook as params.
 
 import { useCallback, useMemo } from "react";
+import { Keyboard } from "react-native";
 import { MAP_SHEET_SNAP_STATES } from "../../../components/map/core/mapSheet.constants";
 import {
 	buildManualAddressLabel,
@@ -37,14 +38,17 @@ export default function useManualEntryHandlers({
 	clearManualDrop,
 	setManualDropQuery,
 	manualDropQuery,
+	clearSearch,
 }) {
 
 	const handleOpenManualStep = useCallback(() => {
+		// PULLBACK NOTE: [LS-REG-4] Clear search query when opening manual entry to prevent re-open on return
+		clearSearch?.();
 		setManualError(null);
 		setManualStepIndex(0);
 		navigateToManualStep();
 		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
-	}, [navigateToManualStep, onSnapStateChange]);
+	}, [clearSearch, navigateToManualStep, onSnapStateChange]);
 
 	const handleManualCountrySelectInline = useCallback(({ name, code }) => {
 		if (!name) return;
@@ -274,6 +278,8 @@ export default function useManualEntryHandlers({
 	]);
 
 	const handlePrevManualStep = useCallback(() => {
+		// PULLBACK NOTE: [LS-REG-5] Dismiss keyboard before navigating back to prevent layout jump
+		Keyboard.dismiss();
 		setManualError(null);
 		clearManualDrop();
 		if (manualStepIndex <= 0) {

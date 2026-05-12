@@ -15,6 +15,7 @@ export default function MapStageBodyScroll({
 	scrollEnabled = true,
 	androidExpandedBodyGesture = null,
 	androidExpandedBodyStyle = null,
+	automaticallyAdjustKeyboardInsets = false,
 	children,
 }) {
 	const shouldUseAndroidGestureWrapper =
@@ -51,6 +52,8 @@ export default function MapStageBodyScroll({
 			onScrollEndDrag={onScrollEndDrag}
 			onMomentumScrollEnd={onScrollEndDrag}
 			scrollEnabled={scrollEnabled}
+			automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
+			maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: null }}
 		>
 			{content}
 		</ScrollView>

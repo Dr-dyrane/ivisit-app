@@ -17,6 +17,7 @@ import {
     Platform,
     Dimensions,
     StyleSheet,
+    ScrollView,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,8 +26,47 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import VERSION from "../../version";
+import UPDATE_METADATA from "../../update.json";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.65;
+
+// PULLBACK NOTE: [OTA-CHANGELOG] Liquid glass badge colors — translucent, borderless
+// Uses alpha-blended iVisit tones that composite beautifully over blur backgrounds
+const CHANGE_TYPE_COLORS = {
+    // Liquid glass: text color with alpha background, no borders
+    fix: {
+        light: { bg: 'rgba(185,28,28,0.12)', text: '#B91C1C' },
+        dark: { bg: 'rgba(220,38,38,0.22)', text: '#FCA5A5' },
+    },
+    feature: {
+        light: { bg: 'rgba(134,16,14,0.10)', text: '#86100E' },
+        dark: { bg: 'rgba(183,28,28,0.20)', text: '#FCA5A5' },
+    },
+    improvement: {
+        light: { bg: 'rgba(156,163,175,0.12)', text: '#4B5563' },
+        dark: { bg: 'rgba(107,114,128,0.20)', text: '#D1D5DB' },
+    },
+    default: {
+        light: { bg: 'rgba(156,163,175,0.12)', text: '#4B5563' },
+        dark: { bg: 'rgba(107,114,128,0.20)', text: '#D1D5DB' },
+    },
+};
+
+function getChangeTypeColors(type, isDarkMode) {
+    const key = String(type || '').toLowerCase();
+    const colors = CHANGE_TYPE_COLORS[key] || CHANGE_TYPE_COLORS.default;
+    return isDarkMode ? colors.dark : colors.light;
+}
+
+function formatChangeType(type) {
+    const map = {
+        fix: 'Fix',
+        feature: 'New',
+        improvement: 'Improved',
+    };
+    return map[String(type || '').toLowerCase()] || 'Update';
+}
 
 /**
  * @param {Object} props
@@ -169,9 +209,48 @@ export default function UpdateAvailableModal({
                 <Text style={[styles.description, { color: colors.subtext }]}>
                     {isCompleted
                         ? `iVisit is now running version ${VERSION}.`
-                        : "Restart to apply the latest improvements."
+                        : (UPDATE_METADATA?.title || "Restart to apply the latest improvements.")
                     }
                 </Text>
+
+                {/* Changelog — only show for 'available' variant */}
+                {!isCompleted && UPDATE_METADATA?.changes?.length > 0 && (
+                    <View style={styles.changelogContainer}>
+                        <ScrollView
+                            showsVerticalScrollIndicator={true}
+                            contentContainerStyle={styles.changelogScrollContent}
+                        >
+                            {UPDATE_METADATA.changes.map((change, index) => (
+                                <View key={index} style={styles.changeItem}>
+                                    {(() => {
+                                        const badgeColors = getChangeTypeColors(change.type, isDarkMode);
+                                        return (
+                                            <View style={[
+                                                styles.changeBadge,
+                                                { backgroundColor: badgeColors.bg }
+                                            ]}>
+                                                <Text style={[
+                                                    styles.changeBadgeText,
+                                                    { color: badgeColors.text }
+                                                ]}>
+                                                    {formatChangeType(change.type)}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })()}
+                                    <Text style={[styles.changeMessage, { color: colors.text }]}>
+                                        {change.message}
+                                    </Text>
+                                </View>
+                            ))}
+                            {UPDATE_METADATA?.summary && (
+                                <Text style={[styles.summaryText, { color: colors.subtext }]}>
+                                    {UPDATE_METADATA.summary}
+                                </Text>
+                            )}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {isCompleted ? (
                     <Pressable
@@ -278,13 +357,64 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 34,
         padding: 20,
         paddingTop: 12,
-        minHeight: 268,
+        maxHeight: MODAL_HEIGHT,
+        minHeight: 320,
         overflow: "hidden",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 10,
+    },
+    changelogContainer: {
+        width: '100%',
+        maxHeight: MODAL_HEIGHT * 0.35,
+        marginVertical: 12,
+        backgroundColor: 'transparent',
+    },
+    changelogScrollContent: {
+        paddingRight: 4,
+    },
+    changeItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        marginBottom: 10,
+        paddingVertical: 2,
+    },
+    changeBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+        minWidth: 56,
+        alignItems: 'center',
+        // Liquid glass: no borders, translucent background composites over BlurView
+        borderWidth: 0,
+    },
+    changeBadgeText: {
+        fontSize: 10,
+        fontWeight: '800', // Heavy weight for glass legibility
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        // Color set dynamically based on type + theme for liquid contrast
+    },
+    changeMessage: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
+        paddingTop: 1,
+    },
+    summaryText: {
+        fontSize: 12,
+        lineHeight: 17,
+        fontWeight: '400',
+        fontStyle: 'italic',
+        marginTop: 12,
+        paddingTop: 12,
+        // Liquid glass: no borders — use spacing and opacity for separation
+        borderWidth: 0,
+        borderTopWidth: 0,
     },
     indicator: {
         width: 40,
@@ -339,8 +469,9 @@ const styles = StyleSheet.create({
     },
     button: {
         flex: 1,
-        minHeight: 50,
-        borderRadius: 24,
+        height: 40, // Reduced from 50 — compact squircle
+        borderRadius: 12, // iOS squircle proportion
+        borderCurve: "continuous", // True iOS squircle
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",
@@ -353,8 +484,9 @@ const styles = StyleSheet.create({
     },
     laterButton: {
         flex: 1,
-        minHeight: 50,
-        borderRadius: 24,
+        height: 40, // Reduced from 50 — compact squircle
+        borderRadius: 12, // iOS squircle proportion
+        borderCurve: "continuous", // True iOS squircle
         alignItems: "center",
         justifyContent: "center",
     },

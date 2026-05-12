@@ -440,6 +440,22 @@ export function MapLocationIntentBodyContent({
 								onPress={onUseCurrentLocation}
 								responsiveStyles={searchResponsiveStyles}
 							/>
+							{/* PULLBACK NOTE: [LS-REG-3] Device location restore affordance in search mode */}
+							{!isDevicePickup ? (
+								<SearchResultRow
+									iconName="crosshairs-gps"
+									title="Use device location"
+									subtitle="Switch back to GPS location"
+									meta="Restore"
+									metaColor={accentColor}
+									titleColor={titleColor}
+									mutedColor={mutedColor}
+									surfaceColor={groupSurfaceColor}
+									isDarkMode={isDarkMode}
+									onPress={onUseCurrentLocation}
+									responsiveStyles={searchResponsiveStyles}
+								/>
+								) : null}
 						</View>
 					) : null}
 					{visibleResults.length > 0 ? (
@@ -555,6 +571,36 @@ export function MapLocationIntentBodyContent({
 							</Text>
 						</View>
 					) : null}
+					{/* PULLBACK NOTE: [LS-REG-1] Search mode 'Enter manually' affordance. OLD: no path from search to manual. NEW: tappable row always available. */}
+					<Pressable
+						onPress={onOpenManualIntro}
+						accessibilityRole="button"
+						accessibilityLabel="Enter address manually"
+						style={({ pressed }) => [
+							styles.manualIntroCard,
+							styles.manualFallbackCard,
+							{ backgroundColor: groupSurfaceColor },
+							pressed ? styles.rowPressed : null,
+						]}
+					>
+						<View style={[styles.manualIntroIcon, { backgroundColor: infoSurfaceColor }]}>
+							<MaterialCommunityIcons name="map-plus" size={18} color={mutedColor} />
+						</View>
+						<View style={styles.manualIntroCopy}>
+							<Text style={[styles.manualTitle, { color: titleColor }]}>
+								Enter address manually
+							</Text>
+							<Text style={[styles.manualBody, { color: mutedColor }]}>
+								Provide street, city, and area details
+							</Text>
+						</View>
+						<View style={styles.manualAction}>
+							<Text numberOfLines={1} style={[styles.manualActionLabel, { color: titleColor }]}>
+								Start
+							</Text>
+							<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
+						</View>
+					</Pressable>
 				</View>
 			) : null}
 

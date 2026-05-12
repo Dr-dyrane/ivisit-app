@@ -492,6 +492,7 @@ export default function MapLocationIntentStageBase({
 		clearManualDrop,
 		setManualDropQuery,
 		manualDropQuery,
+		clearSearch,
 	});
 
 	// PULLBACK NOTE: [X-3] Candidate + save handlers extracted to useCandidateHandlers hook.
@@ -642,7 +643,7 @@ export default function MapLocationIntentStageBase({
 				)
 			}
 			footerSlot={
-				mode === "manualStep" ? (
+				mode === LOCATION_INTENT_MODES.MANUAL_STEP ? (
 					<ManualStepStickyFooter
 						onBack={handlePrevManualStep}
 						onNext={handleNextManualStep}
@@ -656,7 +657,7 @@ export default function MapLocationIntentStageBase({
 				) : null
 			}
 		>
-			{isCollapsed ? null : (
+			{!isCollapsed && (
 				<MapStageBodyScroll
 					bodyScrollRef={bodyScrollRef}
 					viewportStyle={sheetStageStyles.bodyScrollViewport}
@@ -690,6 +691,7 @@ export default function MapLocationIntentStageBase({
 					scrollEnabled={bodyScrollEnabled}
 					androidExpandedBodyGesture={androidExpandedBodyGesture}
 					androidExpandedBodyStyle={androidExpandedBodyStyle}
+					automaticallyAdjustKeyboardInsets={mode === LOCATION_INTENT_MODES.MANUAL_STEP}
 				>
 					<MapLocationIntentBodyContent
 						model={model}
