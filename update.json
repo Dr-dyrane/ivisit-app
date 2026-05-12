@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "date": "2026-05-11",
-  "title": "Location Sheet Fixes",
-  "summary": "Improved manual address entry and keyboard handling",
+  "title": "Location Sheet + Triage + Ambulance Sprite Fixes",
+  "summary": "Location sheet improvements, triage text input fix, and ambulance now faces user location",
   "changes": [
     {
       "type": "fix",
@@ -31,6 +31,14 @@
     {
       "type": "improvement",
       "message": "Liquid glass UI polish on update modal with squircle buttons"
+    },
+    {
+      "type": "fix",
+      "message": "Fixed triage text input — space bar works, no more cursor jumps during typing"
+    },
+    {
+      "type": "fix",
+      "message": "Fixed ambulance starting sprite — now faces user's pickup location, not north"
     }
   ]
 }

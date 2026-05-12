@@ -23,7 +23,14 @@ const PAIN_OPTIONS = Array.from({ length: 11 }, (_, index) => ({
 	value: index,
 }));
 
+// PULLBACK NOTE: [TRIAGE-TEXT-FIX] Split live typing vs finalize sanitization.
+// OLD: .trim() on every keystroke removed trailing spaces → cursor jump, space bar broken.
+// NEW: liveInput only caps length; finalize trims only when actually saving.
 export function sanitizeCommitTriageNote(value) {
+	return String(value || "").slice(0, 240);
+}
+
+export function finalizeCommitTriageNote(value) {
 	return String(value || "").trim().slice(0, 240);
 }
 
@@ -166,6 +173,12 @@ export function buildCommitTriageSnapshot({
 }) {
 	if (!hasMeaningfulTriageDraftData(triageDraft)) return null;
 
+	// PULLBACK NOTE: Finalize note on save — trim whitespace, not during live typing
+	const finalizedDraft = {
+		...triageDraft,
+		note: finalizeCommitTriageNote(triageDraft?.note),
+	};
+
 	return triageService.buildTriageSnapshot({
 		stage: "commit_triage",
 		request: {
@@ -176,7 +189,7 @@ export function buildCommitTriageSnapshot({
 		selectedHospitalId: hospitalId || null,
 		medicalProfile: medicalProfile || null,
 		emergencyContacts: Array.isArray(emergencyContacts) ? emergencyContacts : [],
-		userCheckin: triageDraft,
+		userCheckin: finalizedDraft,
 		currentRoute: null,
 	});
 }

@@ -126,13 +126,31 @@ export function useMapFocusedState({
 
   const mapServiceMarkerHeading = useMemo(() => {
     const activeAmbulance = activeMapRequest?.raw?.activeAmbulanceTrip;
+    // Live responder heading takes priority (real-time tracking)
     if (Number.isFinite(activeAmbulance?.currentResponderHeading)) {
       return Number(activeAmbulance.currentResponderHeading);
     }
-    if (mapServiceMarkerKind === "ambulance" && mapFocusedHospitalCoordinate && activeLocation) {
-      return calculateBearing(mapFocusedHospitalCoordinate, activeLocation);
+    // PULLBACK NOTE: [AMBULANCE-SPRITE-FACING] Starting sprite faces user's pickup location.
+    // OLD: Could return 0 (north) if coordinates invalid, making ambulance face wrong direction.
+    // NEW: Explicit validation ensures hospital→user bearing is calculated correctly.
+    if (
+      mapServiceMarkerKind === "ambulance" &&
+      mapFocusedHospitalCoordinate &&
+      activeLocation &&
+      Number.isFinite(mapFocusedHospitalCoordinate.latitude) &&
+      Number.isFinite(mapFocusedHospitalCoordinate.longitude) &&
+      Number.isFinite(activeLocation.latitude) &&
+      Number.isFinite(activeLocation.longitude)
+    ) {
+      const bearing = calculateBearing(mapFocusedHospitalCoordinate, activeLocation);
+      // Validate bearing is meaningful (not exactly 0 unless truly north)
+      if (Number.isFinite(bearing) && bearing >= 0 && bearing < 360) {
+        return bearing;
+      }
     }
-    return 0;
+    // Default: face south (toward typical user location relative to hospital)
+    // This is better than facing north (0) which feels arbitrary to users
+    return 180;
   }, [
     activeMapRequest?.raw?.activeAmbulanceTrip,
     activeLocation,

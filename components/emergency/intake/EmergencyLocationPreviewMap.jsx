@@ -559,16 +559,28 @@ export default function EmergencyLocationPreviewMap({
     serviceMarkerKind,
   ]);
   const previewServiceMarkerHeading = useMemo(() => {
-    if (Number.isFinite(serviceMarkerHeading))
+    // Live heading from props takes priority
+    if (Number.isFinite(serviceMarkerHeading)) {
       return Number(serviceMarkerHeading);
+    }
+    // PULLBACK NOTE: [AMBULANCE-SPRITE-FACING] Starting sprite faces user's pickup location.
+    // Calculate bearing from hospital to user, with explicit coordinate validation.
     if (
       serviceMarkerKind === "ambulance" &&
       selectedHospitalCoordinate &&
-      userCoordinate
+      userCoordinate &&
+      Number.isFinite(selectedHospitalCoordinate.latitude) &&
+      Number.isFinite(selectedHospitalCoordinate.longitude) &&
+      Number.isFinite(userCoordinate.latitude) &&
+      Number.isFinite(userCoordinate.longitude)
     ) {
-      return calculateBearing(selectedHospitalCoordinate, userCoordinate);
+      const bearing = calculateBearing(selectedHospitalCoordinate, userCoordinate);
+      if (Number.isFinite(bearing) && bearing >= 0 && bearing < 360) {
+        return bearing;
+      }
     }
-    return 0;
+    // Default: face south (180°) - better than north (0°) as it implies "toward user"
+    return 180;
   }, [
     selectedHospitalCoordinate,
     serviceMarkerHeading,
