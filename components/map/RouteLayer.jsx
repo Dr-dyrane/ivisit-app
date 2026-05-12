@@ -50,7 +50,23 @@ const normalizeHeading = (heading) => {
 
 export const getAmbulanceSpriteForHeading = (heading) => {
 	const normalized = normalizeHeading(heading);
-	const bucket = Math.round(normalized / HEADING_BUCKET_SIZE) % AMBULANCE_SPRITES.length;
+
+	// ambulance_00.png points North.
+	// Map bearing 0° also means North.
+	// Therefore no 180° flip is needed.
+	const bucket =
+		Math.round(normalized / HEADING_BUCKET_SIZE) %
+		AMBULANCE_SPRITES.length;
+
+	if (__DEV__) {
+		console.log("[SPRITE]", {
+			heading,
+			normalized,
+			bucket,
+			sprite: `ambulance_${String(bucket).padStart(2, "0")}`,
+		});
+	}
+
 	return AMBULANCE_SPRITES[bucket];
 };
 

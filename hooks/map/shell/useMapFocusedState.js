@@ -131,26 +131,36 @@ export function useMapFocusedState({
       return Number(activeAmbulance.currentResponderHeading);
     }
     // PULLBACK NOTE: [AMBULANCE-SPRITE-FACING] Starting sprite faces user's pickup location.
-    // OLD: Could return 0 (north) if coordinates invalid, making ambulance face wrong direction.
-    // NEW: Explicit validation ensures hospital→user bearing is calculated correctly.
-    if (
-      mapServiceMarkerKind === "ambulance" &&
-      mapFocusedHospitalCoordinate &&
-      activeLocation &&
-      Number.isFinite(mapFocusedHospitalCoordinate.latitude) &&
-      Number.isFinite(mapFocusedHospitalCoordinate.longitude) &&
-      Number.isFinite(activeLocation.latitude) &&
-      Number.isFinite(activeLocation.longitude)
-    ) {
-      const bearing = calculateBearing(mapFocusedHospitalCoordinate, activeLocation);
-      // Validate bearing is meaningful (not exactly 0 unless truly north)
+    // Calculate bearing from hospital to user location.
+    const h = mapFocusedHospitalCoordinate;
+    const u = activeLocation;
+    // More permissive validation — truthy checks allow 0 coordinates
+    const hasHospitalCoords = h && h.latitude != null && h.longitude != null;
+    const hasUserCoords = u && u.latitude != null && u.longitude != null;
+    if (mapServiceMarkerKind === "ambulance" && hasHospitalCoords && hasUserCoords) {
+      const bearing = calculateBearing(h, u);
+      // Debug logging to trace coordinate issues
+      if (__DEV__) {
+        console.log("[AMBULANCE-FACING]", {
+          hospital: { lat: h.latitude, lng: h.longitude },
+          user: { lat: u.latitude, lng: u.longitude },
+          bearing: bearing,
+          valid: Number.isFinite(bearing),
+        });
+      }
       if (Number.isFinite(bearing) && bearing >= 0 && bearing < 360) {
         return bearing;
       }
+    } else if (__DEV__ && mapServiceMarkerKind === "ambulance") {
+      console.warn("[AMBULANCE-FACING] Missing coords:", {
+        hasHospital: hasHospitalCoords,
+        hasUser: hasUserCoords,
+        hospital: h,
+        user: u,
+      });
     }
-    // Default: face south (toward typical user location relative to hospital)
-    // This is better than facing north (0) which feels arbitrary to users
-    return 180;
+    // ambulance_00 faces North, so fallback should be North.
+    return 0;
   }, [
     activeMapRequest?.raw?.activeAmbulanceTrip,
     activeLocation,
