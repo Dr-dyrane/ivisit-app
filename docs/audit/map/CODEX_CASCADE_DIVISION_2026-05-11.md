@@ -360,6 +360,39 @@ useEffect(() => {
 
 ---
 
+### X-10 - LocationSheet mode/snap transition ownership
+**Files**:
+- `components/map/views/locationIntent/MapLocationIntentStageBase.jsx`
+- `hooks/map/locationIntent/useManualEntryHandlers.js`
+- `hooks/map/locationIntent/useCandidateHandlers.js`
+
+**Problem**:
+- LocationSheet already has `LOCATION_INTENT_MODE_SNAP_POLICY`, but mode
+  changes and snap changes are still called separately in several handlers.
+- This can produce visible correction: the sheet enters one snap, then the
+  policy effect fixes it after the mode changes.
+- The main search sheet avoids this because the shell owns its modal snap
+  state internally and opens as one surface.
+
+**Fix intent**:
+- StageBase becomes the single owner for LocationSheet mode + snap transitions.
+- Handlers receive transition-wrapped navigation callbacks, not raw navigation
+  callbacks plus their own `onSnapStateChange` calls.
+- `useLayoutEffect` remains only as a safety net if a future branch changes
+  mode without using the transition helper.
+
+**Rollback note**:
+- If the transition helper causes regression, revert this pass by restoring raw
+  `navigateToX` props to `useManualEntryHandlers` / `useCandidateHandlers` and
+  restoring their direct `onSnapStateChange` calls.
+
+**Status**: DONE - StageBase now owns transition-wrapped navigation callbacks
+for search, manual, candidate decision, save details, saved manage, hubs, and
+replace-stack returns. Manual/candidate handler hooks no longer issue direct
+snap changes; `useLayoutEffect` remains as a defensive policy guard.
+
+---
+
 ### X-10 - Restore manual fallback, recents empty state, and keyboard-aware sheet
 **Files**:
 - `components/map/views/locationIntent/MapLocationIntentStageBase.jsx`

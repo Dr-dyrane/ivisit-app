@@ -245,21 +245,68 @@ export default function MapLocationIntentStageBase({
 	if (Platform.OS === "android" && keyboardHeight === 0) {
 		preKeyboardScreenHeightRef.current = screenHeight;
 	}
+	// PULLBACK NOTE: [X-10] LocationSheet mode/snap transition owner.
+	// OLD: handlers called navigateToX() and onSnapStateChange() separately.
+	// NEW: StageBase pairs the target mode with its snap policy in one callback,
+	// matching the main search sheet lesson: one owner decides the surface state.
+	const transitionLocationMode = useCallback(
+		(nextMode, navigate) => {
+			const nextSnapState =
+				LOCATION_INTENT_MODE_SNAP_POLICY[nextMode] || MAP_SHEET_SNAP_STATES.HALF;
+			onSnapStateChange?.(nextSnapState);
+			navigate?.();
+		},
+		[onSnapStateChange],
+	);
+	const transitionToAddressSearch = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.ADDRESS_SEARCH, navigateToAddressSearch),
+		[navigateToAddressSearch, transitionLocationMode],
+	);
+	const transitionToManualStep = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.MANUAL_STEP, navigateToManualStep),
+		[navigateToManualStep, transitionLocationMode],
+	);
+	const transitionToConfirm = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.CONFIRM, navigateToConfirm),
+		[navigateToConfirm, transitionLocationMode],
+	);
+	const transitionToCandidateDecision = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.CANDIDATE_DECISION, navigateToCandidateDecision),
+		[navigateToCandidateDecision, transitionLocationMode],
+	);
+	const transitionToSaveCategory = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.SAVE_CATEGORY, navigateToSaveCategory),
+		[navigateToSaveCategory, transitionLocationMode],
+	);
+	const transitionToSaveDetails = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.SAVE_DETAILS, navigateToSaveDetails),
+		[navigateToSaveDetails, transitionLocationMode],
+	);
+	const transitionToSavedManage = useCallback(
+		() => transitionLocationMode(LOCATION_INTENT_MODES.SAVED_MANAGE, navigateToSavedManage),
+		[navigateToSavedManage, transitionLocationMode],
+	);
+	const transitionReplaceModeStack = useCallback(
+		(nextMode, stack = []) => {
+			const nextSnapState =
+				LOCATION_INTENT_MODE_SNAP_POLICY[nextMode] || MAP_SHEET_SNAP_STATES.HALF;
+			onSnapStateChange?.(nextSnapState);
+			replaceNavigationStack(nextMode, stack);
+		},
+		[onSnapStateChange, replaceNavigationStack],
+	);
 	const openAddressSearch = useCallback(() => {
 		setSavedPlaceFeedback(null);
-		navigateToAddressSearch();
-		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
-	}, [navigateToAddressSearch, onSnapStateChange, setSavedPlaceFeedback]);
+		transitionToAddressSearch();
+	}, [setSavedPlaceFeedback, transitionToAddressSearch]);
 
 	const openPlacesHub = useCallback(() => {
-		navigateToPlacesHub();
-		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
-	}, [navigateToPlacesHub, onSnapStateChange]);
+		transitionLocationMode(LOCATION_INTENT_MODES.PLACES_HUB, navigateToPlacesHub);
+	}, [navigateToPlacesHub, transitionLocationMode]);
 
 	const openRecentsHub = useCallback(() => {
-		navigateToRecentsHub();
-		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
-	}, [navigateToRecentsHub, onSnapStateChange]);
+		transitionLocationMode(LOCATION_INTENT_MODES.RECENTS_HUB, navigateToRecentsHub);
+	}, [navigateToRecentsHub, transitionLocationMode]);
 
 	const {
 		searchQuery,
@@ -278,15 +325,20 @@ export default function MapLocationIntentStageBase({
 	});
 	const navigateToDefaultAndClearSearch = useCallback(() => {
 		clearSearch();
+		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 		navigateToDefault();
-	}, [clearSearch, navigateToDefault]);
+	}, [clearSearch, navigateToDefault, onSnapStateChange]);
 	const navigateBackWithinLocationLoop = useCallback(() => {
 		if (navigationStack.length > 0) {
+			const nextMode = navigationStack[navigationStack.length - 1] || LOCATION_INTENT_MODES.DEFAULT;
+			const nextSnapState =
+				LOCATION_INTENT_MODE_SNAP_POLICY[nextMode] || MAP_SHEET_SNAP_STATES.HALF;
+			onSnapStateChange?.(nextSnapState);
 			navigateBack();
 			return;
 		}
 		navigateToDefaultAndClearSearch();
-	}, [navigateBack, navigateToDefaultAndClearSearch, navigationStack.length]);
+	}, [navigateBack, navigateToDefaultAndClearSearch, navigationStack, onSnapStateChange]);
 
 	useEffect(() => {
 		const seededQuery =
@@ -297,10 +349,8 @@ export default function MapLocationIntentStageBase({
 		if (seededQuery) {
 			setSearchQuery(seededQuery, { open: false });
 			openAddressSearch();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
 		}
 	}, [
-		onSnapStateChange,
 		openAddressSearch,
 		sheetPayload?.addressQuery,
 		sheetPayload?.query,
@@ -485,10 +535,9 @@ export default function MapLocationIntentStageBase({
 		pendingPlaceLabel,
 		buildSelectedLocation,
 		setActiveCandidate,
-		navigateToManualStep,
-		navigateToCandidateDecision,
+		navigateToManualStep: transitionToManualStep,
+		navigateToCandidateDecision: transitionToCandidateDecision,
 		navigateToDefaultAndClearSearch,
-		onSnapStateChange,
 		clearManualDrop,
 		setManualDropQuery,
 		manualDropQuery,
@@ -531,14 +580,12 @@ export default function MapLocationIntentStageBase({
 		commitSearchQuery,
 		setLocationSearchError,
 		mode,
-		navigateToConfirm,
-		navigateToCandidateDecision,
-		navigateToSaveCategory,
-		navigateToSaveDetails,
-		navigateToSavedManage,
+		navigateToConfirm: transitionToConfirm,
+		navigateToCandidateDecision: transitionToCandidateDecision,
+		navigateToSaveDetails: transitionToSaveDetails,
+		navigateToSavedManage: transitionToSavedManage,
 		navigateToDefaultAndClearSearch,
-		replaceNavigationStack,
-		onSnapStateChange,
+		replaceNavigationStack: transitionReplaceModeStack,
 		onSelectLocation,
 		onClose,
 		addToRecents,
@@ -731,8 +778,7 @@ export default function MapLocationIntentStageBase({
 							if (!normalized) return;
 							setActiveCandidate(normalized);
 							clearSearch();
-							navigateToCandidateDecision();
-							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+							transitionToCandidateDecision();
 						}}
 						onOpenManualIntro={handleOpenManualStep}
 						onOpenPlacesHub={openPlacesHub}
@@ -747,8 +793,7 @@ export default function MapLocationIntentStageBase({
 							});
 							if (!pinSelection) return;
 							setActiveCandidate(pinSelection);
-							navigateToCandidateDecision();
-							onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
+							transitionToCandidateDecision();
 						}}
 						onConfirmSelection={() => commitLocation(selectedLocation)}
 						onFindNearbyHospitals={onFindNearbyHospitals}
@@ -765,7 +810,7 @@ export default function MapLocationIntentStageBase({
 						onPickSearchResult={handlePickSearchResult}
 						onSaveSelectedLocationAs={handleSaveSelectedLocationAs}
 						onSelectSaveCategory={handleSelectSaveCategory}
-						onOpenSaveCategory={navigateToSaveCategory}
+						onOpenSaveCategory={transitionToSaveCategory}
 						onSaveDetailsDraftChange={handleSaveDetailsDraftChange}
 						onConfirmSaveDetails={handleConfirmSaveDetails}
 						onSavedManageAction={handleSavedManageAction}

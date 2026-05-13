@@ -784,6 +784,29 @@ Expanded state is only for depth, not permission:
 - Detail copy and secondary context.
 - Future saved-place management.
 
+### Snap Transition Ownership Correction - 2026-05-13
+
+The main Search sheet works because one shell owns the visible sheet state. It
+does not let inner result handlers resize the sheet after the body has already
+changed.
+
+LocationSheet now follows that lesson:
+
+- `MapLocationIntentStageBase.jsx` owns the `mode -> snap` policy.
+- StageBase passes transition-wrapped navigation callbacks into manual and
+  candidate handler hooks.
+- Manual and candidate hooks no longer call `onSnapStateChange` directly.
+- `useLayoutEffect` remains as a defensive guard only, for future branches that
+  accidentally change mode without using the transition helper.
+
+Rollback:
+
+- Restore raw `navigateToX` callbacks into `useManualEntryHandlers` and
+  `useCandidateHandlers`.
+- Restore their previous direct `onSnapStateChange` calls.
+- Keep `LOCATION_INTENT_MODE_SNAP_POLICY` intact unless the snap contract itself
+  is being redesigned.
+
 Mode-specific layout replaces lower-priority browsing content rather than appending under it:
 
 - Sheet phase changes use the shared map phase transition language.

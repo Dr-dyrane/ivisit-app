@@ -6,7 +6,6 @@
 
 import { useCallback, useMemo } from "react";
 import { Keyboard } from "react-native";
-import { MAP_SHEET_SNAP_STATES } from "../../../components/map/core/mapSheet.constants";
 import {
 	buildManualAddressLabel,
 	buildManualAddressParts,
@@ -34,7 +33,6 @@ export default function useManualEntryHandlers({
 	navigateToCandidateDecision,
 	navigateToManualStep,
 	navigateToDefaultAndClearSearch,
-	onSnapStateChange,
 	clearManualDrop,
 	setManualDropQuery,
 	manualDropQuery,
@@ -47,8 +45,7 @@ export default function useManualEntryHandlers({
 		setManualError(null);
 		setManualStepIndex(0);
 		navigateToManualStep();
-		onSnapStateChange?.(MAP_SHEET_SNAP_STATES.EXPANDED);
-	}, [clearSearch, navigateToManualStep, onSnapStateChange]);
+	}, [clearSearch, navigateToManualStep]);
 
 	const handleManualCountrySelectInline = useCallback(({ name, code }) => {
 		if (!name) return;
@@ -141,7 +138,6 @@ export default function useManualEntryHandlers({
 				});
 				setActiveCandidate(fallbackNormalized);
 				navigateToCandidateDecision();
-				onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 				return;
 			}
 
@@ -159,7 +155,6 @@ export default function useManualEntryHandlers({
 			});
 			setActiveCandidate(normalized);
 			navigateToCandidateDecision();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 		} catch (_error) {
 			const placeIndex = MANUAL_LOCATION_STEPS.findIndex(
 				(step) => step.key === "placeOrAddress",
@@ -171,7 +166,7 @@ export default function useManualEntryHandlers({
 		} finally {
 			setIsResolvingManual(false);
 		}
-	}, [buildSelectedLocation, locationBias, manualDraft, navigateToCandidateDecision, onSnapStateChange, pendingPlaceLabel, setActiveCandidate]);
+	}, [buildSelectedLocation, locationBias, manualDraft, navigateToCandidateDecision, pendingPlaceLabel, setActiveCandidate]);
 
 	const handleManualDraftChange = useCallback((key, value) => {
 		if (key === "__jumpTo__") {

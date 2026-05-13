@@ -4,7 +4,6 @@
 //      in useSavedAddressActions in StageBase; setters are passed as params.
 
 import { useCallback } from "react";
-import { MAP_SHEET_SNAP_STATES } from "../../../components/map/core/mapSheet.constants";
 import { LOCATION_INTENT_MODES } from "../../../components/map/views/locationIntent/mapLocationIntent.model";
 import {
 	getSaveCategoryAction,
@@ -44,8 +43,7 @@ export default function useCandidateHandlers({
 	navigateToSavedManage,
 	navigateToDefaultAndClearSearch,
 	replaceNavigationStack,
-	// snap + close
-	onSnapStateChange,
+	// close
 	onSelectLocation,
 	onClose,
 	// recents write
@@ -138,9 +136,8 @@ export default function useCandidateHandlers({
 			setActiveCandidate(normalized);
 			commitSearchQuery(normalized.label);
 			navigateToCandidateDecision();
-			onSnapStateChange?.(MAP_SHEET_SNAP_STATES.HALF);
 		},
-		[buildSelectedLocation, commitSearchQuery, navigateToCandidateDecision, onSnapStateChange, pendingPlaceLabel, setActiveCandidate, setLocationSearchError],
+		[buildSelectedLocation, commitSearchQuery, navigateToCandidateDecision, pendingPlaceLabel, setActiveCandidate, setLocationSearchError],
 	);
 
 	const returnToCandidateDecision = useCallback(() => {
