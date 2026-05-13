@@ -5,8 +5,7 @@ import { MANUAL_LOCATION_STEPS } from "../../../components/map/views/locationInt
 import useDebounce from "../../ui/useDebounce";
 
 // PULLBACK NOTE: [LS-3]
-// OLD: useEffect + manualDropTimerRef + mapboxService.suggestAddresses in MapLocationIntentStageBase
-//      (defect class 2.18 — direct provider API call from render component, timer-based debounce).
+// OLD: render-component provider calls plus timer-based debounce in MapLocationIntentStageBase.
 // NEW: TanStack query with useDebounce. Results cached, deduped, no manual timer management.
 
 export default function useManualDropController({
@@ -23,7 +22,7 @@ export default function useManualDropController({
 		setManualDropQueryState("");
 	}, [manualStepIndex]);
 
-	// Debounce the query before passing to TanStack — prevents query key churn on every keystroke.
+	// Debounce the query before passing to TanStack - prevents query key churn on every keystroke.
 	const debouncedQuery = useDebounce(manualDropQuery, DEBOUNCE_MS);
 	const trimmedQuery = debouncedQuery.trim();
 	const shouldSearch = isDropStep && trimmedQuery.length >= MIN_QUERY_LENGTH;

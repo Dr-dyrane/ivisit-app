@@ -5,20 +5,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 /**
  * ManualStepStickyFooter
  *
- * Docked outside MapStageBodyScroll — always visible regardless of scroll.
+ * Docked outside MapStageBodyScroll - always visible regardless of scroll.
  * Back is a ghost pill; Next/Review is solid accent.
  *
  * Props
- * ─────
+ * -----
  * onBack           () => void
  * onNext           () => void
- * nextLabel        string   — "Next", "Skip", "Review pickup", etc.
+ * nextLabel        string   - "Next", "Skip", "Review pickup", etc.
  * isLoading        bool
  * isDisabled       bool
  * titleColor       string
  * mutedColor       string
  * infoSurfaceColor string
- * accentColor      string   — primary CTA background
+ * accentColor      string   - primary CTA background
  */
 export default function ManualStepStickyFooter({
 	onBack,

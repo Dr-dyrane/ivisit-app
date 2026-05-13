@@ -52,7 +52,7 @@ export function getSavedAddressCategoryMeta(category) {
 }
 
 export function getSavedAddressDisplayLabel(location = {}, fallback = "Saved place") {
-	// Guard: explicit null/undefined — callers may pass place.location which is null for empty Home/Work slots
+	// Guard: explicit null/undefined - callers may pass place.location which is null for empty Home/Work slots
 	if (!location || typeof location !== "object") return fallback;
 	const category = normalizeAddressCategory(location.category || location.label, null);
 	const rawLabel = String(location.label || "").trim();

@@ -473,6 +473,9 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 12,
 	},
+	disabledRow: {
+		opacity: 0.58,
+	},
 	candidateActionIcon: {
 		width: 34,
 		height: 34,

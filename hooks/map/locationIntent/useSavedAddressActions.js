@@ -74,8 +74,8 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 		dispatchCrud({ type: "RESET" });
 	}, [setSaveFlow]);
 
-	// Core save — handles Home/Work singleton upsert and generic add.
-	// Returns true on success, false on validation failure.
+	// Core save - handles Home/Work singleton upsert and generic add.
+	// Returns the saved/updated record on success, false on validation or sync failure.
 	const save = useCallback(
 		async (label, details = {}) => {
 			if (!candidate || !label) return false;
@@ -99,15 +99,17 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 
 			dispatchCrud({ type: "SAVE_START" });
 			try {
+				let savedResult = null;
 				if (details.savedLocationId) {
 					const result = updateSavedLocation?.(details.savedLocationId, savedPayload);
 					if (result?.status === "invalid" || result?.status === "missing") {
 						throw new Error("Saved place could not be updated.");
 					}
+					savedResult = result?.location || savedPayload;
 					await forceSyncSavedLocations();
 					dispatchCrud({ type: "SAVE_SUCCESS", label });
 					setSavedPlaceFeedback(label);
-					return true;
+					return savedResult;
 				}
 				const existing = isCategorySlot
 					? savedLocations.find(
@@ -120,16 +122,18 @@ export default function useSavedAddressActions({ savedLocations = [], candidate 
 					if (result?.status === "invalid" || result?.status === "missing") {
 						throw new Error("Saved place could not be updated.");
 					}
+					savedResult = result?.location || savedPayload;
 				} else {
 					const result = addSavedLocation?.(savedPayload);
 					if (result?.status === "invalid") {
 						throw new Error("Saved place could not be saved.");
 					}
+					savedResult = result?.location || savedPayload;
 				}
 				await forceSyncSavedLocations();
 				dispatchCrud({ type: "SAVE_SUCCESS", label });
 				setSavedPlaceFeedback(label);
-				return true;
+				return savedResult;
 			} catch (err) {
 				dispatchCrud({ type: "SAVE_FAILED", error: err?.message });
 				return false;

@@ -1,6 +1,6 @@
-// PULLBACK NOTE: [LS-10] NEW: Places Hub panel — full saved places management surface
+// PULLBACK NOTE: [LS-10] NEW: Places Hub panel - full saved places management surface
 // OLD: inline orbs in DEFAULT view only (3 orbs max, no manage path from hub)
-// NEW: dedicated PLACES_HUB mode — all saved places, add/manage row, own panel
+// NEW: dedicated PLACES_HUB mode - all saved places, add/manage row, own panel
 
 import React from "react";
 import { Pressable, Text, View } from "react-native";
@@ -49,7 +49,7 @@ function PlacesHubRow({
 	);
 }
 
-// Icon + colour by category — outline = no data, solid = has data
+// Icon + colour by category - outline = no data, solid = has data
 const CATEGORY_ORB = {
 	home:     { icon: "home-outline",      solidIcon: "home",      color: "#F97316", bg: "#F9731620" },
 	work:     { icon: "briefcase-outline", solidIcon: "briefcase", color: "#8B5CF6", bg: "#8B5CF620" },

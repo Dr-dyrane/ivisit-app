@@ -57,12 +57,82 @@ export function SearchResultRow({
 	const finalMetaColor = metaColor || mutedColor;
 	const a11yLabel = accessibilityLabel || title;
 	const a11yHint = accessibilityHint || (subtitle ? `${subtitle}. Tap to select.` : "Tap to select.");
+	const isInteractive = typeof onPress === "function";
 	const renderIcon =
 		iconType === "material" ? (
 			<MaterialCommunityIcons name={iconName} size={18} color={COLORS.brandPrimary} />
 		) : (
 			<Ionicons name={iconName} size={18} color={COLORS.brandPrimary} />
 		);
+	const rowContent = (pressed = false) => (
+		<View
+			style={[
+				styles.resultRow,
+				responsiveStyles.resultRow,
+				{
+					backgroundColor: surfaceColor,
+					opacity: pressed ? 0.88 : 1,
+					transform: [{ scale: pressed ? 0.99 : 1 }],
+				},
+			]}
+		>
+			<View style={[styles.resultLeading, responsiveStyles.resultLeading]}>
+				<SheetIconTile isDarkMode={isDarkMode} responsiveStyles={responsiveStyles}>
+					{renderIcon}
+				</SheetIconTile>
+				<View style={styles.resultCopy}>
+					<View style={[styles.resultTitleRow, responsiveStyles.resultTitleRow]}>
+						<Text
+							numberOfLines={1}
+							style={[styles.resultTitle, responsiveStyles.resultTitle, { color: titleColor }]}
+						>
+							{title}
+						</Text>
+						{badgeLabel ? (
+							<View style={[styles.resultBadge, responsiveStyles.resultBadge]}>
+								<Text style={[styles.resultBadgeText, responsiveStyles.resultBadgeText]}>
+									{badgeLabel}
+								</Text>
+							</View>
+						) : null}
+					</View>
+					{subtitle ? (
+						<Text
+							numberOfLines={1}
+							style={[styles.resultSubtitle, responsiveStyles.resultSubtitle, { color: mutedColor }]}
+						>
+							{subtitle}
+						</Text>
+					) : null}
+					{meta ? (
+						<Text
+							numberOfLines={1}
+							style={[styles.resultMeta, responsiveStyles.resultMeta, { color: finalMetaColor }]}
+						>
+							{meta}
+						</Text>
+					) : null}
+				</View>
+			</View>
+			{isSelected ? (
+				<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
+			) : isInteractive ? (
+				<Ionicons name="chevron-forward" size={18} color={mutedColor} />
+			) : null}
+		</View>
+	);
+
+	if (!isInteractive) {
+		return (
+			<View
+				accessibilityLabel={a11yLabel}
+				accessibilityRole="text"
+				accessibilityState={{ selected: isSelected }}
+			>
+				{rowContent(false)}
+			</View>
+		);
+	}
 
 	return (
 		<Pressable
@@ -74,61 +144,7 @@ export function SearchResultRow({
 			accessibilityState={{ selected: isSelected }}
 		>
 			{({ pressed }) => (
-				<View
-					style={[
-						styles.resultRow,
-						responsiveStyles.resultRow,
-						{
-							backgroundColor: surfaceColor,
-							opacity: pressed ? 0.88 : 1,
-							transform: [{ scale: pressed ? 0.99 : 1 }],
-						},
-					]}
-				>
-					<View style={[styles.resultLeading, responsiveStyles.resultLeading]}>
-						<SheetIconTile isDarkMode={isDarkMode} responsiveStyles={responsiveStyles}>
-							{renderIcon}
-						</SheetIconTile>
-						<View style={styles.resultCopy}>
-							<View style={[styles.resultTitleRow, responsiveStyles.resultTitleRow]}>
-								<Text
-									numberOfLines={1}
-									style={[styles.resultTitle, responsiveStyles.resultTitle, { color: titleColor }]}
-								>
-									{title}
-								</Text>
-								{badgeLabel ? (
-									<View style={[styles.resultBadge, responsiveStyles.resultBadge]}>
-										<Text style={[styles.resultBadgeText, responsiveStyles.resultBadgeText]}>
-											{badgeLabel}
-										</Text>
-									</View>
-								) : null}
-							</View>
-							{subtitle ? (
-								<Text
-									numberOfLines={1}
-									style={[styles.resultSubtitle, responsiveStyles.resultSubtitle, { color: mutedColor }]}
-								>
-									{subtitle}
-								</Text>
-							) : null}
-							{meta ? (
-								<Text
-									numberOfLines={1}
-									style={[styles.resultMeta, responsiveStyles.resultMeta, { color: finalMetaColor }]}
-								>
-									{meta}
-								</Text>
-							) : null}
-						</View>
-					</View>
-					{isSelected ? (
-						<Ionicons name="checkmark-circle" size={18} color={COLORS.brandPrimary} />
-					) : (
-						<Ionicons name="chevron-forward" size={18} color={mutedColor} />
-					)}
-				</View>
+				rowContent(pressed)
 			)}
 		</Pressable>
 	);

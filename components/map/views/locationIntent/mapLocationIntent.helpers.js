@@ -328,6 +328,7 @@ export function buildCandidateDecisionActions({
 	selectedLocation,
 	pendingPlaceLabel,
 	savedPlaceFeedback,
+	savedPlaces = [],
 	canFindNearby = false,
 } = {}) {
 	// Rollback note: keep the selected-address decision tree data-only so the
@@ -335,14 +336,22 @@ export function buildCandidateDecisionActions({
 	const actions = [];
 	const source = selectedLocation?.source;
 	const canSaveCandidate = ["manual", "search", "recent", "visit"].includes(source);
+	const homeExists = savedPlaces.some((place) => place?.key === "home" && place?.hasLocation);
+	const workExists = savedPlaces.some((place) => place?.key === "work" && place?.hasLocation);
 	const pendingTitle =
 		pendingPlaceLabel === "home"
-			? "Set as Home"
+			? homeExists ? "Change Home" : "Set as Home"
 			: pendingPlaceLabel === "work"
-				? "Set as Work"
+				? workExists ? "Change Work" : "Set as Work"
 				: pendingPlaceLabel === "other"
 					? "Save Place"
 					: null;
+	const pendingActionMeta =
+		pendingPlaceLabel === "home"
+			? { iconName: "home", tone: "home" }
+			: pendingPlaceLabel === "work"
+				? { iconName: "briefcase", tone: "work" }
+				: { iconName: "bookmark", tone: "saved" };
 	const savedPlaceText =
 		savedPlaceFeedback === "home"
 			? "Saved Home"
@@ -355,8 +364,12 @@ export function buildCandidateDecisionActions({
 	actions.push({
 		id: pendingPlaceLabel ? `save-${pendingPlaceLabel}` : "useAsPickup",
 		label: pendingTitle || "Use as Pickup",
-		iconName: pendingPlaceLabel ? "bookmark" : "navigation",
-		tone: pendingPlaceLabel ? "saved" : "pickup",
+		iconName: pendingPlaceLabel ? pendingActionMeta.iconName : "navigation",
+		solidIcon: pendingPlaceLabel ? pendingActionMeta.iconName : "navigation",
+		tone: pendingPlaceLabel ? pendingActionMeta.tone : "pickup",
+		isSolidOrb:
+			(pendingPlaceLabel === "home" && homeExists) ||
+			(pendingPlaceLabel === "work" && workExists),
 		type: pendingPlaceLabel === "other" ? "saveCategory" : pendingPlaceLabel ? "save" : "pickup",
 		saveLabel: pendingPlaceLabel || null,
 	});
@@ -365,19 +378,21 @@ export function buildCandidateDecisionActions({
 		actions.push(
 			{
 				id: "setHome",
-				label: "Set as Home",
+				label: homeExists ? "Change Home" : "Set as Home",
 				iconName: "home",
 				solidIcon: "home",
 				tone: "home",
+				isSolidOrb: homeExists,
 				type: "save",
 				saveLabel: "home",
 			},
 			{
 				id: "setWork",
-				label: "Set as Work",
+				label: workExists ? "Change Work" : "Set as Work",
 				iconName: "briefcase",
 				solidIcon: "briefcase",
 				tone: "work",
+				isSolidOrb: workExists,
 				type: "save",
 				saveLabel: "work",
 			},
@@ -413,14 +428,14 @@ export function buildCandidateDecisionActions({
 		});
 	}
 
-	// PULLBACK NOTE: [LS-6] NEW: findNearby CTA — lets user jump to hospital search
+	// PULLBACK NOTE: [LS-6] NEW: findNearby CTA - lets user jump to hospital search
 	// anchored at the confirmed candidate location without leaving the flow.
 	if (canFindNearby && selectedLocation?.coords?.latitude && !pendingPlaceLabel) {
 		actions.push({
 			id: "findNearbyHospitals",
 			label: "Find Nearby Hospitals",
 			iconName: "medical-bag",
-			tone: "neutral",
+			tone: "care",
 			type: "findNearby",
 		});
 	}

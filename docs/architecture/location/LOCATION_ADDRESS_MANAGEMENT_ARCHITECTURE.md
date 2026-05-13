@@ -872,7 +872,7 @@ Done when:
 
 ### Pass 3 - Search Candidate Decision Tree
 
-- Convert `placeSelected`, manual success, saved selection, and recent selection to `candidateDecision`.
+- Keep search results, manual success, saved selection, and recent selection unified through `candidateDecision`.
 - Render one address group and one CTA group.
 - Add `Find nearby hospitals`, `Use as pickup`, `Set Home`, `Set Work`, and `Add to saved places`.
 - Match CTA visual sync:
@@ -1691,8 +1691,8 @@ These are feasible, but should be done behind clean boundaries before UI wiring:
 - Current manual flow already geocodes through Mapbox and falls back to OpenStreetMap.
   - Keep that safety rule.
   - Add assisted state/city/street suggestions through `addressAssistService`.
-- Current search result selection already creates a candidate-like object.
-  - Replace `placeSelected` / `confirm` branching with `candidateDecision`, not another parallel state.
+- Current search result selection creates a candidate object.
+  - Keep candidate branching unified through `candidateDecision`, not another parallel state.
 
 ### Deferred Or Optional For First Production Pass
 

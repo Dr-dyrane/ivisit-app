@@ -449,6 +449,270 @@ Acceptance:
 
 ---
 
-**Last updated**: 2026-05-11 (deep audit reconciliation)  
+## 2026-05-13 Location Intent Remaining Pass Contract
+
+Use the following passes to compare the current implementation against both code correctness and Apple-level UX quality. These passes are not feature wishlists. Each pass must answer:
+
+1. What is implemented in code today?
+2. Does the implementation match the documented LocationSheet contract?
+3. Does the UI feel calm, obvious, fast, forgiving, and consistent with the rest of iVisit?
+4. Are state ownership, persistence, side effects, snap state, loading state, keyboard behavior, and rollback paths correct?
+
+### LI-1 - Mode And Snap Contract Audit
+
+**Implemented area to inspect:**
+
+- `MapLocationIntentStageBase.jsx`
+- `useCandidateHandlers.js`
+- `useManualEntryHandlers.js`
+- `useLocationSheetNavigation.js`
+- Location sheet shell snap handlers
+
+**Correctness target:**
+
+- Search focus expands once and stays expanded.
+- Selecting search/manual/saved/recent candidate collapses once into candidate decision.
+- Manual, Places Hub, Recents Hub, save category, save details, and saved manage own their expected snap state.
+- Hooks never fight the StageBase snap policy.
+- Back/close behavior returns to the previous sheet mode without closing the whole sheet accidentally.
+
+**UX target:**
+
+- No expand-then-collapse flicker.
+- No blank sheet body during mode transition.
+- Every subphase clearly owns the header title/subtitle so the user knows where they are after distraction.
+
+### LI-2 - Manual Address Flow Audit
+
+**Implemented area to inspect:**
+
+- `ManualStepActiveField.jsx`
+- `ManualStepCompletedSummaries.jsx`
+- `ManualStepStickyFooter.jsx`
+- `useManualDropController.js`
+- `addressAssistService.js`
+- manual draft model in `mapLocationIntent.model.js`
+
+**Correctness target:**
+
+- Country, state/region, city, LGA/area, street/place, unit, and responder note keep draft state across back navigation.
+- Search requests include prior context in the correct order, for example `Amuwo Odofin, Lagos, Lagos State, Nigeria`.
+- City comes before LGA/area for Nigeria-specific language.
+- Provider no-result states allow typed fallback instead of hard-blocking the user.
+- Geocode failure never fabricates coordinates from stale GPS.
+
+**UX target:**
+
+- One decision per step.
+- No long-form feel.
+- Completed summaries are clear and editable without stealing focus from the active step.
+- Sticky CTA remains visible above keyboard and scroll.
+- Optional fields feel useful, not like extra homework.
+
+### LI-3 - Candidate Decision Surface Audit
+
+**Implemented area to inspect:**
+
+- `MapLocationIntentCandidatePanel.jsx`
+- candidate action builders
+- candidate header/body/footer rendering in StageBase
+
+**Correctness target:**
+
+- Search, manual, saved places, recents, and current-location alternatives all normalize into one candidate shape.
+- No candidate commits pickup until `Use as pickup` is tapped.
+- `Find nearby hospital`, Home, Work, Add Saved Place, and pickup actions receive the right source metadata.
+- Candidate decision state has one address summary group and one action group.
+
+**UX target:**
+
+- The address summary is readable and not duplicated with the search input.
+- CTA groups use the correct icon/color family:
+  - Pickup: generic blue.
+  - Home/Work/Add: saved-place orb family.
+  - Manage/edit/remove: settings/destructive family.
+- Primary decision remains visible without scrolling.
+
+### LI-4 - Saved Places CRUD And Identity Audit
+
+**Implemented area to inspect:**
+
+- `useSavedAddressActions.js`
+- `stores/locationStore.js`
+- `services/savedLocationsSyncService.js`
+- Places Hub / saved manage UI
+- Mini profile address entry point
+
+**Correctness target:**
+
+- Home and Work are singleton identity slots.
+- Other saved places can coexist when category/label differs.
+- Save/update/remove has explicit status: idle, draft, validating, saving, saved, failed.
+- Local persistence and remote sync do not lie about final success.
+- Auth changes do not leak saved places across users.
+
+**UX target:**
+
+- Saved-place actions feel reversible and safe.
+- Remove is a two-step confirmation.
+- Edit/manage happens inside LocationSheet, not a separate modal.
+- Mini profile address entry routes into the same owner surface.
+
+### LI-5 - Default Layout, Recents, And Empty State Audit
+
+**Implemented area to inspect:**
+
+- `MapLocationIntentStageParts.jsx`
+- Places orb row
+- manual trigger row
+- Recents grouping
+- empty state rendering
+
+**Correctness target:**
+
+- Manual trigger remains above Recents.
+- Empty Recents never leaves a dead section.
+- Recent pickup memory is distinct from saved-place identity.
+- Recent hospital/visited-location rows only render when coordinates and address are usable.
+
+**UX target:**
+
+- Half snap contains only useful first decisions.
+- Expanded snap adds depth, not required CTAs.
+- Section headers, typography, chevrons, and row spacing match Explore Intent/SearchSheet grammar.
+
+### LI-6 - Search Ownership And Reuse Audit
+
+**Implemented area to inspect:**
+
+- `SearchContext.jsx`
+- SearchSheet suggestion mapping
+- LocationSheet search mode
+- `addressAssistService.js`
+- `mapboxService` usage
+
+**Correctness target:**
+
+- LocationSheet owns selected-location decision state.
+- SearchSheet and LocationSheet do not maintain competing provider-search contracts.
+- Suggestion mapping is shared or normalized through a service boundary.
+- Result selection creates a candidate, not an immediate pickup commit.
+
+**UX target:**
+
+- LocationSheet search rows reuse established SearchSheet row grammar.
+- Loading, no-result, recents, and grouped-address states feel identical across search surfaces.
+- Debounced search gives visible feedback quickly enough to avoid hesitation.
+
+### LI-7 - Code Health And Rollback Audit
+
+**Implemented area to inspect:**
+
+- `MapLocationIntentStageBase.jsx`
+- `MapLocationIntentStageParts.jsx`
+- `mapLocationIntent.styles.js`
+- `mapLocationIntent.helpers.js`
+- locationIntent hooks and atoms
+
+**Correctness target:**
+
+- No component owns provider calls, persistence writes, navigation stack, and render layout all at once.
+- State layer rules are respected:
+  - local component state for disposable view-only state,
+  - Jotai for sheet UI state that must survive snap/remount,
+  - Zustand for persisted client truth,
+  - Query/service boundary for provider fetches,
+  - Supabase only through sync/service lanes.
+- No nested `Pressable` button structures on web.
+- No mojibake or non-ASCII artifacts in touched source files.
+
+**UX target:**
+
+- Smaller components make state transitions auditable.
+- Styling stays DRY enough that spacing/snap fixes do not fork per mode.
+- Rollback notes exist near risky behavior changes.
+
+### LI-8 - Runtime QA Checklist For User Testing
+
+The user owns runtime testing, but each implementation pass must leave these scenarios ready to test:
+
+- Default half snap: search, hero, places, manual, and useful recents/empty state are visible.
+- Search focus: sheet expands and header/back/close semantics change correctly.
+- Search select: candidate decision appears and sheet collapses without flicker.
+- Manual entry: keyboard never hides CTA; back preserves draft; provider no-result allows typed fallback.
+- Candidate actions: pickup commit, Home, Work, Add Saved Place, Find Nearby Hospital.
+- Saved manage: use, edit, remove confirm, cancel.
+- Wide web: left/sidebar layout and map chrome remain aligned.
+- Mobile: no hidden CTA under scroll, no blank transition, no layout jump.
+
+---
+
+**Last updated**: 2026-05-13 (Location Intent implemented-vs-correctness-vs-UX pass contract)
 **Deep findings:** [LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md](./LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md)  
-**Next action**: demo owner field fix -> saved address persistence/auth fix -> manual confirm-pin fallback
+**Next action**: run LI-1 through LI-8 before adding new Location Intent feature depth
+
+---
+
+## 2026-05-13 Closure Pass Started
+
+**Status:** In progress
+**Scope:** LI-1, LI-2, LI-3, LI-4, LI-7
+
+### Applied Corrections
+
+- **Subphase header ownership:** LocationSheet now passes explicit header title/subtitle for search, manual, candidate decision, save category, save details, saved manage, places hub, recents hub, and pin adjust. This prevents the sheet from showing the default pickup header while the user is deep inside a decision branch.
+- **Manual search context:** `addressAssistService` now builds comma-separated contextual queries from prior manual fields, so a district/LGA search is scoped by city, region, and country instead of searching as a disconnected string.
+- **Manual context affordance:** manual search-drop fields now show a compact `Within ...` hint so users understand why results are narrowed without adding long explanatory copy.
+- **Saved-place action feedback:** candidate/save/manage rows now receive CRUD status and show disabled/pending/error states during save or remove operations.
+- **Saved-place edit freshness:** editing an existing saved place now refreshes the active saved candidate after persistence succeeds, so the user returns to the manage surface with updated label/unit/note state instead of stale pre-edit data.
+- **LocationSheet search ownership cleanup:** `useAddressSearchController` now uses the shared `useLocationSearchQuery` TanStack Query hook instead of a LocationSheet-only timer and direct `mapboxService` call.
+- **Display-only row semantics:** shared `SearchResultRow` now renders as a non-button view when no `onPress` is supplied. The selected-address summary in LocationSheet no longer appears as an inert button to web or assistive tech.
+- **Saved result return bug:** `useSavedAddressActions.save()` now returns the scoped saved/update result correctly instead of referencing a block-scoped result outside its branch.
+- **Source hygiene:** touched Location Intent and saved-location service comments were normalized back to ASCII to remove mojibake risk in active rollback notes.
+
+### Verification
+
+- Static JSX/JS parse passed for touched Location Intent files using `@babel/parser`.
+- Runtime/device verification remains user-owned per the testing agreement.
+
+### PR-Style Closure Audit
+
+**Status:** Static audit complete, runtime pending user review.
+
+**Regression fixes caught during closure audit:**
+
+- `useSavedAddressActions.save()` return-shape comment now matches the implemented saved/updated record payload.
+- The architecture plan now uses the current `candidateDecision` / save / manage mode vocabulary instead of old `placeSelected` language.
+- Manual flow arrows and fallback copy in the architecture plan were normalized back to ASCII to avoid mojibake in rollback docs.
+- Existing Home/Work candidate CTAs now say `Change Home` / `Change Work` and use the solid filled orb with white icon, while empty slots keep `Set as Home` / `Set as Work`.
+
+**Closure sweeps completed:**
+
+- No missing `LOCATION_INTENT_MODES` imports in LocationSheet render paths.
+- No direct provider calls inside LocationSheet render/controller files; provider access stays behind shared query or service lanes.
+- No nested web button structures in the candidate decision surface.
+- No mojibake/non-ASCII artifacts in touched active source files.
+- `@babel/parser` parse and `git diff --check` pass for the touched file set.
+
+### Pullback Notes
+
+- If subphase headers feel too verbose in runtime review, rollback only the `locationHeaderModel` block in `MapLocationIntentStageBase.jsx`; the mode/snap contract remains independent.
+- If manual context hints crowd small phones, rollback only the `contextHint` render in `ManualStepActiveField.jsx`; contextual search query scoping should remain.
+- If CRUD pending UI conflicts with an existing app-wide spinner pattern, rollback only the `crudStatus` props/rendering in `MapLocationIntentCandidatePanel.jsx`; keep the saved-address state machine.
+- If the shared query hook causes unexpected result caching in runtime review, rollback only `useAddressSearchController.js`; do not restore provider calls inside `MapLocationIntentStageBase.jsx`.
+- If saved-place edit freshness causes any unexpected candidate jump, rollback only the `savedResult` refresh block in `useCandidateHandlers.js`; keep the `useSavedAddressActions.save()` return payload because it remains useful for future status UI.
+- If non-interactive `SearchResultRow` affects any SearchSheet visual rhythm, rollback only the no-`onPress` branch in `MapSearchSheetSections.jsx`; the LocationSheet candidate summary can be replaced with a local static row instead.
+
+### Standing Engineering Rule - State Flow Edits
+
+The saved-address return-shape bug in `useSavedAddressActions.save()` is now a permanent guardrail reminder.
+
+When changing behavior in LocationSheet or any iVisit state machine:
+
+- Treat return-shape changes as high-risk, even when the UI diff is small.
+- After each behavioral edit, run a syntax parse/check before stacking the next behavioral edit.
+- Re-read the full function after changing variable scope, especially across `if` / `else` / `try` / `catch` branches.
+- Prefer one explicit outer result variable when a value must be returned after multiple branches.
+- Verify every caller contract when changing a function from boolean success to object result, status tuple, or payload.
+- Do not call a pass "clean" until the exact files touched by the behavior change have passed static parsing.
+- Work efficiently, but never compress away basic engineering hygiene; there is enough time to do the careful version.

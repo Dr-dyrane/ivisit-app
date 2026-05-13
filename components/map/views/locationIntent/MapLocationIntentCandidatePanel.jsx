@@ -1,9 +1,9 @@
 // PULLBACK NOTE: [LS-8] Extracted from MapLocationIntentStageParts.jsx
-// OLD: isConfirming block (lines 875–1152) + action handlers lived in MapLocationIntentBodyContent
-// NEW: standalone panel component — single responsibility, ~280 lines
+// OLD: isConfirming block (lines 875-1152) + action handlers lived in MapLocationIntentBodyContent
+// NEW: standalone panel component - single responsibility, ~280 lines
 
 import React, { useMemo } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
 	ResultsSection,
@@ -22,19 +22,19 @@ import { LOCATION_INTENT_MODES } from "./mapLocationIntent.model";
 import styles from "./mapLocationIntent.styles";
 import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 
-// Semantic colour map — one entry per tone emitted by the action builders.
+// Semantic colour map - one entry per tone emitted by the action builders.
 // iconBg is the 14% alpha tint applied behind the icon orb.
 const TONE_PALETTE = {
-	pickup:      { icon: "#3B82F6", iconBg: "#3B82F620", text: null },   // blue — primary action
-	home:        { icon: "#F97316", iconBg: "#F9731620", text: null },   // orange — home warmth
-	work:        { icon: "#8B5CF6", iconBg: "#8B5CF620", text: null },   // purple — work
-	saved:       { icon: "#6366F1", iconBg: "#6366F120", text: null },   // indigo — bookmark
-	family:      { icon: "#EC4899", iconBg: "#EC489920", text: null },   // pink — family
-	school:      { icon: "#0EA5E9", iconBg: "#0EA5E920", text: null },   // sky — school
-	pharmacy:    { icon: "#10B981", iconBg: "#10B98120", text: null },   // emerald — medical
-	care:        { icon: "#EF4444", iconBg: "#EF444420", text: null },   // red — care/hospital
-	success:     { icon: "#22C55E", iconBg: "#22C55E20", text: "#22C55E" }, // green — confirmed
-	danger:      { icon: "#EF4444", iconBg: "#EF444420", text: "#EF4444" }, // red — destructive
+	pickup:      { icon: "#3B82F6", iconBg: "#3B82F620", text: null },   // blue - primary action
+	home:        { icon: "#F97316", iconBg: "#F9731620", text: null },   // orange - home warmth
+	work:        { icon: "#8B5CF6", iconBg: "#8B5CF620", text: null },   // purple - work
+	saved:       { icon: "#6366F1", iconBg: "#6366F120", text: null },   // indigo - bookmark
+	family:      { icon: "#EC4899", iconBg: "#EC489920", text: null },   // pink - family
+	school:      { icon: "#0EA5E9", iconBg: "#0EA5E920", text: null },   // sky - school
+	pharmacy:    { icon: "#10B981", iconBg: "#10B98120", text: null },   // emerald - medical
+	care:        { icon: "#EF4444", iconBg: "#EF444420", text: null },   // red - care/hospital
+	success:     { icon: "#22C55E", iconBg: "#22C55E20", text: "#22C55E" }, // green - confirmed
+	danger:      { icon: "#EF4444", iconBg: "#EF444420", text: "#EF4444" }, // red - destructive
 	positive:    { icon: "#22C55E", iconBg: "#22C55E20", text: "#22C55E" },
 	destructive: { icon: "#EF4444", iconBg: "#EF444420", text: "#EF4444" },
 	neutral:     { icon: null,      iconBg: null,         text: null },
@@ -42,9 +42,12 @@ const TONE_PALETTE = {
 
 function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedColor) {
 	const palette = TONE_PALETTE[action?.tone];
+	const solidIconColor = action?.isSolidOrb && palette?.icon ? "#FFFFFF" : null;
 	return {
-		iconBackgroundColor: palette?.iconBg ?? infoSurfaceColor,
-		iconColor: palette?.icon ?? titleColor,
+		iconBackgroundColor: action?.isSolidOrb
+			? palette?.icon ?? infoSurfaceColor
+			: palette?.iconBg ?? infoSurfaceColor,
+		iconColor: solidIconColor ?? palette?.icon ?? titleColor,
 		textColor: palette?.text ?? titleColor,
 	};
 }
@@ -54,7 +57,10 @@ export default function MapLocationIntentCandidatePanel({
 	selectedLocation,
 	pendingSaveCategory,
 	savedPlaceFeedback,
+	savedPlaces,
 	isConfirmingSavedRemove,
+	crudStatus,
+	CRUD_STATUS,
 	saveDetailsDraft,
 	titleColor,
 	mutedColor,
@@ -89,6 +95,8 @@ export default function MapLocationIntentCandidatePanel({
 	const isSaveCategory = mode === LOCATION_INTENT_MODES.SAVE_CATEGORY;
 	const isSaveDetails = mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
 	const isSavedManage = mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
+	const isCrudSaving = crudStatus?.kind === CRUD_STATUS?.SAVING;
+	const crudError = crudStatus?.kind === CRUD_STATUS?.FAILED ? crudStatus?.error : null;
 
 	const pendingPlaceLabel = selectedLocation?.pendingPlaceLabel;
 	const candidateActions = useMemo(
@@ -97,9 +105,10 @@ export default function MapLocationIntentCandidatePanel({
 				selectedLocation,
 				pendingPlaceLabel,
 				savedPlaceFeedback,
+				savedPlaces,
 				canFindNearby: Boolean(onFindNearbyHospitals),
 			}),
-		[onFindNearbyHospitals, pendingPlaceLabel, savedPlaceFeedback, selectedLocation],
+		[onFindNearbyHospitals, pendingPlaceLabel, savedPlaceFeedback, savedPlaces, selectedLocation],
 	);
 	const pendingPlaceTitle = candidateActions[0]?.saveLabel
 		? candidateActions[0]?.label
@@ -175,20 +184,28 @@ export default function MapLocationIntentCandidatePanel({
 								) : null}
 								<Pressable
 									onPress={() => onSavedManageAction?.(action)}
+									disabled={isCrudSaving}
 									accessibilityRole="button"
 									accessibilityLabel={action.label}
 									style={({ pressed }) => [
 										styles.candidateActionRow,
 										pressed ? styles.rowPressed : null,
+										isCrudSaving ? styles.disabledRow : null,
 									]}
 								>
 									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-										<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
+										<MaterialCommunityIcons
+											name={action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName}
+											size={18}
+											color={actionTone.iconColor}
+										/>
 									</View>
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
 									</Text>
-									{action.type === "remove" && isConfirmingSavedRemove ? null : (
+									{isCrudSaving && action.type === "remove" ? (
+										<ActivityIndicator size="small" color={mutedColor} />
+									) : action.type === "remove" && isConfirmingSavedRemove ? null : (
 										<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
 									)}
 								</Pressable>
@@ -212,11 +229,13 @@ export default function MapLocationIntentCandidatePanel({
 								) : null}
 								<Pressable
 									onPress={() => onSelectSaveCategory?.(action.category)}
+									disabled={isCrudSaving}
 									accessibilityRole="button"
 									accessibilityLabel={`Save as ${action.label}`}
 									style={({ pressed }) => [
 										styles.candidateActionRow,
 										pressed ? styles.rowPressed : null,
+										isCrudSaving ? styles.disabledRow : null,
 									]}
 								>
 									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
@@ -225,7 +244,11 @@ export default function MapLocationIntentCandidatePanel({
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
 									</Text>
-									<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
+									{isCrudSaving ? (
+										<ActivityIndicator size="small" color={mutedColor} />
+									) : (
+										<MaterialCommunityIcons name="chevron-right" size={16} color={mutedColor} />
+									)}
 								</Pressable>
 							</React.Fragment>
 						);
@@ -295,16 +318,21 @@ export default function MapLocationIntentCandidatePanel({
 					/>
 					<Pressable
 						onPress={onConfirmSaveDetails}
+						disabled={isCrudSaving}
 						accessibilityRole="button"
 						accessibilityLabel="Save place details"
 						style={({ pressed }) => [
 							styles.saveDetailsPrimaryAction,
 							{ backgroundColor: accentColor },
 							pressed ? styles.rowPressed : null,
+							isCrudSaving ? styles.disabledRow : null,
 						]}
 					>
+						{isCrudSaving ? (
+							<ActivityIndicator size="small" color="#ffffff" />
+						) : null}
 						<Text style={[styles.manualStepButtonLabel, { color: "#ffffff" }]}>
-							Save Place
+							{isCrudSaving ? "Saving" : "Save Place"}
 						</Text>
 					</Pressable>
 				</View>
@@ -321,7 +349,11 @@ export default function MapLocationIntentCandidatePanel({
 						const content = (
 							<>
 								<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-									<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
+									<MaterialCommunityIcons
+										name={action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName}
+										size={18}
+										color={actionTone.iconColor}
+									/>
 								</View>
 								<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 									{action.label}
@@ -341,11 +373,13 @@ export default function MapLocationIntentCandidatePanel({
 								) : (
 									<Pressable
 										onPress={() => handleCandidateAction(action)}
+										disabled={isCrudSaving && action.type !== "pickup" && action.type !== "findNearby"}
 										accessibilityRole="button"
 										accessibilityLabel={action.label}
 										style={({ pressed }) => [
 											styles.candidateActionRow,
 											pressed ? styles.rowPressed : null,
+											isCrudSaving ? styles.disabledRow : null,
 										]}
 									>
 										{content}
@@ -356,6 +390,12 @@ export default function MapLocationIntentCandidatePanel({
 					})}
 				</View>
 			)}
+			{crudError ? (
+				<View style={[styles.manualErrorRow, { marginTop: 2 }]}>
+					<MaterialCommunityIcons name="alert-circle-outline" size={15} color="#EF4444" />
+					<Text style={styles.manualErrorText}>{crudError}</Text>
+				</View>
+			) : null}
 		</View>
 	);
 }

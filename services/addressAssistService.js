@@ -10,8 +10,12 @@ const DEBOUNCE_MS = 320;
 const MIN_QUERY_LENGTH = 2;
 
 function buildContextualQuery(query, { districtArea = "", city = "", adminArea = "", country = "" } = {}) {
-	const context = [districtArea, city, adminArea, country].filter(Boolean).join(" ");
-	return context ? `${query.trim()} ${context}` : query.trim();
+	const baseQuery = String(query || "").trim();
+	const normalizedBase = baseQuery.toLowerCase();
+	const context = [districtArea, city, adminArea, country]
+		.map((part) => String(part || "").trim())
+		.filter((part) => part && part.toLowerCase() !== normalizedBase);
+	return [baseQuery, ...context].filter(Boolean).join(", ");
 }
 
 export async function suggestRegions({ query, countryCode, proximity, context = {} } = {}) {
@@ -78,7 +82,7 @@ export async function suggestForStep({ query, mapboxTypes, countryCode, proximit
 export async function resolveManualDraft(address, { proximity, countryCode } = {}) {
 	if (!address || !address.trim()) return null;
 	try {
-		// PULLBACK NOTE: [LS-9] Gap fix — pass proximity for better regional bias;
+		// PULLBACK NOTE: [LS-9] Gap fix - pass proximity for better regional bias;
 		// surface relevance score so callers can distinguish strong vs weak geocode results.
 		const geocoded = await mapboxService.geocodeAddress(address, {
 			proximity: proximity || null,
@@ -87,8 +91,8 @@ export async function resolveManualDraft(address, { proximity, countryCode } = {
 		const latitude = Number(geocoded?.latitude);
 		const longitude = Number(geocoded?.longitude);
 		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-		// relevance: 0.0–1.0 from Mapbox. <0.4 = weak match (no exact street found).
-		// Nominatim results carry no relevance score — treat as 0.5 (medium confidence).
+		// relevance: 0.0-1.0 from Mapbox. <0.4 = weak match (no exact street found).
+		// Nominatim results carry no relevance score - treat as 0.5 (medium confidence).
 		const relevance = typeof geocoded?.relevance === "number"
 			? geocoded.relevance
 			: geocoded?.source === "openstreetmap" ? 0.5 : 1.0;

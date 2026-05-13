@@ -263,21 +263,35 @@ export default function useCandidateHandlers({
 			mode === LOCATION_INTENT_MODES.SAVE_DETAILS && selectedLocation?.source === "saved"
 				? selectedLocation.id
 				: null;
-		if (
-			await saveSelectedLocationAs(category, {
+		const savedResult = await saveSelectedLocationAs(category, {
 				label: saveDetailsDraft.label,
 				unit: saveDetailsDraft.unit,
 				responderNote: saveDetailsDraft.responderNote,
 				savedLocationId,
-			})
-		) {
+			});
+		if (savedResult) {
 			if (savedLocationId) {
+				const refreshedCandidate = mapStoredLocationToCandidate(
+					savedResult,
+					saveDetailsDraft.label || selectedLocation?.label || "Saved place",
+				);
+				const normalized = refreshedCandidate
+					? buildSelectedLocation({
+							...refreshedCandidate,
+							source: "saved",
+							confidence: "high",
+						})
+					: null;
+				if (normalized) {
+					setActiveCandidate(normalized);
+				}
 				replaceNavigationStack(LOCATION_INTENT_MODES.SAVED_MANAGE, []);
 				return;
 			}
 			returnToCandidateDecision();
 		}
 	}, [
+		buildSelectedLocation,
 		mode,
 		pendingSaveCategory,
 		replaceNavigationStack,
@@ -286,8 +300,10 @@ export default function useCandidateHandlers({
 		saveDetailsDraft.responderNote,
 		saveDetailsDraft.unit,
 		saveSelectedLocationAs,
+		selectedLocation?.label,
 		selectedLocation?.id,
 		selectedLocation?.source,
+		setActiveCandidate,
 	]);
 
 	return {

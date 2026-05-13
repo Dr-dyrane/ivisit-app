@@ -140,6 +140,8 @@ export default function MapLocationIntentStageBase({
 		savedPlaceFeedback,
 		isConfirmingSavedRemove,
 		saveDetailsDraft,
+		crudStatus,
+		CRUD_STATUS,
 		setPendingPlaceLabel,
 		setPendingSaveCategory,
 		setSavedPlaceFeedback,
@@ -206,17 +208,17 @@ export default function MapLocationIntentStageBase({
 		maxHeightPercentage: 0.92,
 	});
 	// PULLBACK NOTE: [keyboard-collapse-fix v2] Android-only gate.
-	// OLD: Platform.OS !== "web" — fired on iOS too via keyboardWillShow,
+	// OLD: Platform.OS !== "web" - fired on iOS too via keyboardWillShow,
 	//      setting keyboardHeight>0 before keyboard animation and causing
 	//      unintended sheet height mutations on a platform that handles
 	//      keyboard avoidance natively.
-	// NEW: Platform.OS === "android" only — matches the hook's own guard
+	// NEW: Platform.OS === "android" only - matches the hook's own guard
 	//      (modalHeight is only mutated inside Platform.OS === 'android' blocks).
 	// PULLBACK NOTE: [keyboard-collapse-fix v3] Only shrink sheet height when
 	// mode does NOT require EXPANDED. EXPANDED-policy modes (ADDRESS_SEARCH,
 	// MANUAL_STEP, etc.) lock the sheet at full height; shrinking the sheetHeight
 	// prop cascades into MapSheetShell and triggers the collapse we're fixing.
-	// Non-EXPANDED modes (DEFAULT→HALF) can still benefit from keyboard resize.
+	// Non-EXPANDED modes (DEFAULT to HALF) can still benefit from keyboard resize.
 	// OLD: any mode with keyboard visible could trigger shrink
 	// NEW: shrink only when policy is NOT EXPANDED (i.e. DEFAULT/HALF modes)
 	const modeSnapPolicy = LOCATION_INTENT_MODE_SNAP_POLICY[mode] ?? MAP_SHEET_SNAP_STATES.HALF;
@@ -235,11 +237,11 @@ export default function MapLocationIntentStageBase({
 	// Root cause: useMapSheetShell useEffect([sheetHeight]) springs the Animated.Value
 	// to the prop. On Android, keyboard open shrinks useWindowDimensions().height ->
 	// orchestrator recomputes sheetHeight smaller -> spring animates sheet DOWN.
-	// snapState/allowedSnapStates guards don't help — collapse is at Animated layer.
+	// snapState/allowedSnapStates guards don't help - collapse is at Animated layer.
 	// Fix: freeze pre-keyboard screenHeight in a ref (Android only), use it to
 	// recompute EXPANDED sheetHeight so the Animated target never shrinks.
-	// iOS: screenHeight stable on keyboard open — no freeze needed.
-	// Web: Keyboard API no-op, keyboardHeight always 0 — freeze would never activate.
+	// iOS: screenHeight stable on keyboard open - no freeze needed.
+	// Web: Keyboard API no-op, keyboardHeight always 0 - freeze would never activate.
 	const { height: screenHeight } = useWindowDimensions();
 	const preKeyboardScreenHeightRef = useRef(screenHeight);
 	if (Platform.OS === "android" && keyboardHeight === 0) {
@@ -369,7 +371,7 @@ export default function MapLocationIntentStageBase({
 	const lastSnapPolicyKeyRef = useRef(null);
 
 	// PULLBACK NOTE: [keyboard-collapse-fix v2] mirror MapCommitDetailsStageBase pattern.
-	// OLD: effectiveSnapState derived from snapState prop + keyboard guard → fragile race window
+	// OLD: effectiveSnapState derived from snapState prop + keyboard guard - fragile race window
 	//      because keyboardRequiresExpanded was false until keyboardDidShow fired.
 	// NEW: modeRequiresExpanded derived purely from snap policy (no keyboard dep).
 	//      When true: hardcode EXPANDED constant + restrict allowedSnapStates to [EXPANDED],
@@ -379,7 +381,7 @@ export default function MapLocationIntentStageBase({
 		effectivePresentationMode === "sheet" &&
 		LOCATION_INTENT_MODE_SNAP_POLICY[mode] === MAP_SHEET_SNAP_STATES.EXPANDED;
 	// PULLBACK NOTE: [keyboard-collapse-fix TDZ fix]
-	// OLD: resolvedSheetHeight was above modeRequiresExpanded → TDZ ReferenceError on line 249
+	// OLD: resolvedSheetHeight was above modeRequiresExpanded - TDZ ReferenceError on line 249
 	// NEW: moved here, after modeRequiresExpanded is declared
 	const resolvedSheetHeight =
 		modeRequiresExpanded && Platform.OS === "android"
@@ -418,10 +420,10 @@ export default function MapLocationIntentStageBase({
 			onSnapStateChange?.(requestedSnapState);
 		}
 	// PULLBACK NOTE: [keyboard-collapse-fix] removed snapState from deps.
-	// OLD: [..., snapState] — caused re-runs on every parent render while
+	// OLD: [..., snapState] - caused re-runs on every parent render while
 	//      keyboard was open, creating a race window where stale HALF prop
 	//      slipped through when policyKey was already cached.
-	// NEW: mode + presentationMode only — the policyKey gate is sufficient.
+	// NEW: mode + presentationMode only - the policyKey gate is sufficient.
 	}, [effectivePresentationMode, mode, onSnapStateChange]);
 	const heroSurfaceColor =
 		isDarkMode
@@ -635,18 +637,66 @@ export default function MapLocationIntentStageBase({
 	const handleSearchQueryChange = setSearchQuery;
 
 	const manualHeaderStep = MANUAL_LOCATION_STEPS[manualStepIndex] || null;
-	const manualHeaderTitle =
-		mode === LOCATION_INTENT_MODES.MANUAL_STEP && manualHeaderStep
-			? manualHeaderStep.label || "Manual Entry"
-			: mode === LOCATION_INTENT_MODES.PLACES_HUB
-				? "Saved Places"
-				: mode === LOCATION_INTENT_MODES.RECENTS_HUB
-					? "Recent Locations"
-					: null;
-	const manualHeaderSubtitle =
-		mode === LOCATION_INTENT_MODES.MANUAL_STEP && manualHeaderStep
-			? `Manual Entry - Step ${manualStepIndex + 1} of ${MANUAL_LOCATION_STEPS.length}`
-			: null;
+	const locationHeaderModel = useMemo(() => {
+		if (mode === LOCATION_INTENT_MODES.ADDRESS_SEARCH) {
+			return {
+				title: "Search Location",
+				subtitle: "Choose A Pickup Address",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.MANUAL_STEP && manualHeaderStep) {
+			return {
+				title: "Manual Location",
+				subtitle: `Step ${manualStepIndex + 1} Of ${MANUAL_LOCATION_STEPS.length} - ${manualHeaderStep.label}`,
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.PLACES_HUB) {
+			return {
+				title: "Saved Places",
+				subtitle: "Manage Pickup Addresses",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.RECENTS_HUB) {
+			return {
+				title: "Recent Locations",
+				subtitle: "Choose A Recent Pickup",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.CANDIDATE_DECISION || mode === LOCATION_INTENT_MODES.CONFIRM) {
+			return {
+				title: "Selected Address",
+				subtitle: "Choose What To Do Next",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.SAVE_CATEGORY) {
+			return {
+				title: "Save Place",
+				subtitle: "Choose A Place Type",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.SAVE_DETAILS) {
+			return {
+				title: "Place Details",
+				subtitle: "Name This Saved Place",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.SAVED_MANAGE) {
+			return {
+				title: "Saved Place",
+				subtitle: "Manage This Address",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.PIN_ADJUST) {
+			return {
+				title: "Adjust Pin",
+				subtitle: "Confirm The Pickup Point",
+			};
+		}
+		return {
+			title: null,
+			subtitle: null,
+		};
+	}, [manualHeaderStep, manualStepIndex, mode]);
 
 	return (
 		<>
@@ -683,8 +733,8 @@ export default function MapLocationIntentStageBase({
 							onClose={activeHeaderCloseHandler}
 							closeAccessibilityLabel={activeHeaderCloseAccessibilityLabel}
 							showToggle={shouldShowActiveHeaderToggle}
-							titleOverride={manualHeaderTitle}
-							subtitleOverride={manualHeaderSubtitle}
+							titleOverride={locationHeaderModel.title}
+							subtitleOverride={locationHeaderModel.subtitle}
 						/>
 					</View>
 				)
@@ -840,6 +890,8 @@ export default function MapLocationIntentStageBase({
 						pendingSaveCategory={pendingSaveCategory}
 						saveDetailsDraft={saveDetailsDraft}
 						isConfirmingSavedRemove={isConfirmingSavedRemove}
+						crudStatus={crudStatus}
+						CRUD_STATUS={CRUD_STATUS}
 						manualStepIndex={manualStepIndex}
 						isExpanded={isExpanded}
 						isDarkMode={isDarkMode}

@@ -4,8 +4,8 @@
  * Architecture:
  * - L3 (Zustand): locationStore.savedLocations (source of truth)
  * - L2 (TanStack Query): preferences.view_preferences JSONB (persistence)
- * - Auto-sync: Store subscription → Supabase update
- * - Hydration: App init → Load from Supabase → Populate store
+ * - Auto-sync: Store subscription - Supabase update
+ * - Hydration: App init - Load from Supabase - Populate store
  *
  * No DB schema changes - uses existing preferences.view_preferences
  */

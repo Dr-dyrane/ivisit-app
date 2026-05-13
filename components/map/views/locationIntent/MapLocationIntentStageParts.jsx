@@ -246,6 +246,8 @@ export function MapLocationIntentBodyContent({
 	savedPlaceFeedback,
 	pendingSaveCategory,
 	isConfirmingSavedRemove,
+	crudStatus,
+	CRUD_STATUS,
 	manualStepIndex,
 	isExpanded,
 	isDarkMode,
@@ -887,7 +889,10 @@ export function MapLocationIntentBodyContent({
 				selectedLocation={selectedLocation}
 				pendingSaveCategory={pendingSaveCategory}
 				savedPlaceFeedback={savedPlaceFeedback}
+				savedPlaces={savedPlaces}
 				isConfirmingSavedRemove={isConfirmingSavedRemove}
+				crudStatus={crudStatus}
+				CRUD_STATUS={CRUD_STATUS}
 				saveDetailsDraft={saveDetailsDraft}
 				titleColor={titleColor}
 				mutedColor={mutedColor}

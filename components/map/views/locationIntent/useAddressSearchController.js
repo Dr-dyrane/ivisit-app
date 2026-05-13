@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearch } from "../../../../contexts/SearchContext";
-import mapboxService from "../../../../services/mapboxService";
+import { useLocationSearchQuery } from "../../../../hooks/search/useLocationSearchQuery";
+import useDebounce from "../../../../hooks/ui/useDebounce";
 
 const SEARCH_ERROR_COPY = "We couldn't search locations right now.";
 const DEBOUNCE_MS = 240;
@@ -12,52 +13,44 @@ export default function useAddressSearchController({
 } = {}) {
 	const { recentQueries = [], commitQuery } = useSearch();
 	const [searchQuery, setSearchQueryState] = useState("");
-	const [searchResults, setSearchResults] = useState([]);
-	const [isSearchingLocations, setIsSearchingLocations] = useState(false);
 	const [selectionError, setSelectionError] = useState(null);
-	const requestIdRef = useRef(0);
 	const locationBiasLatitude = Number.isFinite(Number(locationBias?.latitude))
 		? Number(locationBias.latitude)
 		: null;
 	const locationBiasLongitude = Number.isFinite(Number(locationBias?.longitude))
 		? Number(locationBias.longitude)
 		: null;
+	const stableLocationBias = useMemo(
+		() =>
+			locationBiasLatitude !== null && locationBiasLongitude !== null
+				? { latitude: locationBiasLatitude, longitude: locationBiasLongitude }
+				: null,
+		[locationBiasLatitude, locationBiasLongitude],
+	);
+	const debouncedSearchQuery = useDebounce(searchQuery, DEBOUNCE_MS);
+	const trimmedQuery = debouncedSearchQuery.trim();
+	const rawTrimmedQuery = searchQuery.trim();
+	const shouldSearch = isActive && trimmedQuery.length >= 2;
+	const {
+		data: queriedResults = [],
+		isFetching: isFetchingLocations,
+		isError: hasSearchQueryError,
+	} = useLocationSearchQuery(trimmedQuery, stableLocationBias, {
+		enabled: shouldSearch,
+	});
+	const isDebouncePending =
+		isActive &&
+		rawTrimmedQuery.length >= 2 &&
+		rawTrimmedQuery !== trimmedQuery;
+	const searchResults = shouldSearch && Array.isArray(queriedResults) ? queriedResults : [];
+	const isSearchingLocations = shouldSearch && (isFetchingLocations || isDebouncePending);
+	const locationSearchError = hasSearchQueryError ? SEARCH_ERROR_COPY : selectionError;
 
 	useEffect(() => {
-		const trimmed = searchQuery.trim();
-		if (!isActive || trimmed.length < 2) {
-			setSearchResults([]);
-			setIsSearchingLocations(false);
+		if (!isActive || rawTrimmedQuery.length < 2) {
 			setSelectionError(null);
-			return;
 		}
-
-		const requestId = ++requestIdRef.current;
-
-		const timeout = setTimeout(async () => {
-			const stableLocationBias =
-				locationBiasLatitude !== null && locationBiasLongitude !== null
-					? { latitude: locationBiasLatitude, longitude: locationBiasLongitude }
-					: null;
-			setIsSearchingLocations(true);
-			setSelectionError(null);
-			try {
-				const results = await mapboxService.suggestAddresses(trimmed, stableLocationBias);
-				if (requestIdRef.current !== requestId) return;
-				setSearchResults(Array.isArray(results) ? results : []);
-			} catch (_err) {
-				if (requestIdRef.current !== requestId) return;
-				setSearchResults([]);
-				setSelectionError(SEARCH_ERROR_COPY);
-			} finally {
-				if (requestIdRef.current === requestId) {
-					setIsSearchingLocations(false);
-				}
-			}
-		}, DEBOUNCE_MS);
-
-		return () => clearTimeout(timeout);
-	}, [isActive, locationBiasLatitude, locationBiasLongitude, searchQuery]);
+	}, [isActive, rawTrimmedQuery]);
 
 	const setSearchQuery = useCallback(
 		(value, options = {}) => {
@@ -72,9 +65,7 @@ export default function useAddressSearchController({
 
 	const clearSearch = useCallback(() => {
 		setSearchQueryState("");
-		setSearchResults([]);
 		setSelectionError(null);
-		requestIdRef.current += 1;
 	}, []);
 
 	const commitSearchQuery = useCallback(
@@ -90,7 +81,7 @@ export default function useAddressSearchController({
 		clearSearch,
 		searchResults,
 		isSearchingLocations,
-		locationSearchError: selectionError,
+		locationSearchError,
 		setLocationSearchError: setSelectionError,
 		recentSearchQueries: recentQueries,
 		commitSearchQuery,

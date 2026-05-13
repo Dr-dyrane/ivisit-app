@@ -95,7 +95,6 @@ function SelectSearchDrop({
 					</Pressable>
 				) : null}
 			</View>
-
 			{/* Results */}
 			<ScrollView
 				style={styles.resultList}
@@ -211,6 +210,11 @@ function SearchDrop({
 					</Pressable>
 				) : null}
 			</View>
+			{contextHint ? (
+				<Text numberOfLines={1} style={[styles.contextHint, { color: mutedColor }]}>
+					Within {contextHint}
+				</Text>
+			) : null}
 
 			{/* Results */}
 			{isDropLoading && dropResults.length === 0 ? (
@@ -449,6 +453,13 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 19,
 		fontWeight: "400",
+	},
+	contextHint: {
+		paddingHorizontal: 16,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+		opacity: 0.78,
 	},
 	freeInput: {
 		minHeight: 50,

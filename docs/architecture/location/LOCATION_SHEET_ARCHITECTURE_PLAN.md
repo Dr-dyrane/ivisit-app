@@ -832,7 +832,7 @@ manualStep
     Previous step
     Next / Skip / Review pickup
 
-placeSelected / pinAdjust / confirm
+candidateDecision / pinAdjust / confirm
   Header
   Search input
   Confirm selected location card
@@ -857,9 +857,14 @@ Implementation rules:
 type LocationSheetMode =
   | "default"
   | "addressSearch"
-  | "placeSelected"
+  | "candidateDecision"
   | "manualStep"
   | "pinAdjust"
+  | "saveCategory"
+  | "saveDetails"
+  | "savedManage"
+  | "placesHub"
+  | "recentsHub"
   | "confirm";
 ```
 
@@ -867,31 +872,31 @@ type LocationSheetMode =
 
 ```txt
 Default
-  ↓ tap input
+  -> tap input
 Address Search Mode
-  ↓ select prediction
-Place Selected Mode
-  ↓ optional refine
-Confirm
+  -> select prediction
+Candidate Decision Mode
+  -> use as pickup / save / manage
+Confirm or Saved Manage
 
 Default
-  ↓ tap current location
+  -> tap current location
 Confirm Current Location
 
 Default
-  ↓ tap orb place
-Confirm Saved Place
+  -> tap orb place
+Saved Manage / Confirm Saved Place
 
 Default
-  ↓ tap Enter manually
+  -> tap Enter manually
 Manual Guided Mode
-  ↓ step-by-step address capture
-Confirm
+  -> step-by-step address capture
+Candidate Decision Mode
 
 Default
-  ↓ tap Adjust on map
+  -> tap Adjust on map
 Pin Adjust Mode
-  ↓ drag pin
+  -> drag pin
 Confirm
 ```
 
@@ -926,7 +931,7 @@ Review pickup
 But only after:
 
 ```txt
-Can’t find it?
+Can't find it?
 Enter manually
 ```
 
@@ -979,7 +984,7 @@ Scope:
 - Focusing the search field expands the sheet and switches the body into `addressSearch`.
 - Search state replaces default content; it must not push the hero, places, manual, or recents downward.
 - Reuse SearchSheet primitives: grouped result surfaces, result rows, loading rows, empty states, address result grouping, and saved/current-location blades where appropriate.
-- Reuse the existing location search query path and suggestion mapper; normalize `mapboxService.suggestAddresses` call shape before adding deeper search behavior.
+- Reuse the existing `useLocationSearchQuery` path and suggestion mapper; keep provider calls behind shared query/service boundaries before adding deeper search behavior.
 - Do not add a LocationSheet-only search hook, provider adapter, or result mapper.
 - Address suggestions are location candidates, not final commits.
 - Selecting a result creates a candidate and collapses the sheet to a decision state.
