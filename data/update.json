@@ -1,11 +1,47 @@
 {
-  "_lastCommitHash": "60b4c1b8f3d7f1f33fabe745d98910b388b42059",
-  "_lastCommitDate": "2026-05-13T17:59:14-07:00",
-  "version": "1.0.2",
-  "date": "2026-05-13",
-  "title": "Location Management + Map UI Polish",
-  "summary": "Location sheet state flow, saved address decisions, map pickup chrome, and nearby hospital card polish.",
+  "_lastCommitHash": "9d33e05",
+  "_lastCommitDate": "2026-05-14T02:20:00-07:00",
+  "version": "1.0.3",
+  "date": "2026-05-14",
+  "title": "Hybrid Marker Selection + Service Selection Polish",
+  "summary": "Map flow atoms for hospital selection, temporal dead zone fixes, service selection footer refinement, and ambulance heading fixes.",
   "changes": [
+    {
+      "type": "feature",
+      "message": "Implemented hybrid marker selection using map flow atoms (mapSelectedHospitalIdAtom, mapFeaturedHospitalAtom) for ephemeral UI state that survives sheet collapse."
+    },
+    {
+      "type": "fix",
+      "message": "Fixed temporal dead zone error with discoveredHospitals by moving selectHospitalForMap definition after useMapDerivedData."
+    },
+    {
+      "type": "fix",
+      "message": "Fixed temporal dead zone error with openHospitalDetail by reordering hooks and removing prop dependency from useMapHospitalSelection."
+    },
+    {
+      "type": "feature",
+      "message": "Added user location marker tap handler (onUserLocationPress) to trigger location sheet phase."
+    },
+    {
+      "type": "fix",
+      "message": "Fixed duplicate hospital lookup in selectHospitalForMap by caching result in variable."
+    },
+    {
+      "type": "improvement",
+      "message": "Refined service selection footer CTA row layout and copy for better visual hierarchy and clarity."
+    },
+    {
+      "type": "fix",
+      "message": "Fixed ambulance tracking initial heading display to show correct direction on load."
+    },
+    {
+      "type": "fix",
+      "message": "Fixed ambulance preview heading fallback when heading data is unavailable."
+    },
+    {
+      "type": "improvement",
+      "message": "Themed map canvas handoff surfaces for consistent dark/light mode support."
+    },
     {
       "type": "improvement",
       "message": "Refined LocationSheet mode ownership so search, saved-place, and success states use the correct sheet header and snap behavior."
