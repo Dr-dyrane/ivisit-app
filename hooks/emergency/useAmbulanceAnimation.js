@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { calculateBearing } from "../../utils/mapUtils";
 import { AMBULANCE_CONFIG } from "../../constants/mapConfig";
 
@@ -246,6 +246,22 @@ const setHeadingIfChanged = (setter, nextHeading, tolerance = 0.1) => {
 	);
 };
 
+const getInitialRouteHeading = (routeCoordinates, initialProgress = 0) => {
+	const routeProfile = buildRouteProfile(routeCoordinates);
+	if (!routeProfile) return null;
+	const safeInitialProgress = Number.isFinite(initialProgress)
+		? Math.min(1, Math.max(0, Number(initialProgress)))
+		: 0;
+	const startDistance = safeInitialProgress * routeProfile.totalMeters;
+	const startCoordinate = getCoordinateAtDistance(routeProfile, startDistance);
+	const lookaheadCoordinate = getCoordinateAtDistance(
+		routeProfile,
+		startDistance + HEADING_LOOKAHEAD_METERS
+	);
+	const routeHeading = calculateBearing(startCoordinate, lookaheadCoordinate);
+	return Number.isFinite(routeHeading) ? routeHeading : null;
+};
+
 export const useAmbulanceAnimation = ({
 	routeCoordinates,
 	animateAmbulance,
@@ -255,13 +271,20 @@ export const useAmbulanceAnimation = ({
 	responderHeading,
 	onAmbulanceUpdate,
 }) => {
+	const initialHeading = useMemo(
+		() =>
+			Number.isFinite(responderHeading)
+				? responderHeading
+				: getInitialRouteHeading(routeCoordinates, initialProgress),
+		[initialProgress, responderHeading, routeCoordinates]
+	);
 	const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
 	// PULLBACK NOTE: UX ambulance sprite initial heading
 	// OLD: useState(0) — always faces north regardless of actual responder heading
-	// NEW: lazy initializer seeds from responderHeading if finite, falls back to 0
-	// Matches useMapFocusedState.js bearing logic — prevents wrong initial sprite direction
+	// NEW: lazy initializer seeds from responderHeading or route start -> lookahead; null means unknown
+	// Matches the map sprite rule: 0 is north, not an unknown fallback.
 	const [ambulanceHeading, setAmbulanceHeading] = useState(() =>
-		Number.isFinite(responderHeading) ? responderHeading : 0,
+		Number.isFinite(initialHeading) ? initialHeading : null,
 	);
 	const ambulanceTimerRef = useRef(null);
 	const animationRunIdRef = useRef(0);
@@ -489,7 +512,9 @@ export const useAmbulanceAnimation = ({
 
 	return {
 		ambulanceCoordinate,
-		ambulanceHeading,
+		ambulanceHeading: Number.isFinite(ambulanceHeading)
+			? ambulanceHeading
+			: initialHeading,
 		isAnimating: animateAmbulance && !!ambulanceTimerRef.current,
         startAmbulanceAnimation,
         stopAmbulanceAnimation
