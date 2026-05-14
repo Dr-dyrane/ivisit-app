@@ -288,14 +288,14 @@ export default function useCandidateHandlers({
 				replaceNavigationStack(LOCATION_INTENT_MODES.SAVED_MANAGE, []);
 				return;
 			}
-			returnToCandidateDecision();
+			// New save: navigate to success state instead of abrupt return
+			replaceNavigationStack(LOCATION_INTENT_MODES.SAVE_SUCCESS, []);
 		}
 	}, [
 		buildSelectedLocation,
 		mode,
 		pendingSaveCategory,
 		replaceNavigationStack,
-		returnToCandidateDecision,
 		saveDetailsDraft.label,
 		saveDetailsDraft.responderNote,
 		saveDetailsDraft.unit,

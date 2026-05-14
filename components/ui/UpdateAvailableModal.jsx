@@ -26,7 +26,11 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import VERSION from "../../version";
-import UPDATE_METADATA from "../../update.json";
+// PULLBACK NOTE: [OTA-DATA-PATH] Moved update.json to data folder for better organization
+// To update _lastCommitHash in data/update.json after committing:
+// git log -1 --pretty=format:"%H" -- data/update.json
+// git log -1 --pretty=format:"%ad" --date=short -- data/update.json
+import UPDATE_METADATA from "../../data/update.json";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.65;

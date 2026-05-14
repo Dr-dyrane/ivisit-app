@@ -483,12 +483,15 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	// PULLBACK NOTE: [LS-UI-5] Reduce font weight and increase size for CTA text
+	// OLD: fontSize 14, fontWeight 700
+	// NEW: fontSize 15, fontWeight 600 for better readability
 	candidateActionText: {
 		flex: 1,
 		minWidth: 0,
-		fontSize: 14,
-		lineHeight: 18,
-		fontWeight: "700",
+		fontSize: 15,
+		lineHeight: 20,
+		fontWeight: "600",
 	},
 	candidateActionDivider: {
 		height: StyleSheet.hairlineWidth,

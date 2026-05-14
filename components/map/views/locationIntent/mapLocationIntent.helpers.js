@@ -1,6 +1,10 @@
 /**
  * Helper functions for MapLocationIntent business logic
  */
+import React from "react";
+import { View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
 	getSavedAddressCategoryMeta,
 	getSavedAddressDisplayLabel,
@@ -441,4 +445,77 @@ export function buildCandidateDecisionActions({
 	}
 
 	return actions;
+}
+
+// PULLBACK NOTE: [ls-refactor-3] Shared utility for muted/solid icon logic
+// Extracted from IntentOrb pattern and decision panel logic
+// Single source of truth for gradient vs muted tint decision
+export function resolveOrbStyle(isSolid, gradient, iconBg, infoSurfaceColor, titleColor) {
+	if (isSolid && gradient) {
+		// Assigned/solid: gradient background with white icon
+		return { background: gradient, iconColor: "#FFFFFF", useGradient: true };
+	}
+	if (!isSolid && gradient) {
+		// Unassigned/muted: tinted background with colored icon
+		return { background: iconBg || `${gradient[0]}18`, iconColor: gradient[0], useGradient: false };
+	}
+	// Fallback: neutral surface with title color
+	return { background: infoSurfaceColor, iconColor: titleColor, useGradient: false };
+}
+
+// PULLBACK NOTE: [ls-refactor-4] Moved from MapLocationIntentCandidatePanel to helpers
+// Separates tone resolution logic from component for better architecture
+export function resolveCandidateActionTone(action, palette, infoSurfaceColor, titleColor) {
+	// PULLBACK NOTE: [LS-UI-4] Restore muted/solid logic with hybrid approach
+	// OLD: Always gradient when palette exists, lost assigned/unassigned distinction
+	// NEW: gradient for solid (assigned), iconBg for muted (unassigned)
+	const isSolid = action?.isSolidOrb;
+	const hasPalette = palette?.gradient || palette?.iconBg;
+	return {
+		gradient: isSolid && hasPalette ? palette?.gradient : null,
+		iconBg: !isSolid && hasPalette ? palette?.iconBg : null,
+		iconColor: isSolid && hasPalette ? "#FFFFFF" : hasPalette ? palette?.gradient?.[0] ?? titleColor : titleColor,
+		textColor: palette?.text ?? titleColor,
+	};
+}
+
+// PULLBACK NOTE: [ls-refactor-5] Extract icon rendering logic to helper
+// Returns icon style props for conditional gradient rendering
+// Used across decision panel and places hub for consistency
+export function getIconStyleProps(gradient, iconBg, iconColor, infoSurfaceColor, style) {
+	if (gradient) {
+		return {
+			useGradient: true,
+			gradientColors: gradient,
+			iconColor: "#FFFFFF",
+		};
+	}
+	return {
+		useGradient: false,
+		backgroundColor: iconBg ?? infoSurfaceColor,
+		iconColor: iconColor,
+	};
+}
+
+// PULLBACK NOTE: [ls-refactor-6] Create reusable icon renderer component
+// Eliminates inline ternary operators across multiple locations
+// Single source of truth for gradient vs muted tint rendering
+export function renderActionIcon({ iconName, gradient, iconBg, iconColor, infoSurfaceColor, iconStyle }) {
+	if (gradient) {
+		return (
+			<LinearGradient
+				colors={gradient}
+				start={{ x: 0.18, y: 0.18 }}
+				end={{ x: 0.82, y: 0.9 }}
+				style={iconStyle}
+			>
+				<MaterialCommunityIcons name={iconName} size={18} color="#FFFFFF" />
+			</LinearGradient>
+		);
+	}
+	return (
+		<View style={[iconStyle, { backgroundColor: iconBg ?? infoSurfaceColor }]}>
+			<MaterialCommunityIcons name={iconName} size={18} color={iconColor} />
+		</View>
+	);
 }

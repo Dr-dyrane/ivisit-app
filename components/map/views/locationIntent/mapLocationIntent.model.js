@@ -1,5 +1,8 @@
 ﻿import MAP_LOCATION_INTENT_COPY from "./mapLocationIntent.content";
 
+// PULLBACK NOTE: [LS-UI-2] Add post-save CTA state after saving to saved places
+// OLD: No success state, flow ends abruptly after save
+// NEW: SAVE_SUCCESS mode with CTAs for continuous user experience
 export const LOCATION_INTENT_MODES = Object.freeze({
 	DEFAULT: "default",
 	ADDRESS_SEARCH: "addressSearch",
@@ -9,6 +12,7 @@ export const LOCATION_INTENT_MODES = Object.freeze({
 	CONFIRM: "confirm",
 	SAVE_CATEGORY: "saveCategory",
 	SAVE_DETAILS: "saveDetails",
+	SAVE_SUCCESS: "saveSuccess",
 	SAVED_MANAGE: "savedManage",
 	PLACES_HUB: "placesHub",
 	RECENTS_HUB: "recentsHub",

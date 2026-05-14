@@ -2,6 +2,9 @@
 // OLD: isConfirming block (lines 875-1152) + action handlers lived in MapLocationIntentBodyContent
 // NEW: standalone panel component - single responsibility, ~280 lines
 
+// PULLBACK NOTE: [LS-UI-1] Unify decision panel icon styling with idle orb gradient style
+// OLD: Flat TONE_PALETTE with single colors + alpha tint, no gradient
+// NEW: Gradient arrays matching IntentOrb style, LinearGradient backgrounds
 import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -17,40 +20,32 @@ import {
 	buildCandidateDecisionActions,
 	buildSaveCategoryActions,
 	buildSavedPlaceManageActions,
+	resolveCandidateActionTone,
+	renderActionIcon,
 } from "./mapLocationIntent.helpers";
 import { LOCATION_INTENT_MODES } from "./mapLocationIntent.model";
+import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
 import styles from "./mapLocationIntent.styles";
 import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
 
-// Semantic colour map - one entry per tone emitted by the action builders.
-// iconBg is the 14% alpha tint applied behind the icon orb.
+// PULLBACK NOTE: [ls-refactor-1] Reference MAP_LOCATION_INTENT_COPY.placesOrbColors for DRY
+// OLD: Duplicated gradient arrays in TONE_PALETTE
+// NEW: Single source of truth from MAP_LOCATION_INTENT_COPY
 const TONE_PALETTE = {
-	pickup:      { icon: "#3B82F6", iconBg: "#3B82F620", text: null },   // blue - primary action
-	home:        { icon: "#F97316", iconBg: "#F9731620", text: null },   // orange - home warmth
-	work:        { icon: "#8B5CF6", iconBg: "#8B5CF620", text: null },   // purple - work
-	saved:       { icon: "#6366F1", iconBg: "#6366F120", text: null },   // indigo - bookmark
-	family:      { icon: "#EC4899", iconBg: "#EC489920", text: null },   // pink - family
-	school:      { icon: "#0EA5E9", iconBg: "#0EA5E920", text: null },   // sky - school
-	pharmacy:    { icon: "#10B981", iconBg: "#10B98120", text: null },   // emerald - medical
-	care:        { icon: "#EF4444", iconBg: "#EF444420", text: null },   // red - care/hospital
-	success:     { icon: "#22C55E", iconBg: "#22C55E20", text: "#22C55E" }, // green - confirmed
-	danger:      { icon: "#EF4444", iconBg: "#EF444420", text: "#EF4444" }, // red - destructive
-	positive:    { icon: "#22C55E", iconBg: "#22C55E20", text: "#22C55E" },
-	destructive: { icon: "#EF4444", iconBg: "#EF444420", text: "#EF4444" },
-	neutral:     { icon: null,      iconBg: null,         text: null },
+	pickup:      { gradient: ["#60A5FA", "#3B82F6"], iconBg: "#3B82F620", text: null },
+	home:        { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.home, iconBg: "#F9731620", text: null },
+	work:        { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.work, iconBg: "#8B5CF620", text: null },
+	saved:       { gradient: ["#818CF8", "#6366F1"], iconBg: "#6366F120", text: null },
+	family:      { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.family, iconBg: "#EC489920", text: null },
+	school:      { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.school, iconBg: "#0284C720", text: null },
+	pharmacy:    { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.pharmacy, iconBg: "#05966920", text: null },
+	care:        { gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.care, iconBg: "#E11D4820", text: null },
+	success:     { gradient: ["#4ADE80", "#22C55E"], iconBg: "#22C55E20", text: "#22C55E" },
+	danger:      { gradient: ["#F87171", "#EF4444"], iconBg: "#EF444420", text: "#EF4444" },
+	positive:    { gradient: ["#4ADE80", "#22C55E"], iconBg: "#22C55E20", text: "#22C55E" },
+	destructive: { gradient: ["#F87171", "#EF4444"], iconBg: "#EF444420", text: "#EF4444" },
+	neutral:     { gradient: null, iconBg: null, text: null },
 };
-
-function resolveCandidateActionTone(action, infoSurfaceColor, titleColor, mutedColor) {
-	const palette = TONE_PALETTE[action?.tone];
-	const solidIconColor = action?.isSolidOrb && palette?.icon ? "#FFFFFF" : null;
-	return {
-		iconBackgroundColor: action?.isSolidOrb
-			? palette?.icon ?? infoSurfaceColor
-			: palette?.iconBg ?? infoSurfaceColor,
-		iconColor: solidIconColor ?? palette?.icon ?? titleColor,
-		textColor: palette?.text ?? titleColor,
-	};
-}
 
 export default function MapLocationIntentCandidatePanel({
 	mode,
@@ -90,10 +85,12 @@ export default function MapLocationIntentCandidatePanel({
 		mode === LOCATION_INTENT_MODES.CANDIDATE_DECISION ||
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
 		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
+		mode === LOCATION_INTENT_MODES.SAVE_SUCCESS ||
 		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 
 	const isSaveCategory = mode === LOCATION_INTENT_MODES.SAVE_CATEGORY;
 	const isSaveDetails = mode === LOCATION_INTENT_MODES.SAVE_DETAILS;
+	const isSaveSuccess = mode === LOCATION_INTENT_MODES.SAVE_SUCCESS;
 	const isSavedManage = mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 	const isCrudSaving = crudStatus?.kind === CRUD_STATUS?.SAVING;
 	const crudError = crudStatus?.kind === CRUD_STATUS?.FAILED ? crudStatus?.error : null;
@@ -173,9 +170,9 @@ export default function MapLocationIntentCandidatePanel({
 					{savedManageActions.map((action, index) => {
 						const actionTone = resolveCandidateActionTone(
 							action,
+							TONE_PALETTE[action?.tone],
 							infoSurfaceColor,
 							titleColor,
-							mutedColor,
 						);
 						return (
 							<React.Fragment key={action.id}>
@@ -193,13 +190,14 @@ export default function MapLocationIntentCandidatePanel({
 										isCrudSaving ? styles.disabledRow : null,
 									]}
 								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-										<MaterialCommunityIcons
-											name={action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName}
-											size={18}
-											color={actionTone.iconColor}
-										/>
-									</View>
+									{renderActionIcon({
+										iconName: action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName,
+										gradient: actionTone.gradient,
+										iconBg: actionTone.iconBg,
+										iconColor: actionTone.iconColor,
+										infoSurfaceColor,
+										iconStyle: styles.candidateActionIcon,
+									})}
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
 									</Text>
@@ -218,9 +216,9 @@ export default function MapLocationIntentCandidatePanel({
 					{saveCategoryActions.map((action, index) => {
 						const actionTone = resolveCandidateActionTone(
 							action,
+							TONE_PALETTE[action?.tone],
 							infoSurfaceColor,
 							titleColor,
-							mutedColor,
 						);
 						return (
 							<React.Fragment key={action.id}>
@@ -238,9 +236,14 @@ export default function MapLocationIntentCandidatePanel({
 										isCrudSaving ? styles.disabledRow : null,
 									]}
 								>
-									<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-										<MaterialCommunityIcons name={action.iconName} size={18} color={actionTone.iconColor} />
-									</View>
+									{renderActionIcon({
+										iconName: action.iconName,
+										gradient: actionTone.gradient,
+										iconBg: actionTone.iconBg,
+										iconColor: actionTone.iconColor,
+										infoSurfaceColor,
+										iconStyle: styles.candidateActionIcon,
+									})}
 									<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 										{action.label}
 									</Text>
@@ -254,25 +257,86 @@ export default function MapLocationIntentCandidatePanel({
 						);
 					})}
 				</View>
+			) : isSaveSuccess ? (
+				// PULLBACK NOTE: [LS-UI-2] Post-save CTA panel for continuous user experience
+				// OLD: No success state, abrupt return to decision panel
+				// NEW: Success panel with CTAs to guide next actions
+				<View style={[styles.saveDetailsCard, { backgroundColor: groupSurfaceColor }]}>
+					<View style={styles.saveDetailsHeader}>
+						{(() => {
+							const actionTone = resolveCandidateActionTone(
+								{ tone: "success" },
+								TONE_PALETTE.success,
+								infoSurfaceColor,
+								titleColor,
+							);
+							return renderActionIcon({
+								iconName: "check",
+								gradient: actionTone.gradient,
+								iconBg: actionTone.iconBg,
+								iconColor: actionTone.iconColor,
+								infoSurfaceColor,
+								iconStyle: styles.candidateActionIcon,
+							});
+						})()}
+						<View style={styles.saveDetailsCopy}>
+							<Text style={[styles.manualTitle, { color: titleColor }]}>
+								Saved successfully
+							</Text>
+							<Text style={[styles.manualBody, { color: mutedColor }]}>
+								{selectedLocation?.label || selectedLocation?.address || "Your place"} is now in your saved places.
+							</Text>
+						</View>
+					</View>
+					<Pressable
+						onPress={onConfirmSelection}
+						accessibilityRole="button"
+						accessibilityLabel="Use this location"
+						style={({ pressed }) => [
+							styles.saveDetailsPrimaryAction,
+							{ backgroundColor: accentColor },
+							pressed ? styles.rowPressed : null,
+						]}
+					>
+						<MaterialCommunityIcons name="map-marker-check" size={18} color="#ffffff" />
+						<Text style={[styles.manualStepButtonLabel, { color: "#ffffff" }]}>
+							Use this location
+						</Text>
+					</Pressable>
+					<Pressable
+						onPress={onBackToPreviousStep}
+						accessibilityRole="button"
+						accessibilityLabel="Save another place"
+						style={({ pressed }) => [
+							styles.saveDetailsPrimaryAction,
+							{ backgroundColor: infoSurfaceColor, borderWidth: 1, borderColor: mutedColor + "30" },
+							pressed ? styles.rowPressed : null,
+						]}
+					>
+						<MaterialCommunityIcons name="plus" size={18} color={titleColor} />
+						<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
+							Save another place
+						</Text>
+					</Pressable>
+				</View>
 			) : isSaveDetails ? (
 				<View style={[styles.saveDetailsCard, { backgroundColor: groupSurfaceColor }]}>
 					<View style={styles.saveDetailsHeader}>
 						{(() => {
 							const actionTone = resolveCandidateActionTone(
 								selectedSaveCategoryAction,
+								TONE_PALETTE[selectedSaveCategoryAction?.tone],
 								infoSurfaceColor,
 								titleColor,
-								mutedColor,
 							);
-							return (
-								<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-									<MaterialCommunityIcons
-										name={selectedSaveCategoryAction?.iconName || "bookmark"}
-										size={18}
-										color={actionTone.iconColor}
-									/>
-								</View>
-							);
+							return renderActionIcon({
+								iconName: selectedSaveCategoryAction?.iconName || "bookmark",
+								gradient: actionTone.gradient,
+								iconBg: actionTone.iconBg,
+								iconColor: actionTone.iconColor,
+								infoSurfaceColor,
+								iconStyle: styles.candidateActionIcon,
+							});
 						})()}
 						<View style={styles.saveDetailsCopy}>
 							<Text style={[styles.manualTitle, { color: titleColor }]}>
@@ -342,19 +406,20 @@ export default function MapLocationIntentCandidatePanel({
 						const isStatus = action.type === "status";
 						const actionTone = resolveCandidateActionTone(
 							action,
+							TONE_PALETTE[action?.tone],
 							infoSurfaceColor,
 							titleColor,
-							mutedColor,
 						);
 						const content = (
 							<>
-								<View style={[styles.candidateActionIcon, { backgroundColor: actionTone.iconBackgroundColor }]}>
-									<MaterialCommunityIcons
-										name={action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName}
-										size={18}
-										color={actionTone.iconColor}
-									/>
-								</View>
+								{renderActionIcon({
+									iconName: action.isSolidOrb ? action.solidIcon || action.iconName : action.iconName,
+									gradient: actionTone.gradient,
+									iconBg: actionTone.iconBg,
+									iconColor: actionTone.iconColor,
+									infoSurfaceColor,
+									iconStyle: styles.candidateActionIcon,
+								})}
 								<Text style={[styles.candidateActionText, { color: actionTone.textColor }]}>
 									{action.label}
 								</Text>

@@ -2,18 +2,23 @@
 // OLD: inline orbs in DEFAULT view only (3 orbs max, no manage path from hub)
 // NEW: dedicated PLACES_HUB mode - all saved places, add/manage row, own panel
 
+// PULLBACK NOTE: [LS-UI-6] Apply gradient icon styling to Places Hub
+// OLD: Flat iconBgColor for all icons
+// NEW: Gradient for assigned (hasLocation), muted tint for unassigned
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LOCATION_INTENT_MODES } from "./mapLocationIntent.model";
-import { getPlaceOrbSubtext } from "./mapLocationIntent.helpers";
+import { getPlaceOrbSubtext, renderActionIcon } from "./mapLocationIntent.helpers";
 import { getSavedAddressCategoryMeta } from "../../../../services/locationAddressService";
+import { MAP_LOCATION_INTENT_COPY } from "./mapLocationIntent.content";
 import styles from "./mapLocationIntent.styles";
 
 function PlacesHubRow({
 	iconName,
 	iconColor,
 	iconBgColor,
+	gradient,
 	label,
 	address,
 	isMuted,
@@ -31,9 +36,14 @@ function PlacesHubRow({
 				pressed ? styles.rowPressed : null,
 			]}
 		>
-			<View style={[styles.candidateActionIcon, { backgroundColor: iconBgColor }]}>
-				<MaterialCommunityIcons name={iconName} size={18} color={iconColor} />
-			</View>
+			{renderActionIcon({
+				iconName,
+				gradient,
+				iconBg: iconBgColor,
+				iconColor,
+				infoSurfaceColor: iconBgColor || "#00000020",
+				iconStyle: styles.candidateActionIcon,
+			})}
 			<View style={{ flex: 1 }}>
 				<Text style={[styles.candidateActionText, { color: titleColor }]} numberOfLines={1}>
 					{label}
@@ -46,23 +56,32 @@ function PlacesHubRow({
 			</View>
 			<MaterialCommunityIcons name="chevron-right" size={16} color={isMuted ? mutedColor + "60" : mutedColor} />
 		</Pressable>
-	);
+);
 }
 
-// Icon + colour by category - outline = no data, solid = has data
+// PULLBACK NOTE: [ls-refactor-2] Reference MAP_LOCATION_INTENT_COPY.placesOrbColors for DRY
+// OLD: Duplicated gradient arrays in CATEGORY_ORB
+// NEW: Single source of truth from MAP_LOCATION_INTENT_COPY
 const CATEGORY_ORB = {
-	home:     { icon: "home-outline",      solidIcon: "home",      color: "#F97316", bg: "#F9731620" },
-	work:     { icon: "briefcase-outline", solidIcon: "briefcase", color: "#8B5CF6", bg: "#8B5CF620" },
-	family:   { icon: "account-group-outline", solidIcon: "account-group", color: "#EC4899", bg: "#EC489920" },
-	school:   { icon: "school-outline",        solidIcon: "school",        color: "#0EA5E9", bg: "#0EA5E920" },
-	pharmacy: { icon: "medical-bag",           solidIcon: "medical-bag",   color: "#10B981", bg: "#10B98120" },
-	care:     { icon: "hospital-box-outline",  solidIcon: "hospital-box",  color: "#EF4444", bg: "#EF444420" },
-	other:    { icon: "bookmark-outline",  solidIcon: "bookmark",  color: "#6366F1", bg: "#6366F120" },
+	home:     { icon: "home-outline",      solidIcon: "home",      color: "#F97316", bg: "#F9731620", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.home },
+	work:     { icon: "briefcase-outline", solidIcon: "briefcase", color: "#8B5CF6", bg: "#8B5CF620", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.work },
+	family:   { icon: "account-group-outline", solidIcon: "account-group", color: "#EC4899", bg: "#EC489920", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.family },
+	school:   { icon: "school-outline",        solidIcon: "school",        color: "#0EA5E9", bg: "#0EA5E920", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.school },
+	pharmacy: { icon: "medical-bag",           solidIcon: "medical-bag",   color: "#10B981", bg: "#10B98120", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.pharmacy },
+	care:     { icon: "hospital-box-outline",  solidIcon: "hospital-box",  color: "#EF4444", bg: "#EF444420", gradient: MAP_LOCATION_INTENT_COPY.placesOrbColors.care },
+	other:    { icon: "bookmark-outline",  solidIcon: "bookmark",  color: "#6366F1", bg: "#6366F120", gradient: ["#818CF8", "#6366F1"] },
 };
 
+// PULLBACK NOTE: [LS-UI-6] Return gradient when hasLocation is true
+// OLD: Only icon based on hasLocation
+// NEW: gradient for assigned (hasLocation), bg for unassigned
 function resolveRowOrb(category, hasLocation = false) {
 	const orb = CATEGORY_ORB[category] || CATEGORY_ORB.other;
-	return { ...orb, icon: hasLocation ? orb.solidIcon : orb.icon };
+	return {
+		...orb,
+		icon: hasLocation ? orb.solidIcon : orb.icon,
+		gradient: hasLocation ? orb.gradient : null,
+	};
 }
 
 export default function MapLocationIntentPlacesHubPanel({
@@ -108,6 +127,7 @@ export default function MapLocationIntentPlacesHubPanel({
 										iconName={orb.icon}
 										iconColor={orb.color}
 										iconBgColor={orb.bg}
+										gradient={orb.gradient}
 										label={place.label}
 										address={place.key === "add" ? "Save a new place" : addressText}
 										isMuted={!place.hasLocation && place.key !== "add"}
@@ -144,6 +164,7 @@ export default function MapLocationIntentPlacesHubPanel({
 										iconName={orb.icon}
 										iconColor={orb.color}
 										iconBgColor={orb.bg}
+										gradient={orb.gradient}
 										label={place.title || place.label || meta.label}
 										address={place.address || place.subtitle || ""}
 										isMuted={false}
