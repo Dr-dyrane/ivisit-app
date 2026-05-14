@@ -6,15 +6,19 @@
  */
 
 import { createContext, useState, useEffect, useMemo, useContext, useCallback } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useColorScheme } from "react-native";
 import { authService } from "../services/authService";
 import { supabase } from "../services/supabase";
 import { database, StorageKeys } from "../database";
+import { resolveThemeModeIsDark } from "../constants/appSurfaces";
+import AuthProgressScreen from "../components/auth/AuthProgressScreen";
 
 // Create AuthContext
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+	const deviceTheme = useColorScheme();
+	const [isAuthSurfaceDark, setIsAuthSurfaceDark] = useState(deviceTheme === "dark");
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [token, setToken] = useState(null);
@@ -25,6 +29,25 @@ export const AuthProvider = ({ children }) => {
 		await database.delete(StorageKeys.CURRENT_USER);
 		await database.delete(StorageKeys.AUTH_TOKEN);
 	}, []);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		database
+			.read(StorageKeys.THEME, "system")
+			.then((themeMode) => {
+				if (!isMounted) return;
+				setIsAuthSurfaceDark(resolveThemeModeIsDark(themeMode, deviceTheme));
+			})
+			.catch(() => {
+				if (!isMounted) return;
+				setIsAuthSurfaceDark(deviceTheme === "dark");
+			});
+
+		return () => {
+			isMounted = false;
+		};
+	}, [deviceTheme]);
 
 	// **1. Fetch and Sync User Data from API/Service**
 	const syncUserData = useCallback(async () => {
@@ -225,11 +248,7 @@ export const AuthProvider = ({ children }) => {
 
 	// **4. Show a spinner while loading data**
 	if (loading) {
-		return (
-			<View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-				<ActivityIndicator size="large" color="#86100E" />
-			</View>
-		);
+		return <AuthProgressScreen isDarkMode={isAuthSurfaceDark} showMessage={false} />;
 	}
 
 	// **5. Provide the context to children components**

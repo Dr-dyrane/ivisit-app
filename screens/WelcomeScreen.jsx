@@ -11,7 +11,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useLocationStore } from "../stores/locationStore";
 import { isOpeningEmergencyAtom } from "../atoms/welcomeScreenAtoms";
 import WelcomeScreenOrchestrator from "../components/welcome/WelcomeScreenOrchestrator";
-import { getMapEntrySurfaceColor, getRootSurfaceColor } from "../constants/appSurfaces";
+import WelcomeMapHandoffCover from "../components/welcome/WelcomeMapHandoffCover";
+import { getRootSurfaceColor } from "../constants/appSurfaces";
 
 const WelcomeScreen = () => {
 	const router = useRouter();
@@ -86,13 +87,9 @@ const WelcomeScreen = () => {
 				/>
 			</Animated.View>
 			{isOpeningEmergency ? (
-				<Animated.View
-					pointerEvents="auto"
-					style={[
-						styles.handoffCover,
-						{ backgroundColor: getMapEntrySurfaceColor(isDarkMode) },
-						{ opacity: handoffCoverOpacity },
-					]}
+				<WelcomeMapHandoffCover
+					isDarkMode={isDarkMode}
+					opacity={handoffCoverOpacity}
 				/>
 			) : null}
 		</View>
@@ -102,9 +99,6 @@ const WelcomeScreen = () => {
 const styles = StyleSheet.create({
 	root: {
 		flex: 1,
-	},
-	handoffCover: {
-		...StyleSheet.absoluteFillObject,
 	},
 });
 

@@ -281,8 +281,8 @@ PT-3 / C-4 (deferred): `commitFlow` persists in Zustand (layer 3), not Jotai (se
 ### Issue 12 — Blank Frames and Ungraceful Sheet Transitions
 
 **Source doc:** IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS §Issue 12  
-**Live files:** `MapPhaseTransitionView`, all `*StageBase.jsx` files  
-**Status:** 🟡 Open — systemic pattern issue
+**Live files:** `MapPhaseTransitionView`, all `*StageBase.jsx` files, `WelcomeScreen`, `WelcomeMapHandoffCover`, root/auth stack layouts  
+**Status:** 🟡 Open — systemic pattern issue; Welcome -> Map route handoff patched
 
 **Fix scope (UX-B):**
 - Every sheet phase change must go through `MapPhaseTransitionView` or equivalent staged wrapper.
@@ -292,6 +292,16 @@ PT-3 / C-4 (deferred): `commitFlow` persists in Zustand (layer 3), not Jotai (se
   - `AMBULANCE_DECISION` → `COMMIT_TRIAGE`: preserve shell
 - Loading states: skeleton rows not blank white — audit all `isLoading` + blank body patterns.
 - Web sheet swap: verify `MapPhaseTransitionView` is in the render tree for all phase changes on web.
+
+**Resolved subcase — Welcome -> Map empty frame:**
+- Problem: pressing **Continue / Request Help** could expose a brief empty route frame before `MapScreen` and `MapExploreLoadingOverlay` painted.
+- Root cause: the navigation transition shell was not fully themed, and the source screen faded out before the destination's route-owned loading overlay could visibly take over.
+- Implemented correction:
+  - themed root/provider/auth stack surfaces through shared app surface tokens,
+  - kept `WelcomeScreen` routing directly to `/(auth)/map`,
+  - kept `MapExploreLoadingOverlay` as the only `/map` startup loader,
+  - added `WelcomeMapHandoffCover` as a source-owned bridge cue with iVisit red progress feedback.
+- Guardrail: do not reintroduce `app/(auth)/map-loading.js`; the bridge must not fetch location, refresh hospitals, bootstrap demo data, or own any map readiness logic.
 
 ---
 

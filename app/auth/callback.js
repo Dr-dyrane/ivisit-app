@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { View, Text, ActivityIndicator, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { authService } from '../../services/authService';
 import { database, StorageKeys } from '../../database';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import AuthProgressScreen from '../../components/auth/AuthProgressScreen';
 
 const PUBLIC_MAP_ROUTE = '/(auth)/map';
 const CALLBACK_PAGE_DEDUP_WINDOW_MS = 8000;
@@ -94,6 +96,7 @@ function buildCallbackPageKey(currentUrl, fallbackParams = {}) {
 export default function AuthCallback() {
   const router = useRouter();
   const { login, syncUserData } = useAuth();
+  const { isDarkMode } = useTheme();
   const params = useLocalSearchParams();
   const { token, user, error, code, access_token: accessToken } = params;
 
@@ -318,22 +321,5 @@ export default function AuthCallback() {
     void handleAuthCallback();
   }, [accessToken, code, error, login, router, syncUserData, token, user]);
 
-  return (
-    <View style={{ 
-      flex: 1, 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      backgroundColor: '#ffffff'
-    }}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={{ 
-        marginTop: 20, 
-        fontSize: 16, 
-        color: '#666',
-        textAlign: 'center'
-      }}>
-        Signing you in...
-      </Text>
-    </View>
-  );
+  return <AuthProgressScreen isDarkMode={isDarkMode} message="Signing you in..." />;
 }

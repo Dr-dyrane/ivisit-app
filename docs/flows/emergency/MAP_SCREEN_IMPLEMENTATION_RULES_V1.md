@@ -650,6 +650,24 @@ Rules:
 - provider expansion, demo bootstrap, and route enrichment continue in the background
 - do not flash a half-broken map surface before route and hospital context are ready
 
+### Welcome -> Map handoff bridge
+
+The `WelcomeScreen` -> `/(auth)/map` transition has one source-owned bridge:
+
+- [WelcomeMapHandoffCover.jsx](../../../components/welcome/WelcomeMapHandoffCover.jsx)
+
+This bridge is allowed because it is not a second map-loading route and does not own map readiness. It only covers the source-to-destination navigation handoff while the live `/map` route mounts.
+
+Rules:
+
+- `WelcomeScreen` must keep routing directly to `/(auth)/map`
+- do not reintroduce `app/(auth)/map-loading.js`
+- do not mount `MapEntryLoadingScreen` from Welcome
+- do not duplicate location, hospital, demo-bootstrap, or route-loading effects in the bridge
+- the bridge may render a compact theme-aware progress cue against the map entry surface
+- once `MapScreen` paints, `MapExploreLoadingOverlay` remains the sole startup loading owner
+- root/auth stack `contentStyle` and parent shell backgrounds must stay themed so exposed transition frames never fall back to platform white
+
 ## 15. Current `/map` UI Inventory Reference
 
 This is the current element inventory to reference during cleanup or global consistency passes.
