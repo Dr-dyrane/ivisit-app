@@ -375,6 +375,8 @@ export const MapView = React.forwardRef(
     const onMapLoadedRef = useRef(onMapLoaded);
     const [mapInstance, setMapInstance] = useState(null);
     const { isLoaded, error } = GoogleMapsAPI();
+    const mapBackgroundColor =
+      userInterfaceStyle === "dark" ? "#08101B" : "#EEF3F8";
 
     useEffect(() => {
       onMapReadyRef.current = onMapReady;
@@ -406,7 +408,7 @@ export const MapView = React.forwardRef(
         keyboardShortcuts: scrollEnabled || zoomEnabled,
         gestureHandling: scrollEnabled || zoomEnabled ? "greedy" : "none",
         clickableIcons: false,
-        backgroundColor: userInterfaceStyle === "dark" ? "#0F131A" : "#F8FAFC",
+        backgroundColor: mapBackgroundColor,
       };
 
       const googleMapsMapId = getGoogleMapsMapId();
@@ -476,7 +478,7 @@ export const MapView = React.forwardRef(
         disableDoubleClickZoom: !zoomEnabled,
         keyboardShortcuts: scrollEnabled || zoomEnabled,
         gestureHandling: scrollEnabled || zoomEnabled ? "greedy" : "none",
-        backgroundColor: userInterfaceStyle === "dark" ? "#0F131A" : "#F8FAFC",
+        backgroundColor: mapBackgroundColor,
       });
 
       const nextRegion =
@@ -503,6 +505,7 @@ export const MapView = React.forwardRef(
     }, [
       customMapStyle,
       initialRegion,
+      mapBackgroundColor,
       rotateEnabled,
       scrollEnabled,
       showsZoomControls,
@@ -644,7 +647,7 @@ export const MapView = React.forwardRef(
 
     if (error) {
       return (
-        <View style={[style, styles.errorContainer]}>
+        <View style={[style, styles.errorContainer, { backgroundColor: mapBackgroundColor }]}>
           <div style={styles.errorText}>Map unavailable: {error}</div>
         </View>
       );
@@ -652,15 +655,19 @@ export const MapView = React.forwardRef(
 
     if (!isLoaded) {
       return (
-        <View style={[style, styles.loadingContainer]}>
+        <View style={[style, styles.loadingContainer, { backgroundColor: mapBackgroundColor }]}>
           <div style={styles.loadingText}>Loading map...</div>
         </View>
       );
     }
 
     return (
-      <View style={style}>
-        <div ref={mapRef} style={styles.mapContainer} {...props} />
+      <View style={[style, { backgroundColor: mapBackgroundColor }]}>
+        <div
+          ref={mapRef}
+          style={{ ...styles.mapContainer, backgroundColor: mapBackgroundColor }}
+          {...props}
+        />
         <WebMapContext.Provider value={mapInstance}>
           {children}
         </WebMapContext.Provider>

@@ -28,6 +28,7 @@ import {
 } from "../../map/mapStyles";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { COLORS } from "../../../constants/colors";
+import { getMapEntrySurfaceColor } from "../../../constants/appSurfaces";
 import { useMapRoute } from "../../../hooks/emergency/useMapRoute";
 import { useAmbulanceAnimation } from "../../../hooks/emergency/useAmbulanceAnimation";
 import useMarkerRenderPulse from "../../../hooks/map/useMarkerRenderPulse";
@@ -462,6 +463,7 @@ export default function EmergencyLocationPreviewMap({
   const [isUserCentered, setIsUserCentered] = useState(false);
   const isAndroid = Platform.OS === "android";
   const isWeb = Platform.OS === "web";
+  const mapEntrySurfaceColor = getMapEntrySurfaceColor(isDarkMode);
   const {
     routeCoordinates: previewRouteCoordinates,
     routeInfo,
@@ -1194,13 +1196,13 @@ export default function EmergencyLocationPreviewMap({
 
   return (
     <View
-      style={styles.shell}
+      style={[styles.shell, { backgroundColor: mapEntrySurfaceColor }]}
       collapsable={Platform.OS !== "web" ? false : undefined}
     >
       <MapView
         ref={mapRef}
         collapsable={Platform.OS !== "web" ? false : undefined}
-        style={styles.map}
+        style={[styles.map, { backgroundColor: mapEntrySurfaceColor }]}
         provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
         customMapStyle={customMapStyle}
         mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
@@ -1307,7 +1309,7 @@ export default function EmergencyLocationPreviewMap({
           style={[
             styles.skeletonOverlay,
             {
-              backgroundColor: isDarkMode ? "#0B0F1A" : "#F8FAFC",
+              backgroundColor: mapEntrySurfaceColor,
             },
           ]}
         >
