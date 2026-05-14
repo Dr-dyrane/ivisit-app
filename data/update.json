@@ -1,10 +1,10 @@
 {
-  "_lastCommitHash": "9d33e05",
-  "_lastCommitDate": "2026-05-14T02:20:00-07:00",
-  "version": "1.0.3",
+  "_lastCommitHash": "ff583cd",
+  "_lastCommitDate": "2026-05-14T13:57:00-07:00",
+  "version": "1.0.4",
   "date": "2026-05-14",
-  "title": "Hybrid Marker Selection + Service Selection Polish",
-  "summary": "Map flow atoms for hospital selection, temporal dead zone fixes, service selection footer refinement, and ambulance heading fixes.",
+  "title": "Text Resilience + Regional Discount UI",
+  "summary": "Shared FadeEndText component migration, regional discount display in payment breakdown, help support border removal, and Surface Text Resilience implementation rules.",
   "changes": [
     {
       "type": "feature",
@@ -77,6 +77,34 @@
     {
       "type": "fix",
       "message": "Carries forward recent map stability fixes for hospital preservation, sheet snap transitions, ambulance sprite orientation, and marker guards."
+    },
+    {
+      "type": "feature",
+      "message": "Created shared FadeEndText component for dense surface clipping, replacing local fade implementations in LocationChrome, Explore Intent hospital hero, and emergency hospital cards."
+    },
+    {
+      "type": "improvement",
+      "message": "Migrated map search rows/chips, manual location rows/summaries, recents/history rows, and ambulance/bed route labels to use FadeEndText for consistent text resilience."
+    },
+    {
+      "type": "improvement",
+      "message": "Added regional discount display in payment breakdown with green color styling to show when regional pricing is applied."
+    },
+    {
+      "type": "improvement",
+      "message": "Removed borders from help support UI (ActionIsland, ContextPane, MainContent) for cleaner visual design."
+    },
+    {
+      "type": "improvement",
+      "message": "Changed fixed text container heights to minHeight plus padding for better Dynamic Type support across map surfaces."
+    },
+    {
+      "type": "improvement",
+      "message": "Added minWidth: 0 to text containers so labels can shrink before clipping under accessibility text scaling."
+    },
+    {
+      "type": "documentation",
+      "message": "Added Surface Text Resilience Rule to MAP_SCREEN_IMPLEMENTATION_RULES with FadeEndText usage guidelines."
     }
   ]
 }

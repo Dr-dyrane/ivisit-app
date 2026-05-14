@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     },
     changelogContainer: {
         width: '100%',
-        maxHeight: MODAL_HEIGHT * 0.35,
+        maxHeight: MODAL_HEIGHT * 0.55,
         marginVertical: 12,
         backgroundColor: 'transparent',
     },
