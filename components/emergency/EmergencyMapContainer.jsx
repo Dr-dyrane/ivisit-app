@@ -23,6 +23,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 		sheetSnapIndex,
 		mapStateKey,
 		onUserLocationChange,
+		onUserLocationPress,
 	} = props;
 
 	const baseMapRef = useRef(null);
@@ -83,6 +84,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 					onUserLocationChange={onUserLocationChange}
+					onUserLocationPress={onUserLocationPress}
 				/>
 			) : (
 				<FullScreenEmergencyMap
@@ -107,6 +109,7 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 					sheetSnapIndex={sheetSnapIndex}
 					mapStateKey={mapStateKey}
 					onUserLocationChange={onUserLocationChange}
+					onUserLocationPress={onUserLocationPress}
 				/>
 			)}
 		</View>

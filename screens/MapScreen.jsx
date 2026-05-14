@@ -427,6 +427,7 @@ export default function MapScreen() {
         trackingTimeline={
           activeAmbulanceTrip?.requestId ? trackingTimeline : null
         }
+        onUserLocationPress={handleOpenLocationSheet}
         headerOcclusionHeight={trackingHeaderOcclusionHeight}
         bottomSheetHeight={bottomSheetHeight}
         leftPanelWidth={sidebarOcclusionWidth}

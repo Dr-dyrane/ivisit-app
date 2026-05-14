@@ -92,6 +92,7 @@ useMapExploreFlow (orchestrator — 557 lines)
 | 14c | `useMapUserData` | isSignedIn, profileImageSource |
 | 15 | `useMapEffects` | useFocusEffect header lifecycle |
 | 16 | `index.js` | Barrel export for all 18 hooks |
+| 19D | `useMapExploreFlow` + `useMapHospitalSelection` | Hybrid marker selection + TDZ fixes (map flow atoms) |
 
 ---
 
@@ -112,6 +113,52 @@ Old pattern had each hook running its own interval — redundant and drift-prone
 But `nowMs` comes from `useMapTracking` which depends on `activeMapRequest`.  
 Resolution: `nowMsRef` seeded to `Date.now()` before `useMapDerivedData` runs.  
 `useEffect` keeps the ref in sync after each clock tick. First render is stable.
+
+### PASS 19D — Hybrid Marker Selection + TDZ Fixes
+**Date:** 2026-05-14  
+**Objective:** Fix temporal dead zone errors and implement hybrid marker selection using map flow atoms
+
+**Changes:**
+1. **Added map flow atoms (L5 Jotai):**
+   - `mapSelectedHospitalIdAtom` — ephemeral UI state for hospital selection
+   - `mapFeaturedHospitalAtom` — ephemeral UI state for featured hospital
+   - These survive sheet collapse (unlike component state)
+
+2. **Created `selectHospitalForMap` function:**
+   - Updates map flow atoms (primary source for map interactions)
+   - Updates EMERGENCY context state (fallback for emergency flow compatibility)
+   - Returns hospital object for caller to open hospital detail sheet
+   - Fixed duplicate hospital lookup (cached in variable)
+
+3. **Fixed TDZ errors:**
+   - Moved `selectHospitalForMap` definition after `discoveredHospitals` (line 310-346 after line 320-331)
+   - Reordered hooks: `useMapHospitalSelection` before `useMapSheetNavigation`
+   - Removed `openHospitalDetail` from `useMapHospitalSelection` props
+   - Wrapped `handleMapHospitalPress` to call `openHospitalDetail` after definition
+
+4. **Updated `handleMapHospitalPress`:**
+   - Now uses `selectHospitalForMap` instead of direct `selectHospital`
+   - Returns hospital object (documented with JSDoc)
+   - Removed unused `sheetPhase` prop
+
+5. **Added user location marker tap handler:**
+   - `onUserLocationPress` prop added to map components
+   - Triggers location sheet phase on user location marker tap
+
+**Files Changed:**
+- `hooks/map/exploreFlow/useMapExploreFlow.js` (+124/-30)
+- `hooks/map/exploreFlow/useMapHospitalSelection.js` (+15/-?)
+- `screens/MapScreen.jsx` (+1)
+- `components/emergency/EmergencyMapContainer.jsx` (+3)
+- `components/emergency/intake/EmergencyLocationPreviewMap.jsx` (+2)
+- `components/map/FullScreenEmergencyMap.jsx` (+2)
+
+**Guardrails Compliance:**
+- ✅ State Management: Jotai atoms for ephemeral UI state (L5)
+- ✅ TDZ Prevention: All temporal dead zone errors fixed
+- ✅ Hook Design: Single responsibility, proper deps
+- ✅ File Organization: Hooks in correct location
+- ✅ Defensive Programming: Null safety, optional chaining
 
 ### Hook call ordering (dependency order)
 ```

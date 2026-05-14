@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { commitFlowAtom } from "../../../atoms/commitAtoms";
+import {
+  mapSelectedHospitalIdAtom,
+  mapFeaturedHospitalAtom,
+} from "../../../atoms/mapFlowAtoms";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -121,6 +125,11 @@ export function useMapExploreFlow() {
   const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
   const clearCommitFlow = () => setCommitFlow(null);
 
+  // PULLBACK NOTE: PASS 19D — Hybrid marker selection (map-flow-specific + EMERGENCY fallback)
+  // Map flow atoms for hospital selection (ephemeral UI state, survives sheet collapse)
+  const [mapSelectedHospitalId, setMapSelectedHospitalId] = useAtom(mapSelectedHospitalIdAtom);
+  const [mapFeaturedHospital, setMapFeaturedHospital] = useAtom(mapFeaturedHospitalAtom);
+
   const { state: flowState, actions: flowActions } = useMapExploreFlowStore({
     usesSidebarLayout,
   });
@@ -183,9 +192,11 @@ export function useMapExploreFlow() {
   } = flowActions;
   const clearLocationScopedMapState = useCallback(() => {
     selectHospital(null);
+    setMapSelectedHospitalId(null);
+    setMapFeaturedHospital(null);
     setFeaturedHospital(null);
     setSheetPayload(null);
-  }, [selectHospital, setFeaturedHospital, setSheetPayload]);
+  }, [selectHospital, setMapSelectedHospitalId, setMapFeaturedHospital, setFeaturedHospital, setSheetPayload]);
 
   const {
     activeLocation,
@@ -292,49 +303,64 @@ export function useMapExploreFlow() {
     visits,
   });
 
+  // PULLBACK NOTE: PASS 19D — Hybrid selectHospitalForMap
+  // Updates map flow atoms (primary) + EMERGENCY context (fallback for emergency flow)
+  // Always triggers sheet phase change to open hospital detail when requested
+  // Defined after discoveredHospitals to avoid temporal dead zone error
+  const selectHospitalForMap = useCallback(
+    (hospitalId, options = {}) => {
+      const { shouldOpenDetail = true } = options;
+      
+      // Cache hospital lookup to avoid duplicate array find
+      const hospital = hospitalId ? discoveredHospitals?.find((h) => h?.id === hospitalId) : null;
+      
+      // Update map flow atoms (primary source for map interactions)
+      setMapSelectedHospitalId(hospitalId);
+      if (hospital) {
+        setMapFeaturedHospital(hospital);
+      } else {
+        setMapFeaturedHospital(null);
+      }
+
+      // Update EMERGENCY context state (fallback for emergency flow compatibility)
+      selectHospital(hospitalId);
+
+      // Always trigger sheet phase change to open hospital detail when requested
+      // regardless of current phase
+      if (shouldOpenDetail && hospitalId && hospital) {
+        // Return hospital for caller to open hospital detail
+        return { shouldOpenDetail: true, hospital };
+      }
+
+      return { shouldOpenDetail: false };
+    },
+    [
+      discoveredHospitals,
+      selectHospital,
+      setMapFeaturedHospital,
+      setMapSelectedHospitalId,
+    ],
+  );
+
   // Pass 14a: receives discoveredHospitals + nearestHospital from useMapDerivedData
   // OLD: computed them internally (duplicate memos)
   // NEW: props-driven — single source of truth from useMapDerivedData
+  // PULLBACK NOTE: PASS 19D — Hybrid marker selection (selectHospitalForMap + openHospitalDetail)
   const {
     promoteHospitalSelection,
     handleOpenFeaturedHospital: handleOpenFeaturedHospitalBase,
     handleCycleFeaturedHospital,
-    handleMapHospitalPress,
+    handleMapHospitalPress: handleMapHospitalPressBase,
   } = useMapHospitalSelection({
     discoveredHospitals,
     nearestHospital,
     selectedHospital,
     selectedHospitalId,
     selectHospital,
+    selectHospitalForMap,
     setFeaturedHospital,
     featuredHospital,
   });
-
-  const trackingRequestKey = activeMapRequest.requestId;
-
-  // Pass 11: tracking sheet lifecycle + shared clock
-  // PULLBACK NOTE: Phase 8 — Pass C: hasActiveTrip is the XState gate for auto-open
-  const { nowMs, openTracking, closeTracking } = useMapTracking({
-    trackingRequestKey,
-    hasActiveTrip,
-    sheetPhase,
-    sheetPayload,
-    defaultExploreSnapState,
-    usesSidebarLayout,
-    discoveredHospitals,
-    featuredHospital,
-    nearestHospital,
-    activeMapRequest,
-    promoteHospitalSelection,
-    setSheetView,
-  });
-
-  // PULLBACK NOTE: HR-D fix — assign ref inline during render (guardrail rule 3).
-  // OLD: useEffect(() => { nowMsRef.current = nowMs }, [nowMs]) — ref sync 1 render late,
-  //      activeMapRequest saw a stale timestamp on cold start (one-frame ETA artifact).
-  // NEW: assign inline — ref is always current in the same render pass as nowMs.
-  nowMsRef.current = nowMs;
-
 
   const {
     openSearchSheet,
@@ -369,6 +395,44 @@ export function useMapExploreFlow() {
     setSearchSheetMode,
     setSheetView,
   });
+
+  // PULLBACK NOTE: PASS 19D — Wrap handleMapHospitalPress to call openHospitalDetail
+  // This avoids temporal dead zone error by calling openHospitalDetail after it's defined
+  const handleMapHospitalPress = useCallback(
+    (hospital) => {
+      const resultHospital = handleMapHospitalPressBase?.(hospital);
+      if (resultHospital && openHospitalDetail) {
+        openHospitalDetail(resultHospital);
+      }
+    },
+    [handleMapHospitalPressBase, openHospitalDetail],
+  );
+
+  const trackingRequestKey = activeMapRequest.requestId;
+
+  // Pass 11: tracking sheet lifecycle + shared clock
+  // PULLBACK NOTE: Phase 8 — Pass C: hasActiveTrip is the XState gate for auto-open
+  const { nowMs, openTracking, closeTracking } = useMapTracking({
+    trackingRequestKey,
+    hasActiveTrip,
+    sheetPhase,
+    sheetPayload,
+    defaultExploreSnapState,
+    usesSidebarLayout,
+    discoveredHospitals,
+    featuredHospital,
+    nearestHospital,
+    activeMapRequest,
+    promoteHospitalSelection,
+    setSheetView,
+  });
+
+  // PULLBACK NOTE: HR-D fix — assign ref inline during render (guardrail rule 3).
+  // OLD: useEffect(() => { nowMsRef.current = nowMs }, [nowMs]) — ref sync 1 render late,
+  //      activeMapRequest saw a stale timestamp on cold start (one-frame ETA artifact).
+  // NEW: assign inline — ref is always current in the same render pass as nowMs.
+  nowMsRef.current = nowMs;
+
 
   const {
     suppressCommitRestoreRef,

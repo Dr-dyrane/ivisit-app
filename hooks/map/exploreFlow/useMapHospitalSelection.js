@@ -4,6 +4,7 @@
 // NEW: accepts them as props from useMapDerivedData (single source of truth)
 // Owns: auto-select effect + promoteHospitalSelection + handleOpenFeaturedHospital
 //        + handleCycleFeaturedHospital + handleMapHospitalPress
+// PULLBACK NOTE: PASS 19D — Hybrid marker selection (selectHospitalForMap + openHospitalDetail)
 
 import { useCallback, useEffect } from "react";
 
@@ -16,17 +17,19 @@ import { useCallback, useEffect } from "react";
  * by useMapDerivedData and passed in as props — no duplication.
  */
 export function useMapHospitalSelection({
-  // PULLBACK NOTE: Pass 14a — these were computed here before, now passed from useMapDerivedData
+  // PULLBACK NOTE: Pass 14a — these were computed here before, now passed from useMapDerivedData (single source of truth)
   discoveredHospitals,
   nearestHospital,
   selectedHospital,
   selectedHospitalId,
   selectHospital,
+  selectHospitalForMap,
   setFeaturedHospital,
   featuredHospital,
 }) {
   // Auto-select the first hospital when the list first populates
   // or when the previously selected hospital leaves the discovered list
+  // PULLBACK NOTE: PASS 19D — Auto-select uses EMERGENCY context selectHospital (no sheet phase change)
   useEffect(() => {
     if (!Array.isArray(discoveredHospitals) || discoveredHospitals.length === 0) {
       if (selectedHospitalId || featuredHospital?.id) {
@@ -104,13 +107,28 @@ export function useMapHospitalSelection({
     setFeaturedHospital,
   ]);
 
+  /**
+   * Handles hospital marker press on the map.
+   * Uses hybrid selectHospitalForMap to update both map flow atoms and EMERGENCY context.
+   * 
+   * @param {Object} hospital - The hospital object that was pressed
+   * @param {string} hospital.id - The hospital ID
+   * @returns {Object|null} The hospital object if selection succeeded, null otherwise
+   */
   const handleMapHospitalPress = useCallback(
     (hospital) => {
       if (hospital?.id) {
-        selectHospital(hospital.id);
+        // PULLBACK NOTE: PASS 19D — Hybrid marker selection
+        // Use selectHospitalForMap to update map flow atoms + EMERGENCY context
+        // Return hospital for caller to open hospital detail sheet
+        const result = selectHospitalForMap?.(hospital.id, { shouldOpenDetail: true });
+        
+        // Return hospital for caller to decide whether to open detail sheet
+        return result?.hospital || null;
       }
+      return null;
     },
-    [selectHospital],
+    [selectHospitalForMap],
   );
 
   return {

@@ -74,6 +74,7 @@ const FullScreenEmergencyMap = forwardRef(
       ambulanceTelemetryHealth = null,
       sheetSnapIndex = 1,
       onUserLocationChange,
+      onUserLocationPress,
     },
     ref,
   ) => {
@@ -832,6 +833,7 @@ const FullScreenEmergencyMap = forwardRef(
                 zIndex={160}
                 pinColor="#3B82F6"
                 markerVariant={Platform.OS === "web" ? "user" : undefined}
+                onPress={onUserLocationPress}
               />
             ) : null}
 

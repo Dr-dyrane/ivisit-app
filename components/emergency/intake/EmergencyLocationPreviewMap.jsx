@@ -447,6 +447,7 @@ export default function EmergencyLocationPreviewMap({
   onReadinessChange = null,
   onRouteInfoChange = null,
   onLocationChromePress = null,
+  onUserLocationPress = null,
   showInternalSkeleton = true,
   showControls = true,
 }) {
@@ -1299,6 +1300,7 @@ export default function EmergencyLocationPreviewMap({
             title={placeLabel || "Your location"}
             pinColor={isWeb ? undefined : "#3B82F6"}
             tracksViewChanges={tracksMarkerViews}
+            onPress={onUserLocationPress}
           />
         ) : null}
       </MapView>
