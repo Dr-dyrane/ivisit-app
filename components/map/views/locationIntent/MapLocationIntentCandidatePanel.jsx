@@ -281,10 +281,10 @@ export default function MapLocationIntentCandidatePanel({
 						})()}
 						<View style={styles.saveDetailsCopy}>
 							<Text style={[styles.manualTitle, { color: titleColor }]}>
-								Saved successfully
+								Saved
 							</Text>
 							<Text style={[styles.manualBody, { color: mutedColor }]}>
-								{selectedLocation?.label || selectedLocation?.address || "Your place"} is now in your saved places.
+								{selectedLocation?.label || selectedLocation?.address || "This place"} is ready for pickup.
 							</Text>
 						</View>
 					</View>
@@ -300,22 +300,22 @@ export default function MapLocationIntentCandidatePanel({
 					>
 						<MaterialCommunityIcons name="map-marker-check" size={18} color="#ffffff" />
 						<Text style={[styles.manualStepButtonLabel, { color: "#ffffff" }]}>
-							Use this location
+							Use As Pickup
 						</Text>
 					</Pressable>
 					<Pressable
 						onPress={onBackToPreviousStep}
 						accessibilityRole="button"
-						accessibilityLabel="Save another place"
+						accessibilityLabel="Done"
 						style={({ pressed }) => [
 							styles.saveDetailsPrimaryAction,
 							{ backgroundColor: infoSurfaceColor, borderWidth: 1, borderColor: mutedColor + "30" },
 							pressed ? styles.rowPressed : null,
 						]}
 					>
-						<MaterialCommunityIcons name="plus" size={18} color={titleColor} />
+						<MaterialCommunityIcons name="check" size={18} color={titleColor} />
 						<Text style={[styles.manualStepButtonLabel, { color: titleColor }]}>
-							Save another place
+							Done
 						</Text>
 					</Pressable>
 				</View>

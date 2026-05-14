@@ -165,6 +165,7 @@ Current shared tokens:
 - One persistent sheet shell.
 - Modals are tasks, not separate mini-apps.
 - Supporting text should default to `400` weight unless emphasis is truly required.
+- Dense map cards should prefer a muted fade-end text treatment over visible ellipsis when a title can be clipped by trailing chrome. The local Explore Intent hospital card implementation is an interim pattern; promote it into a reusable `FadeEndText`/`ClippedTextFade` primitive before broad reuse.
 - The map should wait for meaningful readiness, not just mount.
 - The hospital list shown on `/map` should come from the full discovered nearby set, not the display-trimmed subset.
 - Sheet phase changes should feel like one surface changing state, not a route replacement.

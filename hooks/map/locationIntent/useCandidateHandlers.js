@@ -289,6 +289,20 @@ export default function useCandidateHandlers({
 				return;
 			}
 			// New save: navigate to success state instead of abrupt return
+			const refreshedCandidate = mapStoredLocationToCandidate(
+				savedResult,
+				saveDetailsDraft.label || selectedLocation?.label || "Saved place",
+			);
+			const normalized = refreshedCandidate
+				? buildSelectedLocation({
+						...refreshedCandidate,
+						source: "saved",
+						confidence: "high",
+					})
+				: null;
+			if (normalized) {
+				setActiveCandidate(normalized);
+			}
 			replaceNavigationStack(LOCATION_INTENT_MODES.SAVE_SUCCESS, []);
 		}
 	}, [

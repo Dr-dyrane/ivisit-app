@@ -694,6 +694,28 @@ The user owns runtime testing, but each implementation pass must leave these sce
 - No mojibake/non-ASCII artifacts in touched active source files.
 - `@babel/parser` parse and `git diff --check` pass for the touched file set.
 
+### Pending App-Wide UI/UX Pass - Fade-End Text
+
+**Trigger:** Explore Intent `Nearby now` hospital card needed a visible CTA without stealing width from hospital names.
+
+**Current local fix:**
+
+- Canonical Explore Intent hospital card now uses a clipped one-line hospital title with a trailing surface fade instead of relying on visible ellipsis.
+- The fade is not considered final or reusable yet; it is a local bridge.
+
+**iVisit Way rule:**
+
+- For dense map cards with trailing chrome, avoid visible ellipsis where it makes the UI feel mechanically truncated.
+- Prefer a subtle trailing fade that blends into the card surface, uses continuous/squircle right-edge treatment, and keeps the text line calm.
+- The text layer must sit below the fade layer; clipped text should not render visibly over the fade.
+
+**Future implementation pass:**
+
+- Create a reusable `FadeEndText` / `ClippedTextFade` primitive for React Native + web.
+- Tokenize fade width, surface color, z-index/elevation, corner radius, and platform-specific `ellipsizeMode` / CSS clipping rules.
+- Audit all map cards, tracking cards, service selection cards, history rows, modal title rows, and mini-profile rows that currently use `numberOfLines={1}` with ellipsis.
+- Replace local one-off fade overlays with the shared primitive after visual QA.
+
 ### Pullback Notes
 
 - If subphase headers feel too verbose in runtime review, rollback only the `locationHeaderModel` block in `MapLocationIntentStageBase.jsx`; the mode/snap contract remains independent.

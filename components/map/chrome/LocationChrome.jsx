@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, View, Pressable, StyleSheet, Platform, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getMapRenderTokens } from "../tokens/mapRenderTokens";
 import { triggerPress } from "../../../services/hapticService";
@@ -18,6 +19,35 @@ const squircle = (radius) => ({
 const COMPACT_WIDTH = 46;
 const EXPANDED_WIDTH = 176;
 const CHIP_HEIGHT = 46;
+
+function PickupSubtitleLine({ children, color, fadeColor, isDarkMode }) {
+    const transparentFade = isDarkMode ? "rgba(15,23,42,0)" : "rgba(255,255,255,0)";
+    const isWeb = Platform.OS === "web";
+
+    return (
+        <View style={styles.pickupSubtitleClip}>
+            <Text
+                numberOfLines={isWeb ? undefined : 1}
+                ellipsizeMode="clip"
+                style={[
+                    styles.pickupSubtitle,
+                    styles.pickupSubtitleClippedText,
+                    isWeb ? styles.pickupSubtitleClippedTextWeb : null,
+                    { color },
+                ]}
+            >
+                {children}
+            </Text>
+            <LinearGradient
+                pointerEvents="none"
+                colors={[transparentFade, fadeColor]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.pickupSubtitleFade}
+            />
+        </View>
+    );
+}
 
 /**
  * LocationChrome - Floating chrome for location change affordance
@@ -67,6 +97,9 @@ const LocationChrome = ({
     const mutedTextColor = isDarkMode
         ? "rgba(226, 232, 240, 0.72)"
         : "rgba(71, 85, 105, 0.76)";
+    const subtitleFadeColor = Platform.OS === "ios"
+        ? isDarkMode ? "rgba(24, 24, 27, 0.92)" : "rgba(255, 255, 255, 0.92)"
+        : renderTokens.controlSurface;
 
     const clearCollapseTimer = useCallback(() => {
         if (collapseTimerRef.current) {
@@ -229,12 +262,13 @@ const LocationChrome = ({
                             >
                                 {pickupTitle}
                             </Text>
-                            <Text
-                                numberOfLines={1}
-                                style={[styles.pickupSubtitle, { color: textColor }]}
+                            <PickupSubtitleLine
+                                color={textColor}
+                                fadeColor={subtitleFadeColor}
+                                isDarkMode={isDarkMode}
                             >
                                 {pickupSubtitle}
-                            </Text>
+                            </PickupSubtitleLine>
                         </Animated.View>
                         <Animated.View
                             pointerEvents="none"
@@ -311,6 +345,31 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 17,
         fontWeight: "800",
+    },
+    pickupSubtitleClip: {
+        position: "relative",
+        overflow: "hidden",
+        minWidth: 0,
+        height: 18,
+    },
+    pickupSubtitleClippedText: {
+        zIndex: 0,
+    },
+    pickupSubtitleClippedTextWeb: {
+        whiteSpace: "nowrap",
+        textOverflow: "clip",
+    },
+    pickupSubtitleFade: {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: 24,
+        borderTopRightRadius: 9,
+        borderBottomRightRadius: 9,
+        borderCurve: "continuous",
+        zIndex: 2,
+        elevation: 2,
     },
     chevronSlot: {
         width: 18,

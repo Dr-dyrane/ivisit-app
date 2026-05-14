@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { triggerPress } from "../../../../services/hapticService";
@@ -58,6 +58,41 @@ function SummaryHeroMetric({ label, value, surfaceColor, tokens }) {
 			<Text numberOfLines={1} style={[styles.summaryHeroMetricValue, { color: tokens.titleColor }]}>
 				{value}
 			</Text>
+		</View>
+	);
+}
+
+function HospitalTitleLine({
+	children,
+	style,
+	color,
+	fadeColor,
+	isDarkMode,
+}) {
+	const transparentFade = isDarkMode ? "rgba(15,23,42,0)" : "rgba(255,255,255,0)";
+	const isWeb = Platform.OS === "web";
+	return (
+		<View style={styles.hospitalTitleClip}>
+			<Text
+				numberOfLines={isWeb ? undefined : 1}
+				ellipsizeMode="clip"
+				style={[
+					styles.hospitalTitle,
+					styles.hospitalTitleClippedText,
+					isWeb ? styles.hospitalTitleClippedTextWeb : null,
+					style,
+					{ color },
+				]}
+			>
+				{children}
+			</Text>
+			<LinearGradient
+				pointerEvents="none"
+				colors={[transparentFade, fadeColor]}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 1, y: 0 }}
+				style={styles.hospitalTitleFade}
+			/>
 		</View>
 	);
 }
@@ -232,9 +267,14 @@ export default function MapExploreIntentHospitalSummaryCard({
 							<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
 								{summaryEyebrow}
 							</Text>
-							<Text numberOfLines={1} style={[styles.hospitalTitle, titleTextStyle, { color: tokens.titleColor }]}>
+							<HospitalTitleLine
+								style={titleTextStyle}
+								color={tokens.titleColor}
+								fadeColor={tokens.strongCardSurface}
+								isDarkMode={isDarkMode}
+							>
 								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
-							</Text>
+							</HospitalTitleLine>
 							<Text numberOfLines={1} style={[styles.hospitalMeta, metaTextStyle, { color: tokens.bodyText }]}>
 								{summaryMetaText ||
 									(hasNearbyHospitals
@@ -247,9 +287,12 @@ export default function MapExploreIntentHospitalSummaryCard({
 					{/* OLD: nearbyHospitalCount + totalAvailableBeds signal pills shown on card */}
 					{/* NEW: hospital cards show only hospital-specific data; network totals live in orb subtexts */}
 				</View>
-				<SummaryIconTile isDarkMode={isDarkMode} compact size={summaryCompactIconSize}>
-					<Ionicons name="chevron-forward" size={isTightViewport ? 14 : 15} color={tokens.titleColor} />
-				</SummaryIconTile>
+				<View style={[styles.hospitalCardCta, { backgroundColor: tokens.mutedCardSurface }]}>
+					<Text style={[styles.hospitalCardCtaText, { color: tokens.titleColor }]}>
+						{MAP_EXPLORE_INTENT_COPY.BROWSE}
+					</Text>
+					<Ionicons name="chevron-forward" size={isTightViewport ? 13 : 14} color={tokens.titleColor} />
+				</View>
 			</Pressable>
 		);
 	}
@@ -335,7 +378,7 @@ export default function MapExploreIntentHospitalSummaryCard({
 				<View style={styles.summaryHeroFooter}>
 					<View style={[styles.summaryHeroActionPill, { backgroundColor: tokens.mutedCardSurface }]}>
 						<Text style={[styles.summaryHeroActionText, { color: tokens.titleColor }]}>
-							Open hospital list
+							{MAP_EXPLORE_INTENT_COPY.BROWSE}
 						</Text>
 						<Ionicons name="arrow-forward" size={14} color={tokens.titleColor} />
 					</View>

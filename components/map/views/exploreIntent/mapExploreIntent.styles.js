@@ -513,6 +513,21 @@ export default StyleSheet.create({
 	},
 	hospitalCardCopy: {
 		flex: 1,
+		minWidth: 0,
+	},
+	hospitalCardCta: {
+		minHeight: 28,
+		paddingHorizontal: 8,
+		borderRadius: 999,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 3,
+	},
+	hospitalCardCtaText: {
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "500",
 	},
 	hospitalEyebrow: {
 		fontSize: 11,
@@ -526,6 +541,32 @@ export default StyleSheet.create({
 		fontSize: 18,
 		lineHeight: 22,
 		fontWeight: "700",
+	},
+	hospitalTitleClip: {
+		position: "relative",
+		overflow: "hidden",
+		minWidth: 0,
+		height: 26,
+	},
+	hospitalTitleClippedText: {
+		marginTop: 4,
+		zIndex: 0,
+	},
+	hospitalTitleClippedTextWeb: {
+		whiteSpace: "nowrap",
+		textOverflow: "clip",
+	},
+	hospitalTitleFade: {
+		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		width: 34,
+		borderTopRightRadius: 13,
+		borderBottomRightRadius: 13,
+		borderCurve: "continuous",
+		zIndex: 2,
+		elevation: 2,
 	},
 	hospitalMeta: {
 		marginTop: 4,

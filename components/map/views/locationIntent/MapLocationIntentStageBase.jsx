@@ -53,6 +53,7 @@ const LOCATION_INTENT_MODE_SNAP_POLICY = Object.freeze({
 	[LOCATION_INTENT_MODES.PIN_ADJUST]: MAP_SHEET_SNAP_STATES.HALF,
 	[LOCATION_INTENT_MODES.SAVE_CATEGORY]: MAP_SHEET_SNAP_STATES.EXPANDED,
 	[LOCATION_INTENT_MODES.SAVE_DETAILS]: MAP_SHEET_SNAP_STATES.EXPANDED,
+	[LOCATION_INTENT_MODES.SAVE_SUCCESS]: MAP_SHEET_SNAP_STATES.HALF,
 	[LOCATION_INTENT_MODES.SAVED_MANAGE]: MAP_SHEET_SNAP_STATES.EXPANDED,
 });
 
@@ -489,6 +490,7 @@ export default function MapLocationIntentStageBase({
 	const isNestedDecisionMode =
 		mode === LOCATION_INTENT_MODES.SAVE_CATEGORY ||
 		mode === LOCATION_INTENT_MODES.SAVE_DETAILS ||
+		mode === LOCATION_INTENT_MODES.SAVE_SUCCESS ||
 		mode === LOCATION_INTENT_MODES.SAVED_MANAGE;
 	const isHubMode =
 		mode === LOCATION_INTENT_MODES.PLACES_HUB ||
@@ -620,6 +622,8 @@ export default function MapLocationIntentStageBase({
 		: isNestedDecisionMode
 			? mode === LOCATION_INTENT_MODES.SAVE_DETAILS
 				? "Back to save categories"
+				: mode === LOCATION_INTENT_MODES.SAVE_SUCCESS
+					? "Back to location choices"
 				: mode === LOCATION_INTENT_MODES.SAVED_MANAGE
 					? "Back to saved places"
 				: "Back to selected address"
@@ -678,6 +682,12 @@ export default function MapLocationIntentStageBase({
 			return {
 				title: "Place Details",
 				subtitle: "Name This Saved Place",
+			};
+		}
+		if (mode === LOCATION_INTENT_MODES.SAVE_SUCCESS) {
+			return {
+				title: "Saved Place",
+				subtitle: "Ready To Use",
 			};
 		}
 		if (mode === LOCATION_INTENT_MODES.SAVED_MANAGE) {
