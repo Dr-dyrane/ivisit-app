@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
 import { COLORS } from "../../../../constants/colors";
@@ -17,6 +16,7 @@ import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
 import { MAP_BED_DECISION_COPY } from "./mapBedDecision.content";
 import styles from "./mapBedDecision.styles";
+import FadeEndText from "../../../ui/FadeEndText";
 
 function toAccentRgba(color, alpha) {
   if (typeof color !== "string" || !color.startsWith("#")) {
@@ -110,22 +110,14 @@ function MetaSkeleton({ style }) {
 
 function RouteMetaLine({ text, color, fadeColor }) {
   return (
-    <View style={styles.routeStopMetaWrap}>
-      <Text
-        style={[styles.routeStopMeta, { color }]}
-        numberOfLines={1}
-        ellipsizeMode="clip"
-      >
-        {text}
-      </Text>
-      <LinearGradient
-        pointerEvents="none"
-        colors={["rgba(255,255,255,0)", fadeColor]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.routeStopMetaFade}
-      />
-    </View>
+    <FadeEndText
+      text={text}
+      fadeColor={fadeColor}
+      fadeWidth={30}
+      fadeRadius={12}
+      containerStyle={styles.routeStopMetaWrap}
+      textStyle={[styles.routeStopMeta, { color }]}
+    />
   );
 }
 
@@ -168,6 +160,7 @@ export function MapBedDecisionTopSlot({
       <View style={styles.topSlotCopy}>
         <Text
           numberOfLines={1}
+          ellipsizeMode="tail"
           style={[
             styles.topSlotTitle,
             stageMetrics?.topSlot?.titleStyle,
@@ -179,6 +172,7 @@ export function MapBedDecisionTopSlot({
         {hospitalSubtext ? (
           <Text
             numberOfLines={1}
+            ellipsizeMode="tail"
             style={[
               styles.topSlotSubtitle,
               stageMetrics?.topSlot?.subtitleStyle,

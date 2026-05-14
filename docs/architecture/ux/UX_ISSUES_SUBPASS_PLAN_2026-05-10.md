@@ -740,7 +740,7 @@ Confirmed issue:
 
 - The footer dock already owned horizontal padding, so no new row inset was needed.
 - The secondary hospital exploration CTA used a fixed `50` height while the primary CTA read responsive footer metrics.
-- The secondary CTA also used fixed no-shrink behavior, which made the requested `Browse` copy more likely to crowd or squeeze the primary action.
+- The secondary CTA also used fixed no-shrink behavior, so compact exploration copy needed a calmer row-safe label.
 
 Confirmed correction:
 
@@ -753,4 +753,32 @@ Implementation rule:
 
 - Service-selection footer rows must keep a single horizontal padding owner: the footer dock.
 - Primary and secondary CTAs in the same row must share the same min-height/radius source.
-- Exploration actions should use calm, explicit copy. Use `Browse` for alternate hospital discovery.
+- Exploration actions should use calm, explicit copy. Use `Browse` for compact service-selection CTA rows; reserve fuller copy for roomier surfaces.
+
+---
+
+## Pass 19F Finding - Surface Text Resilience
+
+**Status:** shared primitive created; first high-risk emergency/map surfaces migrated.
+
+Confirmed issue:
+
+- The app had two local fade-end implementations: LocationChrome pickup subtitle and Explore Intent hospital title.
+- Many compact emergency/map surfaces still relied on raw `numberOfLines={1}`, creating harsh ellipsis or abrupt truncation.
+- Some compact controls used fixed text container heights where `minHeight` plus padding would better survive Dynamic Type.
+
+Confirmed correction:
+
+- `components/ui/FadeEndText.jsx` is now the shared dense-surface clipping primitive.
+- It preserves the full accessible label while visually clipping under a trailing non-interactive surface overlay; it does not add its own blur, border, shadow, or elevation, so existing glass/blur surfaces remain the single depth owner.
+- The overlay renders only after measured overflow; it should not appear as decoration when the label already fits.
+- Location chrome, Explore hospital hero, map search rows/chips, manual location rows/summaries, recents/history rows, ambulance/bed route labels, and legacy emergency hospital cards now use the primitive.
+- Manual location search bar changed from fixed `height` to `minHeight` plus vertical padding.
+
+Implementation rule:
+
+- For compact single-line entity labels in map/emergency sheets, prefer `FadeEndText` over visible ellipsis.
+- Call sites must pass a resolved parent surface color, not a low-alpha tint token, otherwise the fade can look like a sharp strip instead of a continuation of the surface.
+- Use `minHeight` plus padding around text-bearing controls unless the element is a deliberately compact chrome control.
+- Horizontal text rows must provide `minWidth: 0` / `flexShrink` at the copy container so text can yield before it clips.
+- Do not globally disable font scaling. Cap scaling only on tiny chrome where the control has a fixed physical contract.

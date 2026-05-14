@@ -41,6 +41,7 @@ export default function MapSheetOrchestrator({
 	onOpenSearch,
 	onOpenHospitals,
 	onChooseCare,
+	onBookVisit,
 	onOpenProfile,
 	onOpenCareHistory = () => {},
 	onOpenRecents = () => {},
@@ -514,6 +515,7 @@ export default function MapSheetOrchestrator({
 						onOpenSearch={onOpenSearch}
 						onOpenHospitals={onOpenHospitals}
 						onChooseCare={onChooseCare}
+						onBookVisit={isSignedIn ? onBookVisit : undefined}
 						onOpenProfile={onOpenProfile}
 						onOpenCareHistory={onOpenCareHistory}
 						onOpenRecents={onOpenRecents}

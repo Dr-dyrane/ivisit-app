@@ -1,7 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import EntryActionButton from "../../../entry/EntryActionButton";
 import AmbulanceTierProductGraphic from "../../../emergency/requestModal/AmbulanceTierProductGraphic";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
@@ -10,6 +9,7 @@ import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
 import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
 import styles from "./mapAmbulanceDecision.styles";
+import FadeEndText from "../../../ui/FadeEndText";
 
 function getAmbulanceTierIconName(visualProfile, isActive = false) {
   if (visualProfile?.key === "critical") {
@@ -57,22 +57,14 @@ function formatExpandedChoiceSubtext(option, fallbackPrice) {
 
 function RouteMetaLine({ text, color, fadeColor }) {
   return (
-    <View style={styles.routeStopMetaWrap}>
-      <Text
-        style={[styles.routeStopMeta, { color }]}
-        numberOfLines={1}
-        ellipsizeMode="clip"
-      >
-        {text}
-      </Text>
-      <LinearGradient
-        pointerEvents="none"
-        colors={["rgba(255,255,255,0)", fadeColor]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.routeStopMetaFade}
-      />
-    </View>
+    <FadeEndText
+      text={text}
+      fadeColor={fadeColor}
+      fadeWidth={30}
+      fadeRadius={12}
+      containerStyle={styles.routeStopMetaWrap}
+      textStyle={[styles.routeStopMeta, { color }]}
+    />
   );
 }
 
@@ -115,6 +107,7 @@ export function MapAmbulanceDecisionTopSlot({
       <View style={styles.topSlotCopy}>
         <Text
           numberOfLines={1}
+          ellipsizeMode="tail"
           style={[
             styles.topSlotTitle,
             stageMetrics?.topSlot?.titleStyle,
@@ -126,6 +119,7 @@ export function MapAmbulanceDecisionTopSlot({
         {hospitalSubtext ? (
           <Text
             numberOfLines={1}
+            ellipsizeMode="tail"
             style={[
               styles.topSlotSubtitle,
               stageMetrics?.topSlot?.subtitleStyle,

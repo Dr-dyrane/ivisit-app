@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import { MANUAL_LOCATION_STEPS } from "./mapLocationIntent.model";
 import countries from "../../../../data/countries";
+import FadeEndText from "../../../ui/FadeEndText";
 
 function findCountryFlag(countryCode) {
 	if (!countryCode) return null;
@@ -78,12 +79,22 @@ export default function ManualStepCompletedSummaries({
 
 						{/* Label + value */}
 						<View style={styles.rowCopy}>
-							<Text numberOfLines={1} style={[styles.rowLabel, { color: mutedColor }]}>
-								{stepLabelOverrides[step.key] || step.label}
-							</Text>
-							<Text numberOfLines={1} style={[styles.rowValue, { color: titleColor }]}>
-								{value}
-							</Text>
+							<FadeEndText
+								text={stepLabelOverrides[step.key] || step.label}
+								fadeColor={infoSurfaceColor}
+								fadeWidth={22}
+								fadeRadius={12}
+								containerStyle={styles.rowLineFade}
+								textStyle={[styles.rowLabel, { color: mutedColor }]}
+							/>
+							<FadeEndText
+								text={value}
+								fadeColor={infoSurfaceColor}
+								fadeWidth={28}
+								fadeRadius={12}
+								containerStyle={styles.rowLineFade}
+								textStyle={[styles.rowValue, { color: titleColor }]}
+							/>
 						</View>
 
 						{/* Edit affordance */}
@@ -123,6 +134,9 @@ const styles = StyleSheet.create({
 	},
 	rowCopy: {
 		flex: 1,
+		minWidth: 0,
+	},
+	rowLineFade: {
 		minWidth: 0,
 	},
 	rowLabel: {

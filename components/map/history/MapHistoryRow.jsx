@@ -5,6 +5,7 @@ import buildHistoryThemeTokens from "./history.theme";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { resolveHistoryRequestIcon } from "./history.presentation";
 import { historyRowStyles } from "./history.styles";
+import FadeEndText from "../../ui/FadeEndText";
 
 /**
  * MapHistoryRow
@@ -52,6 +53,9 @@ export default function MapHistoryRow({
 
 	if (!item) return null;
 
+	const textFadeColor = isDarkMode
+		? "rgba(15, 23, 42, 0.94)"
+		: "rgba(255, 255, 255, 0.94)";
 	const iconDescriptor = resolveHistoryRequestIcon(item.requestType);
 	const hasMetaBottom = Boolean(item.statusLabel) || !hideChevron;
 	const handlePress = () => {
@@ -100,9 +104,13 @@ export default function MapHistoryRow({
 			</View>
 
 			<View style={historyRowStyles.copy}>
-				<Text
-					numberOfLines={1}
-					style={[
+				<FadeEndText
+					text={item.title}
+					fadeColor={textFadeColor}
+					fadeWidth={30}
+					fadeRadius={14}
+					containerStyle={historyRowStyles.textFadeLine}
+					textStyle={[
 						historyRowStyles.title,
 						{
 							color: theme.titleColor,
@@ -110,13 +118,15 @@ export default function MapHistoryRow({
 							lineHeight: metrics.titleLineHeight,
 						},
 					]}
-				>
-					{item.title}
-				</Text>
+				/>
 				{item.subtitle ? (
-					<Text
-						numberOfLines={1}
-						style={[
+					<FadeEndText
+						text={item.subtitle}
+						fadeColor={textFadeColor}
+						fadeWidth={28}
+						fadeRadius={14}
+						containerStyle={historyRowStyles.textFadeLine}
+						textStyle={[
 							historyRowStyles.subtitle,
 							{
 								color: theme.bodyColor,
@@ -125,9 +135,7 @@ export default function MapHistoryRow({
 								marginTop: 2,
 							},
 						]}
-					>
-						{item.subtitle}
-					</Text>
+					/>
 				) : null}
 			</View>
 

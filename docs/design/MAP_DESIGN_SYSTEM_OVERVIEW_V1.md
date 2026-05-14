@@ -165,7 +165,7 @@ Current shared tokens:
 - One persistent sheet shell.
 - Modals are tasks, not separate mini-apps.
 - Supporting text should default to `400` weight unless emphasis is truly required.
-- Dense map cards should prefer a muted fade-end text treatment over visible ellipsis when a title can be clipped by trailing chrome. The local Explore Intent hospital card implementation is an interim pattern; promote it into a reusable `FadeEndText`/`ClippedTextFade` primitive before broad reuse.
+- Dense map cards should prefer a muted fade-end text treatment over visible ellipsis when a title can be clipped by trailing chrome. `components/ui/FadeEndText.jsx` is the shared primitive for this treatment. Use it for compact, single-line entity labels such as hospital names, pickup addresses, search result titles, route labels, saved places, recents, and dense header titles. The fade should render only on measured overflow, should receive the resolved parent surface color rather than a low-alpha tint, and must not add its own blur, shadow, elevation, or border. Do not use it for body copy, legal text, or values that must be fully visible immediately.
 - The map should wait for meaningful readiness, not just mount.
 - The hospital list shown on `/map` should come from the full discovered nearby set, not the display-trimmed subset.
 - Sheet phase changes should feel like one surface changing state, not a route replacement.

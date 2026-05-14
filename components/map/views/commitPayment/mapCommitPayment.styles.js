@@ -328,6 +328,13 @@ const styles = StyleSheet.create({
 		lineHeight: 18,
 		fontWeight: "700",
 	},
+	breakdownRowDiscount: {
+		color: "#10B981",
+	},
+	breakdownRowValueDiscount: {
+		color: "#10B981",
+		fontWeight: "700",
+	},
 	breakdownDivider: {
 		height: StyleSheet.hairlineWidth,
 		marginTop: 4,

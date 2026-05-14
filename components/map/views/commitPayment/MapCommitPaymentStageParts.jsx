@@ -509,16 +509,25 @@ export function MapCommitPaymentBreakdownCard({
 		<View style={[styles.breakdownCard, { backgroundColor: surfaceColor }]}>
 			<Text allowFontScaling style={[styles.breakdownTitle, { color: titleColor }]}>{title}</Text>
 			<View style={styles.breakdownList}>
-				{breakdown.map((item) => (
-					<View key={`${item.name}-${item.cost}`} style={styles.breakdownRow}>
-						<Text style={[styles.breakdownRowLabel, { color: titleColor }]}>{item.name}</Text>
-						<Text style={[styles.breakdownRowValue, { color: titleColor }]}>
-							{formatMoney(item.cost || 0, {
-								currency: item?.currency || "USD",
-							})}
-						</Text>
-					</View>
-				))}
+				{breakdown.map((item) => {
+					const isDiscount = item.type === 'discount';
+					const displayCost = isDiscount ? Math.abs(item.cost || 0) : (item.cost || 0);
+					const labelStyle = isDiscount ? styles.breakdownRowDiscount : null;
+					const valueStyle = isDiscount ? styles.breakdownRowValueDiscount : null;
+
+					return (
+						<View key={`${item.name}-${item.cost}`} style={styles.breakdownRow}>
+							<Text style={[styles.breakdownRowLabel, { color: titleColor }, labelStyle]}>
+								{item.name}
+							</Text>
+							<Text style={[styles.breakdownRowValue, { color: titleColor }, valueStyle]}>
+								{isDiscount ? '-' : ''}{formatMoney(displayCost, {
+									currency: item?.currency || "USD",
+								})}
+							</Text>
+						</View>
+					);
+				})}
 			</View>
 			<View style={[styles.breakdownDivider, { backgroundColor: dividerColor }]} />
 			<View style={styles.breakdownTotalRow}>

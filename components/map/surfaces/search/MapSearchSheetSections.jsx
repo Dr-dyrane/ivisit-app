@@ -12,6 +12,7 @@ import {
 } from "./mapSearchSheet.helpers";
 import { getMapSearchSheetResponsiveStyles, styles } from "./mapSearchSheet.styles";
 import GlassConfirmDialog from "../../../../components/ui/GlassConfirmDialog";
+import FadeEndText from "../../../ui/FadeEndText";
 
 function SheetIconTile({ children, isDarkMode, responsiveStyles }) {
 	const colors = isDarkMode
@@ -58,6 +59,9 @@ export function SearchResultRow({
 	const a11yLabel = accessibilityLabel || title;
 	const a11yHint = accessibilityHint || (subtitle ? `${subtitle}. Tap to select.` : "Tap to select.");
 	const isInteractive = typeof onPress === "function";
+	const textFadeColor = isDarkMode
+		? "rgba(15, 23, 42, 0.94)"
+		: "rgba(255, 255, 255, 0.94)";
 	const renderIcon =
 		iconType === "material" ? (
 			<MaterialCommunityIcons name={iconName} size={18} color={COLORS.brandPrimary} />
@@ -82,12 +86,14 @@ export function SearchResultRow({
 				</SheetIconTile>
 				<View style={styles.resultCopy}>
 					<View style={[styles.resultTitleRow, responsiveStyles.resultTitleRow]}>
-						<Text
-							numberOfLines={1}
-							style={[styles.resultTitle, responsiveStyles.resultTitle, { color: titleColor }]}
-						>
-							{title}
-						</Text>
+						<FadeEndText
+							text={title}
+							fadeColor={textFadeColor}
+							fadeWidth={30}
+							fadeRadius={18}
+							containerStyle={styles.resultTitleFade}
+							textStyle={[styles.resultTitle, responsiveStyles.resultTitle, { color: titleColor }]}
+						/>
 						{badgeLabel ? (
 							<View style={[styles.resultBadge, responsiveStyles.resultBadge]}>
 								<Text style={[styles.resultBadgeText, responsiveStyles.resultBadgeText]}>
@@ -97,20 +103,24 @@ export function SearchResultRow({
 						) : null}
 					</View>
 					{subtitle ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.resultSubtitle, responsiveStyles.resultSubtitle, { color: mutedColor }]}
-						>
-							{subtitle}
-						</Text>
+						<FadeEndText
+							text={subtitle}
+							fadeColor={textFadeColor}
+							fadeWidth={30}
+							fadeRadius={18}
+							containerStyle={styles.resultLineFade}
+							textStyle={[styles.resultSubtitle, responsiveStyles.resultSubtitle, { color: mutedColor }]}
+						/>
 					) : null}
 					{meta ? (
-						<Text
-							numberOfLines={1}
-							style={[styles.resultMeta, responsiveStyles.resultMeta, { color: finalMetaColor }]}
-						>
-							{meta}
-						</Text>
+						<FadeEndText
+							text={meta}
+							fadeColor={textFadeColor}
+							fadeWidth={28}
+							fadeRadius={18}
+							containerStyle={styles.resultLineFade}
+							textStyle={[styles.resultMeta, responsiveStyles.resultMeta, { color: finalMetaColor }]}
+						/>
 					) : null}
 				</View>
 			</View>
@@ -166,12 +176,14 @@ function QueryChip({ label, onPress, titleColor, surfaceColor, responsiveStyles 
 					]}
 				>
 					<Ionicons name="search-outline" size={14} color={COLORS.brandPrimary} />
-					<Text
-						numberOfLines={1}
-						style={[styles.queryChipLabel, responsiveStyles.queryChipLabel, { color: titleColor }]}
-					>
-						{label}
-					</Text>
+					<FadeEndText
+						text={label}
+						fadeColor={surfaceColor}
+						fadeWidth={26}
+						fadeRadius={16}
+						containerStyle={styles.queryChipLabelFade}
+						textStyle={[styles.queryChipLabel, responsiveStyles.queryChipLabel, { color: titleColor }]}
+					/>
 				</View>
 			)}
 		</Pressable>

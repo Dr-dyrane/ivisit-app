@@ -55,6 +55,11 @@ export const styles = StyleSheet.create({
 		fontWeight: "700",
 		maxWidth: 220,
 	},
+	queryChipLabelFade: {
+		minWidth: 0,
+		maxWidth: 220,
+		flexShrink: 1,
+	},
 	resultGroup: {
 		overflow: "hidden",
 		// Glass-style shadow for depth (backgroundColor comes from model's groupedSurface)
@@ -109,6 +114,7 @@ export const styles = StyleSheet.create({
 	},
 	resultCopy: {
 		flex: 1,
+		minWidth: 0,
 	},
 	resultTitleRow: {
 		flexDirection: "row",
@@ -120,7 +126,10 @@ export const styles = StyleSheet.create({
 		fontSize: 16,
 		lineHeight: 20,
 		fontWeight: "700",
+	},
+	resultTitleFade: {
 		flexShrink: 1,
+		minWidth: 0,
 	},
 	resultBadge: {
 		paddingHorizontal: 8,
@@ -147,6 +156,9 @@ export const styles = StyleSheet.create({
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "500",
+	},
+	resultLineFade: {
+		minWidth: 0,
 	},
 	rowDivider: {
 		height: StyleSheet.hairlineWidth,

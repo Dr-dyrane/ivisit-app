@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { triggerPress } from "../../../../services/hapticService";
 import { MAP_EXPLORE_INTENT_COPY, MAP_INTENT_VARIANTS } from "./mapExploreIntent.content";
 import styles from "./mapExploreIntent.styles";
+import FadeEndText from "../../../ui/FadeEndText";
 
 function SummaryIconTile({ children, isDarkMode, compact = false, size = null }) {
 	const colors = isDarkMode
@@ -58,41 +59,6 @@ function SummaryHeroMetric({ label, value, surfaceColor, tokens }) {
 			<Text numberOfLines={1} style={[styles.summaryHeroMetricValue, { color: tokens.titleColor }]}>
 				{value}
 			</Text>
-		</View>
-	);
-}
-
-function HospitalTitleLine({
-	children,
-	style,
-	color,
-	fadeColor,
-	isDarkMode,
-}) {
-	const transparentFade = isDarkMode ? "rgba(15,23,42,0)" : "rgba(255,255,255,0)";
-	const isWeb = Platform.OS === "web";
-	return (
-		<View style={styles.hospitalTitleClip}>
-			<Text
-				numberOfLines={isWeb ? undefined : 1}
-				ellipsizeMode="clip"
-				style={[
-					styles.hospitalTitle,
-					styles.hospitalTitleClippedText,
-					isWeb ? styles.hospitalTitleClippedTextWeb : null,
-					style,
-					{ color },
-				]}
-			>
-				{children}
-			</Text>
-			<LinearGradient
-				pointerEvents="none"
-				colors={[transparentFade, fadeColor]}
-				start={{ x: 0, y: 0 }}
-				end={{ x: 1, y: 0 }}
-				style={styles.hospitalTitleFade}
-			/>
 		</View>
 	);
 }
@@ -267,14 +233,14 @@ export default function MapExploreIntentHospitalSummaryCard({
 							<Text style={[styles.hospitalEyebrow, eyebrowTextStyle, { color: tokens.mutedText }]}>
 								{summaryEyebrow}
 							</Text>
-							<HospitalTitleLine
-								style={titleTextStyle}
-								color={tokens.titleColor}
+							<FadeEndText
+								text={nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
+								textStyle={[styles.hospitalTitle, titleTextStyle, { color: tokens.titleColor }]}
+								containerStyle={styles.hospitalTitleClip}
 								fadeColor={tokens.strongCardSurface}
-								isDarkMode={isDarkMode}
-							>
-								{nearestHospital?.name || MAP_EXPLORE_INTENT_COPY.FINDING_NEAREST_HOSPITAL}
-							</HospitalTitleLine>
+								fadeWidth={34}
+								fadeRadius={tokens.cardRadius}
+							/>
 							<Text numberOfLines={1} style={[styles.hospitalMeta, metaTextStyle, { color: tokens.bodyText }]}>
 								{summaryMetaText ||
 									(hasNearbyHospitals

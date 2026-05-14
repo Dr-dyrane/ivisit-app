@@ -430,6 +430,10 @@ export default StyleSheet.create({
 		flex: 1,
 		textAlign: "right",
 	},
+	breakdownRowValue: {
+		fontWeight: "500",
+		fontSize: 14,
+	},
 	summaryLoadingCopy: {
 		flex: 1,
 		gap: 8,
@@ -543,30 +547,8 @@ export default StyleSheet.create({
 		fontWeight: "700",
 	},
 	hospitalTitleClip: {
-		position: "relative",
-		overflow: "hidden",
 		minWidth: 0,
-		height: 26,
-	},
-	hospitalTitleClippedText: {
-		marginTop: 4,
-		zIndex: 0,
-	},
-	hospitalTitleClippedTextWeb: {
-		whiteSpace: "nowrap",
-		textOverflow: "clip",
-	},
-	hospitalTitleFade: {
-		position: "absolute",
-		top: 0,
-		right: 0,
-		bottom: 0,
-		width: 34,
-		borderTopRightRadius: 13,
-		borderBottomRightRadius: 13,
-		borderCurve: "continuous",
-		zIndex: 2,
-		elevation: 2,
+		minHeight: 26,
 	},
 	hospitalMeta: {
 		marginTop: 4,

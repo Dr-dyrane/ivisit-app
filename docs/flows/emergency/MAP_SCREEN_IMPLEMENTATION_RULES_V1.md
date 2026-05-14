@@ -1025,6 +1025,33 @@ Rules:
 - The footer dock owns horizontal padding. The row owns only the internal gap.
 - Primary and secondary CTAs in the same row must share the same `stageMetrics.footer` height and radius contract.
 - The primary CTA remains the dominant action. Secondary hospital exploration is a bounded browse pill.
-- Use `Browse` for alternate hospital discovery copy.
+- Use `Browse` for compact alternate hospital discovery copy in service-selection CTA rows.
 - Do not hardcode a secondary CTA height that can drift from the primary button.
 - Dense CTA text should shrink within one line before it clips vertically under accessibility text scaling.
+
+---
+
+## Surface Text Resilience Rule
+
+Compact emergency/map surfaces should not depend on harsh visible ellipsis for important entity labels.
+
+Rules:
+
+- Use `components/ui/FadeEndText.jsx` for dense single-line labels such as hospital names, pickup/address labels, search result titles, route labels, saved places, provider names, and compact header titles.
+- `FadeEndText` must keep the full text in `accessibilityLabel` and its overlay must use `pointerEvents="none"`.
+- `FadeEndText` must render the trailing overlay only after measured overflow. Do not show a decorative fade when the full text already fits.
+- `FadeEndText` must not add a second blur layer, shadow, elevation, or border on top of existing glass/chrome surfaces. Blur and depth remain owned by the parent surface.
+- Call sites must pass a resolved parent surface color, not a low-alpha tint token. Low-alpha tint tokens can create sharp or dirty fade edges.
+- Do not use fade-end clipping for body copy, legal copy, explanatory text, or values that must be fully visible immediately.
+- Text-bearing rows should use `minHeight` plus vertical padding instead of fixed `height` unless the surface is a deliberately compact map chrome.
+- Horizontal text rows must give the copy column `minWidth: 0` so labels can shrink before they clip.
+
+---
+
+## Explore Intent Care Actions
+
+The Explore Intent `Choose care` row is the first calm care-selection surface.
+
+Rules:
+
+- Emergency transport actions stay available to all users.

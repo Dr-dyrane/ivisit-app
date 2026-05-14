@@ -25,6 +25,9 @@ export const historyRowStyles = StyleSheet.create({
 		flex: 1,
 		minWidth: 0,
 	},
+	textFadeLine: {
+		minWidth: 0,
+	},
 	title: {
 		fontWeight: "500",
 	},

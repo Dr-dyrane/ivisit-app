@@ -89,12 +89,10 @@ export default function HelpSupportActionIsland({
 
       <View
         style={{
-          borderRadius: 24,
+          borderRadius: metrics.radii.xl,
           padding: metrics.spacing.lg,
-          gap: metrics.spacing.md,
+          gap: metrics.spacing.lg,
           backgroundColor: theme.card,
-          borderWidth: 1,
-          borderColor: theme.border,
         }}
       >
         <IslandStat

@@ -7,8 +7,6 @@ import styles from "./mapExploreIntent.styles";
 import IntentOrb from "../../shared/IntentOrb";
 import IntentCard from "../../shared/IntentCard";
 
-
-
 export default function MapExploreIntentCareSection({
 	layoutMode = "canonical",
 	selectedCare,
@@ -43,7 +41,7 @@ export default function MapExploreIntentCareSection({
 	const notReadyStyle = !isNetworkDataReady && !selectedCare ? { opacity: 0.46 } : null;
 
 	if (layoutMode === "panel") {
-			return (
+		return (
 			<>
 				<Pressable
 					onPress={onOpenCareHistory}
@@ -100,10 +98,10 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentPanelHalf, styles.intentPanelHalfLeading]}>
 							<IntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-							subtext={bedSubtext}
-							iconName="bed"
-							colors={["#5F748E", "#4C6078"]}
-							panelBias="leading"
+								subtext={bedSubtext}
+								iconName="bed"
+								colors={["#5F748E", "#4C6078"]}
+								panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}
 								showSubtext={false}
@@ -172,9 +170,9 @@ export default function MapExploreIntentCareSection({
 						<View style={[styles.intentActionHalf, styles.intentActionHalfLeading]}>
 							<IntentCard
 								label={MAP_EXPLORE_INTENT_COPY.BED_SPACE}
-						subtext={bedSubtext}
-						iconName="bed"
-						colors={["#5F748E", "#4C6078"]}
+								subtext={bedSubtext}
+								iconName="bed"
+								colors={["#5F748E", "#4C6078"]}
 								panelBias="leading"
 								onPress={() => onChooseCare("bed")}
 								isSelected={selectedCare === "bed"}

@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { getMapRenderTokens } from "../tokens/mapRenderTokens";
 import { triggerPress } from "../../../services/hapticService";
+import FadeEndText from "../../ui/FadeEndText";
 
 const squircle = (radius) => ({
     borderRadius: radius,
@@ -19,35 +20,6 @@ const squircle = (radius) => ({
 const COMPACT_WIDTH = 46;
 const EXPANDED_WIDTH = 176;
 const CHIP_HEIGHT = 46;
-
-function PickupSubtitleLine({ children, color, fadeColor, isDarkMode }) {
-    const transparentFade = isDarkMode ? "rgba(15,23,42,0)" : "rgba(255,255,255,0)";
-    const isWeb = Platform.OS === "web";
-
-    return (
-        <View style={styles.pickupSubtitleClip}>
-            <Text
-                numberOfLines={isWeb ? undefined : 1}
-                ellipsizeMode="clip"
-                style={[
-                    styles.pickupSubtitle,
-                    styles.pickupSubtitleClippedText,
-                    isWeb ? styles.pickupSubtitleClippedTextWeb : null,
-                    { color },
-                ]}
-            >
-                {children}
-            </Text>
-            <LinearGradient
-                pointerEvents="none"
-                colors={[transparentFade, fadeColor]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pickupSubtitleFade}
-            />
-        </View>
-    );
-}
 
 /**
  * LocationChrome - Floating chrome for location change affordance
@@ -258,17 +230,20 @@ const LocationChrome = ({
                         >
                             <Text
                                 numberOfLines={1}
+                                maxFontSizeMultiplier={1.2}
                                 style={[styles.pickupTitle, { color: mutedTextColor }]}
                             >
                                 {pickupTitle}
                             </Text>
-                            <PickupSubtitleLine
-                                color={textColor}
+                            <FadeEndText
+                                text={pickupSubtitle}
+                                textStyle={[styles.pickupSubtitle, { color: textColor }]}
+                                containerStyle={styles.pickupSubtitleClip}
                                 fadeColor={subtitleFadeColor}
-                                isDarkMode={isDarkMode}
-                            >
-                                {pickupSubtitle}
-                            </PickupSubtitleLine>
+                                fadeWidth={24}
+                                fadeRadius={9}
+                                textProps={{ maxFontSizeMultiplier: 1.2 }}
+                            />
                         </Animated.View>
                         <Animated.View
                             pointerEvents="none"
@@ -347,29 +322,8 @@ const styles = StyleSheet.create({
         fontWeight: "800",
     },
     pickupSubtitleClip: {
-        position: "relative",
-        overflow: "hidden",
         minWidth: 0,
-        height: 18,
-    },
-    pickupSubtitleClippedText: {
-        zIndex: 0,
-    },
-    pickupSubtitleClippedTextWeb: {
-        whiteSpace: "nowrap",
-        textOverflow: "clip",
-    },
-    pickupSubtitleFade: {
-        position: "absolute",
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 24,
-        borderTopRightRadius: 9,
-        borderBottomRightRadius: 9,
-        borderCurve: "continuous",
-        zIndex: 2,
-        elevation: 2,
+        minHeight: 18,
     },
     chevronSlot: {
         width: 18,

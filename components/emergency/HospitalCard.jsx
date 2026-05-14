@@ -4,6 +4,7 @@ import { Ionicons, Fontisto } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
+import FadeEndText from "../ui/FadeEndText";
 
 export default function HospitalCard({
 	hospital,
@@ -59,6 +60,9 @@ export default function HospitalCard({
 		? (isDarkMode ? COLORS.bgDarkAlt : COLORS.bgLightAlt)
 		: (isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)");
 	const activeBG = isSelected ? selectedSurface : defaultSurface;
+	const cardTextFadeColor = isSelected
+		? (isDarkMode ? "rgba(48, 24, 28, 0.94)" : "rgba(252, 244, 244, 0.94)")
+		: (isDarkMode ? "rgba(15, 23, 42, 0.94)" : "rgba(248, 250, 252, 0.94)");
 	const shadowLayerColor = isSelected
 		? (isDarkMode ? "rgba(134, 16, 14, 0.20)" : "rgba(134, 16, 14, 0.12)")
 		: (isDarkMode ? "rgba(0, 0, 0, 0.22)" : "rgba(15, 23, 42, 0.10)");
@@ -144,9 +148,14 @@ export default function HospitalCard({
 			<View style={styles.content}>
 				<View style={styles.titleRow}>
 					<View style={styles.nameWrap}>
-						<Text style={[styles.name, { color: textColor }]} numberOfLines={1}>
-							{hospitalName}
-						</Text>
+						<FadeEndText
+							text={hospitalName}
+							fadeColor={cardTextFadeColor}
+							fadeWidth={34}
+							fadeRadius={18}
+							containerStyle={styles.nameFade}
+							textStyle={[styles.name, { color: textColor }]}
+						/>
 					</View>
 					<View style={styles.ratingBox}>
 						<Ionicons name="star" size={14} color="#FFC107" />
@@ -155,10 +164,14 @@ export default function HospitalCard({
 				</View>
 
 				{/* Restored Specialty Slice Logic */}
-				<Text style={[styles.specialties, { color: mutedColor }]} numberOfLines={1}>
-					{hospitalSpecialties.length > 0 ? hospitalSpecialties.slice(0, 3).join(" • ") : "General Care"}
-				</Text>
-
+				<FadeEndText
+					text={hospitalSpecialties.length > 0 ? hospitalSpecialties.slice(0, 3).join(" \u2022 ") : "General Care"}
+					fadeColor={cardTextFadeColor}
+					fadeWidth={30}
+					fadeRadius={16}
+					containerStyle={styles.specialtiesFade}
+					textStyle={[styles.specialties, { color: mutedColor }]}
+				/>
 				{/* Stats Pills */}
 				{!hideDistanceEta && (
 					<View style={styles.pillRow}>
@@ -329,6 +342,7 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		flex: 1,
+		minWidth: 0,
 		marginRight: 10,
 	},
 	demoIconBadge: {
@@ -347,9 +361,13 @@ const styles = StyleSheet.create({
 	},
 	name: {
 		fontSize: 20,
+		lineHeight: 25,
 		fontWeight: "800",
-		flex: 1,
 		letterSpacing: -0.5,
+	},
+	nameFade: {
+		flex: 1,
+		minWidth: 0,
 	},
 	ratingText: {
 		fontSize: 14,
@@ -357,7 +375,11 @@ const styles = StyleSheet.create({
 	},
 	specialties: {
 		fontSize: 13,
+		lineHeight: 18,
 		fontWeight: "500",
+	},
+	specialtiesFade: {
+		minWidth: 0,
 		marginBottom: 16,
 	},
 	pillRow: {
@@ -379,12 +401,13 @@ const styles = StyleSheet.create({
 	},
 	primaryAction: {
 		backgroundColor: COLORS.brandPrimary,
-		height: 64, // Manifesto: Larger touch target
+		minHeight: 64, // Manifesto: Larger touch target
 		borderRadius: 24, // Manifesto: Card-in-Card
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
 		paddingHorizontal: 24,
+		paddingVertical: 14,
 		flex: 1,
 		shadowColor: COLORS.brandPrimary, // Manifesto: Active Glow
 		shadowOffset: { width: 0, height: Platform.OS === "android" ? 3 : 8 },
@@ -396,12 +419,16 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
+		flex: 1,
+		minWidth: 0,
 	},
 	actionText: {
 		color: "#FFFFFF",
 		fontSize: 16, // Manifesto: Larger text
+		lineHeight: 20,
 		fontWeight: "900", // Manifesto: Action Text
 		letterSpacing: 0.5,
+		flexShrink: 1,
 	},
 	actionRow: {
 		flexDirection: "row",

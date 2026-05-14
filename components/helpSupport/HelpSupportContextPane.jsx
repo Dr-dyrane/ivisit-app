@@ -62,8 +62,6 @@ export default function HelpSupportContextPane({
         padding: metrics.spacing.lg,
         gap: metrics.spacing.lg,
         backgroundColor: theme.card,
-        borderWidth: 1,
-        borderColor: theme.border,
       }}
     >
       <View style={{ gap: metrics.spacing.sm }}>

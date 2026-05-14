@@ -354,6 +354,30 @@ export async function calculateEmergencyCost(requestData) {
       ...(serviceFee > 0 ? [{ name: 'Service Fee', cost: serviceFee, type: 'fee' }] : []),
     ];
 
+    // PULLBACK NOTE: Extract regional discount metadata for UI display
+    // OLD: discount metadata not passed through from RPC
+    // NEW: extract regional_discount_applied, regional_discount_factor, pre_discount_amount from cost.metadata
+    const metadata = cost.metadata || {};
+    const regionalDiscountApplied = metadata.regional_discount_applied === true;
+    const regionalDiscountFactor = metadata.regional_discount_factor;
+    const preDiscountAmount = metadata.pre_discount_amount;
+
+    // Add discount row to breakdown if regional discount applied
+    if (regionalDiscountApplied && preDiscountAmount != null && regionalDiscountFactor != null) {
+      const discountAmount = preDiscountAmount - total;
+      const discountPercent = Math.round((1 - regionalDiscountFactor) * 100);
+      breakdown.push({
+        name: `Regional Discount (${discountPercent}% off)`,
+        cost: -discountAmount,
+        type: 'discount',
+        metadata: {
+          regional_discount_applied: true,
+          regional_discount_factor: regionalDiscountFactor,
+          pre_discount_amount: preDiscountAmount
+        }
+      });
+    }
+
     return {
       totalCost: total,
       total_cost: total,
@@ -362,7 +386,12 @@ export async function calculateEmergencyCost(requestData) {
       base_cost: baseCost,
       distance_surcharge: distanceSurcharge,
       urgency_surcharge: urgencySurcharge,
-      service_fee: serviceFee
+      service_fee: serviceFee,
+      metadata: {
+        regional_discount_applied: regionalDiscountApplied,
+        regional_discount_factor: regionalDiscountFactor,
+        pre_discount_amount: preDiscountAmount
+      }
     };
   } catch (err) {
     console.error('[pricingService] Error calculating cost via RPC:', err);

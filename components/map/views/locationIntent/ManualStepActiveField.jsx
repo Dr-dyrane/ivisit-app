@@ -12,10 +12,11 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import CountryFlagGlyph from "../../../register/CountryFlagGlyph";
 import countries from "../../../../data/countries";
+import FadeEndText from "../../../ui/FadeEndText";
 
 // -- Country row ---------------------------------------------------------------
 
-function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, accentColor }) {
+function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, accentColor, fadeColor }) {
 	return (
 		<Pressable
 			onPress={() => onSelect(item)}
@@ -28,9 +29,14 @@ function CountryRow({ item, isSelected, onSelect, titleColor, mutedColor, accent
 			]}
 		>
 			<CountryFlagGlyph flag={item.flag} code={item.code} size={22} />
-			<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
-				{item.name}
-			</Text>
+			<FadeEndText
+				text={item.name}
+				fadeColor={fadeColor}
+				fadeWidth={28}
+				fadeRadius={14}
+				containerStyle={styles.resultLineFade}
+				textStyle={[styles.resultPrimary, { color: titleColor }]}
+			/>
 			{isSelected ? (
 				<MaterialCommunityIcons name="check-circle" size={18} color={accentColor || titleColor} />
 			) : null}
@@ -111,6 +117,7 @@ function SelectSearchDrop({
 							titleColor={titleColor}
 							mutedColor={mutedColor}
 							accentColor={accentColor}
+							fadeColor={infoSurfaceColor}
 						/>
 						{idx < list.length - 1 ? (
 							<View style={[styles.divider, { backgroundColor: mutedColor + "18" }]} />
@@ -129,7 +136,7 @@ function SelectSearchDrop({
 
 // -- Mapbox search-drop (state / city / street) -------------------------------
 
-function PlaceRow({ item, onSelect, titleColor, mutedColor }) {
+function PlaceRow({ item, onSelect, titleColor, mutedColor, fadeColor }) {
 	const primary = item.primaryText || item.name || "";
 	const secondary = item.secondaryText || item.description || "";
 
@@ -147,13 +154,23 @@ function PlaceRow({ item, onSelect, titleColor, mutedColor }) {
 				<MaterialCommunityIcons name="map-marker-outline" size={15} color={mutedColor} />
 			</View>
 			<View style={styles.resultCopy}>
-				<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
-					{primary}
-				</Text>
+				<FadeEndText
+					text={primary}
+					fadeColor={fadeColor}
+					fadeWidth={30}
+					fadeRadius={14}
+					containerStyle={styles.resultLineFade}
+					textStyle={[styles.resultPrimary, { color: titleColor }]}
+				/>
 				{secondary ? (
-					<Text numberOfLines={1} style={[styles.resultSecondary, { color: mutedColor }]}>
-						{secondary}
-					</Text>
+					<FadeEndText
+						text={secondary}
+						fadeColor={fadeColor}
+						fadeWidth={28}
+						fadeRadius={14}
+						containerStyle={styles.resultLineFade}
+						textStyle={[styles.resultSecondary, { color: mutedColor }]}
+					/>
 				) : null}
 			</View>
 		</Pressable>
@@ -239,6 +256,7 @@ function SearchDrop({
 								onSelect={onSelect}
 								titleColor={titleColor}
 								mutedColor={mutedColor}
+								fadeColor={infoSurfaceColor}
 							/>
 							{idx < dropResults.length - 1 ? (
 								<View style={[styles.divider, { backgroundColor: mutedColor + "18" }]} />
@@ -271,12 +289,22 @@ function SearchDrop({
 						<MaterialCommunityIcons name="pencil-outline" size={15} color={accentColor || mutedColor} />
 					</View>
 					<View style={styles.resultCopy}>
-						<Text numberOfLines={1} style={[styles.resultPrimary, { color: titleColor }]}>
-							Continue with "{trimmedQuery}"
-						</Text>
-						<Text numberOfLines={1} style={[styles.resultSecondary, { color: mutedColor }]}>
-							We will check the pickup area next
-						</Text>
+						<FadeEndText
+							text={`Continue with "${trimmedQuery}"`}
+							fadeColor={infoSurfaceColor}
+							fadeWidth={30}
+							fadeRadius={14}
+							containerStyle={styles.resultLineFade}
+							textStyle={[styles.resultPrimary, { color: titleColor }]}
+						/>
+						<FadeEndText
+							text="We will check the pickup area next"
+							fadeColor={infoSurfaceColor}
+							fadeWidth={28}
+							fadeRadius={14}
+							containerStyle={styles.resultLineFade}
+							textStyle={[styles.resultSecondary, { color: mutedColor }]}
+						/>
 					</View>
 				</Pressable>
 			) : null}
@@ -370,10 +398,11 @@ const styles = StyleSheet.create({
 		gap: 6,
 	},
 	searchBar: {
-		height: 48,
+		minHeight: 48,
 		borderRadius: 999,
 		borderCurve: "continuous",
 		paddingHorizontal: 16,
+		paddingVertical: 8,
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 10,
@@ -427,6 +456,9 @@ const styles = StyleSheet.create({
 	},
 	resultCopy: {
 		flex: 1,
+		minWidth: 0,
+	},
+	resultLineFade: {
 		minWidth: 0,
 	},
 	resultPrimary: {

@@ -13,8 +13,6 @@ function SectionShell({ title, actionLabel, onAction, theme, metrics, children }
         padding: metrics.spacing.lg,
         gap: metrics.spacing.md,
         backgroundColor: theme.card,
-        borderWidth: 1,
-        borderColor: theme.border,
       }}
     >
       <View

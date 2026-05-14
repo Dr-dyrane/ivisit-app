@@ -35,12 +35,14 @@ const styles = StyleSheet.create({
 	},
 	topSlotCopy: {
 		flex: 1,
+		minWidth: 0,
 		paddingHorizontal: 12,
 		alignItems: "center",
 	},
 	topSlotTitle: {
 		...TITLE_TEXT,
 		textAlign: "center",
+		alignSelf: "stretch",
 	},
 	topSlotSubtitle: {
 		fontSize: 12,
@@ -49,6 +51,7 @@ const styles = StyleSheet.create({
 		color: COLORS.textSecondary,
 		marginTop: 2,
 		textAlign: "center",
+		alignSelf: "stretch",
 	},
 	closeButton: {
 		width: 38,
@@ -236,16 +239,6 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		lineHeight: 17,
 		fontWeight: "400",
-	},
-	routeStopMetaFade: {
-		position: "absolute",
-		top: "50%",
-		right: 0,
-		marginTop: -8,
-		width: 24,
-		height: 16,
-		borderRadius: 8,
-		borderCurve: "continuous",
 	},
 	routeMetrics: {
 		marginLeft: 10,
