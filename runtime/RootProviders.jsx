@@ -8,9 +8,23 @@ import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProviders } from "../providers/AppProviders";
 import { GlobalLocationProvider } from "../contexts/GlobalLocationContext";
+import { useTheme } from "../contexts/ThemeContext";
 import GlobalErrorBoundary from "../components/GlobalErrorBoundary";
 import ThemeToggle from "../components/ThemeToggle";
 import { RootBootstrapEffects } from "./RootBootstrapEffects";
+import { getRootSurfaceColor } from "../constants/appSurfaces";
+
+function RootProviderSurface({ children }) {
+  const { isDarkMode } = useTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: getRootSurfaceColor(isDarkMode) }}>
+      <RootBootstrapEffects />
+      {children}
+      <ThemeToggle showLabel={false} />
+    </View>
+  );
+}
 
 /**
  * RootProviders - Provider composition + runtime bootstrap host
@@ -36,11 +50,7 @@ export function RootProviders({ children }) {
       <GlobalErrorBoundary>
         <GlobalLocationProvider>
           <AppProviders>
-            <View style={{ flex: 1 }}>
-              <RootBootstrapEffects />
-              {children}
-              <ThemeToggle showLabel={false} />
-            </View>
+            <RootProviderSurface>{children}</RootProviderSurface>
           </AppProviders>
         </GlobalLocationProvider>
       </GlobalErrorBoundary>

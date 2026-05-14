@@ -10,6 +10,7 @@ import React from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useTheme } from "../contexts/ThemeContext";
+import { getRootSurfaceColor } from "../constants/appSurfaces";
 import { useInitialRoute } from "./navigation/useInitialRoute";
 import { OTAModalLayer } from "./OTAModalLayer";
 import { useRoutePersistence } from "./navigation/useRoutePersistence";
@@ -34,6 +35,7 @@ import { useAuthRouting } from "./navigation/useAuthRouting";
  */
 export function RootNavigator() {
 	const { isDarkMode } = useTheme();
+	const rootSurfaceColor = getRootSurfaceColor(isDarkMode);
 
 	// Routing hooks - each owns one concern
 	// NOTE: Auth redirects are handled by route group layouts, not here
@@ -45,9 +47,14 @@ export function RootNavigator() {
 		<>
 			<StatusBar
 				style={isDarkMode ? "light" : "dark"}
-				backgroundColor={isDarkMode ? "#0D121D" : "#FFFFFF"}
+				backgroundColor={rootSurfaceColor}
 			/>
-			<Stack screenOptions={{ headerShown: false }}>
+			<Stack
+				screenOptions={{
+					headerShown: false,
+					contentStyle: { backgroundColor: rootSurfaceColor },
+				}}
+			>
 				<Stack.Screen name="auth/callback" options={{ headerShown: false }} />
 				<Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
 				<Stack.Screen name="(auth)" />

@@ -6,10 +6,12 @@ import { useEffect } from "react";
 import { AuthProviders } from "../../providers/AuthProviders";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
 import { useFABActions } from "../../contexts/FABContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import ScrollAwareHeader from "../../components/headers/ScrollAwareHeader";
 import WebAppShell from "../../components/web/WebAppShell";
 import GlobalFAB from "../../components/navigation/GlobalFAB";
 import { getHeaderBehavior } from "../../constants/header";
+import { getMapEntrySurfaceColor, getRootSurfaceColor } from "../../constants/appSurfaces";
 
 function AuthStackScreens() {
 	const segments = useSegments();
@@ -18,6 +20,10 @@ function AuthStackScreens() {
 	const isFullCanvasAuthRoute =
 		segments?.[0] === "(auth)" &&
 		(authLeaf === "index" || authLeaf === "map");
+	const { isDarkMode } = useTheme();
+	const authSurfaceColor = isMapRoute
+		? getMapEntrySurfaceColor(isDarkMode)
+		: getRootSurfaceColor(isDarkMode);
 	const { enterStack, exitStack } = useFABActions();
 
 	useEffect(() => {
@@ -31,9 +37,14 @@ function AuthStackScreens() {
 			variant="auth"
 			surfaceMode={isFullCanvasAuthRoute ? "none" : "surface"}
 		>
-			<View style={styles.container}>
+			<View style={[styles.container, { backgroundColor: authSurfaceColor }]}>
 				<AuthHeaderWrapper />
-				<Stack screenOptions={{ headerShown: false }}>
+				<Stack
+					screenOptions={{
+						headerShown: false,
+						contentStyle: { backgroundColor: authSurfaceColor },
+					}}
+				>
 					<Stack.Screen name="index" options={{ headerShown: false }} />
 					<Stack.Screen name="map" options={{ headerShown: false }} />
 					<Stack.Screen name="login" options={{ headerShown: false }} />

@@ -1,8 +1,10 @@
 // app/runtime/RootRuntimeGate.jsx
 import React, { useState, useEffect } from "react";
-import { View } from "react-native";
+import { useColorScheme, View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { appMigrationsService } from "../services/appMigrationsService";
+import { database, StorageKeys } from "../database";
+import { getRootSurfaceColor, resolveThemeModeIsDark } from "../constants/appSurfaces";
 // PULLBACK NOTE: Phase 6a — hydrate modeStore on startup before app renders
 // OLD: mode was hydrated inside EmergencyContext on mount (deferred, race-prone)
 // NEW: hydrateModeStore() runs in prepare() — deterministic, before first render
@@ -31,6 +33,8 @@ let isSplashPrevented = false;
  */
 export function RootRuntimeGate({ children }) {
   const [isReady, setIsReady] = useState(false);
+  const deviceTheme = useColorScheme();
+  const [isDarkSurface, setIsDarkSurface] = useState(deviceTheme === "dark");
 
   useEffect(() => {
     let isMounted = true;
@@ -42,6 +46,14 @@ export function RootRuntimeGate({ children }) {
             console.warn("[RootRuntimeGate] SplashScreen error:", e.message);
           });
           isSplashPrevented = true;
+        }
+
+        const savedThemeMode = await database
+          .read(StorageKeys.THEME, "system")
+          .catch(() => "system");
+
+        if (isMounted) {
+          setIsDarkSurface(resolveThemeModeIsDark(savedThemeMode, deviceTheme));
         }
 
         // Run migrations and schema reload on startup
@@ -83,5 +95,9 @@ export function RootRuntimeGate({ children }) {
   }, [isReady]);
 
   // Render children only when ready
-  return <View style={{ flex: 1 }}>{isReady ? children : null}</View>;
+  return (
+    <View style={{ flex: 1, backgroundColor: getRootSurfaceColor(isDarkSurface) }}>
+      {isReady ? children : null}
+    </View>
+  );
 }

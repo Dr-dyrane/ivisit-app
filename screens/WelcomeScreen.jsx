@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from "react";
-import { Animated } from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useWelcomeExitTransition } from "../hooks/ui/useWelcomeExitTransition";
 import { useAtom } from "jotai";
@@ -7,9 +7,11 @@ import { WELCOME_COPY } from "../components/welcome/welcomeContent";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useGlobalLocation } from "../contexts/GlobalLocationContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { useLocationStore } from "../stores/locationStore";
 import { isOpeningEmergencyAtom } from "../atoms/welcomeScreenAtoms";
 import WelcomeScreenOrchestrator from "../components/welcome/WelcomeScreenOrchestrator";
+import { getMapEntrySurfaceColor, getRootSurfaceColor } from "../constants/appSurfaces";
 
 const WelcomeScreen = () => {
 	const router = useRouter();
@@ -17,8 +19,13 @@ const WelcomeScreen = () => {
 	const { setHeaderState } = useHeaderState();
 	const { resetHeader } = useScrollAwareHeader();
 	const { userLocation } = useGlobalLocation();
+	const { isDarkMode } = useTheme();
 	const setUserLocationStore = useLocationStore((s) => s.setUserLocation);
 	const { screenOpacity, startExitTransition, resetOpacity } = useWelcomeExitTransition();
+	const handoffCoverOpacity = screenOpacity.interpolate({
+		inputRange: [0, 1],
+		outputRange: [1, 0],
+	});
 
 	useFocusEffect(
 		useCallback(() => {
@@ -52,10 +59,12 @@ const WelcomeScreen = () => {
 	const handleIntentPress = (intent) => {
 		if (intent === "emergency") {
 			setIsOpeningEmergency(true);
-			startExitTransition(
-				() => router.replace("/(auth)/map"),
-				{ onRecovery: () => setIsOpeningEmergency(false) },
-			);
+			requestAnimationFrame(() => {
+				startExitTransition(
+					() => router.replace("/(auth)/map"),
+					{ onRecovery: () => setIsOpeningEmergency(false) },
+				);
+			});
 			return;
 		}
 
@@ -66,16 +75,37 @@ const WelcomeScreen = () => {
 	};
 
 	return (
-		<Animated.View style={{ flex: 1, opacity: screenOpacity }}>
-			<WelcomeScreenOrchestrator
-				onRequestHelp={() => handleIntentPress("emergency")}
-				onFindHospitalBed={() => handleIntentPress("bed")}
-				onSignIn={() => router.push("/(auth)/login")}
-				primaryActionLabel={isOpeningEmergency ? WELCOME_COPY.openingLabel : undefined}
-				isRequestOpening={isOpeningEmergency}
-			/>
-		</Animated.View>
+		<View style={[styles.root, { backgroundColor: getRootSurfaceColor(isDarkMode) }]}>
+			<Animated.View style={{ flex: 1, opacity: screenOpacity }}>
+				<WelcomeScreenOrchestrator
+					onRequestHelp={() => handleIntentPress("emergency")}
+					onFindHospitalBed={() => handleIntentPress("bed")}
+					onSignIn={() => router.push("/(auth)/login")}
+					primaryActionLabel={isOpeningEmergency ? WELCOME_COPY.openingLabel : undefined}
+					isRequestOpening={isOpeningEmergency}
+				/>
+			</Animated.View>
+			{isOpeningEmergency ? (
+				<Animated.View
+					pointerEvents="auto"
+					style={[
+						styles.handoffCover,
+						{ backgroundColor: getMapEntrySurfaceColor(isDarkMode) },
+						{ opacity: handoffCoverOpacity },
+					]}
+				/>
+			) : null}
+		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	root: {
+		flex: 1,
+	},
+	handoffCover: {
+		...StyleSheet.absoluteFillObject,
+	},
+});
 
 export default WelcomeScreen;
