@@ -164,8 +164,7 @@ export function useMapFocusedState({
         user: u,
       });
     }
-    // ambulance_00 faces North, so fallback should be North.
-    return 0;
+    return null;
   }, [
     activeMapRequest?.raw?.activeAmbulanceTrip,
     activeLocation,

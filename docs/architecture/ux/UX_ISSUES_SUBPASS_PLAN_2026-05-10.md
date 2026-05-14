@@ -705,3 +705,26 @@ Done when:
 - All `🔴 Open` issues in §1 are moved to ✅
 - No C-1 through C-6 items remain in the open deferred list
 - LocationSheet passes have unblocked UX-E
+
+---
+
+## Pass 19B Finding - Ambulance Sprite First-Paint Direction
+
+**Status:** commit-payment preview fixed; tracking animation follow-up recommended.
+
+Confirmed issue:
+
+- The ambulance sprite uses 16 pre-rendered directional buckets.
+- `0` means north/up and is a valid direction, not an unknown value.
+- In commit-payment preview, a missing heading fallback of `0` caused the ambulance to face north even when pickup was south/lower than the hospital.
+
+Confirmed correction:
+
+- `useMapFocusedState` now returns `null` when it cannot compute ambulance heading.
+- `EmergencyLocationPreviewMap` then computes the preview heading from hospital -> pickup using its own selected hospital and pickup coordinates.
+
+Tracking follow-up:
+
+- `useAmbulanceAnimation` still initializes heading to `responderHeading` or `0`.
+- If there is no live responder heading, the tracking marker can briefly paint north before the route lookahead heading is calculated.
+- Recommended next pass: seed tracking animation heading synchronously from route start -> lookahead before the first marker render.

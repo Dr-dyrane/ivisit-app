@@ -722,6 +722,22 @@ This is the current element inventory to reference during cleanup or global cons
 ### Suppressed internals
 - `EmergencyLocationPreviewMap` internal skeleton exists but is disabled on `/map` via `showInternalSkeleton={false}`
 
+## 15. Ambulance Sprite Heading Rule
+
+Ambulance map markers use pre-rendered directional sprite buckets, not a rotated single marker.
+
+Rules:
+
+- `0` is a real heading that means north/up; it must not be used as an "unknown" fallback.
+- unknown ambulance heading should remain `null` until a real bearing can be computed.
+- commit-payment ambulance preview heading is hospital -> pickup, not tracking animation state.
+- `useMapFocusedState` may pass a finite live responder heading when one exists; otherwise it should return `null` and let `EmergencyLocationPreviewMap` compute the preview bearing from its selected hospital and pickup coordinates.
+- tracking animation heading should be seeded from route start -> lookahead before the first marker paint, so the sprite does not briefly default north before animation starts.
+
+Confirmed fix:
+
+- commit-payment preview no longer treats missing heading as `0`; this prevents the ambulance from facing north when the pickup is south/lower than the hospital.
+
 ## 14. Readiness Rule
 
 `/map` is only ready when:
