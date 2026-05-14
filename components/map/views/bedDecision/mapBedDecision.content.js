@@ -10,7 +10,7 @@ export const MAP_BED_DECISION_COPY = {
   CONTINUING_CTA: "Continuing...",
   RECOVER_CTA: "Choose another hospital",
   UNAVAILABLE_CTA: "No bed available",
-  OTHER_HOSPITALS_CTA: "Other hospitals",
+  OTHER_HOSPITALS_CTA: "Browse",
   SAVED_TRANSPORT_STEP: "Step 2 of 2",
   SAVED_TRANSPORT_TITLE: "Transport saved",
   SAVED_TRANSPORT_FALLBACK: "Selected in the previous step",

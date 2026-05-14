@@ -38,6 +38,7 @@ Before any pass begins, confirm these items are shipped and do not re-touch them
 | Explore Intent `reduceMotion` gate + spring selection (E-2.6, E-2.8) | `MapExploreIntentStageBase.jsx`, `MapExploreIntentCareSection.jsx` | ✅ DONE (HIG Pass B) |
 | Explore Intent skeleton timeout fallback + orb dimming (E-2.9, E-2.10) | `MapExploreIntentHospitalSummaryCard.jsx`, `MapExploreIntentCareSection.jsx` | ✅ DONE (HIG Pass C) |
 | Explore Intent accessibility labels + live region (E-2.11–2.13) | `MapExploreIntentCareSection.jsx`, `MapExploreIntentHospitalSummaryCard.jsx` | ✅ DONE (HIG Pass D) |
+| Service selection footer dock horizontal padding removed | `mapBedDecision.styles.js`, `mapAmbulanceDecision.styles.js`, `useMapStageResponsiveMetrics.js`, `MapBedDecisionStageParts.jsx`, `MapAmbulanceDecisionStageParts.jsx` | ✅ DONE (Quick fix — CTA row full-width without overflow) |
 
 ---
 
@@ -728,3 +729,28 @@ Tracking follow-up:
 - `useAmbulanceAnimation` still initializes heading to `responderHeading` or `0`.
 - If there is no live responder heading, the tracking marker can briefly paint north before the route lookahead heading is calculated.
 - Recommended next pass: seed tracking animation heading synchronously from route start -> lookahead before the first marker render.
+
+---
+
+## Pass 19C Finding - Service Selection CTA Row
+
+**Status:** ambulance and bed decision footer rows refined.
+
+Confirmed issue:
+
+- The footer dock already owned horizontal padding, so no new row inset was needed.
+- The secondary hospital exploration CTA used a fixed `50` height while the primary CTA read responsive footer metrics.
+- The secondary CTA also used fixed no-shrink behavior, which made the requested `Browse` copy more likely to crowd or squeeze the primary action.
+
+Confirmed correction:
+
+- Ambulance and bed decision rows now share one CTA height/radius contract from `stageMetrics.footer`.
+- Secondary exploration copy is now `Browse`.
+- The browse pill can shrink within a bounded max width while the primary CTA keeps the main action slot.
+- CTA labels use one-line scale-down behavior instead of vertical clipping under larger accessibility text.
+
+Implementation rule:
+
+- Service-selection footer rows must keep a single horizontal padding owner: the footer dock.
+- Primary and secondary CTAs in the same row must share the same min-height/radius source.
+- Exploration actions should use calm, explicit copy. Use `Browse` for alternate hospital discovery.

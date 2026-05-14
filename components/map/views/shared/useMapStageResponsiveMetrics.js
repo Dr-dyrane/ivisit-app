@@ -206,9 +206,12 @@ export default function useMapStageResponsiveMetrics({
 					height: round(clamp(viewportHeight * 0.068, 52, 60)),
 				},
 			},
+			// PULLBACK NOTE: Remove horizontal padding from footer dock for full-width CTA row
+			// OLD: paddingHorizontal: round(clamp(baseWidth * 0.03, 10, 14))
+			// NEW: paddingHorizontal: 0
 			footer: {
 				dockStyle: {
-					paddingHorizontal: round(clamp(baseWidth * 0.03, 10, 14)),
+					paddingHorizontal: 0,
 					paddingTop: round(clamp(viewportHeight * 0.009, 6, 10)),
 					paddingBottom: round(clamp(viewportHeight * 0.012, 8, 12)),
 				},

@@ -14,7 +14,7 @@ export const MAP_AMBULANCE_DECISION_COPY = {
   CONTINUING_CTA: "Continuing...",
   RECOVER_CTA: "Choose another hospital",
   UNAVAILABLE_CTA: "No dispatch available",
-  OTHER_HOSPITALS_CTA: "Other hospitals",
+  OTHER_HOSPITALS_CTA: "Browse",
   SERVICE_DETAILS_CTA: "Details",
   COMBINED_STEP_SUBTITLE: "Step 1 of 2 · Choose transport",
   CURRENT_PILL: "Current",

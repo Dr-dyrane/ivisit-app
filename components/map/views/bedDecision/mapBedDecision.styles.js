@@ -522,8 +522,11 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "500",
 	},
+	// PULLBACK NOTE: Remove horizontal padding from footer dock for full-width CTA row
+	// OLD: paddingHorizontal: 12
+	// NEW: paddingHorizontal: 0
 	footerDock: {
-		paddingHorizontal: 12,
+		paddingHorizontal: 0,
 		paddingTop: 8,
 		paddingBottom: 10,
 	},
@@ -532,7 +535,7 @@ const styles = StyleSheet.create({
 	// NEW: footerRow flex-row, secondaryAction shrinks left, primaryButtonFlex grows right
 	footerRow: {
 		flexDirection: "row",
-		alignItems: "center",
+		alignItems: "stretch",
 		gap: 8,
 	},
 	primaryButton: {
@@ -541,25 +544,29 @@ const styles = StyleSheet.create({
 	},
 	primaryButtonFlex: {
 		flex: 1,
+		minWidth: 0,
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 18,
 	},
 	secondaryAction: {
-		height: 50,
-		paddingHorizontal: 14,
-		borderRadius: 25,
+		minHeight: 50,
+		minWidth: 96,
+		maxWidth: "48%",
+		paddingHorizontal: 12,
 		borderCurve: "continuous",
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
-		gap: 6,
-		flexShrink: 0,
+		gap: 5,
+		flexShrink: 1,
 	},
 	secondaryActionText: {
 		fontSize: 14,
 		lineHeight: 18,
 		fontWeight: "700",
 		color: COLORS.brandPrimary,
+		flexShrink: 1,
+		minWidth: 0,
 	},
 	// PULLBACK NOTE: UX-A — expand affordance (HALF snap "More details" row)
 	expandAffordance: {

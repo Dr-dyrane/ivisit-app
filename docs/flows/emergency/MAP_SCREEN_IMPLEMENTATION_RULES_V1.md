@@ -1013,3 +1013,18 @@ That is the current standard.
 **Files Modified:**
 - `screens/MapScreen.jsx`
 - `hooks/map/exploreFlow/useMapExploreFlow.js`
+
+---
+
+## Service Selection CTA Row Rule
+
+Decision footers for ambulance and bed selection use a compact two-action row when hospital browsing is available.
+
+Rules:
+
+- The footer dock owns horizontal padding. The row owns only the internal gap.
+- Primary and secondary CTAs in the same row must share the same `stageMetrics.footer` height and radius contract.
+- The primary CTA remains the dominant action. Secondary hospital exploration is a bounded browse pill.
+- Use `Browse` for alternate hospital discovery copy.
+- Do not hardcode a secondary CTA height that can drift from the primary button.
+- Dense CTA text should shrink within one line before it clips vertically under accessibility text scaling.

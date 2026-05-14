@@ -715,31 +715,41 @@ export function MapAmbulanceDecisionFooter({
       ? onOpenHospitals
       : undefined;
   const primaryDisabled = isAdvancing || (!canConfirm && !usesRecoveryAction);
+  const hasBrowseAction = canBrowseHospitals && canConfirm;
+  const buttonHeight = stageMetrics?.footer?.buttonHeight || 50;
+  const buttonRadius =
+    stageMetrics?.footer?.buttonRadius || Math.round(buttonHeight / 2);
 
   return (
-    // PULLBACK NOTE: UX service selection footer — horizontal row CTA
-    // OLD: full-width primary stacked above secondary below
-    // NEW: secondary pill left + primary right in a single flex row
+    // PULLBACK NOTE: UX service selection footer — horizontal row CTA, no max width constraint
+    // OLD: modalContainedStyle applied (maxWidth constraint in modal mode)
+    // NEW: no modalContainedStyle on footer, allows full width without overflow
     <View
       style={[
         styles.footerDock,
         stageMetrics?.footer?.dockStyle,
-        modalContainedStyle,
       ]}
     >
       <View style={styles.footerRow}>
-        {canBrowseHospitals && canConfirm ? (
+        {hasBrowseAction ? (
           <Pressable
             onPress={onOpenHospitals}
             style={({ pressed }) => [
               styles.secondaryAction,
               {
+                minHeight: buttonHeight,
+                borderRadius: buttonRadius,
                 opacity: pressed ? 0.88 : 1,
                 backgroundColor: "rgba(134,16,14,0.08)",
               },
             ]}
           >
-            <Text style={styles.secondaryActionText} numberOfLines={1}>
+            <Text
+              style={styles.secondaryActionText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+            >
               {MAP_AMBULANCE_DECISION_COPY.OTHER_HOSPITALS_CTA}
             </Text>
             <Ionicons
@@ -753,12 +763,14 @@ export function MapAmbulanceDecisionFooter({
           label={primaryLabel}
           onPress={primaryPress}
           variant={canConfirm || usesRecoveryAction ? "primary" : "secondary"}
-          height={stageMetrics?.footer?.buttonHeight || 50}
-          radius={stageMetrics?.footer?.buttonRadius || 24}
-          fullWidth={!(canBrowseHospitals && canConfirm)}
+          height={buttonHeight}
+          radius={buttonRadius}
+          fullWidth={!hasBrowseAction}
+          minWidth={hasBrowseAction ? 0 : undefined}
+          contentPaddingHorizontal={hasBrowseAction ? 14 : 20}
           disabled={primaryDisabled}
           loading={isAdvancing}
-          style={canBrowseHospitals && canConfirm ? styles.primaryButtonFlex : styles.primaryButton}
+          style={hasBrowseAction ? styles.primaryButtonFlex : styles.primaryButton}
         />
       </View>
     </View>
