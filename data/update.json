@@ -1,11 +1,27 @@
 {
-  "_lastCommitHash": "ff583cd",
-  "_lastCommitDate": "2026-05-14T13:57:00-07:00",
+  "_lastCommitHash": "59931c1",
+  "_lastCommitDate": "2026-05-14T22:15:19-07:00",
   "version": "1.0.5",
   "date": "2026-05-14",
-  "title": "Visit Detail Return + History Filter UI",
-  "summary": "Source-aware visit detail return behavior, history modal filter pills matching hospital list UI, ambulance heading hierarchy fix, and consolidated map stability improvements.",
+  "title": "Payment Method Expansion + Ambulance Route Heading",
+  "summary": "Payment hero method pill expansion, platform-aware payment glass, ambulance sprite route-flow handoff, and recent map/payment text resilience and state-flow fixes.",
   "changes": [
+    {
+      "type": "feature",
+      "message": "Added tappable commit-payment hero method pill so Cash, Wallet, or card meta expands the payment sheet and scrolls to the payment method section."
+    },
+    {
+      "type": "improvement",
+      "message": "Moved commit-payment selector expansion state to the payment sheet owner, prevented auto-default payment selection from collapsing an explicitly opened selector, and fixed embedded payment list rendering by using a plain content view when inner scrolling is disabled."
+    },
+    {
+      "type": "improvement",
+      "message": "Updated commit-payment surfaces to reuse platform-aware payment glass tokens, including readable hero meta text colors for Android, iOS, and web."
+    },
+    {
+      "type": "fix",
+      "message": "Added a route-flow heading bridge for payment-to-tracking ambulance handoff and keyed ambulance marker rendering by sprite bucket so native/web marker image caches repaint without requiring Metro reload."
+    },
     {
       "type": "refactor",
       "message": "Separated live heading from preview fallback in ambulance tracking: split previewServiceMarkerHeading into fallbackServiceMarkerHeading (computed) and previewServiceMarkerHeading (live-aware), added orientRouteTowardPickup helper for route reversal logic, fixed heading hierarchy so live responder heading only applies when hasLiveResponder is true, added hasLiveResponder guard to useAmbulanceAnimation initialHeading and responder heading updates."
