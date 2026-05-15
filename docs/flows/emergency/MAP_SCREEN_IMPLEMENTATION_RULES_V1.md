@@ -744,12 +744,16 @@ Rules:
 - tracking animation heading should be seeded from route start -> lookahead before the first marker paint, so the sprite does not briefly default north before animation starts.
 - tracking animation should face route traffic flow from the first hospital -> pickup route segment, because movement and the polyline explain temporary turns away from the user.
 - `useAmbulanceAnimation` should only let `responderHeading` override route-flow heading when it is paired with a valid live responder coordinate; stale preview headings must not override animation flow.
+- the payment -> tracking handoff must switch sprite heading ownership immediately: tracking may use route-flow heading before animation duration reconciliation finishes, but payment must keep the user-facing confidence cue.
+- ambulance marker render signatures must include the sprite bucket, not only coordinate changes, so native/web marker image caches repaint when heading ownership changes.
 
 Confirmed fix:
 
 - commit-payment preview no longer treats missing heading as `0`; this prevents the ambulance from facing north when the pickup is south/lower than the hospital.
 - commit-payment preview keeps the static ambulance pointed toward the user for confidence before dispatch/tracking.
 - tracking animation now ignores unpaired/stale responder headings, so route-flow heading owns the first animated sprite paint until live responder telemetry exists.
+- tracking phase now bridges route-flow heading during the animation readiness gap, preventing the payment user-facing angle from persisting until Metro reload.
+- ambulance marker remount/render pulse now keys by sprite bucket, so payment -> tracking direction changes do not require a Metro reload.
 
 ## 14. Readiness Rule
 

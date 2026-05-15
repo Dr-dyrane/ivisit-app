@@ -304,29 +304,12 @@ export const useAmbulanceAnimation = ({
 	const onAmbulanceUpdateRef = useRef(onAmbulanceUpdate);
 	const routeSignature = buildRouteSignature(routeCoordinates);
 
-	useEffect(() => {
-		routeCoordinatesRef.current = routeCoordinates;
-	}, [routeCoordinates]);
-
-	useEffect(() => {
-		etaSecondsRef.current = ambulanceTripEtaSeconds;
-	}, [ambulanceTripEtaSeconds]);
-
-	useEffect(() => {
-		initialProgressRef.current = initialProgress;
-	}, [initialProgress]);
-
-	useEffect(() => {
-		onAmbulanceUpdateRef.current = onAmbulanceUpdate;
-	}, [onAmbulanceUpdate]);
-
-	useEffect(() => {
-		responderLocationRef.current = responderLocation;
-	}, [responderLocation]);
-
-	useEffect(() => {
-		responderHeadingRef.current = responderHeading;
-	}, [responderHeading]);
+	routeCoordinatesRef.current = routeCoordinates;
+	etaSecondsRef.current = ambulanceTripEtaSeconds;
+	initialProgressRef.current = initialProgress;
+	onAmbulanceUpdateRef.current = onAmbulanceUpdate;
+	responderLocationRef.current = responderLocation;
+	responderHeadingRef.current = responderHeading;
 
 	const stopAmbulanceAnimation = useCallback(() => {
 		animationRunIdRef.current += 1;

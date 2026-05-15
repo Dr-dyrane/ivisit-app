@@ -725,6 +725,8 @@ Confirmed correction:
 - `EmergencyLocationPreviewMap` then computes the preview heading from hospital -> pickup using its own selected hospital and pickup coordinates.
 - Payment preview intentionally keeps the static ambulance facing the pickup/user as a confidence cue before tracking begins.
 - `useAmbulanceAnimation` now treats responder heading as live telemetry only when a valid responder coordinate exists; otherwise animation first paint follows route-flow heading.
+- Tracking handoff now has a route-flow heading bridge, so the sprite direction changes with the tracking sheet state even before animation duration reconciliation completes.
+- Ambulance marker render signatures now include sprite bucket changes, preventing cached marker images from holding the payment-facing sprite until Metro reload.
 
 Tracking follow-up:
 

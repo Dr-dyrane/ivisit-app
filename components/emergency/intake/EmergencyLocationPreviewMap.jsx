@@ -17,7 +17,10 @@ import {
 import MapControls from "../../map/chrome/MapControls";
 import LocationChrome from "../../map/chrome/LocationChrome";
 import { getMapRenderTokens } from "../../map/mapRenderTokens";
-import { getAmbulanceSpriteForHeading } from "../../map/RouteLayer";
+import {
+  getAmbulanceSpriteBucketForHeading,
+  getAmbulanceSpriteForHeading,
+} from "../../map/RouteLayer";
 import {
   darkAndroidMapStyle,
   darkMapStyle,
@@ -336,6 +339,21 @@ function orientRouteTowardPickup(routeCoordinates = [], hospitalCoordinate = nul
   return firstDistanceToHospital <= lastDistanceToHospital
     ? points
     : [...points].reverse();
+}
+
+function getRouteTrafficFlowHeading(routeCoordinates = []) {
+  const points = normalizeRoutePayloadCoordinates(routeCoordinates);
+  if (points.length < 2) return null;
+
+  const start = points[0];
+  for (let index = 1; index < points.length; index += 1) {
+    const next = points[index];
+    if (distanceMetersBetween(start, next) < 2) continue;
+    const heading = calculateBearing(start, next);
+    return Number.isFinite(heading) ? heading : null;
+  }
+
+  return null;
 }
 
 function extractDistanceKmFromLabel(distanceLabel) {
@@ -700,6 +718,25 @@ export default function EmergencyLocationPreviewMap({
     hasLiveResponderCoordinate,
     serviceMarkerHeading,
   ]);
+  const trackingRouteFlowCoordinates = useMemo(
+    () =>
+      activeTracking && serviceMarkerKind === "ambulance"
+        ? orientRouteTowardPickup(
+            routeBoundsCoordinates,
+            selectedHospitalCoordinate,
+          )
+        : [],
+    [
+      activeTracking,
+      routeBoundsCoordinates,
+      selectedHospitalCoordinate,
+      serviceMarkerKind,
+    ],
+  );
+  const trackingRouteFlowHeading = useMemo(
+    () => getRouteTrafficFlowHeading(trackingRouteFlowCoordinates),
+    [trackingRouteFlowCoordinates],
+  );
   const fallbackRouteInfo = useMemo(
     () =>
       hasRouteTargetMismatch
@@ -800,12 +837,29 @@ export default function EmergencyLocationPreviewMap({
       : previewServiceMarkerCoordinate;
   const effectiveServiceMarkerHeading =
     serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
-      ? animatedAmbulanceHeading
+      ? !hasLiveResponderCoordinate &&
+        !animatedAmbulanceCoordinate &&
+        Number.isFinite(trackingRouteFlowHeading)
+        ? trackingRouteFlowHeading
+        : Number.isFinite(animatedAmbulanceHeading)
+        ? animatedAmbulanceHeading
+        : trackingRouteFlowHeading
+      : serviceMarkerKind === "ambulance" &&
+          activeTracking &&
+          Number.isFinite(trackingRouteFlowHeading)
+        ? trackingRouteFlowHeading
       : previewServiceMarkerHeading;
   const effectiveAmbulanceMarkerImage = useMemo(
     () =>
       serviceMarkerKind === "ambulance"
         ? getAmbulanceSpriteForHeading(effectiveServiceMarkerHeading)
+        : null,
+    [effectiveServiceMarkerHeading, serviceMarkerKind],
+  );
+  const effectiveAmbulanceSpriteBucket = useMemo(
+    () =>
+      serviceMarkerKind === "ambulance"
+        ? getAmbulanceSpriteBucketForHeading(effectiveServiceMarkerHeading)
         : null,
     [effectiveServiceMarkerHeading, serviceMarkerKind],
   );
@@ -820,9 +874,10 @@ export default function EmergencyLocationPreviewMap({
         `user@${toMarkerPulseCoordinateKey(userCoordinate)}`,
         `service:${serviceMarkerKind}@${toMarkerPulseCoordinateKey(
           effectiveServiceMarkerCoordinate,
-        )}`,
+        )}:${effectiveAmbulanceSpriteBucket ?? "none"}`,
       ].join("|"),
     [
+      effectiveAmbulanceSpriteBucket,
       effectiveServiceMarkerCoordinate,
       selectedHospitalCoordinate,
       serviceMarkerKind,
@@ -1298,6 +1353,7 @@ export default function EmergencyLocationPreviewMap({
         {effectiveServiceMarkerCoordinate &&
         serviceMarkerKind === "ambulance" ? (
           <Marker
+            key={`ambulance-${effectiveAmbulanceSpriteBucket ?? "unknown"}`}
             coordinate={effectiveServiceMarkerCoordinate}
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={140}
