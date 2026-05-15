@@ -755,6 +755,20 @@ Confirmed fix:
 - tracking phase now bridges route-flow heading during the animation readiness gap, preventing the payment user-facing angle from persisting until Metro reload.
 - ambulance marker remount/render pulse now keys by sprite bucket, so payment -> tracking direction changes do not require a Metro reload.
 
+## 16. Commit Payment Method Expansion Rule
+
+Payment hero method meta is an action, not passive metadata.
+
+Rules:
+
+- tapping the hero method pill (`Cash`, `Wallet`, or card label) should expand the payment sheet and scroll to the payment methods section.
+- payment method expansion state belongs to the commit-payment sheet owner, not hidden selector-local state.
+- default/auto payment selection must not immediately collapse an explicitly opened payment selector; only user selection or `Done` should collapse it.
+- embedded payment method lists in map sheets should let the outer sheet own scrolling on native, avoiding nested fixed-height scroll clipping.
+- when an embedded payment list disables inner scrolling, it must render as a plain content view rather than a disabled `ScrollView`; disabled scroll containers can collapse/blank on web after loading skeletons.
+- selector/card containers must not clip expanded method content on iOS/Android; use visible overflow and native elevation/z-index where needed.
+- commit-payment glass surfaces should use `getPaymentGlassTokens`, not ad-hoc liquid glass colors, so Android receives opaque simulated glass while iOS/web keep platform-appropriate glass.
+
 ## 14. Readiness Rule
 
 `/map` is only ready when:

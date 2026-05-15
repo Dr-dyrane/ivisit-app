@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
 	ActivityIndicator,
 	Image,
@@ -403,30 +403,33 @@ export function MapCommitPaymentSelectorCard({
 	description,
 	selectedMethod,
 	onMethodSelect,
+	expanded = false,
+	onExpandedChange,
 	cost,
 	hospitalId,
 	organizationId,
 	simulatePayments,
 	demoCashOnly,
 }) {
-	const [isExpanded, setIsExpanded] = useState(false);
 	const paymentSummary = useMemo(
 		() => formatPaymentMethodSummary(selectedMethod),
 		[selectedMethod],
 	);
-	const shouldShowSelector = isExpanded || !selectedMethod;
+	const shouldShowSelector = expanded || !selectedMethod;
 	const handleExpand = useCallback(() => {
-		setIsExpanded(true);
-	}, []);
+		onExpandedChange?.(true);
+	}, [onExpandedChange]);
 	const handleCollapse = useCallback(() => {
-		if (selectedMethod) setIsExpanded(false);
-	}, [selectedMethod]);
+		if (selectedMethod) onExpandedChange?.(false);
+	}, [onExpandedChange, selectedMethod]);
 	const handleSelectMethod = useCallback(
-		(method) => {
+		(method, meta = null) => {
 			onMethodSelect?.(method);
-			setIsExpanded(false);
+			if (meta?.source !== "auto") {
+				onExpandedChange?.(false);
+			}
 		},
-		[onMethodSelect],
+		[onExpandedChange, onMethodSelect],
 	);
 
 	return (
@@ -469,6 +472,8 @@ export function MapCommitPaymentSelectorCard({
 						simulatePayments={simulatePayments}
 						preferCashFirst={simulatePayments}
 						demoCashOnly={demoCashOnly}
+						scrollEnabled={false}
+						style={styles.embeddedPaymentMethods}
 					/>
 				</View>
 			) : (
@@ -684,8 +689,10 @@ export function MapCommitPaymentHeroBlade({
 	subtitle,
 	rightMeta,
 	rightMetaIcon = "card",
+	onRightMetaPress,
 	gradientColors = null,
 	metaSurfaceColor = "rgba(255,255,255,0.15)",
+	metaTextColor = "#FFFFFF",
 	avatarSurfaceColor = null,
 	avatarIconColor = "#FFFFFF",
 	glowColor = null,
@@ -742,21 +749,27 @@ export function MapCommitPaymentHeroBlade({
 					) : null}
 				</View>
 				{rightMeta ? (
-					<View
-						style={[
+					<Pressable
+						onPress={onRightMetaPress}
+						disabled={!onRightMetaPress}
+						accessibilityRole="button"
+						accessibilityLabel={`Change payment method: ${rightMeta}`}
+						hitSlop={8}
+						style={({ pressed }) => [
 							styles.paymentHeroRight,
 							{ backgroundColor: metaSurfaceColor },
+							pressed && onRightMetaPress ? styles.paymentHeroRightPressed : null,
 						]}
 					>
-						<Ionicons name={rightMetaIcon} size={13} color="#FFFFFF" />
+						<Ionicons name={rightMetaIcon} size={13} color={metaTextColor} />
 						<Text
 							numberOfLines={1}
 							maxFontSizeMultiplier={1.2}
-							style={styles.paymentHeroRightText}
+							style={[styles.paymentHeroRightText, { color: metaTextColor }]}
 						>
 							{rightMeta}
 						</Text>
-					</View>
+					</Pressable>
 				) : null}
 			</View>
 		</View>

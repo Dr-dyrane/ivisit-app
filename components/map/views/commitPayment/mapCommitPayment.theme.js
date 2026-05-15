@@ -1,21 +1,17 @@
 import { Platform } from "react-native";
+import { getPaymentGlassTokens } from "../../../payment/tokens/paymentGlassTokens";
 
 export function buildCommitPaymentThemeTokens({ isDarkMode, tokens }) {
 	const isAndroid = Platform.OS === "android";
+	const glassTokens = getPaymentGlassTokens({ isDarkMode });
 
 	return {
 		titleColor: tokens.titleColor,
 		mutedColor: tokens.mutedText,
 		closeSurface: tokens.closeSurface,
-		surfaceColor: isDarkMode
-			? "rgba(255,255,255,0.06)"
-			: "rgba(255,255,255,0.72)",
-		heroSurfaceColor: isDarkMode
-			? "rgba(8,15,27,0.76)"
-			: "rgba(248,250,252,0.92)",
-		secondarySurfaceColor: isDarkMode
-			? "rgba(255,255,255,0.05)"
-			: "rgba(248,250,252,0.92)",
+		surfaceColor: glassTokens.glassSurface,
+		heroSurfaceColor: glassTokens.glassSurface,
+		secondarySurfaceColor: glassTokens.glassOverlay,
 		dividerColor: isDarkMode
 			? "rgba(255,255,255,0.08)"
 			: "rgba(15,23,42,0.08)",
@@ -29,22 +25,21 @@ export function buildCommitPaymentThemeTokens({ isDarkMode, tokens }) {
 		heroPrimarySurfaceColor: isDarkMode ? "#A11412" : "#B91C1C",
 		errorColor: isDarkMode ? "#FCA5A5" : "#B91C1C",
 		infoColor: isDarkMode ? "#CBD5E1" : "#475569",
-		selectorSummarySurfaceColor: isDarkMode
-			? "rgba(255,255,255,0.065)"
-			: "rgba(15,23,42,0.045)",
+		selectorSummarySurfaceColor: glassTokens.iconSurface,
 		selectorChangePillSurfaceColor: isDarkMode
 			? "rgba(248,113,113,0.14)"
 			: "rgba(134,16,14,0.10)",
 		heroMetaSurfaceColor: isAndroid
 			? isDarkMode
-				? "rgba(15,23,42,0.52)"
-				: "rgba(134,16,14,0.18)"
-			: "rgba(255,255,255,0.16)",
+				? glassTokens.iconSurface
+				: "rgba(255,255,255,0.84)"
+			: glassTokens.iconSurface,
+		heroMetaTextColor: isDarkMode ? "#FFFFFF" : "#7F1D1D",
 		heroAvatarSurfaceColor: isAndroid
 			? isDarkMode
 				? "rgba(180,35,24,0.92)"
 				: "rgba(180,35,24,0.88)"
-			: "rgba(255,255,255,0.18)",
+			: glassTokens.iconSurface,
 		heroGlowColor: isAndroid
 			? isDarkMode
 				? "rgba(248,113,113,0.20)"

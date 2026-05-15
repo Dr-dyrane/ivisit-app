@@ -36,6 +36,7 @@ const PaymentMethodSelector = ({
   showAddButton = true,
   isManagementMode = false,
   refreshTrigger,
+  scrollEnabled = true,
   style
 }) => {
   const { isDarkMode } = useTheme();
@@ -136,7 +137,7 @@ const PaymentMethodSelector = ({
           finalMethods[0];
 
         if (defaultMethod && (!selectedMethod || selectedMethod.id !== defaultMethod.id)) {
-          onMethodSelect(defaultMethod);
+          onMethodSelect(defaultMethod, { source: "auto" });
         }
       }
     } catch (error) {
@@ -152,7 +153,7 @@ const PaymentMethodSelector = ({
       const newMethod = await paymentService.addPaymentMethod(paymentMethod);
       setPaymentMethods(prev => [newMethod, ...prev]);
       setShowAddModal(false);
-      onMethodSelect(newMethod);
+      onMethodSelect(newMethod, { source: "user" });
       invalidatePaymentMethods();
       invalidateWalletBalance();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -209,7 +210,7 @@ const PaymentMethodSelector = ({
               invalidatePaymentMethods();
               invalidateWalletBalance();
               if (selectedMethod?.id === method.id) {
-                onMethodSelect(null);
+                onMethodSelect(null, { source: "user" });
               }
             } catch (error) {
               Alert.alert('Error', error.message);
@@ -256,7 +257,7 @@ const PaymentMethodSelector = ({
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             springSelect(method.id);
-            onMethodSelect(method);
+            onMethodSelect(method, { source: "user" });
             if (isManagementMode) {
               handleSetDefault(method);
             }
@@ -362,31 +363,41 @@ const PaymentMethodSelector = ({
     );
   }
 
+  const methodItems = (
+    <>
+      {paymentMethods.map(renderPaymentMethod)}
+
+      {showAddButton && !(simulatePayments && demoCashOnly) && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.addCard, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setShowAddModal(true);
+          }}
+        >
+          <View style={styles.addCardContent}>
+            <Ionicons name="add-circle" size={24} color={COLORS.brandPrimary} />
+            <Text style={styles.addCardText}>ADD PAYMENT METHOD</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+    </>
+  );
+
   return (
     <View style={[styles.container, style]}>
-      <ScrollView
-        style={styles.methodsList}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {paymentMethods.map(renderPaymentMethod)}
-
-        {showAddButton && !(simulatePayments && demoCashOnly) && (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.addCard, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setShowAddModal(true);
-            }}
-          >
-            <View style={styles.addCardContent}>
-              <Ionicons name="add-circle" size={24} color={COLORS.brandPrimary} />
-              <Text style={styles.addCardText}>ADD PAYMENT METHOD</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+      {scrollEnabled ? (
+        <ScrollView
+          style={styles.methodsList}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        >
+          {methodItems}
+        </ScrollView>
+      ) : (
+        <View style={styles.listContent}>{methodItems}</View>
+      )}
 
       <Modal
         visible={showAddModal}

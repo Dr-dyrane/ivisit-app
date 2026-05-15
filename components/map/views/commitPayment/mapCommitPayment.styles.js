@@ -228,7 +228,9 @@ const styles = StyleSheet.create({
 	selectorCard: {
 		paddingHorizontal: 14,
 		paddingVertical: 16,
-		overflow: "hidden",
+		overflow: "visible",
+		zIndex: 20,
+		elevation: 20,
 		...squircle(28),
 	},
 	selectorHeader: {
@@ -258,6 +260,14 @@ const styles = StyleSheet.create({
 	},
 	selectorBody: {
 		marginTop: 12,
+		overflow: "visible",
+		zIndex: 21,
+		elevation: 21,
+	},
+	embeddedPaymentMethods: {
+		flex: 0,
+		flexGrow: 0,
+		flexShrink: 0,
 	},
 	paymentSummaryRow: {
 		marginTop: 12,
@@ -283,14 +293,13 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 		letterSpacing: -0.18,
 	},
-	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: minHeight 38 (below 44pt) NEW: 44pt minimum tap target
 	paymentChangePill: {
-		minHeight: 44,
-		paddingHorizontal: 15,
+		minHeight: 34,
+		paddingHorizontal: 13,
 		alignItems: "center",
 		justifyContent: "center",
 		flexShrink: 0,
-		...squircle(19),
+		...squircle(17),
 	},
 	paymentChangeText: {
 		fontSize: 13,
@@ -581,8 +590,11 @@ const styles = StyleSheet.create({
 		paddingVertical: 8,
 		...squircle(17),
 	},
+	paymentHeroRightPressed: {
+		opacity: 0.9,
+		transform: [{ scale: 0.98 }],
+	},
 	paymentHeroRightText: {
-		color: "#FFFFFF",
 		fontSize: 12,
 		lineHeight: 15,
 		fontWeight: "500",

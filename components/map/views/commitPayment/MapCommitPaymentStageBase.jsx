@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import MapSheetShell from "../../MapSheetShell";
@@ -131,6 +131,7 @@ export default function MapCommitPaymentStageBase({
 		selectorSummarySurfaceColor,
 		selectorChangePillSurfaceColor,
 		heroMetaSurfaceColor,
+		heroMetaTextColor,
 		heroAvatarSurfaceColor,
 		heroGlowColor,
 		warningColor,
@@ -211,6 +212,7 @@ export default function MapCommitPaymentStageBase({
 	});
 
 	const paymentSelectorOffsetRef = useRef(270);
+	const [paymentSelectorExpanded, setPaymentSelectorExpanded] = useState(false);
 	const hospitalImageSource = getHospitalHeroSource(hospital);
 	const transportImageSource = getHospitalDetailServiceImageSource(
 		transport || {},
@@ -264,6 +266,7 @@ export default function MapCommitPaymentStageBase({
 
 	const openPaymentSelector = useCallback(() => {
 		clearFeedback();
+		setPaymentSelectorExpanded(true);
 
 		if (
 			canToggleSnapState &&
@@ -435,8 +438,10 @@ export default function MapCommitPaymentStageBase({
 					subtitle={paymentHeroSubtitle}
 					rightMeta={paymentHeroMeta.label}
 					rightMetaIcon={paymentHeroMeta.icon}
+					onRightMetaPress={openPaymentSelector}
 					gradientColors={paymentHeroGradientColors}
 					metaSurfaceColor={heroMetaSurfaceColor}
+					metaTextColor={heroMetaTextColor}
 					backgroundColor={heroSurfaceColor}
 					accentColor={heroPrimarySurfaceColor}
 					avatarSurfaceColor={heroAvatarSurfaceColor}
@@ -471,6 +476,8 @@ export default function MapCommitPaymentStageBase({
 							description=""
 							selectedMethod={selectedPaymentMethod}
 							onMethodSelect={handlePaymentMethodSelect}
+							expanded={paymentSelectorExpanded}
+							onExpandedChange={setPaymentSelectorExpanded}
 							cost={estimatedCost}
 							hospitalId={hospital?.id || null}
 							organizationId={hospital?.organization_id || hospital?.organizationId || null}
