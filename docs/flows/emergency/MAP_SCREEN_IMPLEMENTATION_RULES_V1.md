@@ -739,12 +739,17 @@ Rules:
 - `0` is a real heading that means north/up; it must not be used as an "unknown" fallback.
 - unknown ambulance heading should remain `null` until a real bearing can be computed.
 - commit-payment ambulance preview heading is hospital -> pickup, not tracking animation state.
+- commit-payment ambulance preview is a reassurance cue, so the static sprite should face the pickup/user even if the first road segment initially heads away.
 - `useMapFocusedState` may pass a finite live responder heading when one exists; otherwise it should return `null` and let `EmergencyLocationPreviewMap` compute the preview bearing from its selected hospital and pickup coordinates.
 - tracking animation heading should be seeded from route start -> lookahead before the first marker paint, so the sprite does not briefly default north before animation starts.
+- tracking animation should face route traffic flow from the first hospital -> pickup route segment, because movement and the polyline explain temporary turns away from the user.
+- `useAmbulanceAnimation` should only let `responderHeading` override route-flow heading when it is paired with a valid live responder coordinate; stale preview headings must not override animation flow.
 
 Confirmed fix:
 
 - commit-payment preview no longer treats missing heading as `0`; this prevents the ambulance from facing north when the pickup is south/lower than the hospital.
+- commit-payment preview keeps the static ambulance pointed toward the user for confidence before dispatch/tracking.
+- tracking animation now ignores unpaired/stale responder headings, so route-flow heading owns the first animated sprite paint until live responder telemetry exists.
 
 ## 14. Readiness Rule
 

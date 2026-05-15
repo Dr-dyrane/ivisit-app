@@ -271,12 +271,17 @@ export const useAmbulanceAnimation = ({
 	responderHeading,
 	onAmbulanceUpdate,
 }) => {
+	const hasLiveResponder = Boolean(
+		responderLocation &&
+			Number.isFinite(responderLocation.latitude) &&
+			Number.isFinite(responderLocation.longitude)
+	);
 	const initialHeading = useMemo(
 		() =>
-			Number.isFinite(responderHeading)
+			hasLiveResponder && Number.isFinite(responderHeading)
 				? responderHeading
 				: getInitialRouteHeading(routeCoordinates, initialProgress),
-		[initialProgress, responderHeading, routeCoordinates]
+		[hasLiveResponder, initialProgress, responderHeading, routeCoordinates]
 	);
 	const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
 	// PULLBACK NOTE: UX ambulance sprite initial heading
@@ -298,11 +303,6 @@ export const useAmbulanceAnimation = ({
 	const initialProgressRef = useRef(initialProgress);
 	const onAmbulanceUpdateRef = useRef(onAmbulanceUpdate);
 	const routeSignature = buildRouteSignature(routeCoordinates);
-	const hasLiveResponder = Boolean(
-		responderLocation &&
-			Number.isFinite(responderLocation.latitude) &&
-			Number.isFinite(responderLocation.longitude)
-	);
 
 	useEffect(() => {
 		routeCoordinatesRef.current = routeCoordinates;
@@ -357,7 +357,10 @@ export const useAmbulanceAnimation = ({
 		}
 
 		const initialResponderLocation = responderLocationRef.current;
-		const initialResponderHeading = responderHeadingRef.current;
+		const initialResponderHeading =
+			initialResponderLocation && Number.isFinite(responderHeadingRef.current)
+				? responderHeadingRef.current
+				: null;
 		const responderProjection = initialResponderLocation
 			? getNearestRouteProjection(routeProfile, initialResponderLocation)
 			: null;
@@ -505,10 +508,16 @@ export const useAmbulanceAnimation = ({
 			setAmbulanceCoordinate(null);
 			lastRouteDistanceRef.current = null;
 		}
-		if (Number.isFinite(responderHeading)) {
+		if (hasLiveResponder && Number.isFinite(responderHeading)) {
 			setHeadingIfChanged(setAmbulanceHeading, responderHeading);
 		}
-	}, [animateAmbulance, responderLocation, responderHeading, routeCoordinates]);
+	}, [
+		animateAmbulance,
+		hasLiveResponder,
+		responderLocation,
+		responderHeading,
+		routeCoordinates,
+	]);
 
 	return {
 		ambulanceCoordinate,

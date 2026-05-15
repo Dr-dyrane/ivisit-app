@@ -723,12 +723,12 @@ Confirmed correction:
 
 - `useMapFocusedState` now returns `null` when it cannot compute ambulance heading.
 - `EmergencyLocationPreviewMap` then computes the preview heading from hospital -> pickup using its own selected hospital and pickup coordinates.
+- Payment preview intentionally keeps the static ambulance facing the pickup/user as a confidence cue before tracking begins.
+- `useAmbulanceAnimation` now treats responder heading as live telemetry only when a valid responder coordinate exists; otherwise animation first paint follows route-flow heading.
 
 Tracking follow-up:
 
-- `useAmbulanceAnimation` still initializes heading to `responderHeading` or `0`.
-- If there is no live responder heading, the tracking marker can briefly paint north before the route lookahead heading is calculated.
-- Recommended next pass: seed tracking animation heading synchronously from route start -> lookahead before the first marker render.
+- Continue verifying native and web sprite buckets against route direction, especially where providers return route geometry in pickup -> hospital order.
 
 ---
 

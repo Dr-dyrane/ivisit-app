@@ -320,6 +320,24 @@ function distanceMetersBetween(from, to) {
   return Math.sqrt(dLat * dLat + dLng * dLng);
 }
 
+function orientRouteTowardPickup(routeCoordinates = [], hospitalCoordinate = null) {
+  const points = normalizeRoutePayloadCoordinates(routeCoordinates);
+  if (points.length < 2 || !hospitalCoordinate) return points;
+
+  const firstDistanceToHospital = distanceMetersBetween(
+    points[0],
+    hospitalCoordinate,
+  );
+  const lastDistanceToHospital = distanceMetersBetween(
+    points[points.length - 1],
+    hospitalCoordinate,
+  );
+
+  return firstDistanceToHospital <= lastDistanceToHospital
+    ? points
+    : [...points].reverse();
+}
+
 function extractDistanceKmFromLabel(distanceLabel) {
   if (typeof distanceLabel !== "string") return null;
   const kmMatch = distanceLabel.match(/(\d+(?:\.\d+)?)\s*km/i);
@@ -561,13 +579,12 @@ export default function EmergencyLocationPreviewMap({
     selectedHospitalCoordinate,
     serviceMarkerKind,
   ]);
-  const previewServiceMarkerHeading = useMemo(() => {
+  const fallbackServiceMarkerHeading = useMemo(() => {
     // Live heading from props takes priority
-    if (Number.isFinite(serviceMarkerHeading)) {
+    if (hasLiveResponderCoordinate && Number.isFinite(serviceMarkerHeading)) {
       return Number(serviceMarkerHeading);
     }
-    // PULLBACK NOTE: [AMBULANCE-SPRITE-FACING] Starting sprite faces user's pickup location.
-    // Calculate bearing from hospital to user, with explicit coordinate validation.
+    // PULLBACK NOTE: [AMBULANCE-SPRITE-FACING] Fallback preview bearing is hospital -> pickup.
     if (
       serviceMarkerKind === "ambulance" &&
       selectedHospitalCoordinate &&
@@ -582,9 +599,13 @@ export default function EmergencyLocationPreviewMap({
         return bearing;
       }
     }
-    // Default: face south (180°) - better than north (0°) as it implies "toward user"
+    // Default to a neutral southbound bucket only when no better heading exists.
+    if (Number.isFinite(serviceMarkerHeading)) {
+      return Number(serviceMarkerHeading);
+    }
     return 180;
   }, [
+    hasLiveResponderCoordinate,
     selectedHospitalCoordinate,
     serviceMarkerHeading,
     serviceMarkerKind,
@@ -669,6 +690,16 @@ export default function EmergencyLocationPreviewMap({
     routeDestinationCoordinate,
     routeOriginCoordinate,
   ]);
+  const previewServiceMarkerHeading = useMemo(() => {
+    if (hasLiveResponderCoordinate && Number.isFinite(serviceMarkerHeading)) {
+      return Number(serviceMarkerHeading);
+    }
+    return fallbackServiceMarkerHeading;
+  }, [
+    fallbackServiceMarkerHeading,
+    hasLiveResponderCoordinate,
+    serviceMarkerHeading,
+  ]);
   const fallbackRouteInfo = useMemo(
     () =>
       hasRouteTargetMismatch
@@ -706,22 +737,10 @@ export default function EmergencyLocationPreviewMap({
     resolvedRouteInfo.durationSec > 0;
   const canonicalAnimationRouteCoordinates = useMemo(() => {
     if (!shouldAnimateAmbulance || routeBoundsCoordinates.length < 2) return [];
-    const first = routeBoundsCoordinates[0];
-    const last = routeBoundsCoordinates[routeBoundsCoordinates.length - 1];
-    if (!selectedHospitalCoordinate) return routeBoundsCoordinates;
-
-    const firstDistanceToHospital = distanceMetersBetween(
-      first,
+    return orientRouteTowardPickup(
+      routeBoundsCoordinates,
       selectedHospitalCoordinate,
     );
-    const lastDistanceToHospital = distanceMetersBetween(
-      last,
-      selectedHospitalCoordinate,
-    );
-    // Animation should run hospital -> pickup.
-    return firstDistanceToHospital <= lastDistanceToHospital
-      ? routeBoundsCoordinates
-      : [...routeBoundsCoordinates].reverse();
   }, [
     routeBoundsCoordinates,
     selectedHospitalCoordinate,
@@ -768,9 +787,10 @@ export default function EmergencyLocationPreviewMap({
     responderLocation: hasLiveResponderCoordinate
       ? directServiceMarkerCoordinate
       : null,
-    responderHeading: Number.isFinite(serviceMarkerHeading)
-      ? Number(serviceMarkerHeading)
-      : null,
+    responderHeading:
+      hasLiveResponderCoordinate && Number.isFinite(serviceMarkerHeading)
+        ? Number(serviceMarkerHeading)
+        : null,
   });
   const effectiveServiceMarkerCoordinate =
     serviceMarkerKind === "ambulance" && shouldAnimateAmbulance

@@ -33,7 +33,7 @@ import VERSION from "../../version";
 import UPDATE_METADATA from "../../data/update.json";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MODAL_HEIGHT = SCREEN_HEIGHT * 0.65;
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 // PULLBACK NOTE: [OTA-CHANGELOG] Liquid glass badge colors — translucent, borderless
 // Uses alpha-blended iVisit tones that composite beautifully over blur backgrounds

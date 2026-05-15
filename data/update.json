@@ -1,82 +1,22 @@
 {
   "_lastCommitHash": "ff583cd",
   "_lastCommitDate": "2026-05-14T13:57:00-07:00",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "date": "2026-05-14",
-  "title": "Text Resilience + Regional Discount UI",
-  "summary": "Shared FadeEndText component migration, regional discount display in payment breakdown, help support border removal, and Surface Text Resilience implementation rules.",
+  "title": "Visit Detail Return + History Filter UI",
+  "summary": "Source-aware visit detail return behavior, history modal filter pills matching hospital list UI, and consolidated map stability improvements.",
   "changes": [
     {
       "type": "feature",
-      "message": "Implemented hybrid marker selection using map flow atoms (mapSelectedHospitalIdAtom, mapFeaturedHospitalAtom) for ephemeral UI state that survives sheet collapse."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed temporal dead zone error with discoveredHospitals by moving selectHospitalForMap definition after useMapDerivedData."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed temporal dead zone error with openHospitalDetail by reordering hooks and removing prop dependency from useMapHospitalSelection."
-    },
-    {
-      "type": "feature",
-      "message": "Added user location marker tap handler (onUserLocationPress) to trigger location sheet phase."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed duplicate hospital lookup in selectHospitalForMap by caching result in variable."
+      "message": "Implemented source-aware visit detail return using sourceSurface metadata to track origin surface (explore vs recents modal) for deterministic back navigation."
     },
     {
       "type": "improvement",
-      "message": "Refined service selection footer CTA row layout and copy for better visual hierarchy and clarity."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed ambulance tracking initial heading display to show correct direction on load."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed ambulance preview heading fallback when heading data is unavailable."
+      "message": "Reduced history modal filter pills height (paddingVertical 14 → 8) to match hospital list specialty pills for visual consistency."
     },
     {
       "type": "improvement",
-      "message": "Themed map canvas handoff surfaces for consistent dark/light mode support."
-    },
-    {
-      "type": "improvement",
-      "message": "Refined LocationSheet mode ownership so search, saved-place, and success states use the correct sheet header and snap behavior."
-    },
-    {
-      "type": "fix",
-      "message": "Fixed selected-location decision flow so save success can return with the fresh saved address instead of stale candidate data."
-    },
-    {
-      "type": "improvement",
-      "message": "Added a focused post-save state with clear 'Use As Pickup' and 'Done' actions after saving Home, Work, or other places."
-    },
-    {
-      "type": "improvement",
-      "message": "Updated nearby hospital hero card copy with a compact 'Browse' action and lighter typography for better scan balance."
-    },
-    {
-      "type": "improvement",
-      "message": "Introduced fade-end clipping for dense hospital titles so long names no longer rely on visible ellipsis."
-    },
-    {
-      "type": "improvement",
-      "message": "Applied the same fade-end clipping treatment to the expanded pickup location chrome address."
-    },
-    {
-      "type": "improvement",
-      "message": "Documented the iVisit fade-end text rule and pending global FadeEndText / ClippedTextFade pass."
-    },
-    {
-      "type": "fix",
-      "message": "Preserved recent LocationSheet fixes for manual entry access, recents empty state, keyboard handling, and mode transitions."
-    },
-    {
-      "type": "fix",
-      "message": "Carries forward recent map stability fixes for hospital preservation, sheet snap transitions, ambulance sprite orientation, and marker guards."
+      "message": "Added icons to history modal filter chips (list, pulse, calendar, checkmark-circle, close-circle) matching hospital list icon-label-count layout."
     },
     {
       "type": "feature",
@@ -91,16 +31,20 @@
       "message": "Added regional discount display in payment breakdown with green color styling to show when regional pricing is applied."
     },
     {
-      "type": "improvement",
-      "message": "Removed borders from help support UI (ActionIsland, ContextPane, MainContent) for cleaner visual design."
+      "type": "feature",
+      "message": "Implemented hybrid marker selection using map flow atoms (mapSelectedHospitalIdAtom, mapFeaturedHospitalAtom) for ephemeral UI state that survives sheet collapse."
     },
     {
       "type": "improvement",
-      "message": "Changed fixed text container heights to minHeight plus padding for better Dynamic Type support across map surfaces."
+      "message": "Consolidated map stability fixes: temporal dead zone errors, duplicate hospital lookups, ambulance heading display, sheet snap transitions, and marker guards."
     },
     {
       "type": "improvement",
-      "message": "Added minWidth: 0 to text containers so labels can shrink before clipping under accessibility text scaling."
+      "message": "Refined LocationSheet mode ownership, saved place post-save state, service selection footer CTA, and nearby hospital hero card for better UX."
+    },
+    {
+      "type": "improvement",
+      "message": "Themed map canvas handoff surfaces, removed help support borders, and improved Dynamic Type support with minHeight and minWidth: 0."
     },
     {
       "type": "documentation",
