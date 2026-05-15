@@ -4,8 +4,12 @@
   "version": "1.0.5",
   "date": "2026-05-14",
   "title": "Visit Detail Return + History Filter UI",
-  "summary": "Source-aware visit detail return behavior, history modal filter pills matching hospital list UI, and consolidated map stability improvements.",
+  "summary": "Source-aware visit detail return behavior, history modal filter pills matching hospital list UI, ambulance heading hierarchy fix, and consolidated map stability improvements.",
   "changes": [
+    {
+      "type": "refactor",
+      "message": "Separated live heading from preview fallback in ambulance tracking: split previewServiceMarkerHeading into fallbackServiceMarkerHeading (computed) and previewServiceMarkerHeading (live-aware), added orientRouteTowardPickup helper for route reversal logic, fixed heading hierarchy so live responder heading only applies when hasLiveResponder is true, added hasLiveResponder guard to useAmbulanceAnimation initialHeading and responder heading updates."
+    },
     {
       "type": "feature",
       "message": "Implemented source-aware visit detail return using sourceSurface metadata to track origin surface (explore vs recents modal) for deterministic back navigation."
@@ -36,7 +40,7 @@
     },
     {
       "type": "improvement",
-      "message": "Consolidated map stability fixes: temporal dead zone errors, duplicate hospital lookups, ambulance heading display, sheet snap transitions, and marker guards."
+      "message": "Consolidated map stability fixes: temporal dead zone errors, duplicate hospital lookups, sheet snap transitions, and marker guards."
     },
     {
       "type": "improvement",
