@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     bed_type TEXT,
     patient_snapshot JSONB DEFAULT '{}',
     shared_data_snapshot JSONB,
+    communication_room_id UUID,
 
     -- Payment
     payment_method_id TEXT,
@@ -192,10 +193,123 @@ CREATE TABLE IF NOT EXISTS public.visits (
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
 
+-- 3b. Emergency Communication Rooms (Contact Dispatch)
+-- Flow-owned operational chat for active emergency requests. This stays in the
+-- logistics pillar because the room lifecycle follows emergency request runtime.
+CREATE TABLE IF NOT EXISTS public.emergency_chat_rooms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    visit_id UUID REFERENCES public.visits(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_message_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_rooms_status_updated
+ON public.emergency_chat_rooms (status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_rooms_last_message
+ON public.emergency_chat_rooms (last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.emergency_chat_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support')),
+    display_name_snapshot TEXT,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at TIMESTAMPTZ,
+    last_read_message_id UUID,
+    last_read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT emergency_chat_participants_room_user_key UNIQUE (room_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_participants_room_user
+ON public.emergency_chat_participants (room_id, user_id);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_participants_user_updated
+ON public.emergency_chat_participants (user_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_participants_room_role
+ON public.emergency_chat_participants (room_id, role);
+
+CREATE TABLE IF NOT EXISTS public.emergency_chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support', 'system')),
+    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system')),
+    body TEXT NOT NULL CHECK (char_length(trim(body)) BETWEEN 1 AND 1000),
+    client_message_id TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_messages_room_created
+ON public.emergency_chat_messages (room_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_messages_sender_created
+ON public.emergency_chat_messages (sender_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_chat_messages_room_kind_created
+ON public.emergency_chat_messages (room_id, kind, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emergency_chat_messages_client_id
+ON public.emergency_chat_messages (room_id, sender_id, client_message_id)
+WHERE client_message_id IS NOT NULL;
+
+ALTER TABLE public.emergency_requests
+ADD COLUMN IF NOT EXISTS communication_room_id UUID;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'emergency_requests_communication_room_id_fkey'
+    ) THEN
+        ALTER TABLE public.emergency_requests
+        ADD CONSTRAINT emergency_requests_communication_room_id_fkey
+        FOREIGN KEY (communication_room_id)
+        REFERENCES public.emergency_chat_rooms(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'emergency_chat_participants_last_read_message_id_fkey'
+    ) THEN
+        ALTER TABLE public.emergency_chat_participants
+        ADD CONSTRAINT emergency_chat_participants_last_read_message_id_fkey
+        FOREIGN KEY (last_read_message_id)
+        REFERENCES public.emergency_chat_messages(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
+
 -- C. Standard Timestamps & Display IDs
 CREATE TRIGGER handle_amb_updated_at BEFORE UPDATE ON public.ambulances FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_req_updated_at BEFORE UPDATE ON public.emergency_requests FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_visit_updated_at BEFORE UPDATE ON public.visits FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS handle_chat_room_updated_at ON public.emergency_chat_rooms;
+CREATE TRIGGER handle_chat_room_updated_at BEFORE UPDATE ON public.emergency_chat_rooms FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS handle_chat_participant_updated_at ON public.emergency_chat_participants;
+CREATE TRIGGER handle_chat_participant_updated_at BEFORE UPDATE ON public.emergency_chat_participants FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS handle_chat_message_updated_at ON public.emergency_chat_messages;
+CREATE TRIGGER handle_chat_message_updated_at BEFORE UPDATE ON public.emergency_chat_messages FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE TRIGGER stamp_amb_display_id BEFORE INSERT ON public.ambulances FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
 CREATE TRIGGER stamp_req_display_id BEFORE INSERT ON public.emergency_requests FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();

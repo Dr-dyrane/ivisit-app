@@ -24,6 +24,73 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION public.p_is_emergency_chat_participant(p_room_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request_user_id UUID;
+    v_responder_id UUID;
+    v_request_org_id UUID;
+BEGIN
+    IF p_room_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    IF public.p_is_admin() THEN
+        RETURN TRUE;
+    END IF;
+
+    IF v_actor_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.emergency_chat_participants ecp
+        WHERE ecp.room_id = p_room_id
+          AND ecp.user_id = v_actor_id
+          AND ecp.left_at IS NULL
+    ) THEN
+        RETURN TRUE;
+    END IF;
+
+    SELECT er.user_id, er.responder_id, h.organization_id
+    INTO v_request_user_id, v_responder_id, v_request_org_id
+    FROM public.emergency_chat_rooms ecr
+    JOIN public.emergency_requests er ON er.id = ecr.emergency_request_id
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE ecr.id = p_room_id;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF v_request_user_id = v_actor_id OR v_responder_id = v_actor_id THEN
+        RETURN TRUE;
+    END IF;
+
+    SELECT role, organization_id
+    INTO v_actor_role, v_actor_org_id
+    FROM public.profiles
+    WHERE id = v_actor_id;
+
+    IF v_actor_role IN ('org_admin', 'dispatcher', 'provider')
+       AND v_actor_org_id IS NOT NULL
+       AND v_request_org_id IS NOT NULL
+       AND v_actor_org_id = v_request_org_id THEN
+        RETURN TRUE;
+    END IF;
+
+    RETURN FALSE;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.p_get_current_org_id()
 RETURNS UUID SECURITY DEFINER AS $$
 BEGIN
@@ -46,6 +113,9 @@ ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.emergency_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_status_transitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_chat_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_chat_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.organization_wallets ENABLE ROW LEVEL SECURITY;
@@ -143,6 +213,28 @@ USING (
           )
     )
 );
+
+DROP POLICY IF EXISTS "Users see emergency chat rooms in scope" ON public.emergency_chat_rooms;
+CREATE POLICY "Users see emergency chat rooms in scope"
+ON public.emergency_chat_rooms FOR SELECT
+TO authenticated
+USING (public.p_is_emergency_chat_participant(id));
+
+DROP POLICY IF EXISTS "Users see emergency chat participants in scope" ON public.emergency_chat_participants;
+CREATE POLICY "Users see emergency chat participants in scope"
+ON public.emergency_chat_participants FOR SELECT
+TO authenticated
+USING (public.p_is_emergency_chat_participant(room_id));
+
+DROP POLICY IF EXISTS "Users see emergency chat messages in scope" ON public.emergency_chat_messages;
+CREATE POLICY "Users see emergency chat messages in scope"
+ON public.emergency_chat_messages FOR SELECT
+TO authenticated
+USING (public.p_is_emergency_chat_participant(room_id));
+
+GRANT SELECT ON public.emergency_chat_rooms TO authenticated;
+GRANT SELECT ON public.emergency_chat_participants TO authenticated;
+GRANT SELECT ON public.emergency_chat_messages TO authenticated;
 
 -- 4. FINANCIALS (Very Restricted)
 CREATE POLICY "Users see own wallets"

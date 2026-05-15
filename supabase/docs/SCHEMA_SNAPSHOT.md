@@ -303,6 +303,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     ambulance_type TEXT,
     bed_number TEXT,
     patient_snapshot JSONB DEFAULT '{}',
+    communication_room_id UUID,
     
     -- Real-time tracking
     pickup_location GEOMETRY(POINT, 4326),
@@ -361,6 +362,60 @@ CREATE TABLE IF NOT EXISTS public.visits (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
+);
+```
+
+### Table: `emergency_chat_rooms`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_chat_rooms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    visit_id UUID REFERENCES public.visits(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_message_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ
+);
+```
+
+### Table: `emergency_chat_participants`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_chat_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support')),
+    display_name_snapshot TEXT,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at TIMESTAMPTZ,
+    last_read_message_id UUID,
+    last_read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT emergency_chat_participants_room_user_key UNIQUE (room_id, user_id)
+);
+```
+
+### Table: `emergency_chat_messages`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support', 'system')),
+    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system')),
+    body TEXT NOT NULL CHECK (char_length(trim(body)) BETWEEN 1 AND 1000),
+    client_message_id TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
 );
 ```
 

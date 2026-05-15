@@ -29,14 +29,14 @@ Canonical ownership map for the 11 migration pillars, with runtime touchpoints f
 | `20260219000000_infra.sql` | `infra` | 0 | 3 | 0 |
 | `20260219000100_identity.sql` | `identity` | 8 | 7 | 7 |
 | `20260219000200_org_structure.sql` | `org_structure` | 5 | 0 | 7 |
-| `20260219000300_logistics.sql` | `logistics` | 4 | 5 | 7 |
+| `20260219000300_logistics.sql` | `logistics` | 7 | 5 | 10 |
 | `20260219000400_finance.sql` | `finance` | 8 | 6 | 9 |
 | `20260219000500_ops_content.sql` | `ops_content` | 5 | 4 | 5 |
 | `20260219000600_analytics.sql` | `analytics` | 6 | 1 | 2 |
-| `20260219000700_security.sql` | `security` | 0 | 3 | 0 |
+| `20260219000700_security.sql` | `security` | 0 | 4 | 0 |
 | `20260219000800_emergency_logic.sql` | `emergency_logic` | 2 | 24 | 5 |
 | `20260219000900_automations.sql` | `automations` | 0 | 11 | 11 |
-| `20260219010000_core_rpcs.sql` | `core_rpcs` | 0 | 51 | 0 |
+| `20260219010000_core_rpcs.sql` | `core_rpcs` | 0 | 55 | 1 |
 
 ## Post-Pillar Patches
 Date-ordered migrations that extend a pillar without owning its contract. Ownership still belongs to the originating pillar.
@@ -72,6 +72,9 @@ Rule: post-pillar patches may add columns, indexes, or guards. Contract renames,
 - `emergency_requests`
 - `visits`
 - `emergency_status_transitions`
+- `emergency_chat_rooms`
+- `emergency_chat_participants`
+- `emergency_chat_messages`
 
 ### `finance`
 - `ivisit_main_wallet`
@@ -111,6 +114,9 @@ Counts below are app/console service file references from `static_supabase_usage
 | `emergency_requests` | `logistics` | 3 | 5 |
 | `ambulances` | `logistics` | 1 | 5 |
 | `visits` | `logistics` | 1 | 1 |
+| `emergency_chat_rooms` | `logistics` | 0 | 0 |
+| `emergency_chat_participants` | `logistics` | 0 | 0 |
+| `emergency_chat_messages` | `logistics` | 0 | 0 |
 | `hospitals` | `org_structure` | 5 | 10 |
 | `organizations` | `org_structure` | 1 | 0 |
 | `insurance_policies` | `finance` | 4 | 0 |
@@ -146,6 +152,7 @@ Use the audit artifact for full table coverage. This section tracks high-surface
 Key RPCs called directly by app/console services:
 - App-heavy: `create_emergency_v4`, `process_wallet_payment`, `process_cash_payment_v2`, `calculate_emergency_cost_v2`, `notify_cash_approval_org_admins`, `reload_schema`
 - Console-heavy: `console_*`, `cancel_trip`, `complete_trip`, `cancel_bed_reservation`, `discharge_patient`, `check_cash_eligibility`, `search_auth_users`, `update_profile_by_admin`, `update_hospital_by_admin`
+- Contact Dispatch: `ensure_emergency_chat_room`, `send_emergency_chat_message`, `mark_emergency_chat_room_read`
 
 ## Change Control Rules (Operational)
 1. Add a tracker/plan item (`SCC-###`) before schema-impacting work.

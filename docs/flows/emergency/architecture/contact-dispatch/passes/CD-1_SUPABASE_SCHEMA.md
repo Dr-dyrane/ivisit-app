@@ -1,6 +1,6 @@
 # CD-1 Supabase Schema
 
-Status: Not started
+Status: Implemented locally
 Owner: Backend
 Layer impact: Layer 1, Supabase truth
 
@@ -53,11 +53,28 @@ Add to `public.emergency_requests`:
 
 ## Changed Files
 
-- TBD
+- `supabase/migrations/20260219000300_logistics.sql`
+- `supabase/docs/SCHEMA_SNAPSHOT.md`
+- `supabase/docs/MODULE_SCHEMA_BIBLE.md`
 
 ## Verification
 
-- TBD
+- Added `public.emergency_chat_rooms` with unique `emergency_request_id`.
+- Added `public.emergency_chat_participants` with unique `(room_id, user_id)`.
+- Added `public.emergency_chat_messages` with indexed `room_id`/time lookup and `client_message_id` idempotency index.
+- Added body length check and updated-at triggers.
+- Added `emergency_requests.communication_room_id` plus FK back to `emergency_chat_rooms`.
+- `git diff --check` passed for the edited migration files.
+- `npx supabase migration list` confirmed all existing pillar versions are already applied remotely.
+- `npx supabase db push` returned `Remote database is up to date`.
+- `npx supabase db push --dry-run` returned `Remote database is up to date`.
+- `npx supabase db lint --linked --schema public --fail-on error` is currently blocked by pre-existing remote lint errors in PostGIS/legacy functions; the edited Contact Dispatch SQL is not live on remote yet, so this lint run does not validate the new tables.
+- `npx supabase status` could not run local validation because Docker is not reachable on this Windows session.
+- Per pillar ritual, `node supabase/scripts/sync_to_console.js` was run successfully.
+
+Remote caveat:
+
+- Because `20260219000300_logistics.sql` is already applied remotely, Supabase will not replay this edited pillar automatically. The new SQL was applied to the live database via the Supabase dashboard SQL editor on 2026-05-14.
 
 ## Rollback Notes
 

@@ -3244,6 +3244,380 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
+CREATE OR REPLACE FUNCTION public.ensure_emergency_chat_room(p_request_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_request RECORD;
+    v_room public.emergency_chat_rooms%ROWTYPE;
+BEGIN
+    IF p_request_id IS NULL THEN
+        RAISE EXCEPTION 'request_id is required';
+    END IF;
+
+    SELECT er.*, h.organization_id AS request_org_id, v.id AS visit_id
+    INTO v_request
+    FROM public.emergency_requests er
+    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
+    LEFT JOIN public.visits v ON v.request_id = er.id
+    WHERE er.id = p_request_id
+    ORDER BY v.created_at DESC
+    LIMIT 1
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Emergency request not found';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT role, organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        IF NOT (
+            v_actor_id = v_request.user_id
+            OR v_actor_id = v_request.responder_id
+            OR v_actor_role = 'admin'
+            OR (
+                v_actor_role IN ('org_admin', 'dispatcher', 'provider')
+                AND v_actor_org_id IS NOT NULL
+                AND v_request.request_org_id IS NOT NULL
+                AND v_actor_org_id = v_request.request_org_id
+            )
+        ) THEN
+            RAISE EXCEPTION 'Unauthorized: request outside actor scope';
+        END IF;
+    END IF;
+
+    INSERT INTO public.emergency_chat_rooms (
+        emergency_request_id,
+        visit_id,
+        created_by
+    )
+    VALUES (
+        p_request_id,
+        v_request.visit_id,
+        v_actor_id
+    )
+    ON CONFLICT (emergency_request_id) DO UPDATE
+    SET visit_id = COALESCE(EXCLUDED.visit_id, public.emergency_chat_rooms.visit_id)
+    RETURNING * INTO v_room;
+
+    UPDATE public.emergency_requests
+    SET communication_room_id = v_room.id,
+        updated_at = NOW()
+    WHERE id = p_request_id
+      AND communication_room_id IS DISTINCT FROM v_room.id;
+
+    IF v_request.user_id IS NOT NULL THEN
+        INSERT INTO public.emergency_chat_participants (
+            room_id,
+            user_id,
+            role,
+            display_name_snapshot
+        )
+        SELECT
+            v_room.id,
+            p.id,
+            'patient',
+            COALESCE(
+                NULLIF(BTRIM(p.full_name), ''),
+                NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(p.first_name, ''), NULLIF(p.last_name, ''))), ''),
+                NULLIF(BTRIM(p.email), ''),
+                NULLIF(BTRIM(p.phone), '')
+            )
+        FROM public.profiles p
+        WHERE p.id = v_request.user_id
+        ON CONFLICT (room_id, user_id) DO UPDATE
+        SET left_at = NULL,
+            updated_at = NOW();
+    END IF;
+
+    IF v_request.responder_id IS NOT NULL
+       AND v_request.responder_id IS DISTINCT FROM v_request.user_id THEN
+        INSERT INTO public.emergency_chat_participants (
+            room_id,
+            user_id,
+            role,
+            display_name_snapshot
+        )
+        SELECT
+            v_room.id,
+            p.id,
+            CASE WHEN v_request.service_type = 'ambulance' THEN 'driver' ELSE 'provider' END,
+            COALESCE(
+                NULLIF(BTRIM(p.full_name), ''),
+                NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(p.first_name, ''), NULLIF(p.last_name, ''))), ''),
+                NULLIF(BTRIM(p.email), ''),
+                NULLIF(BTRIM(p.phone), '')
+            )
+        FROM public.profiles p
+        WHERE p.id = v_request.responder_id
+        ON CONFLICT (room_id, user_id) DO UPDATE
+        SET left_at = NULL,
+            updated_at = NOW();
+    END IF;
+
+    RETURN jsonb_build_object(
+        'room',
+        to_jsonb(v_room),
+        'participants',
+        (
+            SELECT COALESCE(jsonb_agg(to_jsonb(ecp) ORDER BY ecp.joined_at), '[]'::jsonb)
+            FROM public.emergency_chat_participants ecp
+            WHERE ecp.room_id = v_room.id
+        )
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.send_emergency_chat_message(
+    p_room_id UUID,
+    p_body TEXT,
+    p_kind TEXT DEFAULT 'text',
+    p_client_message_id TEXT DEFAULT NULL,
+    p_metadata JSONB DEFAULT '{}'::JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_kind TEXT := COALESCE(NULLIF(BTRIM(p_kind), ''), 'text');
+    v_body TEXT := BTRIM(COALESCE(p_body, ''));
+    v_sender_role TEXT;
+    v_profile RECORD;
+    v_room_status TEXT;
+    v_message public.emergency_chat_messages%ROWTYPE;
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_room_id IS NULL THEN
+        RAISE EXCEPTION 'room_id is required';
+    END IF;
+
+    IF v_kind NOT IN ('text', 'quick_action', 'status_event') THEN
+        RAISE EXCEPTION 'Unsupported chat message kind: %', v_kind;
+    END IF;
+
+    IF char_length(v_body) < 1 OR char_length(v_body) > 1000 THEN
+        RAISE EXCEPTION 'Message must be between 1 and 1000 characters';
+    END IF;
+
+    SELECT status
+    INTO v_room_status
+    FROM public.emergency_chat_rooms
+    WHERE id = p_room_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Chat room not found';
+    END IF;
+
+    IF v_room_status = 'archived' THEN
+        RAISE EXCEPTION 'Chat room is archived';
+    END IF;
+
+    IF NOT public.p_is_emergency_chat_participant(p_room_id) THEN
+        RAISE EXCEPTION 'Unauthorized: chat room outside actor scope';
+    END IF;
+
+    IF p_client_message_id IS NOT NULL THEN
+        SELECT *
+        INTO v_message
+        FROM public.emergency_chat_messages
+        WHERE room_id = p_room_id
+          AND sender_id = v_actor_id
+          AND client_message_id = p_client_message_id
+        LIMIT 1;
+
+        IF FOUND THEN
+            RETURN to_jsonb(v_message);
+        END IF;
+    END IF;
+
+    SELECT role
+    INTO v_sender_role
+    FROM public.emergency_chat_participants
+    WHERE room_id = p_room_id
+      AND user_id = v_actor_id
+      AND left_at IS NULL
+    LIMIT 1;
+
+    IF v_sender_role IS NULL THEN
+        SELECT role, full_name, first_name, last_name, email, phone
+        INTO v_profile
+        FROM public.profiles
+        WHERE id = v_actor_id;
+
+        v_sender_role := CASE
+            WHEN v_profile.role = 'dispatcher' THEN 'dispatcher'
+            WHEN v_profile.role = 'org_admin' THEN 'hospital_admin'
+            WHEN v_profile.role = 'provider' THEN 'provider'
+            WHEN v_profile.role = 'admin' THEN 'support'
+            ELSE 'patient'
+        END;
+
+        INSERT INTO public.emergency_chat_participants (
+            room_id,
+            user_id,
+            role,
+            display_name_snapshot
+        )
+        VALUES (
+            p_room_id,
+            v_actor_id,
+            v_sender_role,
+            COALESCE(
+                NULLIF(BTRIM(v_profile.full_name), ''),
+                NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(v_profile.first_name, ''), NULLIF(v_profile.last_name, ''))), ''),
+                NULLIF(BTRIM(v_profile.email), ''),
+                NULLIF(BTRIM(v_profile.phone), '')
+            )
+        )
+        ON CONFLICT (room_id, user_id) DO UPDATE
+        SET role = EXCLUDED.role,
+            left_at = NULL,
+            updated_at = NOW()
+        RETURNING role INTO v_sender_role;
+    END IF;
+
+    INSERT INTO public.emergency_chat_messages (
+        room_id,
+        sender_id,
+        sender_role,
+        kind,
+        body,
+        client_message_id,
+        metadata
+    )
+    VALUES (
+        p_room_id,
+        v_actor_id,
+        v_sender_role,
+        v_kind,
+        v_body,
+        NULLIF(BTRIM(COALESCE(p_client_message_id, '')), ''),
+        COALESCE(p_metadata, '{}'::jsonb)
+    )
+    RETURNING * INTO v_message;
+
+    UPDATE public.emergency_chat_rooms
+    SET last_message_at = v_message.created_at,
+        updated_at = NOW()
+    WHERE id = p_room_id;
+
+    UPDATE public.emergency_chat_participants
+    SET last_read_message_id = v_message.id,
+        last_read_at = v_message.created_at,
+        updated_at = NOW()
+    WHERE room_id = p_room_id
+      AND user_id = v_actor_id;
+
+    RETURN to_jsonb(v_message);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_emergency_chat_room_read(
+    p_room_id UUID,
+    p_message_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_message_id UUID := p_message_id;
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_room_id IS NULL THEN
+        RAISE EXCEPTION 'room_id is required';
+    END IF;
+
+    IF NOT public.p_is_emergency_chat_participant(p_room_id) THEN
+        RAISE EXCEPTION 'Unauthorized: chat room outside actor scope';
+    END IF;
+
+    IF v_message_id IS NULL THEN
+        SELECT id
+        INTO v_message_id
+        FROM public.emergency_chat_messages
+        WHERE room_id = p_room_id
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1;
+    ELSE
+        PERFORM 1
+        FROM public.emergency_chat_messages
+        WHERE id = v_message_id
+          AND room_id = p_room_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Message does not belong to room';
+        END IF;
+    END IF;
+
+    UPDATE public.emergency_chat_participants
+    SET last_read_message_id = v_message_id,
+        last_read_at = NOW(),
+        updated_at = NOW()
+    WHERE room_id = p_room_id
+      AND user_id = v_actor_id
+      AND left_at IS NULL;
+
+    RETURN FOUND;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.archive_emergency_chat_room_on_request_close()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NEW.status IN ('completed', 'cancelled')
+       AND OLD.status IS DISTINCT FROM NEW.status THEN
+        UPDATE public.emergency_chat_rooms
+        SET status = 'archived',
+            archived_at = COALESCE(archived_at, NOW()),
+            updated_at = NOW()
+        WHERE emergency_request_id = NEW.id
+          AND status <> 'archived';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_emergency_archive_chat_room ON public.emergency_requests;
+CREATE TRIGGER on_emergency_archive_chat_room
+AFTER UPDATE OF status ON public.emergency_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.archive_emergency_chat_room_on_request_close();
+
+
 REVOKE ALL ON FUNCTION public.console_create_emergency_request(JSONB) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_update_emergency_request(UUID, JSONB) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_dispatch_emergency(UUID, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
@@ -3265,6 +3639,10 @@ REVOKE ALL ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UUID,
 REVOKE ALL ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_wallet_payment(UUID, NUMERIC, UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.ensure_emergency_chat_room(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.send_emergency_chat_message(UUID, TEXT, TEXT, TEXT, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.mark_emergency_chat_room_read(UUID, UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.archive_emergency_chat_room_on_request_close() FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.console_create_emergency_request(JSONB) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.console_update_emergency_request(UUID, JSONB) TO authenticated, service_role;
@@ -3287,4 +3665,6 @@ GRANT EXECUTE ON FUNCTION public.set_emergency_transition_context(TEXT, TEXT, UU
 GRANT EXECUTE ON FUNCTION public.notify_cash_approval_org_admins(UUID, UUID, NUMERIC, NUMERIC, TEXT, TEXT, TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment(UUID, UUID, NUMERIC) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(UUID, NUMERIC, UUID) TO authenticated, service_role;
-
+GRANT EXECUTE ON FUNCTION public.ensure_emergency_chat_room(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.send_emergency_chat_message(UUID, TEXT, TEXT, TEXT, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.mark_emergency_chat_room_read(UUID, UUID) TO authenticated, service_role;
