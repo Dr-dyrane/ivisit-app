@@ -267,6 +267,16 @@ export const formattedRouteDistanceAtom = atom((get) => {
 // TRACKING STATUS VISUALIZATION STATE (5-Layer State Management)
 // =============================================================================
 
+// PULLBACK NOTE: Pass 6 — OLD: useState(mode) in useMapSearchSheetModel — search mode resets to default on sheet collapse
+// NEW: Jotai atom — active search mode (hospital vs location) survives collapse
+export const mapSearchActiveModeAtom = atom(null); // null = use prop default on first mount
+
+// PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+// OLD: visitDetailReturnTargetRef tracked "history_modal" as workaround for surface-level return
+// NEW: Jotai atom tracks surface restoration state for canonical surface tracking
+// Values: "explore", "recents", "tracking", "notification", "unknown", null
+export const mapVisitDetailSourceSurfaceAtom = atom(null);
+
 // PULLBACK NOTE: Phase 8 — Tracking status visualization atoms
 // OLD: Local useState in hooks and components
 // NEW: Jotai atoms for ephemeral UI state (5th layer of state management)

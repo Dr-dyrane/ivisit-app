@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { useAtom } from "jotai";
+import { Ionicons } from "@expo/vector-icons";
 import {
   Pressable,
   RefreshControl,
@@ -37,7 +38,7 @@ import { MAP_SHEET_SNAP_STATES } from "../core/mapSheet.constants";
 /**
  * FilterChip — matches hospital list's specialtyPill voice exactly:
  *   - squircle(18), no border, compact paddings
- *   - inline count text (not badge circle)
+ *   - icon + label + count layout
  *   - surface: filterChipSurface / filterChipSurfaceActive (brand-red wash)
  *   - label: filterChipLabel / filterChipLabelActive (brand-red in active)
  */
@@ -58,6 +59,11 @@ function FilterChip({ option, isActive, count, theme, onPress }) {
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={`${option.label}${count ? ` (${count})` : ""}`}
     >
+      <Ionicons
+        name={option.icon}
+        size={13}
+        color={isActive ? theme.filterChipLabelActive : theme.filterChipLabel}
+      />
       <Text
         style={[
           historyModalStyles.filterChipLabel,

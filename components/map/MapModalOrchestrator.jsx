@@ -144,7 +144,8 @@ export default function MapModalOrchestrator({
       <MapHistoryModal
         visible={recentVisitsModalVisible}
         onClose={handleCloseRecentVisits}
-        onSelectVisit={handleSelectHistoryItem}
+        // PULLBACK NOTE: PASS 19H — pass sourceSurface="recents" when opening from history modal
+        onSelectVisit={(historyItem) => handleSelectHistoryItem(historyItem, "recents")}
         onBookVisit={isSignedIn ? handleBookVisitFromHistory : undefined}
         onChooseCare={handleOpenChooseCareFromHistory}
         routeManagedFilterKey={

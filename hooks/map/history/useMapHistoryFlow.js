@@ -45,6 +45,7 @@ import {
   selectedHistoryVisitKeyAtom,
   historyPaymentStateAtom,
   trackingRatingStateAtom,
+  mapVisitDetailSourceSurfaceAtom,
 } from "../../../atoms/mapScreenAtoms";
 
 /**
@@ -105,6 +106,7 @@ export function useMapHistoryFlow({
   const [ratingRecoveryClaims, setRatingRecoveryClaims] = useAtom(ratingRecoveryClaimsAtom);
   const [recoveredRatingState, setRecoveredRatingState] = useAtom(recoveredRatingStateAtom);
   const [selectedHistoryVisitKey, setSelectedHistoryVisitKey] = useAtom(selectedHistoryVisitKeyAtom);
+  const [visitDetailSourceSurface, setVisitDetailSourceSurface] = useAtom(mapVisitDetailSourceSurfaceAtom);
 
   // --- Local state (promoted to atom for call-order independence) ---
   const [historyPaymentState, setHistoryPaymentState] = useAtom(historyPaymentStateAtom);
@@ -157,17 +159,25 @@ export function useMapHistoryFlow({
 
   // ─── History visit detail handlers ───────────────────────────────────────
 
+  // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+  // OLD: closeHistoryVisitDetails read visitDetailReturnTargetRef for surface restoration
+  // NEW: closeHistoryVisitDetails now uses mapVisitDetailSourceSurfaceAtom for canonical surface tracking
+  // The ref-based approach is kept as fallback during migration
   const closeHistoryVisitDetails = useCallback(() => {
     const returnTarget = visitDetailReturnTargetRef.current;
+    const sourceSurface = visitDetailSourceSurface;
     const routeManaged = routeManagedVisitDetailRef.current === true;
     visitDetailReturnTargetRef.current = null;
     routeManagedVisitDetailRef.current = false;
     setSelectedHistoryVisitKey(null);
-    closeVisitDetail?.();
     // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
-    if (returnTarget === "history_modal") {
+    // PULLBACK NOTE: PASS 19H — restore Recents modal if sourceSurface is "recents"
+    // PULLBACK NOTE: PASS 19H FIX — restore surface BEFORE calling closeVisitDetail to avoid timing issues
+    if (sourceSurface === "recents" || returnTarget === "history_modal") {
       setRecentVisitsVisible(true);
     }
+    setVisitDetailSourceSurface(null);
+    closeVisitDetail?.();
     if (routeManaged) {
       router.replace("/(user)");
     }
@@ -176,6 +186,8 @@ export function useMapHistoryFlow({
     router,
     setRecentVisitsVisible,
     setSelectedHistoryVisitKey,
+    setVisitDetailSourceSurface,
+    visitDetailSourceSurface,
   ]);
 
   const closeHistoryPaymentDetails = useCallback(() => {
@@ -245,6 +257,10 @@ export function useMapHistoryFlow({
     showToast,
   ]);
 
+  // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+  // OLD: visitDetailReturnTargetRef tracked "history_modal" as workaround for surface-level return
+  // NEW: sourceSurface passed to payload system for canonical surface tracking
+  // visitDetailReturnTargetRef kept for backward compatibility during migration
   const openHistoryVisitByKey = useCallback(
     (visitKey, options = {}) => {
       if (!visitKey) return false;
@@ -253,22 +269,32 @@ export function useMapHistoryFlow({
 
       routeManagedVisitDetailRef.current = options?.routeManaged === true;
       visitDetailReturnTargetRef.current = options?.returnTarget || null;
+      // PULLBACK NOTE: PASS 19H — set atom for canonical surface tracking
+      const sourceSurface = options?.sourceSurface || null;
+      setVisitDetailSourceSurface(sourceSurface);
       setSelectedHistoryVisitKey(
         historyItem.requestId || historyItem.displayId || historyItem.id,
       );
-      openVisitDetail?.(historyItem, options?.sourcePhase || null);
+      // PULLBACK NOTE: PASS 19H — pass sourceSurface for canonical surface tracking
+      openVisitDetail?.(historyItem, options?.sourcePhase || null, sourceSurface);
       return true;
     },
-    [openVisitDetail, setSelectedHistoryVisitKey, visits],
+    [openVisitDetail, setSelectedHistoryVisitKey, setVisitDetailSourceSurface, visits],
   );
 
+  // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+  // OLD: visitDetailReturnTargetRef tracked "history_modal" as workaround
+  // NEW: sourceSurface parameter to distinguish between explore intent surface vs history modal
+  // sourceSurface="recents" only if opening from history modal, "explore" if from explore intent surface
   const handleSelectHistoryItem = useCallback(
-    (historyItem) => {
+    (historyItem, sourceSurface = "recents") => {
       if (!historyItem) return;
 
-      // PULLBACK NOTE: VD-C3 — record that visit detail was opened from history modal
-      visitDetailReturnTargetRef.current = "history_modal";
-      setRecentVisitsVisible(false);
+      // PULLBACK NOTE: PASS 19H FIX — only set returnTarget if actually from history modal
+      if (sourceSurface === "recents") {
+        visitDetailReturnTargetRef.current = "history_modal";
+        setRecentVisitsVisible(false);
+      }
       const historyKeys = [historyItem.requestId, historyItem.displayId, historyItem.id]
         .filter((v) => v !== null && v !== undefined && String(v).trim().length > 0)
         .map((v) => String(v));
@@ -300,7 +326,8 @@ export function useMapHistoryFlow({
         historyItem.requestId || historyItem.displayId || historyItem.id,
         {
           sourcePhase: sheetPhase,
-          returnTarget: "history_modal",
+          sourceSurface,
+          returnTarget: sourceSurface === "recents" ? "history_modal" : null,
         },
       );
     },

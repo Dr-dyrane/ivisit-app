@@ -227,8 +227,13 @@ const styles = StyleSheet.create({
 	},
 	placesHubSectionLabel: {
 		fontSize: 12,
+		lineHeight: 16,
 		fontWeight: "600",
 		letterSpacing: 0.1,
+	},
+	placesHubRowCopy: {
+		flex: 1,
+		minWidth: 0,
 	},
 	emptyGroup: {
 		borderRadius: 22,
@@ -266,14 +271,17 @@ const styles = StyleSheet.create({
 	},
 	listRowTextWrap: {
 		flex: 1,
+		minWidth: 0,
 		paddingRight: 10,
 	},
 	listRowTitle: {
 		fontSize: 14,
+		lineHeight: 18,
 		fontWeight: "600",
 	},
 	listRowSubtitle: {
 		fontSize: 12,
+		lineHeight: 16,
 		marginTop: 2,
 	},
 	rowDivider: {
@@ -456,10 +464,11 @@ const styles = StyleSheet.create({
 		minWidth: 0,
 	},
 	saveDetailsPrimaryAction: {
-		height: 46,
+		minHeight: 46,
 		borderRadius: 22,
 		borderCurve: "continuous",
 		paddingHorizontal: 14,
+		paddingVertical: 12,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "center",

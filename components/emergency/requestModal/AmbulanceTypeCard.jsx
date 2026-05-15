@@ -82,12 +82,12 @@ export default function AmbulanceTypeCard({
 				<View style={styles.headerRight}>
 					{badgeLabel ? (
 						<View style={styles.badgePill}>
-							<Text style={styles.badgeText}>{badgeLabel}</Text>
+							<Text maxFontSizeMultiplier={1.2} style={styles.badgeText}>{badgeLabel}</Text>
 						</View>
 					) : null}
 					<View style={styles.priceContainer}>
-						<Text style={[styles.priceLabel, { color: mutedColor }]}>Base fare</Text>
-						<Text style={[styles.priceValue, { color: textColor }]}>
+						<Text maxFontSizeMultiplier={1.25} style={[styles.priceLabel, { color: mutedColor }]}>Base fare</Text>
+						<Text maxFontSizeMultiplier={1.25} style={[styles.priceValue, { color: textColor }]}>
 							{type.price}
 						</Text>
 					</View>
@@ -96,20 +96,21 @@ export default function AmbulanceTypeCard({
 
 			{/* Middle: Title & Description */}
 			<View style={styles.content}>
-				<Text style={[styles.tierEyebrow, { color: visualProfile.accent }]}>
+				<Text maxFontSizeMultiplier={1.25} style={[styles.tierEyebrow, { color: visualProfile.accent }]}>
 					{visualProfile.label}
 				</Text>
 				{statusLine ? (
-					<Text style={[styles.statusLine, { color: selected ? "#FDE68A" : COLORS.brandPrimary }]}>
+					<Text maxFontSizeMultiplier={1.3} style={[styles.statusLine, { color: selected ? "#FDE68A" : COLORS.brandPrimary }]}>
 						{statusLine}
 					</Text>
 				) : null}
-				<Text style={[styles.name, { color: textColor }]}>
+				<Text maxFontSizeMultiplier={1.3} style={[styles.name, { color: textColor }]}>
 					{type.name || type.title}
 				</Text>
 				<Text
 					style={[styles.description, { color: mutedColor }]}
 					numberOfLines={2}
+					maxFontSizeMultiplier={1.3}
 				>
 					{type.description || type.subtitle}
 				</Text>
@@ -134,6 +135,7 @@ export default function AmbulanceTypeCard({
 							color={selected ? COLORS.brandPrimary : mutedColor}
 						/>
 						<Text
+							maxFontSizeMultiplier={1.25}
 							style={[
 								styles.pillText,
 								{ color: selected ? COLORS.brandPrimary : textColor },
@@ -153,7 +155,7 @@ export default function AmbulanceTypeCard({
 						]}
 					>
 						<Ionicons name="people-outline" size={14} color={mutedColor} />
-						<Text style={[styles.pillText, { color: textColor }]}>{type.crew || "1-2"}</Text>
+						<Text maxFontSizeMultiplier={1.25} style={[styles.pillText, { color: textColor }]}>{type.crew || "1-2"}</Text>
 					</View>
 				</View>
 
@@ -244,6 +246,8 @@ const styles = StyleSheet.create({
 	headerRight: {
 		alignItems: "flex-end",
 		gap: 8,
+		minWidth: 0,
+		flexShrink: 1,
 	},
 	visualShell: {
 		width: 72,
@@ -270,6 +274,7 @@ const styles = StyleSheet.create({
 	},
 	priceContainer: {
 		alignItems: "flex-end",
+		minWidth: 0,
 	},
 	badgePill: {
 		paddingHorizontal: 10,
@@ -280,11 +285,13 @@ const styles = StyleSheet.create({
 	badgeText: {
 		color: "#FFFFFF",
 		fontSize: 11,
+		lineHeight: 14,
 		fontWeight: "800",
 		letterSpacing: 0.4,
 	},
 	priceLabel: {
 		fontSize: 11,
+		lineHeight: 14,
 		fontWeight: "700",
 		letterSpacing: 0.2,
 		marginBottom: 2,
@@ -296,20 +303,24 @@ const styles = StyleSheet.create({
 	},
 	content: {
 		marginTop: 12,
+		minWidth: 0,
 	},
 	tierEyebrow: {
 		fontSize: 11,
+		lineHeight: 14,
 		fontWeight: "800",
 		letterSpacing: 0.4,
 		marginBottom: 4,
 	},
 	statusLine: {
 		fontSize: 15,
+		lineHeight: 20,
 		fontWeight: "800",
 		marginBottom: 6,
 	},
 	name: {
 		fontSize: 20,
+		lineHeight: 25,
 		fontWeight: "800",
 		letterSpacing: -0.5,
 		marginBottom: 4,
@@ -327,7 +338,10 @@ const styles = StyleSheet.create({
 	},
 	pillContainer: {
 		flexDirection: "row",
+		flexWrap: "wrap",
 		gap: 8,
+		flex: 1,
+		minWidth: 0,
 	},
 	pill: {
 		flexDirection: "row",
@@ -336,10 +350,14 @@ const styles = StyleSheet.create({
 		paddingVertical: 6,
 		borderRadius: 14,
 		gap: 6,
+		minHeight: 30,
+		minWidth: 0,
 	},
 	pillText: {
 		fontSize: 12,
+		lineHeight: 16,
 		fontWeight: "700",
+		flexShrink: 1,
 	},
 	chevronHint: {
 		paddingLeft: 8,

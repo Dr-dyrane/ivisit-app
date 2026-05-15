@@ -86,7 +86,11 @@ export function buildHospitalDetailSheetView({ usesSidebarLayout }) {
   });
 }
 
-export function buildVisitDetailSheetView({ usesSidebarLayout, historyItem = null, sourcePhase = null }) {
+// PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+// OLD: sourcePhase only (sheet phase level: EXPLORE_INTENT, TRACKING, etc.)
+// NEW: sourceSurface added (surface level: "explore", "recents", "tracking", "notification", "unknown")
+// This allows visit detail to return to the correct surface (e.g., Recents modal) not just sheet phase
+export function buildVisitDetailSheetView({ usesSidebarLayout, historyItem = null, sourcePhase = null, sourceSurface = null }) {
   return buildSheetView({
     phase: MAP_SHEET_PHASES.VISIT_DETAIL,
     snapState: usesSidebarLayout
@@ -95,6 +99,7 @@ export function buildVisitDetailSheetView({ usesSidebarLayout, historyItem = nul
     payload: {
       historyItem,
       sourcePhase,
+      sourceSurface,
     },
   });
 }

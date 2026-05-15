@@ -1,13 +1,6 @@
 import { Platform, StyleSheet } from "react-native";
 import { COLORS } from "../../../../constants/colors";
 
-const TITLE_TEXT = Platform.select({
-	ios: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-	android: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-	web: { fontSize: 25, lineHeight: 29, fontWeight: "700", letterSpacing: -0.45 },
-	default: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-});
-
 const HERO_TITLE_TEXT = Platform.select({
 	ios: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
 	android: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
@@ -23,45 +16,12 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 20,
 	},
 	topSlot: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
 		paddingHorizontal: 12,
 		paddingTop: 4,
 		paddingBottom: 10,
 	},
 	webWideTopSlotInset: {
 		paddingHorizontal: 18,
-	},
-	topSlotCopy: {
-		flex: 1,
-		minWidth: 0,
-		paddingHorizontal: 12,
-		alignItems: "center",
-	},
-	topSlotTitle: {
-		...TITLE_TEXT,
-		textAlign: "center",
-		alignSelf: "stretch",
-	},
-	topSlotSubtitle: {
-		fontSize: 12,
-		lineHeight: 16,
-		fontWeight: "400",
-		color: COLORS.textSecondary,
-		marginTop: 2,
-		textAlign: "center",
-		alignSelf: "stretch",
-	},
-	closeButton: {
-		width: 38,
-		height: 38,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	headerActionSpacer: {
-		width: 38,
-		height: 38,
 	},
 	sectionGap: {
 		height: 14,
@@ -123,6 +83,9 @@ const styles = StyleSheet.create({
 	heroTitle: {
 		...HERO_TITLE_TEXT,
 	},
+	heroTitleFade: {
+		alignSelf: "stretch",
+	},
 	heroMetaRow: {
 		flexDirection: "row",
 		flexWrap: "wrap",
@@ -183,6 +146,9 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		flexShrink: 1,
 		maxWidth: "100%",
+	},
+	switchPillLabelFade: {
+		alignSelf: "stretch",
 	},
 	routeCard: {
 		borderRadius: 26,
@@ -385,7 +351,7 @@ const styles = StyleSheet.create({
 	},
 	expandedImage: {
 		width: 72,
-		height: 56,
+		minHeight: 56,
 		marginHorizontal: 8,
 	},
 	expandedActionWrap: {
@@ -440,7 +406,7 @@ const styles = StyleSheet.create({
 	},
 	transportArtworkWrap: {
 		width: 84,
-		height: 58,
+		minHeight: 58,
 		alignItems: "center",
 		justifyContent: "center",
 		marginHorizontal: 8,

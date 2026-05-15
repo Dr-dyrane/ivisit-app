@@ -215,6 +215,7 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "700",
 		letterSpacing: -0.28,
+		flexShrink: 1,
 	},
 	heroSummarySubtitle: {
 		marginTop: 3,
@@ -222,6 +223,7 @@ const styles = StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "700",
 		letterSpacing: -0.08,
+		flexShrink: 1,
 	},
 	selectorCard: {
 		paddingHorizontal: 14,
@@ -295,6 +297,8 @@ const styles = StyleSheet.create({
 		lineHeight: 17,
 		fontWeight: "700",
 		letterSpacing: -0.08,
+		textAlign: "center",
+		flexShrink: 1,
 	},
 	breakdownCard: {
 		paddingHorizontal: 18,
@@ -319,6 +323,7 @@ const styles = StyleSheet.create({
 	},
 	breakdownRowLabel: {
 		flex: 1,
+		minWidth: 0,
 		fontSize: 14,
 		lineHeight: 18,
 		fontWeight: "500",
@@ -327,6 +332,8 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 18,
 		fontWeight: "700",
+		flexShrink: 0,
+		textAlign: "right",
 	},
 	breakdownRowDiscount: {
 		color: "#10B981",
@@ -402,6 +409,8 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	infoGroupLabel: {
+		flex: 1,
+		minWidth: 0,
 		fontSize: 14,
 		lineHeight: 18,
 		fontWeight: "500",
@@ -487,12 +496,14 @@ const styles = StyleSheet.create({
 		fontSize: 17,
 		lineHeight: 21,
 		fontWeight: "500",
+		flexShrink: 1,
 	},
 	actionGroupSubtitle: {
 		marginTop: 3,
 		fontSize: 12,
 		lineHeight: 16,
 		fontWeight: "400",
+		flexShrink: 1,
 	},
 	actionGroupDivider: {
 		height: StyleSheet.hairlineWidth,
@@ -548,15 +559,17 @@ const styles = StyleSheet.create({
 	paymentHeroTitle: {
 		marginTop: 4,
 		fontSize: 17,
-		lineHeight: 20,
+		lineHeight: 22,
 		fontWeight: "500",
 		letterSpacing: -0.22,
+		flexShrink: 1,
 	},
 	paymentHeroSubtitle: {
 		marginTop: 3,
 		fontSize: 13,
 		lineHeight: 17,
 		fontWeight: "400",
+		flexShrink: 1,
 	},
 	paymentHeroRight: {
 		minHeight: 34,
@@ -565,6 +578,7 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		gap: 6,
 		paddingHorizontal: 11,
+		paddingVertical: 8,
 		...squircle(17),
 	},
 	paymentHeroRightText: {
@@ -573,6 +587,7 @@ const styles = StyleSheet.create({
 		lineHeight: 15,
 		fontWeight: "500",
 		letterSpacing: -0.1,
+		textAlign: "center",
 	},
 	paymentHeroSkeleton: {
 		marginTop: 7,

@@ -30,6 +30,8 @@ export default StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "700",
 		textAlign: "center",
+		maxWidth: "100%",
+		flexShrink: 1,
 	},
 	subtext: {
 		marginTop: 3,
@@ -37,5 +39,7 @@ export default StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "400",
 		textAlign: "center",
+		maxWidth: "100%",
+		flexShrink: 1,
 	},
 });

@@ -228,7 +228,11 @@ function SearchDrop({
 				) : null}
 			</View>
 			{contextHint ? (
-				<Text numberOfLines={1} style={[styles.contextHint, { color: mutedColor }]}>
+				<Text
+					numberOfLines={1}
+					maxFontSizeMultiplier={1.25}
+					style={[styles.contextHint, { color: mutedColor }]}
+				>
 					Within {contextHint}
 				</Text>
 			) : null}

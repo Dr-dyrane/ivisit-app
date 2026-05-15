@@ -259,18 +259,25 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 	const hasAmbulances = Number(hospital?.ambulances ?? hospital?.ambulances_count ?? 0) > 0;
 
 	const cards = AMBULANCE_SERVICE_TYPES.map((tier) => {
-		const row = rows.find((item) =>
-			matchesAliases(
-				[
-					item?.service_type,
-					item?.service_name,
-					item?.description,
-				]
-					.filter(Boolean)
-					.join(" "),
-				tier.aliases,
-			),
-		);
+		const row =
+			rows.find((item) =>
+				matchesAliases(
+					[
+						item?.service_type,
+						item?.service_name,
+						item?.description,
+					]
+						.filter(Boolean)
+						.join(" "),
+					tier.aliases,
+				),
+			) ||
+			(tier.id === "basic"
+				? rows.find((item) => {
+						const serviceType = String(item?.service_type || "").trim().toLowerCase();
+						return serviceType === "ambulance";
+					})
+				: null);
 		const enabled = Boolean(row) || (tier.id === "basic" && hasAmbulances);
 		const title = tier.label;
 		// PULLBACK NOTE: Use quoted price from billing quote service if available
@@ -280,7 +287,7 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 			? quotedPrice.label
 			: row
 				? formatPrice(
-						row.base_price,
+						row.base_price ?? row.base_cost,
 						null,
 						resolveMoneyCurrency(row?.currency, hospital?.currency),
 				)

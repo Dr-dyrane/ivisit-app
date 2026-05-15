@@ -477,6 +477,14 @@ Preferred pre-dispatch sources:
 - `room_pricing`
 - route preview / camera data
 
+Pricing display rule:
+
+- Service-selection price labels must follow the same pricing hierarchy as the payment calculation lane: hospital `service_pricing`, then hospital `base_price`, then global `service_pricing`, then hardcoded defaults only inside the server/payment calculation.
+- The current `service_pricing` contract is hospital-scoped plus global fallback; do not invent organization-scoped service pricing unless the schema adds that column.
+- The canonical seeded ambulance row is `service_type = "ambulance"`. Tiered selection UI may render it as the basic/everyday ambulance option, while explicit tier rows such as `ambulance_basic`, `ambulance_advanced`, and `ambulance_critical` should override the matching tier when present.
+- Service-selection quote maps must read both `base_price` and legacy/mock `base_cost` so the pre-payment display does not drift from the payment calculation fallback.
+- If selection cannot resolve a real price, hide the price pill after loading instead of rendering placeholder copy such as "Before payment"; payment can still calculate the final charge, but the decision sheet should not pretend it has a price.
+
 Do not build pre-dispatch UI around:
 
 - live `ambulances` unit identity
@@ -1031,6 +1039,20 @@ Rules:
 
 ---
 
+## Service Selection Header Rule
+
+Ambulance and bed decision sheets are task-owned service-selection phases, not hospital profile sheets.
+
+Rules:
+
+- Use the shared `MapTrackingTopSlot` header primitive for service-selection sheets so tracking, location, ambulance, and bed phases share the same header rhythm, icon sizing, close affordance, and Dynamic Type behavior.
+- The primary header title should name the active decision: `Select Transportation` for ambulance dispatch and `Choose Your Room` for bed selection.
+- The subtitle should carry context: hospital name when available, or step context such as `Step 1 of 2 - Hemet Valley Medical Center`.
+- ETA/distance/status belongs inside the hero/card content unless the hospital context is unavailable. Do not let transient route metadata replace the task title.
+- In combined flows, the header subtitle should expose progression without adding a separate progress component.
+
+---
+
 ## Surface Text Resilience Rule
 
 Compact emergency/map surfaces should not depend on harsh visible ellipsis for important entity labels.
@@ -1045,6 +1067,26 @@ Rules:
 - Do not use fade-end clipping for body copy, legal copy, explanatory text, or values that must be fully visible immediately.
 - Text-bearing rows should use `minHeight` plus vertical padding instead of fixed `height` unless the surface is a deliberately compact map chrome.
 - Horizontal text rows must give the copy column `minWidth: 0` so labels can shrink before they clip.
+
+---
+
+## Dynamic Type Vertical Resilience Rule
+
+Emergency surfaces must stay readable at large iOS Dynamic Type and Android font sizes.
+
+Rules:
+
+- Do not put user-readable text inside a fixed-height control unless the control is intentionally tiny chrome and has a documented local scale cap.
+- Prefer `minHeight` plus `paddingVertical` for text-bearing buttons, rows, cards, chips, and sheet CTAs.
+- Set explicit `lineHeight` on compact labels, subtext, and CTA copy.
+- Add `minWidth: 0` to horizontal copy containers and `flexShrink: 1` to text that can yield.
+- Use local `maxFontSizeMultiplier` instead of global scaling suppression:
+  - emergency-critical labels: up to about `1.4`
+  - compact CTA titles: about `1.25`
+  - supporting subtext: about `1.3`
+- Allow meaningful subtext to wrap where the surface has room. Use single-line clipping only for compact entity labels, route labels, and dense chrome.
+- Pure icon boxes, media thumbnails, image wrappers, skeleton bars, and non-readable glyphs may keep fixed dimensions.
+- Never use `allowFontScaling={false}` on meaningful emergency copy.
 
 ---
 

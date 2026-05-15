@@ -122,14 +122,14 @@ export const historyModalStyles = StyleSheet.create({
 		paddingHorizontal: 2,
 		paddingVertical: 2,
 	},
-	// PULLBACK NOTE: Pass 4 HIG sweep — OLD: paddingVertical 8 (tap target ~32pt) NEW: 14 (≥44pt)
+	// PULLBACK NOTE: Match hospital list pills height — OLD: paddingVertical 14 NEW: 8
 	filterChip: {
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 8,
 		paddingLeft: 10,
 		paddingRight: 10,
-		paddingVertical: 14,
+		paddingVertical: 8,
 		borderRadius: 18,
 		borderCurve: "continuous",
 	},

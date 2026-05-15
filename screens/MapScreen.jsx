@@ -323,7 +323,10 @@ export default function MapScreen() {
         const updatedItem = visits.find(
           (v) => v.id === visitId || v.requestId === visitId,
         );
-        if (updatedItem) openVisitDetail?.(updatedItem);
+        // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+        // OLD: openVisitDetail called without sourceSurface
+        // NEW: pass "explore" as default sourceSurface for rating reopen
+        if (updatedItem) openVisitDetail?.(updatedItem, null, "explore");
       },
       [openVisitDetail, selectedHistoryVisitKey, visits],
     ),
@@ -470,7 +473,8 @@ export default function MapScreen() {
           onOpenAmbulanceHospitals={openAmbulanceHospitalList}
           onOpenBedHospitals={openBedHospitalList}
           onOpenRecents={() => setRecentVisitsVisible(true)}
-          onSelectHistoryItem={handleSelectHistoryItem}
+          // PULLBACK NOTE: PASS 19H — pass sourceSurface="explore" when opening from explore intent surface
+          onSelectHistoryItem={(historyItem) => handleSelectHistoryItem(historyItem, "explore")}
           onOpenFeaturedHospital={handleOpenFeaturedHospital}
           onCycleHospital={
             featuredHospitals.length > 1

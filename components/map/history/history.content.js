@@ -104,12 +104,13 @@ export const HISTORY_FILTER_KEYS = Object.freeze({
 	CANCELLED: "cancelled",
 });
 
+// PULLBACK NOTE: Match hospital list UI — add icons to filter options
 export const HISTORY_FILTER_OPTIONS = Object.freeze([
-	Object.freeze({ key: HISTORY_FILTER_KEYS.ALL, label: "All" }),
-	Object.freeze({ key: HISTORY_FILTER_KEYS.ACTIVE, label: "Active" }),
-	Object.freeze({ key: HISTORY_FILTER_KEYS.UPCOMING, label: "Upcoming" }),
-	Object.freeze({ key: HISTORY_FILTER_KEYS.COMPLETED, label: "Completed" }),
-	Object.freeze({ key: HISTORY_FILTER_KEYS.CANCELLED, label: "Cancelled" }),
+	Object.freeze({ key: HISTORY_FILTER_KEYS.ALL, label: "All", icon: "list-outline" }),
+	Object.freeze({ key: HISTORY_FILTER_KEYS.ACTIVE, label: "Active", icon: "pulse-outline" }),
+	Object.freeze({ key: HISTORY_FILTER_KEYS.UPCOMING, label: "Upcoming", icon: "calendar-outline" }),
+	Object.freeze({ key: HISTORY_FILTER_KEYS.COMPLETED, label: "Completed", icon: "checkmark-circle-outline" }),
+	Object.freeze({ key: HISTORY_FILTER_KEYS.CANCELLED, label: "Cancelled", icon: "close-circle-outline" }),
 ]);
 
 export const HISTORY_EMPTY_STATE_BY_FILTER = Object.freeze({

@@ -184,12 +184,17 @@ export default function MapBedDecisionStageBase({
 	}, [onSnapStateChange, snapState]);
 
 	const headerSubtext = useMemo(() => {
+		const hospitalName =
+			decision.hospitalSummary?.title || hospital?.name || "";
 		if (careIntent === "both") {
-			return `${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP} · ${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_TITLE}`;
+			return hospitalName
+				? `${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP} - ${hospitalName}`
+				: MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP;
 		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
-		if (!etaLabel) return null;
+		if (hospitalName) return hospitalName;
+		if (!etaLabel) return "Choose a room";
 		if (/route updating/i.test(etaLabel) || /arriving soon/i.test(etaLabel)) {
 			return etaLabel;
 		}
@@ -197,7 +202,7 @@ export default function MapBedDecisionStageBase({
 			return etaLabel;
 		}
 		return `${etaLabel} away`;
-	}, [careIntent, decision.etaLabel]);
+	}, [careIntent, decision.etaLabel, decision.hospitalSummary?.title, hospital?.name]);
 
 	const handleOpenRoomDetails = useCallback(() => {
 		if (
@@ -310,7 +315,7 @@ export default function MapBedDecisionStageBase({
 							? "Collapse bed sheet"
 							: "Expand bed sheet"
 					}
-					hospitalName={decision.hospitalSummary?.title || hospital?.name || "Hospital"}
+					title={MAP_BED_DECISION_COPY.TITLE}
 					hospitalSubtext={headerSubtext}
 					toggleIconName={
 						snapState === MAP_SHEET_SNAP_STATES.EXPANDED

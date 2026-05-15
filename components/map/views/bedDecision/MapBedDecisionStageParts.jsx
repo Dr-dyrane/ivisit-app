@@ -12,8 +12,8 @@ import EntryActionButton from "../../../entry/EntryActionButton";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
 import { COLORS } from "../../../../constants/colors";
 import { getHospitalDetailServiceImageSource } from "../../surfaces/hospitals/mapHospitalDetail.content";
-import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
+import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
 import { MAP_BED_DECISION_COPY } from "./mapBedDecision.content";
 import styles from "./mapBedDecision.styles";
 import FadeEndText from "../../../ui/FadeEndText";
@@ -104,6 +104,15 @@ function formatRoomMeta(option, fallbackPrice) {
     .join(", ");
 }
 
+function formatTimeAwayLabel(value) {
+  const etaLabel = typeof value === "string" ? value.trim() : "";
+  if (!etaLabel) return null;
+  if (/route updating/i.test(etaLabel) || /arriving soon/i.test(etaLabel)) {
+    return etaLabel;
+  }
+  return /\baway\b/i.test(etaLabel) ? etaLabel : `${etaLabel} away`;
+}
+
 function MetaSkeleton({ style }) {
   return <View style={[styles.metaSkeleton, style]} />;
 }
@@ -132,7 +141,7 @@ export function MapBedDecisionTopSlot({
   showToggle = true,
   onToggle,
   toggleAccessibilityLabel = "Toggle sheet size",
-  hospitalName,
+  title,
   hospitalSubtext,
   toggleIconName = "chevron-up",
 }) {
@@ -145,50 +154,19 @@ export function MapBedDecisionTopSlot({
         modalContainedStyle,
       ]}
     >
-      {showToggle ? (
-        <MapHeaderIconButton
-          onPress={onToggle}
-          accessibilityLabel={toggleAccessibilityLabel}
-          backgroundColor={closeSurfaceColor}
-          color={titleColor}
-          iconName={toggleIconName}
-          style={styles.closeButton}
-        />
-      ) : (
-        <View style={styles.headerActionSpacer} />
-      )}
-      <View style={styles.topSlotCopy}>
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={[
-            styles.topSlotTitle,
-            stageMetrics?.topSlot?.titleStyle,
-            { color: titleColor },
-          ]}
-        >
-          {hospitalName || "Hospital"}
-        </Text>
-        {hospitalSubtext ? (
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={[
-              styles.topSlotSubtitle,
-              stageMetrics?.topSlot?.subtitleStyle,
-              { color: subtitleColor },
-            ]}
-          >
-            {hospitalSubtext}
-          </Text>
-        ) : null}
-      </View>
-      <MapHeaderIconButton
-        onPress={onClose}
-        accessibilityLabel="Close bed decision"
-        backgroundColor={closeSurfaceColor}
-        color={titleColor}
-        style={styles.closeButton}
+      <MapTrackingTopSlot
+        title={title || MAP_BED_DECISION_COPY.TITLE}
+        subtitle={hospitalSubtext}
+        titleColor={titleColor}
+        mutedColor={subtitleColor}
+        actionSurfaceColor={closeSurfaceColor}
+        onToggle={onToggle}
+        showToggle={showToggle}
+        toggleIconName={toggleIconName}
+        toggleAccessibilityLabel={toggleAccessibilityLabel}
+        showClose
+        onClose={onClose}
+        closeAccessibilityLabel="Close bed decision"
       />
     </View>
   );
@@ -209,6 +187,7 @@ export function MapBedDecisionHero({
   const heroPillSurfaceColor = isDarkMode
     ? "rgba(8,15,27,0.58)"
     : "rgba(255,255,255,0.86)";
+  const timeAwayLabel = formatTimeAwayLabel(decision.etaLabel);
 
   return (
     <View style={styles.heroPressable}>
@@ -249,18 +228,49 @@ export function MapBedDecisionHero({
         </View>
         <View style={styles.heroRow}>
           <View style={styles.heroCopy}>
-            <Text
-              style={[
+            <FadeEndText
+              text={decision.roomTitle}
+              fadeColor={surfaceColor}
+              fadeWidth={34}
+              fadeRadius={14}
+              containerStyle={styles.heroTitleFade}
+              textStyle={[
                 styles.heroTitle,
                 stageMetrics?.hero?.titleStyle,
                 { color: titleColor },
               ]}
-            >
-              {decision.roomTitle}
-            </Text>
+              textProps={{ maxFontSizeMultiplier: 1.25 }}
+            />
             <View
               style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}
             >
+              {timeAwayLabel ? (
+                <View
+                  style={[
+                    styles.metaPill,
+                    stageMetrics?.hero?.metaPillStyle,
+                    { backgroundColor: heroPillSurfaceColor },
+                  ]}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={COLORS.brandPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.metaLabel,
+                      stageMetrics?.hero?.metaLabelStyle,
+                      { color: titleColor },
+                    ]}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.25}
+                  >
+                    {timeAwayLabel}
+                  </Text>
+                </View>
+              ) : null}
+              {decision.availabilityShowsSkeleton || decision.availabilityLabel ? (
               <View
                 style={[
                   styles.metaPill,
@@ -278,7 +288,7 @@ export function MapBedDecisionHero({
                 />
                 {decision.availabilityShowsSkeleton ? (
                   <MetaSkeleton style={styles.metaSkeletonShort} />
-                ) : decision.availabilityLabel ? (
+                ) : (
                   <Text
                     style={[
                       styles.metaLabel,
@@ -286,11 +296,13 @@ export function MapBedDecisionHero({
                       { color: titleColor },
                     ]}
                     numberOfLines={1}
+                    maxFontSizeMultiplier={1.25}
                   >
                     {decision.availabilityLabel}
                   </Text>
-                ) : null}
+                )}
               </View>
+              ) : null}
               <View
                 style={[
                   styles.metaPill,
@@ -407,8 +419,20 @@ export function MapBedDecisionRoomSwitchRow({
                       : disabledColor
                 }
               />
-              <Text
-                style={[
+              <FadeEndText
+                text={option?.title || "Room"}
+                fadeColor={
+                  isActive
+                    ? COLORS.brandPrimary
+                    : isEnabled
+                      ? inactiveSurfaceColor
+                      : disabledSurfaceColor
+                }
+                fadeWidth={20}
+                fadeRadius={10}
+                numberOfLines={1}
+                containerStyle={styles.switchPillLabelFade}
+                textStyle={[
                   styles.switchPillLabel,
                   stageMetrics?.switch?.labelStyle,
                   {
@@ -419,10 +443,8 @@ export function MapBedDecisionRoomSwitchRow({
                         : disabledColor,
                   },
                 ]}
-                numberOfLines={1}
-              >
-                {option?.title || "Room"}
-              </Text>
+                textProps={{ maxFontSizeMultiplier: 1.15 }}
+              />
             </Pressable>
           );
         })}

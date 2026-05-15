@@ -84,6 +84,7 @@ export default StyleSheet.create({
 		lineHeight: 20,
 		fontWeight: "700",
 		color: "#FFFFFF",
+		flexShrink: 1,
 	},
 	cardSubtext: {
 		marginTop: 4,
@@ -91,6 +92,7 @@ export default StyleSheet.create({
 		lineHeight: 16,
 		fontWeight: "400",
 		color: "rgba(255,255,255,0.84)",
+		flexShrink: 1,
 	},
 	pulseGlow: {
 		position: "absolute",

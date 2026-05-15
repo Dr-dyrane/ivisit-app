@@ -5,8 +5,8 @@ import EntryActionButton from "../../../entry/EntryActionButton";
 import AmbulanceTierProductGraphic from "../../../emergency/requestModal/AmbulanceTierProductGraphic";
 import { getAmbulanceVisualProfile } from "../../../emergency/requestModal/ambulanceTierVisuals";
 import { COLORS } from "../../../../constants/colors";
-import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapStageGlassPanel from "../shared/MapStageGlassPanel";
+import { MapTrackingTopSlot } from "../tracking/parts/MapTrackingParts";
 import { MAP_AMBULANCE_DECISION_COPY } from "./mapAmbulanceDecision.content";
 import styles from "./mapAmbulanceDecision.styles";
 import FadeEndText from "../../../ui/FadeEndText";
@@ -55,6 +55,15 @@ function formatExpandedChoiceSubtext(option, fallbackPrice) {
     .join(", ");
 }
 
+function formatTimeAwayLabel(value) {
+  const etaLabel = typeof value === "string" ? value.trim() : "";
+  if (!etaLabel) return null;
+  if (/route updating/i.test(etaLabel) || /arriving soon/i.test(etaLabel)) {
+    return etaLabel;
+  }
+  return /\baway\b/i.test(etaLabel) ? etaLabel : `${etaLabel} away`;
+}
+
 function RouteMetaLine({ text, color, fadeColor }) {
   return (
     <FadeEndText
@@ -79,7 +88,7 @@ export function MapAmbulanceDecisionTopSlot({
   showToggle = true,
   onToggle,
   toggleAccessibilityLabel = "Toggle sheet size",
-  hospitalName,
+  title,
   hospitalSubtext,
   toggleIconName = "chevron-up",
 }) {
@@ -92,50 +101,19 @@ export function MapAmbulanceDecisionTopSlot({
         modalContainedStyle,
       ]}
     >
-      {showToggle ? (
-        <MapHeaderIconButton
-          onPress={onToggle}
-          accessibilityLabel={toggleAccessibilityLabel}
-          backgroundColor={closeSurfaceColor}
-          color={titleColor}
-          iconName={toggleIconName}
-          style={styles.closeButton}
-        />
-      ) : (
-        <View style={styles.headerActionSpacer} />
-      )}
-      <View style={styles.topSlotCopy}>
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={[
-            styles.topSlotTitle,
-            stageMetrics?.topSlot?.titleStyle,
-            { color: titleColor },
-          ]}
-        >
-          {hospitalName || "Hospital"}
-        </Text>
-        {hospitalSubtext ? (
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={[
-              styles.topSlotSubtitle,
-              stageMetrics?.topSlot?.subtitleStyle,
-              { color: subtitleColor },
-            ]}
-          >
-            {hospitalSubtext}
-          </Text>
-        ) : null}
-      </View>
-      <MapHeaderIconButton
-        onPress={onClose}
-        accessibilityLabel="Close ambulance decision"
-        backgroundColor={closeSurfaceColor}
-        color={titleColor}
-        style={styles.closeButton}
+      <MapTrackingTopSlot
+        title={title || MAP_AMBULANCE_DECISION_COPY.TITLE}
+        subtitle={hospitalSubtext}
+        titleColor={titleColor}
+        mutedColor={subtitleColor}
+        actionSurfaceColor={closeSurfaceColor}
+        onToggle={onToggle}
+        showToggle={showToggle}
+        toggleIconName={toggleIconName}
+        toggleAccessibilityLabel={toggleAccessibilityLabel}
+        showClose
+        onClose={onClose}
+        closeAccessibilityLabel="Close ambulance decision"
       />
     </View>
   );
@@ -155,6 +133,7 @@ export function MapAmbulanceDecisionHero({
   const heroPillSurfaceColor = isDarkMode
     ? "rgba(8,15,27,0.58)"
     : "rgba(255,255,255,0.86)";
+  const timeAwayLabel = formatTimeAwayLabel(decision.etaLabel);
   const artworkWidth = Math.round((stageMetrics?.width || 393) * 0.59);
   const artworkHeight = Math.round((stageMetrics?.height || 852) * 0.18);
 
@@ -200,21 +179,51 @@ export function MapAmbulanceDecisionHero({
 
         <View style={styles.heroRow}>
           <View style={styles.heroCopy}>
-            <Text
-              style={[
+            <FadeEndText
+              text={decision.serviceTitle}
+              fadeColor={surfaceColor}
+              fadeWidth={34}
+              fadeRadius={14}
+              containerStyle={styles.heroTitleFade}
+              textStyle={[
                 styles.heroTitle,
                 stageMetrics?.hero?.titleStyle,
                 { color: titleColor },
               ]}
-            >
-              {decision.serviceTitle}
-            </Text>
+              textProps={{ maxFontSizeMultiplier: 1.25 }}
+            />
             {/* PULLBACK NOTE: UX-A ambulance hero — serviceSummary block removed */}
             {/* OLD: serviceSummary text + "See full details →" raw arrow inline */}
             {/* NEW: info icon in heroHeader is the only detail affordance (matches bed pattern) */}
             <View
               style={[styles.heroMetaRow, stageMetrics?.hero?.metaRowStyle]}
             >
+              {timeAwayLabel ? (
+                <View
+                  style={[
+                    styles.metaPill,
+                    stageMetrics?.hero?.metaPillStyle,
+                    { backgroundColor: heroPillSurfaceColor },
+                  ]}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={decision.visualProfile.accent}
+                  />
+                  <Text
+                    style={[
+                      styles.metaLabel,
+                      stageMetrics?.hero?.metaLabelStyle,
+                      { color: titleColor },
+                    ]}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.25}
+                  >
+                    {timeAwayLabel}
+                  </Text>
+                </View>
+              ) : null}
               <View
                 style={[
                   styles.metaPill,
@@ -233,37 +242,42 @@ export function MapAmbulanceDecisionHero({
                     stageMetrics?.hero?.metaLabelStyle,
                     { color: titleColor },
                   ]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.25}
                 >
                   {decision.crewPillLabel}
                 </Text>
               </View>
-              <View
-                style={[
-                  styles.metaPill,
-                  stageMetrics?.hero?.metaPillStyle,
-                  { backgroundColor: heroPillSurfaceColor },
-                ]}
-              >
-                <Ionicons
-                  name="cash"
-                  size={14}
-                  color={decision.visualProfile.accent}
-                />
-                {decision.priceShowsSkeleton ? (
-                  <MetaSkeleton style={styles.metaSkeletonMedium} />
-                ) : decision.priceLabel && decision.priceLabel !== "Shown before payment" ? (
-                  <Text
-                    style={[
-                      styles.metaLabel,
-                      stageMetrics?.hero?.metaLabelStyle,
-                      { color: titleColor },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {decision.priceLabel}
-                  </Text>
-                ) : null}
-              </View>
+              {decision.priceShowsSkeleton || decision.priceLabel ? (
+                <View
+                  style={[
+                    styles.metaPill,
+                    stageMetrics?.hero?.metaPillStyle,
+                    { backgroundColor: heroPillSurfaceColor },
+                  ]}
+                >
+                  <Ionicons
+                    name="cash"
+                    size={14}
+                    color={decision.visualProfile.accent}
+                  />
+                  {decision.priceShowsSkeleton ? (
+                    <MetaSkeleton style={styles.metaSkeletonMedium} />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.metaLabel,
+                        stageMetrics?.hero?.metaLabelStyle,
+                        { color: titleColor },
+                      ]}
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      {decision.priceLabel}
+                    </Text>
+                  )}
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -325,18 +339,22 @@ export function MapAmbulanceDecisionSwitchRow({
               size={14}
               color={isActive ? "#FFFFFF" : visualProfile.accent}
             />
-            <Text
-              style={[
+            <FadeEndText
+              text={option?.title || visualProfile.shortLabel}
+              fadeColor={isActive ? COLORS.brandPrimary : inactiveSurfaceColor || pillSurfaceColor}
+              fadeWidth={20}
+              fadeRadius={10}
+              numberOfLines={1}
+              containerStyle={styles.switchPillLabelFade}
+              textStyle={[
                 styles.switchPillLabel,
                 stageMetrics?.switch?.labelStyle,
                 {
                   color: isActive ? "#FFFFFF" : visualProfile.accent,
                 },
               ]}
-              numberOfLines={2}
-            >
-              {option?.title || visualProfile.shortLabel}
-            </Text>
+              textProps={{ maxFontSizeMultiplier: 1.15 }}
+            />
           </Pressable>
         );
       })}

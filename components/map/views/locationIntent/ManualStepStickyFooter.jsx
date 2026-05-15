@@ -46,7 +46,7 @@ export default function ManualStepStickyFooter({
 					pressed ? styles.buttonPressed : null,
 				]}
 			>
-				<Text style={[styles.buttonLabel, { color: titleColor }]}>Back</Text>
+				<Text maxFontSizeMultiplier={1.25} style={[styles.buttonLabel, { color: titleColor }]}>Back</Text>
 			</Pressable>
 
 			{/* Solid accent primary CTA */}
@@ -66,7 +66,7 @@ export default function ManualStepStickyFooter({
 				{isLoading ? (
 					<ActivityIndicator size="small" color="#ffffff" style={styles.spinner} />
 				) : null}
-				<Text style={styles.buttonPrimaryLabel}>{nextLabel}</Text>
+				<Text maxFontSizeMultiplier={1.25} style={styles.buttonPrimaryLabel}>{nextLabel}</Text>
 			</Pressable>
 		</View>
 	);
@@ -80,7 +80,9 @@ const styles = StyleSheet.create({
 		paddingTop: 10,
 	},
 	button: {
-		height: 46,
+		minHeight: 46,
+		paddingVertical: 12,
+		paddingHorizontal: 12,
 		alignItems: "center",
 		justifyContent: "center",
 		flexDirection: "row",
@@ -110,11 +112,15 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		lineHeight: 19,
 		fontWeight: "600",
+		textAlign: "center",
+		flexShrink: 1,
 	},
 	buttonPrimaryLabel: {
 		fontSize: 14,
 		lineHeight: 19,
 		fontWeight: "700",
 		color: "#ffffff",
+		textAlign: "center",
+		flexShrink: 1,
 	},
 });

@@ -287,9 +287,19 @@ export default function IntentCard({
 							</View>
 						)}
 					</View>
-					<Text style={[intentCardStyles.cardLabel, responsiveMetrics?.cardLabelStyle]}>{label}</Text>
+					<Text
+						maxFontSizeMultiplier={1.25}
+						style={[intentCardStyles.cardLabel, responsiveMetrics?.cardLabelStyle]}
+					>
+						{label}
+					</Text>
 					{showSubtext && subtext ? (
-						<Text style={[intentCardStyles.cardSubtext, responsiveMetrics?.cardSubtextStyle]}>{subtext}</Text>
+						<Text
+							maxFontSizeMultiplier={1.3}
+							style={[intentCardStyles.cardSubtext, responsiveMetrics?.cardSubtextStyle]}
+						>
+							{subtext}
+						</Text>
 					) : null}
 				</LinearGradient>
 			</Animated.View>

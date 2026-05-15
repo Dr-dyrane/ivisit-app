@@ -86,6 +86,7 @@ export default function ManualStepCompletedSummaries({
 								fadeRadius={12}
 								containerStyle={styles.rowLineFade}
 								textStyle={[styles.rowLabel, { color: mutedColor }]}
+								textProps={{ maxFontSizeMultiplier: 1.2 }}
 							/>
 							<FadeEndText
 								text={value}
@@ -94,6 +95,7 @@ export default function ManualStepCompletedSummaries({
 								fadeRadius={12}
 								containerStyle={styles.rowLineFade}
 								textStyle={[styles.rowValue, { color: titleColor }]}
+								textProps={{ maxFontSizeMultiplier: 1.3 }}
 							/>
 						</View>
 

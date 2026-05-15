@@ -144,8 +144,36 @@ export function useMapSheetPhaseReducer({
     [sheetPhase, setSheetView],
   );
 
+  // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+  // OLD: goBack() only used sourcePhase (sheet phase level)
+  // NEW: goBack() now handles sourceSurface (surface level) for visit detail return
+  // When closing visit detail, sourceSurface determines where to return:
+  // - "recents" → restore Recents modal (via surface restore callback)
+  // - "explore" → return to Explore view (default)
+  // - "tracking" → return to Tracking sheet
+  // - "notification" → return to notification source
+  // - "unknown" or missing → fall back to sourcePhase, then EXPLORE_INTENT
   const goBack = useCallback(() => {
     const origin = sheetPayload?.sourcePhase;
+    const sourceSurface = sheetPayload?.sourceSurface;
+
+    // Special handling for visit detail with sourceSurface
+    if (sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL && sourceSurface) {
+      // Return to sourcePhase first, let surface restore callback handle surface-level restoration
+      if (origin && origin !== sheetPhase) {
+        setSheetView(
+          buildSourceReturnSheetView({
+            payload: sheetPayload,
+            fallbackPhase: origin,
+            fallbackSnapState: defaultExploreSnapState,
+            fallbackPayload: null,
+          }),
+        );
+        return;
+      }
+    }
+
+    // Standard goBack for other phases or when sourceSurface is unknown
     if (origin && origin !== sheetPhase) {
       setSheetView(
         buildSourceReturnSheetView({

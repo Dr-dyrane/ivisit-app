@@ -157,6 +157,7 @@ export default function IntentOrb({
 					</View>
 				</Animated.View>
 				<Text
+					maxFontSizeMultiplier={1.25}
 					style={[
 						intentOrbStyles.label,
 						responsiveStyles?.labelStyle,
@@ -166,6 +167,7 @@ export default function IntentOrb({
 					{label}
 				</Text>
 				<Text
+					maxFontSizeMultiplier={1.3}
 					style={[
 						intentOrbStyles.subtext,
 						responsiveStyles?.subtextStyle,

@@ -782,3 +782,42 @@ Implementation rule:
 - Use `minHeight` plus padding around text-bearing controls unless the element is a deliberately compact chrome control.
 - Horizontal text rows must provide `minWidth: 0` / `flexShrink` at the copy container so text can yield before it clips.
 - Do not globally disable font scaling. Cap scaling only on tiny chrome where the control has a fixed physical contract.
+
+---
+
+## Pass 19G Finding - Dynamic Type Vertical Text Clipping
+
+**Status:** first high-risk shared surfaces hardened; broader app audit remains open.
+
+Confirmed issue:
+
+- Several emergency/map controls already used `minHeight`, but compact text rows still lacked local scale ceilings, explicit shrink behavior, or enough vertical padding.
+- Some button-like surfaces used fixed `height` even though they contained labels that can grow under iOS Dynamic Type or Android font scaling.
+- The most immediate risk was in shared intent orbs/cards, manual address sticky CTA, payment summary rows, ambulance type cards, and ambulance/bed decision headers.
+
+Confirmed correction:
+
+- Shared `IntentOrb` and `IntentCard` labels now use compact local scale caps and shrink behavior, preserving accessibility scaling without allowing the orb/card text to vertically crop the surface.
+- Manual address sticky CTA changed from fixed `height` to `minHeight` plus vertical padding, with centered shrinkable labels.
+- Manual completed summaries and active context hints now cap compact row text locally.
+- Places Hub pinned and saved-place rows now use a shrink-safe copy column, explicit subtitle line height, and local scale caps so individual place rows do not vertically clip under large fonts.
+- Service-selection ambulance and bed phases now apply `FadeEndText` to hero titles, compact switch-pill labels, and route subtext so long transport/room/hospital/address labels do not fall back to harsh clipping.
+- Ambulance type cards gained explicit line heights, shrink-safe header/value columns, and wrapping pills so large text does not crop meta rows.
+- Commit payment hero, summary, breakdown, info, and action rows now use local `maxFontSizeMultiplier` and shrink-safe copy/value layout.
+- Location save-detail primary action changed from fixed `height` to `minHeight` plus vertical padding.
+- Ambulance and bed decision top header text now caps compact one-line labels locally; decorative media wrappers changed away from text-bearing fixed height where relevant.
+
+Implementation rule:
+
+- Text-bearing controls should use `minHeight` plus `paddingVertical`; fixed `height` is allowed for pure icons, media, skeletons, and intentionally tiny chrome only.
+- Emergency-critical labels should generally support up to `1.4`; compact CTA titles around `1.25`; supporting subtext around `1.3`.
+- Horizontal rows must set `minWidth: 0` on copy columns and `flexShrink: 1` on text that can yield.
+- Do not solve Dynamic Type clipping with global `allowFontScaling={false}`.
+- When a surface must remain single-line, cap scaling locally and preserve the full value through accessible labels or full-detail drill-in paths.
+
+Remaining audit:
+
+- `CountryFlagGlyph` intentionally disables font scaling because it is a flag glyph, not user-readable copy.
+- `EmergencyLocationSearchSheet` still has list `maxHeight` constraints that should be reviewed in a later sheet-scroll pass.
+- The legacy emergency/request modal cluster has more fixed visual dimensions; only the active ambulance card surface was hardened in this pass.
+- Continue checking saved-place/list-row variants outside the Location Sheet before marking the app-wide Dynamic Type audit closed.

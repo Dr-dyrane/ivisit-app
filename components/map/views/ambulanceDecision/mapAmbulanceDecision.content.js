@@ -5,7 +5,7 @@ export const MAP_AMBULANCE_DECISION_COPY = {
   ETA_LABEL: "ETA",
   DISTANCE_LABEL: "Distance",
   PRICE_LABEL: "Estimated cost",
-  PRICE_FALLBACK: "Shown before payment",
+  PRICE_FALLBACK: null,
   ETA_FALLBACK: "Arriving soon",
   ROUTE_PENDING: "Route updating",
   CONFIDENCE_LIVE: "Live hospital pricing",

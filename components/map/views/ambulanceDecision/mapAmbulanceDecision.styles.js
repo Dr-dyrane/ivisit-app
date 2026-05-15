@@ -1,25 +1,11 @@
 import { Platform, StyleSheet } from "react-native";
 import { COLORS } from "../../../../constants/colors";
 
-const TITLE_TEXT = Platform.select({
-	ios: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-	android: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-	web: { fontSize: 25, lineHeight: 29, fontWeight: "700", letterSpacing: -0.45 },
-	default: { fontSize: 27, lineHeight: 31, fontWeight: "700", letterSpacing: -0.65 },
-});
-
 const HERO_TITLE_TEXT = Platform.select({
 	ios: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
 	android: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
 	web: { fontSize: 21, lineHeight: 25, fontWeight: "700", letterSpacing: -0.3 },
 	default: { fontSize: 22, lineHeight: 26, fontWeight: "700", letterSpacing: -0.45 },
-});
-
-const HOSPITAL_TITLE_TEXT = Platform.select({
-	ios: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
-	android: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
-	web: { fontSize: 18, lineHeight: 22, fontWeight: "700", letterSpacing: -0.2 },
-	default: { fontSize: 19, lineHeight: 23, fontWeight: "700", letterSpacing: -0.32 },
 });
 
 const styles = StyleSheet.create({
@@ -30,45 +16,12 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 20,
 	},
 	topSlot: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
 		paddingHorizontal: 12,
 		paddingTop: 4,
 		paddingBottom: 10,
 	},
 	webWideTopSlotInset: {
 		paddingHorizontal: 18,
-	},
-	topSlotCopy: {
-		flex: 1,
-		minWidth: 0,
-		paddingHorizontal: 12,
-		alignItems: "center",
-	},
-	topSlotTitle: {
-		...TITLE_TEXT,
-		textAlign: "center",
-		alignSelf: "stretch",
-	},
-	topSlotSubtitle: {
-		fontSize: 12,
-		lineHeight: 16,
-		fontWeight: "400",
-		color: COLORS.textSecondary,
-		marginTop: 2,
-		textAlign: "center",
-		alignSelf: "stretch",
-	},
-	closeButton: {
-		width: 38,
-		height: 38,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	headerActionSpacer: {
-		width: 38,
-		height: 38,
 	},
 	midSwitchSpacingTop: {
 		height: 0,
@@ -131,6 +84,9 @@ const styles = StyleSheet.create({
 	heroTitle: {
 		...HERO_TITLE_TEXT,
 	},
+	heroTitleFade: {
+		alignSelf: "stretch",
+	},
 	heroSummary: {
 		fontSize: 14,
 		lineHeight: 20,
@@ -183,6 +139,9 @@ const styles = StyleSheet.create({
 		textAlign: "center",
 		flexShrink: 1,
 		maxWidth: "100%",
+	},
+	switchPillLabelFade: {
+		alignSelf: "stretch",
 	},
 	routeCard: {
 		borderRadius: 26,
@@ -320,7 +279,7 @@ const styles = StyleSheet.create({
 	},
 	expandedChoiceArtworkWrap: {
 		width: 88,
-		height: 60,
+		minHeight: 60,
 		alignItems: "center",
 		justifyContent: "center",
 		marginHorizontal: 8,
@@ -332,8 +291,9 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	optionStatePill: {
-		height: 28,
+		minHeight: 28,
 		paddingHorizontal: 10,
+		paddingVertical: 6,
 		borderRadius: 14,
 		borderCurve: "continuous",
 		alignItems: "center",

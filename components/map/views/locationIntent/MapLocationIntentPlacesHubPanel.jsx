@@ -44,12 +44,20 @@ function PlacesHubRow({
 				infoSurfaceColor: iconBgColor || "#00000020",
 				iconStyle: styles.candidateActionIcon,
 			})}
-			<View style={{ flex: 1 }}>
-				<Text style={[styles.candidateActionText, { color: titleColor }]} numberOfLines={1}>
+			<View style={styles.placesHubRowCopy}>
+				<Text
+					style={[styles.candidateActionText, { color: titleColor }]}
+					numberOfLines={1}
+					maxFontSizeMultiplier={1.25}
+				>
 					{label}
 				</Text>
 				{address ? (
-					<Text style={[styles.listRowSubtitle, { color: isMuted ? mutedColor + "80" : mutedColor }]} numberOfLines={1}>
+					<Text
+						style={[styles.listRowSubtitle, { color: isMuted ? mutedColor + "80" : mutedColor }]}
+						numberOfLines={1}
+						maxFontSizeMultiplier={1.3}
+					>
 						{address}
 					</Text>
 				) : null}

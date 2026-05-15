@@ -31,7 +31,7 @@ export default function useMapAmbulanceDecisionModel({
 	const effectiveBillingCurrencyCode = billingCurrencyCodeOverride || preferences?.billingCurrencyCode || null;
 	const quotedPriceMap = useQuotedPriceMap({
 		items: pricingRows,
-		getAmount: (row) => row?.base_price,
+		getAmount: (row) => row?.base_price ?? row?.base_cost,
 		getCurrency: (row) => resolveMoneyCurrency(row?.currency, hospital?.currency),
 		billingCountryCode: effectiveBillingCountryCode,
 		billingCurrencyCode: effectiveBillingCurrencyCode,

@@ -110,10 +110,18 @@ export default function ServiceTypeSelector({ selectedType, onSelect, counts }) 
 
 						{/* Content Row */}
 						<View style={styles.content}>
-							<Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
+							<Text
+								style={[styles.title, { color: textColor }]}
+								numberOfLines={1}
+								maxFontSizeMultiplier={1.25}
+							>
 								{service.title}
 							</Text>
-							<Text style={[styles.subtitle, { color: mutedColor }]} numberOfLines={1}>
+							<Text
+								style={[styles.subtitle, { color: mutedColor }]}
+								numberOfLines={1}
+								maxFontSizeMultiplier={1.3}
+							>
 								{safeCounts[normalizedServiceType] ?? 0} Hospitals
 							</Text>
 						</View>
@@ -148,6 +156,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		flexDirection: "row", // Maintaining the Row layout for height constraint
 		alignItems: "center",
+		minHeight: 66,
 		paddingVertical: 12,
 		paddingHorizontal: 12,
 		borderRadius: 28, // High rounding but adjusted for compact height
@@ -179,18 +188,23 @@ const styles = StyleSheet.create({
 	},
 	content: {
 		flex: 1,
+		minWidth: 0,
 		justifyContent: 'center',
 	},
 	title: {
 		fontSize: 13,
+		lineHeight: 17,
 		fontWeight: "800", // Bold premium weight
 		letterSpacing: -0.4,
+		flexShrink: 1,
 	},
 	subtitle: {
 		fontSize: 10,
+		lineHeight: 13,
 		fontWeight: "600",
 		marginTop: 1,
 		opacity: 0.7,
+		flexShrink: 1,
 	},
 	recommendedBadge: {
 		position: "absolute",

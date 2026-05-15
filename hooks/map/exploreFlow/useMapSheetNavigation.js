@@ -240,10 +240,13 @@ export function useMapSheetNavigation({
     goBack();
   }, [goBack]);
 
+  // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
+  // OLD: sourcePhase only (sheet phase level)
+  // NEW: sourceSurface added (surface level: "explore", "recents", "tracking", "notification", "unknown")
   const openVisitDetail = useCallback(
-    (historyItem, sourcePhase = null) => {
+    (historyItem, sourcePhase = null, sourceSurface = null) => {
       transitionTo(
-        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null, sourcePhase }),
+        buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null, sourcePhase, sourceSurface }),
       );
     },
     [transitionTo, usesSidebarLayout],

@@ -172,12 +172,15 @@ export default function MapAmbulanceDecisionStageBase({
 		);
 	}, [onSnapStateChange, snapState]);
 	const headerSubtext = useMemo(() => {
+		const hospitalName =
+			decision.hospitalSummary?.title || hospital?.name || "";
 		if (careIntent === "both") {
-			return MAP_AMBULANCE_DECISION_COPY.COMBINED_STEP_SUBTITLE;
+			return hospitalName ? `Step 1 of 2 - ${hospitalName}` : "Step 1 of 2";
 		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
-		if (!etaLabel) return null;
+		if (hospitalName) return hospitalName;
+		if (!etaLabel) return "Choose a hospital service";
 		if (/route updating/i.test(etaLabel) || /arriving soon/i.test(etaLabel)) {
 			return etaLabel;
 		}
@@ -185,7 +188,7 @@ export default function MapAmbulanceDecisionStageBase({
 			return etaLabel;
 		}
 		return `${etaLabel} away`;
-	}, [careIntent, decision.etaLabel]);
+	}, [careIntent, decision.etaLabel, decision.hospitalSummary?.title, hospital?.name]);
 
 	const handleOpenServiceDetails = useCallback(() => {
 		if (
@@ -274,7 +277,7 @@ export default function MapAmbulanceDecisionStageBase({
 							? "Collapse dispatch sheet"
 							: "Expand dispatch sheet"
 					}
-					hospitalName={decision.hospitalSummary?.title || hospital?.name || "Hospital"}
+					title={MAP_AMBULANCE_DECISION_COPY.TITLE}
 					hospitalSubtext={headerSubtext}
 					toggleIconName={
 						snapState === MAP_SHEET_SNAP_STATES.EXPANDED
