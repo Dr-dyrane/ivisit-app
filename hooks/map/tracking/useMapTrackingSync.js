@@ -79,7 +79,7 @@ export function useMapTrackingSync({
   const setIsCalculatingRoute = useSetAtom(isCalculatingRouteAtom);
   const setRouteCalculationError = useSetAtom(routeCalculationErrorAtom);
   const previousRequestKeyRef = useRef(UNINITIALIZED_REQUEST_KEY);
-  const normalizedActiveRequestKey =
+  const explicitActiveRequestKey =
     activeRequestKey != null && activeRequestKey !== ""
       ? String(activeRequestKey)
       : null;
@@ -89,6 +89,9 @@ export function useMapTrackingSync({
       : activeAmbulanceTrip?.id != null
         ? String(activeAmbulanceTrip.id)
         : null;
+  const normalizedActiveRequestKey =
+    explicitActiveRequestKey ||
+    (trackingKind === "ambulance" ? normalizedAmbulanceRequestKey : null);
 
   const setTrackingRouteInfo = useCallback(
     (nextRouteInfo) => {

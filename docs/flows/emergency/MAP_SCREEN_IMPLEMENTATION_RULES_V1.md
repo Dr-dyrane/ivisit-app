@@ -169,6 +169,14 @@ Required fix pattern:
 - after a mutation, update local visible state optimistically when safe and then reconcile from the canonical service/context response
 - normalize service values at the boundary before storing them in flow/global state
 
+Tracking request-key handoff:
+
+- `activeAmbulanceTrip` remains the canonical durable trip identity for ambulance tracking
+- `activeMapRequest` is a derived map-flow request object and may lag briefly after payment commit, especially on web route/sheet handoff
+- `useMapTrackingSync` must derive its effective tracking request key from `activeMapRequest.requestId` first, then fall back to `activeAmbulanceTrip.requestId` / `activeAmbulanceTrip.id` when the tracking kind is ambulance
+- do not add screen-level request-key glue in `MapScreen.jsx`; keep the handoff bridge inside the tracking sync hook so route visualization stays aligned with the five-layer model
+- if tracking only updates after sheet toggle, page refresh, or Metro restart, check this key handoff before adding remount-based fixes
+
 Payment-method example:
 
 - `COMMIT_PAYMENT` may use payment methods from a payment hook/service cache, but the phase must trigger a refresh when it opens and after adding/changing a method.
