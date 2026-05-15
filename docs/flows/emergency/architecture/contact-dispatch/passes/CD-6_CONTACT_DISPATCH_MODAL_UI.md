@@ -1,6 +1,6 @@
 # CD-6 Contact Dispatch Modal UI
 
-Status: Not started
+Status: Complete
 Owner: UI / UX
 Layer impact: presentation and Layer 5 UI consumption
 
@@ -79,11 +79,25 @@ MapModalShell
 
 ## Changed Files
 
-- TBD
+- `components/map/communication/EmergencyContactDispatchModal.jsx` (created)
+- `components/map/communication/EmergencyContactDispatchMessageList.jsx` (created)
+- `components/map/communication/EmergencyContactDispatchComposer.jsx` (created)
+- `components/map/communication/EmergencyContactDispatchQuickActions.jsx` (created)
+- `components/map/communication/emergencyContactDispatch.styles.js` (created)
+- `components/map/communication/emergencyContactDispatch.theme.js` (created)
+- `components/map/communication/emergencyContactDispatch.content.js` (created)
+- `components/map/communication/emergencyContactDispatch.helpers.js` (created)
 
 ## Verification
 
-- TBD
+- Modal uses MapModalShell for native presentation
+- Message list renders grouped bubbles with skeleton loading
+- Composer handles text input with character limit and send button
+- Quick actions render as selectable chips
+- Styles, theme, content, and helpers properly separated
+- No decorative borders or card-in-card layout
+- Sticky composer in footerSlot survives keyboard
+- All required states handled (ensuring, loading, empty, ready, sending, failed, reconnecting, archived, error)
 
 ## Rollback Notes
 

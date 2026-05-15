@@ -1,6 +1,6 @@
 # CD-4 Query And Realtime Hooks
 
-Status: Not started
+Status: Complete
 Owner: App State
 Layer impact: Layer 2, TanStack Query and realtime invalidation
 
@@ -57,11 +57,20 @@ export const emergencyChatQueryKeys = {
 
 ## Changed Files
 
-- TBD
+- `hooks/emergencyChat/emergencyChat.queryKeys.js` (created)
+- `hooks/emergencyChat/useEmergencyChatRoom.js` (created)
+- `hooks/emergencyChat/useEmergencyChatMessages.js` (created)
+- `hooks/emergencyChat/useEmergencyChatMutations.js` (created)
+- `hooks/emergencyChat/useEmergencyChatRealtime.js` (created)
 
 ## Verification
 
-- TBD
+- Query keys follow stable pattern (all, roomByRequest, messages, participants)
+- Room hook uses mutation for ensureRoom, disabled until requestId exists
+- Messages hook uses query for listMessages, disabled until roomId exists
+- Send mutation uses optimistic bubble with clientMessageId reconciliation
+- Realtime hook filtered by room_id, patches cache on INSERT/UPDATE/DELETE
+- All hooks auto-unsubscribe on unmount/room change
 
 ## Rollback Notes
 

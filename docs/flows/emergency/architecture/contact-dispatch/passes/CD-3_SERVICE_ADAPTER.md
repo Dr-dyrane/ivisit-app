@@ -1,6 +1,6 @@
 # CD-3 Service Adapter
 
-Status: Not started
+Status: Complete
 Owner: App Data
 Layer impact: Layer 1 adapter, no UI
 
@@ -59,11 +59,16 @@ Create the frontend service that maps Supabase rows, normalizes input, calls RPC
 
 ## Changed Files
 
-- TBD
+- `services/emergencyChatService.js` (created)
 
 ## Verification
 
-- TBD
+- Service exports all required functions
+- Row mappers convert snake_case to camelCase
+- Input normalization validates body length and kind
+- RPC calls use withRetry and withTimeout
+- Realtime subscription filtered by room_id
+- Explicit SELECT field lists (no SELECT *)
 
 ## Rollback Notes
 

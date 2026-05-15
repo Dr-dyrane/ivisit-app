@@ -1,6 +1,6 @@
 # CD-7 Tracking Entry Integration
 
-Status: Not started
+Status: Complete
 Owner: Map Flow
 Layer impact: tracking UI intent and map modal orchestration
 
@@ -58,11 +58,19 @@ Hero card:
 
 ## Changed Files
 
-- TBD
+- `components/map/views/tracking/mapTracking.model.js` (modified)
+- `components/map/views/tracking/useMapTrackingController.js` (modified)
+- `components/map/MapModalOrchestrator.jsx` (modified)
+- `hooks/map/exploreFlow/useMapExploreFlow.js` (modified)
 
 ## Verification
 
-- TBD
+- Contact Dispatch action added to buildTrackingMidActions
+- onOpenContactDispatch handler sets active request id and modal visible atoms
+- EmergencyContactDispatchModal rendered through MapModalOrchestrator
+- emergencyChatModalVisible included in hasActiveMapModal
+- Tracking emits intent only; no chat RPCs called from tracking stage
+- Modal rendering at map root level preserves tracking sheet state
 
 ## Rollback Notes
 

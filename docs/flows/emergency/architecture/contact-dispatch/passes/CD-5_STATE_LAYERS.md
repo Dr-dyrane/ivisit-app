@@ -65,11 +65,18 @@ States:
 
 ## Changed Files
 
-- TBD
+- `atoms/emergencyChatAtoms.js` (created)
+- `machines/emergencyChatRoomMachine.js` (created)
+- `hooks/emergencyChat/useEmergencyChatRoomLifecycle.js` (created)
 
 ## Verification
 
-- TBD
+- Jotai atoms own modal visibility and ephemeral UI state only
+- No canonical messages/participants/room data in atoms
+- XState machine enforces send legality (cannot send before ready)
+- XState machine enforces archive readiness (archived rooms disable composer)
+- Zustand store not created (drafts kept in ephemeral Jotai for v1)
+- Closing modal does not destroy query cache (Query owns canonical data)
 
 ## Rollback Notes
 

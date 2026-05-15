@@ -1,74 +1,54 @@
 {
   "_lastCommitHash": "59931c1",
   "_lastCommitDate": "2026-05-14T22:15:19-07:00",
-  "version": "1.0.5",
-  "date": "2026-05-14",
-  "title": "Payment Method Expansion + Ambulance Route Heading",
-  "summary": "Payment hero method pill expansion, platform-aware payment glass, ambulance sprite route-flow handoff, and recent map/payment text resilience and state-flow fixes.",
+  "version": "1.0.6",
+  "date": "2026-05-15",
+  "title": "Contact Dispatch - Chat with Your Ambulance or Hospital",
+  "summary": "Send messages to your ambulance driver or hospital staff directly from the tracking screen. Quick actions for common updates like ETA changes, pickup changes, and arrival notifications.",
   "changes": [
     {
       "type": "feature",
-      "message": "Added tappable commit-payment hero method pill so Cash, Wallet, or card meta expands the payment sheet and scrolls to the payment method section."
-    },
-    {
-      "type": "improvement",
-      "message": "Moved commit-payment selector expansion state to the payment sheet owner, prevented auto-default payment selection from collapsing an explicitly opened selector, and fixed embedded payment list rendering by using a plain content view when inner scrolling is disabled."
-    },
-    {
-      "type": "improvement",
-      "message": "Updated commit-payment surfaces to reuse platform-aware payment glass tokens, including readable hero meta text colors for Android, iOS, and web."
-    },
-    {
-      "type": "fix",
-      "message": "Added a route-flow heading bridge for payment-to-tracking ambulance handoff and keyed ambulance marker rendering by sprite bucket so native/web marker image caches repaint without requiring Metro reload."
-    },
-    {
-      "type": "refactor",
-      "message": "Separated live heading from preview fallback in ambulance tracking: split previewServiceMarkerHeading into fallbackServiceMarkerHeading (computed) and previewServiceMarkerHeading (live-aware), added orientRouteTowardPickup helper for route reversal logic, fixed heading hierarchy so live responder heading only applies when hasLiveResponder is true, added hasLiveResponder guard to useAmbulanceAnimation initialHeading and responder heading updates."
+      "message": "Added Contact Dispatch chat to tracking screen for communicating with ambulance drivers and hospital staff during emergencies."
     },
     {
       "type": "feature",
-      "message": "Implemented source-aware visit detail return using sourceSurface metadata to track origin surface (explore vs recents modal) for deterministic back navigation."
-    },
-    {
-      "type": "improvement",
-      "message": "Reduced history modal filter pills height (paddingVertical 14 → 8) to match hospital list specialty pills for visual consistency."
-    },
-    {
-      "type": "improvement",
-      "message": "Added icons to history modal filter chips (list, pulse, calendar, checkmark-circle, close-circle) matching hospital list icon-label-count layout."
+      "message": "Quick action buttons for common messages: Moving toward ambulance, Meet halfway, Pickup changed, Please call me, We arrived."
     },
     {
       "type": "feature",
-      "message": "Created shared FadeEndText component for dense surface clipping, replacing local fade implementations in LocationChrome, Explore Intent hospital hero, and emergency hospital cards."
-    },
-    {
-      "type": "improvement",
-      "message": "Migrated map search rows/chips, manual location rows/summaries, recents/history rows, and ambulance/bed route labels to use FadeEndText for consistent text resilience."
-    },
-    {
-      "type": "improvement",
-      "message": "Added regional discount display in payment breakdown with green color styling to show when regional pricing is applied."
+      "message": "Real-time message updates when chat is open, so you see new messages without refreshing."
     },
     {
       "type": "feature",
-      "message": "Implemented hybrid marker selection using map flow atoms (mapSelectedHospitalIdAtom, mapFeaturedHospitalAtom) for ephemeral UI state that survives sheet collapse."
+      "message": "Message history shows all communication with grouped messages and clear sender labels (you, driver, hospital)."
+    },
+    {
+      "type": "feature",
+      "message": "Automatic room creation when you start tracking, with secure access limited to you and your assigned responders."
     },
     {
       "type": "improvement",
-      "message": "Consolidated map stability fixes: temporal dead zone errors, duplicate hospital lookups, sheet snap transitions, and marker guards."
+      "message": "Messages are automatically marked as read when you open the chat."
     },
     {
       "type": "improvement",
-      "message": "Refined LocationSheet mode ownership, saved place post-save state, service selection footer CTA, and nearby hospital hero card for better UX."
+      "message": "Chat is disabled for completed/archived requests to prevent confusion."
     },
     {
       "type": "improvement",
-      "message": "Themed map canvas handoff surfaces, removed help support borders, and improved Dynamic Type support with minHeight and minWidth: 0."
+      "message": "Message validation prevents empty or overly long messages."
     },
     {
-      "type": "documentation",
-      "message": "Added Surface Text Resilience Rule to MAP_SCREEN_IMPLEMENTATION_RULES with FadeEndText usage guidelines."
+      "type": "improvement",
+      "message": "Retry protection prevents duplicate messages if you send the same message twice."
+    },
+    {
+      "type": "improvement",
+      "message": "Loading states and skeleton placeholders while fetching message history."
+    },
+    {
+      "type": "improvement",
+      "message": "Clean, accessible chat interface with large text and clear visual hierarchy."
     }
   ]
 }

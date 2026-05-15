@@ -189,6 +189,7 @@ export function buildTrackingMidActions({
   primaryAction,
   trackingKind,
   handleShareEta,
+  onOpenContactDispatch,
 }) {
   const actions = [];
 
@@ -225,6 +226,18 @@ export function buildTrackingMidActions({
       iconName: "ambulance",
       iconFamily: "material-community",
       tone: "transport",
+    });
+  }
+
+  // PULLBACK NOTE: Contact Dispatch CD-7 — Add Contact Dispatch action to mid actions
+  if (typeof onOpenContactDispatch === "function") {
+    actions.push({
+      key: "contact-dispatch",
+      label: "Contact Dispatch",
+      iconName: "chatbubbles-outline",
+      onPress: onOpenContactDispatch,
+      loading: false,
+      tone: "dispatch",
     });
   }
 

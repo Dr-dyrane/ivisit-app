@@ -6,6 +6,10 @@ import {
   recoveredRatingStateAtom,
   trackingRatingStateAtom,
 } from "../../../../atoms/mapScreenAtoms";
+import {
+  emergencyChatModalVisibleAtom,
+  activeEmergencyChatRequestIdAtom,
+} from "../../../../atoms/emergencyChatAtoms";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { buildTrackingSharePayload } from "./mapTracking.share";
@@ -78,6 +82,9 @@ export function useMapTrackingController({
   // useTrackingRatingFlow owns all close/skip/submit paths.
   const setRatingState = useSetAtom(trackingRatingStateAtom);
   const setRecoveredRatingState = useSetAtom(recoveredRatingStateAtom);
+  // PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat atoms for modal orchestration
+  const setEmergencyChatModalVisible = useSetAtom(emergencyChatModalVisibleAtom);
+  const setActiveEmergencyChatRequestId = useSetAtom(activeEmergencyChatRequestIdAtom);
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
     activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||
@@ -135,6 +142,14 @@ export function useMapTrackingController({
     serviceLabel,
     telemetryWarningLabel,
   ]);
+
+  // PULLBACK NOTE: Contact Dispatch CD-7 — Open contact dispatch modal handler
+  const handleOpenContactDispatch = useCallback(() => {
+    const requestId = activeAmbulanceRequestId || activeBedBookingRequestId;
+    if (!requestId) return;
+    setActiveEmergencyChatRequestId(requestId);
+    setEmergencyChatModalVisible(true);
+  }, [activeAmbulanceRequestId, activeBedBookingRequestId, setActiveEmergencyChatRequestId, setEmergencyChatModalVisible]);
 
   const runBusyAction = useCallback(async (key, handler) => {
     if (typeof handler !== "function") return;
@@ -374,9 +389,11 @@ export function useMapTrackingController({
         primaryAction,
         trackingKind,
         handleShareEta,
+        onOpenContactDispatch: handleOpenContactDispatch,
       }),
     [
       handleShareEta,
+      handleOpenContactDispatch,
       openTrackingTriage,
       primaryAction,
       secondaryActions,
@@ -408,6 +425,7 @@ export function useMapTrackingController({
     trackingDetailRows,
     midActions,
     bottomAction,
+    onOpenContactDispatch: handleOpenContactDispatch,
   };
 }
 

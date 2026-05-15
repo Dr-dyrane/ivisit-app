@@ -5,6 +5,9 @@ import {
   mapSelectedHospitalIdAtom,
   mapFeaturedHospitalAtom,
 } from "../../../atoms/mapFlowAtoms";
+import {
+  emergencyChatModalVisibleAtom,
+} from "../../../atoms/emergencyChatAtoms";
 import { useHeaderState } from "../../../contexts/HeaderStateContext";
 import { useScrollAwareHeader } from "../../../contexts/ScrollAwareHeaderContext";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -462,12 +465,16 @@ export function useMapExploreFlow() {
     openTracking,
   });
 
+  // PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat modal visibility
+  const emergencyChatModalVisible = useAtomValue(emergencyChatModalVisibleAtom);
+
   const hasActiveMapModal =
     profileModalVisible ||
     guestProfileVisible ||
     careHistoryVisible ||
     recentVisitsVisible ||
-    authModalVisible;
+    authModalVisible ||
+    emergencyChatModalVisible;
 
   const {
     trackingHeaderVisible,

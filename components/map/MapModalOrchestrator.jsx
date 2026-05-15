@@ -19,6 +19,12 @@ import MapGuestProfileModal from "./MapGuestProfileModal";
 import MapCareHistoryModal from "./MapCareHistoryModal";
 import MapHistoryModal from "./history/MapHistoryModal";
 import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
+import { EmergencyContactDispatchModal } from "./communication/EmergencyContactDispatchModal";
+import { useAtom } from "jotai";
+import {
+  emergencyChatModalVisibleAtom,
+  activeEmergencyChatRequestIdAtom,
+} from "../../atoms/emergencyChatAtoms";
 
 /**
  * MapModalOrchestrator
@@ -29,6 +35,7 @@ import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
  * - History modal (recent visits)
  * - History payment modal
  * - Service rating modals (recovered and in-flow tracking)
+ * - Contact Dispatch modal
  *
  * @param {Object} props
  * @param {boolean} props.profileModalVisible - MiniProfileModal visibility
@@ -112,6 +119,9 @@ export default function MapModalOrchestrator({
   // PULLBACK NOTE: UX-E Issue 11 — passed through from MapScreen to MiniProfileModal
   onOpenLocationIntent,
 }) {
+  // PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat modal state
+  const [emergencyChatModalVisible] = useAtom(emergencyChatModalVisibleAtom);
+  const [activeEmergencyChatRequestId] = useAtom(activeEmergencyChatRequestIdAtom);
   return (
     <>
       <MiniProfileModal
@@ -191,6 +201,14 @@ export default function MapModalOrchestrator({
         onSubmit={submitTrackingRating}
         surfaceVariant="map"
         preferDrawerPresentation={usesSidebarLayout}
+      />
+
+      {/* PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat modal */}
+      <EmergencyContactDispatchModal
+        visible={emergencyChatModalVisible}
+        onClose={() => {
+          // Modal handles its own atom cleanup
+        }}
       />
     </>
   );
