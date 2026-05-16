@@ -5,6 +5,18 @@ import * as Location from "expo-location";
 import { DEFAULT_APP_COORDINATES } from "../../constants/locationDefaults";
 import { useLocationStore } from "../../stores/locationStore";
 
+// PULLBACK NOTE: LOC-4
+// OLD: Cache key = coordinates only (collisions between manual/GPS/demo)
+// NEW: Dual-key cache with deterministic {coords}:{source}:{demo} keys
+// REASON: Prevent cache collisions; migration path preserves existing cache
+// Cache key precision (3 decimal places ≈ 111m precision)
+const buildDeterministicCacheKey = (location, source, demoMode) => {
+  const baseKey = buildLocationBucketKey(location);
+  const src = source || "unknown";
+  const demo = demoMode ? "demo" : "live";
+  return `${baseKey}:${src}:${demo}`;
+};
+
 // PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
 // OLD: permission denied / GPS error → hardcoded Lagos coords
 // NEW: use persisted last-known location first; Lagos only on true cold install
@@ -150,14 +162,33 @@ export function useHospitals(options = {}) {
 	const userLocation = externalLocation || resolvedLocation;
 
 	// Core fetching logic - pure functional approach
-	const performFetch = useCallback(async (location) => {
+	// LOC-4: Dual-key cache with deterministic {coords}:{source}:{demo} keys
+	const performFetch = useCallback(async (location, source = null, demoMode = false) => {
 		const normalizedLocation = normalizeLocation(location);
 		if (!normalizedLocation) return;
 
-		const locationKey = buildLocationBucketKey(normalizedLocation);
+		// LOC-4: Build both keys for dual-key migration
+		const oldKey = buildLocationBucketKey(normalizedLocation);           // Legacy: coords only
+		const newKey = buildDeterministicCacheKey(normalizedLocation, source, demoMode); // New: coords+source+demo
+		
 		const activeRequestId = ++requestSequenceRef.current;
-		const cachedSnapshot = globalHospitalCache.keyedSnapshots?.[locationKey] ?? null;
-		const isFreshLocationKey = globalHospitalCache.lastKey !== locationKey;
+		
+		// LOC-4: Dual-key cache lookup (new key first, fall back to old key)
+		let cachedSnapshot = globalHospitalCache.keyedSnapshots?.[newKey] ?? null;
+		let effectiveKey = newKey;
+		
+		if (!cachedSnapshot || !hasFreshSnapshot(cachedSnapshot)) {
+			// Fall back to legacy cache key (migration path)
+			const oldSnapshot = globalHospitalCache.keyedSnapshots?.[oldKey] ?? null;
+			if (oldSnapshot && hasFreshSnapshot(oldSnapshot)) {
+				console.log('[LOC-4] Migrating cache from old key to new key:', oldKey, '→', newKey);
+				globalHospitalCache.keyedSnapshots[newKey] = oldSnapshot; // Migrate
+				cachedSnapshot = oldSnapshot;
+				effectiveKey = newKey;
+			}
+		}
+		
+		const isFreshLocationKey = globalHospitalCache.lastKey !== effectiveKey;
 
 		try {
 			if (cachedSnapshot?.hospitals?.length) {
@@ -176,7 +207,7 @@ export function useHospitals(options = {}) {
 			setError(null);
 
 			if (demoModeEnabled && demoBootstrapEnabled) {
-				const bootstrapKey = `${locationKey}:${userId || "guest"}`;
+				const bootstrapKey = `${oldKey}:${userId || "guest"}`;
 				let bootstrapPromise = globalBootstrapRegistry.get(bootstrapKey);
 				if (!bootstrapPromise) {
 					bootstrapPromise = (async () => {
@@ -250,16 +281,18 @@ export function useHospitals(options = {}) {
 				categories: categorized,
 				timestamp: Date.now(),
 			};
+			// LOC-4: Store with dual keys during migration (new key + old key for backward compatibility)
 			globalHospitalCache = {
 				...globalHospitalCache,
 				hospitals: hospitalsWithWaitTimes,
 				allHospitals: data,
 				categories: categorized,
 				timestamp: nextSnapshot.timestamp,
-				lastKey: locationKey,
+				lastKey: newKey,
 				keyedSnapshots: {
 					...globalHospitalCache.keyedSnapshots,
-					[locationKey]: nextSnapshot,
+					[newKey]: nextSnapshot,     // Primary: deterministic key
+					[oldKey]: nextSnapshot,     // Migration: legacy key for backward compat
 				},
 			};
 		} catch (err) {
