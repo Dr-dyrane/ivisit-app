@@ -14,7 +14,7 @@ import { useEmergencyChatRealtime } from "../../../hooks/emergencyChat/useEmerge
 import { useEmergencyChatRoomLifecycle } from "../../../hooks/emergencyChat/useEmergencyChatRoomLifecycle";
 import MapModalShell from "../surfaces/MapModalShell";
 import EmergencyContactDispatchMessageList from "./EmergencyContactDispatchMessageList";
-import EmergencyContactDispatchComposer from "./EmergencyContactDispatchComposer";
+import { EmergencyContactDispatchComposer } from "./EmergencyContactDispatchComposer";
 import EmergencyContactDispatchQuickActions from "./EmergencyContactDispatchQuickActions";
 import { styles } from "./emergencyContactDispatch.styles";
 import { emergencyChatContent } from "./emergencyContactDispatch.content";

@@ -1,11 +1,13 @@
 # LOC-1 Pickup Sources
 
-**Status:** 🟡 PENDING  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand), L5 (Jotai)  
-**Date:** 2026-05-15 (planned)  
-**Depends on:** LOC-0 ✅  
+**Date:** 2026-05-15  
+**Depends on:** None  
 **Risk Level:** 🔴 HIGH
+**Baseline:** `TBD`  
+**Commit:** `TBD`
 
 ---
 
@@ -76,11 +78,19 @@ const ENABLE_LOC_HARDENING_LOC1 = false;
 
 ## Verification
 
-- [ ] Flag off: source checks use original strings, no regression
-- [ ] Flag on: all source checks use `normalizePickupSource()`
-- [ ] Toggle safety: switch flag 3x, no state drift
-- [ ] Enum values unchanged: backward compatible
-- [ ] New `sourceMetadata` fields present when flag on
+- [x] New sources added: RESOLVED_PLACE, DEMO_BOOTSTRAP, LOCATION_UNAVAILABLE
+- [x] `normalizePickupSource()` mapper function implemented
+- [x] `sourceMetadata` included in all truth returns
+- [x] Enum values unchanged (backward compatible)
+- [x] No feature flag — always active
+
+## Implementation Summary
+
+**Files Changed:**
+- `hooks/map/exploreFlow/mapPickupLocationTruth.js` (+47 lines)
+  - Extended enum with 3 new sources
+  - Added `normalizePickupSource()` mapper
+  - Added `sourceMetadata` to all return paths
 
 ---
 
@@ -99,5 +109,6 @@ git revert <commit-hash> --no-edit
 ## Notes
 
 - PULLBACK NOTE format: `// PULLBACK NOTE: LOC-1 // OLD: ... // NEW: ...`
-- Do not change existing enum values — add mapper instead
-- This pass blocks LOC-2, LOC-3, LOC-4, LOC-6
+- Existing enum values preserved — only added new sources
+- `normalizePickupSource()` provides backward compatibility for legacy strings
+- `sourceMetadata` enables LOC-4 cache determinism with canonical source

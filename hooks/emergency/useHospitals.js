@@ -234,17 +234,18 @@ export function useHospitals(options = {}) {
 				await bootstrapPromise;
 			}
 
-			let fetchPromise = globalFetchRegistry.get(locationKey);
+			// LOC-4: Use effectiveKey for fetch registry (consistent with cache key)
+			let fetchPromise = globalFetchRegistry.get(effectiveKey);
 			if (!fetchPromise) {
 				fetchPromise = hospitalsService.discoverNearby(
 					normalizedLocation.latitude,
 					normalizedLocation.longitude,
 					50000 // 50km
 				);
-				globalFetchRegistry.set(locationKey, fetchPromise);
+				globalFetchRegistry.set(effectiveKey, fetchPromise);
 				fetchPromise.finally(() => {
-					if (globalFetchRegistry.get(locationKey) === fetchPromise) {
-						globalFetchRegistry.delete(locationKey);
+					if (globalFetchRegistry.get(effectiveKey) === fetchPromise) {
+						globalFetchRegistry.delete(effectiveKey);
 					}
 				});
 			}
