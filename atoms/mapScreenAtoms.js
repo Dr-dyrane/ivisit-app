@@ -381,3 +381,7 @@ export const trackingCtaThemeAtom = atom((get) => {
 
 // Placeholder for mapThemeAtom (will be defined if needed)
 const mapThemeAtom = atom(false);
+
+// LOC-3: Location Recovery - Structured error details atom
+// Provides type-safe error classification for specific CTAs
+export const locationErrorDetailsAtom = atom(null);

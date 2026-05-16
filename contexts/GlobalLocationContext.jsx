@@ -26,6 +26,136 @@ const LOCATION_CONFIG = {
   ACCURACY: Location.Accuracy.High,
 };
 
+// LOC-3: Location Recovery - Structured error classification
+const LOCATION_ERROR_TYPES = {
+  PERMISSION_DENIED: "permission_denied",
+  PERMISSION_RESTRICTED: "permission_restricted",
+  SERVICE_DISABLED: "service_disabled",
+  NETWORK_ERROR: "network_error",
+  TIMEOUT: "timeout",
+  UNKNOWN: "unknown",
+};
+
+const LOCATION_ERROR_ACTIONS = {
+  [LOCATION_ERROR_TYPES.PERMISSION_DENIED]: {
+    title: "Location Permission Required",
+    message: "Please enable location access in settings to find nearby hospitals.",
+    primaryAction: "Open Settings",
+    secondaryAction: "Use Manual Address",
+    onPrimary: () => Linking.openSettings(),
+  },
+  [LOCATION_ERROR_TYPES.PERMISSION_RESTRICTED]: {
+    title: "Location Access Restricted",
+    message: "Your device has restricted location access. Please use manual address entry.",
+    primaryAction: "Enter Address",
+    secondaryAction: null,
+    onPrimary: null, // Will trigger manual entry
+  },
+  [LOCATION_ERROR_TYPES.SERVICE_DISABLED]: {
+    title: "Location Services Off",
+    message: "Please enable location services in your device settings.",
+    primaryAction: "Open Settings",
+    secondaryAction: "Use Manual Address",
+    onPrimary: () => {
+      if (Platform.OS === "ios") {
+        Linking.openURL("app-settings:");
+      } else {
+        Linking.openSettings();
+      }
+    },
+  },
+  [LOCATION_ERROR_TYPES.NETWORK_ERROR]: {
+    title: "Connection Issue",
+    message: "Unable to determine location. Please check your connection and try again.",
+    primaryAction: "Retry",
+    secondaryAction: "Use Manual Address",
+    onPrimary: null, // Will trigger retry
+  },
+  [LOCATION_ERROR_TYPES.TIMEOUT]: {
+    title: "Location Timeout",
+    message: "Taking too long to get your location. Try again or use manual entry.",
+    primaryAction: "Retry",
+    secondaryAction: "Use Manual Address",
+    onPrimary: null,
+  },
+  [LOCATION_ERROR_TYPES.UNKNOWN]: {
+    title: "Location Error",
+    message: "Something went wrong getting your location. Please try again.",
+    primaryAction: "Retry",
+    secondaryAction: "Use Manual Address",
+    onPrimary: null,
+  },
+};
+
+// LOC-3: Classify error strings into structured error types
+const classifyLocationError = (error) => {
+  const message = error?.message || error || "";
+  const code = error?.code || "";
+
+  if (code === "E_LOCATION_DENIED" || message.includes("denied")) {
+    return LOCATION_ERROR_TYPES.PERMISSION_DENIED;
+  }
+  if (code === "E_LOCATION_RESTRICTED" || message.includes("restricted")) {
+    return LOCATION_ERROR_TYPES.PERMISSION_RESTRICTED;
+  }
+  if (message.includes("disabled") || message.includes("service")) {
+    return LOCATION_ERROR_TYPES.SERVICE_DISABLED;
+  }
+  if (message.includes("network") || message.includes("fetch")) {
+    return LOCATION_ERROR_TYPES.NETWORK_ERROR;
+  }
+  if (message.includes("timeout") || message.includes("timed out")) {
+    return LOCATION_ERROR_TYPES.TIMEOUT;
+  }
+  return LOCATION_ERROR_TYPES.UNKNOWN;
+};
+
+// LOC-6: Runtime Validation - GPS quality thresholds
+const GPS_WARN_ACCURACY_METERS = 100;
+const GPS_WARN_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+// LOC-6: Assess GPS quality with warnings (not blocks)
+const assessGPSQuality = (location) => {
+  if (!location) {
+    return { isValid: false, quality: "poor", warnings: [], accuracy: null, age: null };
+  }
+
+  const accuracy = location?.coords?.accuracy;
+  const timestamp = location?.timestamp || location?.coords?.timestamp;
+  const age = timestamp ? Date.now() - timestamp : null;
+
+  const warnings = [];
+
+  if (accuracy && accuracy > GPS_WARN_ACCURACY_METERS) {
+    warnings.push({
+      type: "low_accuracy",
+      message: "Location accuracy is low. Move outdoors if possible.",
+      severity: "warning",
+    });
+  }
+
+  if (age && age > GPS_WARN_AGE_MS) {
+    warnings.push({
+      type: "stale",
+      message: "Location may be outdated. Refreshing...",
+      severity: "info",
+    });
+  }
+
+  const lat = location?.coords?.latitude ?? location?.latitude;
+  const lng = location?.coords?.longitude ?? location?.longitude;
+  const isValid = Number.isFinite(lat) && Number.isFinite(lng);
+
+  return {
+    isValid,
+    accuracy,
+    age,
+    warnings,
+    quality: warnings.length === 0 ? "high" : 
+             warnings.some(w => w.severity === "error") ? "poor" : "fair",
+  };
+};
+
 const GlobalLocationContext = createContext();
 
 function getStoredLocationFallback({ allowDevice = false } = {}) {

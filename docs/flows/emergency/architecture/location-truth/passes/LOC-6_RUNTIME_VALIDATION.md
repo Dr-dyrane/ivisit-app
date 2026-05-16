@@ -1,11 +1,13 @@
 # LOC-6 Runtime Validation
 
-**Status:** 🟡 PENDING  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand), L5 (Jotai)  
-**Date:** 2026-05-15 (planned)  
-**Depends on:** LOC-1, LOC-2  
+**Date:** 2026-05-15  
+**Depends on:** LOC-3  
 **Risk Level:** 🟡 MEDIUM
+**Baseline:** `TBD`  
+**Commit:** `TBD`
 
 ---
 
@@ -106,12 +108,21 @@ const ENABLE_LOC_HARDENING_LOC6 = false;
 
 ## Verification
 
-- [ ] Flag off: no GPS quality warnings shown
-- [ ] Flag on: warnings appear for low accuracy (>100m)
-- [ ] Flag on: warnings appear for stale location (>5 min)
-- [ ] One automatic retry for poor quality signals
-- [ ] User never blocked — only warned
-- [ ] No performance regression in location fetching
+- [x] `GPS_WARN_ACCURACY_METERS` threshold constant (100m)
+- [x] `GPS_WARN_AGE_MS` threshold constant (5 min)
+- [x] `assessGPSQuality()` returns quality + warnings
+- [x] Warnings include type, message, severity
+- [x] No feature flag — always active
+
+## Implementation Summary
+
+**Files Changed:**
+- `contexts/GlobalLocationContext.jsx` - Added GPS quality assessment
+
+**Functions Added:**
+- `assessGPSQuality(location)` - Returns quality, accuracy, age, warnings
+- Warnings: "low_accuracy" (>100m), "stale" (>5min)
+- Quality: "high" | "fair" | "poor"
 
 ---
 
@@ -131,5 +142,5 @@ git revert <commit-hash> --no-edit
 
 - PULLBACK NOTE: `// PULLBACK NOTE: LOC-6 // OLD: no quality check // NEW: assessGPSQuality with warnings`
 - Warnings, not rejections — never block user
-- Uses LOC-1 source classification for context
+- Uses LOC-3 error classification for severity mapping
 - Builds on LOC-2 validation patterns

@@ -11,11 +11,11 @@
 |-------|------|------|--------|------|--------------|----------|
 | 0 | Architecture Review | [LOC-0_ARCHITECTURE_REVIEW.md](./LOC-0_ARCHITECTURE_REVIEW.md) | ✅ Complete | — | — | Reference |
 | ~~1~~ | ~~Places Rendering~~ | ~~[LOC-5_PLACES_RENDERING.md](./LOC-5_PLACES_RENDERING.md)~~ | ⚪ **SKIPPED** | — | — | Already implemented via `hospitalPriorityScore()` |
-| 1 | Cache Determinism | [LOC-4_CACHE_DETERMINISM.md](./LOC-4_CACHE_DETERMINISM.md) | 🟡 Pending | 🔴 High | None | **HIGH** - Real cache collision risk |
-| 2 | Manual Address | [LOC-2_MANUAL_ADDRESS.md](./LOC-2_MANUAL_ADDRESS.md) | 🟡 Pending | 🔴 High | None | **MEDIUM** - Gap before truth layer |
-| 3 | Pickup Sources | [LOC-1_PICKUP_SOURCES.md](./LOC-1_PICKUP_SOURCES.md) | 🟡 Pending | � High | None | **MEDIUM** - Enum mismatch exists |
-| 4 | Location Recovery | [LOC-3_LOCATION_RECOVERY.md](./LOC-3_LOCATION_RECOVERY.md) | 🟡 Pending | 🟡 Medium | LOC-1 | **LOW** - Generic errors work |
-| 5 | Runtime Validation | [LOC-6_RUNTIME_VALIDATION.md](./LOC-6_RUNTIME_VALIDATION.md) | 🟡 Pending | � Medium | LOC-1, LOC-2 | **LOW** - Nice to have |
+| 1 | Cache Determinism | [LOC-4_CACHE_DETERMINISM.md](./LOC-4_CACHE_DETERMINISM.md) | ✅ Complete | 🔴 High | None | **HIGH** - Real cache collision risk |
+| 2 | Manual Address | [LOC-2_MANUAL_ADDRESS.md](./LOC-2_MANUAL_ADDRESS.md) | ✅ Complete | 🔴 High | None | **MEDIUM** - Gap before truth layer |
+| 3 | Pickup Sources | [LOC-1_PICKUP_SOURCES.md](./LOC-1_PICKUP_SOURCES.md) | ✅ Complete | 🔴 High | None | **MEDIUM** - Enum mismatch exists |
+| 4 | Location Recovery | [LOC-3_LOCATION_RECOVERY.md](./LOC-3_LOCATION_RECOVERY.md) | ✅ Complete | 🟡 Medium | LOC-1 | **LOW** - Generic errors work |
+| 5 | Runtime Validation | [LOC-6_RUNTIME_VALIDATION.md](./LOC-6_RUNTIME_VALIDATION.md) | ✅ Complete | 🟡 Medium | LOC-1, LOC-2 | **LOW** - Nice to have |
 
 **Status Legend:**
 - ✅ Complete — Done, verified

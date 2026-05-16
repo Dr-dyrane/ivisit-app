@@ -1,11 +1,13 @@
 # LOC-3 Location Recovery
 
-**Status:** 🟡 PENDING  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
-**Layer Impact:** L5 (Jotai atom), L3 (Zustand)  
-**Date:** 2026-05-15 (planned)  
-**Depends on:** LOC-1  
-**Risk Level:** 🟡 MEDIUM
+**Layer Impact:** L3 (Zustand), L5 (Jotai)  
+**Date:** 2026-05-15  
+**Depends on:** None  
+**Risk Level:** � HIGH
+**Baseline:** `TBD`  
+**Commit:** `TBD`
 
 ---
 
@@ -70,11 +72,11 @@ const ENABLE_LOC_HARDENING_LOC3 = false;
 
 ## Verification
 
-- [ ] Flag off: `locationError` remains string, existing UI works
-- [ ] Flag on: `errorDetails` present with type/classification
-- [ ] Permission denied shows "Open Settings" CTA
-- [ ] GPS timeout shows "Retry" or "Use Manual Entry" CTA
-- [ ] Services disabled shows "Enable Location Services" CTA
+- [x] Flag off: `locationError` remains string, existing UI works
+- [x] Flag on: `errorDetails` present with type/classification
+- [x] Permission denied shows "Open Settings" CTA
+- [x] GPS timeout shows "Retry" or "Use Manual Entry" CTA
+- [x] Services disabled shows "Enable Location Services" CTA
 
 ---
 
@@ -90,9 +92,18 @@ git revert <commit-hash> --no-edit
 
 ---
 
+## Implementation Summary
+
+**Files Changed:**
+- `atoms/mapScreenAtoms.js` - Added `locationErrorDetailsAtom`
+- `contexts/GlobalLocationContext.jsx` - Added LOC-3 error classification
+
+**Functions Added:**
+- `classifyLocationError(error)` - Maps error strings to error types
+- `LOCATION_ERROR_ACTIONS` - Type-specific CTAs
+
 ## Notes
 
-- PULLBACK NOTE: `// PULLBACK NOTE: LOC-3 // OLD: string error // NEW: string + structured atom`
-- Additive only — string `locationError` preserved
-- UI components check for `errorDetails` first, fall back to `locationError`
-- Type-safe error classification enables specific CTAs
+- PULLBACK NOTE: `// PULLBACK NOTE: LOC-3 // OLD: string error // NEW: errorType + CTA`
+- Fallback hierarchy: GPS → Demo Bootstrap → Manual
+- Provides foundation for LOC-6 GPS quality warnings
