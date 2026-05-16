@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { View, TextInput, Pressable, Text, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./emergencyContactDispatch.styles";
+import { emergencyChatContent } from "./emergencyContactDispatch.content";
 
 // PULLBACK NOTE: Contact Dispatch CD-6 - Composer component.
 // Owns: Text input, send button, and input validation.
@@ -17,7 +18,9 @@ export function EmergencyContactDispatchComposer({
   colors,
 }) {
   const canSend = text?.trim().length > 0 && !isSending && !disabled;
-  const placeholder = disabled ? "Cannot send messages" : "Type a message...";
+  const placeholder = disabled
+    ? emergencyChatContent.composerPlaceholderDisabled
+    : emergencyChatContent.composerPlaceholder;
 
   const sendButtonStyle = useMemo(
     () => ({
@@ -33,7 +36,9 @@ export function EmergencyContactDispatchComposer({
       {error && (
         <View style={styles.errorBanner}>
           <Ionicons name="alert-circle" size={16} color={colors.accent} />
-          <Text style={[styles.errorText, { color: colors.text }]}>Failed to send. Tap to retry.</Text>
+          <Text style={[styles.errorText, { color: colors.text }]}>
+            {emergencyChatContent.composerError}
+          </Text>
         </View>
       )}
 
@@ -46,7 +51,7 @@ export function EmergencyContactDispatchComposer({
           placeholderTextColor={colors.subtext}
           style={[styles.composerInput, { color: colors.text }]}
           multiline
-          maxLength={1000}
+          maxLength={emergencyChatContent.composerCharLimit}
           editable={!disabled}
           returnKeyType="send"
           onSubmitEditing={() => canSend && onSend()}
@@ -54,7 +59,7 @@ export function EmergencyContactDispatchComposer({
 
         {/* Character count */}
         <Text style={[styles.charCount, { color: colors.subtext }]}>
-          {text?.length || 0}/1000
+          {text?.length || 0}/{emergencyChatContent.composerCharLimit}
         </Text>
 
         {/* Send button */}

@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { useMachine } from "@xstate/react";
 import { emergencyChatRoomMachine, EmergencyChatRoomState } from "../../machines/emergencyChatRoomMachine";
 
@@ -8,19 +9,19 @@ import { emergencyChatRoomMachine, EmergencyChatRoomState } from "../../machines
 export function useEmergencyChatRoomLifecycle() {
   const [snapshot, send] = useMachine(emergencyChatRoomMachine);
 
-  const open = () => send({ type: "OPEN" });
-  const roomReady = (roomId) => send({ type: "ROOM_READY", roomId });
-  const messagesReady = () => send({ type: "MESSAGES_READY" });
-  const sendStart = () => send({ type: "SEND" });
-  const sendSuccess = () => send({ type: "SEND_SUCCESS" });
-  const sendFailure = (error) => send({ type: "SEND_FAILURE", error });
-  const realtimeDisconnected = () => send({ type: "REALTIME_DISCONNECTED" });
-  const realtimeRecovered = () => send({ type: "REALTIME_RECOVERED" });
-  const archived = () => send({ type: "ARCHIVED" });
-  const close = () => send({ type: "CLOSE" });
-  const retry = () => send({ type: "RETRY" });
+  const open = useCallback(() => send({ type: "OPEN" }), [send]);
+  const roomReady = useCallback((roomId) => send({ type: "ROOM_READY", roomId }), [send]);
+  const messagesReady = useCallback(() => send({ type: "MESSAGES_READY" }), [send]);
+  const sendStart = useCallback(() => send({ type: "SEND" }), [send]);
+  const sendSuccess = useCallback(() => send({ type: "SEND_SUCCESS" }), [send]);
+  const sendFailure = useCallback((error) => send({ type: "SEND_FAILURE", error }), [send]);
+  const realtimeDisconnected = useCallback(() => send({ type: "REALTIME_DISCONNECTED" }), [send]);
+  const realtimeRecovered = useCallback(() => send({ type: "REALTIME_RECOVERED" }), [send]);
+  const archived = useCallback((roomId) => send({ type: "ARCHIVED", roomId }), [send]);
+  const close = useCallback(() => send({ type: "CLOSE" }), [send]);
+  const retry = useCallback(() => send({ type: "RETRY" }), [send]);
 
-  return {
+  return useMemo(() => ({
     state: snapshot.value,
     context: snapshot.context,
     isIdle: snapshot.matches(EmergencyChatRoomState.IDLE),
@@ -45,7 +46,20 @@ export function useEmergencyChatRoomLifecycle() {
     archived,
     close,
     retry,
-  };
+  }), [
+    archived,
+    close,
+    messagesReady,
+    open,
+    realtimeDisconnected,
+    realtimeRecovered,
+    retry,
+    roomReady,
+    sendFailure,
+    sendStart,
+    sendSuccess,
+    snapshot,
+  ]);
 }
 
 export default useEmergencyChatRoomLifecycle;

@@ -68,7 +68,7 @@ Add to `public.emergency_requests`:
 - `npx supabase migration list` confirmed all existing pillar versions are already applied remotely.
 - `npx supabase db push` returned `Remote database is up to date`.
 - `npx supabase db push --dry-run` returned `Remote database is up to date`.
-- `npx supabase db lint --linked --schema public --fail-on error` is currently blocked by pre-existing remote lint errors in PostGIS/legacy functions; the edited Contact Dispatch SQL is not live on remote yet, so this lint run does not validate the new tables.
+- `npx supabase db lint --linked --schema public --fail-on error` is currently blocked by pre-existing remote lint errors in PostGIS/legacy functions; dashboard-applied Contact Dispatch SQL still needs manual live verification.
 - `npx supabase status` could not run local validation because Docker is not reachable on this Windows session.
 - Per pillar ritual, `node supabase/scripts/sync_to_console.js` was run successfully.
 

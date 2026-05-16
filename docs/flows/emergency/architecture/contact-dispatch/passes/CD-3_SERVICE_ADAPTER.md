@@ -67,7 +67,8 @@ Create the frontend service that maps Supabase rows, normalizes input, calls RPC
 - Row mappers convert snake_case to camelCase
 - Input normalization validates body length and kind
 - RPC calls use withRetry and withTimeout
-- Realtime subscription filtered by room_id
+- Message listing filters soft-deleted rows with `.is("deleted_at", null)`, clamps page size, and returns chronological order for chat UI consumption.
+- Realtime subscription validates room UUIDs and is filtered by room_id.
 - Explicit SELECT field lists (no SELECT *)
 
 ## Rollback Notes

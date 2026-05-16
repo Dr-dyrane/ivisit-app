@@ -92,6 +92,7 @@ MapModalShell
 
 - Modal uses MapModalShell for native presentation
 - Message list renders grouped bubbles with skeleton loading
+- Message ownership is resolved by authenticated user id, not by hardcoded patient role
 - Composer handles text input with character limit and send button
 - Quick actions render as selectable chips
 - Styles, theme, content, and helpers properly separated

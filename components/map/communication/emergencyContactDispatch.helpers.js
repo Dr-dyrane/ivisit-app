@@ -10,24 +10,36 @@ import { formatDistanceToNow } from "date-fns";
 export function formatMessageTimestamp(timestamp) {
   if (!timestamp) return "";
   try {
-    return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "";
+    return formatDistanceToNow(date, { addSuffix: true });
   } catch {
     return "";
   }
 }
 
+const getTimestampMs = (timestamp) => {
+  if (!timestamp) return null;
+  const time = new Date(timestamp).getTime();
+  return Number.isNaN(time) ? null : time;
+};
+
 /**
  * Groups messages by sender and time gap
  */
-export function groupMessages(messages) {
+export function groupMessages(messages, currentUserId = null) {
   if (!messages || messages.length === 0) return [];
 
   const groups = [];
   let currentGroup = null;
 
   messages.forEach((msg, index) => {
-    const isOwn = msg.senderRole === "patient";
+    const isOwn = Boolean(msg.isOptimistic || (currentUserId && msg.senderId === currentUserId));
     const prevMsg = messages[index - 1];
+    const currentTime = getTimestampMs(msg.createdAt);
+    const previousTime = getTimestampMs(prevMsg?.createdAt);
+    const hasLargeGap =
+      currentTime !== null && previousTime !== null && currentTime - previousTime > 120000;
 
     // Start new group if:
     // - First message
@@ -36,7 +48,7 @@ export function groupMessages(messages) {
     const shouldStartNewGroup =
       !currentGroup ||
       currentGroup.isOwn !== isOwn ||
-      (prevMsg && new Date(msg.createdAt) - new Date(prevMsg.createdAt) > 120000);
+      hasLargeGap;
 
     if (shouldStartNewGroup) {
       if (currentGroup) groups.push(currentGroup);
@@ -44,7 +56,7 @@ export function groupMessages(messages) {
         isOwn,
         senderRole: msg.senderRole,
         senderId: msg.senderId,
-        displayName: getSenderDisplayName(msg.senderRole),
+        displayName: isOwn ? "You" : getSenderDisplayName(msg.senderRole),
         messages: [],
       };
     }
@@ -61,7 +73,7 @@ export function groupMessages(messages) {
  */
 export function getSenderDisplayName(role) {
   const names = {
-    patient: "You",
+    patient: "Patient",
     driver: "Driver",
     crew: "Crew",
     provider: "Provider",
@@ -76,8 +88,8 @@ export function getSenderDisplayName(role) {
 /**
  * Generates a client message ID for optimistic updates
  */
-export function generateClientMessageId() {
-  return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function generateClientMessageId(prefix = "client") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
@@ -102,12 +114,12 @@ export function isSystemMessage(message) {
 }
 
 /**
- * Truncates text to a maximum length with ellipsis
+ * Clips text to a maximum length without forcing a visible ellipsis.
  */
 export function truncateText(text, maxLength = 100) {
   if (!text) return "";
   if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength).trim() + "...";
+  return text.substring(0, maxLength).trim();
 }
 
 /**

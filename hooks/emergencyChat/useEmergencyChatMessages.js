@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { emergencyChatService } from "../../services/emergencyChatService";
 import { emergencyChatQueryKeys } from "./emergencyChat.queryKeys";
 
@@ -15,7 +15,7 @@ const STALE_TIME_MS = 30 * 1000; // 30 seconds
  */
 export function useEmergencyChatMessages({ roomId, enabled = true }) {
   const queryClient = useQueryClient();
-  const queryKey = emergencyChatQueryKeys.messages(roomId);
+  const queryKey = useMemo(() => emergencyChatQueryKeys.messages(roomId), [roomId]);
 
   const messagesQuery = useQuery({
     queryKey,

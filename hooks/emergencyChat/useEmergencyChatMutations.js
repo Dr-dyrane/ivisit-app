@@ -34,7 +34,7 @@ const buildOptimisticMessage = (roomId, senderId, senderRole, input) => {
  */
 export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
   const queryClient = useQueryClient();
-  const messagesQueryKey = emergencyChatQueryKeys.messages(roomId);
+  const messagesQueryKey = useMemo(() => emergencyChatQueryKeys.messages(roomId), [roomId]);
 
   const sendMessageMutation = useMutation({
     mutationFn: (input) => emergencyChatService.sendMessage(roomId, input),
@@ -50,8 +50,7 @@ export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
         input
       );
       
-      // Prepend optimistic message to cache
-      queryClient.setQueryData(messagesQueryKey, [optimisticMessage, ...previousMessages]);
+      queryClient.setQueryData(messagesQueryKey, [...previousMessages, optimisticMessage]);
       
       return { previousMessages, clientMessageId: input?.clientMessageId };
     },
@@ -66,9 +65,11 @@ export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
       if (serverMessage) {
         queryClient.setQueryData(messagesQueryKey, (current = []) => {
           const withoutOptimistic = (Array.isArray(current) ? current : []).filter(
-            (msg) => !msg.isOptimistic || msg.clientMessageId !== context?.clientMessageId
+            (msg) =>
+              msg.id !== serverMessage.id &&
+              (!msg.isOptimistic || msg.clientMessageId !== context?.clientMessageId)
           );
-          return [serverMessage, ...withoutOptimistic];
+          return [...withoutOptimistic, serverMessage];
         });
       }
     },
@@ -87,12 +88,12 @@ export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
 
   const sendMessage = useCallback(
     (input) => sendMessageMutation.mutateAsync(input),
-    [sendMessageMutation]
+    [sendMessageMutation.mutateAsync]
   );
 
   const markRoomRead = useCallback(
     (messageId = null) => markReadMutation.mutateAsync(messageId),
-    [markReadMutation]
+    [markReadMutation.mutateAsync]
   );
 
   return useMemo(

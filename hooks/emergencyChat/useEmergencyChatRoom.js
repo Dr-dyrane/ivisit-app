@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { emergencyChatService } from "../../services/emergencyChatService";
 import { emergencyChatQueryKeys } from "./emergencyChat.queryKeys";
 
@@ -15,7 +15,7 @@ const STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
  */
 export function useEmergencyChatRoom({ requestId, enabled = true }) {
   const queryClient = useQueryClient();
-  const queryKey = emergencyChatQueryKeys.roomByRequest(requestId);
+  const queryKey = useMemo(() => emergencyChatQueryKeys.roomByRequest(requestId), [requestId]);
 
   const ensureMutation = useMutation({
     mutationFn: () => emergencyChatService.ensureRoomForRequest(requestId),
@@ -38,7 +38,7 @@ export function useEmergencyChatRoom({ requestId, enabled = true }) {
 
   const ensureRoom = useCallback(() => {
     return ensureMutation.mutateAsync();
-  }, [ensureMutation]);
+  }, [ensureMutation.mutateAsync]);
 
   return {
     room: roomQuery.data?.room || null,

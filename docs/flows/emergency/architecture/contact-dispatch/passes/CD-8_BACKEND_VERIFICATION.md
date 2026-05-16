@@ -56,7 +56,10 @@ Verify database, RLS, RPC, and realtime behavior before UI release.
 
 ## Evidence
 
-- TBD
+- Static sweep confirms `public.emergency_chat_rooms`, `public.emergency_chat_participants`, and `public.emergency_chat_messages` exist in `supabase/migrations/20260219000300_logistics.sql`.
+- Static sweep confirms `ensure_emergency_chat_room`, `send_emergency_chat_message`, and `mark_emergency_chat_room_read` exist in `supabase/migrations/20260219010000_core_rpcs.sql`.
+- Static sweep confirms RLS participant scope exists in `supabase/migrations/20260219000700_security.sql`.
+- Manual Supabase dashboard verification is still required for live RLS leakage, duplicate-message idempotency, and realtime delivery.
 
 ## Rollback Notes
 

@@ -1,6 +1,6 @@
 {
-  "_lastCommitHash": "59931c1",
-  "_lastCommitDate": "2026-05-14T22:15:19-07:00",
+  "_lastCommitHash": "9cbd640",
+  "_lastCommitDate": "2026-05-15T00:15:49-07:00",
   "version": "1.0.6",
   "date": "2026-05-15",
   "title": "Contact Dispatch - Chat with Your Ambulance or Hospital",
@@ -49,6 +49,10 @@
     {
       "type": "improvement",
       "message": "Clean, accessible chat interface with large text and clear visual hierarchy."
+    },
+    {
+      "type": "improvement",
+      "message": "Final Contact Dispatch hardening improved sticky composer behavior, message ordering, realtime reconciliation, and sender labels."
     }
   ]
 }

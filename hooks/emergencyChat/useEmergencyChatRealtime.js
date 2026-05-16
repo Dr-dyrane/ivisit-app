@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { emergencyChatService } from "../../services/emergencyChatService";
 import { emergencyChatQueryKeys } from "./emergencyChat.queryKeys";
@@ -9,7 +9,7 @@ import { emergencyChatQueryKeys } from "./emergencyChat.queryKeys";
 
 export function useEmergencyChatRealtime({ roomId, enabled = true }) {
   const queryClient = useQueryClient();
-  const messagesQueryKey = emergencyChatQueryKeys.messages(roomId);
+  const messagesQueryKey = useMemo(() => emergencyChatQueryKeys.messages(roomId), [roomId]);
 
   useEffect(() => {
     if (!enabled || !roomId) return undefined;
@@ -18,14 +18,25 @@ export function useEmergencyChatRealtime({ roomId, enabled = true }) {
       roomId,
       ({ new: newMessage, old: oldMessage, eventType }) => {
         if (eventType === "INSERT" && newMessage) {
-          // Patch: append new message to cache
+          // Patch: append canonical messages, replacing any matching optimistic echo.
           queryClient.setQueryData(messagesQueryKey, (current = []) => {
-            // Avoid duplicate if already in cache (optimistic reconciliation)
-            const exists = (Array.isArray(current) ? current : []).some(
+            const messages = Array.isArray(current) ? current : [];
+            const exists = messages.some(
               (msg) => msg.id === newMessage.id
             );
             if (exists) return current;
-            return [newMessage, ...current];
+            const optimisticIndex = messages.findIndex(
+              (msg) =>
+                msg.isOptimistic &&
+                msg.clientMessageId &&
+                msg.clientMessageId === newMessage.clientMessageId
+            );
+            if (optimisticIndex >= 0) {
+              const next = [...messages];
+              next[optimisticIndex] = newMessage;
+              return next;
+            }
+            return [...messages, newMessage];
           });
         } else if (eventType === "UPDATE" && newMessage) {
           // Patch: update message in cache

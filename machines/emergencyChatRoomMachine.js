@@ -33,8 +33,9 @@ export const emergencyChatRoomMachine = setup({
 			| { type: "SEND_FAILURE"; error?: string }
 			| { type: "REALTIME_DISCONNECTED" }
 			| { type: "REALTIME_RECOVERED" }
-			| { type: "ARCHIVED" }
+			| { type: "ARCHIVED"; roomId?: string }
 			| { type: "CLOSE" }
+			| { type: "RETRY" }
 		} */ ({}),
   },
   actions: {
@@ -56,11 +57,6 @@ export const emergencyChatRoomMachine = setup({
       isArchived: false,
       error: null,
     }),
-  },
-  guards: {
-    canSend: ({ context, state }) => {
-      return state.value === EmergencyChatRoomState.READY && !context.isArchived;
-    },
   },
 }).createMachine({
   id: "emergencyChatRoomLifecycle",
@@ -111,7 +107,6 @@ export const emergencyChatRoomMachine = setup({
       on: {
         SEND: {
           target: EmergencyChatRoomState.SENDING,
-          guard: "canSend",
         },
         ARCHIVED: {
           target: EmergencyChatRoomState.ARCHIVED,

@@ -1,12 +1,12 @@
 import { supabase } from "./supabase";
-import { isValidUUID } from "../utils/validation";
+import { isValidUUID } from "./displayIdService";
 import { withRetry, withTimeout } from "./supabaseHelpers";
 
 // PULLBACK NOTE: Contact Dispatch CD-3 - canonical Supabase adapter.
 // Owns: row mapping, input normalization, RPC calls, and filtered realtime subscription for emergency chat.
 // Does NOT own: UI state, query cache, or local fallback policy.
 
-// ─── SELECT FIELD LISTS ───────────────────────────────────────────────────────
+// SELECT FIELD LISTS
 
 const ROOM_SELECT_FIELDS = [
   "id",
@@ -49,7 +49,7 @@ const MESSAGE_SELECT_FIELDS = [
   "deleted_at",
 ].join(", ");
 
-// ─── NORMALIZATION HELPERS ─────────────────────────────────────────────────────
+// NORMALIZATION HELPERS
 
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -59,10 +59,14 @@ const normalizeOptionalText = (value) => {
   return next.length > 0 ? next : null;
 };
 
-const toBoolean = (value, fallback = false) =>
-  typeof value === "boolean" ? value : fallback;
+const normalizeBeforeCursor = (value) => {
+  const text = normalizeOptionalText(value);
+  if (!text) return null;
+  const time = Date.parse(text);
+  return Number.isNaN(time) ? null : text;
+};
 
-// ─── ROW MAPPERS ─────────────────────────────────────────────────────────────
+// ROW MAPPERS
 
 /**
  * Maps emergency_chat_rooms row from snake_case to camelCase.
@@ -126,7 +130,7 @@ export const mapEmergencyChatMessageRow = (row) => {
   };
 };
 
-// ─── INPUT NORMALIZATION ─────────────────────────────────────────────────────
+// INPUT NORMALIZATION
 
 /**
  * Normalizes message input for sending.
@@ -146,7 +150,7 @@ export const normalizeEmergencyChatMessageInput = (input = {}, options = {}) => 
   }
 
   const kind = normalizeOptionalText(input?.kind) || "text";
-  const validKinds = ["text", "quick_action", "status_event", "system"];
+  const validKinds = ["text", "quick_action", "status_event"];
   if (!allowInvalid && !validKinds.includes(kind)) {
     throw new Error("INVALID_INPUT|Invalid message kind");
   }
@@ -159,7 +163,7 @@ export const normalizeEmergencyChatMessageInput = (input = {}, options = {}) => 
   };
 };
 
-// ─── RPC CALLS ───────────────────────────────────────────────────────────────
+// RPC CALLS
 
 /**
  * Idempotently ensures a chat room exists for the given emergency request.
@@ -204,23 +208,29 @@ export async function listMessages(roomId, { limit = 50, before = null } = {}) {
     return [];
   }
 
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+
   let query = supabase
     .from("emergency_chat_messages")
     .select(MESSAGE_SELECT_FIELDS)
     .eq("room_id", roomId)
-    .eq("deleted_at", null)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(safeLimit);
 
-  if (before && isValidUUID(String(before))) {
-    query = query.lt("created_at", before);
+  const beforeCursor = normalizeBeforeCursor(before);
+  if (beforeCursor) {
+    query = query.lt("created_at", beforeCursor);
   }
 
   const { data, error } = await withRetry(() => query, { maxRetries: 3 });
 
   if (error) throw error;
 
-  return (data || []).map(mapEmergencyChatMessageRow).filter(Boolean);
+  return (data || [])
+    .map(mapEmergencyChatMessageRow)
+    .filter(Boolean)
+    .reverse();
 }
 
 /**
@@ -281,14 +291,14 @@ export async function markRoomRead(roomId, messageId = null) {
   return data === true;
 }
 
-// ─── REALTIME SUBSCRIPTION ───────────────────────────────────────────────────
+// REALTIME SUBSCRIPTION
 
 /**
  * Subscribes to message changes for a specific room.
  * Returns unsubscribe function.
  */
 export function subscribeToMessages(roomId, onEvent, onStatus) {
-  if (!roomId || typeof onEvent !== "function") {
+  if (!roomId || !isValidUUID(String(roomId)) || typeof onEvent !== "function") {
     return { unsubscribe: () => {} };
   }
 
@@ -326,7 +336,7 @@ export function subscribeToMessages(roomId, onEvent, onStatus) {
   };
 }
 
-// ─── SERVICE EXPORT ─────────────────────────────────────────────────────────
+// SERVICE EXPORT
 
 export const emergencyChatService = {
   mapRoomRow: mapEmergencyChatRoomRow,

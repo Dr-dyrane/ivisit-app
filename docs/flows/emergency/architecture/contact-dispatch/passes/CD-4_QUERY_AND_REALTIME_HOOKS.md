@@ -69,7 +69,9 @@ export const emergencyChatQueryKeys = {
 - Room hook uses mutation for ensureRoom, disabled until requestId exists
 - Messages hook uses query for listMessages, disabled until roomId exists
 - Send mutation uses optimistic bubble with clientMessageId reconciliation
-- Realtime hook filtered by room_id, patches cache on INSERT/UPDATE/DELETE
+- Message cache is chronological, with optimistic sends appended and canonical server rows deduped by id/clientMessageId.
+- Realtime hook filtered by room_id, patches cache on INSERT/UPDATE/DELETE.
+- Query-key arrays are memoized before use in effects/callbacks so realtime does not resubscribe on harmless renders.
 - All hooks auto-unsubscribe on unmount/room change
 
 ## Rollback Notes

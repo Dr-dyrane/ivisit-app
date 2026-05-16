@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text } from "react-native";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useAuth } from "../../../contexts/AuthContext";
 import { useAtom } from "jotai";
 import {
   emergencyChatModalVisibleAtom,
@@ -16,26 +17,33 @@ import EmergencyContactDispatchMessageList from "./EmergencyContactDispatchMessa
 import EmergencyContactDispatchComposer from "./EmergencyContactDispatchComposer";
 import EmergencyContactDispatchQuickActions from "./EmergencyContactDispatchQuickActions";
 import { styles } from "./emergencyContactDispatch.styles";
+import { emergencyChatContent } from "./emergencyContactDispatch.content";
+import { generateClientMessageId } from "./emergencyContactDispatch.helpers";
+import { emergencyChatTheme } from "./emergencyContactDispatch.theme";
 
 // PULLBACK NOTE: Contact Dispatch CD-6 - Modal orchestrator.
 // Owns: MapModalShell integration, state coordination, and child component composition.
 // Does NOT own: message rendering, composer logic, or quick action handlers (delegated to children).
 
-const QUICK_ACTIONS = [
-  { key: "moving", label: "Moving toward ambulance" },
-  { key: "meet_halfway", label: "Meet halfway?" },
-  { key: "pickup_changed", label: "Pickup changed" },
-  { key: "call_me", label: "Please call me" },
-  { key: "arrived", label: "We arrived" },
-];
+const resolveChatRoleFromUser = (user) => {
+  const role = user?.role;
+  if (role === "dispatcher") return "dispatcher";
+  if (role === "org_admin") return "hospital_admin";
+  if (role === "provider") return "provider";
+  if (role === "admin") return "support";
+  return "patient";
+};
 
 export function EmergencyContactDispatchModal({ visible, onClose }) {
   const { isDarkMode } = useTheme();
+  const { user } = useAuth();
   const [modalVisible, setModalVisible] = useAtom(emergencyChatModalVisibleAtom);
   const [requestId, setRequestId] = useAtom(activeEmergencyChatRequestIdAtom);
   
   const [composerText, setComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const currentUserId = user?.id ? String(user.id) : null;
+  const currentUserChatRole = useMemo(() => resolveChatRoleFromUser(user), [user]);
 
   // Sync modal visibility with atom
   useEffect(() => {
@@ -43,18 +51,18 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
   }, [visible, setModalVisible]);
 
   // Close handler
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setModalVisible(false);
     setRequestId(null);
     setComposerText("");
     onClose?.();
-  };
+  }, [onClose, setModalVisible, setRequestId]);
 
   // Room lifecycle
   const lifecycle = useEmergencyChatRoomLifecycle();
 
   // Room data
-  const { room, participants, isEnsuring, ensureRoom } = useEmergencyChatRoom({
+  const { room, isEnsuring, ensureRoom } = useEmergencyChatRoom({
     requestId,
     enabled: visible && Boolean(requestId),
   });
@@ -69,8 +77,8 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
   const { sendMessage, markRoomRead, isSending: isMutationSending, sendError } =
     useEmergencyChatMutations({
       roomId: room?.id,
-      senderId: null, // TODO: get from auth context
-      senderRole: "patient", // TODO: derive from profile
+      senderId: currentUserId,
+      senderRole: currentUserChatRole,
     });
 
   // Realtime
@@ -83,15 +91,25 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
   useEffect(() => {
     if (visible && requestId && lifecycle.isIdle) {
       lifecycle.open();
-      lifecycle.roomReady(room?.id);
     }
-  }, [visible, requestId, lifecycle, room?.id]);
+  }, [visible, requestId, lifecycle]);
 
   useEffect(() => {
-    if (lifecycle.isEnsuringRoom && !isEnsuring && room?.id) {
+    if (!room?.id) return;
+    if (room.status === "archived") {
+      lifecycle.archived(room.id);
+      return;
+    }
+    if (lifecycle.isEnsuringRoom) {
+      lifecycle.roomReady(room.id);
+    }
+  }, [lifecycle, room?.id, room?.status]);
+
+  useEffect(() => {
+    if (lifecycle.isLoadingMessages && !isLoadingMessages && room?.id) {
       lifecycle.messagesReady();
     }
-  }, [lifecycle, isEnsuring, room?.id]);
+  }, [lifecycle, isLoadingMessages, room?.id]);
 
   useEffect(() => {
     if (!visible && !lifecycle.isIdle) {
@@ -110,14 +128,14 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
   }, [visible, requestId, room?.id, isEnsuring, ensureRoom, lifecycle]);
 
   // Send message
-  const handleSend = async (text) => {
+  const handleSend = useCallback(async (text) => {
     if (!text?.trim() || isSending || !lifecycle.canSend) return;
     
     setIsSending(true);
     lifecycle.sendStart();
 
     try {
-      const clientMessageId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const clientMessageId = generateClientMessageId();
       await sendMessage({
         body: text.trim(),
         kind: "text",
@@ -131,13 +149,13 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
     } finally {
       setIsSending(false);
     }
-  };
+  }, [isSending, lifecycle, sendMessage]);
 
   // Quick action handler
-  const handleQuickAction = async (action) => {
+  const handleQuickAction = useCallback(async (action) => {
     if (!lifecycle.canSend) return;
     
-    const clientMessageId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const clientMessageId = generateClientMessageId("quick");
     try {
       await sendMessage({
         body: action.label,
@@ -148,50 +166,58 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
     } catch (error) {
       console.warn("[EmergencyContactDispatchModal] Quick action failed:", error);
     }
-  };
+  }, [lifecycle.canSend, sendMessage]);
 
   // Mark as read on mount
+  const lastMessageId = messages.length > 0 ? messages[messages.length - 1]?.id : null;
   useEffect(() => {
-    if (messages.length > 0 && room?.id && lifecycle.isReady) {
-      markRoomRead().catch((err) => {
+    if (lastMessageId && room?.id && lifecycle.isReady) {
+      markRoomRead(lastMessageId).catch((err) => {
         console.warn("[EmergencyContactDispatchModal] Mark read failed:", err);
       });
     }
-  }, [messages, room?.id, lifecycle.isReady, markRoomRead]);
+  }, [lastMessageId, room?.id, lifecycle.isReady, markRoomRead]);
 
   // Colors
   const colors = useMemo(
-    () => ({
-      text: isDarkMode ? "#F8FAFC" : "#0F172A",
-      subtext: isDarkMode ? "#94A3B8" : "#64748B",
-      bg: isDarkMode ? "rgba(8, 15, 27, 0.92)" : "rgba(255, 255, 255, 0.92)",
-      accent: "#DC2626",
-    }),
+    () => (isDarkMode ? emergencyChatTheme.dark : emergencyChatTheme.light),
     [isDarkMode]
   );
 
   // Status strip
   const getStatusText = () => {
-    if (lifecycle.isError) return "Connection error. Tap to retry.";
-    if (lifecycle.isReconnecting) return "Reconnecting...";
-    if (lifecycle.isEnsuringRoom || isEnsuring) return "Opening dispatch...";
-    if (lifecycle.isLoadingMessages || isLoadingMessages) return "Loading messages...";
-    if (lifecycle.isArchived) return "This conversation is archived.";
+    if (lifecycle.isError) return emergencyChatContent.statusError;
+    if (lifecycle.isReconnecting) return emergencyChatContent.statusReconnecting;
+    if (lifecycle.isEnsuringRoom || isEnsuring) return emergencyChatContent.statusConnecting;
+    if (lifecycle.isLoadingMessages || isLoadingMessages) return emergencyChatContent.statusLoading;
+    if (lifecycle.isArchived) return emergencyChatContent.statusArchived;
     return null;
   };
 
   const statusText = getStatusText();
+  const composerSlot = !lifecycle.isArchived ? (
+    <EmergencyContactDispatchComposer
+      text={composerText}
+      onChangeText={setComposerText}
+      onSend={() => handleSend(composerText)}
+      isSending={isSending || isMutationSending}
+      disabled={!lifecycle.canSend}
+      error={sendError}
+      colors={colors}
+    />
+  ) : null;
 
   return (
     <MapModalShell
       visible={modalVisible}
       onClose={handleClose}
-      title="Contact Dispatch"
+      title={emergencyChatContent.title}
       enableSnapDetents={false}
       matchExpandedSheetHeight={true}
       minHeightRatio={0.7}
       maxHeightRatio={0.92}
       scrollEnabled={true}
+      footerSlot={composerSlot}
     >
       {/* Status Strip */}
       {statusText && (
@@ -204,7 +230,7 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
               style={[styles.statusRetry, { color: colors.accent }]}
               onPress={() => lifecycle.retry()}
             >
-              Retry
+              {emergencyChatContent.statusRetry}
             </Text>
           )}
         </View>
@@ -216,30 +242,19 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
         isLoading={lifecycle.isLoadingMessages || isLoadingMessages}
         isEmpty={messages.length === 0 && !isLoadingMessages}
         isArchived={lifecycle.isArchived}
+        currentUserId={currentUserId}
         colors={colors}
       />
 
       {/* Quick Actions */}
       {!lifecycle.isArchived && lifecycle.isReady && (
         <EmergencyContactDispatchQuickActions
-          actions={QUICK_ACTIONS}
+          actions={emergencyChatContent.quickActions}
           onSelect={handleQuickAction}
           colors={colors}
         />
       )}
 
-      {/* Composer */}
-      {!lifecycle.isArchived && (
-        <EmergencyContactDispatchComposer
-          text={composerText}
-          onChangeText={setComposerText}
-          onSend={() => handleSend(composerText)}
-          isSending={isSending || isMutationSending}
-          disabled={!lifecycle.canSend}
-          error={sendError}
-          colors={colors}
-        />
-      )}
     </MapModalShell>
   );
 }

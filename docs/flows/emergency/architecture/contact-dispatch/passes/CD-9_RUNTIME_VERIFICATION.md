@@ -1,6 +1,6 @@
 # CD-9 Runtime Verification
 
-Status: Not started
+Status: Static Sweep Complete, Runtime QA Pending
 Owner: QA / App
 Layer impact: verification only
 
@@ -67,7 +67,9 @@ Verify Contact Dispatch behaves correctly in the real tracking flow across platf
 
 ## Evidence
 
-- TBD
+- Final static sweep fixed room lifecycle advancement, chronological message ordering, realtime/optimistic cache convergence, sender ownership display, sticky composer placement, and service null filtering.
+- Local syntax and diff checks should pass before runtime QA.
+- Manual runtime QA is still required on iOS, Android, and web with two authenticated participants.
 
 ## Rollback Notes
 

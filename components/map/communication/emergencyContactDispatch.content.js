@@ -13,6 +13,7 @@ export const emergencyChatContent = {
   statusError: "Connection error. Tap to retry.",
   statusReconnecting: "Reconnecting...",
   statusArchived: "This conversation is archived.",
+  archivedReadonly: "This conversation is archived. New messages are disabled.",
   statusRetry: "Retry",
 
   // Empty state

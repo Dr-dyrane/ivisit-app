@@ -1,6 +1,6 @@
 # Contact Dispatch Communication Room Dossier V1
 
-Status: Approved feature architecture, implementation pending
+Status: Implemented, final runtime verification pending
 Documented: 2026-05-15
 Scope: active emergency tracking flow, map root modal, emergency-request-owned communication room
 

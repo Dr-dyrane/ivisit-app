@@ -70,8 +70,7 @@ export const styles = StyleSheet.create({
     opacity: 0.7,
   },
   messageBubbleFailed: {
-    borderWidth: 1,
-    borderColor: "#DC2626",
+    opacity: 0.85,
   },
   messageText: {
     fontSize: 15,
@@ -157,8 +156,6 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.1)",
   },
   quickActionChipPressed: {
     opacity: 0.7,
@@ -172,8 +169,6 @@ export const styles = StyleSheet.create({
   composerContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.08)",
   },
   errorBanner: {
     flexDirection: "row",
