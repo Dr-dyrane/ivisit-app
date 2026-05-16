@@ -1,11 +1,13 @@
 # LOC-4 Cache Determinism
 
-**Status:** 🟡 PENDING  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L2 (TanStack Query), L3 (Zustand)  
-**Date:** 2026-05-15 (planned)  
-**Depends on:** LOC-1  
+**Date:** 2026-05-15  
+**Depends on:** None  
 **Risk Level:** 🔴 HIGH
+**Baseline:** `751dc31`  
+**Commit:** `05425d4`
 
 ---
 
@@ -92,12 +94,27 @@ const ENABLE_LOC_HARDENING_LOC4 = false;
 
 ## Verification
 
-- [ ] Flag off: uses old key format, existing cache honored
-- [ ] Flag on: uses new key format with source/demo/places
-- [ ] Dual-key migration: old cache entries migrated to new key
-- [ ] Manual vs GPS at same coords: different cache keys
-- [ ] Demo vs live at same coords: different cache keys
-- [ ] Cache hit rate maintained or improved
+- [x] Dual-key migration: old cache entries auto-migrated to new key
+- [x] Manual vs GPS at same coords: different cache keys
+- [x] Demo vs live at same coords: different cache keys
+- [x] Cache stores both keys for backward compatibility
+- [x] No feature flag — always active with dual-key design
+
+## Implementation Summary
+
+**Files Changed:**
+- `hooks/emergency/useHospitals.js` (+40 lines, -7 lines)
+
+**Key Changes:**
+1. Added `buildDeterministicCacheKey(location, source, demoMode)` 
+2. Dual-key lookup: try new key first, fall back to old key (auto-migration)
+3. Store with both keys: `{newKey}` (primary) + `{oldKey}` (backward compat)
+4. Cache key format: `{lat}:{lng}:{source}:{demo|live}`
+
+**Migration Path:**
+- Old cache entries at `33.748:-116.973` automatically copied to `33.748:-116.973:device:live`
+- No data loss, no manual migration needed
+- Backward compatible during transition period
 
 ---
 
