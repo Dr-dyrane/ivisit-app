@@ -152,6 +152,10 @@ export default function useManualEntryHandlers({
 				unit: manualDraft.unit || undefined,
 				responderNote: manualDraft.responderNote || undefined,
 				pendingPlaceLabel,
+				// LOC-2: Geocode metadata for audit trail
+				isGeocoded: true,
+				geocodeRelevance: geocoded.relevance ?? null,
+				geocodeSource: geocoded.source ?? "unknown",
 			});
 			setActiveCandidate(normalized);
 			navigateToCandidateDecision();

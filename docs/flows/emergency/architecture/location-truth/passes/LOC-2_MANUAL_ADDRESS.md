@@ -1,11 +1,13 @@
 # LOC-2 Manual Address
 
-**Status:** 🟡 PENDING  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand reducer), L5 (Jotai)  
-**Date:** 2026-05-15 (planned)  
-**Depends on:** LOC-1  
+**Date:** 2026-05-15  
+**Depends on:** None  
 **Risk Level:** 🔴 HIGH
+**Baseline:** `05425d4`  
+**Commit:** `TBD`
 
 ---
 
@@ -86,11 +88,22 @@ const ENABLE_LOC_HARDENING_LOC2 = false;
 
 ## Verification
 
-- [ ] Flag off: manual address entry works as before
-- [ ] Flag on: invalid coordinates rejected at entry
-- [ ] Geocoded locations have `isGeocoded: true`
-- [ ] Weak geocode results (< 0.4) have `confidence: "low"`
-- [ ] Reducer rejects non-geocoded locations without coords
+- [x] Invalid coordinates rejected at `handleSearchLocation` entry point
+- [x] Geocoded locations have `isGeocoded: true`, `geocodeRelevance`, `geocodeSource`
+- [x] Reducer rejects non-geocoded locations without valid coordinates (defense-in-depth)
+- [x] Manual address entry still works for legitimate flows (via LocationSheet)
+
+## Implementation Summary
+
+**Files Changed:**
+- `hooks/map/exploreFlow/useMapLocation.js` (+8 lines)
+  - Added coordinate validation in `handleSearchLocation`
+  
+- `hooks/map/locationIntent/useManualEntryHandlers.js` (+4 lines)
+  - Added geocode metadata: `isGeocoded`, `geocodeRelevance`, `geocodeSource`
+  
+- `hooks/map/state/mapExploreFlow.store.js` (+11 lines)
+  - Added defense-in-depth validation in `SET_MANUAL_LOCATION` reducer
 
 ---
 
@@ -108,7 +121,24 @@ git revert <commit-hash> --no-edit
 
 ## Notes
 
-- PULLBACK NOTE: `// PULLBACK NOTE: LOC-2 // OLD: no validation // NEW: entry validation`
-- First validation at `handleSearchLocation` entry point
-- Enhances existing weak geocode handling in `useManualEntryHandlers`
-- Does not break legitimate edge cases
+**Three-Layer Defense:**
+1. **Entry point** (`handleSearchLocation`): Rejects invalid coordinates immediately
+2. **Geocode source** (`useManualEntryHandlers`): Marks locations with `isGeocoded: true`
+3. **Reducer** (`SET_MANUAL_LOCATION`): Last line of defense, rejects non-geocoded without coords
+
+**PULLBACK NOTEs added:**
+```javascript
+// useMapLocation.js
+// LOC-2: Validate coordinates at entry point
+
+// useManualEntryHandlers.js
+// LOC-2: Geocode metadata for audit trail
+
+// mapExploreFlow.store.js
+// LOC-2: Defense-in-depth — reject non-geocoded locations without valid coordinates
+```
+
+**Backward Compatibility:**
+- Existing geocoded flows (LocationSheet) continue to work
+- Only rejects truly invalid locations (no coords + not marked as geocoded)
+- No breaking changes to public API

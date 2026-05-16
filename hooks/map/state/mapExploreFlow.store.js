@@ -153,6 +153,18 @@ function mapExploreFlowReducer(state, action) {
 				},
 			};
 		case ACTIONS.SET_MANUAL_LOCATION:
+			// LOC-2: Defense-in-depth — reject non-geocoded locations without valid coordinates
+			if (action.value?.location) {
+				const isGeocoded = action.value?.isGeocoded === true;
+				const hasValidCoords = Number.isFinite(Number(action.value.location.latitude)) &&
+				                       Number.isFinite(Number(action.value.location.longitude));
+				
+				if (!isGeocoded && !hasValidCoords) {
+					console.warn("[LOC-2] Rejecting non-geocoded location without valid coordinates");
+					return state; // Reject: keep previous state
+				}
+			}
+			
 			return {
 				...state,
 				location: {

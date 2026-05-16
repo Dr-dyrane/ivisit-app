@@ -245,6 +245,14 @@ export function useMapLocation({
     (nextLocation) => {
       if (!nextLocation?.location) return;
 
+      // LOC-2: Validate coordinates at entry point
+      const lat = Number(nextLocation.location.latitude);
+      const lng = Number(nextLocation.location.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        console.warn("[LOC-2] Invalid coordinates in handleSearchLocation", nextLocation);
+        return;
+      }
+
       const locationChanged = hasMeaningfulLocationChange(
         activeLocation,
         nextLocation.location,
