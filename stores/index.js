@@ -45,5 +45,12 @@ export {
   isLocationStoreHydrated,
 } from "./locationStore";
 
+// Last Hospital Cache Store — Issue-3 reload lag fix
+export {
+  useLastHospitalStore,
+  hydrateLastHospitalStore,
+  isLastHospitalStoreHydrated,
+} from "./lastHospitalStore";
+
 // Re-export for convenience
 export { default } from "./emergencyTripStore";

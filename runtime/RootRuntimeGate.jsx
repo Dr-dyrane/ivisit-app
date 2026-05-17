@@ -18,6 +18,7 @@ import { hydrateLocationStore } from "../stores/locationStore";
 import { hydrateNotificationsStore } from "../stores/notificationsStore";
 import { hydrateVisitsStore } from "../stores/visitsStore";
 import { hydrateMedicalProfileStore } from "../stores/medicalProfileStore";
+import { hydrateLastHospitalStore } from "../stores/lastHospitalStore";
 
 // Global guard to ensure splash prevention only runs once across re-mounts
 let isSplashPrevented = false;
@@ -68,6 +69,7 @@ export function RootRuntimeGate({ children }) {
           hydrateVisitsStore(),
           hydrateMedicalProfileStore(),
           hydrateLocationStore(),
+          hydrateLastHospitalStore(),
         ]);
 
         if (isMounted) setIsReady(true);

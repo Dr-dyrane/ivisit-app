@@ -1,4 +1,5 @@
-import { atom } from "jotai";
+import { atom, getDefaultStore } from "jotai";
+import { database, StorageKeys } from "../database";
 
 /**
  * Map Flow Jotai Atoms
@@ -87,6 +88,67 @@ export const mapSelectedHospitalAtom = atom((get) => {
 // =============================================================================
 // Pass 6 — sweep-local-state additions
 // =============================================================================
+
+// PULLBACK NOTE: EXP-7 — Explore Care session persistence
+// OLD: plain atom(null) — lost on app backgrounding/kill (JS engine killed, Jotai in-memory gone)
+// NEW: write-through atoms backed by EXPLORE_CARE_SESSION storage key.
+//      Bundled into one read/write per change (same pattern as TRACKING_VISUALIZATION).
+//      On app resume, atoms are rehydrated from storage before MapScreen mounts.
+//      Mount cleanup in MapScreen reads storage to RESTORE (not wipe) the session.
+
+const EXPLORE_CARE_SESSION_DEFAULTS = { category: null, selectedProviderId: null };
+const exploreCareSessionBaseAtom = atom(EXPLORE_CARE_SESSION_DEFAULTS);
+
+let exploreCareSessionHydrated = false;
+
+const persistExploreCareSession = () => {
+  const store = getDefaultStore();
+  const { category, selectedProviderId } = store.get(exploreCareSessionBaseAtom);
+  database.write(StorageKeys.EXPLORE_CARE_SESSION, { category, selectedProviderId }).catch(() => {});
+};
+
+export const hydrateExploreCareSession = async () => {
+  if (exploreCareSessionHydrated) return;
+  try {
+    const saved = await database.read(
+      StorageKeys.EXPLORE_CARE_SESSION,
+      EXPLORE_CARE_SESSION_DEFAULTS,
+    );
+    if (saved?.category) {
+      const store = getDefaultStore();
+      store.set(exploreCareSessionBaseAtom, {
+        category: saved.category ?? null,
+        selectedProviderId: saved.selectedProviderId ?? null,
+      });
+    }
+  } finally {
+    exploreCareSessionHydrated = true;
+  }
+};
+
+// Kick off hydration at module load (non-blocking) — same as TRACKING_VISUALIZATION
+hydrateExploreCareSession();
+
+// Read-only accessor for the full session snapshot (used by MapScreen mount effect to restore)
+export const exploreCareSessionAtom = atom((get) => get(exploreCareSessionBaseAtom));
+
+// exploreProviderCategoryAtom: which category chip was tapped (PROVIDER_TYPES value or null)
+export const exploreProviderCategoryAtom = atom(
+  (get) => get(exploreCareSessionBaseAtom).category,
+  (_get, set, nextCategory) => {
+    set(exploreCareSessionBaseAtom, (prev) => ({ ...prev, category: nextCategory }));
+    persistExploreCareSession();
+  },
+);
+
+// exploreProviderIdAtom: which provider is selected on the map (for ProviderMarkers highlight)
+export const exploreProviderIdAtom = atom(
+  (get) => get(exploreCareSessionBaseAtom).selectedProviderId,
+  (_get, set, nextId) => {
+    set(exploreCareSessionBaseAtom, (prev) => ({ ...prev, selectedProviderId: nextId }));
+    persistExploreCareSession();
+  },
+);
 
 // PULLBACK NOTE: Pass 6 — OLD: useState(null) in MapHospitalListContent — resets to "All" on every sheet phase change
 // NEW: Jotai atom — specialty filter selection persists across sheet collapse/expand

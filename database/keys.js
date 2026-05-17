@@ -131,6 +131,12 @@ export const StorageKeys = {
   /** Tracking visualization state — Phase 8 (status phase, progress, animation flag, in-flow rating) */
   TRACKING_VISUALIZATION: `${DB_PREFIX}tracking_visualization`,
 
+  /** Explore Care session snapshot — survives app backgrounding/kill (category + selectedProviderId) */
+  EXPLORE_CARE_SESSION: `${DB_PREFIX}explore_care_session`,
+
+  /** Last selected hospital cache — eliminates blank-map lag on app reload (id + object + locationKey) */
+  LAST_HOSPITAL_CACHE: `${DB_PREFIX}last_hospital_cache`,
+
   MIGRATION_VERSION: `${DB_PREFIX}migration_version`,
 };
 
@@ -188,6 +194,8 @@ export const SingletonKeys = [
   StorageKeys.CONTACT_INPUT_MEMORY,
   StorageKeys.TRACKING_RATING_RECOVERY,
   StorageKeys.TRACKING_VISUALIZATION,
+  StorageKeys.EXPLORE_CARE_SESSION,
+  StorageKeys.LAST_HOSPITAL_CACHE,
   StorageKeys.MIGRATION_VERSION,
 ];
 
