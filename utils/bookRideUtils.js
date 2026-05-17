@@ -10,7 +10,7 @@
 
 import { Linking } from "react-native";
 
-const UBER_CLIENT_ID = ""; // TODO: register in Uber developer portal and set env
+const UBER_CLIENT_ID = process.env.EXPO_PUBLIC_UBER_CLIENT_ID ?? "";
 
 /**
  * Build Uber deep-link URL to a provider destination.
