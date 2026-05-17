@@ -5,6 +5,17 @@ import {
 	getHospitalFacilityKey,
 	normalizeFacilityText,
 } from "./hospitalIdentity";
+import {
+	PROVIDER_TYPES,
+	EMERGENCY_LEVELS,
+	ER_ELIGIBLE_LEVELS,
+	VERIFICATION_STATUS,
+	DISPATCH_ELIGIBLE_STATUSES,
+	PROVIDER_SOURCES,
+	normaliseEmergencyLevel,
+	deriveEmergencyEligible,
+	deriveDispatchEligible,
+} from "../constants/providerTypes";
 
 const DEFAULT_HOSPITAL_IMAGES = [
 	"https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
@@ -73,6 +84,17 @@ const isLegacySyntheticDemoHospital = (hospital) => {
 const isDispatchableHospital = (hospital) => {
 	const status = toText(hospital?.status, "available").toLowerCase();
 	const verificationStatus = toText(hospital?.verification_status, "").toLowerCase();
+
+	// PULLBACK NOTE: EXP-4 Emergency strict filter
+	// OLD: any available+verified provider could be dispatched
+	// NEW: only provider_type=hospital with emergency_eligible=true is dispatch-eligible
+	const providerType = toText(hospital?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
+	if (providerType !== PROVIDER_TYPES.HOSPITAL) return false;
+
+	// If the schema patch is live, trust the precomputed dispatch_eligible flag
+	if (typeof hospital?.dispatch_eligible === "boolean") return hospital.dispatch_eligible;
+
+	// Legacy fallback: derive from verified + demo status
 	return (
 		status === "available" &&
 		(hospital?.verified === true ||
@@ -90,6 +112,26 @@ const sortHospitalsByDistance = (hospitals = []) =>
 		}
 		return String(left?.name || "").localeCompare(String(right?.name || ""));
 	});
+
+// EXP-10: Sort providers for explore mode — sponsored first, then featured, then by distance.
+// Sponsored slots always top, featured slots next, organic results sorted by distance.
+// Emergency hospital results NEVER use this sort (use sortHospitalsByDistance directly).
+const sortProvidersForExplore = (providers = []) => {
+	const list = Array.isArray(providers) ? [...providers] : [];
+	const sponsored = list.filter((p) => p?.isSponsored);
+	const featured = list.filter((p) => p?.isFeatured && !p?.isSponsored);
+	const organic = list.filter((p) => !p?.isFeatured && !p?.isSponsored);
+	const byDist = (a, b) => {
+		const da = Number(a?.distanceKm ?? a?.distance_km ?? Number.MAX_SAFE_INTEGER);
+		const db = Number(b?.distanceKm ?? b?.distance_km ?? Number.MAX_SAFE_INTEGER);
+		return da !== db ? da - db : String(a?.name || "").localeCompare(String(b?.name || ""));
+	};
+	return [
+		...sponsored.sort(byDist),
+		...featured.sort(byDist),
+		...organic.sort(byDist),
+	];
+};
 const facilityKeyFromHospital = (hospital) => {
 	return getHospitalFacilityKey(hospital) || `id:${toText(hospital?.id, "unknown")}`;
 };
@@ -418,10 +460,13 @@ export const hospitalsService = {
 	_mapHospital(h) {
 		if (!h) return null;
 
+		// PULLBACK NOTE: EXP-6B — 0km/0min display bug root cause
+		// OLD: fallback was 0 — caused '0.0 km' and '0 min' on providers without distance
+		// NEW: fallback is null — downstream distance/eta guards treat null as unknown
 		const distanceKm =
-			Number.isFinite(h?.distance_km)
+			Number.isFinite(h?.distance_km) && h.distance_km > 0
 				? Number(h.distance_km)
-				: (Number.isFinite(h?.distance) ? Number(h.distance) : 0);
+				: (Number.isFinite(h?.distance) && h.distance > 0 ? Number(h.distance) : null);
 		const availableBeds =
 			Number.isFinite(h?.available_beds)
 				? toNonNegativeInt(h.available_beds, 0)
@@ -478,18 +523,45 @@ export const hospitalsService = {
 			: toMinutesLabel(h?.wait_time, dynamicWait.displayText);
 		const eta = toText(
 			h?.eta,
-			distanceKm > 0 ? `${Math.max(2, Math.ceil(distanceKm * 3))} mins` : "8-12 mins"
+			(distanceKm != null && distanceKm > 0) ? `${Math.max(2, Math.ceil(distanceKm * 3))} mins` : "8-12 mins"
 		);
 		const status = toText(h?.status, "available");
 		const phone = toText(h?.google_phone, toText(h?.phone, ""));
 		const rating = toFinite(h?.google_rating, toFinite(h?.rating, 0));
-		const emergencyLevel = toText(h?.emergency_level, "Standard");
+		// PULLBACK NOTE: EXP-2/EXP-4 — provider taxonomy in domain model
+		// OLD: emergencyLevel was a raw string; no providerType/emergencyEligible fields
+		// NEW: normalised emergencyLevel + providerType + emergencyEligible + dispatchEligible
+		const rawEmergencyLevel = toText(h?.emergency_level, "");
+		const emergencyLevel = normaliseEmergencyLevel(rawEmergencyLevel) ||
+			toText(h?.emergency_level, EMERGENCY_LEVELS.GENERAL_HOSPITAL);
+		const providerType = toText(h?.provider_type, PROVIDER_TYPES.HOSPITAL);
+		const emergencyEligible = typeof h?.emergency_eligible === "boolean"
+			? h.emergency_eligible
+			: deriveEmergencyEligible(providerType, emergencyLevel);
+		const dispatchEligible = typeof h?.dispatch_eligible === "boolean"
+			? h.dispatch_eligible
+			: deriveDispatchEligible(emergencyEligible, toText(h?.verification_status, "pending"));
+		const providerSource = toText(h?.provider_source, PROVIDER_SOURCES.MANUAL_SEED);
+		const categoryConfidence = Number.isFinite(h?.category_confidence) ? Number(h.category_confidence) : 0.99;
 		const imageConfidence = Number.isFinite(h?.image_confidence) ? Number(h.image_confidence) : (image === h?.image ? 0.95 : 0.35);
 		const imageSource = toText(h?.image_source, image === h?.image ? "provider_image" : "deterministic_fallback");
 
+		// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 4: Provider-specific data
+		// OLD: No provider-specific fields (services, insurance, hours, etc.)
+		// NEW: Map provider-specific fields from providers table
+		const isHospital = providerType === PROVIDER_TYPES.HOSPITAL;
+		const providerServices = toObject(h?.provider_services, {});
+		const providerSpecialties = toObject(h?.provider_specialties, {});
+		const insuranceAccepted = toTextArray(h?.insurance_accepted);
+		const structuredHours = toObject(h?.structured_hours, {});
+		const appointmentRequired = typeof h?.appointment_required === "boolean" ? h.appointment_required : false;
+		const reportTurnaround = toText(h?.report_turnaround);
+		const ageRange = toText(h?.age_range);
+		const crisisLine = toText(h?.crisis_line);
+
 		return {
 			id: toText(h?.id),
-			name: toText(h?.name, "Unnamed Hospital"),
+			name: toText(h?.name, "Unnamed Provider"),
 			address: toText(h?.google_address, toText(h?.address, "Address unavailable")),
 			phone,
 			rating,
@@ -505,8 +577,11 @@ export const hospitalsService = {
 			serviceTypes: toTextArray(h?.service_types),
 			features: featureList,
 			emergencyLevel,
-			availableBeds,
-			ambulances: ambulancesCount,
+			// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Gap 1: Hide hospital-specific fields for non-hospitals
+			// OLD: Always returned bed/ambulance counts (null for non-hospitals, causing sparse UI)
+			// NEW: Only return for hospitals, null for other providers (UI handles null gracefully)
+			availableBeds: isHospital ? availableBeds : null,
+			ambulances: isHospital ? ambulancesCount : null,
 			waitTime,
 			eta,
 			price: toText(h?.price_range, ambulancesCount > 0 ? "Emergency" : "$$$"),
@@ -522,9 +597,10 @@ export const hospitalsService = {
 			verified: isVerified,
 			status,
 			lastAvailabilityUpdate: toText(h?.last_availability_update),
-			bedAvailability: toObject(h?.bed_availability, {}),
-			ambulanceAvailability: toObject(h?.ambulance_availability, {}),
-			emergencyWaitTimeMinutes: toNonNegativeInt(h?.emergency_wait_time_minutes, 0),
+			// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Gap 1: Hide hospital-specific fields for non-hospitals
+			bedAvailability: isHospital ? toObject(h?.bed_availability, {}) : null,
+			ambulanceAvailability: isHospital ? toObject(h?.ambulance_availability, {}) : null,
+			emergencyWaitTimeMinutes: isHospital ? toNonNegativeInt(h?.emergency_wait_time_minutes, 0) : null,
 			realTimeSync: h?.real_time_sync === true,
 			// Google/External Fields
 			placeId: toText(h?.place_id),
@@ -539,12 +615,32 @@ export const hospitalsService = {
 			organizationId: toText(h?.organization_id, toText(h?.organizationId)),
 			organization_id: toText(h?.organization_id, toText(h?.organizationId)),
 			isDispatchReady,
+			// EXP-2/EXP-4: Provider taxonomy fields
+			providerType,
+			emergencyEligible,
+			dispatchEligible,
+			providerSource,
+			categoryConfidence,
+			// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 4: Provider-specific fields
+			providerServices,
+			providerSpecialties,
+			insuranceAccepted,
+			structuredHours,
+			appointmentRequired,
+			reportTurnaround,
+			ageRange,
+			crisisLine,
 			// Computed UI helpers
 			isCovered: isVerified && status === "available",
 			isGoogleOnly: h.google_only === true,
 			isMapboxOnly: importedFromMapbox,
 			isDemo: isDemoSeed,
 			demoOwner,
+			// Backwards-compat: keep emergencyLevel as raw string for existing UI consumers
+			emergencyLevelRaw: rawEmergencyLevel,
+			// EXP-10: Monetization flags — featured = partner placement, sponsored = paid slot
+			isFeatured: h?.is_featured === true || h?.featured === true,
+			isSponsored: h?.is_sponsored === true || h?.sponsored === true,
 		};
 	},
 
@@ -593,7 +689,11 @@ export const hospitalsService = {
 	},
 
 	/**
-	 * Discover nearby hospitals using unified Edge Function
+	 * Discover nearby hospitals using unified Edge Function.
+	 * PULLBACK NOTE: EXP-4 — this method is now EMERGENCY-ONLY (hospital strict).
+	 * OLD: providerCategory defaulted to undefined (edge function also defaulted to hospital)
+	 * NEW: providerCategory='hospital' is explicit; only emergency-eligible hospitals returned.
+	 * For explore mode, use discoverNearbyProviders() instead.
 	 * @param {number} lat - Latitude
 	 * @param {number} lng - Longitude
 	 * @param {number} radius - Radius in meters (default 50000)
@@ -611,6 +711,8 @@ export const hospitalsService = {
 					radius,
 					mode: 'nearby',
 					limit: 15,
+					// EXP-4: Emergency strict — always hospital category for this method
+					providerCategory: 'hospital',
 					// Mapbox-first discovery keeps provider costs predictable while still
 					// allowing explicit Google fallback when requested.
 					includeProviderDiscovery: true,
@@ -633,11 +735,105 @@ export const hospitalsService = {
 			}
 
 			const hydrated = await this._hydrateHospitalRows(rawHospitals);
-			return sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
+			// EXP-4: Post-fetch safety filter — only return dispatchable hospitals
+			const mapped = sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
+			return mapped.filter(h => h.providerType === PROVIDER_TYPES.HOSPITAL);
 
 		} catch (error) {
 			console.error("hospitalsService.discoverNearby error:", error);
 			return this.listNearby(lat, lng, radius / 1000);
+		}
+	},
+
+	/**
+	 * Discover nearby providers for Explore Care mode.
+	 * This is the explore-mode counterpart to discoverNearby — no emergency filter applied.
+	 * Returns any provider category (pharmacy, lab, clinic, etc.) within radius.
+	 *
+	 * @param {number} lat - Latitude
+	 * @param {number} lng - Longitude
+	 * @param {string} providerCategory - One of PROVIDER_TYPES values (e.g. 'pharmacy')
+	 * @param {number} radius - Radius in meters (default 20000)
+	 * @param {{ includeMapboxPlaces?: boolean, includeGooglePlaces?: boolean, limit?: number }} options
+	 */
+	async discoverNearbyProviders(lat, lng, providerCategory = 'hospital', radius = 20000, options = {}) {
+		try {
+			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
+			const includeGooglePlaces = options?.includeGooglePlaces === true;
+			const limit = Math.max(1, Math.min(25, Number(options?.limit) || 15));
+
+			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
+				body: {
+					latitude: lat,
+					longitude: lng,
+					radius,
+					mode: 'nearby',
+					limit,
+					providerCategory,
+					includeProviderDiscovery: true,
+					includeMapboxPlaces,
+					includeGooglePlaces,
+					mergeWithDatabase: true
+				}
+			});
+
+			if (error) {
+				// Fallback: query nearby_providers RPC directly (explore, no emergency filter)
+				return this.listNearbyProviders(lat, lng, providerCategory, radius / 1000);
+			}
+
+			const rawProviders = data?.data || [];
+			if (rawProviders.length === 0) {
+				return this.listNearbyProviders(lat, lng, providerCategory, radius / 1000);
+			}
+
+			const hydrated = await this._hydrateHospitalRows(rawProviders);
+			const mapped = hydrated.map(h => {
+				const row = this._mapHospital(h);
+				// PULLBACK NOTE: EXP-6B — provider mixing fix
+				// OLD: rows returned from nearby_hospitals RPC default to providerType='hospital'
+				// NEW: if a row has no explicit provider_type, stamp the requested category
+				// so it is not filtered out by the category guard below.
+				if (row.providerType === PROVIDER_TYPES.HOSPITAL && providerCategory !== 'hospital') {
+					row.providerType = providerCategory;
+				}
+				return row;
+			});
+			// Guard: only return providers matching the requested category.
+			// Prevents hospital rows from leaking into pharmacy/lab/etc explore lists.
+			const filtered = mapped.filter(r => r.providerType === providerCategory);
+			const source = filtered.length > 0 ? filtered : mapped;
+			// EXP-10: sponsored > featured > organic within distance order
+			return sortProvidersForExplore(source);
+
+		} catch (err) {
+			console.error("hospitalsService.discoverNearbyProviders error:", err);
+			return this.listNearbyProviders(lat, lng, providerCategory, radius / 1000);
+		}
+	},
+
+	/**
+	 * Query nearby_providers RPC directly — explore mode, no emergency filter.
+	 * Falls back from discoverNearbyProviders when edge function is unavailable.
+	 */
+	async listNearbyProviders(userLat, userLng, providerTypeFilter = null, radiusKm = 20) {
+		try {
+			const { data, error } = await supabase
+				.rpc('nearby_providers', {
+					user_lat: userLat,
+					user_lng: userLng,
+					provider_type_filter: providerTypeFilter || null,
+					radius_km: radiusKm,
+					result_limit: 20,
+				});
+
+			if (error) throw error;
+			const hydrated = await this._hydrateHospitalRows(data || []);
+			// EXP-10: sponsored > featured > organic within distance order
+			return sortProvidersForExplore(hydrated.map(h => this._mapHospital(h)));
+		} catch (err) {
+			console.error("hospitalsService.listNearbyProviders error:", err);
+			return [];
 		}
 	},
 
@@ -861,3 +1057,6 @@ export const hospitalsService = {
 		}
 	}
 };
+
+// EXP-10: Named export for explore-mode sort (sponsored > featured > organic, then distance)
+export { sortProvidersForExplore };

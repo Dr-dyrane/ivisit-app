@@ -6,9 +6,12 @@
  * hospital selection guard, and the updateHospitals + refreshHospitals actions.
  */
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { useHospitals } from "./useHospitals";
+// PULLBACK NOTE: EXP-7 — migrate from useHospitals (useState + module cache) to useEmergencyHospitalsQuery (TanStack Query L2)
+// OLD: useHospitals violated REFACTORING_GUARDRAILS §1: server data triggered by location → useEffect
+// NEW: useEmergencyHospitalsQuery in useHospitalsQuery.ts — queryKey drives refetch, staleTime/gcTime replace globalHospitalCache
+import { useEmergencyHospitalsQuery } from "./useHospitalsQuery";
 import { useAmbulances } from "./useAmbulances";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { SPECIALTIES } from "../../constants/hospitals";
@@ -22,6 +25,7 @@ import {
 	coverageModeService,
 	COVERAGE_MODES,
 } from "../../services/coverageModeService";
+import { useLastHospitalStore } from "../../stores/lastHospitalStore";
 
 export function useEmergencyHospitalSync({
 	userLocation,
@@ -42,11 +46,9 @@ export function useEmergencyHospitalSync({
 		allHospitals: discoveredDbHospitals,
 		isLoading: isLoadingHospitals,
 		refetch: refetchHospitals,
-	} = useHospitals({
+	} = useEmergencyHospitalsQuery({
 		location: userLocation,
 		demoModeEnabled: forceDemoFetch,
-		demoBootstrapEnabled: false,
-		skipInternalLocationLookup: true,
 		userId: user?.id,
 	});
 
@@ -214,6 +216,23 @@ export function useEmergencyHospitalSync({
 			? hospital
 			: null;
 	}, [availableHospitals, effectiveDemoModeEnabled]);
+
+	// PULLBACK NOTE: Issue-3 fix — persist selectedHospital to survive reload
+	// Write whenever we have a real selected hospital from a resolved (non-loading) query.
+	// locationKey uses 3dp bucket so stale cache is discarded if user moves >~111m.
+	const setLastHospital = useLastHospitalStore((s) => s.setLastHospital);
+	const lastPersistedIdRef = useRef(null);
+	useEffect(() => {
+		if (isLoadingHospitals) return;
+		if (!selectedHospital?.id) return;
+		if (lastPersistedIdRef.current === selectedHospital.id) return;
+		const lat = userLocation?.latitude;
+		const lng = userLocation?.longitude;
+		if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return;
+		const locationKey = `${Number(lat).toFixed(3)}:${Number(lng).toFixed(3)}`;
+		lastPersistedIdRef.current = selectedHospital.id;
+		setLastHospital(selectedHospital, locationKey);
+	}, [isLoadingHospitals, selectedHospital, userLocation, setLastHospital]);
 
 	return {
 		hospitals,
