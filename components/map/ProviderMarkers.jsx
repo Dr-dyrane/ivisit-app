@@ -101,7 +101,13 @@ function ProviderPin({ provider, isSelected, onPress }) {
 const ProviderMarkers = ({ providers, selectedProviderId, onProviderPress }) => {
   if (!providers || providers.length === 0) return null;
 
-  return providers
+  // PULLBACK NOTE: EXP-7 fix — show all same-category providers when one is selected.
+  // OLD: selectedProviderId → hide all siblings → only selected pin shown (hides other pharmacies etc.)
+  // NEW: always show all passed-in providers; selected pin gets elevated zIndex only.
+  // Other category markers (hospitals etc.) are suppressed at the map level via suppressHospitalMarkers.
+  const displayProviders = providers;
+
+  return displayProviders
     .filter(
       (p) =>
         // Only non-hospital providers here — hospital layer is HospitalMarkers

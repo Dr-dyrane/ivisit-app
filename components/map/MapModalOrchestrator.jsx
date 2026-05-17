@@ -50,6 +50,7 @@ import {
  * @param {Function} props.handleProfileSignOut - Profile sign-out handler
  * @param {Function} props.onOpenLocationIntent - Opens LocationSheet from mini profile (UX-E)
  * @param {Function} props.handleChooseCare - Choose care handler
+ * @param {Function} props.handleExploreCare - EXP-5: Explore nearby care category handler
  * @param {Function} props.handleBookVisitFromCare - Book visit from care handler
  * @param {Function} props.handleSelectHistoryItem - Select history item handler
  * @param {Function} props.handleBookVisitFromHistory - Book visit from history handler
@@ -87,6 +88,7 @@ export default function MapModalOrchestrator({
   // Handlers
   handleProfileSignOut,
   handleChooseCare,
+  handleExploreCare,
   handleBookVisitFromCare,
   handleSelectHistoryItem,
   handleBookVisitFromHistory,
@@ -149,6 +151,10 @@ export default function MapModalOrchestrator({
           handleChooseCare(mode);
         }}
         onBookVisit={isSignedIn ? handleBookVisitFromCare : undefined}
+        onExploreCare={typeof handleExploreCare === "function" ? (providerType) => {
+          setCareHistoryVisible(false);
+          handleExploreCare(providerType);
+        } : undefined}
       />
 
       <MapHistoryModal

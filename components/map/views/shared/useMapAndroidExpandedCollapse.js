@@ -26,6 +26,7 @@ export default function useMapAndroidExpandedCollapse({
 		}),
 		[],
 	);
+	const isHalf = snapState === MAP_SHEET_SNAP_STATES.HALF;
 
 	const updateAtTop = useCallback(
 		(offsetY = 0) => {
@@ -79,7 +80,7 @@ export default function useMapAndroidExpandedCollapse({
 		}
 	}, [bodyDragY, bodyScrollRef, onExpandedToHalf, snapState]);
 
-	const androidExpandedBodyGesture = useMemo(() => {
+	const androidExpandedCollapseGesture = useMemo(() => {
 		if (
 			Platform.OS !== "android" ||
 			snapState !== MAP_SHEET_SNAP_STATES.EXPANDED ||
@@ -141,8 +142,50 @@ export default function useMapAndroidExpandedCollapse({
 		snapState,
 	]);
 
+	const androidHalfExpandGesture = useMemo(() => {
+		if (
+			Platform.OS !== "android" ||
+			!isHalf ||
+			typeof onSnapStateChange !== "function"
+		) {
+			return null;
+		}
+
+		return Gesture.Pan()
+			.runOnJS(true)
+			.activeOffsetY([-expandedBodyGestureTokens.activeOffsetY, 1000])
+			.failOffsetX(expandedBodyGestureTokens.failOffsetX)
+			.shouldCancelWhenOutside(false)
+			.onEnd((event) => {
+				if (!isBodyAtTop) return;
+				const absDx = Math.abs(event.translationX ?? 0);
+				const absDy = Math.abs(event.translationY ?? 0);
+				const velocityY = Number(event.velocityY ?? 0);
+				const isUpwardSwipe = event.translationY < 0;
+				const isVerticalIntent =
+					absDy > expandedBodyGestureTokens.verticalIntentDistance &&
+					absDy > absDx * expandedBodyGestureTokens.axisLockRatio;
+				const passedDistance = -event.translationY > expandedBodyGestureTokens.collapseDistance;
+				const passedVelocity =
+					-event.translationY > expandedBodyGestureTokens.velocityDistance &&
+					velocityY < -expandedBodyGestureTokens.collapseVelocity;
+
+				if (isUpwardSwipe && isVerticalIntent && (passedDistance || passedVelocity)) {
+					onSnapStateChange(MAP_SHEET_SNAP_STATES.EXPANDED);
+				}
+			});
+	}, [
+		expandedBodyGestureTokens,
+		isBodyAtTop,
+		isHalf,
+		onSnapStateChange,
+	]);
+
+	const androidBodyGesture = androidExpandedCollapseGesture ?? androidHalfExpandGesture;
+
 	return {
-		androidExpandedBodyGesture,
+		androidBodyGesture,
+		androidExpandedBodyGesture: androidBodyGesture,
 		androidExpandedBodyStyle:
 			Platform.OS === "android" && snapState === MAP_SHEET_SNAP_STATES.EXPANDED
 				? { transform: [{ translateY: bodyDragY }] }

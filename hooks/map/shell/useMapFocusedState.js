@@ -21,6 +21,11 @@ import { MAP_ACTIVE_REQUEST_KINDS } from "../../../components/map/core/mapActive
 import { getDestinationCoordinate } from "../../../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
 import { calculateBearing } from "../../../utils/mapUtils";
 
+const PROVIDER_FOCUS_PHASES = new Set([
+  MAP_SHEET_PHASES.PROVIDER_LIST,
+  MAP_SHEET_PHASES.PROVIDER_DETAIL,
+]);
+
 export function useMapFocusedState({
   sheetPhase,
   sheetPayload,
@@ -31,7 +36,15 @@ export function useMapFocusedState({
   featuredHospital,
   nearestHospital,
   activeLocation,
+  // PULLBACK NOTE: EXP-7 fix — selectedProvider replaces sheetPayload.provider as coord source
+  // OLD: only PROVIDER_DETAIL had coordinates (via sheetPayload.provider)
+  // NEW: selectedProvider supplied by MapScreen so PROVIDER_LIST also drives the polyline
+  selectedProvider = null,
 }) {
+  // PULLBACK NOTE: EXP-7 — Provider focus phase awareness
+  // When in PROVIDER_LIST or PROVIDER_DETAIL, provider coordinates drive the map,
+  // not a hospital. mapFocusedHospitalId returns null to suppress hospital selection.
+  const isProviderFocusPhase = PROVIDER_FOCUS_PHASES.has(sheetPhase);
   const paymentPreviewKind = useMemo(() => {
     if (sheetPhase !== MAP_SHEET_PHASES.COMMIT_PAYMENT) return null;
     const hasTransportSelection = Boolean(
@@ -54,43 +67,48 @@ export function useMapFocusedState({
       : [historyFocusedHospital, ...discoveredHospitals];
   }, [discoveredHospitals, historyFocusedHospital]);
 
-  const mapFocusedHospitalId = useMemo(
-    () =>
+  const mapFocusedHospitalId = useMemo(() => {
+    // Provider focus phases: suppress hospital selection entirely
+    if (isProviderFocusPhase) return null;
+    return (
       historyFocusedHospital?.id ||
       activeMapRequest?.hospitalId ||
       (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT
         ? sheetPayload?.hospital?.id || null
         : null) ||
       nearestHospital?.id ||
-      null,
-    [
-      historyFocusedHospital?.id,
-      activeMapRequest?.hospitalId,
-      nearestHospital?.id,
-      sheetPhase,
-      sheetPayload?.hospital?.id,
-    ],
-  );
+      null
+    );
+  }, [
+    isProviderFocusPhase,
+    historyFocusedHospital?.id,
+    activeMapRequest?.hospitalId,
+    nearestHospital?.id,
+    sheetPhase,
+    sheetPayload?.hospital?.id,
+  ]);
 
-  const mapFocusedHospital = useMemo(
-    () =>
+  const mapFocusedHospital = useMemo(() => {
+    if (isProviderFocusPhase) return null;
+    return (
       historyFocusedHospital ||
       mapHospitals.find((item) => item?.id === mapFocusedHospitalId) ||
       activeMapRequest?.hospital ||
       featuredHospital ||
       sheetPayload?.hospital ||
       nearestHospital ||
-      null,
-    [
-      historyFocusedHospital,
-      mapHospitals,
-      activeMapRequest?.hospital,
-      featuredHospital,
-      mapFocusedHospitalId,
-      nearestHospital,
-      sheetPayload?.hospital,
-    ],
-  );
+      null
+    );
+  }, [
+    isProviderFocusPhase,
+    historyFocusedHospital,
+    mapHospitals,
+    activeMapRequest?.hospital,
+    featuredHospital,
+    mapFocusedHospitalId,
+    nearestHospital,
+    sheetPayload?.hospital,
+  ]);
 
   const mapFocusedHospitalCoordinate = useMemo(
     () => getDestinationCoordinate(mapFocusedHospital),
@@ -172,11 +190,48 @@ export function useMapFocusedState({
     mapServiceMarkerKind,
   ]);
 
+  // Provider focus coordinate — drives route destination and camera fit
+  // when sheetPhase is PROVIDER_LIST or PROVIDER_DETAIL.
+  // PULLBACK NOTE: EXP-7 fix — prefer selectedProvider.coordinates (available in both phases)
+  // OLD: read from sheetPayload.provider.coordinates — only set during PROVIDER_DETAIL
+  // NEW: selectedProvider prop → works in PROVIDER_LIST too (auto-selected nearest)
+  const mapFocusedProviderCoordinate = useMemo(() => {
+    if (!isProviderFocusPhase) return null;
+    // Prefer the live selectedProvider object (set by auto-select + manual tap)
+    const coords = selectedProvider?.coordinates ?? sheetPayload?.provider?.coordinates;
+    if (
+      coords &&
+      Number.isFinite(coords.latitude) &&
+      Number.isFinite(coords.longitude)
+    ) {
+      return { latitude: coords.latitude, longitude: coords.longitude };
+    }
+    return null;
+  }, [
+    isProviderFocusPhase,
+    selectedProvider?.coordinates?.latitude,
+    selectedProvider?.coordinates?.longitude,
+    sheetPayload?.provider?.coordinates?.latitude,
+    sheetPayload?.provider?.coordinates?.longitude,
+  ]);
+
+  // Provider type of the focused provider — used to theme the route polyline color
+  const mapFocusedProviderType = useMemo(() => {
+    if (!isProviderFocusPhase) return null;
+    return selectedProvider?.providerType ?? sheetPayload?.provider?.providerType ?? null;
+  }, [
+    isProviderFocusPhase,
+    selectedProvider?.providerType,
+    sheetPayload?.provider?.providerType,
+  ]);
+
   return {
     mapHospitals,
     mapFocusedHospitalId,
     mapFocusedHospital,
     mapFocusedHospitalCoordinate,
+    mapFocusedProviderCoordinate,
+    mapFocusedProviderType,
     mapServiceMarkerKind,
     mapServiceMarkerCoordinate,
     mapServiceMarkerHeading,

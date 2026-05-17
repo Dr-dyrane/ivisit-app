@@ -43,6 +43,7 @@ import { useNearbyProviders } from "../hooks/emergency/useNearbyProviders";
 import {
   exploreProviderCategoryAtom,
   exploreProviderIdAtom,
+  exploreCareSessionAtom,
 } from "../atoms/mapFlowAtoms";
 import { buildProviderDetailSheetView } from "../hooks/map/exploreFlow/mapExploreFlow.transitions";
 
@@ -97,6 +98,7 @@ export default function MapScreen() {
     handleCycleFeaturedHospital,
     handleOpenProfile,
     openHospitalList,
+    openProviderList,
     openAmbulanceHospitalList,
     openBedHospitalList,
     handleSearchLocation,
@@ -164,6 +166,35 @@ export default function MapScreen() {
     hasActiveTrip,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
 
+  // PULLBACK NOTE: EXP-7 — read the persisted session snapshot (hydrated at module load)
+  // useAtomValue is correct: read-only derived atom, no write subscription
+  const exploreCareSession = useAtomValue(exploreCareSessionAtom);
+
+  // PULLBACK NOTE: EXP-7 — Map mount: restore persisted explore care session
+  // WHY useEffect([exploreCareSession.category]) + ref guard, not useEffect([]):
+  //   hydrateExploreCareSession() is async (reads from AsyncStorage). There is a race:
+  //   useEffect([]) fires before the async hydration resolves → category is still null →
+  //   restore never happens. This is the same race as TRACKING_VISUALIZATION.
+  //   Fix: watch exploreCareSession.category; fire restore exactly once via hasRestoredRef.
+  //   The ref guard prevents re-firing when the user later changes category via interaction.
+  //
+  // OLD: always wiped on mount → app background/kill lost the session
+  // NEW: atoms are write-through (backed by EXPLORE_CARE_SESSION storage).
+  //      hydrateExploreCareSession() fires at module load; when it resolves it calls
+  //      store.set() → atom updates → this effect fires with the hydrated category.
+  //      If the user explicitly closed the list, handleCloseProviderList persisted null
+  //      → hydration reads null → category stays null → no restore → hospitals-only. ✓
+  const hasRestoredSessionRef = useRef(false);
+  useEffect(() => {
+    if (hasRestoredSessionRef.current) return; // only restore once per mount
+    if (!exploreCareSession?.category) return;  // no saved session — nothing to restore
+    hasRestoredSessionRef.current = true;
+    openProviderList(
+      exploreCareSession.category,
+      exploreCareSession.selectedProviderId ?? null,
+    );
+  }, [exploreCareSession?.category, openProviderList]);
+
   // PULLBACK NOTE: EXP-5/EXP-6/EXP-7 — Explore Care wiring
   // L5: Jotai atoms for ephemeral explore UI state
   const [exploreProviderCategory, setExploreProviderCategory] = useAtom(exploreProviderCategoryAtom);
@@ -173,10 +204,17 @@ export default function MapScreen() {
     // PULLBACK NOTE: EXP-6C — PROVIDER_LIST is now a proper orchestrator phase
     // OLD: set atom → floating MapProviderListSheet overlay
     // NEW: set atom + transition phase → MapSheetOrchestrator PROVIDER_LIST case
+    //
+    // PULLBACK NOTE: FIX — use setSheetView (single atomic dispatch) instead of
+    // setSheetPayload + setSheetPhase as two separate dispatches.
+    // Root cause: SET_SHEET_PAYLOAD normalizes against the CURRENT phase (EXPLORE_INTENT).
+    // EXPLORE_INTENT is not in PAYLOAD_OPTIONAL_OBJECT_PHASES → normalizer drops payload to null.
+    // Then SET_SHEET_PHASE fires with PROVIDER_LIST → EXPANDED snap but null payload.
+    // setSheetView batches phase + payload + snapState into one normalizeMapSheetView call,
+    // so PROVIDER_LIST's payload allowance and EXPANDED_ONLY snap are both respected atomically.
     setExploreProviderCategory(providerType);
-    setSheetPayload({ providerCategory: providerType, selectedProviderId: null });
-    setSheetPhase(MAP_SHEET_PHASES.PROVIDER_LIST);
-  }, [setExploreProviderCategory, setSheetPayload, setSheetPhase]);
+    openProviderList(providerType, null);
+  }, [setExploreProviderCategory, openProviderList]);
 
   const handleCloseProviderList = useCallback(() => {
     setExploreProviderCategory(null);
@@ -208,16 +246,24 @@ export default function MapScreen() {
     // PULLBACK NOTE: FIX-C — on detail close, return to PROVIDER_LIST (not EXPLORE_INTENT)
     // OLD: reset to EXPLORE_INTENT, clear category atom
     // NEW: return to PROVIDER_LIST phase so user keeps the list
+    //
+    // PULLBACK NOTE: EXP-7 — do NOT clear exploreProviderId when returning to PROVIDER_LIST
+    // OLD: setExploreProviderId(null) here → auto-select useEffect re-fires → re-selects nearest
+    //      → user's last-viewed provider is forgotten, map pin snaps back to A
+    // NEW: keep the current exploreProviderId alive so the selected pin remains highlighted.
+    //      The auto-select guard (!exploreProviderId) prevents it from re-firing.
+    //      Only clear exploreProviderId when closing the entire provider list (handleCloseProviderList).
     const category = exploreProviderCategory;
-    setExploreProviderId(null);
     if (category) {
-      setSheetPayload({ providerCategory: category, selectedProviderId: null });
+      // Keep exploreProviderId — stays highlighted on map, auto-select won't re-fire
+      setSheetPayload({ providerCategory: category, selectedProviderId: exploreProviderId });
       setSheetPhase(MAP_SHEET_PHASES.PROVIDER_LIST);
     } else {
+      setExploreProviderId(null);
       setSheetPayload(null);
       setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
     }
-  }, [exploreProviderCategory, setExploreProviderId, setSheetPayload, setSheetPhase]);
+  }, [exploreProviderCategory, exploreProviderId, setExploreProviderId, setSheetPayload, setSheetPhase]);
 
   // L2: shared TanStack Query — same query key as MapProviderListSheet → zero extra network requests
   const { providers: exploreProviders } = useNearbyProviders({
@@ -225,6 +271,33 @@ export default function MapScreen() {
     location: activeLocation,
     enabled: !!exploreProviderCategory,
   });
+
+  // PULLBACK NOTE: EXP-7 — Auto-select nearest provider when list opens
+  // Mirrors hospital behaviour: when the hospital list opens the nearest hospital is
+  // already focused on the map. For providers, select the first (nearest) provider
+  // as soon as the query resolves, but only when in PROVIDER_LIST with no selection.
+  useEffect(() => {
+    if (
+      sheetPhase === MAP_SHEET_PHASES.PROVIDER_LIST &&
+      !exploreProviderId &&
+      exploreProviders.length > 0
+    ) {
+      const nearest = exploreProviders[0];
+      if (nearest?.id) {
+        setExploreProviderId(nearest.id);
+        // Update payload so MapSheetOrchestrator PROVIDER_LIST shows the correct selected row
+        setSheetPayload({ providerCategory: exploreProviderCategory, selectedProviderId: nearest.id });
+      }
+    }
+  }, [
+    sheetPhase,
+    exploreProviderId,
+    exploreProviderCategory,
+    // Only re-run when the first provider id changes (list loaded / changed)
+    exploreProviders[0]?.id,
+    setExploreProviderId,
+    setSheetPayload,
+  ]);
 
   // PULLBACK NOTE: MapScreen decomposition Pass 1 — shell-level derivations extracted
   // OLD: viewportVariant/surfaceConfig/usesSidebarLayout/renderedSnapState/bottomSheetHeight/
@@ -316,12 +389,41 @@ export default function MapScreen() {
     unregisterFAB,
   });
 
+  // PULLBACK NOTE: EXP-7 fix — derive selectedProvider for map focus + polyline theming
+  // OLD: selectedProvider not passed; useMapFocusedState only read sheetPayload.provider
+  // NEW: resolved from exploreProviderId + exploreProviders; works in both LIST and DETAIL phases
+  const selectedProvider = useMemo(
+    () => exploreProviders.find((p) => p?.id === exploreProviderId) ?? null,
+    [exploreProviders, exploreProviderId],
+  );
+
+  // PULLBACK NOTE: EXP-7 — provider marker render gate (iOS crash guard)
+  // Decision-tree: Y is DERIVED from X → useMemo (not useEffect, not useState).
+  // Rule: providers and hospitals must NEVER render simultaneously on the map.
+  //   - EXPLORE_INTENT or any non-provider phase → hospitals only, providers hidden
+  //   - PROVIDER_LIST / PROVIDER_DETAIL → providers only, hospitals suppressed
+  // The stale-atom problem (atoms survive navigation) means we cannot trust
+  // exploreProviderCategory alone — we also gate on sheetPhase being a provider phase.
+  // This is the single authoritative gate; suppressHospitalMarkers is derived from it too.
+  const isProviderMapPhase = useMemo(
+    () =>
+      sheetPhase === MAP_SHEET_PHASES.PROVIDER_LIST ||
+      sheetPhase === MAP_SHEET_PHASES.PROVIDER_DETAIL,
+    [sheetPhase],
+  );
+  const shouldRenderProviderMarkers = useMemo(
+    () => isProviderMapPhase && !!exploreProviderCategory && exploreProviders.length > 0,
+    [isProviderMapPhase, exploreProviderCategory, exploreProviders.length],
+  );
+
   // PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted
   const {
     mapHospitals,
     mapFocusedHospitalId,
     mapFocusedHospital,
     mapFocusedHospitalCoordinate,
+    mapFocusedProviderCoordinate,
+    mapFocusedProviderType,
     mapServiceMarkerKind,
     mapServiceMarkerCoordinate,
     mapServiceMarkerHeading,
@@ -335,6 +437,7 @@ export default function MapScreen() {
     featuredHospital,
     nearestHospital,
     activeLocation,
+    selectedProvider,
   });
 
   // PULLBACK NOTE: MapScreen decomposition Pass 3 — decision handlers extracted
@@ -514,7 +617,13 @@ export default function MapScreen() {
         onLocationChromePress={handleOpenLocationSheet}
         showInternalSkeleton={false}
         extraMarkers={
-          exploreProviderCategory && exploreProviders.length > 0 ? (
+          // PULLBACK NOTE: EXP-7 — provider marker render gate
+          // OLD: condition was exploreProviderCategory && exploreProviders.length > 0
+          //      — would render providers even in EXPLORE_INTENT if atoms were stale
+          // NEW: gate additionally on sheetPhase being a provider phase so hospitals
+          //      and providers never coexist on the map at the same time.
+          //      shouldRenderProviderMarkers is a derived useMemo, NOT a useEffect.
+          shouldRenderProviderMarkers ? (
             <ProviderMarkers
               providers={exploreProviders}
               selectedProviderId={exploreProviderId}
@@ -523,6 +632,17 @@ export default function MapScreen() {
           ) : null
         }
         extraPolylines={null}
+        suppressHospitalMarkers={
+          // PULLBACK NOTE: EXP-7 — fix transition gap: hospitals hidden ONLY after providers are ready
+          // OLD: isProviderMapPhase alone → hospitals disappear immediately on tap, before query resolves
+          //      → blank-map gap of ~200–800ms while TanStack fetches
+          // NEW: isProviderMapPhase && shouldRenderProviderMarkers
+          //      → hospitals stay visible during the network round-trip, then swap atomically
+          //      → providers appear and hospitals disappear in the same render frame (no gap)
+          isProviderMapPhase && shouldRenderProviderMarkers
+        }
+        focusedCoordinate={mapFocusedProviderCoordinate}
+        focusedProviderType={mapFocusedProviderType}
       />
 
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

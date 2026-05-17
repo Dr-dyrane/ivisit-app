@@ -12,6 +12,8 @@ import MapHospitalListOrchestrator from "../views/hospitalList/MapHospitalListOr
 import MapSearchOrchestrator from "../views/search/MapSearchOrchestrator";
 import MapServiceDetailOrchestrator from "../views/serviceDetail/MapServiceDetailOrchestrator";
 import MapLocationIntentOrchestrator from "../views/locationIntent/MapLocationIntentOrchestrator";
+import MapProviderDetailOrchestrator from "../views/providerDetail/MapProviderDetailOrchestrator";
+import MapProviderListOrchestrator from "../views/providerList/MapProviderListOrchestrator";
 import MapPhaseTransitionView from "../views/shared/MapPhaseTransitionView";
 import { MAP_SEARCH_SHEET_MODES } from "../surfaces/search/mapSearchSheet.helpers";
 import {
@@ -86,6 +88,10 @@ export default function MapSheetOrchestrator({
 	onChangeServiceDetail = () => {},
 	onSelectHospitalService = () => {},
 	onCloseLocationIntent = () => {},
+	onCloseProviderDetail = () => {},
+	onCloseProviderList = () => {},
+	onSelectProvider = () => {},
+	exploreProviderCategory = null,
 	searchMode = MAP_SEARCH_SHEET_MODES.SEARCH,
 	hospitals = [],
 	selectedHospitalId = null,
@@ -475,6 +481,33 @@ export default function MapSheetOrchestrator({
 						onClose={onCloseServiceDetail}
 						onConfirm={onConfirmServiceDetail}
 						onChangeService={onChangeServiceDetail}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		case MAP_SHEET_PHASES.PROVIDER_LIST:
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${exploreProviderCategory || sheetPayload?.providerCategory || "unknown"}`}>
+					<MapProviderListOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						providerCategory={exploreProviderCategory ?? sheetPayload?.providerCategory ?? null}
+						location={activeLocation}
+						selectedProviderId={sheetPayload?.selectedProviderId ?? null}
+						onClose={onCloseProviderList}
+						onSelectProvider={onSelectProvider}
+						onSnapStateChange={onSnapStateChange}
+					/>
+				</MapPhaseTransitionView>
+			);
+		case MAP_SHEET_PHASES.PROVIDER_DETAIL:
+			return (
+				<MapPhaseTransitionView phaseKey={`${phase}-${sheetPayload?.provider?.id || sheetPayload?.provider?.placeId || "unknown"}`}>
+					<MapProviderDetailOrchestrator
+						sheetHeight={sheetHeight}
+						snapState={snapState}
+						sheetPayload={sheetPayload}
+						onClose={onCloseProviderDetail}
 						onSnapStateChange={onSnapStateChange}
 					/>
 				</MapPhaseTransitionView>

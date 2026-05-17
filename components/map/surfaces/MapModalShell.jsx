@@ -57,6 +57,8 @@ export default function MapModalShell({
 	enableSnapDetents = true,
 	allowCollapsedState = false,
 	closeFromCollapsed = true,
+	onSnapStateChange = null,
+	snapState = null,
 	backAccessibilityLabel = "Go back",
 	backIconName = "chevron-back",
 	presentationModeOverride = null,
@@ -114,6 +116,8 @@ export default function MapModalShell({
 		: MAP_SHEET_SNAP_STATES.EXPANDED;
 	const [shouldRender, setShouldRender] = useState(visible);
 	const [modalSnapState, setModalSnapState] = useState(resolvedDefaultSnapState);
+	const prevModalSnapStateRef = useRef(resolvedDefaultSnapState);
+	const prevExternalSnapStateRef = useRef(snapState);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 	const snapProgress = useRef(
@@ -283,6 +287,15 @@ export default function MapModalShell({
 		}).start();
 	}, [enableDetents, modalSnapState, snapProgress, visible]);
 
+	useEffect(() => {
+		if (!enableDetents || !visible || !snapState) return;
+		if (snapState === prevExternalSnapStateRef.current) return;
+		prevExternalSnapStateRef.current = snapState;
+		if (snapState !== modalSnapState) {
+			setModalSnapState(snapState);
+		}
+	}, [enableDetents, modalSnapState, snapState, visible]);
+
 	if (!shouldRender) return null;
 
 	const resetDetentInteractionState = () => {
@@ -311,6 +324,10 @@ export default function MapModalShell({
 			return;
 		}
 		setModalSnapState(nextState);
+		if (nextState !== prevModalSnapStateRef.current) {
+			prevModalSnapStateRef.current = nextState;
+			onSnapStateChange?.(nextState);
+		}
 	};
 
 	const triggerScrollDetent = (nextState) => {
@@ -657,7 +674,7 @@ export default function MapModalShell({
 				</View>
 			) : null}
 
-			{headerLayout === "leading" ? (
+			{headerLayout !== "none" && headerLayout === "leading" ? (
 				<View
 					{...(shouldUseHeaderGestureRegion ? (panResponder?.panHandlers || {}) : {})}
 					style={[
