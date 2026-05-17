@@ -34,6 +34,10 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 > - `20260423000100_active_request_concurrency_guard` → integrated into `0003_logistics` (concurrency guard block)
 > - Remote history for both repaired via `migration repair --status reverted`
 
+> **Absorbed migrations (June 2026):**
+> - `20260601000000_provider_taxonomy` → columns/trigger/nearby_providers RPC/RLS integrated into `0002_org_structure` (Section 7); updated `nearby_hospitals` RPC integrated into `0100_core_rpcs` (Section 1)
+> - Remote history repaired via `migration repair --status reverted`
+
 ### Example
 ❌ `20260219011000_fix_display_ids.sql`
 ✅ Edit `20260219000100_identity.sql` directly

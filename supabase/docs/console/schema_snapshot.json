@@ -1,10 +1,9 @@
 {
-  "timestamp": "2026-02-19T06:33:40.416Z",
+  "timestamp": "2026-05-17T08:00:00.000Z",
   "migrations": [
     {
       "file": "20260219000000_infra.sql",
       "timestamp": "20260219000000_",
-      "size": 712,
       "hasFunctions": true,
       "hasTables": false,
       "hasTriggers": false
@@ -12,7 +11,6 @@
     {
       "file": "20260219000100_identity.sql",
       "timestamp": "20260219000100_",
-      "size": 6907,
       "hasFunctions": true,
       "hasTables": true,
       "hasTriggers": true
@@ -20,15 +18,14 @@
     {
       "file": "20260219000200_org_structure.sql",
       "timestamp": "20260219000200_",
-      "size": 5619,
-      "hasFunctions": false,
+      "hasFunctions": true,
       "hasTables": true,
-      "hasTriggers": true
+      "hasTriggers": true,
+      "notes": "EXP-3: Added provider taxonomy columns to hospitals table. Added providers table. Added nearby_providers RPC. EXPLORE-CARE-PERMANENT-FIX: providers table created."
     },
     {
       "file": "20260219000300_logistics.sql",
       "timestamp": "20260219000300_",
-      "size": 5222,
       "hasFunctions": false,
       "hasTables": true,
       "hasTriggers": true
@@ -36,7 +33,6 @@
     {
       "file": "20260219000400_finance.sql",
       "timestamp": "20260219000400_",
-      "size": 7485,
       "hasFunctions": true,
       "hasTables": true,
       "hasTriggers": true
@@ -44,7 +40,6 @@
     {
       "file": "20260219000500_ops_content.sql",
       "timestamp": "20260219000500_",
-      "size": 4137,
       "hasFunctions": true,
       "hasTables": true,
       "hasTriggers": true
@@ -52,7 +47,6 @@
     {
       "file": "20260219000600_analytics.sql",
       "timestamp": "20260219000600_",
-      "size": 2373,
       "hasFunctions": true,
       "hasTables": true,
       "hasTriggers": true
@@ -60,7 +54,6 @@
     {
       "file": "20260219000700_security.sql",
       "timestamp": "20260219000700_",
-      "size": 10622,
       "hasFunctions": true,
       "hasTables": false,
       "hasTriggers": false
@@ -68,7 +61,6 @@
     {
       "file": "20260219000800_emergency_logic.sql",
       "timestamp": "20260219000800_",
-      "size": 14895,
       "hasFunctions": true,
       "hasTables": true,
       "hasTriggers": true
@@ -76,7 +68,6 @@
     {
       "file": "20260219000900_automations.sql",
       "timestamp": "20260219000900_",
-      "size": 10144,
       "hasFunctions": true,
       "hasTables": false,
       "hasTriggers": true
@@ -84,13 +75,87 @@
     {
       "file": "20260219010000_core_rpcs.sql",
       "timestamp": "20260219010000_",
-      "size": 22848,
       "hasFunctions": true,
       "hasTables": false,
-      "hasTriggers": false
+      "hasTriggers": false,
+      "notes": "EXP-3: Updated nearby_hospitals RPC with provider_type filter and taxonomy fields."
     }
   ],
-  "functions": [],
-  "tables": [],
-  "lastSync": "2026-02-19T06:33:40.417Z"
+  "tables": {
+    "hospitals": {
+      "description": "Core provider table (hospitals + all provider types via provider_type discriminator)",
+      "mutatedBy": ["EXP-3", "EXPLORE-CARE-PERMANENT-FIX"],
+      "addedColumns": [
+        "provider_type TEXT NOT NULL DEFAULT 'hospital'",
+        "emergency_eligible BOOLEAN NOT NULL DEFAULT true",
+        "dispatch_eligible BOOLEAN NOT NULL DEFAULT false",
+        "booking_eligible BOOLEAN NOT NULL DEFAULT true",
+        "category_confidence NUMERIC(4,3) DEFAULT 0.99",
+        "provider_source TEXT DEFAULT 'manual_seed'"
+      ],
+      "indexes": [
+        "idx_hospitals_provider_type",
+        "idx_hospitals_emergency_eligible",
+        "idx_hospitals_dispatch_eligible",
+        "idx_hospitals_provider_type_status"
+      ]
+    },
+    "providers": {
+      "description": "Provider-specific data table linked to hospitals via hospital_id FK",
+      "addedBy": "EXPLORE-CARE-PERMANENT-FIX",
+      "columns": [
+        "id UUID PRIMARY KEY",
+        "hospital_id UUID FK → hospitals(id) ON DELETE CASCADE",
+        "provider_type TEXT CHECK IN (hospital|pharmacy|lab|radiology|urgent_care|clinic|mental_health|womens_care|pediatrics)",
+        "provider_services JSONB",
+        "provider_specialties JSONB",
+        "insurance_accepted TEXT[]",
+        "structured_hours JSONB",
+        "appointment_required BOOLEAN",
+        "report_turnaround TEXT",
+        "age_range TEXT",
+        "crisis_line TEXT",
+        "created_at TIMESTAMPTZ",
+        "updated_at TIMESTAMPTZ"
+      ],
+      "uniqueConstraint": "(hospital_id, provider_type)",
+      "indexes": [
+        "idx_providers_hospital_id",
+        "idx_providers_provider_type",
+        "idx_providers_hospital_type"
+      ],
+      "rls": [
+        "Public read active providers",
+        "Service full access providers",
+        "Org admins manage providers"
+      ]
+    }
+  },
+  "functions": {
+    "nearby_providers": {
+      "file": "20260219000200_org_structure.sql",
+      "description": "Explore mode RPC — no emergency filter, category-aware, LEFT JOINs providers table",
+      "addedBy": "EXP-3",
+      "mutatedBy": "EXPLORE-CARE-PERMANENT-FIX",
+      "parameters": {
+        "user_lat": "DOUBLE PRECISION",
+        "user_lng": "DOUBLE PRECISION",
+        "provider_type_filter": "TEXT DEFAULT NULL",
+        "radius_km": "INTEGER DEFAULT 15",
+        "result_limit": "INTEGER DEFAULT 20"
+      },
+      "returns": "TABLE with provider fields + provider_services, provider_specialties, insurance_accepted, structured_hours, appointment_required, report_turnaround, age_range, crisis_line"
+    },
+    "nearby_hospitals": {
+      "file": "20260219010000_core_rpcs.sql",
+      "description": "Emergency mode RPC — filters provider_type=hospital + emergency_eligible=true",
+      "mutatedBy": "EXP-3"
+    },
+    "sync_dispatch_eligibility": {
+      "file": "20260219000200_org_structure.sql",
+      "description": "Trigger: keeps dispatch_eligible in sync with emergency_eligible + verified status"
+    }
+  },
+  "lastSync": "2026-05-17T08:00:00.000Z",
+  "syncNotes": "EXP-3 + EXPLORE-CARE-PERMANENT-FIX applied. providers table added, nearby_providers RPC updated to JOIN providers, hospitals taxonomy columns added."
 }

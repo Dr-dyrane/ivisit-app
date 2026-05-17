@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-19T06:33:40.422Z",
+  "timestamp": "2026-05-17T08:00:00.000Z",
   "functions": [
     {
       "name": "handle_updated_at",
@@ -147,9 +147,27 @@
       "definition": "CREATE OR REPLACE FUNCTION public.create_insurance_billing_on_completion()"
     },
     {
+      "name": "nearby_providers",
+      "file": "20260219000200_org_structure.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.nearby_providers(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, provider_type_filter TEXT DEFAULT NULL, radius_km INTEGER DEFAULT 15, result_limit INTEGER DEFAULT 20)",
+      "notes": "EXP-3 + EXPLORE-CARE-PERMANENT-FIX: Explore mode RPC. Returns provider-specific fields via LEFT JOIN with providers table. No emergency_eligible filter — all provider types returned."
+    },
+    {
+      "name": "normalize_hospital_bed_state",
+      "file": "20260219000200_org_structure.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.normalize_hospital_bed_state()"
+    },
+    {
+      "name": "sync_dispatch_eligibility",
+      "file": "20260219000200_org_structure.sql",
+      "definition": "CREATE OR REPLACE FUNCTION public.sync_dispatch_eligibility()",
+      "notes": "EXP-3: Trigger function — keeps dispatch_eligible in sync with emergency_eligible + verified + status."
+    },
+    {
       "name": "nearby_hospitals",
       "file": "20260219010000_core_rpcs.sql",
-      "definition": "CREATE OR REPLACE FUNCTION public.nearby_hospitals(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 15)"
+      "definition": "CREATE OR REPLACE FUNCTION public.nearby_hospitals(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 15)",
+      "notes": "EXP-3: Emergency mode only — filters provider_type='hospital' AND emergency_eligible=true."
     },
     {
       "name": "nearby_ambulances",
@@ -302,5 +320,7 @@
       "definition": "CREATE OR REPLACE FUNCTION public.rate_visit(\r\n    p_visit_id UUID,\r\n    p_rating SMALLINT,\r\n    p_comment TEXT DEFAULT NULL\r\n)"
     }
   ],
-  "totalFunctions": 60
+  "totalFunctions": 63,
+  "lastSync": "2026-05-17T08:00:00.000Z",
+  "syncNotes": "EXP-3 + EXPLORE-CARE-PERMANENT-FIX: Added nearby_providers, sync_dispatch_eligibility, normalize_hospital_bed_state."
 }
