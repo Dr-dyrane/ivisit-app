@@ -70,6 +70,7 @@ export function useMapSheetShell({
 	const sheetHeightValue = useRef(new Animated.Value(sheetHeight)).current;
 	const sheetHeightValueRef = useRef(sheetHeight);
 	const hasMountedRef = useRef(false);
+	const runningAnimationRef = useRef(null);
 	const snapSpringConfig = useMemo(
 		() => ({
 			...platformMotion.sheet.spring,
@@ -99,12 +100,23 @@ export function useMapSheetShell({
 		}
 
 		sheetHeightValueRef.current = sheetHeight;
-		Animated.spring(sheetHeightValue, {
+		runningAnimationRef.current?.stop();
+		runningAnimationRef.current = Animated.spring(sheetHeightValue, {
 			toValue: sheetHeight,
 			useNativeDriver: false,
 			...snapSpringConfig,
-		}).start();
+		});
+		runningAnimationRef.current.start(() => {
+			runningAnimationRef.current = null;
+		});
 	}, [sheetHeight, sheetHeightValue, snapSpringConfig]);
+
+	useEffect(() => {
+		return () => {
+			runningAnimationRef.current?.stop();
+			runningAnimationRef.current = null;
+		};
+	}, []);
 
 	const sideInset = sheetChromeProgress.interpolate({
 		inputRange: [0, 1, 2],

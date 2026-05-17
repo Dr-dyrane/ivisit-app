@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef } from "react";
-import { useAtomValue } from "jotai";
+import React, { useCallback, useEffect, useRef, useMemo } from "react";
+import { useAtom, useAtomValue } from "jotai";
 import { Alert, Linking, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
@@ -38,6 +38,13 @@ import { useMapFABManagement } from "../hooks/map/useMapFABManagement";
 import { useMapRouteHandlers } from "../hooks/map/useMapRouteHandlers";
 import { trackingRatingStateAtom } from "../atoms/mapScreenAtoms";
 import MapTopLeftControl from "../components/map/views/shared/MapTopLeftControl";
+import ProviderMarkers from "../components/map/ProviderMarkers";
+import { useNearbyProviders } from "../hooks/emergency/useNearbyProviders";
+import {
+  exploreProviderCategoryAtom,
+  exploreProviderIdAtom,
+} from "../atoms/mapFlowAtoms";
+import { buildProviderDetailSheetView } from "../hooks/map/exploreFlow/mapExploreFlow.transitions";
 
 export default function MapScreen() {
   const router = useRouter();
@@ -156,6 +163,68 @@ export default function MapScreen() {
     isPendingApproval,
     hasActiveTrip,
   } = useMapExploreFlow(); // eslint-disable-line no-unused-vars -- setAuthModalVisible kept for store compat
+
+  // PULLBACK NOTE: EXP-5/EXP-6/EXP-7 — Explore Care wiring
+  // L5: Jotai atoms for ephemeral explore UI state
+  const [exploreProviderCategory, setExploreProviderCategory] = useAtom(exploreProviderCategoryAtom);
+  const [exploreProviderId, setExploreProviderId] = useAtom(exploreProviderIdAtom);
+
+  const handleExploreCare = useCallback((providerType) => {
+    // PULLBACK NOTE: EXP-6C — PROVIDER_LIST is now a proper orchestrator phase
+    // OLD: set atom → floating MapProviderListSheet overlay
+    // NEW: set atom + transition phase → MapSheetOrchestrator PROVIDER_LIST case
+    setExploreProviderCategory(providerType);
+    setSheetPayload({ providerCategory: providerType, selectedProviderId: null });
+    setSheetPhase(MAP_SHEET_PHASES.PROVIDER_LIST);
+  }, [setExploreProviderCategory, setSheetPayload, setSheetPhase]);
+
+  const handleCloseProviderList = useCallback(() => {
+    setExploreProviderCategory(null);
+    setExploreProviderId(null);
+    setSheetPayload(null);
+    setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+  }, [setExploreProviderCategory, setExploreProviderId, setSheetPayload, setSheetPhase]);
+
+  const handleSelectExploreProvider = useCallback((provider) => {
+    if (!provider) return;
+    const category = exploreProviderCategory;
+    // PULLBACK NOTE: FIX-C — BUG-4: do NOT clear exploreProviderCategory on card/pin tap
+    // OLD: setExploreProviderCategory(null) here — killed map pins the moment user tapped
+    // NEW: category atom stays set → ProviderMarkers + TanStack cache stay alive during PROVIDER_DETAIL
+    setExploreProviderId(provider?.id ?? null);
+    setSheetPayload(
+      buildProviderDetailSheetView({
+        provider,
+        providerCategory: category,
+        usesSidebarLayout: false,
+        sourcePhase: MAP_SHEET_PHASES.PROVIDER_LIST,
+        userLocation: activeLocation,
+      }).payload
+    );
+    setSheetPhase(MAP_SHEET_PHASES.PROVIDER_DETAIL);
+  }, [activeLocation, exploreProviderCategory, setExploreProviderId, setSheetPayload, setSheetPhase]);
+
+  const handleCloseProviderDetail = useCallback(() => {
+    // PULLBACK NOTE: FIX-C — on detail close, return to PROVIDER_LIST (not EXPLORE_INTENT)
+    // OLD: reset to EXPLORE_INTENT, clear category atom
+    // NEW: return to PROVIDER_LIST phase so user keeps the list
+    const category = exploreProviderCategory;
+    setExploreProviderId(null);
+    if (category) {
+      setSheetPayload({ providerCategory: category, selectedProviderId: null });
+      setSheetPhase(MAP_SHEET_PHASES.PROVIDER_LIST);
+    } else {
+      setSheetPayload(null);
+      setSheetPhase(MAP_SHEET_PHASES.EXPLORE_INTENT);
+    }
+  }, [exploreProviderCategory, setExploreProviderId, setSheetPayload, setSheetPhase]);
+
+  // L2: shared TanStack Query — same query key as MapProviderListSheet → zero extra network requests
+  const { providers: exploreProviders } = useNearbyProviders({
+    providerCategory: exploreProviderCategory,
+    location: activeLocation,
+    enabled: !!exploreProviderCategory,
+  });
 
   // PULLBACK NOTE: MapScreen decomposition Pass 1 — shell-level derivations extracted
   // OLD: viewportVariant/surfaceConfig/usesSidebarLayout/renderedSnapState/bottomSheetHeight/
@@ -444,6 +513,16 @@ export default function MapScreen() {
         onHospitalPress={handleMapHospitalPress}
         onLocationChromePress={handleOpenLocationSheet}
         showInternalSkeleton={false}
+        extraMarkers={
+          exploreProviderCategory && exploreProviders.length > 0 ? (
+            <ProviderMarkers
+              providers={exploreProviders}
+              selectedProviderId={exploreProviderId}
+              onProviderPress={handleSelectExploreProvider}
+            />
+          ) : null
+        }
+        extraPolylines={null}
       />
 
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -495,6 +574,10 @@ export default function MapScreen() {
           onAddAmbulanceFromTracking={handleAddAmbulanceFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onCloseVisitDetail={closeHistoryVisitDetails}
+          onCloseProviderDetail={handleCloseProviderDetail}
+          onCloseProviderList={handleCloseProviderList}
+          onSelectProvider={handleSelectExploreProvider}
+          exploreProviderCategory={exploreProviderCategory}
           onResumeHistoryVisit={handleResumeHistoryRequest}
           onRateHistoryVisit={handleRateHistoryVisit}
           onCallHistoryClinic={handleCallHistoryClinic}
@@ -607,6 +690,7 @@ export default function MapScreen() {
         setRecentVisitsVisible={setRecentVisitsVisible}
         handleProfileSignOut={handleProfileSignOut}
         handleChooseCare={handleChooseCare}
+        handleExploreCare={handleExploreCare}
         handleBookVisitFromCare={handleBookVisitFromCare}
         handleSelectHistoryItem={handleSelectHistoryItem}
         handleBookVisitFromHistory={handleBookVisitFromHistory}
@@ -628,6 +712,7 @@ export default function MapScreen() {
         submitTrackingRating={submitTrackingRating}
         onOpenLocationIntent={handleOpenLocationIntentFromSearch}
       />
+
 
       {/* PULLBACK NOTE: UX-A — MapTopLeftControl phase-aware visibility */}
       {/* Unauthenticated: back chevron in EXPLORE_INTENT only */}
