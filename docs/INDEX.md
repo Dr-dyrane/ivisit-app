@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-05-10
+Last Updated: 2026-05-16
 
 ## Quick Rules Reference
 
@@ -170,6 +170,9 @@ docs/
 - Demo bootstrap 5-pass fix index: [./audit/demo/README.md](./audit/demo/README.md)
 - Last 24h location/search/UX/demo deep audit plan: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
 - Last 24h location/search/UX/demo deep audit findings: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md)
+- Explore Care implementation checkpoint: [./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md](./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md)
+- Explore Care dossier: [flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md](./flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md)
+- Explore Care pass index: [flows/emergency/architecture/explore-care/passes/README.md](./flows/emergency/architecture/explore-care/passes/README.md)
 - `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Map sheet notes: [flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - Map route-state hardening checkpoint: [./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)
@@ -228,6 +231,8 @@ docs/
 - **Tracking sheet learnings**: [./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md](./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md)
 - Emergency state refactor: [./architecture/emergency/EMERGENCY_STATE_REFACTOR.md](./architecture/emergency/EMERGENCY_STATE_REFACTOR.md)
 - Map explore flow modularization: [./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md](./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md)
+- **Explore Care dossier**: [flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md](./flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md)
+- Explore Care pass index: [flows/emergency/architecture/explore-care/passes/README.md](./flows/emergency/architecture/explore-care/passes/README.md)
 - Refactoring bible: [./architecture/refactoring/REFACTORING_BIBLE.md](./architecture/refactoring/REFACTORING_BIBLE.md)
 - Stores inventory: [./architecture/stores/STORES_README.md](./architecture/stores/STORES_README.md)
 - Metro/platform fixes: [./architecture/map/METRO_ROUTING_FIXES.md](./architecture/map/METRO_ROUTING_FIXES.md)
@@ -282,6 +287,12 @@ docs/
 | [RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)                                                                         | R1�R10 tracker                                                      |
 | [TEMPORAL_DEAD_ZONE_FIXES.md](./audit/TEMPORAL_DEAD_ZONE_FIXES.md)                                                                     |                                                                     |
 | [AUDIT_CHECKLIST.md](./audit/AUDIT_CHECKLIST.md)                                                                                       |                                                                     |
+
+### Explore Care Refactor (2026-05-16)
+
+| Doc | Status |
+| --- | ------ |
+| [audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md](./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md) | ✅ COMPLETE — EXP-1–EXP-10 + DB + Nearby UI + MapScreen wiring |
 
 ### UX Issues Pass Plan (2026-05-10)
 

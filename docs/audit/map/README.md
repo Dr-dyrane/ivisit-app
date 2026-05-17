@@ -15,6 +15,10 @@ Unified search sheet, saved locations, and location-search integration audits.
 - `search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture audit. Maps GPS → Search → Pickup flow.
 - `search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Complete search state flow from context → model → UI. Recommends mode chip removal.
 
+### Explore Care (2026-05-16)
+
+- `EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md` - Full wiring checkpoint for EXPLORE-CARE-01 (EXP-1–EXP-10 + DB + Nearby UI + MapScreen wiring). Records all passes, atom additions, `extraMarkers` prop, TanStack Query cache sharing, migration hygiene, and edge function deploy fix.
+
 ### Map & Location Audits
 
 - `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` - Mixed-owner worktree checkpoint for Pass 18 with implemented-vs-needed status and deterministic staging buckets.
