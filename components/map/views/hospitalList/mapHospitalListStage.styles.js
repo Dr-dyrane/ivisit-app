@@ -21,9 +21,8 @@ const styles = StyleSheet.create({
 	eyebrow: {
 		fontSize: 11,
 		lineHeight: 14,
-		fontWeight: "700",
-		letterSpacing: 0.4,
-		textTransform: "uppercase",
+		fontWeight: "600",
+		letterSpacing: 0,
 	},
 	title: {
 		fontSize: 22,

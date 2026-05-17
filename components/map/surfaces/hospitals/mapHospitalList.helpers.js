@@ -1,6 +1,50 @@
 import { SPECIALTIES } from "../../../../constants/hospitals";
 import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
 
+// ─── Travel-time bucketing ─────────────────────────────────────────────────────
+// Assumes avg urban speed ~30 km/h → 0.5 km/min.
+
+const SPEED_KM_PER_MIN = 0.5;
+
+export function estimateHospitalTravelMin(hospital) {
+	const km = Number(hospital?.distanceKm);
+	if (!Number.isFinite(km) || km < 0) return null;
+	return km / SPEED_KM_PER_MIN;
+}
+
+export const HOSPITAL_TIME_BUCKETS = Object.freeze([
+	{ key: "under5",  label: "Under 5 min",  minMin: 0,  maxMin: 5        },
+	{ key: "5to10",   label: "5–10 min",      minMin: 5,  maxMin: 10       },
+	{ key: "10to20",  label: "10–20 min",     minMin: 10, maxMin: 20       },
+	{ key: "over20",  label: "20+ min",       minMin: 20, maxMin: Infinity },
+]);
+
+/**
+ * Group an array of hospitals into time-bucket sections.
+ * Returns only buckets that contain at least one hospital.
+ *
+ * @param {object[]} hospitals
+ * @returns {{ key: string, label: string, hospitals: object[] }[]}
+ */
+export function bucketHospitalsByTime(hospitals) {
+	const map = {};
+	HOSPITAL_TIME_BUCKETS.forEach((b) => { map[b.key] = []; });
+
+	hospitals.forEach((h) => {
+		const mins = estimateHospitalTravelMin(h);
+		if (mins === null) {
+			map.over20.push(h);
+			return;
+		}
+		const bucket = HOSPITAL_TIME_BUCKETS.find((b) => mins >= b.minMin && mins < b.maxMin);
+		if (bucket) map[bucket.key].push(h);
+	});
+
+	return HOSPITAL_TIME_BUCKETS
+		.map((b) => ({ ...b, hospitals: map[b.key] }))
+		.filter((b) => b.hospitals.length > 0);
+}
+
 const normalizeSpecialty = (value) =>
 	typeof value === "string" && value.trim().length > 0
 		? value.trim().toLowerCase()

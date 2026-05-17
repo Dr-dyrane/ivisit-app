@@ -18,8 +18,18 @@ import {
 	buildHospitalRating,
 	buildHospitalSubtitle,
 	hospitalMatchesSpecialty,
+	bucketHospitalsByTime,
 } from "./mapHospitalList.helpers";
 import { styles } from "./mapHospitalList.styles";
+
+function SectionHeader({ label, count, helperColor }) {
+	return (
+		<View style={styles.sectionHeader}>
+			<Text style={[styles.sectionLabel, { color: helperColor }]}>{label}</Text>
+			<Text style={[styles.sectionCount, { color: helperColor }]}>{count}</Text>
+		</View>
+	);
+}
 
 function SheetIconTile({ children, isDarkMode }) {
 	const colors = isDarkMode
@@ -98,6 +108,7 @@ export default function MapHospitalListContent({
 		[hospitals, selectedSpecialty],
 	);
 	const hasSpecialtyFilters = specialtyFilters.items.length > 0;
+	const timeBuckets = useMemo(() => bucketHospitalsByTime(filteredHospitals), [filteredHospitals]);
 
 	useEffect(() => {
 		if (
@@ -147,7 +158,7 @@ export default function MapHospitalListContent({
 			);
 		}
 
-		return filteredHospitals.map((hospital, index) => {
+		const renderHospitalRow = (hospital, index) => {
 			const isSelected = hospital?.id === selectedHospitalId;
 			const isRecommended = hospital?.id === recommendedHospitalId;
 			const distanceLabel = buildHospitalDistance(hospital);
@@ -248,7 +259,18 @@ export default function MapHospitalListContent({
 					) : null}
 				</Pressable>
 			);
-		});
+		};
+
+		if (timeBuckets.length > 1) {
+			return timeBuckets.map((bucket) => (
+				<React.Fragment key={bucket.key}>
+					<SectionHeader label={bucket.label} count={bucket.hospitals.length} helperColor={helperColor} />
+					{bucket.hospitals.map((h, i) => renderHospitalRow(h, i))}
+				</React.Fragment>
+			));
+		}
+
+		return filteredHospitals.map((h, i) => renderHospitalRow(h, i));
 	}, [
 		activeText,
 		badgeBg,
@@ -257,6 +279,7 @@ export default function MapHospitalListContent({
 		hasHospitals,
 		helperColor,
 		filteredHospitals,
+		timeBuckets,
 		isDarkMode,
 		isLoading,
 		metaChipBg,

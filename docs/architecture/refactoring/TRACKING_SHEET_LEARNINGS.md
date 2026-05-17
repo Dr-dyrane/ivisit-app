@@ -691,6 +691,37 @@ These guardrails apply to every LocationSheet pass. Check before starting each p
 
 ---
 
+### 2.23 Server-fetched data owned by `useState` + module-level cache instead of TanStack Query (L2 violation)
+
+**Pattern**: A hook that fetches server data manages its own `useState` array, a module-level SWR cache object, a fetch dedup `Map`, a `requestSequenceRef` race guard, and a `useEffect([serverData])` trigger — manually reimplementing everything TanStack Query provides natively.
+
+**Symptoms**:
+- `useEffect([userLocation, performFetch])` fires a new network request every time location changes — this is the exact guardrails §1 decision-tree violation: "Is Y server data triggered by X? → YES → TanStack Query with X in queryKey."
+- Module-level `globalHospitalCache` object is a manual reimplementation of `QueryClient` cache with hand-rolled TTL (`HOSPITAL_CACHE_TTL_MS`) instead of `staleTime`.
+- `globalFetchRegistry` dedup `Map` reimplements TanStack's native in-flight deduplication.
+- `requestSequenceRef` + `activeRequestId` guard reimplements TanStack's query cancellation on key change.
+- `hasFetchedRef`, `lastLocationRef`, `lastLocationKeyRef` are all workarounds for the absence of proper cache semantics.
+- The `demoBootstrapEnabled` side-effect was bundled inside the `queryFn` — a queryFn must be a pure fetch, not a side-effectful provisioning routine.
+- A TypeScript `.ts` replacement (`useHospitalsQuery.ts`) was already written and marked complete in `GOLD_STANDARD_STATE_ROADMAP.md` (Phase 2, commit `8bdce65`), but `useEmergencyHospitalSync.js` was never updated to point at it. The old `.js` file survived as a zombie alongside the `.ts` replacement.
+
+**Diagnosis**: `hooks/emergency/useHospitals.js` — entire file. `hooks/emergency/useEmergencyHospitalSync.js` line 45 — still importing `useHospitals`.
+
+**Fix recipe**:
+1. Add `useEmergencyHospitalsQuery` to the existing `hooks/emergency/useHospitalsQuery.ts` — full-featured variant with `allHospitals` split, 3dp bucket precision queryKey, `discoverNearby` (50km), `demoModeEnabled`, and `gcTime: 5min`.
+2. Demo bootstrap extracted to its own `useEffect` with `bootstrapKeyRef` dedup — a provisioning call IS a real side-effect and belongs in `useEffect`, not inside a `queryFn`.
+3. `useEmergencyHospitalSync.js` updated to import `useEmergencyHospitalsQuery` from `.ts`.
+4. `useHospitals.js` deleted — zero live importers confirmed before deletion.
+5. The duplicate `useHospitalsQuery.js` created in error during this session was also deleted immediately after discovery.
+
+**General rule**: If a hook fetches data from a server and re-runs when a dependency changes, it belongs in TanStack Query with that dependency in the `queryKey`. The `useEffect([serverTrigger])` → `setState` pattern is always a Layer 2 violation. Check for an existing `.ts` Query hook in the same directory before creating a new one.
+
+**Concrete sites fixed (2026-05-17)**:
+- `@hooks/emergency/useHospitals.js` — deleted
+- `@hooks/emergency/useHospitalsQuery.ts` — `useEmergencyHospitalsQuery` added
+- `@hooks/emergency/useEmergencyHospitalSync.js` — import updated
+
+---
+
 ## 6. Update This Document
 
 Every future pass that uncovers a new defect class should append to this file. This is the canonical record of "lessons we paid for."

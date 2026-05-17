@@ -10,7 +10,24 @@ export const styles = StyleSheet.create({
 	content: {
 		paddingTop: 0,
 		paddingBottom: 8,
-		gap: 10,
+		gap: 0,
+	},
+	sectionHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingHorizontal: 4,
+		paddingTop: 8,
+		paddingBottom: 4,
+	},
+	sectionLabel: {
+		fontSize: 12,
+		fontWeight: "600",
+		letterSpacing: 0,
+	},
+	sectionCount: {
+		fontSize: 11,
+		fontWeight: "500",
 	},
 	specialtyRailContent: {
 		paddingHorizontal: 2,
@@ -40,11 +57,11 @@ export const styles = StyleSheet.create({
 	},
 	row: {
 		paddingHorizontal: 16,
-		paddingVertical: 15,
-		minHeight: 76,
+		paddingVertical: 13,
+		minHeight: 72,
 		borderWidth: 0,
-		marginBottom: 14,
-		...squircle(24),
+		marginBottom: 6,
+		...squircle(20),
 	},
 	rowTop: {
 		flexDirection: "row",
@@ -108,8 +125,7 @@ export const styles = StyleSheet.create({
 		fontSize: 10,
 		lineHeight: 12,
 		fontWeight: "700",
-		textTransform: "uppercase",
-		letterSpacing: 0.4,
+		letterSpacing: 0,
 	},
 	rowSubtitle: {
 		marginTop: 4,
@@ -143,8 +159,8 @@ export const styles = StyleSheet.create({
 	metaRow: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: 8,
-		marginTop: 14,
+		gap: 6,
+		marginTop: 10,
 	},
 	metaChip: {
 		flexDirection: "row",

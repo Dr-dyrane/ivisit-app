@@ -120,7 +120,8 @@ git diff 0303a6e -- <path_to_file>
 
 ### Phase 2 — TanStack Query for hospitals + server sync ✅ COMPLETE
 
-**Commit**: `8bdce65`  
+**Stash commit**: `8bdce65`  
+**Hospital migration completed**: 2026-05-17  
 **Priority**: High  
 **Effort**: Medium  
 **Risk**: Medium
@@ -140,6 +141,13 @@ git diff 0303a6e -- <path_to_file>
 
 - `hooks/emergency/useHospitalsQuery.ts`
 - `hooks/emergency/useActiveTripQuery.ts`
+
+**⚠️ Partial migration discovered 2026-05-17**:  
+The stash created `useHospitalsQuery.ts` but `useEmergencyHospitalSync.js` was never updated to import it. `useHospitals.js` (useState + module-level SWR cache — full L2 violation) survived as a zombie alongside the `.ts` replacement. Fixed by:
+- Adding `useEmergencyHospitalsQuery` to `useHospitalsQuery.ts` — full-featured variant with `allHospitals` split, 3dp bucket queryKey, `discoverNearby` (50km), demo bootstrap in isolated `useEffect`
+- Updating `useEmergencyHospitalSync.js` to import `useEmergencyHospitalsQuery`
+- Deleting `useHospitals.js` (zero live importers confirmed)
+- See `TRACKING_SHEET_LEARNINGS.md §2.23` for full defect analysis
 
 ---
 

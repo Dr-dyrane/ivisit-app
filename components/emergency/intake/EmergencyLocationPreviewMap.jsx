@@ -37,6 +37,7 @@ import { useAmbulanceAnimation } from "../../../hooks/emergency/useAmbulanceAnim
 import useMarkerRenderPulse from "../../../hooks/map/useMarkerRenderPulse";
 import { normalizeCoordinate } from "../../../utils/emergencyContextHelpers";
 import { calculateBearing, calculateDistance } from "../../../utils/mapUtils";
+import { EXPLORE_CATEGORY_META } from "../../../constants/providerTypes";
 
 const DEFAULT_REGION = {
   latitude: 37.7749,
@@ -486,6 +487,15 @@ export default function EmergencyLocationPreviewMap({
   onUserLocationPress = null,
   showInternalSkeleton = true,
   showControls = true,
+  extraMarkers = null,
+  extraPolylines = null,
+  // PULLBACK NOTE: EXP-7 — provider focus mode
+  // suppressHospitalMarkers: hide hospital pins when a provider is the map focus
+  // focusedCoordinate: override selectedHospitalCoordinate for route destination + camera fit
+  // focusedProviderType: themes the route polyline to the active provider category color
+  suppressHospitalMarkers = false,
+  focusedCoordinate = null,
+  focusedProviderType = null,
 }) {
   const { isDarkMode } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -525,6 +535,18 @@ export default function EmergencyLocationPreviewMap({
     [isDarkMode],
   );
   const telemetryState = telemetryHealth?.state ?? "inactive";
+  // PULLBACK NOTE: EXP-7 — provider-themed polyline colors
+  // OLD: routeCoreColor always uses brand red (emergency theme)
+  // NEW: when focusedProviderType is set, use the category’s markerTint as the route color
+  const providerRouteCoreColor = useMemo(() => {
+    if (!focusedProviderType) return null;
+    return EXPLORE_CATEGORY_META[focusedProviderType]?.markerTint ?? null;
+  }, [focusedProviderType]);
+  const providerRouteHaloColor = useMemo(() => {
+    if (!providerRouteCoreColor) return null;
+    // 20% opacity halo from the markerTint hex — works for all 6-digit hex colors
+    return providerRouteCoreColor + "33";
+  }, [providerRouteCoreColor]);
   const routeCoreColor =
     telemetryState === "lost"
       ? isDarkMode
@@ -534,7 +556,7 @@ export default function EmergencyLocationPreviewMap({
         ? isDarkMode
           ? "#FBBF24"
           : "#B45309"
-        : renderTokens.routeCoreColor;
+        : providerRouteCoreColor ?? renderTokens.routeCoreColor;
   const routeHaloColor =
     telemetryState === "lost"
       ? isDarkMode
@@ -544,7 +566,7 @@ export default function EmergencyLocationPreviewMap({
         ? isDarkMode
           ? "rgba(251,191,36,0.34)"
           : "rgba(180,83,9,0.14)"
-        : renderTokens.routeHaloColor;
+        : providerRouteHaloColor ?? renderTokens.routeHaloColor;
   const routeDashPattern =
     telemetryState === "lost"
       ? [6, 7]
@@ -642,8 +664,16 @@ export default function EmergencyLocationPreviewMap({
     return userCoordinate;
   }, [userCoordinate]);
   const routeDestinationCoordinate = useMemo(() => {
+    // Provider focus override: use provider coordinate as route destination
+    if (
+      focusedCoordinate &&
+      Number.isFinite(focusedCoordinate.latitude) &&
+      Number.isFinite(focusedCoordinate.longitude)
+    ) {
+      return focusedCoordinate;
+    }
     return selectedHospitalCoordinate;
-  }, [selectedHospitalCoordinate]);
+  }, [focusedCoordinate, selectedHospitalCoordinate]);
   const hasRouteTargetMismatch = useMemo(
     () =>
       hasRouteTargetSessionMismatch(
@@ -998,8 +1028,19 @@ export default function EmergencyLocationPreviewMap({
     userCoordinate?.longitude,
   ]);
 
+  // PULLBACK NOTE: EXP-7 camera fix — provider focus phase over-zoom
+  // When focusedCoordinate is active (PROVIDER_LIST / PROVIDER_DETAIL), the sheet
+  // is EXPANDED (~540–780px). Feeding that full height into getRoutePadding as
+  // bottom inset → fitToCoordinates zooms out to fit [user, provider] behind the sheet.
+  // Fix: when in provider focus mode, cap the effective fit height to a small fixed
+  // inset (enough to clear bottom chrome) instead of the full expanded sheet height.
+  const PROVIDER_FOCUS_FIT_INSET = 140;
+  const effectiveFitSheetHeight = focusedCoordinate
+    ? PROVIDER_FOCUS_FIT_INSET
+    : bottomSheetHeight;
+
   const fitRoute = useCallback(
-    (sheetHeight = bottomSheetHeight, panelWidth = leftPanelWidth) => {
+    (sheetHeight = effectiveFitSheetHeight, panelWidth = leftPanelWidth) => {
       if (!mapRef.current || !hasLocation) return;
 
       if (
@@ -1033,7 +1074,7 @@ export default function EmergencyLocationPreviewMap({
       setIsUserCentered(false);
     },
     [
-      bottomSheetHeight,
+      effectiveFitSheetHeight,
       hasLocation,
       headerOcclusionHeight,
       leftPanelWidth,
@@ -1099,7 +1140,7 @@ export default function EmergencyLocationPreviewMap({
     ) {
       mapRef.current.fitToCoordinates(nearbyOverviewCoordinates, {
         edgePadding: getNearbyPadding(
-          bottomSheetHeight,
+          effectiveFitSheetHeight,
           leftPanelWidth,
           headerOcclusionHeight,
         ),
@@ -1113,7 +1154,7 @@ export default function EmergencyLocationPreviewMap({
     mapRef.current?.animateToRegion?.(
       buildRegionForPoints(
         nearbyOverviewCoordinates,
-        bottomSheetHeight,
+        effectiveFitSheetHeight,
         leftPanelWidth,
         screenWidth,
         headerOcclusionHeight,
@@ -1123,7 +1164,7 @@ export default function EmergencyLocationPreviewMap({
     setIsNearbyOverview(true);
     setIsUserCentered(false);
   }, [
-    bottomSheetHeight,
+    effectiveFitSheetHeight,
     hasLocation,
     headerOcclusionHeight,
     leftPanelWidth,
@@ -1133,12 +1174,12 @@ export default function EmergencyLocationPreviewMap({
 
   const toggleNearbyOverview = useCallback(() => {
     if (isNearbyOverview) {
-      fitRoute(bottomSheetHeight, leftPanelWidth);
+      fitRoute(effectiveFitSheetHeight, leftPanelWidth);
       return;
     }
     fitNearbyHospitals();
   }, [
-    bottomSheetHeight,
+    effectiveFitSheetHeight,
     fitNearbyHospitals,
     fitRoute,
     isNearbyOverview,
@@ -1148,7 +1189,7 @@ export default function EmergencyLocationPreviewMap({
   const toggleUserCenteredCamera = useCallback(() => {
     if (!mapRef.current || !userCoordinate) return;
     if (isUserCentered) {
-      fitRoute(bottomSheetHeight, leftPanelWidth);
+      fitRoute(effectiveFitSheetHeight, leftPanelWidth);
       return;
     }
     mapRef.current?.animateToRegion?.(
@@ -1158,7 +1199,7 @@ export default function EmergencyLocationPreviewMap({
     setIsNearbyOverview(false);
     setIsUserCentered(true);
   }, [
-    bottomSheetHeight,
+    effectiveFitSheetHeight,
     fitRoute,
     isUserCentered,
     leftPanelWidth,
@@ -1188,16 +1229,16 @@ export default function EmergencyLocationPreviewMap({
     }
 
     routeFitPrimeKeyRef.current = routeFitPrimeKey;
-    fitRoute(bottomSheetHeight, leftPanelWidth);
+    fitRoute(effectiveFitSheetHeight, leftPanelWidth);
     const followUpDelay = isAndroid ? 320 : isWeb ? 220 : 180;
     if (!followUpDelay) return undefined;
     const followUp = setTimeout(
-      () => fitRoute(bottomSheetHeight, leftPanelWidth),
+      () => fitRoute(effectiveFitSheetHeight, leftPanelWidth),
       followUpDelay,
     );
     return () => clearTimeout(followUp);
   }, [
-    bottomSheetHeight,
+    effectiveFitSheetHeight,
     fitRoute,
     hasLocation,
     isAndroid,
@@ -1227,9 +1268,9 @@ export default function EmergencyLocationPreviewMap({
       return;
     }
 
-    fitRoute(bottomSheetHeight, leftPanelWidth);
+    fitRoute(effectiveFitSheetHeight, leftPanelWidth);
   }, [
-    bottomSheetHeight,
+    effectiveFitSheetHeight,
     fitRoute,
     hasLocation,
     isMapReady,
@@ -1321,7 +1362,7 @@ export default function EmergencyLocationPreviewMap({
           </>
         ) : null}
 
-        {visibleHospitals.map((hospital, index) => {
+        {!suppressHospitalMarkers && visibleHospitals.map((hospital, index) => {
           const coordinate = toCoordinate(hospital);
           if (!coordinate) return null;
           const isSelected = selectedHospital?.id
@@ -1368,6 +1409,11 @@ export default function EmergencyLocationPreviewMap({
             title="Transport"
           />
         ) : null}
+
+        {extraMarkers}
+
+        {/* PULLBACK NOTE: UI-REGRESSION-3 — support extra polylines for provider detail phase */}
+        {extraPolylines}
 
         {hasLocation ? (
           <Marker
