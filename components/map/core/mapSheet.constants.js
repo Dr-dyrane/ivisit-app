@@ -16,6 +16,8 @@ export const MAP_SHEET_PHASES = {
 	COMMIT_AUTH: "commit_auth",
 	COMMIT_PAYMENT: "commit_payment",
 	TRACKING: "tracking",
+	PROVIDER_LIST: "provider_list",
+	PROVIDER_DETAIL: "provider_detail",
 };
 
 export const MAP_SHEET_MODES = MAP_SHEET_PHASES;

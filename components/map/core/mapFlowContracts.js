@@ -19,6 +19,7 @@ const VALID_SNAP_STATES = new Set(Object.values(MAP_SHEET_SNAP_STATES));
 const EXPANDED_ONLY_PHASES = new Set([
 	MAP_SHEET_PHASES.SEARCH,
 	MAP_SHEET_PHASES.HOSPITAL_LIST,
+	MAP_SHEET_PHASES.PROVIDER_LIST,
 	MAP_SHEET_PHASES.SERVICE_DETAIL,
 	MAP_SHEET_PHASES.COMMIT_DETAILS,
 	MAP_SHEET_PHASES.COMMIT_TRIAGE,
@@ -40,6 +41,8 @@ const PAYLOAD_OPTIONAL_OBJECT_PHASES = new Set([
 	MAP_SHEET_PHASES.HOSPITAL_PREVIEW,
 	MAP_SHEET_PHASES.LOCATION_INTENT,
 	MAP_SHEET_PHASES.COMMIT_AUTH,
+	MAP_SHEET_PHASES.PROVIDER_LIST,
+	MAP_SHEET_PHASES.PROVIDER_DETAIL,
 ]);
 
 export const MAP_FLOW_PHASE_CONTRACTS = {
@@ -127,6 +130,16 @@ export const MAP_FLOW_PHASE_CONTRACTS = {
 		family: MAP_FLOW_PHASE_FAMILIES.COMMIT,
 		payload: "optional_object",
 		description: "Auth bridge during commit.",
+	},
+	[MAP_SHEET_PHASES.PROVIDER_LIST]: {
+		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
+		payload: "optional_object",
+		description: "Explore Care provider list for a given category.",
+	},
+	[MAP_SHEET_PHASES.PROVIDER_DETAIL]: {
+		family: MAP_FLOW_PHASE_FAMILIES.DISCOVERY,
+		payload: "optional_object",
+		description: "Explore Care provider detail — full snap stage.",
 	},
 };
 

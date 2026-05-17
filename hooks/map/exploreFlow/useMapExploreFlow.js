@@ -4,6 +4,8 @@ import { commitFlowAtom } from "../../../atoms/commitAtoms";
 import {
   mapSelectedHospitalIdAtom,
   mapFeaturedHospitalAtom,
+  exploreProviderCategoryAtom,
+  exploreProviderIdAtom,
 } from "../../../atoms/mapFlowAtoms";
 import {
   emergencyChatModalVisibleAtom,
@@ -16,6 +18,7 @@ import { usePreferences } from "../../../contexts/PreferencesContext";
 import { useGlobalLocation } from "../../../contexts/GlobalLocationContext";
 import { useEmergency } from "../../../contexts/EmergencyContext";
 import { useEmergencyTripStore } from "../../../stores/emergencyTripStore";
+import { useLastHospitalStore } from "../../../stores/lastHospitalStore";
 import { useVisits } from "../../../contexts/VisitsContext";
 import { coverageModeService } from "../../../services/coverageModeService";
 import {
@@ -193,13 +196,22 @@ export function useMapExploreFlow() {
     setSheetView,
     setRuntimeSlice,
   } = flowActions;
+  // PULLBACK NOTE: EXP-7 — clear provider atoms on location change
+  // OLD: clearLocationScopedMapState only cleared hospital selection
+  // NEW: also clears exploreProviderCategory + exploreProviderId
+  //      Providers from the old location are stale when location changes.
+  //      Leaving them would render wrong-city providers on the map.
+  const setExploreProviderCategory = useSetAtom(exploreProviderCategoryAtom);
+  const setExploreProviderId = useSetAtom(exploreProviderIdAtom);
   const clearLocationScopedMapState = useCallback(() => {
     selectHospital(null);
     setMapSelectedHospitalId(null);
     setMapFeaturedHospital(null);
     setFeaturedHospital(null);
     setSheetPayload(null);
-  }, [selectHospital, setMapSelectedHospitalId, setMapFeaturedHospital, setFeaturedHospital, setSheetPayload]);
+    setExploreProviderCategory(null);
+    setExploreProviderId(null);
+  }, [selectHospital, setMapSelectedHospitalId, setMapFeaturedHospital, setFeaturedHospital, setSheetPayload, setExploreProviderCategory, setExploreProviderId]);
 
   const {
     activeLocation,
@@ -306,6 +318,44 @@ export function useMapExploreFlow() {
     visits,
   });
 
+  // PULLBACK NOTE: Issue-3 fix — seed hospital selection from persisted cache on mount
+  // Fires once when: store is hydrated, locationKey matches current location bucket,
+  // and discoveredHospitals is still empty (query not yet resolved).
+  // When TanStack resolves, useMapHospitalSelection auto-select takes over cleanly.
+  const cachedHospitalId = useLastHospitalStore((s) => s.hospitalId);
+  const cachedHospital = useLastHospitalStore((s) => s.hospital);
+  const cachedLocationKey = useLastHospitalStore((s) => s.locationKey);
+  const lastHospitalStoreHydrated = useLastHospitalStore((s) => s.hydrated);
+  const cacheSeededRef = useRef(false);
+  useEffect(() => {
+    if (cacheSeededRef.current) return;
+    if (!lastHospitalStoreHydrated) return;
+    if (!cachedHospitalId || !cachedHospital) return;
+    if (discoveredHospitals.length > 0) return; // live data already present
+    const lat = activeLocation?.latitude;
+    const lng = activeLocation?.longitude;
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return;
+    const currentLocationKey = `${Number(lat).toFixed(3)}:${Number(lng).toFixed(3)}`;
+    if (cachedLocationKey !== currentLocationKey) return; // stale — user moved
+    cacheSeededRef.current = true;
+    selectHospital(cachedHospitalId);
+    setFeaturedHospital(cachedHospital);
+    setMapSelectedHospitalId(cachedHospitalId);
+    setMapFeaturedHospital(cachedHospital);
+  }, [
+    lastHospitalStoreHydrated,
+    cachedHospitalId,
+    cachedHospital,
+    cachedLocationKey,
+    discoveredHospitals.length,
+    activeLocation?.latitude,
+    activeLocation?.longitude,
+    selectHospital,
+    setFeaturedHospital,
+    setMapSelectedHospitalId,
+    setMapFeaturedHospital,
+  ]);
+
   // PULLBACK NOTE: PASS 19D — Hybrid selectHospitalForMap
   // Updates map flow atoms (primary) + EMERGENCY context (fallback for emergency flow)
   // Always triggers sheet phase change to open hospital detail when requested
@@ -369,6 +419,7 @@ export function useMapExploreFlow() {
     openSearchSheet,
     closeSearchSheet,
     openHospitalList,
+    openProviderList,
     openAmbulanceDecision,
     openAmbulanceHospitalList,
     openBedDecision,
@@ -619,6 +670,7 @@ export function useMapExploreFlow() {
     handleOpenProfile,
     openHospitalDetail,
     openHospitalList,
+    openProviderList,
     openAmbulanceDecision,
     openAmbulanceHospitalList,
     openBedDecision,

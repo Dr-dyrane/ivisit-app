@@ -104,6 +104,32 @@ export function buildVisitDetailSheetView({ usesSidebarLayout, historyItem = nul
   });
 }
 
+export function buildProviderListSheetView({ providerCategory, selectedProviderId = null } = {}) {
+  return buildSheetView({
+    phase: MAP_SHEET_PHASES.PROVIDER_LIST,
+    snapState: MAP_SHEET_SNAP_STATES.EXPANDED,
+    payload: {
+      providerCategory: providerCategory || null,
+      selectedProviderId: selectedProviderId || null,
+    },
+  });
+}
+
+export function buildProviderDetailSheetView({ provider, providerCategory, usesSidebarLayout, sourcePhase = null, userLocation = null }) {
+  return buildSheetView({
+    phase: MAP_SHEET_PHASES.PROVIDER_DETAIL,
+    snapState: usesSidebarLayout
+      ? MAP_SHEET_SNAP_STATES.EXPANDED
+      : MAP_SHEET_SNAP_STATES.HALF,
+    payload: {
+      provider: provider || null,
+      providerCategory: providerCategory || null,
+      userLocation: userLocation || null,
+      sourcePhase,
+    },
+  });
+}
+
 export function resolveMapFlowHospital({
   preferredHospital = null,
   preferredHospitalId = null,

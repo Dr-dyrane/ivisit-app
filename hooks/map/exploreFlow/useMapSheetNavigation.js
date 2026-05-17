@@ -14,6 +14,7 @@ import {
   buildExploreIntentSheetView,
   buildHospitalDetailSheetView,
   buildHospitalListSheetView,
+  buildProviderListSheetView,
   buildSearchSheetView,
   buildSourceReturnSheetView,
   buildTrackingOrExploreReturnSheetView,
@@ -226,6 +227,13 @@ export function useMapSheetNavigation({
     ],
   );
 
+  const openProviderList = useCallback(
+    (providerCategory, selectedProviderId = null) => {
+      transitionTo(buildProviderListSheetView({ providerCategory, selectedProviderId }));
+    },
+    [transitionTo],
+  );
+
   const openHospitalDetail = useCallback(
     (hospital) => {
       if (hospital) {
@@ -296,6 +304,7 @@ export function useMapSheetNavigation({
     openSearchSheet,
     closeSearchSheet,
     openHospitalList,
+    openProviderList,
     openAmbulanceDecision,
     openAmbulanceHospitalList,
     openBedDecision,
