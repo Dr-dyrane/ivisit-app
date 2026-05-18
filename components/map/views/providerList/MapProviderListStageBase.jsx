@@ -119,6 +119,11 @@ export default function MapProviderListStageBase({
 				scrollEnabled={bodyScrollEnabled}
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
 				androidExpandedBodyStyle={androidExpandedBodyStyle}
+				// PULLBACK NOTE: Provider list — pin filter rail in sidebar mode
+				// OLD: filter rail scrolled off the top in the left-panel layout
+				// NEW: body renders the rail as its first direct child; stickyHeaderIndices=[0]
+				//      pins it to the viewport on web (position: sticky) and native (RN sticky).
+				stickyHeaderIndices={isSidebarPresentation ? [0] : null}
 			>
 				<MapProviderListBodyContent
 					providerCategory={providerCategory}

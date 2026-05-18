@@ -171,7 +171,7 @@ const SORT_PILL_META = [
   { mode: "sponsored",label: "Sponsored", icon: "lightning-bolt-outline" },
 ];
 
-function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceTags, totalCount, tintColor, tokens, filterPillSurface, filterPillActive, filterCountText, stickToTop = false }) {
+function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceTags, totalCount, tintColor, tokens, filterPillSurface, filterPillActive, filterCountText }) {
   const pillActiveBg   = filterPillActive  ?? tintColor + "1A";
   const pillInactiveBg = filterPillSurface ?? tokens.mutedCardSurface;
 
@@ -179,7 +179,6 @@ function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceT
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={stickToTop ? styles.filterRailSticky : null}
       contentContainerStyle={styles.filterRailContent}
     >
       {/* ── Sort pills ── */}
@@ -499,15 +498,19 @@ export default function MapProviderListContent({
     (provider) => provider?.isWideProviderFallback === true || provider?.providerLocalityScope === "wide_fallback",
   );
 
+  // PULLBACK NOTE: Provider list — stable sticky-header slot
+  // OLD: FilterRail rendered conditionally inside the loaded branch only → in sidebar
+  //      mode the parent ScrollView's stickyHeaderIndices=[0] would target the wrong
+  //      child during loading/empty.
+  // NEW: always render a wrapper View as the first direct child so index 0 is stable
+  //      across loading/empty/loaded transitions. The rail itself only appears when
+  //      providers are present; the empty wrapper has no visual weight.
+  const hasProviders = !isLoading && !isFetching && providers.length > 0;
+
   return (
     <>
-      {isLoading || isFetching ? (
-        <SkeletonList tokens={tokens} />
-      ) : providers.length === 0 ? (
-        <EmptyState categoryMeta={categoryMeta} tokens={tokens} emptySurface={emptySurface} />
-      ) : (
-        <>
-          {/* Unified filter rail — sort pills + data-driven service tags */}
+      <View collapsable={false}>
+        {hasProviders ? (
           <FilterRail
             activeMode={sortMode}
             onSortSelect={setSortMode}
@@ -520,9 +523,16 @@ export default function MapProviderListContent({
             filterPillSurface={filterPillSurface}
             filterPillActive={filterPillActive}
             filterCountText={filterCountText}
-            stickToTop={isSidebarPresentation}
           />
+        ) : null}
+      </View>
 
+      {isLoading || isFetching ? (
+        <SkeletonList tokens={tokens} />
+      ) : providers.length === 0 ? (
+        <EmptyState categoryMeta={categoryMeta} tokens={tokens} emptySurface={emptySurface} />
+      ) : (
+        <>
           <View style={styles.listContent}>
             {buckets.map((bucket) => (
               <View key={bucket.key}>
@@ -570,14 +580,8 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 4,
   },
-  filterRailSticky: Platform.select({
-    web: {
-      position: "sticky",
-      top: 0,
-      zIndex: 12,
-    },
-    default: null,
-  }),
+  // PULLBACK NOTE: removed — sticky now driven by parent ScrollView's
+  // stickyHeaderIndices (see MapStageBodyScroll + MapProviderListStageBase).
   filterRailContent: {
     paddingHorizontal: 2,
     paddingRight: 8,

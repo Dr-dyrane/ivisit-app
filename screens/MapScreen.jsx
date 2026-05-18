@@ -208,9 +208,17 @@ export default function MapScreen() {
     // PULLBACK NOTE: FIX — call openProviderList first to transition sheet phase,
     // then set atom. This ensures sheet phase is set before focusedCoordinate
     // is derived in useMapFocusedState, eliminating timing gap.
+    //
+    // PULLBACK NOTE: EXP-7 BUGFIX — clear stale exploreProviderId on category change
+    // OLD: id from prior category (e.g. pharmacy) persisted → !exploreProviderId
+    //      guard in auto-select effect was false → no nearest provider auto-selected
+    //      when entering Clinics (or any subsequent category)
+    // NEW: reset id to null so the auto-select effect can pick the nearest provider
+    //      for the newly-opened category once results land.
+    setExploreProviderId(null);
     openProviderList(providerType, null);
     setExploreProviderCategory(providerType);
-  }, [openProviderList, setExploreProviderCategory]);
+  }, [openProviderList, setExploreProviderCategory, setExploreProviderId]);
 
   const handleCloseProviderList = useCallback(() => {
     setExploreProviderCategory(null);
