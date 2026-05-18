@@ -62,7 +62,7 @@ Rule: post-pillar patches may add columns, indexes, or guards. Contract renames,
 
 ### `org_structure`
 - `organizations`
-- `hospitals`
+- `hospitals` (unique constraint on `latitude, longitude` to prevent duplicate locations)
 - `doctors`
 - `doctor_schedules`
 - `emergency_doctor_assignments`
