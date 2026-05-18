@@ -56,7 +56,7 @@ module.exports = ({ config }) => {
         NSContactsUsageDescription:
           "iVisit uses your contacts to help you quickly add emergency contacts from your address book.",
         ITSAppUsesNonExemptEncryption: false,
-        LSApplicationQueriesSchemes: ["ivisit"],
+        LSApplicationQueriesSchemes: ["ivisit", "uber", "maps", "comgooglemaps"],
       },
     },
     android: {

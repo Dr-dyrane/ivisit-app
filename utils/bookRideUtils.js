@@ -13,53 +13,63 @@ import { Linking } from "react-native";
 const UBER_CLIENT_ID = process.env.EXPO_PUBLIC_UBER_CLIENT_ID ?? "";
 
 /**
- * Build Uber deep-link URL to a provider destination.
- * Uber Universal Links: https://developer.uber.com/docs/riders/ride-requests/tutorials/deep-links
+ * Build Uber deep-link URLs to a provider destination.
  *
- * @param {Object} params
- * @param {number} params.destLat       - Destination latitude
- * @param {number} params.destLng       - Destination longitude
- * @param {string} params.destNickname  - Human-readable destination name
- * @param {number} [params.pickupLat]   - Pickup latitude (optional — Uber uses device location if absent)
- * @param {number} [params.pickupLng]   - Pickup longitude (optional)
- * @param {string} [params.pickupNickname] - Pickup nickname (optional)
+ * Returns BOTH the native scheme (`uber://`) and the universal link
+ * (`https://m.uber.com/ul/`). The universal link is the preferred entry point
+ * because it works without `LSApplicationQueriesSchemes` registration on iOS
+ * and without Android 11+ `<queries>` declarations — the OS auto-launches the
+ * Uber app when installed and falls through to the mobile web flow otherwise.
+ *
+ * Docs: https://developer.uber.com/docs/riders/ride-requests/tutorials/deep-links
+ *
+ * Two notable issues with the original implementation, fixed here:
+ *   - `URLSearchParams` double-encoded nicknames (encodeURIComponent then
+ *     URLSearchParams re-encoded the result). We build the query manually.
+ *   - `URLSearchParams` also percent-encodes `[` / `]`, which Uber's parser
+ *     accepts inconsistently.
  */
 export function buildUberDeepLink({ destLat, destLng, destNickname, pickupLat, pickupLng, pickupNickname }) {
   if (!Number.isFinite(destLat) || !Number.isFinite(destLng)) return null;
 
-  const params = new URLSearchParams({
-    action: "setPickup",
-    // Destination
-    "dropoff[latitude]": String(destLat),
-    "dropoff[longitude]": String(destLng),
-    "dropoff[nickname]": encodeURIComponent(destNickname ?? "Healthcare Provider"),
-  });
+  const enc = encodeURIComponent;
+  const safeName = (destNickname && destNickname.trim()) || "Healthcare Provider";
+
+  const parts = [
+    `action=setPickup`,
+    `dropoff[latitude]=${destLat}`,
+    `dropoff[longitude]=${destLng}`,
+    `dropoff[nickname]=${enc(safeName)}`,
+  ];
 
   if (Number.isFinite(pickupLat) && Number.isFinite(pickupLng)) {
-    params.set("pickup[latitude]", String(pickupLat));
-    params.set("pickup[longitude]", String(pickupLng));
-    if (pickupNickname) {
-      params.set("pickup[nickname]", encodeURIComponent(pickupNickname));
-    }
+    parts.push(`pickup[latitude]=${pickupLat}`);
+    parts.push(`pickup[longitude]=${pickupLng}`);
+    if (pickupNickname) parts.push(`pickup[nickname]=${enc(pickupNickname)}`);
   } else {
-    params.set("pickup", "my_location");
+    parts.push(`pickup=my_location`);
   }
 
-  if (UBER_CLIENT_ID) {
-    params.set("client_id", UBER_CLIENT_ID);
-  }
+  if (UBER_CLIENT_ID) parts.push(`client_id=${enc(UBER_CLIENT_ID)}`);
 
-  return `uber://?${params.toString()}`;
+  const query = parts.join("&");
+  return {
+    universal: `https://m.uber.com/ul/?${query}`,
+    native:    `uber://?${query}`,
+  };
 }
 
 /**
- * Build Google Maps / Apple Maps fallback URL for directions by car.
+ * Build Google Maps / Apple Maps fallback URLs for directions by car.
+ * Apple Maps native scheme is `maps://?daddr=...` (no host). The previous
+ * `maps://maps.apple.com/...` form is not a recognized iOS scheme.
  */
 function buildMapsDirectionsUrl(destLat, destLng, destName) {
   const encodedName = encodeURIComponent(destName ?? "");
-  const appleMaps = `maps://maps.apple.com/?daddr=${destLat},${destLng}&q=${encodedName}&dirflg=d`;
+  const appleMaps = `maps://?daddr=${destLat},${destLng}&q=${encodedName}&dirflg=d`;
+  const appleMapsWeb = `https://maps.apple.com/?daddr=${destLat},${destLng}&q=${encodedName}&dirflg=d`;
   const googleMaps = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
-  return { appleMaps, googleMaps };
+  return { appleMaps, appleMapsWeb, googleMaps };
 }
 
 /**
@@ -84,7 +94,7 @@ export async function openRideToProvider(provider, userLocation = null) {
   const pickupLat = userLocation?.latitude;
   const pickupLng = userLocation?.longitude;
 
-  const uberUrl = buildUberDeepLink({
+  const uberLinks = buildUberDeepLink({
     destLat,
     destLng,
     destNickname: destName,
@@ -92,20 +102,38 @@ export async function openRideToProvider(provider, userLocation = null) {
     pickupLng,
   });
 
-  if (uberUrl) {
-    const canOpenUber = await Linking.canOpenURL(uberUrl).catch(() => false);
-    if (canOpenUber) {
-      await Linking.openURL(uberUrl).catch(() => {});
+  // Strategy:
+  //   1. Try the Uber universal link — OS launches the app if installed, falls
+  //      through to mobile web otherwise. Works without LSApplicationQueriesSchemes.
+  //   2. If that fails entirely (rare — device with no browser at all),
+  //      try the native `uber://` scheme.
+  //   3. Last resort: Apple Maps (native then web) → Google Maps.
+  if (uberLinks?.universal) {
+    try {
+      await Linking.openURL(uberLinks.universal);
       return;
+    } catch (err) {
+      console.warn("[bookRideUtils] Uber universal link failed:", err?.message);
     }
   }
 
-  // Uber not installed — fall back to maps directions
-  const { appleMaps, googleMaps } = buildMapsDirectionsUrl(destLat, destLng, destName);
-  const canOpenApple = await Linking.canOpenURL(appleMaps).catch(() => false);
-  if (canOpenApple) {
-    await Linking.openURL(appleMaps).catch(() => {});
-    return;
+  if (uberLinks?.native) {
+    try {
+      await Linking.openURL(uberLinks.native);
+      return;
+    } catch (_) {
+      // fall through to maps
+    }
   }
-  await Linking.openURL(googleMaps).catch(() => {});
+
+  const { appleMaps, appleMapsWeb, googleMaps } = buildMapsDirectionsUrl(destLat, destLng, destName);
+  for (const url of [appleMaps, appleMapsWeb, googleMaps]) {
+    try {
+      await Linking.openURL(url);
+      return;
+    } catch (_) {
+      // try next
+    }
+  }
+  console.warn("[bookRideUtils] All ride/maps fallbacks failed");
 }

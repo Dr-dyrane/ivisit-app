@@ -59,18 +59,10 @@ function getActionTint(tintColor, isDarkMode) {
 
 // ─── Provider-type copy helpers ──────────────────────────────────────────────
 
-function getPrimaryActionLabel(providerType) {
-	switch (providerType) {
-		case PROVIDER_TYPES.PHARMACY:      return "Call pharmacy";
-		case PROVIDER_TYPES.LAB:           return "Call lab";
-		case PROVIDER_TYPES.RADIOLOGY:     return "Call centre";
-		case PROVIDER_TYPES.URGENT_CARE:   return "Call urgent care";
-		case PROVIDER_TYPES.MENTAL_HEALTH: return "Call clinic";
-		case PROVIDER_TYPES.WOMENS_CARE:   return "Call clinic";
-		case PROVIDER_TYPES.PEDIATRICS:    return "Call clinic";
-		case PROVIDER_TYPES.HOSPITAL:      return "Call hospital";
-		default:                           return "Call clinic";
-	}
+function getPrimaryActionLabel(_providerType) {
+	// Compact action row — single-word CTA across all provider types.
+	// Provider-type context is already conveyed by the hero badge + place mark icon.
+	return "Call";
 }
 
 function buildDistanceLabel(distanceKm) {
