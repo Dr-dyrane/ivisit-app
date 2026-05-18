@@ -1,67 +1,150 @@
 // components/map/surfaces/providerDetail/MapProviderDetailBody.jsx
 //
-// Body surface for PROVIDER_DETAIL sheet phase.
-// Mirrors MapHospitalDetailBody exactly:
-//   - Animated.Value heroRevealProgress (spring, useNativeDriver: false)
-//   - Hero: tinted gradient (no photo) with badge row and footer spacer
-//   - Detail panel overlaps hero bottom with exact hospital tokens
-//   - Animated place header (mark + title + address)
-//   - Action row, stats row, info block
+// Provider detail body. Mirrors MapHospitalDetailBody's chassis exactly
+// (animated hero + detail panel + place header + action row + place stats),
+// then replaces hospital-specific service rails with stacked info section
+// cards rendered by the shared TrackingDetailsCard primitive.
 //
-// Consumed via MapProviderDetailStageParts → MapProviderDetailStageBase.
+// Architecture references:
+//   - components/map/surfaces/hospitals/MapHospitalDetailBody.jsx (chassis source of truth)
+//   - components/map/views/tracking/parts/MapTrackingParts.jsx → TrackingDetailsCard
+//   - docs/.../EXP-8_PROVIDER_DETAIL_VIEWS.md
+//   - docs/.../MAP_SHEET_IMPLEMENTATION_NOTES_V1.md §11
+//
+// Provider tint is used as a SMALL accent only:
+//   - hero fallback wash (very low opacity)
+//   - hero badge "category" pill background
+//   - place-mark icon color
+//   - primary action button background
+// Cards, typography and sheet surfaces stay neutral per the iVisit calm rule.
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,
-	Linking,
+	ImageBackground,
+	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
+	UIManager,
 	View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+
+import { COLORS } from "../../../../constants/colors";
+import { getCachedRemoteImageSource } from "../../mapHospitalImage";
+import { TrackingDetailsCard } from "../../views/tracking/parts/MapTrackingParts";
 import { styles } from "./mapProviderDetail.styles";
 
-// Exact offsets from MapHospitalDetailBody
-const HALF_PANEL_OVERLAY_OFFSET          = -16;
-const EXPANDED_PANEL_OVERLAY_OFFSET      = -76;
-const HALF_PANEL_TOP_PADDING             = 20;
-const EXPANDED_PANEL_TOP_PADDING         = 46;
-const HALF_ACTION_ROW_HEADER_CLEARANCE   = 46;
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+	UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// ── Layout offsets (mirror MapHospitalDetailBody) ───────────────────────────
+const HALF_PANEL_OVERLAY_OFFSET = -16;
+const EXPANDED_PANEL_OVERLAY_OFFSET = -76;
+const HALF_PANEL_TOP_PADDING = 20;
+const EXPANDED_PANEL_TOP_PADDING = 46;
+const HALF_ACTION_ROW_HEADER_CLEARANCE = 46;
 const EXPANDED_ACTION_ROW_HEADER_CLEARANCE = 0;
 
+// ── Icon renderer (mirrors hospital body) ────────────────────────────────────
 function renderIcon(item, color, size = 14) {
+	if (!item?.icon) return null;
 	if (item.iconType === "material") {
 		return <MaterialCommunityIcons name={item.icon} size={size} color={color} />;
 	}
 	return <Ionicons name={item.icon} size={size} color={color} />;
 }
 
+function getProviderHeroSource(provider) {
+	const candidates = [provider?.image, ...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : [])];
+	const uri = candidates.find((v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v));
+	if (uri) return getCachedRemoteImageSource(uri);
+	return null; // null → render fallback tinted wash instead of ImageBackground.
+}
+
+// ── Section row → TrackingDetailsCard row mapping ────────────────────────────
+// TrackingDetailsCard expects rows of { label, value, icon, kind?, ratingValue?, valueNumberOfLines? }.
+// Our model emits the same shape plus an extra `muted` flag for missing-data rows.
+// We translate `muted` into a lower-contrast value color via valueNumberOfLines + color override.
+function ProviderInfoSection({
+	section,
+	titleColor,
+	mutedColor,
+	surfaceColor,
+	requestSurfaceColor,
+	detailGradientColors,
+	detailCardRadius,
+	isDarkMode,
+}) {
+	const [collapsed, setCollapsed] = useState(section.defaultCollapsed === true);
+
+	const rows = useMemo(
+		() => section.rows.map((r) => ({
+			label: r.label,
+			value: r.value,
+			icon: r.icon,
+			valueNumberOfLines: r.valueNumberOfLines,
+		})),
+		[section.rows],
+	);
+
+	const hasAnyData = section.rows.some((r) => !r.muted);
+	const headerLabel = section.headerLabel;
+
+	return (
+		<TrackingDetailsCard
+			headerLabel={headerLabel}
+			surfaceColor={surfaceColor}
+			detailCardRadius={detailCardRadius}
+			detailGradientColors={detailGradientColors}
+			mutedColor={mutedColor}
+			requestSurfaceColor={requestSurfaceColor}
+			trackingDetailRows={rows}
+			isDarkMode={isDarkMode}
+			titleColor={hasAnyData ? titleColor : mutedColor}
+			collapsible={section.collapsible === true}
+			collapsed={collapsed}
+			onToggleCollapsed={() => setCollapsed((v) => !v)}
+		/>
+	);
+}
+
+// ── Skeleton (used when provider is null/loading) ────────────────────────────
+function ProviderDetailSkeleton({ skeletonColor }) {
+	return (
+		<View style={styles.scrollContent}>
+			<View style={[styles.skeletonHero, { backgroundColor: skeletonColor }]} />
+			<View style={styles.skeletonPanel}>
+				<View style={[styles.skeletonPlaceMark, { backgroundColor: skeletonColor }]} />
+				<View style={[styles.skeletonTitleBar, { backgroundColor: skeletonColor }]} />
+				<View style={[styles.skeletonSubtitleBar, { backgroundColor: skeletonColor }]} />
+				<View style={styles.skeletonActionRow}>
+					{[0, 1, 2, 3].map((i) => (
+						<View key={i} style={[styles.skeletonActionTile, { backgroundColor: skeletonColor }]} />
+					))}
+				</View>
+				<View style={[styles.skeletonSectionCard, { backgroundColor: skeletonColor }]} />
+				<View style={[styles.skeletonSectionCard, { backgroundColor: skeletonColor }]} />
+			</View>
+		</View>
+	);
+}
+
+// ── Body ─────────────────────────────────────────────────────────────────────
 export default function MapProviderDetailBody({
 	model,
 	revealHero = false,
 	onExpandedHeaderLayout,
 }) {
-	const {
-		tintColor,
-		isDarkMode,
-		titleColor,
-		subtleColor,
-		cardSurface,
-		actionSurface,
-		actionTint,
-		meta,
-		heroBadges,
-		placeActions,
-		placeStats,
-		infoRows,
-		summary,
-	} = model;
+	const provider = model?.provider ?? null;
 
-	// ─── Animated hero reveal — exact hospital pattern ────────────────────────
+	// All hooks must run unconditionally — defer the empty/loading branch
+	// until *after* every hook is registered to satisfy Rules of Hooks.
+	const heroSource = useMemo(() => getProviderHeroSource(provider), [provider]);
 	const heroRevealProgress = useRef(new Animated.Value(revealHero ? 1 : 0)).current;
-
 	useEffect(() => {
 		Animated.spring(heroRevealProgress, {
 			toValue: revealHero ? 1 : 0,
@@ -71,19 +154,36 @@ export default function MapProviderDetailBody({
 		}).start();
 	}, [heroRevealProgress, revealHero]);
 
-	const heroHeight   = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 270] });
-	const heroOpacity  = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-	const detailPanelMarginTop  = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [HALF_PANEL_OVERLAY_OFFSET, EXPANDED_PANEL_OVERLAY_OFFSET] });
-	const detailPanelPaddingTop = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [HALF_PANEL_TOP_PADDING, EXPANDED_PANEL_TOP_PADDING] });
-	const actionRowMarginTop    = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [HALF_ACTION_ROW_HEADER_CLEARANCE, EXPANDED_ACTION_ROW_HEADER_CLEARANCE] });
-	const placeHeaderHeight     = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 132] });
-	const placeHeaderOpacity    = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-	const placeHeaderMarginTop  = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, -64] });
+	if (!model || !provider) {
+		return <ProviderDetailSkeleton skeletonColor={"rgba(148,163,184,0.16)"} />;
+	}
 
-	// ─── Color tokens ─────────────────────────────────────────────────────────
-	const heroGradientColors = isDarkMode
-		? [`${tintColor}52`, `${tintColor}38`, `${tintColor}22`, `${tintColor}0A`]
-		: [`${tintColor}3A`, `${tintColor}26`, `${tintColor}14`, `${tintColor}04`];
+	const {
+		meta,
+		tintColor,
+		isDarkMode,
+		titleColor,
+		subtleColor,
+		mutedColor,
+		cardSurface,
+		requestSurfaceColor,
+		detailGradientColors,
+		detailCardRadius,
+		actionSurface,
+		actionTint,
+		summary,
+		heroBadges,
+		placeActions,
+		placeStats,
+		infoSections,
+	} = model;
+
+	const headerSubtitle = summary.addressLine || summary.subtitle || meta?.label || "Nearby provider";
+
+	const placeMarkSurface = isDarkMode ? "rgba(15,23,42,0.52)" : cardSurface;
+	const placeMarkIconColor = tintColor;
+	const placeMarkBorderColor = "transparent";
+
 	const heroBlendColors = isDarkMode
 		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.26)", "rgba(8,15,27,0.40)"]
 		: ["rgba(248,250,252,0)", "rgba(248,250,252,0.08)", "rgba(248,250,252,0.16)", "rgba(248,250,252,0.32)"];
@@ -91,127 +191,301 @@ export default function MapProviderDetailBody({
 		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.10)", "rgba(8,15,27,0.28)", "rgba(8,15,27,0.58)"]
 		: ["rgba(255,255,255,0)", "rgba(255,255,255,0.10)", "rgba(255,255,255,0.24)", "rgba(255,255,255,0.52)"];
 	const heroTopMaskColors = ["rgba(8,15,27,0.36)", "rgba(8,15,27,0.18)", "rgba(8,15,27,0)"];
+	const expandedHeroShadeColors = isDarkMode
+		? ["rgba(8,15,27,0.04)", "rgba(8,15,27,0.16)", "rgba(8,15,27,0.58)", "rgba(8,15,27,0.94)"]
+		: ["rgba(248,250,252,0.02)", "rgba(248,250,252,0.06)", "rgba(248,250,252,0.48)", "rgba(255,255,255,0.94)"];
+	const expandedHeroBottomMergeColors = isDarkMode
+		? ["rgba(8,15,27,0)", "rgba(8,15,27,0.14)", "rgba(8,15,27,0.34)", "rgba(8,15,27,0.74)"]
+		: ["rgba(255,255,255,0)", "rgba(255,255,255,0.12)", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.68)"];
+	const expandedHeroTopMaskColors = ["rgba(8,15,27,0.42)", "rgba(8,15,27,0.22)", "rgba(8,15,27,0)"];
 
-	const placeMarkSurface   = isDarkMode ? "rgba(15,23,42,0.52)" : cardSurface;
-	const placeMarkIconColor = isDarkMode ? "#E2E8F0" : tintColor;
-	const dividerColor       = isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)";
+	const heroFallbackColors = isDarkMode
+		? ["#0F172A", "#1E293B", "#0F172A"]
+		: ["#F1F5F9", "#FFFFFF", "#E2E8F0"];
+	const heroImageOpacity = isDarkMode ? 0.92 : 0.9;
 
+	const heroHeight = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 270] });
+	const heroOpacity = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+	const detailPanelMarginTop = heroRevealProgress.interpolate({
+		inputRange: [0, 1],
+		outputRange: [HALF_PANEL_OVERLAY_OFFSET, EXPANDED_PANEL_OVERLAY_OFFSET],
+	});
+	const detailPanelPaddingTop = heroRevealProgress.interpolate({
+		inputRange: [0, 1],
+		outputRange: [HALF_PANEL_TOP_PADDING, EXPANDED_PANEL_TOP_PADDING],
+	});
+	const actionRowMarginTop = heroRevealProgress.interpolate({
+		inputRange: [0, 1],
+		outputRange: [HALF_ACTION_ROW_HEADER_CLEARANCE, EXPANDED_ACTION_ROW_HEADER_CLEARANCE],
+	});
+	const placeHeaderHeight = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 132] });
+	const placeHeaderOpacity = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+	const placeHeaderMarginTop = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, -64] });
+
+	// ─ Shared sections renderer ────────────────────────────────────────────────
+	const sectionsNode = (
+		<View style={styles.sectionsStack}>
+			{infoSections.map((section) => (
+				<ProviderInfoSection
+					key={section.key}
+					section={section}
+					titleColor={titleColor}
+					mutedColor={mutedColor}
+					surfaceColor={cardSurface}
+					requestSurfaceColor={requestSurfaceColor}
+					detailGradientColors={detailGradientColors}
+					detailCardRadius={detailCardRadius}
+					isDarkMode={isDarkMode}
+				/>
+			))}
+		</View>
+	);
+
+	// ─ Hero block (image or fallback wash) ───────────────────────────────────
+	const renderHeroContent = (badgeRowStyle) => (
+		<>
+			{heroBadges.length > 0 ? (
+				<View style={badgeRowStyle}>
+					{heroBadges.map((item, index) => {
+						const badgeBg =
+							item.tone === "verified"
+								? "rgba(16,185,129,0.18)"
+								: item.tone === "alert"
+									? "rgba(225,29,72,0.18)"
+									: `${tintColor}33`;
+						return (
+							<View
+								key={`${item.label}-${index}`}
+								style={[styles.heroBadge, { backgroundColor: badgeBg }]}
+							>
+								{renderIcon(item, "#F8FAFC")}
+								<Text style={styles.heroBadgeText}>{item.label}</Text>
+							</View>
+						);
+					})}
+				</View>
+			) : null}
+		</>
+	);
+
+	// ─ EXPANDED HERO ────────────────────────────────────────────────────────
+	if (revealHero) {
+		return (
+			<View style={styles.scrollContent}>
+				<View style={styles.expandedCardWrap}>
+					{heroSource ? (
+						<ImageBackground
+							source={heroSource}
+							resizeMode="cover"
+							fadeDuration={0}
+							style={styles.expandedHero}
+							imageStyle={{
+								borderTopLeftRadius: 34,
+								borderTopRightRadius: 34,
+								borderCurve: "continuous",
+								opacity: heroImageOpacity,
+							}}
+						>
+							<LinearGradient pointerEvents="none" colors={expandedHeroShadeColors} style={StyleSheet.absoluteFillObject} />
+							<LinearGradient pointerEvents="none" colors={expandedHeroTopMaskColors} style={styles.expandedHeroTopMask} />
+							<LinearGradient pointerEvents="none" colors={expandedHeroBottomMergeColors} style={styles.expandedHeroBottomMerge} />
+							{renderHeroContent(styles.expandedHeroBadgeRow)}
+							<View style={styles.expandedHeaderBlock}>
+								<View onLayout={onExpandedHeaderLayout} style={styles.expandedHeaderMeasure}>
+									<View
+										style={[
+											styles.expandedPlaceMark,
+											{ backgroundColor: placeMarkSurface, borderColor: placeMarkBorderColor },
+										]}
+									>
+										<MaterialCommunityIcons
+											name={meta?.iconName ?? "medical-bag"}
+											size={24}
+											color={placeMarkIconColor}
+										/>
+									</View>
+									<Text numberOfLines={2} style={[styles.expandedPlaceTitle, { color: titleColor }]}>
+										{summary.title}
+									</Text>
+									{headerSubtitle ? (
+										<Text numberOfLines={2} style={[styles.expandedPlaceSubtitle, { color: subtleColor }]}>
+											{headerSubtitle}
+										</Text>
+									) : null}
+								</View>
+							</View>
+						</ImageBackground>
+					) : (
+						<View style={[styles.expandedHero, { overflow: "hidden", borderTopLeftRadius: 34, borderTopRightRadius: 34, borderCurve: "continuous" }]}>
+							<LinearGradient pointerEvents="none" colors={heroFallbackColors} style={StyleSheet.absoluteFillObject} />
+							<View style={[styles.heroTintWash, { backgroundColor: tintColor }]} />
+							<LinearGradient pointerEvents="none" colors={expandedHeroShadeColors} style={StyleSheet.absoluteFillObject} />
+							<LinearGradient pointerEvents="none" colors={expandedHeroBottomMergeColors} style={styles.expandedHeroBottomMerge} />
+							{renderHeroContent(styles.expandedHeroBadgeRow)}
+							<View style={styles.expandedHeaderBlock}>
+								<View onLayout={onExpandedHeaderLayout} style={styles.expandedHeaderMeasure}>
+									<View
+										style={[
+											styles.expandedPlaceMark,
+											{ backgroundColor: placeMarkSurface, borderColor: placeMarkBorderColor },
+										]}
+									>
+										<MaterialCommunityIcons
+											name={meta?.iconName ?? "medical-bag"}
+											size={24}
+											color={placeMarkIconColor}
+										/>
+									</View>
+									<Text numberOfLines={2} style={[styles.expandedPlaceTitle, { color: titleColor }]}>
+										{summary.title}
+									</Text>
+									{headerSubtitle ? (
+										<Text numberOfLines={2} style={[styles.expandedPlaceSubtitle, { color: subtleColor }]}>
+											{headerSubtitle}
+										</Text>
+									) : null}
+								</View>
+							</View>
+						</View>
+					)}
+
+					<View style={styles.expandedBody}>
+						{placeActions.length > 0 ? (
+							<View style={styles.placeActionRow}>
+								{placeActions.map((item) => (
+									<Pressable
+										key={item.key}
+										onPress={item.onPress}
+										disabled={item.disabled || !item.onPress}
+										accessibilityRole="button"
+										accessibilityLabel={item.accessibilityLabel}
+										style={styles.placeActionPressable}
+									>
+										{({ pressed }) => (
+											<View
+												style={[
+													styles.placeActionButton,
+													item.primary
+														? [styles.placeActionButtonPrimary, { backgroundColor: tintColor, shadowColor: tintColor }]
+														: { backgroundColor: actionSurface },
+													item.disabled ? styles.placeActionButtonDisabled : null,
+													pressed ? styles.placeActionButtonPressed : null,
+												]}
+											>
+												{renderIcon(item, item.primary ? "#F8FAFC" : actionTint, item.primary ? 19 : 16)}
+												<Text
+													numberOfLines={1}
+													style={[
+														styles.placeActionLabel,
+														{ color: item.primary ? "#F8FAFC" : actionTint },
+													]}
+												>
+													{item.label}
+												</Text>
+											</View>
+										)}
+									</Pressable>
+								))}
+							</View>
+						) : null}
+
+						{placeStats.length > 0 ? (
+							<View style={styles.placeStatsCard}>
+								{placeStats.map((item, index) => (
+									<View key={`${item.label}-${index}`} style={styles.placeStatItem}>
+										<Text numberOfLines={1} style={[styles.placeStatLabel, { color: subtleColor }]}>
+											{item.label}
+										</Text>
+										<View style={styles.placeStatValueRow}>
+											{renderIcon(item, item.tone === "rating" ? "#FBBF24" : subtleColor, 15)}
+											<Text numberOfLines={1} style={[styles.placeStatValue, { color: titleColor }]}>
+												{item.value}
+											</Text>
+										</View>
+									</View>
+								))}
+							</View>
+						) : null}
+
+						{sectionsNode}
+					</View>
+				</View>
+			</View>
+		);
+	}
+
+	// ─ HALF HERO (default detent) ───────────────────────────────────────────
 	return (
 		<View style={styles.scrollContent}>
-			{/* ── Animated hero ──────────────────────────────────────────────── */}
-			<Animated.View
-				style={[styles.heroRevealFrame, { height: heroHeight, opacity: heroOpacity }]}
-			>
-				<View
-					style={[
-						styles.hero,
-						{ backgroundColor: isDarkMode ? "rgba(8,15,27,0.94)" : "rgba(248,250,252,0.97)" },
-					]}
-				>
-					<LinearGradient
-						pointerEvents="none"
-						colors={heroGradientColors}
-						style={StyleSheet.absoluteFillObject}
-					/>
-					<LinearGradient
-						pointerEvents="none"
-						colors={heroBlendColors}
-						style={styles.heroBlend}
-					/>
-					<LinearGradient
-						pointerEvents="none"
-						colors={heroBottomMergeColors}
-						style={styles.heroBottomMerge}
-					/>
-					<LinearGradient
-						pointerEvents="none"
-						colors={heroTopMaskColors}
-						style={styles.heroTopMask}
-					/>
-
-					{/* Badge row */}
-					{heroBadges.length > 0 ? (
-						<View style={styles.heroBadgeRow}>
-							{heroBadges.map((item, index) => {
-								const badgeBg =
-									item.tone === "verified"
-										? "rgba(16,185,129,0.18)"
-										: item.tone === "alert"
-											? "rgba(225,29,72,0.18)"
-											: "rgba(255,255,255,0.12)";
-								return (
-									<View
-										key={`${item.label}-${index}`}
-										style={[styles.heroBadge, { backgroundColor: badgeBg }]}
-									>
-										{renderIcon(item, "#F8FAFC", 11)}
-										<Text style={styles.heroBadgeText}>{item.label}</Text>
-									</View>
-								);
-							})}
-						</View>
-					) : null}
-
-					<View style={styles.heroFooter} />
-				</View>
+			<Animated.View style={[styles.heroRevealFrame, { height: heroHeight, opacity: heroOpacity }]}>
+				{heroSource ? (
+					<ImageBackground
+						source={heroSource}
+						resizeMode="cover"
+						fadeDuration={0}
+						style={styles.hero}
+						imageStyle={{
+							borderTopLeftRadius: 34,
+							borderTopRightRadius: 34,
+							borderCurve: "continuous",
+							opacity: heroImageOpacity,
+						}}
+					>
+						<LinearGradient pointerEvents="none" colors={heroBlendColors} style={styles.heroBlend} />
+						<LinearGradient pointerEvents="none" colors={heroBottomMergeColors} style={styles.heroBottomMerge} />
+						<LinearGradient pointerEvents="none" colors={heroTopMaskColors} style={styles.heroTopMask} />
+						{renderHeroContent(styles.heroBadgeRow)}
+						<View style={styles.heroFooter} />
+					</ImageBackground>
+				) : (
+					<View style={styles.hero}>
+						<LinearGradient pointerEvents="none" colors={heroFallbackColors} style={StyleSheet.absoluteFillObject} />
+						<View style={[styles.heroTintWash, { backgroundColor: tintColor }]} />
+						<LinearGradient pointerEvents="none" colors={heroBlendColors} style={styles.heroBlend} />
+						<LinearGradient pointerEvents="none" colors={heroBottomMergeColors} style={styles.heroBottomMerge} />
+						<LinearGradient pointerEvents="none" colors={heroTopMaskColors} style={styles.heroTopMask} />
+						{renderHeroContent(styles.heroBadgeRow)}
+						<View style={styles.heroFooter} />
+					</View>
+				)}
 			</Animated.View>
 
-			{/* ── Detail panel ────────────────────────────────────────────────── */}
 			<Animated.View
-				style={[
-					styles.detailPanel,
-					{
-						backgroundColor: cardSurface,
-						marginTop: detailPanelMarginTop,
-						paddingTop: detailPanelPaddingTop,
-					},
-				]}
+				style={[styles.detailPanel, { marginTop: detailPanelMarginTop, paddingTop: detailPanelPaddingTop }]}
 			>
-				{/* Place header — animates in with hero */}
-				<Animated.View
-					style={[
-						styles.placeHeaderReveal,
-						{
-							height: placeHeaderHeight,
-							opacity: placeHeaderOpacity,
-							marginTop: placeHeaderMarginTop,
-						},
-					]}
-					onLayout={onExpandedHeaderLayout}
-				>
-					<View style={styles.placeHeader}>
-						<View
-							style={[
-								styles.placeMark,
-								{ backgroundColor: placeMarkSurface },
-							]}
-						>
-							<MaterialCommunityIcons
-								name={meta?.iconName ?? "medical-bag"}
-								size={24}
-								color={placeMarkIconColor}
-							/>
-						</View>
-						<Text numberOfLines={2} style={[styles.placeTitle, { color: titleColor }]}>
-							{summary.title}
-						</Text>
-						{summary.addressLine ? (
-							<Text numberOfLines={2} style={[styles.placeSubtitle, { color: subtleColor }]}>
-								{summary.addressLine}
-							</Text>
-						) : null}
-					</View>
-				</Animated.View>
-
 				<View style={styles.detailPanelContent}>
-					{/* Action row */}
+					<Animated.View
+						style={[
+							styles.placeHeaderReveal,
+							{ height: placeHeaderHeight, opacity: placeHeaderOpacity, marginTop: placeHeaderMarginTop },
+						]}
+					>
+						<View style={styles.placeHeader}>
+							<View style={[styles.placeMark, { backgroundColor: placeMarkSurface, borderColor: placeMarkBorderColor }]}>
+								<MaterialCommunityIcons
+									name={meta?.iconName ?? "medical-bag"}
+									size={24}
+									color={placeMarkIconColor}
+								/>
+							</View>
+							<Text numberOfLines={2} style={[styles.placeTitle, { color: titleColor }]}>
+								{summary.title}
+							</Text>
+							{headerSubtitle ? (
+								<Text numberOfLines={2} style={[styles.placeSubtitle, { color: subtleColor }]}>
+									{headerSubtitle}
+								</Text>
+							) : null}
+						</View>
+					</Animated.View>
+
 					{placeActions.length > 0 ? (
 						<Animated.View style={[styles.placeActionRow, { marginTop: actionRowMarginTop }]}>
 							{placeActions.map((item) => (
 								<Pressable
 									key={item.key}
 									onPress={item.onPress}
-									disabled={!item.onPress}
+									disabled={item.disabled || !item.onPress}
 									accessibilityRole="button"
 									accessibilityLabel={item.accessibilityLabel}
 									style={styles.placeActionPressable}
@@ -223,14 +497,11 @@ export default function MapProviderDetailBody({
 												item.primary
 													? [styles.placeActionButtonPrimary, { backgroundColor: tintColor, shadowColor: tintColor }]
 													: { backgroundColor: actionSurface },
+												item.disabled ? styles.placeActionButtonDisabled : null,
 												pressed ? styles.placeActionButtonPressed : null,
 											]}
 										>
-											{renderIcon(
-												item,
-												item.primary ? "#F8FAFC" : actionTint,
-												item.primary ? 19 : 16,
-											)}
+											{renderIcon(item, item.primary ? "#F8FAFC" : actionTint, item.primary ? 19 : 16)}
 											<Text
 												numberOfLines={1}
 												style={[
@@ -247,7 +518,6 @@ export default function MapProviderDetailBody({
 						</Animated.View>
 					) : null}
 
-					{/* Stats row */}
 					{placeStats.length > 0 ? (
 						<View style={styles.placeStatsCard}>
 							{placeStats.map((item, index) => (
@@ -256,9 +526,7 @@ export default function MapProviderDetailBody({
 										{item.label}
 									</Text>
 									<View style={styles.placeStatValueRow}>
-										{item.icon
-											? renderIcon(item, item.tone === "rating" ? "#FBBF24" : subtleColor, 15)
-											: null}
+										{renderIcon(item, item.tone === "rating" ? "#FBBF24" : subtleColor, 15)}
 										<Text numberOfLines={1} style={[styles.placeStatValue, { color: titleColor }]}>
 											{item.value}
 										</Text>
@@ -268,38 +536,7 @@ export default function MapProviderDetailBody({
 						</View>
 					) : null}
 
-					{/* Info block */}
-					{infoRows.length > 0 ? (
-						<View style={[styles.infoBlock, { borderTopColor: dividerColor }]}>
-							{infoRows.map((row, index) => {
-								const Inner = (
-									<>
-										<MaterialCommunityIcons
-											name={row.icon}
-											size={16}
-											color={tintColor}
-											style={styles.infoIcon}
-										/>
-										<Text
-											style={[styles.infoText, { color: subtleColor }]}
-											numberOfLines={row.onPress ? 1 : 2}
-										>
-											{row.text}
-										</Text>
-									</>
-								);
-								return row.onPress ? (
-									<Pressable key={index} onPress={row.onPress} style={styles.infoRow}>
-										{Inner}
-									</Pressable>
-								) : (
-									<View key={index} style={styles.infoRow}>
-										{Inner}
-									</View>
-								);
-							})}
-						</View>
-					) : null}
+					{sectionsNode}
 				</View>
 			</Animated.View>
 		</View>

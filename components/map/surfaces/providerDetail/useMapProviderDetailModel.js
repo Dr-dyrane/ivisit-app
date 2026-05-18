@@ -1,8 +1,26 @@
 // components/map/surfaces/providerDetail/useMapProviderDetailModel.js
 //
 // Model hook for PROVIDER_DETAIL sheet phase.
-// Mirrors useMapHospitalDetailModel shape — returns a flat model object
-// consumed by MapProviderDetailBody and the stage parts.
+//
+// Architecture:
+//   - Mirrors hospital_detail's chassis (summary, heroBadges, placeActions, placeStats).
+//   - Adds infoSections[] consumable directly by the shared TrackingDetailsCard primitive
+//     (components/map/views/tracking/parts/MapTrackingParts.jsx). One card per section,
+//     stacked. Every section that *should* exist for the provider type is rendered, with
+//     calm "X not listed" / "X not available" rows when data is missing — never blank.
+//   - Provider tint is exposed but used by the body only as small accents (primary CTA,
+//     hero badge tone, place mark icon). Section surfaces stay neutral.
+//
+// Data sources (from services/hospitalsService._mapHospital):
+//   name, address, phone, rating, reviewsCount, status, verified, verificationStatus,
+//   distance, distanceKm, eta, waitTime, googleWebsite, image, googlePhotos[],
+//   specialties[], serviceTypes[], features[], emergencyLevel,
+//   availableBeds, ambulances, bedAvailability, ambulanceAvailability,
+//   emergencyWaitTimeMinutes, lastAvailabilityUpdate, realTimeSync,
+//   providerType, emergencyEligible, dispatchEligible, providerSource, categoryConfidence,
+//   providerServices (JSONB), providerSpecialties (JSONB),
+//   insuranceAccepted (text[]), structuredHours (JSONB),
+//   appointmentRequired, reportTurnaround, ageRange, crisisLine.
 
 import { useCallback, useMemo } from "react";
 import { Linking } from "react-native";
@@ -13,14 +31,21 @@ import {
 } from "../../../../constants/providerTypes";
 import { openRideToProvider } from "../../../../utils/bookRideUtils";
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
+// ─── Theme tokens (neutral surfaces; tint is accent only) ────────────────────
 
 function getProviderDetailTheme(isDarkMode) {
 	return {
-		titleColor:   isDarkMode ? "#F8FAFC" : "#0F172A",
-		subtleColor:  isDarkMode ? "#94A3B8" : "#64748B",
-		cardSurface:  isDarkMode ? "rgba(8,15,27,0.92)" : "#FFFFFF",
-		rowSurface:   isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
+		// Mirrors buildTrackingThemeTokens() values for cross-sheet consistency.
+		titleColor:         isDarkMode ? "#F8FAFC" : "#0F172A",
+		subtleColor:        isDarkMode ? "#94A3B8" : "#64748B",
+		mutedColor:         isDarkMode ? "rgba(226,232,240,0.78)" : "#64748B",
+		cardSurface:        isDarkMode ? "rgba(15,23,42,0.74)" : "rgba(255,255,255,0.88)",
+		rowSurface:         isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
+		requestSurfaceColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.88)",
+		detailGradientColors: isDarkMode
+			? ["rgba(255,255,255,0.03)", "rgba(255,255,255,0.01)"]
+			: ["rgba(248,250,252,0.92)", "rgba(255,255,255,0.82)"],
+		detailCardRadius:   26,
 	};
 }
 
@@ -32,7 +57,7 @@ function getActionTint(tintColor, isDarkMode) {
 	return isDarkMode ? `${tintColor}D0` : tintColor;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Provider-type copy helpers ──────────────────────────────────────────────
 
 function getPrimaryActionLabel(providerType) {
 	switch (providerType) {
@@ -43,6 +68,7 @@ function getPrimaryActionLabel(providerType) {
 		case PROVIDER_TYPES.MENTAL_HEALTH: return "Call clinic";
 		case PROVIDER_TYPES.WOMENS_CARE:   return "Call clinic";
 		case PROVIDER_TYPES.PEDIATRICS:    return "Call clinic";
+		case PROVIDER_TYPES.HOSPITAL:      return "Call hospital";
 		default:                           return "Call clinic";
 	}
 }
@@ -53,41 +79,391 @@ function buildDistanceLabel(distanceKm) {
 	return `${rounded} km away`;
 }
 
-function buildProviderSummary(provider, meta) {
+function buildDistanceValue(distanceKm) {
+	if (!Number.isFinite(distanceKm) || distanceKm <= 0) return null;
+	const rounded = Math.round(distanceKm * 10) / 10;
+	return `${rounded} km`;
+}
+
+// ─── Hours formatting (structuredHours JSONB) ────────────────────────────────
+//
+// Expected JSONB shape (best-effort — falls back gracefully if absent):
+//   { weekday_text: ["Monday: 09:00 – 17:00", ...] }
+//   or { mon: { open: "09:00", close: "17:00" }, ... }
+//   or { open_now: true, periods: [...] }
+
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const WEEKDAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function todayWeekdayKey() {
+	// JS getDay: 0=Sun..6=Sat. Our array: 0=Mon..6=Sun.
+	const d = new Date().getDay();
+	return WEEKDAY_KEYS[d === 0 ? 6 : d - 1];
+}
+
+function formatHoursToday(structuredHours) {
+	if (!structuredHours || typeof structuredHours !== "object") return null;
+	const todayKey = todayWeekdayKey();
+	const todayLabel = WEEKDAY_FULL[WEEKDAY_KEYS.indexOf(todayKey)];
+
+	// Shape A: { mon: { open, close } | "Closed" | null }
+	const todaySlot = structuredHours[todayKey];
+	if (todaySlot) {
+		if (typeof todaySlot === "string") return `${todayLabel} · ${todaySlot}`;
+		if (todaySlot.closed === true)     return `${todayLabel} · Closed`;
+		if (todaySlot.open && todaySlot.close) return `${todayLabel} · ${todaySlot.open} – ${todaySlot.close}`;
+		if (todaySlot.open && !todaySlot.close) return `${todayLabel} · From ${todaySlot.open}`;
+	}
+
+	// Shape B: { weekday_text: [...] }
+	if (Array.isArray(structuredHours.weekday_text) && structuredHours.weekday_text.length > 0) {
+		// Google Places returns Mon..Sun starting Monday.
+		const idx = WEEKDAY_KEYS.indexOf(todayKey);
+		const line = structuredHours.weekday_text[idx];
+		if (typeof line === "string") return line;
+	}
+
+	// Shape C: { open_now: bool }
+	if (typeof structuredHours.open_now === "boolean") {
+		return structuredHours.open_now ? "Open now" : "Closed now";
+	}
+
+	return null;
+}
+
+function buildHoursRows(structuredHours) {
+	const todayLine = formatHoursToday(structuredHours);
+	if (todayLine) {
+		return [
+			{ label: "Today", value: todayLine, icon: "time-outline" },
+		];
+	}
+	return [
+		{ label: "Today", value: "Hours not available", icon: "time-outline", muted: true },
+	];
+}
+
+// ─── Section row builders ────────────────────────────────────────────────────
+
+function buildContactRows(provider) {
+	const rows = [];
+	rows.push({
+		label: "Address",
+		value: provider?.address || "Address not listed",
+		icon: "location-outline",
+		muted: !provider?.address,
+		valueNumberOfLines: 2,
+	});
+	rows.push({
+		label: "Phone",
+		value: provider?.phone || "Phone not listed",
+		icon: "call-outline",
+		muted: !provider?.phone,
+	});
+	const website = provider?.googleWebsite ?? provider?.website ?? null;
+	rows.push({
+		label: "Website",
+		value: website || "Website not listed",
+		icon: "globe-outline",
+		muted: !website,
+	});
+	return rows;
+}
+
+function buildCapacityRows(provider) {
+	const isHospital = provider?.providerType === PROVIDER_TYPES.HOSPITAL;
+	if (!isHospital) return null;
+
+	const rows = [];
+	const beds = provider?.availableBeds;
+	rows.push({
+		label: "Available beds",
+		value: Number.isFinite(beds) && beds > 0
+			? `${beds} bed${beds === 1 ? "" : "s"}`
+			: (Number.isFinite(beds) ? "None right now" : "Availability not confirmed"),
+		icon: "bed-outline",
+		muted: !Number.isFinite(beds),
+	});
+	const ambs = provider?.ambulances;
+	rows.push({
+		label: "Ambulances",
+		value: Number.isFinite(ambs) && ambs > 0
+			? `${ambs} on standby`
+			: (Number.isFinite(ambs) ? "None on standby" : "Availability not confirmed"),
+		icon: "car-outline",
+		muted: !Number.isFinite(ambs),
+	});
+	const wait = provider?.waitTime;
+	rows.push({
+		label: "ER wait time",
+		value: wait || "Wait time not reported",
+		icon: "hourglass-outline",
+		muted: !wait,
+	});
+	const level = provider?.emergencyLevel;
+	if (level) {
+		rows.push({
+			label: "Emergency level",
+			value: level,
+			icon: "medkit-outline",
+		});
+	}
+	return rows;
+}
+
+function buildServicesRows(provider) {
+	const rows = [];
+
+	// providerServices is a JSONB object (free-form keys). Render top-level keys with truthy values.
+	const services = provider?.providerServices;
+	if (services && typeof services === "object" && !Array.isArray(services)) {
+		const keys = Object.keys(services).filter((k) => services[k]);
+		if (keys.length > 0) {
+			rows.push({
+				label: "Offered",
+				value: keys.map(humanizeKey).join(" · "),
+				icon: "construct-outline",
+				valueNumberOfLines: 3,
+			});
+		}
+	}
+
+	const types = Array.isArray(provider?.serviceTypes) ? provider.serviceTypes.filter(Boolean) : [];
+	if (types.length > 0) {
+		rows.push({
+			label: "Service types",
+			value: types.join(" · "),
+			icon: "list-outline",
+			valueNumberOfLines: 3,
+		});
+	}
+
+	if (provider?.appointmentRequired === true) {
+		rows.push({ label: "Appointments", value: "Booking required", icon: "calendar-outline" });
+	}
+
+	if (rows.length === 0) {
+		rows.push({
+			label: "Services",
+			value: "Services not listed yet",
+			icon: "construct-outline",
+			muted: true,
+		});
+	}
+	return rows;
+}
+
+function buildSpecialtiesRows(provider) {
+	const rows = [];
+
+	const structured = provider?.providerSpecialties;
+	if (structured && typeof structured === "object" && !Array.isArray(structured)) {
+		const keys = Object.keys(structured).filter((k) => structured[k]);
+		if (keys.length > 0) {
+			rows.push({
+				label: "Focus areas",
+				value: keys.map(humanizeKey).join(" · "),
+				icon: "ribbon-outline",
+				valueNumberOfLines: 3,
+			});
+		}
+	}
+
+	const flat = Array.isArray(provider?.specialties) ? provider.specialties.filter(Boolean) : [];
+	if (flat.length > 0) {
+		rows.push({
+			label: "Specialties",
+			value: flat.join(" · "),
+			icon: "medical-outline",
+			valueNumberOfLines: 3,
+		});
+	}
+
+	if (rows.length === 0) {
+		rows.push({
+			label: "Specialties",
+			value: "Specialties not listed",
+			icon: "ribbon-outline",
+			muted: true,
+		});
+	}
+	return rows;
+}
+
+function buildProviderInfoRows(provider) {
+	const rows = [];
+	const pt = provider?.providerType;
+
+	if (pt === PROVIDER_TYPES.LAB) {
+		rows.push({
+			label: "Report turnaround",
+			value: provider?.reportTurnaround || "Turnaround not listed",
+			icon: "document-text-outline",
+			muted: !provider?.reportTurnaround,
+		});
+	}
+	if (pt === PROVIDER_TYPES.PEDIATRICS) {
+		rows.push({
+			label: "Age range",
+			value: provider?.ageRange || "Age range not listed",
+			icon: "people-outline",
+			muted: !provider?.ageRange,
+		});
+	}
+	if (pt === PROVIDER_TYPES.MENTAL_HEALTH) {
+		rows.push({
+			label: "Crisis line",
+			value: provider?.crisisLine || "Crisis line not listed",
+			icon: "alert-circle-outline",
+			muted: !provider?.crisisLine,
+		});
+	}
+
+	// Always show ETA + distance as a baseline; never blank.
+	rows.push({
+		label: "Distance",
+		value: buildDistanceValue(provider?.distanceKm) || "Distance unknown",
+		icon: "navigate-outline",
+		muted: !buildDistanceValue(provider?.distanceKm),
+	});
+	if (provider?.eta) {
+		rows.push({
+			label: "Estimated travel",
+			value: provider.eta,
+			icon: "time-outline",
+		});
+	}
+	return rows;
+}
+
+function buildInsuranceRows(provider) {
+	const list = Array.isArray(provider?.insuranceAccepted)
+		? provider.insuranceAccepted.filter(Boolean)
+		: [];
+	if (list.length > 0) {
+		return [
+			{
+				label: "Accepted",
+				value: list.join(" · "),
+				icon: "shield-checkmark-outline",
+				valueNumberOfLines: 3,
+			},
+		];
+	}
+	return [
+		{
+			label: "Insurance",
+			value: "Insurance information unavailable",
+			icon: "shield-outline",
+			muted: true,
+		},
+	];
+}
+
+function buildAboutRows(provider) {
+	const rows = [];
+
+	const verified = provider?.verified === true;
+	const verifyStatus = provider?.verificationStatus || (verified ? "verified" : "pending");
+	rows.push({
+		label: "Verification",
+		value: verified
+			? "Verified provider"
+			: verifyStatus === "pending"
+				? "Verification pending"
+				: humanizeKey(verifyStatus),
+		icon: verified ? "checkmark-circle-outline" : "ellipse-outline",
+		muted: !verified,
+	});
+
+	const lastUpd = provider?.lastAvailabilityUpdate;
+	rows.push({
+		label: "Last updated",
+		value: lastUpd ? formatRelativeUpdate(lastUpd) : "Not reported",
+		icon: "refresh-outline",
+		muted: !lastUpd,
+	});
+
+	if (provider?.realTimeSync === true) {
+		rows.push({
+			label: "Live sync",
+			value: "Real-time availability",
+			icon: "pulse-outline",
+		});
+	}
+
+	return rows;
+}
+
+// ─── Small text helpers ──────────────────────────────────────────────────────
+
+function humanizeKey(key) {
+	if (typeof key !== "string") return String(key ?? "");
+	return key
+		.replace(/[_-]+/g, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatRelativeUpdate(iso) {
+	const t = Date.parse(iso);
+	if (!Number.isFinite(t)) return "Recently";
+	const diffMin = Math.round((Date.now() - t) / 60000);
+	if (diffMin < 1)   return "Just now";
+	if (diffMin < 60)  return `${diffMin} min ago`;
+	const diffHr = Math.round(diffMin / 60);
+	if (diffHr < 24)   return `${diffHr} hr ago`;
+	const diffDay = Math.round(diffHr / 24);
+	if (diffDay < 30)  return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
+	return new Date(t).toLocaleDateString();
+}
+
+// ─── Place stats (chip row under the place header — same shape as hospital) ──
+
+function buildPlaceStats(provider) {
+	const stats = [];
+	const distLabel = buildDistanceLabel(provider?.distanceKm);
+	if (distLabel) {
+		stats.push({ label: "Distance", value: distLabel.replace(" away", ""), icon: "navigate", iconType: "ionicon", tone: "neutral" });
+	}
+	const rating = provider?.rating > 0 ? Number(provider.rating).toFixed(1) : null;
+	if (rating) {
+		stats.push({ label: "Rating", value: rating, icon: "star", iconType: "ionicon", tone: "rating" });
+	}
+	if (provider?.eta) {
+		stats.push({ label: "ETA", value: provider.eta, icon: "time-outline", iconType: "ionicon", tone: "neutral" });
+	}
+	return stats;
+}
+
+function buildHeroBadges(provider, meta) {
+	const badges = [];
+	if (meta?.label) {
+		badges.push({ label: meta.label, icon: meta.iconName ?? "medical-bag", iconType: "material", tone: "neutral" });
+	}
+	if (provider?.verified === true) {
+		badges.push({ label: "Verified", icon: "checkmark-circle", iconType: "ionicon", tone: "verified" });
+	}
+	if (provider?.status === "available") {
+		badges.push({ label: "Open", icon: "ellipse", iconType: "ionicon", tone: "verified" });
+	}
+	return badges;
+}
+
+function buildSummary(provider, meta) {
 	const name         = provider?.name ?? "Provider";
 	const address      = provider?.address ?? null;
 	const categoryLine = meta?.label ?? "Healthcare provider";
-	const distanceKm   = provider?.distanceKm ?? null;
-	const distLabel    = buildDistanceLabel(distanceKm);
+	const distLabel    = buildDistanceLabel(provider?.distanceKm);
 	const contextLine  = distLabel ?? address ?? categoryLine;
 	return { title: name, subtitle: categoryLine, addressLine: address, contextLine };
 }
 
-function buildProviderPlaceStats(provider, meta) {
-	const stats = [];
-	const distanceKm = provider?.distanceKm;
-	const distLabel  = buildDistanceLabel(distanceKm);
-	if (distLabel) stats.push({ label: "Distance", value: distLabel.replace(" away", ""), icon: "navigate", iconType: "ionicon", tone: "neutral" });
-	const rating = provider?.rating > 0 ? Number(provider.rating).toFixed(1) : null;
-	if (rating) stats.push({ label: "Rating", value: rating, icon: "star", iconType: "ionicon", tone: "rating" });
-	const status = provider?.status ?? null;
-	if (status) stats.push({ label: "Status", value: status === "available" ? "Open" : status, icon: null, tone: "neutral" });
-	return stats;
-}
-
-function buildProviderHeroBadges(provider, meta) {
-	const badges = [];
-	const label = meta?.label;
-	if (label) badges.push({ label, icon: meta?.iconName ?? "medical-bag", iconType: "material", tone: "neutral" });
-	const status = provider?.status ?? null;
-	if (status === "available") badges.push({ label: "Open", icon: "checkmark-circle", iconType: "ionicon", tone: "verified" });
-	return badges;
-}
-
-function buildProviderCollapsedAction(provider, meta, onDirections) {
+function buildCollapsedAction(provider, meta, onDirections) {
 	const hasCoords = Number.isFinite(provider?.coordinates?.latitude);
 	return {
-		icon: hasCoords ? "directions" : meta?.iconName ?? "medical-bag",
+		icon: hasCoords ? "directions" : (meta?.iconName ?? "medical-bag"),
 		iconType: "material",
 		label: hasCoords ? "Directions" : (meta?.label ?? "View"),
 		primary: false,
@@ -96,12 +472,12 @@ function buildProviderCollapsedAction(provider, meta, onDirections) {
 	};
 }
 
-// ─── Model hook ───────────────────────────────────────────────────────────────
+// ─── Model hook ──────────────────────────────────────────────────────────────
 
 export default function useMapProviderDetailModel({
 	provider,
 	userLocation,
-	onClose,
+	onClose, // eslint-disable-line no-unused-vars
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -109,19 +485,17 @@ export default function useMapProviderDetailModel({
 	const meta         = EXPLORE_CATEGORY_META[providerType] ?? EXPLORE_CATEGORY_META[PROVIDER_TYPES.CLINIC];
 	const tintColor    = meta?.markerTint ?? "#64748B";
 
-	const { titleColor, subtleColor, cardSurface, rowSurface } = useMemo(
-		() => getProviderDetailTheme(isDarkMode),
-		[isDarkMode],
-	);
+	const theme = useMemo(() => getProviderDetailTheme(isDarkMode), [isDarkMode]);
 	const actionSurface = useMemo(() => getActionSurface(tintColor, isDarkMode), [tintColor, isDarkMode]);
 	const actionTint    = useMemo(() => getActionTint(tintColor, isDarkMode), [tintColor, isDarkMode]);
 
-	const phone    = provider?.phone ?? null;
-	const website  = provider?.googleWebsite ?? provider?.website ?? null;
-	const address  = provider?.address ?? null;
+	const phone     = provider?.phone ?? null;
+	const website   = provider?.googleWebsite ?? provider?.website ?? null;
+	const address   = provider?.address ?? null;
 	const hasCoords = Number.isFinite(provider?.coordinates?.latitude) &&
 	                  Number.isFinite(provider?.coordinates?.longitude);
 
+	// ─ Action handlers ────────────────────────────────────────────────────────
 	const handleCall = useCallback(() => {
 		if (!phone) return;
 		Linking.openURL(`tel:${phone.replace(/\s+/g, "")}`).catch(() => {});
@@ -145,45 +519,136 @@ export default function useMapProviderDetailModel({
 		openRideToProvider(provider, userLocation);
 	}, [provider, userLocation]);
 
+	// ─ Action row (4 slots: Call · Ride · Directions · Website) ──────────────
 	const placeActions = useMemo(() => {
 		const list = [];
-		if (phone) list.push({
-			key: "call", icon: "phone", iconType: "material",
+		list.push({
+			key: "call",
+			icon: "phone",
+			iconType: "material",
 			label: getPrimaryActionLabel(providerType),
-			onPress: handleCall, primary: true,
-			accessibilityLabel: "Call provider",
+			onPress: phone ? handleCall : undefined,
+			disabled: !phone,
+			primary: !!phone,
+			accessibilityLabel: phone ? "Call provider" : "Phone not listed",
 		});
-		if (hasCoords) list.push({
-			key: "ride", icon: "car", iconType: "material",
-			label: "Book Ride", onPress: handleBookRide, primary: !phone,
-			accessibilityLabel: "Book a ride to this provider",
+		list.push({
+			key: "ride",
+			icon: "car",
+			iconType: "material",
+			label: "Book ride",
+			onPress: hasCoords ? handleBookRide : undefined,
+			disabled: !hasCoords,
+			primary: !phone && hasCoords,
+			accessibilityLabel: hasCoords ? "Book a ride to this provider" : "Location unavailable",
 		});
-		if (hasCoords) list.push({
-			key: "directions", icon: "directions", iconType: "material",
-			label: "Directions", onPress: handleDirections, primary: false,
-			accessibilityLabel: "Get directions",
+		list.push({
+			key: "directions",
+			icon: "directions",
+			iconType: "material",
+			label: "Directions",
+			onPress: hasCoords ? handleDirections : undefined,
+			disabled: !hasCoords,
+			primary: false,
+			accessibilityLabel: hasCoords ? "Get directions" : "Location unavailable",
 		});
-		if (website) list.push({
-			key: "website", icon: "web", iconType: "material",
-			label: "Website", onPress: handleWebsite, primary: false,
-			accessibilityLabel: "Open website",
+		list.push({
+			key: "website",
+			icon: "web",
+			iconType: "material",
+			label: "Website",
+			onPress: website ? handleWebsite : undefined,
+			disabled: !website,
+			primary: false,
+			accessibilityLabel: website ? "Open website" : "Website not listed",
 		});
 		return list;
 	}, [phone, hasCoords, website, providerType, handleCall, handleBookRide, handleDirections, handleWebsite]);
 
-	const summary = useMemo(() => buildProviderSummary(provider, meta), [provider, meta]);
-	const placeStats = useMemo(() => buildProviderPlaceStats(provider, meta), [provider, meta]);
-	const heroBadges = useMemo(() => buildProviderHeroBadges(provider, meta), [provider, meta]);
-	const collapsedAction = useMemo(() => buildProviderCollapsedAction(provider, meta, handleDirections), [provider, meta, handleDirections]);
-	const collapsedDistanceLabel = useMemo(() => buildDistanceLabel(provider?.distanceKm) ?? (address ?? meta?.label ?? "Nearby"), [provider?.distanceKm, address, meta]);
+	// ─ Hero / header / stats / collapsed slot ─────────────────────────────────
+	const summary    = useMemo(() => buildSummary(provider, meta), [provider, meta]);
+	const heroBadges = useMemo(() => buildHeroBadges(provider, meta), [provider, meta]);
+	const placeStats = useMemo(() => buildPlaceStats(provider), [provider]);
+	const collapsedAction = useMemo(
+		() => buildCollapsedAction(provider, meta, handleDirections),
+		[provider, meta, handleDirections],
+	);
+	const collapsedDistanceLabel = useMemo(
+		() => buildDistanceLabel(provider?.distanceKm) ?? (address ?? meta?.label ?? "Nearby"),
+		[provider?.distanceKm, address, meta],
+	);
 
-	const infoRows = useMemo(() => {
-		const rows = [];
-		if (address) rows.push({ icon: "map-marker-outline", text: address });
-		if (phone)   rows.push({ icon: "phone-outline",      text: phone,   onPress: handleCall });
-		if (website) rows.push({ icon: "web",                text: website, onPress: handleWebsite });
-		return rows;
-	}, [address, phone, website, handleCall, handleWebsite]);
+	// ─ Info sections (each maps directly to a TrackingDetailsCard) ───────────
+	const infoSections = useMemo(() => {
+		const sections = [];
+
+		sections.push({
+			key: "contact",
+			headerLabel: "Contact",
+			rows: buildContactRows(provider),
+			collapsible: false,
+		});
+
+		sections.push({
+			key: "hours",
+			headerLabel: "Hours",
+			rows: buildHoursRows(provider?.structuredHours),
+			collapsible: false,
+		});
+
+		const capacityRows = buildCapacityRows(provider);
+		if (capacityRows) {
+			sections.push({
+				key: "capacity",
+				headerLabel: "Capacity",
+				rows: capacityRows,
+				collapsible: false,
+			});
+		}
+
+		sections.push({
+			key: "services",
+			headerLabel: "Services",
+			rows: buildServicesRows(provider),
+			collapsible: false,
+		});
+
+		sections.push({
+			key: "specialties",
+			headerLabel: "Specialties",
+			rows: buildSpecialtiesRows(provider),
+			collapsible: false,
+		});
+
+		const providerInfoRows = buildProviderInfoRows(provider);
+		if (providerInfoRows.length > 0) {
+			sections.push({
+				key: "providerInfo",
+				headerLabel: "Provider info",
+				rows: providerInfoRows,
+				collapsible: true,
+				defaultCollapsed: false,
+			});
+		}
+
+		sections.push({
+			key: "insurance",
+			headerLabel: "Insurance",
+			rows: buildInsuranceRows(provider),
+			collapsible: true,
+			defaultCollapsed: true,
+		});
+
+		sections.push({
+			key: "about",
+			headerLabel: "About",
+			rows: buildAboutRows(provider),
+			collapsible: true,
+			defaultCollapsed: true,
+		});
+
+		return sections;
+	}, [provider]);
 
 	return {
 		// identity
@@ -191,24 +656,29 @@ export default function useMapProviderDetailModel({
 		providerType,
 		meta,
 		tintColor,
-		// theme
+		// theme tokens (neutral)
 		isDarkMode,
-		titleColor,
-		subtleColor,
-		cardSurface,
-		rowSurface,
+		titleColor:           theme.titleColor,
+		subtleColor:          theme.subtleColor,
+		mutedColor:           theme.mutedColor,
+		cardSurface:          theme.cardSurface,
+		rowSurface:           theme.rowSurface,
+		requestSurfaceColor:  theme.requestSurfaceColor,
+		detailGradientColors: theme.detailGradientColors,
+		detailCardRadius:     theme.detailCardRadius,
 		actionSurface,
 		actionTint,
-		// display
+		// hospital chassis
 		summary,
 		heroBadges,
 		placeActions,
 		placeStats,
-		infoRows,
+		// no-blank-state info sections (consumed by TrackingDetailsCard)
+		infoSections,
 		// collapsed slot
 		collapsedAction,
 		collapsedDistanceLabel,
-		// flags
+		// flags / convenience
 		hasCoords,
 		phone,
 		address,

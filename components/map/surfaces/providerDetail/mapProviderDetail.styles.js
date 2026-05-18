@@ -1,8 +1,9 @@
 // components/map/surfaces/providerDetail/mapProviderDetail.styles.js
 //
-// Surface-level styles for MapProviderDetailBody.
-// Token-exact copy of mapHospitalDetail.styles.js —
-// service rail / gallery / dock sections omitted (provider has info block instead).
+// Mirrors hospital_detail's chassis tokens (hero, place header, action row,
+// stats card). Every shared shape uses `squircle()` with `borderCurve: "continuous"`
+// per MAP_SHEET_IMPLEMENTATION_NOTES_V1.md §11. Section content cards are
+// rendered by the shared TrackingDetailsCard primitive — not styled here.
 
 import { StyleSheet } from "react-native";
 
@@ -12,14 +13,14 @@ const squircle = (radius) => ({
 });
 
 export const styles = StyleSheet.create({
-	// ─── Scroll wrapper ───────────────────────────────────────────────────────
+	// ── Outer container ──────────────────────────────────────────────────────
 	scrollContent: {
 		paddingHorizontal: 0,
 		paddingBottom: 24,
 		gap: 12,
 	},
 
-	// ─── Hero reveal (Animated height + opacity) ──────────────────────────────
+	// ── Hero (mirrors mapHospitalDetail.styles `hero` / `expandedHero`) ──────
 	heroRevealFrame: {
 		overflow: "hidden",
 		marginHorizontal: -14,
@@ -33,6 +34,12 @@ export const styles = StyleSheet.create({
 		borderTopLeftRadius: 34,
 		borderTopRightRadius: 34,
 		borderCurve: "continuous",
+	},
+	heroFallback: {
+		// Neutral charcoal/cream wash for providers without an image.
+		// The provider tint is applied as a soft top mask only — never a
+		// full saturated background.
+		flex: 1,
 	},
 	heroBlend: {
 		position: "absolute",
@@ -57,6 +64,16 @@ export const styles = StyleSheet.create({
 		top: 0,
 		height: 104,
 		zIndex: 1,
+	},
+	heroTintWash: {
+		// Subtle provider-tint accent — only used when no image fallback.
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		bottom: 0,
+		opacity: 0.18,
+		zIndex: 0,
 	},
 	heroBadgeRow: {
 		paddingTop: 34,
@@ -85,12 +102,94 @@ export const styles = StyleSheet.create({
 		height: 44,
 	},
 
-	// ─── Detail panel (overlaps hero) ─────────────────────────────────────────
+	// ── Expanded hero (revealHero === true) ──────────────────────────────────
+	expandedCardWrap: {
+		marginHorizontal: -14,
+		overflow: "visible",
+	},
+	expandedHero: {
+		height: 320,
+		justifyContent: "space-between",
+		zIndex: 1,
+	},
+	expandedHeroTopMask: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		top: 0,
+		height: 118,
+		zIndex: 1,
+	},
+	expandedHeroBottomMerge: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		bottom: 0,
+		height: 144,
+		zIndex: 1,
+	},
+	expandedHeroBadgeRow: {
+		paddingTop: 34,
+		paddingHorizontal: 14,
+		paddingRight: 62,
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 6,
+		zIndex: 2,
+	},
+	expandedHeaderBlock: {
+		paddingHorizontal: 20,
+		paddingBottom: 10,
+		alignItems: "center",
+	},
+	expandedHeaderMeasure: {
+		width: "100%",
+		alignItems: "center",
+	},
+	expandedPlaceMark: {
+		width: 64,
+		height: 64,
+		alignItems: "center",
+		justifyContent: "center",
+		marginBottom: 10,
+		shadowColor: "#0F172A",
+		shadowOpacity: 0.22,
+		shadowRadius: 18,
+		shadowOffset: { width: 0, height: 10 },
+		...squircle(19),
+	},
+	expandedPlaceTitle: {
+		fontSize: 22,
+		lineHeight: 27,
+		fontWeight: "700",
+		textAlign: "center",
+		letterSpacing: -0.2,
+	},
+	expandedPlaceSubtitle: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+		textAlign: "center",
+		paddingHorizontal: 10,
+	},
+	expandedBody: {
+		position: "relative",
+		zIndex: 2,
+		paddingHorizontal: 14,
+		paddingTop: 8,
+		paddingBottom: 20,
+		gap: 12,
+	},
+
+	// ── Detail panel (collapses underneath the hero) ─────────────────────────
 	detailPanel: {
+		marginTop: -76,
 		marginHorizontal: -14,
 		paddingHorizontal: 14,
+		paddingTop: 46,
 		paddingBottom: 20,
-		gap: 0,
+		gap: 12,
 		overflow: "visible",
 		shadowColor: "#0F172A",
 		shadowOpacity: 0.08,
@@ -101,8 +200,6 @@ export const styles = StyleSheet.create({
 	detailPanelContent: {
 		gap: 12,
 	},
-
-	// ─── Place header (squircle mark + title + address) ───────────────────────
 	placeHeaderReveal: {
 		overflow: "hidden",
 	},
@@ -140,7 +237,7 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 10,
 	},
 
-	// ─── Action row ───────────────────────────────────────────────────────────
+	// ── Action row (4 slots) ─────────────────────────────────────────────────
 	placeActionRow: {
 		flexDirection: "row",
 		gap: 7,
@@ -168,6 +265,9 @@ export const styles = StyleSheet.create({
 		opacity: 0.94,
 		transform: [{ scale: 0.985 }],
 	},
+	placeActionButtonDisabled: {
+		opacity: 0.48,
+	},
 	placeActionLabel: {
 		fontSize: 13,
 		lineHeight: 16,
@@ -175,7 +275,7 @@ export const styles = StyleSheet.create({
 		textAlign: "center",
 	},
 
-	// ─── Stats row ────────────────────────────────────────────────────────────
+	// ── Stats card (mirrors hospital placeStatsCard) ─────────────────────────
 	placeStatsCard: {
 		marginTop: 6,
 		marginBottom: 10,
@@ -208,26 +308,62 @@ export const styles = StyleSheet.create({
 		fontWeight: "700",
 	},
 
-	// ─── Info block (address / phone / website) ───────────────────────────────
-	infoBlock: {
-		borderTopWidth: StyleSheet.hairlineWidth,
-		marginTop: 4,
-		paddingTop: 14,
-		gap: 14,
-	},
-	infoRow: {
-		flexDirection: "row",
-		alignItems: "flex-start",
+	// ── Sections stack ───────────────────────────────────────────────────────
+	sectionsStack: {
 		gap: 10,
+		marginTop: 4,
 	},
-	infoIcon: {
-		marginTop: 1,
-		flexShrink: 0,
+
+	// ── Skeleton (loading provider) ──────────────────────────────────────────
+	skeletonHero: {
+		height: 270,
+		marginHorizontal: -14,
+		borderTopLeftRadius: 34,
+		borderTopRightRadius: 34,
+		borderCurve: "continuous",
 	},
-	infoText: {
-		fontSize: 14,
-		fontWeight: "400",
+	skeletonPanel: {
+		marginTop: -76,
+		marginHorizontal: -14,
+		paddingHorizontal: 14,
+		paddingTop: 46,
+		paddingBottom: 20,
+		gap: 12,
+		...squircle(34),
+	},
+	skeletonPlaceMark: {
+		width: 64,
+		height: 64,
+		alignSelf: "center",
+		marginBottom: 8,
+		...squircle(19),
+	},
+	skeletonTitleBar: {
+		height: 22,
+		alignSelf: "center",
+		width: "62%",
+		...squircle(999),
+	},
+	skeletonSubtitleBar: {
+		height: 12,
+		alignSelf: "center",
+		width: "44%",
+		marginTop: 6,
+		...squircle(999),
+	},
+	skeletonActionRow: {
+		flexDirection: "row",
+		gap: 7,
+		marginTop: 14,
+	},
+	skeletonActionTile: {
 		flex: 1,
-		lineHeight: 20,
+		height: 42,
+		...squircle(14),
+	},
+	skeletonSectionCard: {
+		height: 120,
+		marginTop: 8,
+		...squircle(26),
 	},
 });

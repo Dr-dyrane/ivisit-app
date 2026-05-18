@@ -50,7 +50,7 @@ export default function MapProviderDetailStageBase({
 	const isHalf      = snapState === MAP_SHEET_SNAP_STATES.HALF;
 
 	const titleColor        = model.titleColor;
-	const mutedColor        = model.subtleColor;
+	const mutedColor        = model.mutedColor ?? model.subtleColor;
 	const closeSurfaceColor = isDarkMode
 		? "rgba(148,163,184,0.14)"
 		: "rgba(255,255,255,0.42)";
@@ -122,6 +122,12 @@ export default function MapProviderDetailStageBase({
 		[expandedHeaderBottom, snapState],
 	);
 
+	const handleExpandedHeaderLayout = useCallback((event) => {
+		const { y = 0, height = 0 } = event?.nativeEvent?.layout || {};
+		const nextBottom = y + height;
+		setExpandedHeaderBottom((current) => (current === nextBottom ? current : nextBottom));
+	}, []);
+
 	const handleProviderScrollBeginDrag = useCallback(
 		(event) => {
 			handleAndroidCollapseScrollBeginDrag(event);
@@ -137,11 +143,6 @@ export default function MapProviderDetailStageBase({
 		[handleAndroidCollapseScroll, handleProviderScroll],
 	);
 
-	const handleExpandedHeaderLayout = useCallback((event) => {
-		const { y = 0, height = 0 } = event?.nativeEvent?.layout || {};
-		const nextBottom = y + height;
-		setExpandedHeaderBottom((current) => (current === nextBottom ? current : nextBottom));
-	}, []);
 
 	const handleHeaderToggle = useCallback(() => {
 		if (typeof onSnapStateChange !== "function") return;

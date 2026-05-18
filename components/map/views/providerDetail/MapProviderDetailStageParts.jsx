@@ -131,7 +131,7 @@ export function MapProviderDetailFloatingTopSlot({
 
 export function MapProviderDetailBodyContent({
 	model,
-	revealHero,
+	revealHero = false,
 	onExpandedHeaderLayout,
 }) {
 	return (
