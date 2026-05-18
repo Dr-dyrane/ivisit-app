@@ -670,14 +670,17 @@ const toMergeKey = (row: any): string => {
   const latitude = coordinateKey(row?.latitude);
   const longitude = coordinateKey(row?.longitude);
 
-  if (name && address && latitude && longitude) {
-    return `facility:${name}|${address}|${latitude}|${longitude}`;
+  // PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Prioritize address/coordinates over name
+  // OLD: name|address|lat|lng caused same-location providers with different names to not deduplicate
+  // NEW: address|lat|lng first (location-based), then fall back to place_id/name for missing coords
+  if (address && latitude && longitude) {
+    return `location:${address}|${latitude}|${longitude}`;
   }
-  if (name && address) {
-    return `facility:${name}|${address}`;
+  if (latitude && longitude) {
+    return `coords:${latitude}|${longitude}`;
   }
-  if (name && latitude && longitude) {
-    return `facility:${name}|${latitude}|${longitude}`;
+  if (address) {
+    return `address:${address}`;
   }
 
   const placeId =
