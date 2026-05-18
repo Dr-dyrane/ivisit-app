@@ -1,58 +1,22 @@
 {
   "_lastCommitHash": "9cbd640",
   "_lastCommitDate": "2026-05-15T00:15:49-07:00",
-  "version": "1.0.6",
-  "date": "2026-05-15",
-  "title": "Contact Dispatch - Chat with Your Ambulance or Hospital",
-  "summary": "Send messages to your ambulance driver or hospital staff directly from the tracking screen. Quick actions for common updates like ETA changes, pickup changes, and arrival notifications.",
+  "version": "1.0.7",
+  "date": "2026-05-17",
+  "title": "Pharmacy Deduplication Fix",
+  "summary": "Fixed duplicate pharmacy entries in the provider list by improving coordinate-based deduplication in the discovery edge function.",
   "changes": [
     {
-      "type": "feature",
-      "message": "Added Contact Dispatch chat to tracking screen for communicating with ambulance drivers and hospital staff during emergencies."
+      "type": "bugfix",
+      "message": "Increased coordinate precision from 3 to 5 decimal places (~111m → ~1m) in discover-hospitals edge function for accurate deduplication."
     },
     {
-      "type": "feature",
-      "message": "Quick action buttons for common messages: Moving toward ambulance, Meet halfway, Pickup changed, Please call me, We arrived."
-    },
-    {
-      "type": "feature",
-      "message": "Real-time message updates when chat is open, so you see new messages without refreshing."
-    },
-    {
-      "type": "feature",
-      "message": "Message history shows all communication with grouped messages and clear sender labels (you, driver, hospital)."
-    },
-    {
-      "type": "feature",
-      "message": "Automatic room creation when you start tracking, with secure access limited to you and your assigned responders."
+      "type": "bugfix",
+      "message": "Fixed duplicate providers appearing when Google Places and Mapbox return slightly different coordinates for the same location."
     },
     {
       "type": "improvement",
-      "message": "Messages are automatically marked as read when you open the chat."
-    },
-    {
-      "type": "improvement",
-      "message": "Chat is disabled for completed/archived requests to prevent confusion."
-    },
-    {
-      "type": "improvement",
-      "message": "Message validation prevents empty or overly long messages."
-    },
-    {
-      "type": "improvement",
-      "message": "Retry protection prevents duplicate messages if you send the same message twice."
-    },
-    {
-      "type": "improvement",
-      "message": "Loading states and skeleton placeholders while fetching message history."
-    },
-    {
-      "type": "improvement",
-      "message": "Clean, accessible chat interface with large text and clear visual hierarchy."
-    },
-    {
-      "type": "improvement",
-      "message": "Final Contact Dispatch hardening improved sticky composer behavior, message ordering, realtime reconciliation, and sender labels."
+      "message": "Provider list now shows unique pharmacies without duplicate entries at the same physical location."
     }
   ]
 }
