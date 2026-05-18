@@ -15,6 +15,12 @@ const getEnv = (...names: string[]): string => {
   return "";
 };
 
+const getBooleanEnv = (fallback: boolean, ...names: string[]): boolean => {
+  const value = getEnv(...names).toLowerCase();
+  if (!value) return fallback;
+  return ["1", "true", "yes", "on", "enabled"].includes(value);
+};
+
 const DEMO_HOSPITAL_OFFSETS = [
   { lat: 0.0064, lng: 0.0048 },
   { lat: -0.0051, lng: 0.0062 },
@@ -1032,6 +1038,9 @@ const fetchGoogleNearbyPlaces = async (
 };
 
 const getGoogleSeedHospitals = async (ctx: DemoContext) => {
+  const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+  if (!googlePlacesEnabled) return [];
+
   const googleApiKey = getEnv(
     "GOOGLE_MAPS_API_KEY",
     "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",

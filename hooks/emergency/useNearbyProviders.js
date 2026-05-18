@@ -11,6 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { hospitalsService } from "../../services/hospitalsService";
+import { isGooglePlacesEnabled } from "../../services/mapApiConfig";
 import { PROVIDER_TYPES, EXPLORE_CATEGORY_META } from "../../constants/providerTypes";
 
 const STALE_TIME = 5 * 60 * 1000;     // 5 min — category results change slowly
@@ -54,7 +55,8 @@ export function useNearbyProviders({
         ? location.countryCode.trim().toUpperCase()
         : null);
 
-  const queryKey = ["providers", providerCategory, lat, lng, radius, includeGoogle, normalizedCountryCode];
+  const effectiveIncludeGoogle = includeGoogle === true && isGooglePlacesEnabled();
+  const queryKey = ["providers", providerCategory, lat, lng, radius, effectiveIncludeGoogle, normalizedCountryCode];
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
@@ -67,7 +69,7 @@ export function useNearbyProviders({
         radius,
         {
           limit,
-          includeGooglePlaces: includeGoogle,
+          includeGooglePlaces: effectiveIncludeGoogle,
           includeMapboxPlaces: true,
           countryCode: normalizedCountryCode,
         }

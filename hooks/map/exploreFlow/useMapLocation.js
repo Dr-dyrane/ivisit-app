@@ -18,6 +18,7 @@ import {
   buildExploreIntentSheetView,
   buildSourceReturnSheetView,
 } from "./mapExploreFlow.transitions";
+import mapboxService from "../../../services/mapboxService";
 
 const PICKUP_EDIT_RETURN_PHASES = new Set([
   MAP_SHEET_PHASES.HOSPITAL_LIST,
@@ -180,7 +181,6 @@ export function useMapLocation({
   ]);
 
   const loadingBackgroundImageUri = useMemo(() => {
-    const token = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
     const latitude = Number(
       activeLocation?.latitude ?? activeLocation?.coords?.latitude,
     );
@@ -188,21 +188,13 @@ export function useMapLocation({
       activeLocation?.longitude ?? activeLocation?.coords?.longitude,
     );
 
-    if (!token || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return null;
-    }
-
-    const styleId = isDarkMode ? "navigation-night-v1" : "light-v11";
-    const imageWidth = Math.max(
-      360,
-      Math.min(1280, Math.round((width || 390) * 1.4)),
-    );
-    const imageHeight = Math.max(
-      720,
-      Math.min(1600, Math.round((height || 844) * 1.3)),
-    );
-
-    return `https://api.mapbox.com/styles/v1/mapbox/${styleId}/static/${longitude.toFixed(5)},${latitude.toFixed(5)},13.2,0,0/${imageWidth}x${imageHeight}?logo=false&attribution=false&access_token=${encodeURIComponent(token)}`;
+    return mapboxService.buildStaticMapImageUrl({
+      latitude,
+      longitude,
+      width: width || 390,
+      height: height || 844,
+      isDarkMode,
+    });
   }, [activeLocation, height, isDarkMode, width]);
 
   const resetMapForLocationChange = useCallback(

@@ -4,7 +4,7 @@ import googleLocationService from "./googleLocationService";
 // OLD: provider suggest calls lived in UI components.
 //      inside a useEffect + manual timer ref (defect class 2.18).
 // NEW: All provider API calls for location assistance go through this service.
-//      Google is primary; provider fallback stays below the UI layer.
+//      The map API service layer chooses Google, Mapbox, or OpenStreetMap.
 
 const DEBOUNCE_MS = 320;
 const MIN_QUERY_LENGTH = 2;

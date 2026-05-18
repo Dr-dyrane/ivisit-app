@@ -1,5 +1,9 @@
 import Constants from "expo-constants";
 import mapboxService from "./mapboxService";
+import {
+  isGoogleGeocodingEnabled,
+  isGooglePlacesEnabled,
+} from "./mapApiConfig";
 
 const GOOGLE_MAPS_SCRIPT_ID = "ivisit-google-maps-js";
 const GOOGLE_MAPS_LOADER_ATTR = 'script[data-google-maps-loader="ivisit"]';
@@ -180,6 +184,10 @@ async function geocodeAddress(address, { proximity = null, countryCode = null } 
   const trimmed = clean(address);
   if (!trimmed) throw new Error("Address is required");
 
+  if (!isGoogleGeocodingEnabled()) {
+    return mapboxService.geocodeAddress(trimmed, { proximity, countryCode });
+  }
+
   if (typeof window === "undefined" || typeof document === "undefined") {
     return geocodeAddressRest(trimmed, { proximity, countryCode });
   }
@@ -214,6 +222,10 @@ async function geocodeAddress(address, { proximity = null, countryCode = null } 
 }
 
 async function geocodeAddressRest(address, { proximity = null, countryCode = null } = {}) {
+  if (!isGoogleGeocodingEnabled()) {
+    return mapboxService.geocodeAddress(address, { proximity, countryCode });
+  }
+
   const apiKey = getGoogleMapsApiKey();
   if (!apiKey) throw new Error("Google Maps key is missing");
 
@@ -373,18 +385,20 @@ async function suggestAddresses(query, proximity = null) {
   if (!trimmed) return [];
 
   try {
-    const googleRequest = {
-      query: trimmed,
-      proximity: request.proximity || request.locationBias || request.location || proximity,
-      countryCode: request.countryCode || null,
-    };
-    const places =
-      typeof window === "undefined" || typeof document === "undefined"
-        ? await suggestWithRestPlaces(googleRequest)
-        : (await suggestWithNewPlaces(googleRequest)) ||
-          (await suggestWithLegacyPlaces(googleRequest)) ||
-          [];
-    if (places.length > 0) return places;
+    if (isGooglePlacesEnabled()) {
+      const googleRequest = {
+        query: trimmed,
+        proximity: request.proximity || request.locationBias || request.location || proximity,
+        countryCode: request.countryCode || null,
+      };
+      const places =
+        typeof window === "undefined" || typeof document === "undefined"
+          ? await suggestWithRestPlaces(googleRequest)
+          : (await suggestWithNewPlaces(googleRequest)) ||
+            (await suggestWithLegacyPlaces(googleRequest)) ||
+            [];
+      if (places.length > 0) return places;
+    }
   } catch (error) {
     if (
       typeof window !== "undefined" &&
@@ -398,6 +412,8 @@ async function suggestAddresses(query, proximity = null) {
 }
 
 async function suggestWithRestPlaces({ query, proximity, countryCode }) {
+  if (!isGooglePlacesEnabled()) return [];
+
   const apiKey = getGoogleMapsApiKey();
   if (!apiKey) throw new Error("Google Maps key is missing");
 
@@ -491,6 +507,8 @@ async function suggestWithRestPlaces({ query, proximity, countryCode }) {
 }
 
 async function fetchPlaceDetailsRest(placeId) {
+  if (!isGooglePlacesEnabled()) return null;
+
   const apiKey = getGoogleMapsApiKey();
   if (!apiKey) throw new Error("Google Maps key is missing");
 
@@ -503,6 +521,14 @@ async function fetchPlaceDetailsRest(placeId) {
 }
 
 async function reverseGeocode(lat, lng) {
+  if (!isGoogleGeocodingEnabled()) {
+    try {
+      return await mapboxService.reverseGeocode(lat, lng);
+    } catch {
+      return "Unknown Address";
+    }
+  }
+
   try {
     const latitude = typeof lat === "object" ? lat?.latitude : lat;
     const longitude = typeof lat === "object" ? lat?.longitude : lng;

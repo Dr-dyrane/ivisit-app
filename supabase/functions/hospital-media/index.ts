@@ -24,6 +24,12 @@ const getEnv = (...names: string[]): string => {
   return "";
 };
 
+const getBooleanEnv = (fallback: boolean, ...names: string[]): boolean => {
+  const value = getEnv(...names).toLowerCase();
+  if (!value) return fallback;
+  return ["1", "true", "yes", "on", "enabled"].includes(value);
+};
+
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
 const hashSeed = (seed: string) => {
@@ -122,11 +128,14 @@ Deno.serve(async (req) => {
       hospital = data;
     }
 
-    const googleApiKey = getEnv(
-      "GOOGLE_MAPS_API_KEY",
-      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
-      "GOOGLE_MAPS_ANDROID_API_KEY",
-    );
+    const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+    const googleApiKey = googlePlacesEnabled
+      ? getEnv(
+          "GOOGLE_MAPS_API_KEY",
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
+          "GOOGLE_MAPS_ANDROID_API_KEY",
+        )
+      : "";
     if (!hospital?.id) {
       const providerPhotoUrl =
         placeId && googleApiKey ? await fetchGoogleProviderPhotoUrl(placeId, googleApiKey) : "";

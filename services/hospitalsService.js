@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { isValidUUID, resolveEntityId } from "./displayIdService";
+import { isGooglePlacesEnabled } from "./mapApiConfig";
 import {
 	coordinateClusterKey,
 	getHospitalFacilityKey,
@@ -748,7 +749,8 @@ export const hospitalsService = {
 	async discoverNearby(lat, lng, radius = 50000, options = {}) {
 		try {
 			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
-			const includeGooglePlaces = options?.includeGooglePlaces === true;
+			const includeGooglePlaces =
+				options?.includeGooglePlaces === true && isGooglePlacesEnabled();
 
 			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
 				body: {
@@ -805,7 +807,8 @@ export const hospitalsService = {
 	async discoverNearbyProviders(lat, lng, providerCategory = 'hospital', radius = 20000, options = {}) {
 		try {
 			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
-			const includeGooglePlaces = options?.includeGooglePlaces === true;
+			const includeGooglePlaces =
+				options?.includeGooglePlaces === true && isGooglePlacesEnabled();
 			const limit = Math.max(1, Math.min(25, Number(options?.limit) || 15));
 			const countryCode =
 				typeof options?.countryCode === "string" && options.countryCode.trim()

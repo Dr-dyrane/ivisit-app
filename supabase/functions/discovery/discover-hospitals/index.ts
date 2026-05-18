@@ -26,6 +26,12 @@ const getEnv = (...names: string[]): string => {
   return "";
 };
 
+const getBooleanEnv = (fallback: boolean, ...names: string[]): boolean => {
+  const value = getEnv(...names).toLowerCase();
+  if (!value) return fallback;
+  return ["1", "true", "yes", "on", "enabled"].includes(value);
+};
+
 // PULLBACK NOTE: EXPLORE-CARE-DATA-1 — Expanded fallback image library
 // OLD: 4 hospital-specific images used for all provider types
 // NEW: 12 hospital images + category-specific fallback arrays for richer UI
@@ -1173,7 +1179,8 @@ serve(async (req) => {
     const limit = clampLimit(body?.limit);
     const includeProviderDiscovery = body?.includeProviderDiscovery !== false;
     const includeMapboxPlaces = body?.includeMapboxPlaces !== false;
-    const includeGooglePlaces = body?.includeGooglePlaces === true;
+    const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+    const includeGooglePlaces = body?.includeGooglePlaces === true && googlePlacesEnabled;
     const mergeWithDatabase = body?.mergeWithDatabase !== false;
     const countryCode = normalizeCountryCode(
       body?.countryCode ?? body?.country_code ?? body?.regionCountryCode
@@ -1288,9 +1295,8 @@ serve(async (req) => {
 
     if (includeProviderDiscovery && !hasEnoughDbResults) {
       try {
-        // PULLBACK NOTE: PRIMARY-SOURCE-GOOGLE — Google Places as primary, Mapbox as fallback
-        // Google Places has proper category support for all provider types
-        // Mapbox only supports hospital/pharmacy categories
+        // Google Places remains optional because web-service cost is controlled
+        // by ENABLE_GOOGLE_PLACES; Mapbox is the default external provider path.
         const fetchGooglePlacesForRadius = async (searchRadius: number) => {
           if (!googleApiKey || !includeGooglePlaces) return [];
           console.log("[discover-hospitals] google fetch", {
@@ -1731,6 +1737,7 @@ serve(async (req) => {
           wide_provider_fallback_count: wideProviderFallbackCount,
           mapbox_enabled: includeMapboxPlaces,
           google_enabled: includeGooglePlaces,
+          google_places_config_enabled: googlePlacesEnabled,
           mode,
           radius_km: radiusKm,
         },

@@ -1,13 +1,32 @@
+import { getMapboxAccessToken } from "./mapApiConfig";
+
 // Mapbox Service for cost-effective Location and Geocoding
-const MAPBOX_ACCESS_TOKEN =
-    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
-    process.env.MAPBOX_ACCESS_TOKEN ||
-    "";
 
 class MapboxService {
     constructor() {
-        this.accessToken = MAPBOX_ACCESS_TOKEN;
+        this.accessToken = getMapboxAccessToken();
         this.baseUrl = 'https://api.mapbox.com';
+    }
+
+    buildStaticMapImageUrl({
+        latitude,
+        longitude,
+        width = 390,
+        height = 844,
+        isDarkMode = false,
+    } = {}) {
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+
+        if (!this.accessToken || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return null;
+        }
+
+        const styleId = isDarkMode ? "navigation-night-v1" : "light-v11";
+        const imageWidth = Math.max(360, Math.min(1280, Math.round(width * 1.4)));
+        const imageHeight = Math.max(720, Math.min(1600, Math.round(height * 1.3)));
+
+        return `${this.baseUrl}/styles/v1/mapbox/${styleId}/static/${lng.toFixed(5)},${lat.toFixed(5)},13.2,0,0/${imageWidth}x${imageHeight}?logo=false&attribution=false&access_token=${encodeURIComponent(this.accessToken)}`;
     }
 
     extractCountryCode(feature) {
