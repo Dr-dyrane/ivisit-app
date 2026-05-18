@@ -62,6 +62,9 @@ export default function MapProviderDetailStageBase({
 		snapState === MAP_SHEET_SNAP_STATES.EXPANDED && !showFloatingTitle;
 
 	const floatingTitleColor      = titleColor;
+	// Resolved opaque parent surface — FadeEndText needs a non-translucent color
+	// so the trailing fade reads as a continuation of the chrome, not a strip.
+	const floatingTitleFadeColor  = isDarkMode ? "#0F172A" : "#FFFFFF";
 	const floatingCloseIconColor  = isHeroTopPresentation ? "#F8FAFC" : titleColor;
 	const floatingToggleIconColor = isHeroTopPresentation
 		? "#F8FAFC"
@@ -193,6 +196,7 @@ export default function MapProviderDetailStageBase({
 								: "chevron-up"
 						}
 						floatingToggleSurface={floatingToggleSurface}
+						floatingTitleFadeColor={floatingTitleFadeColor}
 						floatingToggleIconColor={floatingToggleIconColor}
 						shouldShowFloatingTitle={shouldShowFloatingTitle}
 						floatingTitleColor={floatingTitleColor}

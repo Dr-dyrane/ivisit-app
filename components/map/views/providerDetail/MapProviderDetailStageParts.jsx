@@ -11,6 +11,7 @@ import { Text, View } from "react-native";
 import MapHeaderIconButton from "../shared/MapHeaderIconButton";
 import MapProviderDetailBody from "../../surfaces/providerDetail/MapProviderDetailBody";
 import MapProviderDetailCollapsedRow from "./MapProviderDetailCollapsedRow";
+import FadeEndText from "../../../ui/FadeEndText";
 import styles from "./mapProviderDetailStage.styles";
 
 // ─── Collapsed top slot ───────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ export function MapProviderDetailFloatingTopSlot({
 	floatingToggleIconColor,
 	shouldShowFloatingTitle = false,
 	floatingTitleColor,
+	floatingTitleFadeColor,
 	title,
 	subtitle,
 	mutedColor,
@@ -95,20 +97,24 @@ export function MapProviderDetailFloatingTopSlot({
 					{shouldShowFloatingTitle ? (
 						<>
 							{title ? (
-								<Text
-									numberOfLines={1}
-									style={[styles.floatingTopTitle, { color: floatingTitleColor }]}
-								>
-									{title}
-								</Text>
+								<FadeEndText
+									text={title}
+									fadeColor={floatingTitleFadeColor}
+									fadeWidth={28}
+									fadeRadius={12}
+									containerStyle={styles.floatingTopTitleFade}
+									textStyle={[styles.floatingTopTitle, { color: floatingTitleColor }]}
+								/>
 							) : null}
 							{subtitle ? (
-								<Text
-									numberOfLines={1}
-									style={[styles.floatingTopSubtitle, { color: mutedColor }]}
-								>
-									{subtitle}
-								</Text>
+								<FadeEndText
+									text={subtitle}
+									fadeColor={floatingTitleFadeColor}
+									fadeWidth={28}
+									fadeRadius={12}
+									containerStyle={styles.floatingTopTitleFade}
+									textStyle={[styles.floatingTopSubtitle, { color: mutedColor }]}
+								/>
 							) : null}
 						</>
 					) : null}

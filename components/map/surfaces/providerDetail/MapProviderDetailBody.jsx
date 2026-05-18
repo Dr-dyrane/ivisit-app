@@ -35,6 +35,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../../constants/colors";
 import { getCachedRemoteImageSource } from "../../mapHospitalImage";
 import { TrackingDetailsCard } from "../../views/tracking/parts/MapTrackingParts";
+import FadeEndText from "../../../ui/FadeEndText";
 import { styles } from "./mapProviderDetail.styles";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -219,6 +220,10 @@ export default function MapProviderDetailBody({
 		: ["#F1F5F9", "#FFFFFF", "#E2E8F0"];
 	const heroImageOpacity = isDarkMode ? 0.92 : 0.9;
 
+	// Resolved opaque surface beneath the place title — used by FadeEndText
+	// so the trailing fade reads as a continuation of the chrome, not a strip.
+	const titleFadeColor = isDarkMode ? "#0F172A" : "#FFFFFF";
+
 	const heroHeight = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 270] });
 	const heroOpacity = heroRevealProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 	const detailPanelMarginTop = heroRevealProgress.interpolate({
@@ -319,13 +324,25 @@ export default function MapProviderDetailBody({
 											color={placeMarkIconColor}
 										/>
 									</View>
-									<Text numberOfLines={2} style={[styles.expandedPlaceTitle, { color: titleColor }]}>
-										{summary.title}
-									</Text>
+									<FadeEndText
+										text={summary.title}
+										numberOfLines={2}
+										fadeColor={titleFadeColor}
+										fadeWidth={34}
+										fadeRadius={14}
+										containerStyle={styles.heroTitleFade}
+										textStyle={[styles.expandedPlaceTitle, { color: titleColor }]}
+									/>
 									{headerSubtitle ? (
-										<Text numberOfLines={2} style={[styles.expandedPlaceSubtitle, { color: subtleColor }]}>
-											{headerSubtitle}
-										</Text>
+										<FadeEndText
+											text={headerSubtitle}
+											numberOfLines={2}
+											fadeColor={titleFadeColor}
+											fadeWidth={30}
+											fadeRadius={12}
+											containerStyle={styles.heroTitleFade}
+											textStyle={[styles.expandedPlaceSubtitle, { color: subtleColor }]}
+										/>
 									) : null}
 								</View>
 							</View>
@@ -351,13 +368,25 @@ export default function MapProviderDetailBody({
 											color={placeMarkIconColor}
 										/>
 									</View>
-									<Text numberOfLines={2} style={[styles.expandedPlaceTitle, { color: titleColor }]}>
-										{summary.title}
-									</Text>
+									<FadeEndText
+										text={summary.title}
+										numberOfLines={2}
+										fadeColor={titleFadeColor}
+										fadeWidth={34}
+										fadeRadius={14}
+										containerStyle={styles.heroTitleFade}
+										textStyle={[styles.expandedPlaceTitle, { color: titleColor }]}
+									/>
 									{headerSubtitle ? (
-										<Text numberOfLines={2} style={[styles.expandedPlaceSubtitle, { color: subtleColor }]}>
-											{headerSubtitle}
-										</Text>
+										<FadeEndText
+											text={headerSubtitle}
+											numberOfLines={2}
+											fadeColor={titleFadeColor}
+											fadeWidth={30}
+											fadeRadius={12}
+											containerStyle={styles.heroTitleFade}
+											textStyle={[styles.expandedPlaceSubtitle, { color: subtleColor }]}
+										/>
 									) : null}
 								</View>
 							</View>
@@ -483,13 +512,25 @@ export default function MapProviderDetailBody({
 									color={placeMarkIconColor}
 								/>
 							</View>
-							<Text numberOfLines={2} style={[styles.placeTitle, { color: titleColor }]}>
-								{summary.title}
-							</Text>
+							<FadeEndText
+								text={summary.title}
+								numberOfLines={2}
+								fadeColor={titleFadeColor}
+								fadeWidth={34}
+								fadeRadius={14}
+								containerStyle={styles.heroTitleFade}
+								textStyle={[styles.placeTitle, { color: titleColor }]}
+							/>
 							{headerSubtitle ? (
-								<Text numberOfLines={2} style={[styles.placeSubtitle, { color: subtleColor }]}>
-									{headerSubtitle}
-								</Text>
+								<FadeEndText
+									text={headerSubtitle}
+									numberOfLines={2}
+									fadeColor={titleFadeColor}
+									fadeWidth={30}
+									fadeRadius={12}
+									containerStyle={styles.heroTitleFade}
+									textStyle={[styles.placeSubtitle, { color: subtleColor }]}
+								/>
 							) : null}
 						</View>
 					</Animated.View>

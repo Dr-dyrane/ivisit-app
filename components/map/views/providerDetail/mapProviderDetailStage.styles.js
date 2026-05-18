@@ -274,6 +274,11 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		paddingHorizontal: 10,
 	},
+	floatingTopTitleFade: {
+		alignSelf: "stretch",
+		flexShrink: 1,
+		minWidth: 0,
+	},
 	floatingTopTitle: {
 		fontSize: 17,
 		lineHeight: 21,
@@ -348,6 +353,11 @@ const styles = StyleSheet.create({
 		paddingVertical: 4,
 		alignItems: "center",
 		justifyContent: "center",
+	},
+	collapsedTitleFade: {
+		alignSelf: "stretch",
+		flexShrink: 1,
+		minWidth: 0,
 	},
 	collapsedTitle: {
 		fontSize: 16,

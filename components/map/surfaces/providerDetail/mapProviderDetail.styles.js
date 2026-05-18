@@ -158,6 +158,11 @@ export const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 10 },
 		...squircle(19),
 	},
+	heroTitleFade: {
+		alignSelf: "stretch",
+		flexShrink: 1,
+		minWidth: 0,
+	},
 	expandedPlaceTitle: {
 		fontSize: 22,
 		lineHeight: 27,

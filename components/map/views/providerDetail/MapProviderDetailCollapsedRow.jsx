@@ -8,6 +8,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import FadeEndText from "../../../ui/FadeEndText";
 import styles from "./mapProviderDetailStage.styles";
 
 export default function MapProviderDetailCollapsedRow({
@@ -20,7 +21,9 @@ export default function MapProviderDetailCollapsedRow({
 	mutedColor,
 	iconSurfaceColor,
 	tintColor = "#64748B",
+	fadeColor,
 }) {
+	const resolvedFadeColor = fadeColor || iconSurfaceColor || "#FFFFFF";
 	const iconGlassColors = [iconSurfaceColor, iconSurfaceColor];
 	const actionColors    = action?.primary
 		? [`${tintColor}B8`, `${tintColor}E8`]
@@ -63,13 +66,23 @@ export default function MapProviderDetailCollapsedRow({
 			{/* Summary pressable */}
 			<Pressable onPress={onExpand} style={styles.collapsedSummaryPressable}>
 				<View style={styles.collapsedSummaryCard}>
-					<Text numberOfLines={1} style={[styles.collapsedTitle, { color: titleColor }]}>
-						{title}
-					</Text>
+					<FadeEndText
+						text={title}
+						fadeColor={resolvedFadeColor}
+						fadeWidth={26}
+						fadeRadius={10}
+						containerStyle={styles.collapsedTitleFade}
+						textStyle={[styles.collapsedTitle, { color: titleColor }]}
+					/>
 					{subtitle ? (
-						<Text numberOfLines={1} style={[styles.collapsedSubtitle, { color: mutedColor }]}>
-							{subtitle}
-						</Text>
+						<FadeEndText
+							text={subtitle}
+							fadeColor={resolvedFadeColor}
+							fadeWidth={22}
+							fadeRadius={10}
+							containerStyle={styles.collapsedTitleFade}
+							textStyle={[styles.collapsedSubtitle, { color: mutedColor }]}
+						/>
 					) : null}
 				</View>
 			</Pressable>
