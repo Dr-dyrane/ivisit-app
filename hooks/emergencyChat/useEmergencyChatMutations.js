@@ -32,7 +32,7 @@ const buildOptimisticMessage = (roomId, senderId, senderRole, input) => {
 /**
  * Hook for chat mutations (send message, mark room read).
  */
-export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
+export function useEmergencyChatMutations({ roomId, requestId, senderId, senderRole }) {
   const queryClient = useQueryClient();
   const messagesQueryKey = useMemo(() => emergencyChatQueryKeys.messages(roomId), [roomId]);
 
@@ -96,10 +96,28 @@ export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
     [markReadMutation.mutateAsync]
   );
 
+  const requestDemoDispatchReply = useCallback(
+    (message) => {
+      if (!roomId || !requestId || !message?.id || message.isOptimistic) return;
+
+      emergencyChatService
+        .requestDemoDispatchReply({
+          roomId,
+          requestId,
+          messageId: message.id,
+        })
+        .catch((error) => {
+          console.warn("[useEmergencyChatMutations] Demo dispatch reply failed:", error);
+        });
+    },
+    [requestId, roomId]
+  );
+
   return useMemo(
     () => ({
       sendMessage,
       markRoomRead,
+      requestDemoDispatchReply,
       isSending: sendMessageMutation.isPending,
       isMarkingRead: markReadMutation.isPending,
       sendError: sendMessageMutation.error || null,
@@ -108,6 +126,7 @@ export function useEmergencyChatMutations({ roomId, senderId, senderRole }) {
     [
       sendMessage,
       markRoomRead,
+      requestDemoDispatchReply,
       sendMessageMutation.isPending,
       sendMessageMutation.error,
       markReadMutation.isPending,

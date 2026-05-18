@@ -74,9 +74,10 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
   });
 
   // Mutations
-  const { sendMessage, markRoomRead, isSending: isMutationSending, sendError } =
+  const { sendMessage, markRoomRead, requestDemoDispatchReply, isSending: isMutationSending, sendError } =
     useEmergencyChatMutations({
       roomId: room?.id,
+      requestId,
       senderId: currentUserId,
       senderRole: currentUserChatRole,
     });
@@ -136,12 +137,13 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
 
     try {
       const clientMessageId = generateClientMessageId();
-      await sendMessage({
+      const serverMessage = await sendMessage({
         body: text.trim(),
         kind: "text",
         clientMessageId,
         metadata: {},
       });
+      requestDemoDispatchReply(serverMessage);
       lifecycle.sendSuccess();
       setComposerText("");
     } catch (error) {
@@ -149,7 +151,7 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
     } finally {
       setIsSending(false);
     }
-  }, [isSending, lifecycle, sendMessage]);
+  }, [isSending, lifecycle, requestDemoDispatchReply, sendMessage]);
 
   // Quick action handler
   const handleQuickAction = useCallback(async (action) => {
@@ -157,16 +159,17 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
     
     const clientMessageId = generateClientMessageId("quick");
     try {
-      await sendMessage({
+      const serverMessage = await sendMessage({
         body: action.label,
         kind: "quick_action",
         clientMessageId,
         metadata: { quickActionKey: action.key },
       });
+      requestDemoDispatchReply(serverMessage);
     } catch (error) {
       console.warn("[EmergencyContactDispatchModal] Quick action failed:", error);
     }
-  }, [lifecycle.canSend, sendMessage]);
+  }, [lifecycle.canSend, requestDemoDispatchReply, sendMessage]);
 
   // Mark as read on mount
   const lastMessageId = messages.length > 0 ? messages[messages.length - 1]?.id : null;

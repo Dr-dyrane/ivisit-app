@@ -266,6 +266,38 @@ export async function sendMessage(roomId, input) {
 }
 
 /**
+ * Requests an automated demo Dispatch reply for a user-authored chat message.
+ * The Edge Function no-ops for non-demo requests and handles AI/fallback policy.
+ */
+export async function requestDemoDispatchReply({ roomId, requestId, messageId }) {
+  if (
+    !roomId ||
+    !requestId ||
+    !messageId ||
+    !isValidUUID(String(roomId)) ||
+    !isValidUUID(String(requestId)) ||
+    !isValidUUID(String(messageId))
+  ) {
+    return { success: false, skipped: "invalid_input" };
+  }
+
+  const { data, error } = await withTimeout(
+    supabase.functions.invoke("demo-dispatch-reply", {
+      body: {
+        roomId,
+        requestId,
+        messageId,
+      },
+    }),
+    15000,
+    "Demo dispatch reply timed out"
+  );
+
+  if (error) throw error;
+  return data || { success: true };
+}
+
+/**
  * Marks a room as read up to a specific message (or latest if null).
  */
 export async function markRoomRead(roomId, messageId = null) {
@@ -346,6 +378,7 @@ export const emergencyChatService = {
   ensureRoomForRequest,
   listMessages,
   sendMessage,
+  requestDemoDispatchReply,
   markRoomRead,
   subscribeToMessages,
 };
