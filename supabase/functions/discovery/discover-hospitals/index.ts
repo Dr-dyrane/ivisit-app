@@ -345,7 +345,10 @@ const normaliseEmergencyLevel = (raw = ""): string => {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
-const coordinateKey = (value: unknown, precision = 3): string | null => {
+// PULLBACK NOTE: FIX-PHARMACY-DUPLICATES — Increase coordinate precision for deduplication
+// OLD: precision=3 (~111m) caused same-location providers with different coords to not deduplicate
+// NEW: precision=5 (~1m) ensures pharmacy-level accuracy for coordinate-based deduplication
+const coordinateKey = (value: unknown, precision = 5): string | null => {
   const n = toFiniteNumber(value);
   if (!Number.isFinite(n)) return null;
   return Number(n).toFixed(precision);
