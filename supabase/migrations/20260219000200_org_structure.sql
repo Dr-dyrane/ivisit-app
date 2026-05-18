@@ -203,15 +203,19 @@ BEGIN
     NEW.icu_beds_available := v_icu;
     NEW.total_beds := v_total;
 
-    NEW.bed_availability := jsonb_strip_nulls(
-        COALESCE(NEW.bed_availability, '{}'::jsonb)
-        || jsonb_build_object(
-            'available', v_available,
-            'icu', v_icu,
-            'standard', GREATEST(0, v_available - v_icu),
-            'total', v_total
-        )
-    );
+    IF COALESCE(NEW.provider_type, 'hospital') = 'hospital' THEN
+        NEW.bed_availability := jsonb_strip_nulls(
+            COALESCE(NEW.bed_availability, '{}'::jsonb)
+            || jsonb_build_object(
+                'available', v_available,
+                'icu', v_icu,
+                'standard', GREATEST(0, v_available - v_icu),
+                'total', v_total
+            )
+        );
+    ELSE
+        NEW.bed_availability := COALESCE(NEW.bed_availability, '{}'::jsonb);
+    END IF;
 
     IF TG_OP = 'INSERT' THEN
         NEW.last_availability_update := NOW();
@@ -222,9 +226,13 @@ BEGIN
         NEW.last_availability_update := NOW();
     END IF;
 
-    IF NEW.available_beds <= 0 AND COALESCE(NEW.status, 'available') = 'available' THEN
-        NEW.status := 'full';
-    ELSIF NEW.available_beds > 0 AND COALESCE(NEW.status, '') = 'full' THEN
+    IF COALESCE(NEW.provider_type, 'hospital') = 'hospital' THEN
+        IF NEW.available_beds <= 0 AND COALESCE(NEW.status, 'available') = 'available' THEN
+            NEW.status := 'full';
+        ELSIF NEW.available_beds > 0 AND COALESCE(NEW.status, '') = 'full' THEN
+            NEW.status := 'available';
+        END IF;
+    ELSIF COALESCE(NEW.status, '') = 'full' THEN
         NEW.status := 'available';
     END IF;
 
@@ -496,81 +504,6 @@ CREATE TRIGGER trg_sync_dispatch_eligibility
 
 -- nearby_providers RPC — explore mode (no emergency filter, category-aware)
 -- PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 3: Join with providers table
--- OLD: Only returned hospitals table fields (provider-specific data missing)
--- NEW: LEFT JOIN with providers table to return provider-specific fields
-CREATE OR REPLACE FUNCTION public.nearby_providers(
-  user_lat DOUBLE PRECISION,
-  user_lng DOUBLE PRECISION,
-  provider_type_filter TEXT DEFAULT NULL,
-  radius_km INTEGER DEFAULT 15,
-  result_limit INTEGER DEFAULT 20
-)
-RETURNS TABLE (
-  id UUID,
-  name TEXT,
-  address TEXT,
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  distance DOUBLE PRECISION,
-  verified BOOLEAN,
-  status TEXT,
-  display_id TEXT,
-  provider_type TEXT,
-  emergency_eligible BOOLEAN,
-  dispatch_eligible BOOLEAN,
-  booking_eligible BOOLEAN,
-  verification_status TEXT,
-  provider_source TEXT,
-  category_confidence NUMERIC,
-  phone TEXT,
-  rating DOUBLE PRECISION,
-  image TEXT,
-  place_id TEXT,
-  provider_services JSONB,
-  provider_specialties JSONB,
-  insurance_accepted TEXT[],
-  structured_hours JSONB,
-  appointment_required BOOLEAN,
-  report_turnaround TEXT,
-  age_range TEXT,
-  crisis_line TEXT
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    h.id, h.name, h.address, h.latitude, h.longitude,
-    ST_Distance(
-      h.coordinates::geography,
-      ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography
-    ) / 1000.0 AS distance,
-    h.verified, h.status, h.display_id,
-    h.provider_type, h.emergency_eligible, h.dispatch_eligible, h.booking_eligible,
-    h.verification_status, h.provider_source, h.category_confidence,
-    h.phone, h.rating, h.image, h.place_id,
-    p.provider_services,
-    p.provider_specialties,
-    p.insurance_accepted,
-    p.structured_hours,
-    p.appointment_required,
-    p.report_turnaround,
-    p.age_range,
-    p.crisis_line
-  FROM public.hospitals h
-  LEFT JOIN public.providers p ON h.id = p.hospital_id AND h.provider_type = p.provider_type
-  WHERE
-    h.coordinates IS NOT NULL
-    AND h.status = 'available'
-    AND (provider_type_filter IS NULL OR h.provider_type = provider_type_filter)
-    AND ST_DWithin(
-      h.coordinates::geography,
-      ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography,
-      radius_km * 1000.0
-    )
-  ORDER BY distance ASC
-  LIMIT result_limit;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
 -- RLS: explore providers readable by authenticated users; verified/demo providers publicly readable
 DROP POLICY IF EXISTS "Explore providers are publicly readable" ON public.hospitals;
 CREATE POLICY "Explore providers are publicly readable"

@@ -266,6 +266,7 @@ export default function MapScreen() {
     providerCategory: exploreProviderCategory,
     location: activeLocation,
     enabled: !!exploreProviderCategory,
+    includeGoogle: true,
   });
 
   // PULLBACK NOTE: EXP-7 — Auto-select nearest provider when list opens

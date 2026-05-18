@@ -430,6 +430,7 @@ export default function MapProviderListContent({
     providerCategory,
     location,
     enabled: !!providerCategory,
+    includeGoogle: true,
   });
 
   const tintColor = categoryMeta?.markerTint ?? "#64748B";

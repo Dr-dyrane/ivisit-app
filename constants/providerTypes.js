@@ -165,7 +165,7 @@ export const EXPLORE_CATEGORY_META = Object.freeze({
     markerTint: "#6A1B9A",    // Purple
     orbColors: ["#8B5CF6", "#7C3AED"],  // Purple gradient
     mapboxCategory: "medical",
-    googleType: "diagnostic_imaging_center",
+    googleType: "doctor",
     searchKeywords: ["radiology", "x-ray", "mri", "ultrasound center"],
     spatialCopy: "Imaging available nearby",
     actionLabel: "Care nearby",
@@ -176,7 +176,7 @@ export const EXPLORE_CATEGORY_META = Object.freeze({
     markerTint: "#E65100",    // Orange
     orbColors: ["#F97316", "#EA580C"],  // Orange gradient
     mapboxCategory: "medical",
-    googleType: "urgent_care_center",
+    googleType: "hospital",
     searchKeywords: ["urgent care", "walk-in clinic", "emergency clinic"],
     spatialCopy: "Walk-in care nearby",
     actionLabel: "Open nearby",
@@ -198,7 +198,7 @@ export const EXPLORE_CATEGORY_META = Object.freeze({
     markerTint: "#4527A0",    // Deep Purple
     orbColors: ["#A855F7", "#9333EA"],  // Deep Purple gradient
     mapboxCategory: "medical",
-    googleType: "mental_health",
+    googleType: "wellness_center",
     searchKeywords: ["mental health", "psychiatry", "therapy center", "counseling"],
     spatialCopy: "Nearby support",
     actionLabel: "Support nearby",
@@ -209,7 +209,7 @@ export const EXPLORE_CATEGORY_META = Object.freeze({
     markerTint: "#AD1457",    // Pink
     orbColors: ["#EC4899", "#DB2777"],  // Pink gradient
     mapboxCategory: "medical",
-    googleType: "gynecologist",
+    googleType: "doctor",
     searchKeywords: ["women's health", "gynecology", "obstetrics", "maternity"],
     spatialCopy: "Care around you",
     actionLabel: "Around you",
@@ -220,7 +220,7 @@ export const EXPLORE_CATEGORY_META = Object.freeze({
     markerTint: "#0277BD",    // Light Blue
     orbColors: ["#38BDF8", "#0EA5E9"],  // Light Blue gradient
     mapboxCategory: "medical",
-    googleType: "pediatrician",
+    googleType: "doctor",
     searchKeywords: ["pediatrics", "children's hospital", "child health", "paediatric"],
     spatialCopy: "Child care nearby",
     actionLabel: "Around you",

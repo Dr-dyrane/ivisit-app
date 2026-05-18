@@ -1,6 +1,6 @@
 # 📸 Schema Snapshot
 
-Generated on 2/19/2026
+Generated on 5/18/2026
 
 ## 📄 20260219000100_identity.sql
 
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.id_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_id UUID NOT NULL,
     display_id TEXT NOT NULL UNIQUE,
-    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet')),
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('patient', 'provider', 'hospital', 'admin', 'dispatcher', 'doctor', 'ambulance', 'driver', 'emergency_request', 'visit', 'organization', 'payment', 'notification', 'wallet', 'org_admin', 'viewer', 'sponsor')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS public.preferences (
     privacy_share_medical_profile BOOLEAN NOT NULL DEFAULT false,
     privacy_share_emergency_contacts BOOLEAN NOT NULL DEFAULT false,
     notification_sounds_enabled BOOLEAN NOT NULL DEFAULT true,
+    billing_country_code TEXT,
+    billing_currency_code TEXT,
     view_preferences JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -118,6 +120,7 @@ CREATE TABLE IF NOT EXISTS public.subscribers (
     new_user BOOLEAN DEFAULT true,
     welcome_email_sent BOOLEAN DEFAULT false,
     subscription_date TIMESTAMPTZ DEFAULT NOW(),
+    metadata JSONB DEFAULT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -181,11 +184,14 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     features TEXT[] DEFAULT '{}',
     emergency_level TEXT,
     available_beds INTEGER DEFAULT 0,
+    icu_beds_available INTEGER DEFAULT 0,
+    total_beds INTEGER DEFAULT 0,
     ambulances_count INTEGER DEFAULT 0,
     wait_time TEXT,
     price_range TEXT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
+    coordinates GEOMETRY(POINT, 4326),  -- Shared geospatial field
     verified BOOLEAN DEFAULT false,
     verification_status TEXT DEFAULT 'pending',
     status TEXT DEFAULT 'available',
@@ -200,6 +206,58 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     last_availability_update TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `hospital_import_logs`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.hospital_import_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    import_type TEXT NOT NULL,
+    location_lat DOUBLE PRECISION,
+    location_lng DOUBLE PRECISION,
+    radius_km NUMERIC,
+    search_query TEXT,
+    status TEXT DEFAULT 'running',
+    total_found INTEGER DEFAULT 0,
+    imported_count INTEGER DEFAULT 0,
+    skipped_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    errors JSONB,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT hospital_import_logs_counts_non_negative CHECK (
+        COALESCE(total_found, 0) >= 0
+        AND COALESCE(imported_count, 0) >= 0
+        AND COALESCE(skipped_count, 0) >= 0
+        AND COALESCE(error_count, 0) >= 0
+    )
+);
+```
+
+### Table: `providers`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  hospital_id UUID NOT NULL REFERENCES public.hospitals(id) ON DELETE CASCADE,
+  provider_type TEXT NOT NULL CHECK (provider_type IN (
+    'hospital', 'pharmacy', 'lab', 'radiology', 'urgent_care',
+    'clinic', 'mental_health', 'womens_care', 'pediatrics'
+  )),
+  provider_services JSONB DEFAULT '{}'::jsonb,
+  provider_specialties JSONB DEFAULT '{}'::jsonb,
+  insurance_accepted TEXT[] DEFAULT ARRAY[]::text[],
+  structured_hours JSONB DEFAULT '{}'::jsonb,
+  appointment_required BOOLEAN DEFAULT false,
+  report_turnaround TEXT,
+  age_range TEXT,
+  crisis_line TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(hospital_id, provider_type)
 );
 ```
 
@@ -263,6 +321,46 @@ CREATE TABLE IF NOT EXISTS public.emergency_doctor_assignments (
 );
 ```
 
+### Table: `hospital_media`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.hospital_media (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hospital_id UUID NOT NULL REFERENCES public.hospitals(id) ON DELETE CASCADE,
+    media_role TEXT NOT NULL DEFAULT 'hero',
+    source_type TEXT NOT NULL,
+    source_provider TEXT,
+    remote_url TEXT,
+    website_url TEXT,
+    provider_photo_ref TEXT,
+    attribution_text TEXT,
+    attribution_html TEXT,
+    attribution_required BOOLEAN NOT NULL DEFAULT false,
+    confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+    is_primary BOOLEAN NOT NULL DEFAULT false,
+    status TEXT NOT NULL DEFAULT 'active',
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT hospital_media_media_role_check CHECK (
+        media_role IN ('hero', 'logo', 'gallery')
+    ),
+    CONSTRAINT hospital_media_source_type_check CHECK (
+        source_type IN (
+            'hospital_upload',
+            'official_website_image',
+            'provider_photo',
+            'domain_logo',
+            'deterministic_fallback',
+            'seed_image'
+        )
+    ),
+    CONSTRAINT hospital_media_status_check CHECK (
+        status IN ('active', 'archived', 'failed')
+    )
+);
+```
+
 ## 📄 20260219000300_logistics.sql
 
 ### Table: `ambulances`
@@ -275,11 +373,19 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
     profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE, -- Driver Profile
     type TEXT,
     call_sign TEXT,
-    status TEXT DEFAULT 'available' CHECK (status IN ('available', 'busy', 'on_trip', 'maintenance')),
+    -- Dispatch lifecycle statuses (matches automations + emergency_logic RPCs)
+    status TEXT NOT NULL DEFAULT 'available' CHECK (status IN (
+        'available', 'dispatched', 'on_trip', 'en_route', 'on_scene', 'returning',
+        'maintenance', 'offline', 'pending_approval'
+    )),
     location GEOMETRY(POINT, 4326),
     vehicle_number TEXT,
     license_plate TEXT,
     base_price NUMERIC,
+    crew JSONB DEFAULT '{}',
+    -- Real-time dispatch fields
+    eta TIMESTAMPTZ,                          -- ETA to patient/destination
+    current_call UUID,                         -- Active emergency_request UUID
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -295,6 +401,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     ambulance_id UUID REFERENCES public.ambulances(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'completed', 'failed', 'refunded', 'declined')),
     service_type TEXT NOT NULL CHECK (service_type IN ('ambulance', 'bed', 'booking')),
     
     -- Request snapshots
@@ -302,15 +409,24 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     specialty TEXT,
     ambulance_type TEXT,
     bed_number TEXT,
+    bed_count TEXT,
+    bed_type TEXT,
     patient_snapshot JSONB DEFAULT '{}',
+    shared_data_snapshot JSONB,
     communication_room_id UUID,
-    
+
+    -- Payment
+    payment_method_id TEXT,
+    payment_id UUID,
+
     -- Real-time tracking
     pickup_location GEOMETRY(POINT, 4326),
     destination_location GEOMETRY(POINT, 4326),
     patient_location GEOMETRY(POINT, 4326),
     responder_location GEOMETRY(POINT, 4326),
     responder_heading DOUBLE PRECISION,
+    patient_heading DOUBLE PRECISION,
+    estimated_arrival TEXT,
     
     -- Responder snapshot
     responder_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -325,13 +441,37 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     
     -- Costs
     total_cost NUMERIC DEFAULT 0,
-    payment_status TEXT DEFAULT 'pending',
+    confirmed_cost NUMERIC,
+    base_cost NUMERIC,
+    distance_surcharge NUMERIC,
+    urgency_surcharge NUMERIC,
+    cost_breakdown JSONB,
     display_id TEXT UNIQUE,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at TIMESTAMPTZ,
     cancelled_at TIMESTAMPTZ
+);
+```
+
+### Table: `emergency_status_transitions`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_status_transitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    from_status TEXT CHECK (from_status IS NULL OR from_status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    to_status TEXT NOT NULL CHECK (to_status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
+    actor_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    actor_role TEXT,
+    source TEXT NOT NULL DEFAULT 'unknown',
+    reason TEXT NOT NULL DEFAULT 'status_transition',
+    transition_metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    request_snapshot JSONB NOT NULL DEFAULT '{}'::JSONB,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT emergency_status_transitions_status_change_chk CHECK (from_status IS NULL OR from_status <> to_status)
 );
 ```
 
@@ -343,8 +483,18 @@ CREATE TABLE IF NOT EXISTS public.visits (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL,
+    -- Hospital snapshot (denormalised from hospitals join for offline/history display)
     hospital_name TEXT,
+    hospital TEXT,                             -- legacy alias for hospital_name (mapFromDb reads both)
+    hospital_image TEXT,
+    address TEXT,
+    phone TEXT,
+    image TEXT,                                -- alias for hospital_image used by legacy triggers
+    -- Clinician snapshot
     doctor_name TEXT,
+    doctor TEXT,                               -- legacy alias for doctor_name (mapFromDb reads both)
+    doctor_image TEXT,
+    -- Visit metadata
     specialty TEXT,
     date TEXT,
     time TEXT,
@@ -352,7 +502,24 @@ CREATE TABLE IF NOT EXISTS public.visits (
     status TEXT DEFAULT 'upcoming',
     notes TEXT,
     cost TEXT,
-    -- Lifecycle & Rating (recovered from legacy)
+    summary TEXT,
+    preparation TEXT[],
+    prescriptions TEXT[],
+    -- Booking details
+    room_number TEXT,
+    estimated_duration TEXT,
+    meeting_link TEXT,
+    insurance_covered BOOLEAN DEFAULT TRUE,
+    next_visit TEXT,
+    -- Patient location at time of booking
+    latitude NUMERIC,
+    longitude NUMERIC,
+    -- Financial
+    tip_amount NUMERIC DEFAULT 0,
+    tip_currency TEXT DEFAULT 'USD',
+    tipped_at TIMESTAMPTZ,
+    tip_payment_id UUID,
+    -- Lifecycle & Rating
     lifecycle_state TEXT,
     lifecycle_updated_at TIMESTAMPTZ DEFAULT NOW(),
     rating SMALLINT,
@@ -361,6 +528,7 @@ CREATE TABLE IF NOT EXISTS public.visits (
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT visits_tip_amount_nonnegative_chk CHECK (tip_amount IS NULL OR tip_amount >= 0),
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
 ```
@@ -482,13 +650,18 @@ CREATE TABLE IF NOT EXISTS public.wallet_ledger (
 CREATE TABLE IF NOT EXISTS public.payment_methods (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
     type TEXT NOT NULL,
     provider TEXT NOT NULL,
     last4 TEXT,
     brand TEXT,
+    expiry_month INTEGER CHECK (expiry_month BETWEEN 1 AND 12),
+    expiry_year INTEGER,
     is_default BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -506,11 +679,33 @@ CREATE TABLE IF NOT EXISTS public.payments (
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded', 'declined')),
     stripe_payment_intent_id TEXT UNIQUE,
     ivisit_fee_amount NUMERIC DEFAULT 0.00,
+    metadata JSONB DEFAULT '{}',             -- stores fee_amount, method_id, extra context
     provider_response JSONB DEFAULT '{}',
     processed_at TIMESTAMPTZ,
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `exchange_rates`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.exchange_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_currency TEXT NOT NULL,
+    quote_currency TEXT NOT NULL,
+    rate NUMERIC NOT NULL CHECK (rate > 0),
+    source TEXT NOT NULL DEFAULT 'manual_seed',
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    stale_after TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT exchange_rates_currency_code_chk CHECK (
+        base_currency ~ '^[A-Z]{3}$' AND quote_currency ~ '^[A-Z]{3}$'
+    ),
+    CONSTRAINT exchange_rates_base_quote_unique UNIQUE (base_currency, quote_currency)
 );
 ```
 
@@ -521,16 +716,11 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     provider_name TEXT NOT NULL,
-    policy_number TEXT,
-    plan_type TEXT DEFAULT 'basic',
-    status TEXT DEFAULT 'active',
+    policy_number TEXT NOT NULL,
+    policy_type TEXT DEFAULT 'basic',
+    coverage_amount NUMERIC(10,2) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
-    verified BOOLEAN DEFAULT false,
-    coverage_percentage INTEGER DEFAULT 80,
-    coverage_details JSONB DEFAULT '{}',
-    linked_payment_method TEXT,
-    starts_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -574,9 +764,11 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     read BOOLEAN NOT NULL DEFAULT false,
     priority TEXT DEFAULT 'normal',
     action_type TEXT,
+    target_id UUID,
     action_data JSONB,
     metadata JSONB DEFAULT '{}',
     display_id TEXT UNIQUE,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -684,6 +876,20 @@ CREATE TABLE IF NOT EXISTS public.search_history (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     query TEXT NOT NULL,
     result_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `search_selections`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.search_selections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    query TEXT NOT NULL,
+    result_type TEXT NOT NULL,
+    result_id TEXT NOT NULL,
+    source TEXT DEFAULT 'search',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```

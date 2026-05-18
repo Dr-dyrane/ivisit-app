@@ -46,7 +46,7 @@ export function useNearbyProviders({
   const lng = location?.longitude;
   const hasLocation = Number.isFinite(lat) && Number.isFinite(lng);
 
-  const queryKey = ["providers", providerCategory, lat, lng, radius];
+  const queryKey = ["providers", providerCategory, lat, lng, radius, includeGoogle];
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,

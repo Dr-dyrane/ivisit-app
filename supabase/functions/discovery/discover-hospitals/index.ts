@@ -222,26 +222,22 @@ const ER_ELIGIBLE_LEVELS = [EMERGENCY_LEVELS.ER, EMERGENCY_LEVELS.GENERAL_HOSPIT
 const GOOGLE_TYPE_TO_PROVIDER: Record<string, ProviderType> = {
   hospital: PROVIDER_TYPES.HOSPITAL,
   pharmacy: PROVIDER_TYPES.PHARMACY,
+  drugstore: PROVIDER_TYPES.PHARMACY,
   medical_lab: PROVIDER_TYPES.LAB,
-  diagnostic_imaging_center: PROVIDER_TYPES.RADIOLOGY,
-  urgent_care_center: PROVIDER_TYPES.URGENT_CARE,
   doctor: PROVIDER_TYPES.CLINIC,
-  mental_health: PROVIDER_TYPES.MENTAL_HEALTH,
-  gynecologist: PROVIDER_TYPES.WOMENS_CARE,
-  pediatrician: PROVIDER_TYPES.PEDIATRICS,
 };
 
 // Provider category → Google Places includedType(s)
 const CATEGORY_TO_GOOGLE_TYPES: Record<string, string[]> = {
   hospital: ["hospital"],
-  pharmacy: ["pharmacy"],
+  pharmacy: ["pharmacy", "drugstore"],
   lab: ["medical_lab"],
-  radiology: ["diagnostic_imaging_center"],
-  urgent_care: ["urgent_care_center"],
-  clinic: ["doctor"],
-  mental_health: ["mental_health"],
-  womens_care: ["gynecologist", "obstetrics_gynecology_clinic"],
-  pediatrics: ["pediatrician", "childrens_hospital"],
+  radiology: ["doctor", "hospital"],
+  urgent_care: ["doctor", "hospital"],
+  clinic: ["doctor", "hospital"],
+  mental_health: ["doctor", "wellness_center"],
+  womens_care: ["doctor", "hospital"],
+  pediatrics: ["doctor", "hospital"],
 };
 
 // PULLBACK NOTE: EXPLORE-CARE-GAP-4 — Granular Google Places query strings for sponsor-backed search
@@ -617,11 +613,22 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
   const googleType = toSafeString(row?.google_type);
   const categoryFromType = googleType ? GOOGLE_TYPE_TO_PROVIDER[googleType] : undefined;
   const nameClassification = classifyProviderByName(toSafeString(row?.name));
+  const requestedProviderType = (CATEGORY_TO_GOOGLE_TYPES[requestedCategory]
+    ? requestedCategory
+    : PROVIDER_TYPES.HOSPITAL) as ProviderType;
+  const categoryMatchesRequest = categoryFromType === requestedProviderType;
+  const canTrustGoogleType =
+    !!categoryFromType &&
+    (requestedProviderType === PROVIDER_TYPES.HOSPITAL ||
+      categoryMatchesRequest ||
+      googleType === "pharmacy" ||
+      googleType === "drugstore" ||
+      googleType === "medical_lab");
 
   // Source confidence: verified Google type > name heuristic > requested category fallback
   let providerType: ProviderType;
   let categoryConfidence: number;
-  if (categoryFromType) {
+  if (canTrustGoogleType) {
     providerType = categoryFromType;
     categoryConfidence = 0.75;
   } else if (nameClassification.confidence >= 0.50) {
@@ -629,7 +636,7 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
     categoryConfidence = nameClassification.confidence;
   } else {
     // Fall back to the category the caller requested (e.g. "pharmacy" explore mode)
-    providerType = (CATEGORY_TO_GOOGLE_TYPES[requestedCategory] ? requestedCategory : PROVIDER_TYPES.HOSPITAL) as ProviderType;
+    providerType = requestedProviderType;
     categoryConfidence = 0.30;
   }
 
@@ -707,6 +714,13 @@ const toMergeKey = (row: any): string => {
   return `id:${id}`;
 };
 
+const toGeometryPoint = (latitude: unknown, longitude: unknown): string | null => {
+  const lat = toFiniteNumber(latitude);
+  const lng = toFiniteNumber(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return `SRID=4326;POINT(${lng} ${lat})`;
+};
+
 const normalizeMapboxPlace = (
   place: any,
   fallbackLat: number,
@@ -774,6 +788,10 @@ const normalizeGooglePlace = (
       Math.round(longitude * 10000)
     )}`;
   const googlePhotoName = toSafeString(place?.photos?.[0]?.name);
+  const googleTypes = Array.isArray(place?.types)
+    ? place.types.map((type: unknown) => toSafeString(type)).filter(Boolean)
+    : [];
+  const primaryType = toSafeString(place?.primaryType, googleTypes[0] || "");
   const proxyImage =
     googlePhotoName && toSafeString(placeId)
       ? buildHospitalMediaProxyUrl(String(placeId))
@@ -797,6 +815,8 @@ const normalizeGooglePlace = (
       "",
     website: place?.websiteUri ?? place?.website ?? "",
     rating: toFiniteNumber(place?.rating) ?? 0,
+    google_type: primaryType,
+    google_types: googleTypes,
     image: proxyImage,
     image_source: googlePhotoName ? "provider_photo" : "",
     image_confidence: googlePhotoName ? 0.78 : 0,
@@ -834,7 +854,7 @@ const fetchGoogleProviderPlaces = async ({
       ? "https://places.googleapis.com/v1/places:searchText"
       : "https://places.googleapis.com/v1/places:searchNearby";
   const fieldMask =
-    "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos";
+    "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos,places.primaryType,places.types";
   // PULLBACK NOTE: FIX-A — derive includedTypes from category mapping, fallback to hospital
   // OLD: hardcoded ["hospital"] / "hospital" regardless of caller
   // NEW: CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"]
@@ -891,13 +911,16 @@ const fetchGoogleProviderPlaces = async ({
 // NEW: Pass provider_type for category-specific fallback selection
 const toHospitalUpsertRow = (row: any) => {
   const providerCategory = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL);
+  const latitude = toFiniteNumber(row?.latitude);
+  const longitude = toFiniteNumber(row?.longitude);
   return {
     place_id: row?.place_id,
     name: row?.name || "Unnamed Hospital",
     address: row?.address || "Address unavailable",
     phone: typeof row?.phone === "string" && row.phone.trim() ? row.phone.trim() : null,
-    latitude: toFiniteNumber(row?.latitude),
-    longitude: toFiniteNumber(row?.longitude),
+    latitude,
+    longitude,
+    coordinates: toGeometryPoint(latitude, longitude),
     rating: toFiniteNumber(row?.rating) ?? 0,
     image:
       toSafeString(row?.image) ||
@@ -1085,7 +1108,7 @@ serve(async (req) => {
     const limit = clampLimit(body?.limit);
     const includeProviderDiscovery = body?.includeProviderDiscovery !== false;
     const includeMapboxPlaces = body?.includeMapboxPlaces !== false;
-    const includeGooglePlaces = body?.includeGooglePlaces !== false;
+    const includeGooglePlaces = body?.includeGooglePlaces === true;
     const mergeWithDatabase = body?.mergeWithDatabase !== false;
     // EXP-2: Provider category for explore mode. Defaults to "hospital" (emergency flow).
     // Callers in explore mode pass e.g. "pharmacy", "lab", "clinic".
@@ -1111,6 +1134,8 @@ serve(async (req) => {
     let normalizedProviderHospitals: any[] = [];
     let providerDiscoverySkipped = false;
     let providerDiscoverySkipReason = "";
+    let providerPersistenceCount = 0;
+    let providerPersistenceErrorCount = 0;
 
     const radiusKm = Math.max(1, Math.round(radius / 1000));
 
@@ -1341,7 +1366,53 @@ serve(async (req) => {
 
           if (upsertError) {
             console.error("[discover-hospitals] provider upsert failed", upsertError);
+            const persistedPlaceIds: string[] = [];
+            for (const row of upsertRows) {
+              const { error: rowUpsertError } = await supabaseClient
+                .from("hospitals")
+                .upsert(row, {
+                  onConflict: "place_id",
+                  ignoreDuplicates: false,
+                });
+
+              if (!rowUpsertError) {
+                persistedPlaceIds.push(toSafeString(row?.place_id));
+                continue;
+              }
+
+              if (rowUpsertError?.code === "23505") {
+                const { data: coordinateMatches, error: coordinateLookupError } = await supabaseClient
+                  .from("hospitals")
+                  .select("id, provider_type")
+                  .eq("latitude", row.latitude)
+                  .eq("longitude", row.longitude)
+                  .limit(1);
+                const coordinateMatch = Array.isArray(coordinateMatches) ? coordinateMatches[0] : null;
+
+                if (!coordinateLookupError && coordinateMatch?.id && coordinateMatch?.provider_type === row.provider_type) {
+                  const { error: coordinateUpdateError } = await supabaseClient
+                    .from("hospitals")
+                    .update(row)
+                    .eq("id", coordinateMatch.id);
+
+                  if (!coordinateUpdateError) {
+                    persistedPlaceIds.push(toSafeString(row?.place_id));
+                    continue;
+                  }
+                }
+              }
+
+              providerPersistenceErrorCount += 1;
+              console.error("[discover-hospitals] provider row upsert failed", {
+                code: rowUpsertError?.code,
+                message: rowUpsertError?.message,
+                providerType: row?.provider_type,
+              });
+            }
+            providerPersistenceCount += persistedPlaceIds.filter(Boolean).length;
+            providerPlaceIds.splice(0, providerPlaceIds.length, ...persistedPlaceIds.filter(Boolean));
           } else {
+            providerPersistenceCount += upsertRows.length;
             // PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 2: Upsert to providers table
             // OLD: Only upsert to hospitals table (provider-specific data missing)
             // NEW: Also upsert to providers table for provider-specific data enrichment
@@ -1505,6 +1576,8 @@ serve(async (req) => {
           provider_discovery_enabled: includeProviderDiscovery,
           provider_discovery_skipped: providerDiscoverySkipped,
           provider_discovery_skip_reason: providerDiscoverySkipReason || null,
+          provider_persistence_count: providerPersistenceCount,
+          provider_persistence_error_count: providerPersistenceErrorCount,
           database_comfort_target: databaseComfortTarget,
           local_database_comfort_target: localComfortTarget,
           local_nearby_radius_km: MAP_LOCAL_NEARBY_RADIUS_KM,
