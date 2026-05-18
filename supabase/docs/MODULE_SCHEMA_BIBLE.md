@@ -45,7 +45,6 @@ Date-ordered migrations that extend a pillar without owning its contract. Owners
 |---|---|---|
 | `20260412050000_hospital_media_pipeline.sql` | `hospital_media` table + `hospitals.image_source/image_confidence/image_attribution_text/image_synced_at` columns | `org_structure` |
 | `20260423000100_active_request_concurrency_guard.sql` | Unique partial indexes on `emergency_requests(user_id)` preventing duplicate active ambulance/bed requests per user | `logistics` |
-| `20260518042647_add_location_unique_constraint.sql` | `UNIQUE(latitude, longitude)` constraint on `hospitals` table to prevent duplicate locations | `org_structure` |
 
 Rule: post-pillar patches may add columns, indexes, or guards. Contract renames, table removals, or RPC signature changes must land in the owner pillar instead.
 
