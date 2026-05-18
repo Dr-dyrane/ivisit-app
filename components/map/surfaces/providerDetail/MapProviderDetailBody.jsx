@@ -29,7 +29,7 @@ import {
 	UIManager,
 	View,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { COLORS } from "../../../../constants/colors";
@@ -63,6 +63,13 @@ function renderIcon(item, color, size = 14) {
 	if (!item?.icon) return null;
 	if (item.iconType === "material") {
 		return <MaterialCommunityIcons name={item.icon} size={size} color={color} />;
+	}
+	// PULLBACK NOTE: Provider Details — explicit Uber brand icon for Book ride
+	// OLD: only "material" (MCI) and default (Ionicons) branches
+	// NEW: "fa5brand" branch so action row can render FontAwesome5 brand glyphs
+	//      (e.g. `uber`) — matches the deep-link target wired in bookRideUtils.js.
+	if (item.iconType === "fa5brand") {
+		return <FontAwesome5 name={item.icon} size={size} color={color} brand />;
 	}
 	return <Ionicons name={item.icon} size={size} color={color} />;
 }

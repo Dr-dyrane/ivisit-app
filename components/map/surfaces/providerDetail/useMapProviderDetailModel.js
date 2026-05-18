@@ -117,43 +117,86 @@ function formatHoursToday(structuredHours) {
 	return null;
 }
 
+// PULLBACK NOTE: Provider Details perfection pass — separate open/closed status row
+// OLD: only "Today · 09:00 – 17:00" row when data present
+// NEW: when `open_now` is available, prepend a clear status row so the user gets
+//      the most important answer ("can this place help me now?") at a glance.
 function buildHoursRows(structuredHours) {
-	const todayLine = formatHoursToday(structuredHours);
-	if (todayLine) {
-		return [
-			{ label: "Today", value: todayLine, icon: "time-outline" },
-		];
+	const rows = [];
+	const hasOpenNow =
+		structuredHours && typeof structuredHours === "object" &&
+		typeof structuredHours.open_now === "boolean";
+	if (hasOpenNow) {
+		rows.push({
+			label: "Status",
+			value: structuredHours.open_now ? "Open now" : "Closed now",
+			icon: structuredHours.open_now ? "radio-button-on-outline" : "radio-button-off-outline",
+		});
 	}
-	return [
-		{ label: "Today", value: "Hours not available", icon: "time-outline", muted: true },
-	];
+	const todayLine = formatHoursToday(
+		hasOpenNow
+			? { ...structuredHours, open_now: undefined }
+			: structuredHours,
+	);
+	if (todayLine) {
+		rows.push({ label: "Today", value: todayLine, icon: "time-outline" });
+	} else if (!hasOpenNow) {
+		rows.push({
+			label: "Today",
+			value: "Hours not available",
+			icon: "time-outline",
+			muted: true,
+		});
+	}
+	return rows;
 }
 
 // ─── Section row builders ────────────────────────────────────────────────────
 
+// PULLBACK NOTE: Provider Details perfection pass — drop redundant Address row
+// OLD: Contact section always led with Address (already shown as place-header subtitle)
+// NEW: Phone + Website only; Address shows once in the header. Empty state =
+//      a single calm muted row, not a blank card.
 function buildContactRows(provider) {
 	const rows = [];
-	rows.push({
-		label: "Address",
-		value: provider?.address || "Address not listed",
-		icon: "location-outline",
-		muted: !provider?.address,
-		valueNumberOfLines: 2,
-	});
-	if (provider?.phone) {
+	const phone = typeof provider?.phone === "string" ? provider.phone.trim() : "";
+	const website = provider?.googleWebsite ?? provider?.website ?? null;
+	if (phone) {
 		rows.push({
 			label: "Phone",
-			value: provider.phone,
+			value: phone,
 			icon: "call-outline",
 		});
+	} else {
+		rows.push({
+			label: "Phone",
+			value: "Phone not listed",
+			icon: "call-outline",
+			muted: true,
+		});
 	}
-	const website = provider?.googleWebsite ?? provider?.website ?? null;
 	if (website) {
 		rows.push({
 			label: "Website",
 			value: website,
 			icon: "globe-outline",
 			valueNumberOfLines: 1,
+		});
+	} else {
+		rows.push({
+			label: "Website",
+			value: "Website not listed",
+			icon: "globe-outline",
+			muted: true,
+		});
+	}
+	if (!provider?.address) {
+		rows.push({
+			label: "Address",
+			value: "Address not listed",
+			icon: "location-outline",
+			muted: true,
+			valueNumberOfLines: 2,
 		});
 	}
 	return rows;
@@ -193,11 +236,43 @@ function buildCapacityRows(provider) {
 	if (level) {
 		rows.push({
 			label: "Emergency level",
-			value: level,
+			value: humanizeKey(String(level)),
 			icon: "medkit-outline",
 		});
 	}
+	// PULLBACK NOTE: Provider Details perfection pass — surface availability freshness
+	// OLD: lastAvailabilityUpdate field never rendered
+	// NEW: calm timestamp row so trust signal is visible (or muted fallback)
+	const lastUpdate = provider?.lastAvailabilityUpdate;
+	const formattedUpdate = formatRelativeUpdate(lastUpdate);
+	rows.push({
+		label: "Last updated",
+		value: formattedUpdate || "Not reported",
+		icon: "refresh-outline",
+		muted: !formattedUpdate,
+	});
 	return rows;
+}
+
+function formatRelativeUpdate(input) {
+	if (!input) return null;
+	const date = input instanceof Date ? input : new Date(input);
+	const ts = date.getTime();
+	if (!Number.isFinite(ts)) return null;
+	const diffMs = Date.now() - ts;
+	if (diffMs < 0) return "Just now";
+	const min = Math.round(diffMs / 60000);
+	if (min < 1) return "Just now";
+	if (min < 60) return `${min} min ago`;
+	const hr = Math.round(min / 60);
+	if (hr < 24) return `${hr} hr ago`;
+	const day = Math.round(hr / 24);
+	if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
+	try {
+		return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	} catch {
+		return null;
+	}
 }
 
 function buildServicesRows(provider) {
@@ -258,6 +333,17 @@ function buildServicesRows(provider) {
 	return rows;
 }
 
+// PULLBACK NOTE: Provider Details perfection pass — type-sensitive Specialties
+// OLD: Specialties section always rendered (muted fallback) for every type,
+//      so pharmacies/labs/radiology centres showed an irrelevant empty card
+// NEW: returns null for those provider types when no data exists → section is
+//      suppressed upstream instead of producing a blank-feeling card.
+const SPECIALTIES_IRRELEVANT_TYPES = new Set([
+	PROVIDER_TYPES.PHARMACY,
+	PROVIDER_TYPES.LAB,
+	PROVIDER_TYPES.RADIOLOGY,
+]);
+
 function buildSpecialtiesRows(provider) {
 	const rows = [];
 
@@ -285,6 +371,7 @@ function buildSpecialtiesRows(provider) {
 	}
 
 	if (rows.length === 0) {
+		if (SPECIALTIES_IRRELEVANT_TYPES.has(provider?.providerType)) return null;
 		rows.push({
 			label: "Focus areas",
 			value: "Not listed yet",
@@ -327,23 +414,49 @@ function buildProviderInfoRows(provider) {
 	return rows;
 }
 
+// PULLBACK NOTE: Provider Details perfection pass — Insurance always honest
+// OLD: empty insurance → section suppressed entirely (felt like a data hole)
+// NEW: always renders a calm muted fallback so users know it's unconfirmed,
+//      never a silent gap. Languages folded in when present.
 function buildInsuranceRows(provider) {
+	const rows = [];
 	const list = Array.isArray(provider?.insuranceAccepted)
 		? provider.insuranceAccepted.filter(Boolean)
 		: [];
 	if (list.length > 0) {
-		return [
-			{
-				label: "Accepted",
-				value: list.join(" · "),
-				icon: "shield-checkmark-outline",
-				valueNumberOfLines: 3,
-			},
-		];
+		rows.push({
+			label: "Accepted",
+			value: list.join(" · "),
+			icon: "shield-checkmark-outline",
+			valueNumberOfLines: 3,
+		});
+	} else {
+		rows.push({
+			label: "Accepted",
+			value: "Insurance information unavailable",
+			icon: "shield-outline",
+			muted: true,
+			valueNumberOfLines: 2,
+		});
 	}
-	return [];
+	const languages = Array.isArray(provider?.languages)
+		? provider.languages.filter(Boolean)
+		: [];
+	if (languages.length > 0) {
+		rows.push({
+			label: "Languages",
+			value: languages.map(humanizeKey).join(" · "),
+			icon: "language-outline",
+			valueNumberOfLines: 2,
+		});
+	}
+	return rows;
 }
 
+// PULLBACK NOTE: Provider Details perfection pass — trust always visible
+// OLD: Verification + Availability only rendered when affirmatively true
+//      → pending/unconfirmed providers showed no trust info at all
+// NEW: both rows always present; calm pending/unconfirmed copy when missing.
 function buildAboutRows(provider) {
 	const rows = [];
 
@@ -362,6 +475,13 @@ function buildAboutRows(provider) {
 			value: "Verified provider",
 			icon: "checkmark-circle-outline",
 		});
+	} else {
+		rows.push({
+			label: "Verification",
+			value: "Verification pending",
+			icon: "checkmark-circle-outline",
+			muted: true,
+		});
 	}
 
 	if (provider?.realTimeSync === true) {
@@ -369,6 +489,13 @@ function buildAboutRows(provider) {
 			label: "Availability",
 			value: "Live updates available",
 			icon: "pulse-outline",
+		});
+	} else {
+		rows.push({
+			label: "Availability",
+			value: "Live availability not confirmed",
+			icon: "pulse-outline",
+			muted: true,
 		});
 	}
 
@@ -573,15 +700,19 @@ export default function useMapProviderDetailModel({
 			primary: !!phone,
 			accessibilityLabel: phone ? "Call provider" : "Phone not listed",
 		});
+		// PULLBACK NOTE: Provider Details — explicit Uber identity for ride CTA
+		// OLD: generic `car` (MaterialCommunityIcons) — felt like a stock taxi
+		// NEW: FontAwesome5 brand `uber` — matches the actual deep-link target
+		//      wired in utils/bookRideUtils.js (Uber universal/native URLs).
 		list.push({
 			key: "ride",
-			icon: "car",
-			iconType: "material",
+			icon: "uber",
+			iconType: "fa5brand",
 			label: "Book ride",
 			onPress: hasCoords ? handleBookRide : undefined,
 			disabled: !hasCoords,
 			primary: !phone && hasCoords,
-			accessibilityLabel: hasCoords ? "Book a ride to this provider" : "Location unavailable",
+			accessibilityLabel: hasCoords ? "Book an Uber to this provider" : "Location unavailable",
 		});
 		list.push({
 			key: "directions",
@@ -621,15 +752,14 @@ export default function useMapProviderDetailModel({
 	);
 
 	// ─ Info sections (each maps directly to a TrackingDetailsCard) ───────────
+	// PULLBACK NOTE: Provider Details perfection pass — reorder + suppress
+	// OLD: Contact → Hours → Capacity → Services → Specialties → Care → Insurance → About
+	// NEW: Hours → Capacity → Services → Specialties → Care → Insurance → About → Contact
+	//      (matches spec hierarchy: time-sensitive first, contact last; address
+	//       lives in the place-header subtitle so Contact is reference, not lead).
+	//      Specialties suppressed for pharmacy/lab/radiology when truly empty.
 	const infoSections = useMemo(() => {
 		const sections = [];
-
-		sections.push({
-			key: "contact",
-			headerLabel: "Contact",
-			rows: buildContactRows(provider),
-			collapsible: false,
-		});
 
 		sections.push({
 			key: "hours",
@@ -655,12 +785,15 @@ export default function useMapProviderDetailModel({
 			collapsible: false,
 		});
 
-		sections.push({
-			key: "specialties",
-			headerLabel: "Specialties",
-			rows: buildSpecialtiesRows(provider),
-			collapsible: false,
-		});
+		const specialtiesRows = buildSpecialtiesRows(provider);
+		if (specialtiesRows) {
+			sections.push({
+				key: "specialties",
+				headerLabel: "Specialties",
+				rows: specialtiesRows,
+				collapsible: false,
+			});
+		}
 
 		const providerInfoRows = buildProviderInfoRows(provider);
 		if (providerInfoRows.length > 0) {
@@ -673,27 +806,29 @@ export default function useMapProviderDetailModel({
 			});
 		}
 
-		const insuranceRows = buildInsuranceRows(provider);
-		if (insuranceRows.length > 0) {
-			sections.push({
-				key: "insurance",
-				headerLabel: "Insurance",
-				rows: insuranceRows,
-				collapsible: true,
-				defaultCollapsed: true,
-			});
-		}
+		sections.push({
+			key: "insurance",
+			headerLabel: "Insurance & languages",
+			rows: buildInsuranceRows(provider),
+			collapsible: true,
+			defaultCollapsed: true,
+		});
 
-		const aboutRows = buildAboutRows(provider);
-		if (aboutRows.length > 0) {
-			sections.push({
-				key: "about",
-				headerLabel: "About",
-				rows: aboutRows,
-				collapsible: true,
-				defaultCollapsed: true,
-			});
-		}
+		sections.push({
+			key: "about",
+			headerLabel: "About",
+			rows: buildAboutRows(provider),
+			collapsible: true,
+			defaultCollapsed: true,
+		});
+
+		sections.push({
+			key: "contact",
+			headerLabel: "Contact",
+			rows: buildContactRows(provider),
+			collapsible: true,
+			defaultCollapsed: true,
+		});
 
 		return sections;
 	}, [provider]);
