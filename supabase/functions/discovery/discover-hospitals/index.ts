@@ -301,6 +301,7 @@ const GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES = new Set<string>([
   PROVIDER_TYPES.LAB,
   PROVIDER_TYPES.RADIOLOGY,
   PROVIDER_TYPES.URGENT_CARE,
+  PROVIDER_TYPES.CLINIC,
   PROVIDER_TYPES.MENTAL_HEALTH,
   PROVIDER_TYPES.WOMENS_CARE,
   PROVIDER_TYPES.PEDIATRICS,
@@ -313,10 +314,12 @@ const CATEGORY_RESULT_KEYWORD_GUARDS: Record<string, RegExp> = {
     /\bradio[l]?og[yi]\b|\bdiagnostic\b|\bimaging\b|\bx-?ray\b|\bmri\b|\bultrasound\b|\bsonogram\b|\bsono\b|\bct scan\b|\bmammograph[yi]\b/i,
   urgent_care:
     /\burgent care\b|\bwalk.?in\b|\bimmediate care\b|\bexpress care\b|\bemergency clinic\b|\bminor emergency\b/i,
+  clinic:
+    /\bclinic\b|\bmedical\b|\bhealth\b|\bdoctor\b|\bphysician\b|\bfamily practice\b|\bprimary care\b|\bpolyclinic\b|\bhospital\b|\bhealthcare\b/i,
   mental_health:
     /\bmental health\b|\bbehavioral\b|\bpsychiat(ry|rist|ric)\b|\bpsycholog(ist|y)\b|\btherapy\b|\btherapist\b|\bcounsel(l?ing|or)\b|\baddiction\b|\brecovery\b/i,
   womens_care:
-    /\bwomen'?s\b|\bob[ -]?gyn\b|\bobstetric|\bgyneco?log|\bmaternity\b|\bprenatal\b|\bpregnancy\b|\bfertility\b/i,
+    /\bwomen['’]?s\b|\bob[ -]?gyn\b|\bobstetric|\bgyneco?log|\bmaternity\b|\bprenatal\b|\bpregnancy\b|\bfertility\b/i,
   pediatrics:
     /\bpediatric(s|ian)?\b|\bpaediatric(s|ian)?\b|\bchildren'?s\b|\bchild\b|\bkids?\b|\bbaby\b/i,
 };
@@ -374,7 +377,7 @@ const classifyProviderByName = (name = ""): { providerType: ProviderType; confid
   if (/\bpsychiat[ry]\b|\bmental health\b|\btherapy\b|\bcounsel(l?ing)?\b/.test(lower)) {
     return { providerType: PROVIDER_TYPES.MENTAL_HEALTH, confidence: 0.50 };
   }
-  if (/\bgynaeco?log[yi]\b|\bobstetric\b|\bmaternit[yi]\b|\bwomen.?s health\b/.test(lower)) {
+  if (/\bgynaeco?log[yi]\b|\bobstetric\b|\bmaternit[yi]\b|\bwomen['’]?.?s\b|\bwomen.?s health\b/.test(lower)) {
     return { providerType: PROVIDER_TYPES.WOMENS_CARE, confidence: 0.50 };
   }
   if (/\bpaediatric\b|\bpediatric\b|\bchildren.?s\b|\bchild health\b/.test(lower)) {
@@ -683,6 +686,9 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
   const requestedProviderType = (CATEGORY_TO_GOOGLE_TYPES[requestedCategory]
     ? requestedCategory
     : PROVIDER_TYPES.HOSPITAL) as ProviderType;
+  const categoryGuard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
+  const requestedCategoryGuardMatches = !!categoryGuard &&
+    shouldKeepProviderForRequestedCategory(row, requestedCategory);
   const categoryMatchesRequest = categoryFromType === requestedProviderType;
   const canTrustGoogleType =
     !!categoryFromType &&
@@ -695,7 +701,10 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
   // Source confidence: verified Google type > name heuristic > requested category fallback
   let providerType: ProviderType;
   let categoryConfidence: number;
-  if (canTrustGoogleType) {
+  if (requestedCategoryGuardMatches) {
+    providerType = requestedProviderType;
+    categoryConfidence = Math.max(0.50, nameClassification.confidence);
+  } else if (canTrustGoogleType) {
     providerType = categoryFromType;
     categoryConfidence = 0.75;
   } else if (nameClassification.confidence >= 0.50) {
@@ -1487,11 +1496,18 @@ serve(async (req) => {
     // PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — hasEnoughDbResults for explore mode
     // OLD: always used dispatchableDbResults (isDispatchable=false for all non-hospitals)
     //      → explore mode ALWAYS triggered external discovery even when DB had results
-    // NEW: explore mode uses raw dbResults count; emergency mode keeps dispatchable count
-    const relevantDbResults = isEmergencyMode ? dispatchableDbResults : dbResults;
+    // NEW: explore mode uses category-guarded DB count; emergency mode keeps dispatchable count
+    const categoryFilteredDbResults = isEmergencyMode
+      ? dbResults
+      : dbResults.filter((row: any) => {
+          const rowType = toSafeString(row?.provider_type, "hospital").toLowerCase();
+          return rowType === providerCategory &&
+            shouldKeepProviderForRequestedCategory(row, providerCategory);
+        });
+    const relevantDbResults = isEmergencyMode ? dispatchableDbResults : categoryFilteredDbResults;
     const localRelevantDbResults = isEmergencyMode
       ? localDispatchableDbResults
-      : dbResults.filter((row: any) => isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM));
+      : categoryFilteredDbResults.filter((row: any) => isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM));
     const databaseComfortTarget =
       mode === "nearby" ? Math.min(limit, MAP_NEARBY_COMFORT_THRESHOLD) : limit;
     const localComfortTarget =
@@ -1893,11 +1909,7 @@ serve(async (req) => {
     const prioritizedDbResults = prioritizeDatabaseRows(
       isEmergencyMode
         ? dbResults
-        : dbResults.filter((row: any) => {
-            const rowType = toSafeString(row?.provider_type, "hospital").toLowerCase();
-            return rowType === providerCategory &&
-              shouldKeepProviderForRequestedCategory(row, providerCategory);
-          })
+        : categoryFilteredDbResults
     );
 
     for (const row of prioritizedDbResults) {
