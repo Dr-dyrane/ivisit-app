@@ -22,10 +22,13 @@ const getWebAppUrl = () => {
 };
 
 module.exports = ({ config }) => {
-  const googleMapsWebApiKey = cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY);
+  const googleMapsWebApiKey =
+    cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY) ||
+    cleanEnvValue(process.env.GOOGLE_MAPS_API_KEY);
   const googleMapsWebMapId =
     cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID) ||
-    cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAP_ID);
+    cleanEnvValue(process.env.EXPO_PUBLIC_GOOGLE_MAP_ID) ||
+    cleanEnvValue(process.env.GOOGLE_MAPS_MAP_ID);
   const googleMapsAndroidApiKey =
     cleanEnvValue(process.env.GOOGLE_MAPS_ANDROID_API_KEY) ?? googleMapsWebApiKey;
 

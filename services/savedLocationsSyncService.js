@@ -13,7 +13,7 @@
 import { supabase } from "./supabase";
 import { isValidUUID } from "./displayIdService";
 import { useLocationStore } from "../stores/locationStore";
-import mapboxService from "./mapboxService";
+import googleLocationService from "./googleLocationService";
 import { getSavedAddressKey } from "./locationAddressService";
 
 const VIEW_PREFS_KEY = "savedLocations";
@@ -137,7 +137,7 @@ async function seedHomeFromProfileAddress(userId) {
 		// Rollback note: profile.address is only a legacy Home seed. Do not let
 		// this path overwrite an existing Home or create a coordinate-less saved
 		// address; both caused state-flow ambiguity in earlier sheet work.
-		const geocoded = await mapboxService.geocodeAddress(profileAddress);
+		const geocoded = await googleLocationService.geocodeAddress(profileAddress);
 		const latitude = Number(geocoded?.latitude);
 		const longitude = Number(geocoded?.longitude);
 		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -152,7 +152,7 @@ async function seedHomeFromProfileAddress(userId) {
 				latitude,
 				longitude,
 				countryCode: geocoded?.countryCode || null,
-				provider: geocoded?.source || "mapbox",
+				provider: geocoded?.source || "google",
 				sync: { status: "pendingCreate" },
 			},
 			{ ownerUserId: userId },

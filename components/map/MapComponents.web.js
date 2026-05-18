@@ -37,6 +37,44 @@ const getResolvedGoogleMaps = () =>
     ? window.google.maps
     : null;
 
+const GOOGLE_MAPS_REVIEW_FALLBACK_ERRORS = new Set([
+  "ApiTargetBlockedMapError",
+  "ApiNotActivatedMapError",
+  "RefererNotAllowedMapError",
+]);
+
+const shouldUseReviewFallbackMap = (error) =>
+  typeof error === "string" &&
+  (GOOGLE_MAPS_REVIEW_FALLBACK_ERRORS.has(error) ||
+    error.includes("Timed out loading Google Maps") ||
+    error.includes("Failed to load Google Maps"));
+
+const getFallbackMapRegion = (region) => ({
+  latitude: toFiniteNumber(region?.latitude) ?? 6.5244,
+  longitude: toFiniteNumber(region?.longitude) ?? 3.3792,
+});
+
+const getGoogleMapsEmbedUrl = (region) => {
+  const { latitude, longitude } = getFallbackMapRegion(region);
+  return `https://www.google.com/maps?q=${encodeURIComponent(`${latitude},${longitude}`)}&z=15&output=embed`;
+};
+
+const GoogleMapsEmbedFallback = ({ style, initialRegion, backgroundColor, error }) => (
+  <View style={[style, styles.fallbackContainer, { backgroundColor }]}>
+    <iframe
+      title="Google Maps preview"
+      src={getGoogleMapsEmbedUrl(initialRegion)}
+      style={styles.fallbackFrame}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+    />
+    <div style={styles.fallbackBadge}>
+      Google Maps preview active
+    </div>
+    {error ? <div style={styles.fallbackError}>{error}</div> : null}
+  </View>
+);
+
 const getReadyGoogleMaps = async () => {
   const resolvedMaps = getResolvedGoogleMaps();
   if (!resolvedMaps) {
@@ -144,7 +182,9 @@ const buildResolvedMarkerIcon = ({
 };
 
 const getGoogleMapsApiKey = () => {
-  const fromEnv = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
+  const fromEnv =
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+    process.env.GOOGLE_MAPS_API_KEY?.trim();
   const fromConfig = Constants?.expoConfig?.extra?.googleMapsApiKey?.trim?.();
   return fromEnv || fromConfig || null;
 };
@@ -152,7 +192,8 @@ const getGoogleMapsApiKey = () => {
 const getGoogleMapsMapId = () => {
   const fromEnv =
     process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() ||
-    process.env.EXPO_PUBLIC_GOOGLE_MAP_ID?.trim();
+    process.env.EXPO_PUBLIC_GOOGLE_MAP_ID?.trim() ||
+    process.env.GOOGLE_MAPS_MAP_ID?.trim();
   const fromConfig = Constants?.expoConfig?.extra?.googleMapsMapId?.trim?.();
   return fromEnv || fromConfig || null;
 };
@@ -210,6 +251,9 @@ const ensureGoogleMapsLoaded = async () => {
       if (typeof window !== "undefined" && window.initGoogleMaps) {
         delete window.initGoogleMaps;
       }
+      if (typeof window !== "undefined" && window.gm_authFailure) {
+        delete window.gm_authFailure;
+      }
       resolve(maps);
     };
 
@@ -221,6 +265,9 @@ const ensureGoogleMapsLoaded = async () => {
       setGoogleMapsLoadState("error", message);
       if (typeof window !== "undefined" && window.initGoogleMaps) {
         delete window.initGoogleMaps;
+      }
+      if (typeof window !== "undefined" && window.gm_authFailure) {
+        delete window.gm_authFailure;
       }
       reject(new Error(message));
     };
@@ -241,6 +288,9 @@ const ensureGoogleMapsLoaded = async () => {
     };
 
     window.initGoogleMaps = tryFinishLoaded;
+    window.gm_authFailure = () => {
+      finishError("ApiTargetBlockedMapError");
+    };
 
     activeScript.addEventListener("error", handleError);
 
@@ -248,7 +298,7 @@ const ensureGoogleMapsLoaded = async () => {
       activeScript.async = true;
       activeScript.defer = true;
       activeScript.dataset.googleMapsLoader = "ivisit";
-      activeScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker,routes&callback=initGoogleMaps&loading=async`;
+      activeScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initGoogleMaps&loading=async`;
       document.head.appendChild(activeScript);
     }
 
@@ -269,10 +319,12 @@ const ensureGoogleMapsLoaded = async () => {
 };
 
 // Google Maps Web Implementation
-const GoogleMapsAPI = () => {
+const GoogleMapsAPI = (disabled = false) => {
   const [state, setState] = useState(getGoogleMapsSnapshot);
 
   useEffect(() => {
+    if (disabled) return undefined;
+
     const listener = (nextState) => {
       setState(nextState);
     };
@@ -284,7 +336,7 @@ const GoogleMapsAPI = () => {
     return () => {
       googleMapsSubscribers.delete(listener);
     };
-  }, []);
+  }, [disabled]);
 
   return state;
 };
@@ -374,6 +426,7 @@ export const MapView = React.forwardRef(
     const onMapReadyRef = useRef(onMapReady);
     const onMapLoadedRef = useRef(onMapLoaded);
     const [mapInstance, setMapInstance] = useState(null);
+    const [mapRenderError, setMapRenderError] = useState(null);
     const { isLoaded, error } = GoogleMapsAPI();
     const mapBackgroundColor =
       userInterfaceStyle === "dark" ? "#08101B" : "#EEF3F8";
@@ -437,6 +490,18 @@ export const MapView = React.forwardRef(
 
         onMapReadyRef.current?.();
         onMapLoadedRef.current?.();
+
+        window.setTimeout(() => {
+          if (!isMounted || !mapRef.current) return;
+          const hasGoogleError =
+            Boolean(mapRef.current.querySelector?.(".gm-err-container")) ||
+            String(mapRef.current.textContent || "").includes(
+              "This page didn't load Google Maps correctly",
+            );
+          if (hasGoogleError) {
+            setMapRenderError("Google Maps JavaScript API target is blocked");
+          }
+        }, 800);
       };
 
       initializeMap();
@@ -458,6 +523,7 @@ export const MapView = React.forwardRef(
         mapInstanceRef.current = null;
         appliedRegionRef.current = null;
         initialRegionAppliedRef.current = false;
+        setMapRenderError(null);
         setMapInstance(null);
       };
     }, [isLoaded]);
@@ -645,7 +711,29 @@ export const MapView = React.forwardRef(
       },
     }));
 
+    if (mapRenderError) {
+      return (
+        <GoogleMapsEmbedFallback
+          style={style}
+          initialRegion={initialRegion}
+          backgroundColor={mapBackgroundColor}
+          error={mapRenderError}
+        />
+      );
+    }
+
     if (error) {
+      if (shouldUseReviewFallbackMap(error)) {
+        return (
+          <GoogleMapsEmbedFallback
+            style={style}
+            initialRegion={initialRegion}
+            backgroundColor={mapBackgroundColor}
+            error={error}
+          />
+        );
+      }
+
       return (
         <View style={[style, styles.errorContainer, { backgroundColor: mapBackgroundColor }]}>
           <div style={styles.errorText}>Map unavailable: {error}</div>
@@ -1045,6 +1133,53 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f5f5f5",
+  },
+  fallbackContainer: {
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "#f5f5f5",
+  },
+  fallbackFrame: {
+    width: "100%",
+    height: "100%",
+    minHeight: 200,
+    border: 0,
+    display: "block",
+    filter: "saturate(0.95) contrast(1.02)",
+  },
+  fallbackBadge: {
+    position: "absolute",
+    left: 12,
+    top: 12,
+    zIndex: 2,
+    paddingTop: 7,
+    paddingRight: 10,
+    paddingBottom: 7,
+    paddingLeft: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,23,42,0.86)",
+    color: "#F8FAFC",
+    fontFamily: "system-ui",
+    fontSize: 12,
+    fontWeight: 700,
+    boxShadow: "0 8px 22px rgba(15,23,42,0.22)",
+  },
+  fallbackError: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    zIndex: 2,
+    maxWidth: 260,
+    paddingTop: 6,
+    paddingRight: 9,
+    paddingBottom: 6,
+    paddingLeft: 9,
+    borderRadius: 8,
+    backgroundColor: "rgba(127,29,29,0.9)",
+    color: "#FEE2E2",
+    fontFamily: "system-ui",
+    fontSize: 11,
+    fontWeight: 600,
   },
   loadingText: {
     fontSize: 16,

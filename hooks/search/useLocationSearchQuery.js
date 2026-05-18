@@ -1,6 +1,6 @@
 // hooks/search/useLocationSearchQuery.js
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import mapboxService from '../../services/mapboxService';
+import googleLocationService from '../../services/googleLocationService';
 
 const STALE_TIME = 60 * 1000; // 1 minute
 
@@ -25,7 +25,7 @@ export function useLocationSearchQuery(query, locationBias = null, options = {})
 
   return useQuery({
     queryKey: ['locationSuggestions', trimmedQuery, locationBias?.latitude, locationBias?.longitude],
-    queryFn: () => mapboxService.suggestAddresses(trimmedQuery, locationBias),
+    queryFn: () => googleLocationService.suggestAddresses(trimmedQuery, locationBias),
     enabled,
     staleTime: STALE_TIME,
     placeholderData: (previousData) => previousData,
@@ -45,7 +45,7 @@ export function prefetchLocationSuggestions(queryClient, query, locationBias = n
   
   return queryClient.prefetchQuery({
     queryKey: ['locationSuggestions', trimmedQuery, locationBias?.latitude, locationBias?.longitude],
-    queryFn: () => mapboxService.suggestAddresses(trimmedQuery, locationBias),
+    queryFn: () => googleLocationService.suggestAddresses(trimmedQuery, locationBias),
     staleTime: STALE_TIME,
   });
 }

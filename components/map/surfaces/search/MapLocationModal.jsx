@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { COLORS } from "../../../../constants/colors";
 import useResponsiveSurfaceMetrics from "../../../../hooks/ui/useResponsiveSurfaceMetrics";
-import mapboxService from "../../../../services/mapboxService";
+import googleLocationService from "../../../../services/googleLocationService";
 import MapModalShell from "../MapModalShell";
 
 const squircle = (radius) => ({
@@ -13,7 +13,7 @@ const squircle = (radius) => ({
 	borderCurve: "continuous",
 });
 
-function mapMapboxSuggestion(suggestion) {
+function mapProviderSuggestion(suggestion) {
 	if (!suggestion) return null;
 
 	return {
@@ -24,7 +24,7 @@ function mapMapboxSuggestion(suggestion) {
 			longitude: suggestion.longitude,
 		},
 		placeId: suggestion.placeId || suggestion.mapbox_id,
-		source: suggestion.source || "mapbox",
+		source: suggestion.source || "google",
 	};
 }
 
@@ -199,8 +199,7 @@ export default function MapLocationModal({
 			setResolvingPlaceId(suggestion.placeId);
 
 			try {
-				// Mapbox suggestions already include location data
-				const mapped = mapSuggestionToLocation(suggestion) || mapMapboxSuggestion(suggestion);
+				const mapped = mapSuggestionToLocation(suggestion) || mapProviderSuggestion(suggestion);
 				if (!mapped?.location) {
 					throw new Error("Location not found");
 				}
@@ -245,7 +244,7 @@ export default function MapLocationModal({
 			setError(null);
 
 			try {
-				const nextSuggestions = await mapboxService.suggestAddresses(
+				const nextSuggestions = await googleLocationService.suggestAddresses(
 					trimmed,
 					currentLocation,
 				);

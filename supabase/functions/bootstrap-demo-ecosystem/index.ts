@@ -7,6 +7,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const getEnv = (...names: string[]): string => {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) return value;
+  }
+  return "";
+};
+
 const DEMO_HOSPITAL_OFFSETS = [
   { lat: 0.0064, lng: 0.0048 },
   { lat: -0.0051, lng: 0.0062 },
@@ -22,6 +30,38 @@ const LAGOS_REFERENCE_POINT = {
 };
 
 const LAGOS_DEMO_HOSPITAL_TEMPLATES = [
+  {
+    name: "Shepherd Specialist Hospital",
+    address: "4th Avenue, E Close, Plot 1619, Festac Town, Lagos",
+    latitude: 6.4669,
+    longitude: 3.2841,
+    phone: "",
+    rating: 4.3,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Internal Medicine", "Family Medicine"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "festac_coverage", "district:festac"],
+    emergency_level: "Level 2",
+    wait_time: "10 min",
+    price_range: "Accessible",
+  },
+  {
+    name: "Outreach Hospital Festac",
+    address: "4th Avenue by 3rd Avenue Bus Stop, Festac Town, Lagos",
+    latitude: 6.4676,
+    longitude: 3.2862,
+    phone: "",
+    rating: 4.2,
+    type: "standard",
+    image: "",
+    specialties: ["Emergency Medicine", "Pediatrics", "Diagnostics"],
+    service_types: ["standard", "premium"],
+    features: ["lagos_demo", "festac_coverage", "district:festac"],
+    emergency_level: "Level 2",
+    wait_time: "11 min",
+    price_range: "Accessible",
+  },
   {
     name: "Lagos Island General Hospital",
     address: "1-3 Broad St, Lagos Island, Lagos",
@@ -400,6 +440,13 @@ const coordinateKey = (value: unknown, precision = 3) => {
   return Number.isFinite(n) ? Number(n).toFixed(precision) : "0.000";
 };
 
+const exactLocationKey = (latitude: unknown, longitude: unknown) => {
+  const lat = toFiniteNumber(latitude);
+  const lng = toFiniteNumber(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return `${lat}|${lng}`;
+};
+
 const toCoverageAxisKey = (value: number) =>
   `${value >= 0 ? "p" : "n"}${Math.round(Math.abs(value) * 100)
     .toString()
@@ -451,6 +498,18 @@ const isDemoSeedRow = (row: any) => {
     /^emergency care center\s+\d+$/i.test(name) ||
     /^coverage(?:\s+[a-z0-9_:-]+)?\s+zone\s+\d+$/i.test(address)
   );
+};
+
+const nudgeDemoLocation = (
+  latitude: number,
+  longitude: number,
+  slotIndex: number,
+) => {
+  const offset = 0.00008 * (slotIndex + 1);
+  return {
+    latitude: Number((latitude + offset).toFixed(6)),
+    longitude: Number((longitude + offset).toFixed(6)),
+  };
 };
 
 const parseHospitalCoordinates = (
@@ -590,7 +649,10 @@ const scoreNameDomainAffinity = (name: string, domain: string) => {
 };
 
 const buildHospitalMediaProxyUrl = (placeId: string) => {
-  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(
+  const supabaseUrl = toSafeString(
+    getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
+    "",
+  ).replace(
     /\/$/,
     "",
   );
@@ -820,7 +882,7 @@ const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
 };
 
 const getMapboxSeedHospitals = async (ctx: DemoContext) => {
-  const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
+  const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
   if (!mapboxToken) return [];
 
   const categoryUrl = `https://api.mapbox.com/search/searchbox/v1/category/hospital?proximity=${ctx.longitude},${ctx.latitude}&limit=${MAPBOX_PROVIDER_LIMIT}&access_token=${mapboxToken}`;
@@ -970,7 +1032,11 @@ const fetchGoogleNearbyPlaces = async (
 };
 
 const getGoogleSeedHospitals = async (ctx: DemoContext) => {
-  const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  const googleApiKey = getEnv(
+    "GOOGLE_MAPS_API_KEY",
+    "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
+    "GOOGLE_MAPS_ANDROID_API_KEY",
+  );
   if (!googleApiKey) return [];
 
   const rows = await fetchGoogleNearbyPlaces(ctx, googleApiKey);
@@ -1342,6 +1408,7 @@ const ensureDemoHospitals = async (
     const seedImageMeta = resolveSeedImage(seed);
 
     return {
+      slot_index: slotIndex,
       place_id: toDemoPlaceId(ctx, seed, slotIndex),
       name: normalizeHospitalName(seed.name, fallback.name),
       address: toSafeString(seed.address, fallback.address),
@@ -1384,11 +1451,12 @@ const ensureDemoHospitals = async (
     .map((row) => toSafeString(row?.place_id, ""))
     .filter((value) => value.length > 0);
   const existingByPlaceId = new Map<string, any>();
+  const existingByLocation = new Map<string, any>();
   if (placeIds.length > 0) {
     const { data: existingRows, error: existingError } = await admin
       .from("hospitals")
       .select(
-        "place_id,image,image_source,image_confidence,image_attribution_text",
+        "id,place_id,image,image_source,image_confidence,image_attribution_text,latitude,longitude,features,verification_status",
       )
       .in("place_id", placeIds);
 
@@ -1405,11 +1473,56 @@ const ensureDemoHospitals = async (
     });
   }
 
+  for (const row of baseRows) {
+    const locationKey = exactLocationKey(row.latitude, row.longitude);
+    if (!locationKey || existingByLocation.has(locationKey)) continue;
+
+    const { data: locationRows, error: locationError } = await admin
+      .from("hospitals")
+      .select(
+        "id,place_id,image,image_source,image_confidence,image_attribution_text,latitude,longitude,features,verification_status",
+      )
+      .eq("latitude", row.latitude)
+      .eq("longitude", row.longitude)
+      .limit(1);
+
+    if (locationError) {
+      throw new Error(
+        `demo hospital location lookup failed: ${locationError.message}`,
+      );
+    }
+
+    const existingLocation = Array.isArray(locationRows)
+      ? locationRows[0]
+      : null;
+    if (existingLocation) {
+      existingByLocation.set(locationKey, existingLocation);
+    }
+  }
+
   const rows = baseRows.map((row) => {
-    const existing = existingByPlaceId.get(toSafeString(row?.place_id, ""));
+    const { slot_index: slotIndex, ...rowForUpsert } = row;
+    const existingByPlace = existingByPlaceId.get(toSafeString(row?.place_id, ""));
+    const existingAtLocation = existingByLocation.get(
+      exactLocationKey(row.latitude, row.longitude),
+    );
+    const existing =
+      existingByPlace ||
+      (isDemoSeedRow(existingAtLocation) ? existingAtLocation : null);
+    const adjustedLocation =
+      existingAtLocation && !existing
+        ? nudgeDemoLocation(row.latitude, row.longitude, slotIndex)
+        : { latitude: row.latitude, longitude: row.longitude };
     const preferredImage = choosePreferredImage(existing, row);
     return {
-      ...row,
+      ...rowForUpsert,
+      place_id: toSafeString(existing?.place_id, toSafeString(row.place_id)),
+      latitude: adjustedLocation.latitude,
+      longitude: adjustedLocation.longitude,
+      coordinates: toGeometryPoint(
+        adjustedLocation.latitude,
+        adjustedLocation.longitude,
+      ),
       image: toSafeString(preferredImage?.image, ""),
       image_source: toSafeString(preferredImage?.image_source, ""),
       image_confidence: toFiniteNumber(preferredImage?.image_confidence) ?? 0,
@@ -1945,9 +2058,9 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseUrl = getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL");
+    const anonKey = getEnv("SUPABASE_ANON_KEY", "EXPO_PUBLIC_SUPABASE_ANON_KEY");
+    const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {
       throw new Error("Supabase environment is not configured");
     }

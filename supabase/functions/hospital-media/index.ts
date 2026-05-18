@@ -16,6 +16,14 @@ const FALLBACK_IMAGES = [
 const toText = (value: unknown, fallback = "") =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 
+const getEnv = (...names: string[]): string => {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) return value;
+  }
+  return "";
+};
+
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
 const hashSeed = (seed: string) => {
@@ -75,8 +83,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseUrl = getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL");
+    const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Supabase environment is not configured");
     }
@@ -114,7 +122,11 @@ Deno.serve(async (req) => {
       hospital = data;
     }
 
-    const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY") ?? "";
+    const googleApiKey = getEnv(
+      "GOOGLE_MAPS_API_KEY",
+      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
+      "GOOGLE_MAPS_ANDROID_API_KEY",
+    );
     if (!hospital?.id) {
       const providerPhotoUrl =
         placeId && googleApiKey ? await fetchGoogleProviderPhotoUrl(placeId, googleApiKey) : "";

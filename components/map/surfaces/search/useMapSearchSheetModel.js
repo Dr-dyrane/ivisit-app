@@ -3,7 +3,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useGlobalLocation } from "../../../../contexts/GlobalLocationContext";
 import { useSearch } from "../../../../contexts/SearchContext";
 import { useLocationStore } from "../../../../stores/locationStore";
-import mapboxService from "../../../../services/mapboxService";
+import googleLocationService from "../../../../services/googleLocationService";
 import { areLocationsNearby } from "../../../../utils/mapUtils";
 import {
 	buildHospitalMeta,
@@ -172,7 +172,7 @@ export function useMapSearchSheetModel({
 			setLocationError(null);
 
 			try {
-				const nextSuggestions = await mapboxService.suggestAddresses(trimmedQuery, locationBias);
+				const nextSuggestions = await googleLocationService.suggestAddresses(trimmedQuery, locationBias);
 
 				if (requestIdRef.current !== requestId) return;
 				setLocationSuggestions(Array.isArray(nextSuggestions) ? nextSuggestions : []);

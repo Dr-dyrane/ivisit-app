@@ -1,10 +1,10 @@
-import mapboxService from "./mapboxService";
+import googleLocationService from "./googleLocationService";
 
 // PULLBACK NOTE: [LS-3]
-// OLD: mapboxService.suggestAddresses() called directly from MapLocationIntentStageBase
+// OLD: provider suggest calls lived in UI components.
 //      inside a useEffect + manual timer ref (defect class 2.18).
 // NEW: All provider API calls for location assistance go through this service.
-//      Components call addressAssistService methods only. Provider swap stays here.
+//      Google is primary; provider fallback stays below the UI layer.
 
 const DEBOUNCE_MS = 320;
 const MIN_QUERY_LENGTH = 2;
@@ -21,7 +21,7 @@ function buildContextualQuery(query, { districtArea = "", city = "", adminArea =
 export async function suggestRegions({ query, countryCode, proximity, context = {} } = {}) {
 	if (!query || query.trim().length < MIN_QUERY_LENGTH) return [];
 	try {
-		const results = await mapboxService.suggestAddresses({
+		const results = await googleLocationService.suggestAddresses({
 			query: buildContextualQuery(query, context),
 			proximity: proximity || null,
 			countryCode: countryCode || undefined,
@@ -36,7 +36,7 @@ export async function suggestRegions({ query, countryCode, proximity, context = 
 export async function suggestCities({ query, countryCode, proximity, context = {} } = {}) {
 	if (!query || query.trim().length < MIN_QUERY_LENGTH) return [];
 	try {
-		const results = await mapboxService.suggestAddresses({
+		const results = await googleLocationService.suggestAddresses({
 			query: buildContextualQuery(query, context),
 			proximity: proximity || null,
 			countryCode: countryCode || undefined,
@@ -51,7 +51,7 @@ export async function suggestCities({ query, countryCode, proximity, context = {
 export async function suggestStreetsOrPlaces({ query, countryCode, proximity, context = {} } = {}) {
 	if (!query || query.trim().length < MIN_QUERY_LENGTH) return [];
 	try {
-		const results = await mapboxService.suggestAddresses({
+		const results = await googleLocationService.suggestAddresses({
 			query: buildContextualQuery(query, context),
 			proximity: proximity || null,
 			countryCode: countryCode || undefined,
@@ -63,11 +63,11 @@ export async function suggestStreetsOrPlaces({ query, countryCode, proximity, co
 	}
 }
 
-// Generic suggest for a manual step's mapboxTypes field.
+// Generic suggest for a manual step's provider-type hint.
 export async function suggestForStep({ query, mapboxTypes, countryCode, proximity, context = {} } = {}) {
 	if (!query || query.trim().length < MIN_QUERY_LENGTH) return [];
 	try {
-		const results = await mapboxService.suggestAddresses({
+		const results = await googleLocationService.suggestAddresses({
 			query: buildContextualQuery(query, context),
 			proximity: proximity || null,
 			countryCode: countryCode || undefined,
@@ -84,25 +84,25 @@ export async function resolveManualDraft(address, { proximity, countryCode } = {
 	try {
 		// PULLBACK NOTE: [LS-9] Gap fix - pass proximity for better regional bias;
 		// surface relevance score so callers can distinguish strong vs weak geocode results.
-		const geocoded = await mapboxService.geocodeAddress(address, {
+		const geocoded = await googleLocationService.geocodeAddress(address, {
 			proximity: proximity || null,
 			countryCode: countryCode || null,
 		});
 		const latitude = Number(geocoded?.latitude);
 		const longitude = Number(geocoded?.longitude);
 		if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-		// relevance: 0.0-1.0 from Mapbox. <0.4 = weak match (no exact street found).
-		// Nominatim results carry no relevance score - treat as 0.5 (medium confidence).
+		// relevance: 0.0-1.0 from provider. <0.4 = weak match (no exact street found).
+		// Fallback providers may carry no relevance score - treat as 0.5 (medium confidence).
 		const relevance = typeof geocoded?.relevance === "number"
 			? geocoded.relevance
-			: geocoded?.source === "openstreetmap" ? 0.5 : 1.0;
+			: ["openstreetmap", "mapbox"].includes(geocoded?.source) ? 0.5 : 1.0;
 		return {
 			latitude,
 			longitude,
 			formattedAddress: geocoded?.formatted_address || address,
 			countryCode: geocoded?.countryCode || countryCode || null,
 			relevance,
-			source: geocoded?.source || "mapbox",
+			source: geocoded?.source || "google",
 		};
 	} catch {
 		return null;

@@ -22,7 +22,7 @@ import { useGlobalLocation } from "../../../../contexts/GlobalLocationContext";
 import useAuthViewport from "../../../../hooks/ui/useAuthViewport";
 import { useMapRoute } from "../../../../hooks/emergency/useMapRoute";
 import { useTripProgress } from "../../../../hooks/emergency/useTripProgress";
-import mapboxService from "../../../../services/mapboxService";
+import googleLocationService from "../../../../services/googleLocationService";
 import { EMERGENCY_FLOW_STATES } from "../../emergencyFlowContent";
 import createEmergencyIosMobileIntakeTheme from "../emergencyIosMobileIntake.styles";
 import EmergencyHospitalChoiceSheet from "../EmergencyHospitalChoiceSheet";
@@ -615,7 +615,7 @@ export default function EmergencyIOSMobileIntakeView({
 			}
 
 			try {
-				const formattedAddress = await mapboxService.reverseGeocode(
+				const formattedAddress = await googleLocationService.reverseGeocode(
 					Number(userLocation.latitude),
 					Number(userLocation.longitude),
 				);

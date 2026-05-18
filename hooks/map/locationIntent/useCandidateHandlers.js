@@ -83,9 +83,35 @@ export default function useCandidateHandlers({
 		[addToRecents, onClose, onSelectLocation],
 	);
 
-	const handleUseCurrentLocationCandidate = useCallback(() => {
-		if (requiresLocationSelection || shouldOpenSettings) {
-			onUseCurrentLocation?.();
+	const handleUseCurrentLocationCandidate = useCallback(async () => {
+		const currentSource = String(currentLocation?.source || "").trim();
+		const isDeviceLocation =
+			currentSource === "device" ||
+			currentSource === "saved_device_fallback";
+
+		if (requiresLocationSelection || shouldOpenSettings || !isDeviceLocation) {
+			const result = await onUseCurrentLocation?.({ stayInLocationIntent: true });
+			if (!result?.ok || !result?.location) return;
+
+			const resolvedPlace = result.resolvedPlace || {};
+			const normalized = buildSelectedLocation({
+				source: "current",
+				label:
+					resolvedPlace.primaryText ||
+					resolvedPlace.name ||
+					resolvedPlace.formattedAddress ||
+					"Device location",
+				address:
+					resolvedPlace.secondaryText ||
+					resolvedPlace.formattedAddress ||
+					"Using live GPS pickup",
+				coords: result.location,
+				countryCode: result.countryCode || resolvedPlace.countryCode || null,
+				confidence: "high",
+			});
+			if (!normalized) return;
+			setActiveCandidate(normalized);
+			navigateToConfirm();
 			return;
 		}
 		const normalized = buildSelectedLocation({

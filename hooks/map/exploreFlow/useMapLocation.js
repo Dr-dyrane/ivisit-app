@@ -291,10 +291,12 @@ export function useMapLocation({
     ],
   );
 
-  const handleUseCurrentLocation = useCallback(async () => {
+  const handleUseCurrentLocation = useCallback(async (options = {}) => {
+    const stayInLocationIntent = options?.stayInLocationIntent === true;
+
     if (shouldOpenSettings) {
       await openLocationSettings?.();
-      return;
+      return { ok: false, reason: "settings" };
     }
 
     const fallbackCurrentLocation =
@@ -319,7 +321,7 @@ export function useMapLocation({
       Boolean(nextDeviceLocation);
 
     if (!didResolvePreciseDeviceLocation) {
-      return;
+      return { ok: false, reason: "unresolved" };
     }
 
     resetMapForLocationChange(locationChanged);
@@ -332,7 +334,19 @@ export function useMapLocation({
         null,
       billingCurrencyCode: null,
     });
-    setSheetView(buildPickupReturnSheetView());
+    if (!stayInLocationIntent) {
+      setSheetView(buildPickupReturnSheetView());
+    }
+
+    return {
+      ok: true,
+      location: nextDeviceLocation,
+      resolvedPlace: locationRequestResult?.resolvedPlace || resolvedPlace || null,
+      countryCode:
+        locationRequestResult?.resolvedPlace?.countryCode ||
+        resolvedPlace?.countryCode ||
+        null,
+    };
   }, [
     activeLocation,
     activeLocationSource,
@@ -342,9 +356,10 @@ export function useMapLocation({
     manualLocation?.location,
     openLocationSettings,
     refreshLocation,
-    resolvedPlace?.countryCode,
+    resolvedPlace,
     requestLocationPermission,
     resetMapForLocationChange,
+    setBillingOverrides,
     setManualLocation,
     setSheetView,
     setUserLocation,

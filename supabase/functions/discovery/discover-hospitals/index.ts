@@ -18,6 +18,14 @@ const clampLimit = (value: unknown): number => {
   return Math.max(1, Math.min(25, Math.round(n)));
 };
 
+const getEnv = (...names: string[]): string => {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) return value;
+  }
+  return "";
+};
+
 // PULLBACK NOTE: EXPLORE-CARE-DATA-1 — Expanded fallback image library
 // OLD: 4 hospital-specific images used for all provider types
 // NEW: 12 hospital images + category-specific fallback arrays for richer UI
@@ -345,9 +353,9 @@ const normaliseEmergencyLevel = (raw = ""): string => {
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
-// PULLBACK NOTE: FIX-PHARMACY-DUPLICATES — Increase coordinate precision for deduplication
-// OLD: precision=3 (~111m) caused same-location providers with different coords to not deduplicate
-// NEW: precision=5 (~1m) ensures pharmacy-level accuracy for coordinate-based deduplication
+// PULLBACK NOTE: FIX-PHARMACY-DUPLICATES — Increase coordinate precision for deduplication.
+// OLD: precision=3 (~111m) blurred nearby providers together.
+// NEW: precision=5 (~1m) preserves pharmacy/provider-level accuracy.
 const coordinateKey = (value: unknown, precision = 5): string | null => {
   const n = toFiniteNumber(value);
   if (!Number.isFinite(n)) return null;
@@ -392,7 +400,9 @@ const isDispatchableDatabaseRow = (row: any): boolean => {
 };
 
 const parseDistanceKm = (row: any): number | null => {
-  const numericDistance = toFiniteNumber(row?.distance_km ?? row?.distanceKm);
+  const numericDistance = toFiniteNumber(
+    row?.distance_km ?? row?.distanceKm ?? row?.distance
+  );
   if (Number.isFinite(numericDistance)) {
     return numericDistance;
   }
@@ -513,7 +523,10 @@ const scoreNameDomainAffinity = (name: string, domain: string): number => {
 };
 
 const buildHospitalMediaProxyUrl = (placeId: string): string => {
-  const supabaseUrl = toSafeString(Deno.env.get("SUPABASE_URL"), "").replace(/\/$/, "");
+  const supabaseUrl = toSafeString(
+    getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
+    "",
+  ).replace(/\/$/, "");
   if (!supabaseUrl || !placeId) return "";
   return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
 };
@@ -673,9 +686,8 @@ const toMergeKey = (row: any): string => {
   const latitude = coordinateKey(row?.latitude);
   const longitude = coordinateKey(row?.longitude);
 
-  // PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Prioritize address/coordinates over name
-  // OLD: name|address|lat|lng caused same-location providers with different names to not deduplicate
-  // NEW: address|lat|lng first (location-based), then fall back to place_id/name for missing coords
+  // PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Prioritize address/coordinates over name.
+  // Provider APIs can return the same facility with slightly different names.
   if (address && latitude && longitude) {
     return `location:${address}|${latitude}|${longitude}`;
   }
@@ -1041,8 +1053,8 @@ serve(async (req) => {
     if (authHeader) {
       try {
         const authClient = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+          getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
+          getEnv("SUPABASE_ANON_KEY", "EXPO_PUBLIC_SUPABASE_ANON_KEY"),
           { global: { headers: { Authorization: authHeader } } }
         );
         const {
@@ -1073,7 +1085,7 @@ serve(async (req) => {
     const limit = clampLimit(body?.limit);
     const includeProviderDiscovery = body?.includeProviderDiscovery !== false;
     const includeMapboxPlaces = body?.includeMapboxPlaces !== false;
-    const includeGooglePlaces = body?.includeGooglePlaces === true;
+    const includeGooglePlaces = body?.includeGooglePlaces !== false;
     const mergeWithDatabase = body?.mergeWithDatabase !== false;
     // EXP-2: Provider category for explore mode. Defaults to "hospital" (emergency flow).
     // Callers in explore mode pass e.g. "pharmacy", "lab", "clinic".
@@ -1082,12 +1094,16 @@ serve(async (req) => {
       : "hospital";
     const isEmergencyMode = providerCategory === "hospital";
 
-    const mapboxToken = Deno.env.get("MAPBOX_ACCESS_TOKEN");
-    const googleApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
+    const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
+    const googleApiKey = getEnv(
+      "GOOGLE_MAPS_API_KEY",
+      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
+      "GOOGLE_MAPS_ANDROID_API_KEY",
+    );
 
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
+      getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY")
     );
 
     let providerData: any[] = [];
@@ -1175,31 +1191,40 @@ serve(async (req) => {
 
     if (includeProviderDiscovery && !hasEnoughDbResults) {
       try {
-        if (mapboxToken && includeMapboxPlaces) {
+        // PULLBACK NOTE: PRIMARY-SOURCE-GOOGLE — Google Places as primary, Mapbox as fallback
+        // Google Places has proper category support for all provider types
+        // Mapbox only supports hospital/pharmacy categories
+        if (googleApiKey && includeGooglePlaces) {
+          console.log("[discover-hospitals] google fetch");
+          providerData = await fetchGoogleProviderPlaces({
+            apiKey: googleApiKey,
+            latitude,
+            longitude,
+            radius,
+            mode,
+            query,
+            limit,
+            providerCategory,
+          });
+          providerSource = "google";
+        }
+
+        // Fallback to Mapbox if Google returns no results or is disabled
+        if (providerData.length === 0 && mapboxToken && includeMapboxPlaces) {
           // PULLBACK NOTE: FIX-MAPBOX — category-aware Mapbox fetch strategy
-          // OLD: always used /category/<mapboxCategory> (fell back to generic "medical" for
-          //      lab/radiology/clinic/etc., returning an undifferentiated mix)
-          // NEW: use /category/<mapboxCategory> only when the category has a specific Mapbox
-          //      category (hospital, pharmacy). All other categories go straight to keyword
-          //      text search via EXPLORE_CATEGORY_META_KEYWORDS for category-specific results.
           const specificMapboxCategory = CATEGORY_TO_MAPBOX_CATEGORY[providerCategory] ?? null;
           const keywordForCategory = EXPLORE_CATEGORY_META_KEYWORDS[providerCategory] || providerCategory;
 
-          // Determine primary URL: category endpoint if specific, keyword search otherwise
           let mapboxUrl: string;
           if (mode === "text_search" && query) {
-            // Explicit caller query — always use text search
             mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(query)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
           } else if (specificMapboxCategory) {
-            // hospital / pharmacy — Mapbox has a real specific category
             mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/category/${specificMapboxCategory}?proximity=${longitude},${latitude}&limit=${limit}&access_token=${mapboxToken}`;
           } else {
-            // lab / radiology / clinic / mental_health / womens_care / pediatrics / urgent_care
-            // — no specific Mapbox category, use keyword text search directly
             mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(keywordForCategory)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
           }
 
-          console.log("[discover-hospitals] mapbox fetch", { providerCategory, specificMapboxCategory, keywordForCategory });
+          console.log("[discover-hospitals] mapbox fallback fetch", { providerCategory, specificMapboxCategory, keywordForCategory });
           const mapboxRes = await fetch(mapboxUrl);
           const mapboxData = await mapboxRes.json();
 
@@ -1210,7 +1235,6 @@ serve(async (req) => {
             : [];
           providerSource = "mapbox";
 
-          // Secondary fallback: if category endpoint returned nothing, try keyword search
           if (providerData.length === 0 && specificMapboxCategory && mode !== "text_search") {
             const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(keywordForCategory)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
             console.log("[discover-hospitals] mapbox keyword fallback", { keywordForCategory });
@@ -1223,24 +1247,6 @@ serve(async (req) => {
               ? fallbackData.suggestions
               : [];
           }
-        }
-
-        if (providerData.length === 0 && googleApiKey && includeGooglePlaces) {
-          console.log("[discover-hospitals] google fetch");
-          providerData = await fetchGoogleProviderPlaces({
-            apiKey: googleApiKey,
-            latitude,
-            longitude,
-            radius,
-            mode,
-            query,
-            limit,
-            // PULLBACK NOTE: FIX-A — pass providerCategory so Google returns correct type
-            // OLD: providerCategory not passed → function used hardcoded "hospital"
-            // NEW: pass the caller's providerCategory
-            providerCategory,
-          });
-          providerSource = "google";
         }
       } catch (providerError) {
         console.error("[discover-hospitals] provider fetch failed", providerError);

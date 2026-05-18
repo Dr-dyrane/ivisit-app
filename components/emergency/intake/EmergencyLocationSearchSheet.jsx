@@ -19,7 +19,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import { useAndroidKeyboardAwareModal } from "../../../hooks/ui/useAndroidKeyboardAwareModal";
 import useAuthViewport from "../../../hooks/ui/useAuthViewport";
 import { COLORS } from "../../../constants/colors";
-import mapboxService from "../../../services/mapboxService";
+import googleLocationService from "../../../services/googleLocationService";
 
 function mapGeocodeResult(result) {
 	const location = result?.geometry?.location;
@@ -402,7 +402,7 @@ export default function EmergencyLocationSearchSheet({
 			setError(null);
 
 			try {
-				const nextSuggestions = await mapboxService.suggestAddresses(
+				const nextSuggestions = await googleLocationService.suggestAddresses(
 					trimmed,
 					currentLocation,
 				);
