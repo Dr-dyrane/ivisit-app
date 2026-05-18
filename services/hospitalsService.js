@@ -24,6 +24,41 @@ const DEFAULT_HOSPITAL_IMAGES = [
 	"https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
 ];
 
+const DEFAULT_PROVIDER_IMAGES = {
+	pharmacy: [
+		"https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80",
+	],
+	lab: [
+		"https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80",
+	],
+	radiology: [
+		"https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
+	],
+	urgent_care: [
+		"https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
+	],
+	clinic: [
+		"https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
+	],
+	mental_health: [
+		"https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1493863641943-9b68992a8d07?auto=format&fit=crop&w=1200&q=80",
+	],
+	womens_care: [
+		"https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
+	],
+	pediatrics: [
+		"https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
+	],
+};
+
 const toFinite = (value, fallback = 0) => (Number.isFinite(value) ? Number(value) : fallback);
 const toNonNegativeInt = (value, fallback = 0) => {
 	const n = Number(value);
@@ -198,6 +233,10 @@ const hashString = (seed) => {
 	return Math.abs(hash);
 };
 const pickDefaultHospitalImage = (seed) => DEFAULT_HOSPITAL_IMAGES[hashString(seed) % DEFAULT_HOSPITAL_IMAGES.length];
+const pickDefaultProviderImage = (seed, providerType = PROVIDER_TYPES.HOSPITAL) => {
+	const options = DEFAULT_PROVIDER_IMAGES[providerType] || DEFAULT_HOSPITAL_IMAGES;
+	return options[hashString(`${providerType}:${seed}`) % options.length];
+};
 const toOptionalNonNegativeInt = (value) => {
 	if (value === undefined || value === null || value === "") return null;
 	const n = Number(value);
@@ -502,10 +541,12 @@ export const hospitalsService = {
 		const importedFromMapbox = h?.mapbox_only === true;
 		const importStatus = (isVerified || verificationStatus === "verified") ? "verified" : "pending";
 		const isDispatchReady = isDispatchableHospital(h);
+		const rawProviderTypeForImage = toText(h?.provider_type, PROVIDER_TYPES.HOSPITAL);
 
 		const image = toText(
 			h?.image,
-			toTextArray(h?.google_photos)[0] || pickDefaultHospitalImage(h?.place_id || h?.id || h?.name)
+			toTextArray(h?.google_photos)[0] ||
+				pickDefaultProviderImage(h?.place_id || h?.id || h?.name, rawProviderTypeForImage)
 		);
 		const dynamicWait = this.calculateDynamicWaitTime(
 			{

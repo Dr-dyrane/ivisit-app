@@ -563,6 +563,12 @@ export default StyleSheet.create({
 		alignSelf: "flex-start",
 		marginBottom: 24,
 	},
+	chooseCareSectionTrigger: {
+		paddingVertical: 8,
+		paddingHorizontal: 4,
+		marginTop: 2,
+		marginBottom: 28,
+	},
 	sectionTriggerPressed: {
 		opacity: 0.78,
 	},
@@ -577,6 +583,12 @@ export default StyleSheet.create({
 		justifyContent: "space-between",
 		gap: 10,
 		marginBottom: 16,
+	},
+	chooseCareSectionHeader: {
+		paddingVertical: 8,
+		paddingHorizontal: 4,
+		marginTop: 2,
+		marginBottom: 22,
 	},
 	intentSectionHeaderBiased: {
 		justifyContent: "flex-start",

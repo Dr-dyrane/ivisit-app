@@ -7,6 +7,8 @@ import styles from "./mapExploreIntent.styles";
 import IntentOrb from "../../shared/IntentOrb";
 import IntentCard from "../../shared/IntentCard";
 
+const CHOOSE_CARE_HEADER_HIT_SLOP = { top: 14, right: 18, bottom: 14, left: 18 };
+
 export default function MapExploreIntentCareSection({
 	layoutMode = "canonical",
 	selectedCare,
@@ -45,10 +47,12 @@ export default function MapExploreIntentCareSection({
 			<>
 				<Pressable
 					onPress={onOpenCareHistory}
+					hitSlop={CHOOSE_CARE_HEADER_HIT_SLOP}
 					style={({ pressed }) => [
 						styles.intentSectionHeader,
 						styles.intentSectionHeaderBiased,
 						styles.intentSectionHeaderTrigger,
+						styles.chooseCareSectionHeader,
 						sectionTriggerStyle,
 						pressed ? styles.sectionTriggerPressed : null,
 					]}
@@ -133,7 +137,7 @@ export default function MapExploreIntentCareSection({
 	if (layoutMode === "web_mobile") {
 		return (
 			<>
-				<View style={[styles.intentSectionHeader, sectionTriggerStyle]}>
+				<View style={[styles.intentSectionHeader, styles.chooseCareSectionHeader, sectionTriggerStyle]}>
 					<Text style={[styles.sectionLabel, sectionLabelStyle, { color: mutedColor }]}>
 						{MAP_EXPLORE_INTENT_COPY.CHOOSE_CARE}
 					</Text>
@@ -206,8 +210,10 @@ export default function MapExploreIntentCareSection({
 		<>
 			<Pressable
 				onPress={onOpenCareHistory}
+				hitSlop={CHOOSE_CARE_HEADER_HIT_SLOP}
 				style={({ pressed }) => [
 					styles.sectionTrigger,
+					styles.chooseCareSectionTrigger,
 					sectionTriggerStyle,
 					pressed ? styles.sectionTriggerPressed : null,
 				]}

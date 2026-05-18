@@ -49,6 +49,14 @@ const HALF_PANEL_TOP_PADDING = 20;
 const EXPANDED_PANEL_TOP_PADDING = 46;
 const HALF_ACTION_ROW_HEADER_CLEARANCE = 46;
 const EXPANDED_ACTION_ROW_HEADER_CLEARANCE = 0;
+const PROVIDER_HERO_IMAGE_SOURCES = new Set([
+	"provider_photo",
+	"provider_image",
+	"official_website_image",
+	"domain_logo",
+	"seed_image",
+	"deterministic_fallback",
+]);
 
 // ── Icon renderer (mirrors hospital body) ────────────────────────────────────
 function renderIcon(item, color, size = 14) {
@@ -60,6 +68,22 @@ function renderIcon(item, color, size = 14) {
 }
 
 function getProviderHeroSource(provider) {
+	const source = typeof provider?.imageSource === "string" ? provider.imageSource : "";
+	const confidence = Number(provider?.imageConfidence ?? 0);
+	const canUseImage =
+		PROVIDER_HERO_IMAGE_SOURCES.has(source) &&
+		(source === "deterministic_fallback" || confidence >= 0.35);
+	if (canUseImage) {
+		const candidates = [
+			provider?.image,
+			...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : []),
+		];
+		const uri = candidates.find(
+			(v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v),
+		);
+		return uri ? getCachedRemoteImageSource(uri) : null;
+	}
+
 	// Only honor REAL provider imagery. hospitalsService._mapHospital always
 	// emits an `image` URL — when a real photo is missing it substitutes a
 	// deterministic *hospital-flavored* fallback, which is the wrong identity
@@ -85,6 +109,45 @@ function getProviderHeroSource(provider) {
 // TrackingDetailsCard expects rows of { label, value, icon, kind?, ratingValue?, valueNumberOfLines? }.
 // Our model emits the same shape plus an extra `muted` flag for missing-data rows.
 // We translate `muted` into a lower-contrast value color via valueNumberOfLines + color override.
+function ProviderVisitSignals({
+	signals,
+	tintColor,
+	titleColor,
+	mutedColor,
+	rowSurface,
+	isDarkMode,
+}) {
+	if (!Array.isArray(signals) || signals.length === 0) return null;
+
+	return (
+		<View style={styles.visitSignalRail}>
+			{signals.map((item) => {
+				const isReady = item.tone === "ready";
+				const isAttention = item.tone === "attention";
+				const iconColor = isReady ? "#10B981" : isAttention ? tintColor : mutedColor;
+				const tileBg = isReady
+					? (isDarkMode ? "rgba(16,185,129,0.14)" : "rgba(16,185,129,0.10)")
+					: isAttention
+						? `${tintColor}14`
+						: rowSurface;
+				return (
+					<View key={item.key} style={[styles.visitSignalTile, { backgroundColor: tileBg }]}>
+						<View style={styles.visitSignalIconWrap}>
+							<Ionicons name={item.icon} size={15} color={iconColor} />
+						</View>
+						<Text numberOfLines={1} style={[styles.visitSignalLabel, { color: mutedColor }]}>
+							{item.label}
+						</Text>
+						<Text numberOfLines={2} style={[styles.visitSignalValue, { color: titleColor }]}>
+							{item.value}
+						</Text>
+					</View>
+				);
+			})}
+		</View>
+	);
+}
+
 function ProviderInfoSection({
 	section,
 	titleColor,
@@ -191,6 +254,7 @@ export default function MapProviderDetailBody({
 		heroBadges,
 		placeActions,
 		placeStats,
+		visitSignals,
 		infoSections,
 	} = model;
 
@@ -451,6 +515,15 @@ export default function MapProviderDetailBody({
 							</View>
 						) : null}
 
+						<ProviderVisitSignals
+							signals={visitSignals}
+							tintColor={tintColor}
+							titleColor={titleColor}
+							mutedColor={mutedColor}
+							rowSurface={model.rowSurface}
+							isDarkMode={isDarkMode}
+						/>
+
 						{sectionsNode}
 					</View>
 				</View>
@@ -591,6 +664,15 @@ export default function MapProviderDetailBody({
 							))}
 						</View>
 					) : null}
+
+					<ProviderVisitSignals
+						signals={visitSignals}
+						tintColor={tintColor}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						rowSurface={model.rowSurface}
+						isDarkMode={isDarkMode}
+					/>
 
 					{sectionsNode}
 				</View>

@@ -314,6 +314,40 @@ export const styles = StyleSheet.create({
 	},
 
 	// ── Sections stack ───────────────────────────────────────────────────────
+	visitSignalRail: {
+		marginTop: -2,
+		marginBottom: 8,
+		flexDirection: "row",
+		gap: 8,
+	},
+	visitSignalTile: {
+		flex: 1,
+		minWidth: 0,
+		minHeight: 74,
+		paddingHorizontal: 8,
+		paddingVertical: 9,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 3,
+		...squircle(18),
+	},
+	visitSignalIconWrap: {
+		width: 22,
+		height: 22,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	visitSignalLabel: {
+		fontSize: 10,
+		lineHeight: 12,
+		fontWeight: "600",
+	},
+	visitSignalValue: {
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: "700",
+		textAlign: "center",
+	},
 	sectionsStack: {
 		gap: 10,
 		marginTop: 4,

@@ -429,6 +429,49 @@ function buildPlaceStats(provider) {
 	return stats;
 }
 
+function buildVisitSignals(provider) {
+	const signals = [];
+	const isVerified = provider?.verified === true;
+	const hasPhone = typeof provider?.phone === "string" && provider.phone.trim().length > 0;
+	const hasCoords = Number.isFinite(provider?.coordinates?.latitude) &&
+		Number.isFinite(provider?.coordinates?.longitude);
+	const distLabel = buildDistanceValue(provider?.distanceKm);
+
+	signals.push({
+		key: "access",
+		label: "Access",
+		value: hasPhone ? "Call ahead" : (provider?.googleWebsite || provider?.website ? "Website listed" : "Contact pending"),
+		icon: hasPhone ? "call-outline" : "globe-outline",
+		tone: hasPhone ? "ready" : "neutral",
+	});
+
+	signals.push({
+		key: "visit",
+		label: "Visit",
+		value: provider?.appointmentRequired === true ? "Booking required" : "Walk-in likely",
+		icon: provider?.appointmentRequired === true ? "calendar-outline" : "walk-outline",
+		tone: provider?.appointmentRequired === true ? "attention" : "ready",
+	});
+
+	signals.push({
+		key: "coverage",
+		label: provider?.isWideProviderFallback ? "Area" : "Nearby",
+		value: provider?.isWideProviderFallback ? "Wider area" : (distLabel || (hasCoords ? "Mapped" : "Location pending")),
+		icon: provider?.isWideProviderFallback ? "map-outline" : "navigate-outline",
+		tone: provider?.isWideProviderFallback ? "attention" : "neutral",
+	});
+
+	signals.push({
+		key: "confidence",
+		label: "Confidence",
+		value: isVerified ? "Verified" : "Pending",
+		icon: isVerified ? "checkmark-circle-outline" : "ellipse-outline",
+		tone: isVerified ? "ready" : "neutral",
+	});
+
+	return signals;
+}
+
 function buildHeroBadges(provider, meta) {
 	const badges = [];
 	if (meta?.label) {
@@ -561,6 +604,7 @@ export default function useMapProviderDetailModel({
 	const summary    = useMemo(() => buildSummary(provider, meta), [provider, meta]);
 	const heroBadges = useMemo(() => buildHeroBadges(provider, meta), [provider, meta]);
 	const placeStats = useMemo(() => buildPlaceStats(provider), [provider]);
+	const visitSignals = useMemo(() => buildVisitSignals(provider), [provider]);
 	const collapsedAction = useMemo(
 		() => buildCollapsedAction(provider, meta, handleDirections),
 		[provider, meta, handleDirections],
@@ -665,6 +709,7 @@ export default function useMapProviderDetailModel({
 		heroBadges,
 		placeActions,
 		placeStats,
+		visitSignals,
 		// no-blank-state info sections (consumed by TrackingDetailsCard)
 		infoSections,
 		// collapsed slot

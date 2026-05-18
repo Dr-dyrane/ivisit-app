@@ -2,6 +2,15 @@ const DEFAULT_HOSPITAL_HERO_IMAGE = require("../../assets/features/emergency.png
 const remoteImageSourceCache = new Map();
 const prefetchedRemoteImageUris = new Set();
 const MAX_REMOTE_IMAGE_SOURCE_CACHE_SIZE = 120;
+const HOSPITAL_HERO_IMAGE_SOURCES = new Set([
+	"hospital_upload",
+	"provider_photo",
+	"provider_image",
+	"official_website_image",
+	"domain_logo",
+	"seed_image",
+	"deterministic_fallback",
+]);
 
 // PULLBACK NOTE: Add URL validation utility to prevent network errors
 // OLD: No validation, malformed URLs passed through to Image component
@@ -25,6 +34,13 @@ function toStringList(value) {
 }
 
 export function getHospitalHeroSource(hospital) {
+	const source = hospital?.imageSource || hospital?.image_source || "";
+	const confidence = Number(hospital?.imageConfidence ?? hospital?.image_confidence ?? 0);
+	const hasSourceGate =
+		typeof source === "string" && source.trim().length > 0
+			? HOSPITAL_HERO_IMAGE_SOURCES.has(source.trim()) &&
+				(source.trim() === "deterministic_fallback" || confidence >= 0.35)
+			: true;
 	const candidates = [
 		hospital?.image,
 		hospital?.imageUri,
@@ -35,7 +51,7 @@ export function getHospitalHeroSource(hospital) {
 	// PULLBACK NOTE: Validate URI before caching to prevent network errors
 	// OLD: Pass any non-empty string to getCachedRemoteImageSource
 	// NEW: Only pass valid URLs, fallback to default image
-	if (uri && isValidUrl(uri)) {
+	if (hasSourceGate && uri && isValidUrl(uri)) {
 		return getCachedRemoteImageSource(uri);
 	}
 	return DEFAULT_HOSPITAL_HERO_IMAGE;
