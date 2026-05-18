@@ -297,6 +297,15 @@ const CATEGORY_TO_GOOGLE_QUERIES: Record<string, string[]> = {
   pediatrics: ["pediatrician", "children clinic", "pediatric hospital"],
 };
 
+const GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES = new Set<string>([
+  PROVIDER_TYPES.RADIOLOGY,
+]);
+
+const CATEGORY_RESULT_KEYWORD_GUARDS: Record<string, RegExp> = {
+  radiology:
+    /\bradio[l]?og[yi]\b|\bdiagnostic\b|\bimaging\b|\bx-?ray\b|\bmri\b|\bultrasound\b|\bsonogram\b|\bsono\b|\bct scan\b|\bmammograph[yi]\b/i,
+};
+
 // Provider category → primary search keyword for Mapbox text fallback
 const EXPLORE_CATEGORY_META_KEYWORDS: Record<string, string> = {
   hospital: "hospital",
@@ -756,6 +765,29 @@ const toMergeKey = (row: any): string => {
   return `id:${id}`;
 };
 
+const buildGoogleTextSearchQuery = (providerCategory: string, query: string): string => {
+  const explicitQuery = toSafeString(query);
+  if (explicitQuery) return explicitQuery;
+  const categoryQueries = CATEGORY_TO_GOOGLE_QUERIES[providerCategory] ?? [];
+  return categoryQueries.slice(0, 4).join(" ");
+};
+
+const shouldKeepProviderForRequestedCategory = (row: any, requestedCategory: string): boolean => {
+  const guard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
+  if (!guard) return true;
+  const haystack = [
+    row?.name,
+    row?.address,
+    row?.google_type,
+    ...(Array.isArray(row?.google_types) ? row.google_types : []),
+    ...(Array.isArray(row?.specialties) ? row.specialties : []),
+    ...(Array.isArray(row?.service_types) ? row.service_types : []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return guard.test(haystack);
+};
+
 const calculateDistanceKm = (
   fromLat: number,
   fromLng: number,
@@ -943,10 +975,14 @@ const fetchGoogleProviderPlaces = async ({
   // NEW: derive includedTypes from CATEGORY_TO_GOOGLE_TYPES[providerCategory]
   providerCategory: string;
 }) => {
-  const endpoint =
-    mode === "text_search" && query
-      ? "https://places.googleapis.com/v1/places:searchText"
-      : "https://places.googleapis.com/v1/places:searchNearby";
+  const textSearchQuery =
+    mode === "text_search" || GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES.has(providerCategory)
+      ? buildGoogleTextSearchQuery(providerCategory, query)
+      : "";
+  const useTextSearch = !!textSearchQuery;
+  const endpoint = useTextSearch
+    ? "https://places.googleapis.com/v1/places:searchText"
+    : "https://places.googleapis.com/v1/places:searchNearby";
   // Keep list discovery on the leanest useful field set. Richer details
   // (phone, website, rating, photos) should be fetched only from an explicit
   // provider-detail enrichment path so list browsing cannot fan out costs.
@@ -957,10 +993,9 @@ const fetchGoogleProviderPlaces = async ({
   const googleTypes = CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"];
   const primaryGoogleType = googleTypes[0] ?? "hospital";
   const body =
-    mode === "text_search" && query
+    useTextSearch
       ? {
-          textQuery: query,
-          includedType: primaryGoogleType,
+          textQuery: textSearchQuery,
           pageSize: limit,
           locationBias: {
             circle: {
@@ -1585,7 +1620,10 @@ serve(async (req) => {
           (place: any) =>
             !!place?.place_id &&
             Number.isFinite(place?.latitude) &&
-            Number.isFinite(place?.longitude)
+            Number.isFinite(place?.longitude) &&
+            Number.isFinite(place?.distance_km) &&
+            place.distance_km <= radius / 1000 &&
+            shouldKeepProviderForRequestedCategory(place, providerCategory)
         );
 
       if (mergeWithDatabase && normalizedProviderHospitals.length > 0) {
@@ -1839,7 +1877,7 @@ serve(async (req) => {
 
     for (const row of prioritizedDbResults) {
       const locality = providerLocalityByPlaceId.get(toSafeString(row?.place_id));
-      const dbRow = locality ? { ...row, ...locality } : row;
+      const dbRow = withDistanceFromOrigin(locality ? { ...row, ...locality } : row, latitude, longitude);
       const key = toMergeKey(dbRow);
       if (seen.has(key)) continue;
       seen.add(key);
