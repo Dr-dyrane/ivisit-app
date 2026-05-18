@@ -31,6 +31,9 @@ module.exports = ({ config }) => {
     cleanEnvValue(process.env.GOOGLE_MAPS_MAP_ID);
   const googleMapsAndroidApiKey =
     cleanEnvValue(process.env.GOOGLE_MAPS_ANDROID_API_KEY) ?? googleMapsWebApiKey;
+  const mapboxAccessToken =
+    cleanEnvValue(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN) ||
+    cleanEnvValue(process.env.MAPBOX_ACCESS_TOKEN);
 
   return {
     ...config,
@@ -142,6 +145,8 @@ module.exports = ({ config }) => {
       },
       googleMapsApiKey: googleMapsWebApiKey,
       googleMapsMapId: googleMapsWebMapId,
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: mapboxAccessToken,
+      MAPBOX_ACCESS_TOKEN: mapboxAccessToken,
       webAppUrl: getWebAppUrl(),
     },
     runtimeVersion: {
