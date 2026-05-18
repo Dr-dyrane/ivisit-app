@@ -63,6 +63,7 @@
     "hardening:emergency-runtime-confidence-assert": "node supabase/tests/scripts/assert_emergency_runtime_confidence.js",
     "hardening:emergency-runtime-confidence": "npm run hardening:console-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert",
     "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js",
+    "hardening:edge-smoke": "node supabase/tests/scripts/run_edge_function_smoke_matrix.js",
     "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js",
     "hardening:cash-matrix": "node supabase/tests/scripts/run_cash_role_isolation_matrix.js",
     "hardening:mutation-matrix": "node supabase/tests/scripts/run_mutation_role_isolation_matrix.js",
