@@ -197,6 +197,28 @@ const MAP_LOCAL_NEARBY_COMFORT_THRESHOLD = 3;
 const REGION_LOCAL_FIRST_COUNTRY_CODES = new Set(["NG"]);
 const LOCALITY_SCOPE_LOCAL = "local";
 const LOCALITY_SCOPE_WIDE_FALLBACK = "wide_fallback";
+const GOOGLE_PROVIDER_LIST_FIELD_MASK = [
+  "places.id",
+  "places.displayName",
+  "places.formattedAddress",
+  "places.location",
+  "places.primaryType",
+  "places.types",
+].join(",");
+const GOOGLE_PROVIDER_DETAIL_FIELD_MASK = [
+  "id",
+  "displayName",
+  "formattedAddress",
+  "location",
+  "rating",
+  "userRatingCount",
+  "nationalPhoneNumber",
+  "internationalPhoneNumber",
+  "websiteUri",
+  "photos",
+  "primaryType",
+  "types",
+].join(",");
 
 const normalizeCountryCode = (value: unknown): string => {
   const clean = toSafeString(value).toUpperCase();
@@ -885,6 +907,7 @@ const normalizeGooglePlace = (
       "",
     website: place?.websiteUri ?? place?.website ?? "",
     rating: toFiniteNumber(place?.rating) ?? 0,
+    reviews_count: toNonNegativeInt(place?.userRatingCount ?? place?.user_ratings_total, 0),
     google_type: primaryType,
     google_types: googleTypes,
     image: proxyImage,
@@ -924,8 +947,10 @@ const fetchGoogleProviderPlaces = async ({
     mode === "text_search" && query
       ? "https://places.googleapis.com/v1/places:searchText"
       : "https://places.googleapis.com/v1/places:searchNearby";
-  const fieldMask =
-    "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.photos,places.primaryType,places.types";
+  // Keep list discovery on the leanest useful field set. Richer details
+  // (phone, website, rating, photos) should be fetched only from an explicit
+  // provider-detail enrichment path so list browsing cannot fan out costs.
+  const fieldMask = GOOGLE_PROVIDER_LIST_FIELD_MASK;
   // PULLBACK NOTE: FIX-A — derive includedTypes from category mapping, fallback to hospital
   // OLD: hardcoded ["hospital"] / "hospital" regardless of caller
   // NEW: CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"]
@@ -972,6 +997,29 @@ const fetchGoogleProviderPlaces = async ({
 
   const data = await response.json();
   return Array.isArray(data?.places) ? data.places : [];
+};
+
+const fetchGoogleProviderDetails = async ({
+  apiKey,
+  placeId,
+}: {
+  apiKey: string;
+  placeId: string;
+}) => {
+  const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": GOOGLE_PROVIDER_DETAIL_FIELD_MASK,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`google place details fetch failed: ${response.status} ${text}`);
+  }
+
+  return await response.json();
 };
 
 // Keep persistence schema-safe: only write columns that exist on public.hospitals.
@@ -1167,6 +1215,122 @@ serve(async (req) => {
     }
 
     const body = await req.json();
+    const action = typeof body?.action === "string" ? body.action.trim() : "discover";
+    if (action === "enrich_provider") {
+      const placeId = toSafeString(body?.placeId ?? body?.place_id);
+      if (!placeId) {
+        throw new Error("placeId is required");
+      }
+
+      const providerCategory: string =
+        typeof body?.providerCategory === "string" && CATEGORY_TO_GOOGLE_TYPES[body.providerCategory]
+          ? body.providerCategory
+          : "hospital";
+      const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+      const googleApiKey = getEnv(
+        "GOOGLE_MAPS_API_KEY",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
+        "GOOGLE_MAPS_ANDROID_API_KEY",
+      );
+
+      if (!googlePlacesEnabled || !googleApiKey) {
+        return new Response(
+          JSON.stringify({
+            data: null,
+            meta: {
+              action,
+              provider_category: providerCategory,
+              google_enabled: false,
+              skip_reason: !googlePlacesEnabled ? "google_places_disabled" : "missing_google_api_key",
+            },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const supabaseClient = createClient(
+        getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
+        getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY")
+      );
+      const details = await fetchGoogleProviderDetails({ apiKey: googleApiKey, placeId });
+      const normalized = withProviderDefaults(
+        normalizeGooglePlace(details, 0, 0, 0),
+        "google",
+        providerCategory,
+      );
+      const upsertRow = toHospitalUpsertRow(normalized);
+      let persistedRow: any = null;
+      let providerPersistenceError: string | null = null;
+
+      if (
+        upsertRow?.place_id &&
+        upsertRow?.name &&
+        upsertRow?.address &&
+        Number.isFinite(upsertRow?.latitude) &&
+        Number.isFinite(upsertRow?.longitude)
+      ) {
+        const { data: hospitalRow, error: upsertError } = await supabaseClient
+          .from("hospitals")
+          .upsert(upsertRow, {
+            onConflict: "place_id",
+            ignoreDuplicates: false,
+          })
+          .select("*")
+          .maybeSingle();
+
+        if (upsertError) {
+          providerPersistenceError = upsertError.message || "provider_upsert_failed";
+          console.error("[discover-hospitals] provider detail upsert failed", upsertError);
+        } else {
+          persistedRow = hospitalRow;
+        }
+      }
+
+      if (persistedRow?.id) {
+        const providerUpsertRow = toProviderUpsertRow(persistedRow.id, {
+          ...normalized,
+          provider_type: providerCategory,
+        });
+        if (providerUpsertRow) {
+          const { error: providerError } = await supabaseClient
+            .from("providers")
+            .upsert(providerUpsertRow, {
+              onConflict: "hospital_id,provider_type",
+              ignoreDuplicates: false,
+            });
+          if (providerError) {
+            providerPersistenceError = providerError.message || providerPersistenceError;
+            console.error("[discover-hospitals] provider detail provider-row upsert failed", providerError);
+          }
+        }
+      }
+
+      const enrichedRow = {
+        ...(persistedRow || {}),
+        ...normalized,
+        id: persistedRow?.id ?? normalized.place_id,
+        google_phone: normalized.phone,
+        google_website: normalized.website,
+        google_rating: normalized.rating,
+        google_rating_count: (normalized as any).reviews_count,
+      };
+
+      return new Response(
+        JSON.stringify({
+          data: enrichedRow,
+          meta: {
+            action,
+            provider_category: providerCategory,
+            provider_source: "google",
+            google_enabled: true,
+            persisted: Boolean(persistedRow?.id),
+            provider_persistence_error: providerPersistenceError,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const latitude = toFiniteNumber(body?.latitude);
     const longitude = toFiniteNumber(body?.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -1295,8 +1459,9 @@ serve(async (req) => {
 
     if (includeProviderDiscovery && !hasEnoughDbResults) {
       try {
-        // Google Places remains optional because web-service cost is controlled
-        // by ENABLE_GOOGLE_PLACES; Mapbox is the default external provider path.
+        // Google Places is the primary Explore Care provider source when the
+        // server flag is enabled. Mapbox remains a fallback for outage/quota
+        // resilience and for local development without Google billing.
         const fetchGooglePlacesForRadius = async (searchRadius: number) => {
           if (!googleApiKey || !includeGooglePlaces) return [];
           console.log("[discover-hospitals] google fetch", {

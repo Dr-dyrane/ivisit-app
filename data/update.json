@@ -1,7 +1,7 @@
 {
   "_lastCommitHash": "9cbd640",
   "_lastCommitDate": "2026-05-15T00:15:49-07:00",
-  "version": "1.0.7",
+  "version": "1.0.5",
   "date": "2026-05-17",
   "title": "Pharmacy Deduplication Fix",
   "summary": "Fixed duplicate pharmacy entries in the provider list by improving coordinate-based deduplication in the discovery edge function.",

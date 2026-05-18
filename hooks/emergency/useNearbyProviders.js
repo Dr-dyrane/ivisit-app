@@ -31,7 +31,7 @@ const DEFAULT_LIMIT = 15;
  * @param {boolean} params.enabled          - Whether to enable the query
  * @param {number} [params.radius]          - Radius in meters (default 20000)
  * @param {number} [params.limit]           - Max results (default 15)
- * @param {boolean} [params.includeGoogle]  - Include Google Places (default false — cost control)
+ * @param {boolean} [params.includeGoogle]  - Include Google Places (default true for Explore Care)
  */
 export function useNearbyProviders({
   providerCategory = PROVIDER_TYPES.PHARMACY,
@@ -39,7 +39,7 @@ export function useNearbyProviders({
   enabled = true,
   radius = DEFAULT_RADIUS,
   limit = DEFAULT_LIMIT,
-  includeGoogle = false,
+  includeGoogle = true,
   countryCode = null,
 }) {
   const queryClient = useQueryClient();

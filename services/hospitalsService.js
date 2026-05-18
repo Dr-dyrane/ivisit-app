@@ -609,6 +609,7 @@ export const hospitalsService = {
 			name: toText(h?.name, "Unnamed Provider"),
 			address: toText(h?.google_address, toText(h?.address, "Address unavailable")),
 			phone,
+			website: toText(h?.google_website, toText(h?.website, toText(h?.website_url))),
 			rating,
 			reviewsCount: toNonNegativeInt(
 				h?.reviews_count ?? h?.google_rating_count ?? h?.user_ratings_total,
@@ -888,6 +889,41 @@ export const hospitalsService = {
 		} catch (err) {
 			console.error("hospitalsService.listNearbyProviders error:", err);
 			return [];
+		}
+	},
+
+	/**
+	 * Enrich one Explore Care provider from Google Places on detail open.
+	 * List discovery intentionally uses a lean field mask; this tap-time path
+	 * fetches richer fields for a single provider and lets the edge function
+	 * persist what fits the app-owned provider tables.
+	 */
+	async enrichProviderDetails(provider, options = {}) {
+		try {
+			const placeId = toText(provider?.placeId ?? provider?.place_id);
+			if (!placeId || !isGooglePlacesEnabled()) return null;
+			const providerCategory = toText(
+				options?.providerCategory ?? provider?.providerType ?? provider?.provider_type,
+				PROVIDER_TYPES.CLINIC,
+			);
+
+			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
+				body: {
+					action: 'enrich_provider',
+					placeId,
+					providerCategory,
+				}
+			});
+
+			if (error || !data?.data) {
+				if (error) console.warn("hospitalsService.enrichProviderDetails skipped:", error?.message || error);
+				return null;
+			}
+
+			return this._mapHospital(data.data);
+		} catch (err) {
+			console.warn("hospitalsService.enrichProviderDetails error:", err?.message || err);
+			return null;
 		}
 	},
 

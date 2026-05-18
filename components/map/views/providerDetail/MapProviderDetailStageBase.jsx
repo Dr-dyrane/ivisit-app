@@ -14,6 +14,7 @@ import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
 import useHospitalDetailQuery from "../../../../hooks/visits/useHospitalDetailQuery";
 import useMapProviderDetailModel from "../../surfaces/providerDetail/useMapProviderDetailModel";
+import { hospitalsService } from "../../../../services/hospitalsService";
 import {
 	MapProviderDetailBodyContent,
 	MapProviderDetailCollapsedTopSlot,
@@ -88,10 +89,54 @@ export default function MapProviderDetailStageBase({
 	const shouldShowHeaderToggle = presentationMode === "sheet";
 
 	const providerDetailQuery = useHospitalDetailQuery(provider?.id);
-	const resolvedProvider = useMemo(
+	const [enrichedProvider, setEnrichedProvider] = useState(null);
+	const providerWithDbDetail = useMemo(
 		() => mergeProviderDetail(provider, providerDetailQuery.data),
 		[provider, providerDetailQuery.data],
 	);
+	const resolvedProvider = useMemo(
+		() => mergeProviderDetail(providerWithDbDetail, enrichedProvider),
+		[providerWithDbDetail, enrichedProvider],
+	);
+
+	useEffect(() => {
+		setEnrichedProvider(null);
+	}, [provider?.placeId]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const providerSource = String(providerWithDbDetail?.providerSource || "").toLowerCase();
+		const placeId = providerWithDbDetail?.placeId;
+		const shouldEnrich =
+			!!placeId &&
+			providerWithDbDetail?.providerType !== "hospital" &&
+			(providerSource === "google_places" || providerWithDbDetail?.isGoogleOnly === true) &&
+			(!providerWithDbDetail?.phone ||
+				!providerWithDbDetail?.website ||
+				!providerWithDbDetail?.imageSource ||
+				providerWithDbDetail?.imageSource === "deterministic_fallback");
+
+		if (!shouldEnrich) return undefined;
+
+		hospitalsService
+			.enrichProviderDetails(providerWithDbDetail)
+			.then((nextProvider) => {
+				if (!cancelled && nextProvider) setEnrichedProvider(nextProvider);
+			})
+			.catch(() => {});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		providerWithDbDetail?.placeId,
+		providerWithDbDetail?.providerType,
+		providerWithDbDetail?.providerSource,
+		providerWithDbDetail?.isGoogleOnly,
+		providerWithDbDetail?.phone,
+		providerWithDbDetail?.website,
+		providerWithDbDetail?.imageSource,
+	]);
 	const detailStatus = useMemo(
 		() => ({
 			isFetching: providerDetailQuery.isFetching,
