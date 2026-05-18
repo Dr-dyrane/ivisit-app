@@ -298,13 +298,31 @@ const CATEGORY_TO_GOOGLE_QUERIES: Record<string, string[]> = {
 };
 
 const GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES = new Set<string>([
+  PROVIDER_TYPES.LAB,
   PROVIDER_TYPES.RADIOLOGY,
+  PROVIDER_TYPES.URGENT_CARE,
+  PROVIDER_TYPES.MENTAL_HEALTH,
+  PROVIDER_TYPES.WOMENS_CARE,
+  PROVIDER_TYPES.PEDIATRICS,
 ]);
 
 const CATEGORY_RESULT_KEYWORD_GUARDS: Record<string, RegExp> = {
+  lab:
+    /\blab(orator(y|ies))?\b|\bdiagnostic\b|\bpatholog[yi]\b|\bblood\b|\btesting\b|\bdna\b|\bquest\b|\blabcorp\b/i,
   radiology:
     /\bradio[l]?og[yi]\b|\bdiagnostic\b|\bimaging\b|\bx-?ray\b|\bmri\b|\bultrasound\b|\bsonogram\b|\bsono\b|\bct scan\b|\bmammograph[yi]\b/i,
+  urgent_care:
+    /\burgent care\b|\bwalk.?in\b|\bimmediate care\b|\bexpress care\b|\bemergency clinic\b|\bminor emergency\b/i,
+  mental_health:
+    /\bmental health\b|\bbehavioral\b|\bpsychiat(ry|rist|ric)\b|\bpsycholog(ist|y)\b|\btherapy\b|\btherapist\b|\bcounsel(l?ing|or)\b|\baddiction\b|\brecovery\b/i,
+  womens_care:
+    /\bwomen'?s\b|\bob[ -]?gyn\b|\bobstetric|\bgyneco?log|\bmaternity\b|\bprenatal\b|\bpregnancy\b|\bfertility\b/i,
+  pediatrics:
+    /\bpediatric(s|ian)?\b|\bpaediatric(s|ian)?\b|\bchildren'?s\b|\bchild\b|\bkids?\b|\bbaby\b/i,
 };
+
+const NON_DENTAL_PROVIDER_NOISE_GUARD =
+  /\bdent(al|ist|istry)\b|\borthodont(ic|ics|ist)\b|\bsmiles?\b/i;
 
 // Provider category → primary search keyword for Mapbox text fallback
 const EXPLORE_CATEGORY_META_KEYWORDS: Record<string, string> = {
@@ -773,8 +791,6 @@ const buildGoogleTextSearchQuery = (providerCategory: string, query: string): st
 };
 
 const shouldKeepProviderForRequestedCategory = (row: any, requestedCategory: string): boolean => {
-  const guard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
-  if (!guard) return true;
   const haystack = [
     row?.name,
     row?.address,
@@ -785,6 +801,14 @@ const shouldKeepProviderForRequestedCategory = (row: any, requestedCategory: str
   ]
     .filter(Boolean)
     .join(" ");
+  if (
+    requestedCategory !== PROVIDER_TYPES.HOSPITAL &&
+    NON_DENTAL_PROVIDER_NOISE_GUARD.test(haystack)
+  ) {
+    return false;
+  }
+  const guard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
+  if (!guard) return true;
   return guard.test(haystack);
 };
 
@@ -1871,7 +1895,8 @@ serve(async (req) => {
         ? dbResults
         : dbResults.filter((row: any) => {
             const rowType = toSafeString(row?.provider_type, "hospital").toLowerCase();
-            return rowType === providerCategory;
+            return rowType === providerCategory &&
+              shouldKeepProviderForRequestedCategory(row, providerCategory);
           })
     );
 
