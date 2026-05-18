@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getEnv } from "../_shared/env/env.ts";
+import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,12 +13,6 @@ const toText = (value: unknown, fallback = "") => {
 };
 
 const toSafeBody = (value: unknown) => toText(value).slice(0, 1000);
-
-const jsonResponse = (payload: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 
 const isDemoHospital = (hospital: any) => {
   const placeId = toText(hospital?.place_id).toLowerCase();
@@ -77,10 +68,10 @@ const extractOpenAIText = (responseJson: Record<string, unknown>) => {
 };
 
 const generateOpenAIReply = async (context: Record<string, unknown>) => {
-  const key = Deno.env.get("OPENAI_API_KEY");
+  const key = getEnv("OPENAI_API_KEY");
   if (!key) return null;
 
-  const model = toText(Deno.env.get("OPENAI_MODEL"), "gpt-4.1-mini");
+  const model = toText(getEnv("OPENAI_MODEL"), "gpt-4.1-mini");
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -116,10 +107,10 @@ const generateOpenAIReply = async (context: Record<string, unknown>) => {
 };
 
 const generateAnthropicReply = async (context: Record<string, unknown>) => {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  const key = getEnv("ANTHROPIC_API_KEY");
   if (!key) return null;
 
-  const model = toText(Deno.env.get("ANTHROPIC_MODEL"), "claude-3-5-haiku-latest");
+  const model = toText(getEnv("ANTHROPIC_MODEL"), "claude-3-5-haiku-latest");
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -164,23 +155,13 @@ ${JSON.stringify(context)}`,
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      throw new Error("Supabase environment is not configured");
-    }
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
-    });
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const userClient = createUserClient(authHeader);
+    const adminClient = createServiceClient();
 
     const {
       data: { user },
@@ -188,7 +169,7 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (userError || !user?.id) {
-      return jsonResponse({ success: false, error: "Unauthorized" }, 401);
+      return jsonResponse({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -199,7 +180,7 @@ serve(async (req) => {
     if (!UUID_PATTERN.test(roomId) || !UUID_PATTERN.test(requestId) || !UUID_PATTERN.test(messageId)) {
       return jsonResponse(
         { success: false, error: "roomId, requestId, and messageId must be valid UUIDs" },
-        400
+        { status: 400 },
       );
     }
 
@@ -215,7 +196,10 @@ serve(async (req) => {
       throw new Error(`Participant lookup failed: ${participantError.message}`);
     }
     if (!participant) {
-      return jsonResponse({ success: false, error: "Chat room not available for this user" }, 403);
+      return jsonResponse(
+        { success: false, error: "Chat room not available for this user" },
+        { status: 403 },
+      );
     }
 
     const { data: room, error: roomError } = await adminClient
@@ -259,7 +243,10 @@ serve(async (req) => {
       throw new Error(`Emergency request lookup failed: ${requestError.message}`);
     }
     if (!requestRow || String(requestRow.user_id) !== String(user.id)) {
-      return jsonResponse({ success: false, error: "Request not found for this user" }, 403);
+      return jsonResponse(
+        { success: false, error: "Request not found for this user" },
+        { status: 403 },
+      );
     }
 
     const { data: hospitalRow, error: hospitalError } = requestRow.hospital_id
@@ -368,6 +355,6 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[demo-dispatch-reply] fatal", message);
-    return jsonResponse({ success: false, error: message }, 500);
+    return jsonResponse({ success: false, error: message }, { status: 500 });
   }
 });

@@ -14,3 +14,18 @@ export const createServiceClient = () => {
 
   return createClient(supabaseUrl, serviceRoleKey);
 };
+
+export const createUserClient = (authorizationHeader = "") => {
+  const supabaseUrl = getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL");
+  const anonKey = getEnv("SUPABASE_ANON_KEY", "EXPO_PUBLIC_SUPABASE_ANON_KEY");
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error("Missing Supabase user client configuration");
+  }
+
+  return createClient(supabaseUrl, anonKey, {
+    global: authorizationHeader
+      ? { headers: { Authorization: authorizationHeader } }
+      : undefined,
+  });
+};
