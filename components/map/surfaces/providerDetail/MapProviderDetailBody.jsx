@@ -59,10 +59,25 @@ function renderIcon(item, color, size = 14) {
 }
 
 function getProviderHeroSource(provider) {
-	const candidates = [provider?.image, ...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : [])];
-	const uri = candidates.find((v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v));
-	if (uri) return getCachedRemoteImageSource(uri);
-	return null; // null → render fallback tinted wash instead of ImageBackground.
+	// Only honor REAL provider imagery. hospitalsService._mapHospital always
+	// emits an `image` URL — when a real photo is missing it substitutes a
+	// deterministic *hospital-flavored* fallback, which is the wrong identity
+	// for pharmacies / labs / etc. The service tags this via `imageSource`
+	// and `imageConfidence`; we treat the fallback as "no image" and let the
+	// hero render the neutral wash + provider category tint instead.
+	const isReal =
+		provider?.imageSource === "provider_image" &&
+		Number(provider?.imageConfidence ?? 0) >= 0.5;
+	if (!isReal) return null;
+
+	const candidates = [
+		provider?.image,
+		...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : []),
+	];
+	const uri = candidates.find(
+		(v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v),
+	);
+	return uri ? getCachedRemoteImageSource(uri) : null;
 }
 
 // ── Section row → TrackingDetailsCard row mapping ────────────────────────────
