@@ -38,6 +38,7 @@ import useMarkerRenderPulse from "../../../hooks/map/useMarkerRenderPulse";
 import { normalizeCoordinate } from "../../../utils/emergencyContextHelpers";
 import { calculateBearing, calculateDistance } from "../../../utils/mapUtils";
 import { EXPLORE_CATEGORY_META } from "../../../constants/providerTypes";
+import { MAP_SHEET_PHASES } from "../../map/mapSheet.constants";
 
 const DEFAULT_REGION = {
   latitude: 37.7749,
@@ -493,9 +494,11 @@ export default function EmergencyLocationPreviewMap({
   // suppressHospitalMarkers: hide hospital pins when a provider is the map focus
   // focusedCoordinate: override selectedHospitalCoordinate for route destination + camera fit
   // focusedProviderType: themes the route polyline to the active provider category color
+  // sheetPhase: provider focus mode needs to know which sheet phase it's in to adjust camera positioning
   suppressHospitalMarkers = false,
   focusedCoordinate = null,
   focusedProviderType = null,
+  sheetPhase = null,
 }) {
   const { isDarkMode } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -1029,14 +1032,16 @@ export default function EmergencyLocationPreviewMap({
   ]);
 
   // PULLBACK NOTE: EXP-7 camera fix — provider focus phase over-zoom
-  // When focusedCoordinate is active (PROVIDER_LIST / PROVIDER_DETAIL), the sheet
-  // is EXPANDED (~540–780px). Feeding that full height into getRoutePadding as
-  // bottom inset → fitToCoordinates zooms out to fit [user, provider] behind the sheet.
-  // Fix: when in provider focus mode, cap the effective fit height to a small fixed
-  // inset (enough to clear bottom chrome) instead of the full expanded sheet height.
-  const PROVIDER_FOCUS_FIT_INSET = 140;
-  const effectiveFitSheetHeight = focusedCoordinate
-    ? PROVIDER_FOCUS_FIT_INSET
+  // When focusedCoordinate is active in PROVIDER_LIST (EXPANDED snap, ~540–780px),
+  // feeding that full height into getRoutePadding as bottom inset → fitToCoordinates
+  // zooms out too far to fit [user, provider] behind the sheet.
+  // Fix: use a dynamic inset based on sheet height (40%) to keep route visible above
+  // the expanded sheet without massive zoom-out, while scaling for different screen sizes.
+  const providerFocusFitInset = Math.round(bottomSheetHeight * 0.4);
+  const isProviderListPhase = sheetPhase === MAP_SHEET_PHASES.PROVIDER_LIST;
+  const isProviderListExpanded = focusedCoordinate && isProviderListPhase;
+  const effectiveFitSheetHeight = isProviderListExpanded
+    ? providerFocusFitInset
     : bottomSheetHeight;
 
   const fitRoute = useCallback(
@@ -1224,6 +1229,8 @@ export default function EmergencyLocationPreviewMap({
 
   useEffect(() => {
     if (!mapRef.current || !hasLocation || !isMapReady) return;
+    
+    // Original route fit trigger for hospital/tracking flows
     if (routeFitPrimeKeyRef.current === routeFitPrimeKey) {
       return;
     }

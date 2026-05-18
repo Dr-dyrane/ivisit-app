@@ -203,18 +203,14 @@ export default function MapScreen() {
   const handleExploreCare = useCallback((providerType) => {
     // PULLBACK NOTE: EXP-6C — PROVIDER_LIST is now a proper orchestrator phase
     // OLD: set atom → floating MapProviderListSheet overlay
-    // NEW: set atom + transition phase → MapSheetOrchestrator PROVIDER_LIST case
+    // NEW: set atom + transition phase
     //
-    // PULLBACK NOTE: FIX — use setSheetView (single atomic dispatch) instead of
-    // setSheetPayload + setSheetPhase as two separate dispatches.
-    // Root cause: SET_SHEET_PAYLOAD normalizes against the CURRENT phase (EXPLORE_INTENT).
-    // EXPLORE_INTENT is not in PAYLOAD_OPTIONAL_OBJECT_PHASES → normalizer drops payload to null.
-    // Then SET_SHEET_PHASE fires with PROVIDER_LIST → EXPANDED snap but null payload.
-    // setSheetView batches phase + payload + snapState into one normalizeMapSheetView call,
-    // so PROVIDER_LIST's payload allowance and EXPANDED_ONLY snap are both respected atomically.
-    setExploreProviderCategory(providerType);
+    // PULLBACK NOTE: FIX — call openProviderList first to transition sheet phase,
+    // then set atom. This ensures sheet phase is set before focusedCoordinate
+    // is derived in useMapFocusedState, eliminating timing gap.
     openProviderList(providerType, null);
-  }, [setExploreProviderCategory, openProviderList]);
+    setExploreProviderCategory(providerType);
+  }, [openProviderList, setExploreProviderCategory]);
 
   const handleCloseProviderList = useCallback(() => {
     setExploreProviderCategory(null);
@@ -643,6 +639,7 @@ export default function MapScreen() {
         }
         focusedCoordinate={mapFocusedProviderCoordinate}
         focusedProviderType={mapFocusedProviderType}
+        sheetPhase={sheetPhase}
       />
 
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
