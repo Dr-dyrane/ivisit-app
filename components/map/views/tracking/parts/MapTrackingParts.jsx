@@ -617,7 +617,7 @@ export function TrackingDetailsCard({
                 ) : (
                   <Text
                     numberOfLines={detail.valueNumberOfLines || valueNumberOfLines}
-                    style={[styles.detailValue, { color: titleColor }]}
+                    style={[styles.detailValue, { color: detail.valueColor || titleColor }]}
                   >
                     {detail.value}
                   </Text>

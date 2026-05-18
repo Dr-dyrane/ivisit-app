@@ -171,7 +171,7 @@ const SORT_PILL_META = [
   { mode: "sponsored",label: "Sponsored", icon: "lightning-bolt-outline" },
 ];
 
-function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceTags, totalCount, tintColor, tokens, filterPillSurface, filterPillActive, filterCountText }) {
+function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceTags, totalCount, tintColor, tokens, filterPillSurface, filterPillActive, filterCountText, stickToTop = false }) {
   const pillActiveBg   = filterPillActive  ?? tintColor + "1A";
   const pillInactiveBg = filterPillSurface ?? tokens.mutedCardSurface;
 
@@ -179,6 +179,7 @@ function FilterRail({ activeMode, onSortSelect, activeTag, onTagSelect, serviceT
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={stickToTop ? styles.filterRailSticky : null}
       contentContainerStyle={styles.filterRailContent}
     >
       {/* ── Sort pills ── */}
@@ -422,6 +423,7 @@ export default function MapProviderListContent({
   // OLD: no prop — isSelected was hardcoded to false for every card
   // NEW: selectedProviderId drives isSelected per card via atom read in MapScreen
   selectedProviderId,
+  isSidebarPresentation = false,
 }) {
   const { isDarkMode } = useTheme();
   const [sortMode, setSortMode] = useState("nearest");
@@ -518,6 +520,7 @@ export default function MapProviderListContent({
             filterPillSurface={filterPillSurface}
             filterPillActive={filterPillActive}
             filterCountText={filterCountText}
+            stickToTop={isSidebarPresentation}
           />
 
           <View style={styles.listContent}>
@@ -567,6 +570,14 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 4,
   },
+  filterRailSticky: Platform.select({
+    web: {
+      position: "sticky",
+      top: 0,
+      zIndex: 12,
+    },
+    default: null,
+  }),
   filterRailContent: {
     paddingHorizontal: 2,
     paddingRight: 8,

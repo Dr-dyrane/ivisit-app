@@ -354,6 +354,52 @@ export const styles = StyleSheet.create({
 	},
 
 	// ── Skeleton (loading provider) ──────────────────────────────────────────
+	detailNotice: {
+		marginTop: -2,
+		marginBottom: 6,
+		paddingHorizontal: 12,
+		paddingVertical: 12,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 12,
+		...squircle(18),
+	},
+	detailNoticeCopy: {
+		flex: 1,
+		minWidth: 0,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+	},
+	detailNoticeTextBlock: {
+		flex: 1,
+		minWidth: 0,
+	},
+	detailNoticeTitle: {
+		fontSize: 13,
+		lineHeight: 17,
+		fontWeight: "700",
+	},
+	detailNoticeBody: {
+		marginTop: 2,
+		fontSize: 12,
+		lineHeight: 16,
+		fontWeight: "500",
+	},
+	detailNoticeRetry: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 5,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		...squircle(999),
+	},
+	detailNoticeRetryText: {
+		fontSize: 12,
+		lineHeight: 15,
+		fontWeight: "700",
+	},
 	skeletonHero: {
 		height: 270,
 		marginHorizontal: -14,

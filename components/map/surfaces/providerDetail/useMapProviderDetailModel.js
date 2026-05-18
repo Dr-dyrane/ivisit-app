@@ -71,12 +71,6 @@ function buildDistanceLabel(distanceKm) {
 	return `${rounded} km away`;
 }
 
-function buildDistanceValue(distanceKm) {
-	if (!Number.isFinite(distanceKm) || distanceKm <= 0) return null;
-	const rounded = Math.round(distanceKm * 10) / 10;
-	return `${rounded} km`;
-}
-
 // ─── Hours formatting (structuredHours JSONB) ────────────────────────────────
 //
 // Expected JSONB shape (best-effort — falls back gracefully if absent):
@@ -146,19 +140,22 @@ function buildContactRows(provider) {
 		muted: !provider?.address,
 		valueNumberOfLines: 2,
 	});
-	rows.push({
-		label: "Phone",
-		value: provider?.phone || "Phone not listed",
-		icon: "call-outline",
-		muted: !provider?.phone,
-	});
+	if (provider?.phone) {
+		rows.push({
+			label: "Phone",
+			value: provider.phone,
+			icon: "call-outline",
+		});
+	}
 	const website = provider?.googleWebsite ?? provider?.website ?? null;
-	rows.push({
-		label: "Website",
-		value: website || "Website not listed",
-		icon: "globe-outline",
-		muted: !website,
-	});
+	if (website) {
+		rows.push({
+			label: "Website",
+			value: website,
+			icon: "globe-outline",
+			valueNumberOfLines: 1,
+		});
+	}
 	return rows;
 }
 
@@ -209,11 +206,11 @@ function buildServicesRows(provider) {
 	// providerServices is a JSONB object (free-form keys). Render top-level keys with truthy values.
 	const services = provider?.providerServices;
 	if (services && typeof services === "object" && !Array.isArray(services)) {
-		const keys = Object.keys(services).filter((k) => services[k]);
-		if (keys.length > 0) {
+		const labels = objectValueLabels(services);
+		if (labels.length > 0) {
 			rows.push({
 				label: "Offered",
-				value: keys.map(humanizeKey).join(" · "),
+				value: labels.join(" · "),
 				icon: "construct-outline",
 				valueNumberOfLines: 3,
 			});
@@ -224,7 +221,7 @@ function buildServicesRows(provider) {
 	if (types.length > 0) {
 		rows.push({
 			label: "Service types",
-			value: types.join(" · "),
+			value: types.map(humanizeKey).join(" · "),
 			icon: "list-outline",
 			valueNumberOfLines: 3,
 		});
@@ -234,10 +231,26 @@ function buildServicesRows(provider) {
 		rows.push({ label: "Appointments", value: "Booking required", icon: "calendar-outline" });
 	}
 
+	const features = Array.isArray(provider?.features)
+		? provider.features.filter((item) =>
+			typeof item === "string" &&
+			item.trim() &&
+			!item.toLowerCase().startsWith("demo_owner:")
+		)
+		: [];
+	if (features.length > 0) {
+		rows.push({
+			label: "Signals",
+			value: features.map(humanizeKey).join(" · "),
+			icon: "sparkles-outline",
+			valueNumberOfLines: 3,
+		});
+	}
+
 	if (rows.length === 0) {
 		rows.push({
-			label: "Services",
-			value: "Services not listed yet",
+			label: "Available care",
+			value: "Not listed yet",
 			icon: "construct-outline",
 			muted: true,
 		});
@@ -265,7 +278,7 @@ function buildSpecialtiesRows(provider) {
 	if (flat.length > 0) {
 		rows.push({
 			label: "Specialties",
-			value: flat.join(" · "),
+			value: flat.map(humanizeKey).join(" · "),
 			icon: "medical-outline",
 			valueNumberOfLines: 3,
 		});
@@ -273,8 +286,8 @@ function buildSpecialtiesRows(provider) {
 
 	if (rows.length === 0) {
 		rows.push({
-			label: "Specialties",
-			value: "Specialties not listed",
+			label: "Focus areas",
+			value: "Not listed yet",
 			icon: "ribbon-outline",
 			muted: true,
 		});
@@ -311,20 +324,6 @@ function buildProviderInfoRows(provider) {
 		});
 	}
 
-	// Always show ETA + distance as a baseline; never blank.
-	rows.push({
-		label: "Distance",
-		value: buildDistanceValue(provider?.distanceKm) || "Distance unknown",
-		icon: "navigate-outline",
-		muted: !buildDistanceValue(provider?.distanceKm),
-	});
-	if (provider?.eta) {
-		rows.push({
-			label: "Estimated travel",
-			value: provider.eta,
-			icon: "time-outline",
-		});
-	}
 	return rows;
 }
 
@@ -342,44 +341,33 @@ function buildInsuranceRows(provider) {
 			},
 		];
 	}
-	return [
-		{
-			label: "Insurance",
-			value: "Insurance information unavailable",
-			icon: "shield-outline",
-			muted: true,
-		},
-	];
+	return [];
 }
 
 function buildAboutRows(provider) {
 	const rows = [];
 
-	const verified = provider?.verified === true;
-	const verifyStatus = provider?.verificationStatus || (verified ? "verified" : "pending");
-	rows.push({
-		label: "Verification",
-		value: verified
-			? "Verified provider"
-			: verifyStatus === "pending"
-				? "Verification pending"
-				: humanizeKey(verifyStatus),
-		icon: verified ? "checkmark-circle-outline" : "ellipse-outline",
-		muted: !verified,
-	});
+	if (typeof provider?.description === "string" && provider.description.trim()) {
+		rows.push({
+			label: "Overview",
+			value: provider.description.trim(),
+			icon: "information-circle-outline",
+			valueNumberOfLines: 4,
+		});
+	}
 
-	const lastUpd = provider?.lastAvailabilityUpdate;
-	rows.push({
-		label: "Last updated",
-		value: lastUpd ? formatRelativeUpdate(lastUpd) : "Not reported",
-		icon: "refresh-outline",
-		muted: !lastUpd,
-	});
+	if (provider?.verified === true) {
+		rows.push({
+			label: "Verification",
+			value: "Verified provider",
+			icon: "checkmark-circle-outline",
+		});
+	}
 
 	if (provider?.realTimeSync === true) {
 		rows.push({
-			label: "Live sync",
-			value: "Real-time availability",
+			label: "Availability",
+			value: "Live updates available",
 			icon: "pulse-outline",
 		});
 	}
@@ -398,17 +386,27 @@ function humanizeKey(key) {
 		.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatRelativeUpdate(iso) {
-	const t = Date.parse(iso);
-	if (!Number.isFinite(t)) return "Recently";
-	const diffMin = Math.round((Date.now() - t) / 60000);
-	if (diffMin < 1)   return "Just now";
-	if (diffMin < 60)  return `${diffMin} min ago`;
-	const diffHr = Math.round(diffMin / 60);
-	if (diffHr < 24)   return `${diffHr} hr ago`;
-	const diffDay = Math.round(diffHr / 24);
-	if (diffDay < 30)  return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
-	return new Date(t).toLocaleDateString();
+function objectValueLabels(value) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+	return Object.entries(value)
+		.filter(([, entryValue]) => {
+			if (Array.isArray(entryValue)) return entryValue.length > 0;
+			if (entryValue && typeof entryValue === "object") {
+				return Object.keys(entryValue).length > 0;
+			}
+			return Boolean(entryValue);
+		})
+		.map(([key, entryValue]) => {
+			const label = humanizeKey(key);
+			if (entryValue === true) return label;
+			if (Array.isArray(entryValue)) {
+				return `${label}: ${entryValue.map(humanizeKey).join(", ")}`;
+			}
+			if (typeof entryValue === "string" || typeof entryValue === "number") {
+				return `${label}: ${humanizeKey(String(entryValue))}`;
+			}
+			return label;
+		});
 }
 
 // ─── Place stats (chip row under the place header — same shape as hospital) ──
@@ -435,12 +433,13 @@ function buildVisitSignals(provider) {
 	const hasPhone = typeof provider?.phone === "string" && provider.phone.trim().length > 0;
 	const hasCoords = Number.isFinite(provider?.coordinates?.latitude) &&
 		Number.isFinite(provider?.coordinates?.longitude);
-	const distLabel = buildDistanceValue(provider?.distanceKm);
+	const features = Array.isArray(provider?.features) ? provider.features : [];
+	const acceptsWalkIns = features.some((item) => String(item).toLowerCase() === "walkins_accepted");
 
 	signals.push({
 		key: "access",
 		label: "Access",
-		value: hasPhone ? "Call ahead" : (provider?.googleWebsite || provider?.website ? "Website listed" : "Contact pending"),
+		value: hasPhone ? "Call ahead" : (provider?.googleWebsite || provider?.website ? "Website" : "Contact not listed"),
 		icon: hasPhone ? "call-outline" : "globe-outline",
 		tone: hasPhone ? "ready" : "neutral",
 	});
@@ -448,26 +447,32 @@ function buildVisitSignals(provider) {
 	signals.push({
 		key: "visit",
 		label: "Visit",
-		value: provider?.appointmentRequired === true ? "Booking required" : "Walk-in likely",
+		value: provider?.appointmentRequired === true
+			? "Booking required"
+			: acceptsWalkIns
+				? "Walk-ins accepted"
+				: "Call to confirm",
 		icon: provider?.appointmentRequired === true ? "calendar-outline" : "walk-outline",
-		tone: provider?.appointmentRequired === true ? "attention" : "ready",
+		tone: provider?.appointmentRequired === true ? "attention" : acceptsWalkIns ? "ready" : "neutral",
 	});
 
 	signals.push({
 		key: "coverage",
 		label: provider?.isWideProviderFallback ? "Area" : "Nearby",
-		value: provider?.isWideProviderFallback ? "Wider area" : (distLabel || (hasCoords ? "Mapped" : "Location pending")),
+		value: provider?.isWideProviderFallback ? "Wider area" : (hasCoords ? "Mapped" : "Location pending"),
 		icon: provider?.isWideProviderFallback ? "map-outline" : "navigate-outline",
 		tone: provider?.isWideProviderFallback ? "attention" : "neutral",
 	});
 
-	signals.push({
-		key: "confidence",
-		label: "Confidence",
-		value: isVerified ? "Verified" : "Pending",
-		icon: isVerified ? "checkmark-circle-outline" : "ellipse-outline",
-		tone: isVerified ? "ready" : "neutral",
-	});
+	if (isVerified) {
+		signals.push({
+			key: "verified",
+			label: "Verified",
+			value: "Provider",
+			icon: "checkmark-circle-outline",
+			tone: "ready",
+		});
+	}
 
 	return signals;
 }
@@ -513,6 +518,7 @@ export default function useMapProviderDetailModel({
 	provider,
 	userLocation,
 	onClose, // eslint-disable-line no-unused-vars
+	detailStatus = null,
 }) {
 	const { isDarkMode } = useTheme();
 
@@ -660,28 +666,34 @@ export default function useMapProviderDetailModel({
 		if (providerInfoRows.length > 0) {
 			sections.push({
 				key: "providerInfo",
-				headerLabel: "Provider info",
+				headerLabel: "Care details",
 				rows: providerInfoRows,
-				collapsible: true,
+				collapsible: false,
 				defaultCollapsed: false,
 			});
 		}
 
-		sections.push({
-			key: "insurance",
-			headerLabel: "Insurance",
-			rows: buildInsuranceRows(provider),
-			collapsible: true,
-			defaultCollapsed: true,
-		});
+		const insuranceRows = buildInsuranceRows(provider);
+		if (insuranceRows.length > 0) {
+			sections.push({
+				key: "insurance",
+				headerLabel: "Insurance",
+				rows: insuranceRows,
+				collapsible: true,
+				defaultCollapsed: true,
+			});
+		}
 
-		sections.push({
-			key: "about",
-			headerLabel: "About",
-			rows: buildAboutRows(provider),
-			collapsible: true,
-			defaultCollapsed: true,
-		});
+		const aboutRows = buildAboutRows(provider);
+		if (aboutRows.length > 0) {
+			sections.push({
+				key: "about",
+				headerLabel: "About",
+				rows: aboutRows,
+				collapsible: true,
+				defaultCollapsed: true,
+			});
+		}
 
 		return sections;
 	}, [provider]);
@@ -720,5 +732,6 @@ export default function useMapProviderDetailModel({
 		phone,
 		address,
 		website,
+		detailStatus,
 	};
 }

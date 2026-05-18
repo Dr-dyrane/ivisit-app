@@ -12,6 +12,7 @@ import useMapSheetDetents from "../../core/useMapSheetDetents";
 import MapStageBodyScroll from "../shared/MapStageBodyScroll";
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollapse";
+import useHospitalDetailQuery from "../../../../hooks/visits/useHospitalDetailQuery";
 import useMapProviderDetailModel from "../../surfaces/providerDetail/useMapProviderDetailModel";
 import {
 	MapProviderDetailBodyContent,
@@ -22,6 +23,51 @@ import sheetStageStyles from "../shared/mapSheetStage.styles";
 import styles from "./mapProviderDetailStage.styles";
 
 const FLOATING_TITLE_REVEAL_DELAY = 160;
+
+function hasCoordinates(provider) {
+	return Number.isFinite(provider?.coordinates?.latitude) &&
+		Number.isFinite(provider?.coordinates?.longitude);
+}
+
+function mergeProviderDetail(incomingProvider, fetchedProvider) {
+	if (!incomingProvider) return fetchedProvider ?? null;
+	if (!fetchedProvider) return incomingProvider;
+	const incomingHasRealImage =
+		incomingProvider.imageSource &&
+		incomingProvider.imageSource !== "deterministic_fallback";
+	const incomingPhotos = Array.isArray(incomingProvider.googlePhotos)
+		? incomingProvider.googlePhotos
+		: [];
+	const fetchedPhotos = Array.isArray(fetchedProvider.googlePhotos)
+		? fetchedProvider.googlePhotos
+		: [];
+
+	return {
+		...incomingProvider,
+		...fetchedProvider,
+		image: incomingHasRealImage
+			? (incomingProvider.image ?? fetchedProvider.image)
+			: (fetchedProvider.image ?? incomingProvider.image),
+		imageSource: incomingHasRealImage
+			? incomingProvider.imageSource
+			: (fetchedProvider.imageSource ?? incomingProvider.imageSource),
+		imageConfidence: incomingHasRealImage
+			? incomingProvider.imageConfidence
+			: (fetchedProvider.imageConfidence ?? incomingProvider.imageConfidence),
+		googlePhotos: Array.from(new Set([...incomingPhotos, ...fetchedPhotos])),
+		distance: incomingProvider.distance ?? fetchedProvider.distance,
+		distanceKm: incomingProvider.distanceKm ?? fetchedProvider.distanceKm,
+		eta: incomingProvider.eta ?? fetchedProvider.eta,
+		coordinates: hasCoordinates(incomingProvider)
+			? incomingProvider.coordinates
+			: fetchedProvider.coordinates,
+		hasValidCoordinates: incomingProvider.hasValidCoordinates ?? fetchedProvider.hasValidCoordinates,
+		providerLocalityScope:
+			incomingProvider.providerLocalityScope ?? fetchedProvider.providerLocalityScope,
+		isWideProviderFallback:
+			incomingProvider.isWideProviderFallback ?? fetchedProvider.isWideProviderFallback,
+	};
+}
 
 export default function MapProviderDetailStageBase({
 	sheetHeight,
@@ -41,7 +87,33 @@ export default function MapProviderDetailStageBase({
 			: null;
 	const shouldShowHeaderToggle = presentationMode === "sheet";
 
-	const model = useMapProviderDetailModel({ provider, userLocation, onClose });
+	const providerDetailQuery = useHospitalDetailQuery(provider?.id);
+	const resolvedProvider = useMemo(
+		() => mergeProviderDetail(provider, providerDetailQuery.data),
+		[provider, providerDetailQuery.data],
+	);
+	const detailStatus = useMemo(
+		() => ({
+			isFetching: providerDetailQuery.isFetching,
+			isError: providerDetailQuery.isError,
+			hasFetchedDetail: !!providerDetailQuery.data,
+			canRetry: !!provider?.id,
+			onRetry: providerDetailQuery.refetch,
+		}),
+		[
+			provider?.id,
+			providerDetailQuery.data,
+			providerDetailQuery.isError,
+			providerDetailQuery.isFetching,
+			providerDetailQuery.refetch,
+		],
+	);
+	const model = useMapProviderDetailModel({
+		provider: resolvedProvider,
+		userLocation,
+		onClose,
+		detailStatus,
+	});
 
 	const [showFloatingTitle, setShowFloatingTitle] = useState(false);
 	const [expandedHeaderBottom, setExpandedHeaderBottom] = useState(null);

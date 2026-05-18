@@ -126,6 +126,7 @@ export default function MapProviderListStageBase({
 					countryCode={countryCode}
 					onSelectProvider={onSelectProvider}
 					selectedProviderId={selectedProviderId}
+					isSidebarPresentation={isSidebarPresentation}
 				/>
 			</MapStageBodyScroll>
 		</MapSheetShell>

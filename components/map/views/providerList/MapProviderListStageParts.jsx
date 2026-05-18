@@ -35,6 +35,7 @@ export function MapProviderListBodyContent({
 	countryCode,
 	onSelectProvider,
 	selectedProviderId,
+	isSidebarPresentation = false,
 }) {
 	return (
 		<MapProviderListContent
@@ -43,6 +44,7 @@ export function MapProviderListBodyContent({
 			countryCode={countryCode}
 			onSelectProvider={onSelectProvider}
 			selectedProviderId={selectedProviderId}
+			isSidebarPresentation={isSidebarPresentation}
 		/>
 	);
 }

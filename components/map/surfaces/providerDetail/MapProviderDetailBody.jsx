@@ -166,8 +166,9 @@ function ProviderInfoSection({
 			value: r.value,
 			icon: r.icon,
 			valueNumberOfLines: r.valueNumberOfLines,
+			valueColor: r.muted ? mutedColor : undefined,
 		})),
-		[section.rows],
+		[mutedColor, section.rows],
 	);
 
 	const hasAnyData = section.rows.some((r) => !r.muted);
@@ -188,6 +189,47 @@ function ProviderInfoSection({
 			collapsed={collapsed}
 			onToggleCollapsed={() => setCollapsed((v) => !v)}
 		/>
+	);
+}
+
+function ProviderDetailNotice({
+	detailStatus,
+	titleColor,
+	mutedColor,
+	rowSurface,
+	tintColor,
+}) {
+	if (!detailStatus?.isError) return null;
+
+	return (
+		<View style={[styles.detailNotice, { backgroundColor: rowSurface }]}>
+			<View style={styles.detailNoticeCopy}>
+				<Ionicons name="information-circle-outline" size={17} color={mutedColor} />
+				<View style={styles.detailNoticeTextBlock}>
+					<Text style={[styles.detailNoticeTitle, { color: titleColor }]}>
+						Latest details unavailable
+					</Text>
+					<Text style={[styles.detailNoticeBody, { color: mutedColor }]}>
+						Showing the provider details already found on the map.
+					</Text>
+				</View>
+			</View>
+			{detailStatus?.canRetry && typeof detailStatus?.onRetry === "function" ? (
+				<Pressable
+					onPress={() => detailStatus.onRetry()}
+					accessibilityRole="button"
+					accessibilityLabel="Retry provider details"
+					hitSlop={8}
+					style={({ pressed }) => [
+						styles.detailNoticeRetry,
+						{ backgroundColor: `${tintColor}18`, opacity: pressed ? 0.86 : 1 },
+					]}
+				>
+					<Ionicons name="refresh-outline" size={14} color={tintColor} />
+					<Text style={[styles.detailNoticeRetryText, { color: tintColor }]}>Retry</Text>
+				</Pressable>
+			) : null}
+		</View>
 	);
 }
 
@@ -256,6 +298,7 @@ export default function MapProviderDetailBody({
 		placeStats,
 		visitSignals,
 		infoSections,
+		detailStatus,
 	} = model;
 
 	const headerSubtitle = summary.addressLine || summary.subtitle || meta?.label || "Nearby provider";
@@ -524,6 +567,14 @@ export default function MapProviderDetailBody({
 							isDarkMode={isDarkMode}
 						/>
 
+						<ProviderDetailNotice
+							detailStatus={detailStatus}
+							titleColor={titleColor}
+							mutedColor={mutedColor}
+							rowSurface={model.rowSurface}
+							tintColor={tintColor}
+						/>
+
 						{sectionsNode}
 					</View>
 				</View>
@@ -672,6 +723,14 @@ export default function MapProviderDetailBody({
 						mutedColor={mutedColor}
 						rowSurface={model.rowSurface}
 						isDarkMode={isDarkMode}
+					/>
+
+					<ProviderDetailNotice
+						detailStatus={detailStatus}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						rowSurface={model.rowSurface}
+						tintColor={tintColor}
 					/>
 
 					{sectionsNode}
