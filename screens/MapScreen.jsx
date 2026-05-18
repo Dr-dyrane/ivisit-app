@@ -47,6 +47,9 @@ import {
 } from "../atoms/mapFlowAtoms";
 import { buildProviderDetailSheetView } from "../hooks/map/exploreFlow/mapExploreFlow.transitions";
 
+const getProviderSelectionId = (provider) =>
+  provider?.id ?? provider?.placeId ?? provider?.name ?? null;
+
 export default function MapScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -168,6 +171,8 @@ export default function MapScreen() {
 
   // PULLBACK NOTE: EXP-7 — read the persisted session snapshot (hydrated at module load)
   // useAtomValue is correct: read-only derived atom, no write subscription
+  const [exploreProviderCategory, setExploreProviderCategory] = useAtom(exploreProviderCategoryAtom);
+  const [exploreProviderId, setExploreProviderId] = useAtom(exploreProviderIdAtom);
   const exploreCareSession = useAtomValue(exploreCareSessionAtom);
 
   // PULLBACK NOTE: EXP-7 — Map mount: restore persisted explore care session
@@ -189,17 +194,22 @@ export default function MapScreen() {
     if (hasRestoredSessionRef.current) return; // only restore once per mount
     if (!exploreCareSession?.category) return;  // no saved session — nothing to restore
     hasRestoredSessionRef.current = true;
+    setExploreProviderCategory(exploreCareSession.category);
+    setExploreProviderId(exploreCareSession.selectedProviderId ?? null);
     openProviderList(
       exploreCareSession.category,
       exploreCareSession.selectedProviderId ?? null,
     );
-  }, [exploreCareSession?.category, openProviderList]);
+  }, [
+    exploreCareSession?.category,
+    exploreCareSession?.selectedProviderId,
+    openProviderList,
+    setExploreProviderCategory,
+    setExploreProviderId,
+  ]);
 
   // PULLBACK NOTE: EXP-5/EXP-6/EXP-7 — Explore Care wiring
   // L5: Jotai atoms for ephemeral explore UI state
-  const [exploreProviderCategory, setExploreProviderCategory] = useAtom(exploreProviderCategoryAtom);
-  const [exploreProviderId, setExploreProviderId] = useAtom(exploreProviderIdAtom);
-
   const handleExploreCare = useCallback((providerType) => {
     // PULLBACK NOTE: EXP-6C — PROVIDER_LIST is now a proper orchestrator phase
     // OLD: set atom → floating MapProviderListSheet overlay
@@ -277,30 +287,45 @@ export default function MapScreen() {
     includeGoogle: true,
     countryCode: currentLocationDetails?.countryCode || activeLocation?.countryCode || null,
   });
+  const exploreProviderIdsKey = useMemo(
+    () => exploreProviders.map((provider) => getProviderSelectionId(provider)).filter(Boolean).join("|"),
+    [exploreProviders],
+  );
 
   // PULLBACK NOTE: EXP-7 — Auto-select nearest provider when list opens
   // Mirrors hospital behaviour: when the hospital list opens the nearest hospital is
   // already focused on the map. For providers, select the first (nearest) provider
-  // as soon as the query resolves, but only when in PROVIDER_LIST with no selection.
+  // as soon as the query resolves, and reselect when a stale cached id is no
+  // longer present after category filters/dedupe change the list.
   useEffect(() => {
-    if (
-      sheetPhase === MAP_SHEET_PHASES.PROVIDER_LIST &&
-      !exploreProviderId &&
-      exploreProviders.length > 0
-    ) {
-      const nearest = exploreProviders[0];
-      if (nearest?.id) {
-        setExploreProviderId(nearest.id);
-        // Update payload so MapSheetOrchestrator PROVIDER_LIST shows the correct selected row
-        setSheetPayload({ providerCategory: exploreProviderCategory, selectedProviderId: nearest.id });
+    if (sheetPhase !== MAP_SHEET_PHASES.PROVIDER_LIST || exploreProviders.length === 0) {
+      return;
+    }
+
+    const selectedStillExists =
+      !!exploreProviderId &&
+      exploreProviders.some((provider) => getProviderSelectionId(provider) === exploreProviderId);
+
+    if (selectedStillExists) {
+      if (sheetPayload?.selectedProviderId !== exploreProviderId) {
+        setSheetPayload({ providerCategory: exploreProviderCategory, selectedProviderId: exploreProviderId });
       }
+      return;
+    }
+
+    const nearest = exploreProviders[0];
+    const nearestId = getProviderSelectionId(nearest);
+    if (nearestId) {
+      setExploreProviderId(nearestId);
+      // Update payload so MapSheetOrchestrator PROVIDER_LIST shows the correct selected row
+      setSheetPayload({ providerCategory: exploreProviderCategory, selectedProviderId: nearestId });
     }
   }, [
     sheetPhase,
     exploreProviderId,
     exploreProviderCategory,
-    // Only re-run when the first provider id changes (list loaded / changed)
-    exploreProviders[0]?.id,
+    sheetPayload?.selectedProviderId,
+    exploreProviderIdsKey,
     setExploreProviderId,
     setSheetPayload,
   ]);
