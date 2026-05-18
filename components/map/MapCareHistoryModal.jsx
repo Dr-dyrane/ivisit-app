@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -256,9 +256,15 @@ export default function MapCareHistoryModal({
       },
     };
   }, [viewportMetrics]);
-  const [modalSnapState, setModalSnapState] = useState(null);
+  const [modalSnapState, setModalSnapState] = useState(MAP_SHEET_SNAP_STATES.EXPANDED);
   const isModalExpanded = modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED;
   const hasExploreSection = typeof onExploreCare === "function";
+
+  useEffect(() => {
+    if (visible) {
+      setModalSnapState(MAP_SHEET_SNAP_STATES.EXPANDED);
+    }
+  }, [visible]);
 
   const careOptions = useMemo(() => {
     const options = [
@@ -304,6 +310,7 @@ export default function MapCareHistoryModal({
       onClose={onClose}
       title="Choose care"
       headerLayout="leading"
+      defaultSnapState={MAP_SHEET_SNAP_STATES.EXPANDED}
       minHeightRatio={hasExploreSection ? 0.88 : 0.78}
       contentContainerStyle={[styles.content, responsiveStyles.content]}
       snapState={modalSnapState}
