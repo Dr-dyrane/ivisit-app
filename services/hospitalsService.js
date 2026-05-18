@@ -545,6 +545,9 @@ export const hospitalsService = {
 		const categoryConfidence = Number.isFinite(h?.category_confidence) ? Number(h.category_confidence) : 0.99;
 		const imageConfidence = Number.isFinite(h?.image_confidence) ? Number(h.image_confidence) : (image === h?.image ? 0.95 : 0.35);
 		const imageSource = toText(h?.image_source, image === h?.image ? "provider_image" : "deterministic_fallback");
+		const providerLocalityScope = toText(h?.provider_locality_scope);
+		const isWideProviderFallback =
+			h?.is_wide_provider_fallback === true || providerLocalityScope === "wide_fallback";
 
 		// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 4: Provider-specific data
 		// OLD: No provider-specific fields (services, insurance, hours, etc.)
@@ -621,6 +624,8 @@ export const hospitalsService = {
 			dispatchEligible,
 			providerSource,
 			categoryConfidence,
+			providerLocalityScope,
+			isWideProviderFallback,
 			// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Phase 4: Provider-specific fields
 			providerServices,
 			providerSpecialties,
@@ -761,6 +766,10 @@ export const hospitalsService = {
 			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
 			const includeGooglePlaces = options?.includeGooglePlaces === true;
 			const limit = Math.max(1, Math.min(25, Number(options?.limit) || 15));
+			const countryCode =
+				typeof options?.countryCode === "string" && options.countryCode.trim()
+					? options.countryCode.trim().toUpperCase()
+					: null;
 
 			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
 				body: {
@@ -773,6 +782,7 @@ export const hospitalsService = {
 					includeProviderDiscovery: true,
 					includeMapboxPlaces,
 					includeGooglePlaces,
+					countryCode,
 					mergeWithDatabase: true
 				}
 			});

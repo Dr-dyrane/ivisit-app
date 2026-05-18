@@ -188,6 +188,18 @@ const normalizeFacilityText = (value: unknown): string =>
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
 const MAP_LOCAL_NEARBY_RADIUS_KM = 5;
 const MAP_LOCAL_NEARBY_COMFORT_THRESHOLD = 3;
+const REGION_LOCAL_FIRST_COUNTRY_CODES = new Set(["NG"]);
+const LOCALITY_SCOPE_LOCAL = "local";
+const LOCALITY_SCOPE_WIDE_FALLBACK = "wide_fallback";
+
+const normalizeCountryCode = (value: unknown): string => {
+  const clean = toSafeString(value).toUpperCase();
+  return /^[A-Z]{2}$/.test(clean) ? clean : "";
+};
+
+const shouldUseRegionLocalFirst = (countryCode: string, providerCategory: string): boolean =>
+  providerCategory !== PROVIDER_TYPES.HOSPITAL &&
+  REGION_LOCAL_FIRST_COUNTRY_CODES.has(countryCode);
 
 // ─── EXP-2: Provider Taxonomy (inline mirror of constants/providerTypes.js) ────
 // Deno edge functions cannot import from app constants — taxonomy is duplicated here.
@@ -678,6 +690,8 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
     emergency_eligible,
     category_confidence: categoryConfidence,
     provider_source: providerSource === "google" ? "google_places" : providerSource === "mapbox" ? "mapbox_places" : "manual_seed",
+    provider_locality_scope: toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
+    is_wide_provider_fallback: row?.is_wide_provider_fallback === true,
   };
 
   const imageMeta = resolveHospitalImage(normalized);
@@ -712,6 +726,55 @@ const toMergeKey = (row: any): string => {
 
   const id = typeof row?.id === "string" ? row.id : "unknown";
   return `id:${id}`;
+};
+
+const calculateDistanceKm = (
+  fromLat: number,
+  fromLng: number,
+  toLat: unknown,
+  toLng: unknown
+): number | null => {
+  const lat2 = toFiniteNumber(toLat);
+  const lng2 = toFiniteNumber(toLng);
+  if (
+    !Number.isFinite(fromLat) ||
+    !Number.isFinite(fromLng) ||
+    !Number.isFinite(lat2) ||
+    !Number.isFinite(lng2)
+  ) {
+    return null;
+  }
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(Number(lat2) - fromLat);
+  const dLng = toRadians(Number(lng2) - fromLng);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(fromLat)) *
+      Math.cos(toRadians(Number(lat2))) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const km = earthRadiusKm * c;
+  return Number.isFinite(km) ? Number(km.toFixed(3)) : null;
+};
+
+const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {
+  const distanceKm =
+    parseDistanceKm(row) ?? calculateDistanceKm(originLat, originLng, row?.latitude, row?.longitude);
+  const localityScope = toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL);
+  const isWideFallback =
+    localityScope === LOCALITY_SCOPE_WIDE_FALLBACK &&
+    Number.isFinite(distanceKm) &&
+    Number(distanceKm) > MAP_LOCAL_NEARBY_RADIUS_KM;
+
+  return {
+    ...row,
+    distance_km: Number.isFinite(distanceKm) ? distanceKm : row?.distance_km,
+    provider_locality_scope: isWideFallback ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL,
+    is_wide_provider_fallback: isWideFallback,
+  };
 };
 
 const toGeometryPoint = (latitude: unknown, longitude: unknown): string | null => {
@@ -764,6 +827,7 @@ const normalizeMapboxPlace = (
     longitude,
     phone,
     website,
+    provider_locality_scope: toSafeString(place?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
     verified: false,
     status: "available",
   };
@@ -822,6 +886,7 @@ const normalizeGooglePlace = (
     image_confidence: googlePhotoName ? 0.78 : 0,
     image_attribution_text: googlePhotoName ? "Google Places photo" : "",
     google_photo_name: googlePhotoName,
+    provider_locality_scope: toSafeString(place?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
     verified: false,
     status: "available",
   };
@@ -1110,12 +1175,16 @@ serve(async (req) => {
     const includeMapboxPlaces = body?.includeMapboxPlaces !== false;
     const includeGooglePlaces = body?.includeGooglePlaces === true;
     const mergeWithDatabase = body?.mergeWithDatabase !== false;
+    const countryCode = normalizeCountryCode(
+      body?.countryCode ?? body?.country_code ?? body?.regionCountryCode
+    );
     // EXP-2: Provider category for explore mode. Defaults to "hospital" (emergency flow).
     // Callers in explore mode pass e.g. "pharmacy", "lab", "clinic".
     const providerCategory: string = typeof body?.providerCategory === "string" && CATEGORY_TO_GOOGLE_TYPES[body.providerCategory]
       ? body.providerCategory
       : "hospital";
     const isEmergencyMode = providerCategory === "hospital";
+    const regionLocalFirstEnabled = shouldUseRegionLocalFirst(countryCode, providerCategory);
 
     const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
     const googleApiKey = getEnv(
@@ -1136,6 +1205,9 @@ serve(async (req) => {
     let providerDiscoverySkipReason = "";
     let providerPersistenceCount = 0;
     let providerPersistenceErrorCount = 0;
+    let localProviderFetchCount = 0;
+    let wideProviderFallbackCount = 0;
+    let wideProviderFallbackUsed = false;
 
     const radiusKm = Math.max(1, Math.round(radius / 1000));
 
@@ -1219,19 +1291,56 @@ serve(async (req) => {
         // PULLBACK NOTE: PRIMARY-SOURCE-GOOGLE — Google Places as primary, Mapbox as fallback
         // Google Places has proper category support for all provider types
         // Mapbox only supports hospital/pharmacy categories
-        if (googleApiKey && includeGooglePlaces) {
-          console.log("[discover-hospitals] google fetch");
-          providerData = await fetchGoogleProviderPlaces({
+        const fetchGooglePlacesForRadius = async (searchRadius: number) => {
+          if (!googleApiKey || !includeGooglePlaces) return [];
+          console.log("[discover-hospitals] google fetch", {
+            providerCategory,
+            radius: searchRadius,
+            regionLocalFirstEnabled,
+            countryCode: countryCode || null,
+          });
+          return fetchGoogleProviderPlaces({
             apiKey: googleApiKey,
             latitude,
             longitude,
-            radius,
+            radius: searchRadius,
             mode,
             query,
             limit,
             providerCategory,
           });
-          providerSource = "google";
+        };
+
+        const decorateScope = (places: any[], scope: string) =>
+          places.map((place: any) => ({ ...place, provider_locality_scope: scope }));
+
+        if (regionLocalFirstEnabled && mode === "nearby") {
+          const localRadius = Math.min(radius, MAP_LOCAL_NEARBY_RADIUS_KM * 1000);
+          const localGooglePlaces = await fetchGooglePlacesForRadius(localRadius);
+          if (localGooglePlaces.length > 0) {
+            providerData = decorateScope(localGooglePlaces, LOCALITY_SCOPE_LOCAL);
+            providerSource = "google";
+          }
+          localProviderFetchCount = providerData.length;
+
+          if (providerData.length < localComfortTarget) {
+            const wideGooglePlaces = await fetchGooglePlacesForRadius(radius);
+            if (wideGooglePlaces.length > 0) {
+              providerData = [
+                ...providerData,
+                ...decorateScope(wideGooglePlaces, LOCALITY_SCOPE_WIDE_FALLBACK),
+              ];
+              providerSource = "google";
+              wideProviderFallbackUsed = true;
+              wideProviderFallbackCount = wideGooglePlaces.length;
+            }
+          }
+        } else {
+          const googlePlaces = await fetchGooglePlacesForRadius(radius);
+          if (googlePlaces.length > 0) {
+            providerData = decorateScope(googlePlaces, LOCALITY_SCOPE_LOCAL);
+            providerSource = "google";
+          }
         }
 
         // Fallback to Mapbox if Google returns no results or is disabled
@@ -1259,6 +1368,14 @@ serve(async (req) => {
             ? mapboxData.suggestions
             : [];
           providerSource = "mapbox";
+          providerData = decorateScope(
+            providerData,
+            regionLocalFirstEnabled ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL
+          );
+          if (regionLocalFirstEnabled && providerData.length > 0) {
+            wideProviderFallbackUsed = true;
+            wideProviderFallbackCount = providerData.length;
+          }
 
           if (providerData.length === 0 && specificMapboxCategory && mode !== "text_search") {
             const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(keywordForCategory)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
@@ -1271,6 +1388,14 @@ serve(async (req) => {
               : Array.isArray(fallbackData?.suggestions)
               ? fallbackData.suggestions
               : [];
+            providerData = decorateScope(
+              providerData,
+              regionLocalFirstEnabled ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL
+            );
+            if (regionLocalFirstEnabled && providerData.length > 0) {
+              wideProviderFallbackUsed = true;
+              wideProviderFallbackCount = providerData.length;
+            }
           }
         }
       } catch (providerError) {
@@ -1284,6 +1409,7 @@ serve(async (req) => {
             : normalizeGooglePlace(place, latitude, longitude, index)
         )
         .map((place: any) => withProviderDefaults(place, providerSource, providerCategory))
+        .map((place: any) => withDistanceFromOrigin(place, latitude, longitude))
         .filter(
           (place: any) =>
             !!place?.place_id &&
@@ -1510,6 +1636,16 @@ serve(async (req) => {
         google_phone: toSafeString(place?.phone),
       })
     );
+    const providerLocalityByPlaceId = new Map<string, any>();
+    providerResults.forEach((row: any) => {
+      const placeId = toSafeString(row?.place_id);
+      if (!placeId) return;
+      providerLocalityByPlaceId.set(placeId, {
+        distance_km: parseDistanceKm(row) ?? row?.distance_km,
+        provider_locality_scope: toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
+        is_wide_provider_fallback: row?.is_wide_provider_fallback === true,
+      });
+    });
 
     // Merge strategy: keep canonical DB rows first, then append provider-only rows.
     // This prevents empty-state in uncovered regions while preserving verified/canonical data priority.
@@ -1531,10 +1667,12 @@ serve(async (req) => {
     );
 
     for (const row of prioritizedDbResults) {
-      const key = toMergeKey(row);
+      const locality = providerLocalityByPlaceId.get(toSafeString(row?.place_id));
+      const dbRow = locality ? { ...row, ...locality } : row;
+      const key = toMergeKey(dbRow);
       if (seen.has(key)) continue;
       seen.add(key);
-      merged.push(row);
+      merged.push(dbRow);
     }
 
     for (const row of providerResults) {
@@ -1554,6 +1692,10 @@ serve(async (req) => {
       dbCount: dbResults.length,
       providerDiscoverySkipped,
       providerDiscoverySkipReason,
+      countryCode: countryCode || null,
+      regionLocalFirstEnabled,
+      localProviderFetchCount,
+      wideProviderFallbackCount,
     });
 
     return new Response(
@@ -1581,6 +1723,12 @@ serve(async (req) => {
           database_comfort_target: databaseComfortTarget,
           local_database_comfort_target: localComfortTarget,
           local_nearby_radius_km: MAP_LOCAL_NEARBY_RADIUS_KM,
+          country_code: countryCode || null,
+          region_local_first_enabled: regionLocalFirstEnabled,
+          region_local_first_country_codes: [...REGION_LOCAL_FIRST_COUNTRY_CODES],
+          local_provider_fetch_count: localProviderFetchCount,
+          wide_provider_fallback_used: wideProviderFallbackUsed,
+          wide_provider_fallback_count: wideProviderFallbackCount,
           mapbox_enabled: includeMapboxPlaces,
           google_enabled: includeGooglePlaces,
           mode,

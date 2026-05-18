@@ -39,6 +39,7 @@ export function useNearbyProviders({
   radius = DEFAULT_RADIUS,
   limit = DEFAULT_LIMIT,
   includeGoogle = false,
+  countryCode = null,
 }) {
   const queryClient = useQueryClient();
 
@@ -46,7 +47,14 @@ export function useNearbyProviders({
   const lng = location?.longitude;
   const hasLocation = Number.isFinite(lat) && Number.isFinite(lng);
 
-  const queryKey = ["providers", providerCategory, lat, lng, radius, includeGoogle];
+  const normalizedCountryCode =
+    typeof countryCode === "string" && countryCode.trim()
+      ? countryCode.trim().toUpperCase()
+      : (typeof location?.countryCode === "string" && location.countryCode.trim()
+        ? location.countryCode.trim().toUpperCase()
+        : null);
+
+  const queryKey = ["providers", providerCategory, lat, lng, radius, includeGoogle, normalizedCountryCode];
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
@@ -57,7 +65,12 @@ export function useNearbyProviders({
         lng,
         providerCategory,
         radius,
-        { limit, includeGooglePlaces: includeGoogle, includeMapboxPlaces: true }
+        {
+          limit,
+          includeGooglePlaces: includeGoogle,
+          includeMapboxPlaces: true,
+          countryCode: normalizedCountryCode,
+        }
       );
     },
     enabled: enabled && hasLocation && !!providerCategory,

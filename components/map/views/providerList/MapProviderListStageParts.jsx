@@ -32,6 +32,7 @@ export function MapProviderListTopSlot({
 export function MapProviderListBodyContent({
 	providerCategory,
 	location,
+	countryCode,
 	onSelectProvider,
 	selectedProviderId,
 }) {
@@ -39,6 +40,7 @@ export function MapProviderListBodyContent({
 		<MapProviderListContent
 			providerCategory={providerCategory}
 			location={location}
+			countryCode={countryCode}
 			onSelectProvider={onSelectProvider}
 			selectedProviderId={selectedProviderId}
 		/>

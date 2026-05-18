@@ -493,6 +493,12 @@ export default function MapSheetOrchestrator({
 						snapState={snapState}
 						providerCategory={exploreProviderCategory ?? sheetPayload?.providerCategory ?? null}
 						location={activeLocation}
+						countryCode={
+							currentLocation?.countryCode ||
+							activeLocation?.countryCode ||
+							sheetPayload?.countryCode ||
+							null
+						}
 						selectedProviderId={sheetPayload?.selectedProviderId ?? null}
 						onClose={onCloseProviderList}
 						onSelectProvider={onSelectProvider}

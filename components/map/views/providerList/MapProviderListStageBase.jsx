@@ -20,6 +20,7 @@ export default function MapProviderListStageBase({
 	snapState,
 	providerCategory,
 	location,
+	countryCode = null,
 	selectedProviderId = null,
 	onClose,
 	onSelectProvider,
@@ -122,6 +123,7 @@ export default function MapProviderListStageBase({
 				<MapProviderListBodyContent
 					providerCategory={providerCategory}
 					location={location}
+					countryCode={countryCode}
 					onSelectProvider={onSelectProvider}
 					selectedProviderId={selectedProviderId}
 				/>

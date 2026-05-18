@@ -267,6 +267,7 @@ export default function MapScreen() {
     location: activeLocation,
     enabled: !!exploreProviderCategory,
     includeGoogle: true,
+    countryCode: currentLocationDetails?.countryCode || activeLocation?.countryCode || null,
   });
 
   // PULLBACK NOTE: EXP-7 — Auto-select nearest provider when list opens

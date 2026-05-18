@@ -270,6 +270,8 @@ function ProviderCard({ provider, isSelected, onPress, tintColor, iconName, isDa
   const price = rawPrice && /^[\$€£¥₦]+$/.test(rawPrice) ? "Flexible" : (rawPrice || null);
   const eta = typeof provider?.eta === "string" && provider.eta.trim() ? provider.eta.trim() : null;
   const isVerified = provider?.verified === true;
+  const isWideFallback =
+    provider?.isWideProviderFallback === true || provider?.providerLocalityScope === "wide_fallback";
 
   const rowActiveBg = tintColor + "14";
 
@@ -334,8 +336,14 @@ function ProviderCard({ provider, isSelected, onPress, tintColor, iconName, isDa
       </View>
 
       {/* Meta chips below rowTop — mirrors hospital metaRow */}
-      {(distLabel || timeLabel || rating || price) ? (
+      {(distLabel || timeLabel || rating || price || isWideFallback) ? (
         <View style={styles.cardMeta}>
+          {isWideFallback ? (
+            <View style={[styles.metaChip, { backgroundColor: metaChipBg }]}>
+              <Ionicons name="map-outline" size={12} color={tokens.mutedText} />
+              <Text style={[styles.metaChipText, { color: tokens.mutedText }]}>Wider area</Text>
+            </View>
+          ) : null}
           {distLabel ? (
             <View style={[styles.metaChip, { backgroundColor: metaChipBg }]}>
               <Ionicons name="navigate" size={12} color={tokens.mutedText} />
@@ -408,6 +416,7 @@ export { buildProviderSubtitle };
 export default function MapProviderListContent({
   providerCategory,
   location,
+  countryCode = null,
   onSelectProvider,
   // PULLBACK NOTE: FIX-B — BUG-3: accept selectedProviderId to drive card highlight
   // OLD: no prop — isSelected was hardcoded to false for every card
@@ -431,6 +440,7 @@ export default function MapProviderListContent({
     location,
     enabled: !!providerCategory,
     includeGoogle: true,
+    countryCode,
   });
 
   const tintColor = categoryMeta?.markerTint ?? "#64748B";
@@ -483,6 +493,9 @@ export default function MapProviderListContent({
 
   const sorted = useMemo(() => sortProviders(filteredProviders, sortMode), [filteredProviders, sortMode]);
   const buckets = useMemo(() => bucketProviders(sorted), [sorted]);
+  const hasWideFallbackProviders = providers.some(
+    (provider) => provider?.isWideProviderFallback === true || provider?.providerLocalityScope === "wide_fallback",
+  );
 
   return (
     <>
@@ -537,7 +550,7 @@ export default function MapProviderListContent({
             ))}
 
             <Text style={[styles.footerNote, { color: tokens.mutedText }]}>
-              {providers.length} {titleLabel.toLowerCase()} within 20 km
+              {providers.length} {titleLabel.toLowerCase()} {hasWideFallbackProviders ? "nearby, wider area included" : "within 20 km"}
             </Text>
           </View>
         </>
