@@ -1,25 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
-
-const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const maybeResolveDisplayId = async (supabaseAdmin: any, rawId: string | null) => {
-    if (!rawId) return null;
-    if (/^(USR|HSP|AMB|REQ|VIST|ORG|DOC)-[A-F0-9]{3,6}$/i.test(rawId)) {
-        const { data: uuid, error } = await supabaseAdmin.rpc("get_entity_id", {
-            p_display_id: rawId.toUpperCase(),
-        });
-        if (error || !uuid) {
-            throw new Error(`Could not resolve ID: ${rawId}`);
-        }
-        return uuid as string;
-    }
-    return rawId;
-};
+import { maybeResolveDisplayId } from "../../_shared/domain/ids.ts";
+import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
+import { createStripeClient } from "../../_shared/payments/stripe.ts";
 
 const ensurePatientCustomerId = async ({
     supabaseAdmin,
@@ -66,7 +50,7 @@ const ensurePatientCustomerId = async ({
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
+        return optionsResponse();
     }
 
     try {
@@ -75,15 +59,7 @@ serve(async (req) => {
             throw new Error("No authorization header");
         }
 
-        const supabaseClient = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-            {
-                global: {
-                    headers: { Authorization: authHeader },
-                },
-            },
-        );
+        const supabaseClient = createUserClient(authHeader);
 
         const {
             data: { user },
@@ -108,15 +84,8 @@ serve(async (req) => {
             throw new Error("Missing or invalid required field: amount");
         }
 
-        const supabaseAdmin = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        );
-
-        const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-            apiVersion: "2022-11-15",
-            httpClient: Stripe.createFetchHttpClient(),
-        });
+        const supabaseAdmin = createServiceClient();
+        const stripe = createStripeClient();
 
         const isTopUp = Boolean(is_top_up);
         const resolvedRequestId = emergency_request_id
@@ -360,27 +329,17 @@ serve(async (req) => {
             }
         }
 
-        return new Response(
-            JSON.stringify({
+        return jsonResponse(
+            {
                 clientSecret: paymentIntent.client_secret,
                 paymentIntentId: paymentIntent.id,
                 customerId,
-            }),
-            {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200,
             },
+            { status: 200 },
         );
     } catch (error) {
-        console.error("Edge Function Error:", error.message);
-        return new Response(
-            JSON.stringify({
-                error: error.message,
-            }),
-            {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 400,
-            },
-        );
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Edge Function Error:", message);
+        return jsonResponse({ error: message }, { status: 400 });
     }
 });

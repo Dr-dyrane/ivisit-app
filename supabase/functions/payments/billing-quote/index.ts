@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 const normalizeCurrencyCode = (value: unknown, fallback = "") => {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
@@ -19,7 +14,7 @@ const normalizeCountryCode = (value: unknown, fallback = "") => {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
@@ -28,15 +23,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      },
-    );
+    const supabaseClient = createUserClient(authHeader);
 
     const {
       data: { user },
@@ -47,10 +34,7 @@ serve(async (req) => {
       throw new Error("Invalid user");
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
+    const supabaseAdmin = createServiceClient();
 
     const body = await req.json().catch(() => ({}));
     const amount = Number(body?.amount ?? body?.amount_usd ?? 0);
@@ -94,10 +78,7 @@ serve(async (req) => {
         throw new Error(`Billing quote RPC failed: ${error.message}`);
       }
 
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      return jsonResponse(data, { status: 200 });
     }
 
     let resolvedTargetCurrency = billingCurrencyCode;
@@ -150,20 +131,14 @@ serve(async (req) => {
         }
       : data;
 
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return jsonResponse(response, { status: 200 });
   } catch (error) {
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
       },
+      { status: 400 },
     );
   }
 });

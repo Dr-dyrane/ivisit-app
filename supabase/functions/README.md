@@ -144,4 +144,5 @@ FX_MANUAL_RATES_JSON={"base":"USD","rates":{"NGN":1540,"GBP":0.79}}
 
 - [`supabase/docs/CONTRIBUTING.md`](../docs/CONTRIBUTING.md)
 - [`supabase/docs/TESTING.md`](../docs/TESTING.md)
+- [`docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`](../../docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md)
 - [`docs/flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md`](../../docs/flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md)

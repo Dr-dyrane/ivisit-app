@@ -448,3 +448,8 @@ entrypoint = "./functions/payments/create-payment-intent/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/payments/create-payout/index.ts"
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/webhooks/stripe-webhook/index.ts"

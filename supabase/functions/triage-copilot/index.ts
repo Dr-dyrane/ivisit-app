@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-	"Access-Control-Allow-Origin": "*",
-	"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getEnv } from "../_shared/env/env.ts";
+import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
 
 const toText = (value: unknown, fallback = "") => {
 	if (typeof value !== "string") return fallback;
@@ -14,7 +11,7 @@ const toText = (value: unknown, fallback = "") => {
 const toUniqueList = (items: string[]) => [...new Set(items.filter(Boolean))];
 
 const getModelCandidates = () => {
-	const raw = toText(Deno.env.get("ANTHROPIC_MODEL"), "");
+	const raw = toText(getEnv("ANTHROPIC_MODEL"), "");
 	const fromEnv = raw
 		.split(",")
 		.map((item) => item.trim())
@@ -93,24 +90,21 @@ const extractPromptFromAnthropic = (responseJson: Record<string, unknown>) => {
 
 serve(async (req: Request) => {
 	if (req.method === "OPTIONS") {
-		return new Response("ok", { headers: corsHeaders });
+		return optionsResponse();
 	}
 
 	try {
 		const body = await req.json();
 		const fallbackPrompt = toText(body?.step?.prompt, "What feels most wrong right now?");
-		const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+		const anthropicKey = getEnv("ANTHROPIC_API_KEY");
 
 		if (!anthropicKey) {
-			return new Response(
-				JSON.stringify({
+			return jsonResponse(
+				{
 					prompt: fallbackPrompt,
 					source: "fallback_no_key",
-				}),
-				{
-					headers: { ...corsHeaders, "Content-Type": "application/json" },
-					status: 200,
-				}
+				},
+				{ status: 200 },
 			);
 		}
 
@@ -153,16 +147,13 @@ serve(async (req: Request) => {
 			const aiJson = (await aiRes.json()) as Record<string, unknown>;
 			const prompt = extractPromptFromAnthropic(aiJson);
 			if (prompt) {
-				return new Response(
-					JSON.stringify({
+				return jsonResponse(
+					{
 						prompt,
 						source: "anthropic",
 						model,
-					}),
-					{
-						headers: { ...corsHeaders, "Content-Type": "application/json" },
-						status: 200,
-					}
+					},
+					{ status: 200 },
 				);
 			}
 
@@ -173,28 +164,22 @@ serve(async (req: Request) => {
 			};
 		}
 
-		return new Response(
-			JSON.stringify({
+		return jsonResponse(
+			{
 				prompt: fallbackPrompt,
 				source: "fallback_api_error",
 				modelTried: lastError?.model || null,
 				errorHint: lastError?.detail || null,
-			}),
-			{
-				headers: { ...corsHeaders, "Content-Type": "application/json" },
-				status: 200,
-			}
+			},
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error("[triage-copilot] fatal:", error);
-		return new Response(
-			JSON.stringify({
-				error: "triage_copilot_failed",
-			}),
+		return jsonResponse(
 			{
-				headers: { ...corsHeaders, "Content-Type": "application/json" },
-				status: 400,
-			}
+				error: "triage_copilot_failed",
+			},
+			{ status: 400 },
 		);
 	}
 });

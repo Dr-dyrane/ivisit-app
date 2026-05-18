@@ -1,164 +1,127 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { maybeResolveDisplayId } from "../../_shared/domain/ids.ts";
+import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { createStripeClient } from "../../_shared/payments/stripe.ts";
+import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('No authorization header')
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header");
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
+    const supabaseClient = createUserClient(authHeader);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseClient.auth.getUser();
+    if (authError || !user) throw new Error("Invalid user");
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-    if (authError || !user) throw new Error('Invalid user')
-
-    const { action, organization_id, payment_method_id, payout_details } = await req.json()
-
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-      apiVersion: '2022-11-15',
-      httpClient: Stripe.createFetchHttpClient(),
-    })
+    const { action, organization_id, payment_method_id } = await req.json();
+    const supabaseAdmin = createServiceClient();
+    const stripe = createStripeClient();
 
     let customerId: string | null = null;
-    let contextName = '';
-    let resolvedOrgId = organization_id;
+    let contextName = "";
+    let resolvedOrgId = organization_id
+      ? await maybeResolveDisplayId(supabaseAdmin, String(organization_id))
+      : null;
 
-    if (organization_id) {
-      // ID Resolution: Check if beautified ID
-      if (/^(USR|HSP|AMB|REQ|VIST|ORG|DOC)-[A-F0-9]{3,6}$/i.test(organization_id)) {
-        const { data: uuid, error: resolveError } = await supabaseAdmin.rpc('get_entity_id', {
-          p_display_id: organization_id.toUpperCase()
-        });
-        if (resolveError || !uuid) throw new Error(`Could not resolve organization ID: ${organization_id}`);
-        resolvedOrgId = uuid;
-      }
-
-      // Organization Flow
+    if (resolvedOrgId) {
       const { data: organization, error: orgError } = await supabaseAdmin
-        .from('organizations')
-        .select('*')
-        .eq('id', resolvedOrgId)
-        .single()
+        .from("organizations")
+        .select("*")
+        .eq("id", resolvedOrgId)
+        .single();
 
-      if (orgError || !organization) throw new Error('Organization not found')
-      customerId = organization.stripe_customer_id
-      contextName = organization.name
+      if (orgError || !organization) throw new Error("Organization not found");
+      customerId = organization.stripe_customer_id;
+      contextName = organization.name;
 
       if (!customerId) {
         const customer = await stripe.customers.create({
           name: organization.name,
-          metadata: { organization_id: organization.id }
-        })
-        customerId = customer.id
+          metadata: { organization_id: organization.id },
+        });
+        customerId = customer.id;
         await supabaseAdmin
-          .from('organizations')
+          .from("organizations")
           .update({ stripe_customer_id: customerId })
-          .eq('id', resolvedOrgId)
+          .eq("id", resolvedOrgId);
       }
     } else {
-      // Patient Flow
       const { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
-      if (profileError || !profile) throw new Error('Profile not found')
-      customerId = profile.stripe_customer_id
-      contextName = profile.full_name || user.email
+      if (profileError || !profile) throw new Error("Profile not found");
+      customerId = profile.stripe_customer_id;
+      contextName = profile.full_name || user.email;
 
       if (!customerId) {
         const customer = await stripe.customers.create({
           email: user.email,
           name: contextName,
-          metadata: { user_id: user.id }
-        })
-        customerId = customer.id
+          metadata: { user_id: user.id },
+        });
+        customerId = customer.id;
         await supabaseAdmin
-          .from('profiles')
+          .from("profiles")
           .update({ stripe_customer_id: customerId })
-          .eq('id', user.id)
+          .eq("id", user.id);
       }
     }
 
-    if (action === 'create-setup-intent') {
+    if (action === "create-setup-intent") {
       const setupIntent = await stripe.setupIntents.create({
         customer: customerId!,
-        payment_method_types: ['card'],
+        payment_method_types: ["card"],
         metadata: {
           organization_id: resolvedOrgId || null,
-          user_id: resolvedOrgId ? null : user.id
-        }
-      })
-      return new Response(JSON.stringify({ clientSecret: setupIntent.client_secret }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
+          user_id: resolvedOrgId ? null : user.id,
+        },
+      });
+      return jsonResponse({ clientSecret: setupIntent.client_secret }, { status: 200 });
     }
 
-    if (action === 'list-payment-methods') {
+    if (action === "list-payment-methods") {
       const paymentMethods = await stripe.paymentMethods.list({
         customer: customerId!,
-        type: 'card',
-      })
-      return new Response(JSON.stringify({ data: paymentMethods.data }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
+        type: "card",
+      });
+      return jsonResponse({ data: paymentMethods.data }, { status: 200 });
     }
 
-    if (action === 'delete-payment-method') {
-      if (!payment_method_id) throw new Error('Payment Method ID required')
-      await stripe.paymentMethods.detach(payment_method_id)
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
+    if (action === "delete-payment-method") {
+      if (!payment_method_id) throw new Error("Payment Method ID required");
+      await stripe.paymentMethods.detach(payment_method_id);
+      return jsonResponse({ success: true }, { status: 200 });
     }
 
-    if (action === 'set-payout-method' && organization_id) {
-      if (!payment_method_id) throw new Error('Payment Method ID required')
-      const pm = await stripe.paymentMethods.retrieve(payment_method_id)
+    if (action === "set-payout-method" && resolvedOrgId) {
+      if (!payment_method_id) throw new Error("Payment Method ID required");
+      const pm = await stripe.paymentMethods.retrieve(payment_method_id);
       await supabaseAdmin
-        .from('organizations')
+        .from("organizations")
         .update({
           payout_method_id: payment_method_id,
           payout_method_last4: pm.card?.last4,
-          payout_method_brand: pm.card?.brand
+          payout_method_brand: pm.card?.brand,
         })
-        .eq('id', resolvedOrgId)
+        .eq("id", resolvedOrgId);
 
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      })
+      return jsonResponse({ success: true }, { status: 200 });
     }
 
-    throw new Error('Invalid action or missing organization_id for payout setup')
-
+    throw new Error("Invalid action or missing organization_id for payout setup");
   } catch (error) {
-    console.error('❌ Error:', error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Payment methods error:", message);
+    return jsonResponse({ error: message }, { status: 400 });
   }
-})
+});

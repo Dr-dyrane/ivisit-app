@@ -1,25 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-const getEnv = (...names: string[]): string => {
-  for (const name of names) {
-    const value = Deno.env.get(name)?.trim();
-    if (value) return value;
-  }
-  return "";
-};
-
-const getBooleanEnv = (fallback: boolean, ...names: string[]): boolean => {
-  const value = getEnv(...names).toLowerCase();
-  if (!value) return fallback;
-  return ["1", "true", "yes", "on", "enabled"].includes(value);
-};
+import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
+import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const DEMO_HOSPITAL_OFFSETS = [
   { lat: 0.0064, lng: 0.0048 },
@@ -2061,18 +2043,11 @@ const getDemoSummary = async (
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
-
-    const supabaseUrl = getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL");
-    const anonKey = getEnv("SUPABASE_ANON_KEY", "EXPO_PUBLIC_SUPABASE_ANON_KEY");
-    const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      throw new Error("Supabase environment is not configured");
-    }
 
     const body = await req.json();
     const phase = toSafeString(body?.phase, "full");
@@ -2088,12 +2063,8 @@ serve(async (req) => {
       throw new Error("latitude and longitude are required");
     }
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: authHeader
-        ? { headers: { Authorization: authHeader } }
-        : undefined,
-    });
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const userClient = createUserClient(authHeader);
+    const adminClient = createServiceClient();
 
     const {
       data: { user },
@@ -2106,10 +2077,7 @@ serve(async (req) => {
         : toSafeString(requestedUserId, "");
 
     if (!effectiveUserId) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Unauthorized" }, { status: 401 });
     }
 
     const ctx: DemoContext = {
@@ -2145,8 +2113,8 @@ serve(async (req) => {
         getNearbySeedHospitals(adminClient, ctx),
       );
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           ok: true,
           phase,
           organization_id: organizationId,
@@ -2159,11 +2127,8 @@ serve(async (req) => {
             candidate_count: nearbySeeds.length,
           },
           timeline,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
+        { status: 200 },
       );
     }
 
@@ -2206,8 +2171,8 @@ serve(async (req) => {
       getDemoSummary(adminClient, ctx, organizationId),
     );
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         ok: true,
         phase,
         organization_id: organizationId,
@@ -2218,23 +2183,17 @@ serve(async (req) => {
         })),
         summary,
         timeline,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
+      { status: 200 },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         ok: false,
         error: message,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
+      { status: 500 },
     );
   }
 });

@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -32,23 +28,13 @@ const isDemoHospital = (hospital: any) => {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      throw new Error("Supabase environment is not configured");
-    }
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
-    });
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const userClient = createUserClient(authHeader);
+    const adminClient = createServiceClient();
 
     const {
       data: { user },
@@ -56,10 +42,7 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (userError || !user?.id) {
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -67,12 +50,9 @@ serve(async (req) => {
     const requestId = String(body?.requestId ?? "").trim();
 
     if (!UUID_PATTERN.test(paymentId) || !UUID_PATTERN.test(requestId)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "paymentId and requestId must be valid UUIDs" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: "paymentId and requestId must be valid UUIDs" },
+        { status: 400 },
       );
     }
 
@@ -87,12 +67,9 @@ serve(async (req) => {
     }
 
     if (!requestRow || String(requestRow.user_id) !== String(user.id)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Request not found for this user" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: "Request not found for this user" },
+        { status: 403 },
       );
     }
 
@@ -102,12 +79,9 @@ serve(async (req) => {
       ["accepted", "in_progress", "arrived", "completed"].includes(requestStatus) ||
       ["approved", "paid", "completed"].includes(paymentStatus)
     ) {
-      return new Response(
-        JSON.stringify({ success: true, alreadyApproved: true, requestId, paymentId }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: true, alreadyApproved: true, requestId, paymentId },
+        { status: 200 },
       );
     }
 
@@ -122,12 +96,9 @@ serve(async (req) => {
     }
 
     if (!isDemoHospital(hospitalRow)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Demo auto-approval is only allowed for demo hospitals" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: "Demo auto-approval is only allowed for demo hospitals" },
+        { status: 403 },
       );
     }
 
@@ -143,42 +114,30 @@ serve(async (req) => {
     }
 
     if (!paymentRow) {
-      return new Response(JSON.stringify({ success: false, error: "Payment not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, error: "Payment not found" }, { status: 404 });
     }
 
     const method = String(paymentRow.payment_method ?? "").trim().toLowerCase();
     const paymentRowStatus = String(paymentRow.status ?? "").trim().toLowerCase();
 
     if (method !== "cash") {
-      return new Response(
-        JSON.stringify({ success: false, error: "Only cash payments can use the demo auto-approval lane" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: "Only cash payments can use the demo auto-approval lane" },
+        { status: 400 },
       );
     }
 
     if (paymentRowStatus === "completed") {
-      return new Response(
-        JSON.stringify({ success: true, alreadyApproved: true, requestId, paymentId }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: true, alreadyApproved: true, requestId, paymentId },
+        { status: 200 },
       );
     }
 
     if (paymentRowStatus !== "pending") {
-      return new Response(
-        JSON.stringify({ success: false, error: `Payment is not pending: ${paymentRowStatus}` }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: `Payment is not pending: ${paymentRowStatus}` },
+        { status: 400 },
       );
     }
 
@@ -195,27 +154,18 @@ serve(async (req) => {
     }
 
     if (!approvalResult?.success) {
-      return new Response(
-        JSON.stringify({ success: false, error: approvalResult?.error || "Cash approval failed" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      return jsonResponse(
+        { success: false, error: approvalResult?.error || "Cash approval failed" },
+        { status: 400 },
       );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, approved: true, requestId, paymentId, result: approvalResult }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+    return jsonResponse(
+      { success: true, approved: true, requestId, paymentId, result: approvalResult },
+      { status: 200 },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: false, error: message }, { status: 500 });
   }
 });

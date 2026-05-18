@@ -1,8 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
+import { corsHeaders, jsonResponse } from "../_shared/http/cors.ts";
+import { createServiceClient } from "../_shared/supabase/clients.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const mediaCorsHeaders = {
+  ...corsHeaders,
   "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
 };
 
@@ -15,20 +16,6 @@ const FALLBACK_IMAGES = [
 
 const toText = (value: unknown, fallback = "") =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
-
-const getEnv = (...names: string[]): string => {
-  for (const name of names) {
-    const value = Deno.env.get(name)?.trim();
-    if (value) return value;
-  }
-  return "";
-};
-
-const getBooleanEnv = (fallback: boolean, ...names: string[]): boolean => {
-  const value = getEnv(...names).toLowerCase();
-  if (!value) return fallback;
-  return ["1", "true", "yes", "on", "enabled"].includes(value);
-};
 
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
@@ -78,36 +65,28 @@ const fetchGoogleProviderPhotoUrl = async (placeId: string, apiKey: string) => {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: mediaCorsHeaders });
   }
 
   if (req.method !== "GET" && req.method !== "HEAD") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse(
+      { error: "Method not allowed" },
+      { status: 405, headers: mediaCorsHeaders },
+    );
   }
 
   try {
-    const supabaseUrl = getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL");
-    const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error("Supabase environment is not configured");
-    }
-
     const url = new URL(req.url);
     const hospitalId = toText(url.searchParams.get("hospital_id"));
     const placeId = toText(url.searchParams.get("place_id"));
     if (!hospitalId && !placeId) {
-      return new Response(JSON.stringify({ error: "hospital_id or place_id is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(
+        { error: "hospital_id or place_id is required" },
+        { status: 400, headers: mediaCorsHeaders },
+      );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = createServiceClient();
 
     let hospital: any = null;
     if (hospitalId) {
@@ -146,7 +125,7 @@ Deno.serve(async (req) => {
       return new Response(null, {
         status: 302,
         headers: {
-          ...corsHeaders,
+          ...mediaCorsHeaders,
           Location: fallbackUrl,
           "Cache-Control": providerPhotoUrl ? "no-store" : "public, max-age=3600, stale-while-revalidate=86400",
         },
@@ -204,7 +183,7 @@ Deno.serve(async (req) => {
     return new Response(null, {
       status: 302,
       headers: {
-        ...corsHeaders,
+        ...mediaCorsHeaders,
         Location: imageUrl,
         "Cache-Control":
           primaryMedia?.source_type === "provider_photo"
@@ -214,9 +193,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: message }, { status: 500, headers: mediaCorsHeaders });
   }
 });

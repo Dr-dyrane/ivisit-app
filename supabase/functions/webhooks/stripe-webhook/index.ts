@@ -1,15 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
-
-const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { createServiceClient } from "../../_shared/supabase/clients.ts";
+import { constructStripeWebhookEvent } from "../../_shared/payments/stripe.ts";
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
+        return optionsResponse();
     }
 
     const signature = req.headers.get("stripe-signature");
@@ -18,26 +15,17 @@ serve(async (req) => {
     }
 
     try {
-        const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-            apiVersion: "2022-11-15",
-            httpClient: Stripe.createFetchHttpClient(),
-        });
-
         const body = await req.text();
-        const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
-
         let event;
         try {
-            event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+            event = await constructStripeWebhookEvent(body, signature);
         } catch (err) {
-            console.error(`Webhook signature verification failed: ${err.message}`);
-            return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+            const message = err instanceof Error ? err.message : "Unknown webhook error";
+            console.error(`Webhook signature verification failed: ${message}`);
+            return new Response(`Webhook Error: ${message}`, { status: 400 });
         }
 
-        const supabaseAdmin = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        );
+        const supabaseAdmin = createServiceClient();
 
         console.log(`Received Stripe event: ${event.type}`);
 
@@ -252,15 +240,10 @@ serve(async (req) => {
                 console.log(`Unhandled event type ${event.type}`);
         }
 
-        return new Response(JSON.stringify({ received: true }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-        });
+        return jsonResponse({ received: true }, { status: 200 });
     } catch (error) {
-        console.error("Webhook Error:", error.message);
-        return new Response(JSON.stringify({ error: error.message }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-        });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Webhook Error:", message);
+        return jsonResponse({ error: message }, { status: 500 });
     }
 });

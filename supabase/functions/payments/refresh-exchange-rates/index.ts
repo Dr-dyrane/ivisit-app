@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getEnv } from "../../_shared/env/env.ts";
+import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 type NormalizedRatesPayload = {
   baseCurrency: string;
@@ -168,7 +164,7 @@ const normalizeRatesPayload = (
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
@@ -177,15 +173,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      },
-    );
+    const supabaseClient = createUserClient(authHeader);
 
     const {
       data: { user },
@@ -195,10 +183,7 @@ serve(async (req) => {
       throw new Error("Invalid user");
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
+    const supabaseAdmin = createServiceClient();
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -214,10 +199,10 @@ serve(async (req) => {
       throw new Error("Only admins can refresh exchange rates");
     }
 
-    const providerUrl = Deno.env.get("FX_PROVIDER_URL") ?? "";
-    const manualRatesJson = Deno.env.get("FX_MANUAL_RATES_JSON") ?? "";
-    const sourceFallback = Deno.env.get("FX_PROVIDER_SOURCE") ?? "manual_seed";
-    const staleHours = Number(Deno.env.get("FX_STALE_HOURS") ?? "24");
+    const providerUrl = getEnv("FX_PROVIDER_URL");
+    const manualRatesJson = getEnv("FX_MANUAL_RATES_JSON");
+    const sourceFallback = getEnv("FX_PROVIDER_SOURCE") || "manual_seed";
+    const staleHours = Number(getEnv("FX_STALE_HOURS") || "24");
 
     let normalizedPayload: NormalizedRatesPayload | null = null;
 
@@ -227,9 +212,9 @@ serve(async (req) => {
         sourceFallback,
       );
     } else if (providerUrl) {
-      const apiKey = Deno.env.get("FX_PROVIDER_API_KEY") ?? "";
+      const apiKey = getEnv("FX_PROVIDER_API_KEY");
       const authHeaderName =
-        Deno.env.get("FX_PROVIDER_AUTH_HEADER") ?? "Authorization";
+        getEnv("FX_PROVIDER_AUTH_HEADER") || "Authorization";
       const headers: HeadersInit = {};
       if (apiKey) {
         headers[authHeaderName] =
@@ -289,30 +274,24 @@ serve(async (req) => {
       throw new Error(`Could not upsert exchange rates: ${upsertError.message}`);
     }
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: true,
         base_currency: normalizedPayload.baseCurrency,
         rate_count: rows.length,
         source: normalizedPayload.source,
         fetched_at: fetchedAt.toISOString(),
         stale_after: staleAfter.toISOString(),
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
       },
+      { status: 200 },
     );
   } catch (error) {
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
       },
+      { status: 400 },
     );
   }
 });

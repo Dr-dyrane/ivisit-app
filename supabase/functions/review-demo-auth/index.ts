@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-	"Access-Control-Allow-Origin": "*",
-	"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getEnv } from "../_shared/env/env.ts";
+import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { createServiceClient } from "../_shared/supabase/clients.ts";
 
 const REVIEW_PROFILE = {
 	full_name: "iVisit Review Tester",
@@ -25,12 +22,6 @@ const isTruthy = (value: unknown) => {
 	const normalized = toText(value).toLowerCase();
 	return ["1", "true", "yes", "on"].includes(normalized);
 };
-
-const jsonResponse = (body: Record<string, unknown>, status = 200) =>
-	new Response(JSON.stringify(body), {
-		status,
-		headers: { ...corsHeaders, "Content-Type": "application/json" },
-	});
 
 const findAuthUserByEmail = async (admin: any, email: string) => {
 	let page = 1;
@@ -114,22 +105,22 @@ const syncReviewProfile = async (admin: any, userId: string, email: string) => {
 
 serve(async (req: Request) => {
 	if (req.method === "OPTIONS") {
-		return new Response("ok", { headers: corsHeaders });
+		return optionsResponse();
 	}
 
 	if (req.method !== "POST") {
-		return jsonResponse({ success: false, error: "Method not allowed" }, 405);
+		return jsonResponse({ success: false, error: "Method not allowed" }, { status: 405 });
 	}
 
 	try {
-		const enabled = isTruthy(Deno.env.get("REVIEW_DEMO_AUTH_ENABLED"));
+		const enabled = isTruthy(getEnv("REVIEW_DEMO_AUTH_ENABLED"));
 		const reviewEmail = normalizeEmail(
-			Deno.env.get("REVIEW_DEMO_AUTH_EMAIL") || "support@ivisit.ng"
+			getEnv("REVIEW_DEMO_AUTH_EMAIL") || "support@ivisit.ng"
 		);
-		const reviewOtp = toText(Deno.env.get("REVIEW_DEMO_AUTH_OTP"));
+		const reviewOtp = toText(getEnv("REVIEW_DEMO_AUTH_OTP"));
 
 		if (!enabled || !reviewOtp) {
-			return jsonResponse({ success: false, error: "Review sign-in is disabled" }, 404);
+			return jsonResponse({ success: false, error: "Review sign-in is disabled" }, { status: 404 });
 		}
 
 		const body = await req.json().catch(() => ({}));
@@ -137,18 +128,10 @@ serve(async (req: Request) => {
 		const otp = toText(body?.otp);
 
 		if (email !== reviewEmail || otp !== reviewOtp) {
-			return jsonResponse({ success: false, error: "Invalid review code" }, 401);
+			return jsonResponse({ success: false, error: "Invalid review code" }, { status: 401 });
 		}
 
-		const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-		const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-		if (!supabaseUrl || !serviceRoleKey) {
-			throw new Error("Supabase environment is not configured");
-		}
-
-		const admin = createClient(supabaseUrl, serviceRoleKey, {
-			auth: { persistSession: false, autoRefreshToken: false },
-		});
+		const admin = createServiceClient();
 		const user = await ensureReviewUser(admin, reviewEmail);
 		await syncReviewProfile(admin, user.id, reviewEmail);
 
@@ -173,7 +156,7 @@ serve(async (req: Request) => {
 				success: false,
 				error: error instanceof Error ? error.message : "Review sign-in failed",
 			},
-			500
+			{ status: 500 },
 		);
 	}
 });
