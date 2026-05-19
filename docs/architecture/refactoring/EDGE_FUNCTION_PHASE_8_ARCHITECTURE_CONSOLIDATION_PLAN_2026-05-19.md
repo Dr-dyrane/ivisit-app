@@ -703,6 +703,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchData.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
 - Rollback: inline the lookup/insert helpers back into `demo-dispatch-reply/index.ts` if participant authorization, room availability, idempotency, or reply persistence regresses.
 
+8.5 demo dispatch thin entrypoint note, 2026-05-19:
+
+- Added `supabase/functions/demo-dispatch-reply/handler.ts` with `handleDemoDispatchReplyRequest` containing the existing Contact Dispatch reply orchestration.
+- Reduced `supabase/functions/demo-dispatch-reply/index.ts` to the stable `serve(handleDemoDispatchReplyRequest)` entrypoint while keeping the public function slug unchanged.
+- Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/demo-dispatch-reply/handler.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchData.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
+- Rollback: move `handleDemoDispatchReplyRequest` back into `index.ts` and call `serve(async (req) => { ... })` directly if function bundling or deployment entrypoint resolution regresses.
+
 ### 8.6 Hospital Media And Places Client Sharing
 
 Owner: `hospital-media`.
