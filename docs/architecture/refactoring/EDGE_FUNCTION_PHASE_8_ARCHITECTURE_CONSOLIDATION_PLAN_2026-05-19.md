@@ -359,6 +359,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/mapboxPlaces.ts`, and `npm run hardening:edge-smoke` passed. Diagnostic `node supabase/tests/scripts/run_edge_function_smoke_matrix.js --no-google` passed all cases except the known `tokyo/radiology` fallback coverage gap.
 - Rollback: restore the category-aware Mapbox fetch block, keyword fallback block, `CATEGORY_TO_MAPBOX_CATEGORY`, and `EXPLORE_CATEGORY_META_KEYWORDS` imports to `discover-hospitals/index.ts` if Mapbox fallback behavior regresses.
 
+8.2 provider persistence extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/persistence.ts` for hospital upsert row assembly, provider upsert row assembly, geometry point formatting, and provider-type data enrichment.
+- Updated the `discover-hospitals` engine to import `toHospitalUpsertRow` and `toProviderUpsertRow` while preserving the actual database upsert calls, conflict targets, persistence order, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/persistence.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `toGeometryPoint`, `toHospitalUpsertRow`, `enrichProviderData`, and `toProviderUpsertRow` to `discover-hospitals/index.ts` if provider persistence or provider detail data regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
