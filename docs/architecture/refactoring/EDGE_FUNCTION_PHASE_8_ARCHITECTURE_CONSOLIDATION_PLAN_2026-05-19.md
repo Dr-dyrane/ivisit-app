@@ -696,6 +696,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
 - Rollback: inline `toText`, `toSafeBody`, `fallbackReply`, `extractOpenAIText`, `generateOpenAIReply`, `generateAnthropicReply`, and `generateDemoDispatchReply` back into `demo-dispatch-reply/index.ts` if reply text, provider fallback, or secret lookup behavior regresses.
 
+8.5 demo dispatch data extraction note, 2026-05-19:
+
+- Added `_shared/domain/emergencyChat/demoDispatchData.ts` for UUID validation, participant/room/source-message/request/hospital lookups, demo-hospital detection, existing-reply idempotency, recent-message reads, and reply insertion.
+- Updated `demo-dispatch-reply` to keep authorization and skip policy in the endpoint while delegating raw Supabase table operations to the shared emergency chat domain.
+- Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchData.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
+- Rollback: inline the lookup/insert helpers back into `demo-dispatch-reply/index.ts` if participant authorization, room availability, idempotency, or reply persistence regresses.
+
 ### 8.6 Hospital Media And Places Client Sharing
 
 Owner: `hospital-media`.
