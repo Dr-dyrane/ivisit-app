@@ -380,6 +380,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `isDemoDatabaseRow`, `isDispatchableDatabaseRow`, and `withDistanceFromOrigin` to `discover-hospitals/index.ts` if database prioritization, emergency dispatchability, or wide-fallback distance behavior regresses.
 
+8.2 provider merge extraction note, 2026-05-19:
+
+- Expanded `_shared/domain/providers/rows.ts` with `mergeCanonicalAndProviderRows` so canonical database rows and provider-only rows are deduped in one shared row helper.
+- Updated the `discover-hospitals` engine to call the shared merge helper while preserving category filtering, provider-only fallback, canonical-row priority, response shape, and meta counters.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `providerLocalityByPlaceId`, `prioritizedDbResults`, `seen`, and `merged` loops to `discover-hospitals/index.ts` if merge ordering or deduplication regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

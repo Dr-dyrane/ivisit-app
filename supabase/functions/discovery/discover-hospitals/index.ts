@@ -27,8 +27,7 @@ import {
 import {
   isDispatchableDatabaseRow,
   isWithinDistanceKm,
-  parseDistanceKm,
-  prioritizeProviderRows,
+  mergeCanonicalAndProviderRows,
   toMergeKey,
   withDistanceFromOrigin,
 } from "../../_shared/domain/providers/rows.ts";
@@ -646,51 +645,17 @@ serve(async (req) => {
         google_phone: toSafeString(place?.phone),
       })
     );
-    const providerLocalityByPlaceId = new Map<string, any>();
-    providerResults.forEach((row: any) => {
-      const placeId = toSafeString(row?.place_id);
-      if (!placeId) return;
-      providerLocalityByPlaceId.set(placeId, {
-        distance_km: parseDistanceKm(row) ?? row?.distance_km,
-        provider_locality_scope: toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
-        is_wide_provider_fallback: row?.is_wide_provider_fallback === true,
-      });
-    });
-
-    // Merge strategy: keep canonical DB rows first, then append provider-only rows.
-    // This prevents empty-state in uncovered regions while preserving verified/canonical data priority.
-    const merged: any[] = [];
-    const seen = new Set<string>();
-
     // EXP-6B: Filter DB rows by category before merging.
-    // PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — comment updated post RPC fix
-    // isEmergencyMode → nearby_hospitals (all dispatchable hospitals, no category filter needed)
-    // explore mode → nearby_providers already filtered by provider_type, but secondary guard
-    // ensures no cross-category leakage if RPC returns unexpected rows.
-    const prioritizedDbResults = prioritizeProviderRows(
-      isEmergencyMode
-        ? dbResults
-        : categoryFilteredDbResults,
-      isDispatchableDatabaseRow,
-    );
-
-    for (const row of prioritizedDbResults) {
-      const locality = providerLocalityByPlaceId.get(toSafeString(row?.place_id));
-      const dbRow = withDistanceFromOrigin(locality ? { ...row, ...locality } : row, latitude, longitude);
-      const key = toMergeKey(dbRow);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(dbRow);
-    }
-
-    for (const row of providerResults) {
-      const key = toMergeKey(row);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(row);
-    }
-
-    const finalResults = merged;
+    // isEmergencyMode -> nearby_hospitals (all dispatchable hospitals, no category filter needed).
+    // explore mode -> nearby_providers already filtered by provider_type, with secondary guards earlier.
+    const { merged: finalResults, prioritizedDbRows: prioritizedDbResults } =
+      mergeCanonicalAndProviderRows({
+        dbRows: isEmergencyMode ? dbResults : categoryFilteredDbResults,
+        providerRows: providerResults,
+        originLat: latitude,
+        originLng: longitude,
+        isPreferredRow: isDispatchableDatabaseRow,
+      });
 
     const limitedResults = finalResults.slice(0, limit);
     console.log("[discover-hospitals] response", {

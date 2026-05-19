@@ -165,3 +165,50 @@ export const toMergeKey = (row: any): string => {
   const id = typeof row?.id === "string" ? row.id : "unknown";
   return `id:${id}`;
 };
+
+export const mergeCanonicalAndProviderRows = ({
+  dbRows,
+  providerRows,
+  originLat,
+  originLng,
+  isPreferredRow,
+}: {
+  dbRows: any[];
+  providerRows: any[];
+  originLat: number;
+  originLng: number;
+  isPreferredRow: (row: any) => boolean;
+}): { merged: any[]; prioritizedDbRows: any[] } => {
+  const providerLocalityByPlaceId = new Map<string, any>();
+  providerRows.forEach((row: any) => {
+    const placeId = toSafeString(row?.place_id);
+    if (!placeId) return;
+    providerLocalityByPlaceId.set(placeId, {
+      distance_km: parseDistanceKm(row) ?? row?.distance_km,
+      provider_locality_scope: toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL),
+      is_wide_provider_fallback: row?.is_wide_provider_fallback === true,
+    });
+  });
+
+  const prioritizedDbRows = prioritizeProviderRows(dbRows, isPreferredRow);
+  const merged: any[] = [];
+  const seen = new Set<string>();
+
+  for (const row of prioritizedDbRows) {
+    const locality = providerLocalityByPlaceId.get(toSafeString(row?.place_id));
+    const dbRow = withDistanceFromOrigin(locality ? { ...row, ...locality } : row, originLat, originLng);
+    const key = toMergeKey(dbRow);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(dbRow);
+  }
+
+  for (const row of providerRows) {
+    const key = toMergeKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+
+  return { merged, prioritizedDbRows };
+};
