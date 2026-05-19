@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { isMethod, isOptionsRequest, readJsonBody } from "../_shared/http/request.ts";
+import { jsonErrorResponse, methodNotAllowedResponse } from "../_shared/http/response.ts";
 import { createServiceClient } from "../_shared/supabase/clients.ts";
 
 const REVIEW_PROFILE = {
@@ -104,12 +106,12 @@ const syncReviewProfile = async (admin: any, userId: string, email: string) => {
 };
 
 serve(async (req: Request) => {
-	if (req.method === "OPTIONS") {
+	if (isOptionsRequest(req)) {
 		return optionsResponse();
 	}
 
-	if (req.method !== "POST") {
-		return jsonResponse({ success: false, error: "Method not allowed" }, { status: 405 });
+	if (!isMethod(req, "POST")) {
+		return methodNotAllowedResponse();
 	}
 
 	try {
@@ -120,15 +122,15 @@ serve(async (req: Request) => {
 		const reviewOtp = toText(getEnv("REVIEW_DEMO_AUTH_OTP"));
 
 		if (!enabled || !reviewOtp) {
-			return jsonResponse({ success: false, error: "Review sign-in is disabled" }, { status: 404 });
+			return jsonErrorResponse("Review sign-in is disabled", 404);
 		}
 
-		const body = await req.json().catch(() => ({}));
+		const body = await readJsonBody(req);
 		const email = normalizeEmail(body?.email);
 		const otp = toText(body?.otp);
 
 		if (email !== reviewEmail || otp !== reviewOtp) {
-			return jsonResponse({ success: false, error: "Invalid review code" }, { status: 401 });
+			return jsonErrorResponse("Invalid review code", 401);
 		}
 
 		const admin = createServiceClient();
@@ -151,12 +153,9 @@ serve(async (req: Request) => {
 			verificationType: data.properties.verification_type || "magiclink",
 		});
 	} catch (error) {
-		return jsonResponse(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : "Review sign-in failed",
-			},
-			{ status: 500 },
+		return jsonErrorResponse(
+			error instanceof Error ? error.message : "Review sign-in failed",
+			500,
 		);
 	}
 });

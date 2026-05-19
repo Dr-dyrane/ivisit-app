@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { getAuthorizationHeader, isOptionsRequest, readJsonBody } from "../../_shared/http/request.ts";
+import { jsonErrorResponse } from "../../_shared/http/response.ts";
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 const normalizeCurrencyCode = (value: unknown, fallback = "") => {
@@ -13,12 +15,12 @@ const normalizeCountryCode = (value: unknown, fallback = "") => {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(req);
     if (!authHeader) {
       throw new Error("Missing authorization header");
     }
@@ -36,7 +38,7 @@ serve(async (req) => {
 
     const supabaseAdmin = createServiceClient();
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonBody(req);
     const amount = Number(body?.amount ?? body?.amount_usd ?? 0);
     const sourceCurrency = normalizeCurrencyCode(body?.source_currency, "USD");
     let billingCountryCode = normalizeCountryCode(body?.billing_country_code);
@@ -133,12 +135,9 @@ serve(async (req) => {
 
     return jsonResponse(response, { status: 200 });
   } catch (error) {
-    return jsonResponse(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 400 },
+    return jsonErrorResponse(
+      error instanceof Error ? error.message : "Unknown error",
+      400,
     );
   }
 });

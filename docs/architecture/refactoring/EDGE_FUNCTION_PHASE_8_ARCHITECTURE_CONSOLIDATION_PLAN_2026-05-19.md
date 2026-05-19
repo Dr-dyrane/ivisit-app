@@ -205,6 +205,8 @@ Baseline gate run, 2026-05-19:
 
 ### 8.1 Shared HTTP, Env, Auth, And Observability
 
+Status: Started 2026-05-19. First compatibility extraction completed locally for shared HTTP request/response helpers and timing primitives.
+
 This is the first implementation pass because it is low behavioral risk.
 
 Extract:
@@ -228,6 +230,15 @@ Gate:
 
 - All edge smoke/payment/chat scripts still pass.
 - Response body shape remains compatible.
+
+8.1 extraction note, 2026-05-19:
+
+- Added `_shared/http/request.ts` for `OPTIONS` checks, method checks, authorization header extraction, and safe JSON body parsing.
+- Added `_shared/http/response.ts` for compatible `{ success: false, error }` JSON error responses and method-not-allowed responses.
+- Added `_shared/observability/timing.ts` as the first timing primitive for later request-duration logging.
+- Adopted the HTTP helpers in `review-demo-auth` and `payments/billing-quote` only. Business logic, database queries, Stripe behavior, auth behavior, and response status choices were preserved.
+- Validation: `git diff --check`, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, `npm run hardening:chat-rls`, and `npm run hardening:emergency` passed.
+- Deno validation: `npx deno check supabase/functions/payments/billing-quote/index.ts`, `npx deno check supabase/functions/review-demo-auth/index.ts`, and `npx deno check` for the new shared helper files passed. Native `deno` remains unavailable on PATH; use `npx deno` locally or native Deno in deployment environments.
 
 ### 8.2 Provider Discovery Extraction
 
