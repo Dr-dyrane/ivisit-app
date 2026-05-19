@@ -416,6 +416,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/discoveryFlow.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `fetchGooglePlacesForRadius`, `decorateScope`, Google local/wide fetch, and Mapbox fallback block if provider source selection or fallback counters regress.
 
+8.2 provider database RPC extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/database.ts` for the shared `nearby_hospitals` / `nearby_providers` RPC branch used by initial reads and post-upsert refreshes.
+- Updated `discover-hospitals` to call the shared RPC helper while preserving emergency-mode fatal errors, Explore Care nonfatal provider RPC errors, refresh logging, and response behavior.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/database.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `nearby_hospitals` / `nearby_providers` RPC blocks if DB read fallback or post-upsert refresh behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

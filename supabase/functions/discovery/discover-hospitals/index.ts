@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { toFiniteNumber } from "../../_shared/domain/numbers.ts";
 import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
+import { fetchNearbyProviderRows } from "../../_shared/domain/providers/database.ts";
 import {
   fetchExternalProviderData,
   type ProviderSource,
@@ -236,37 +237,23 @@ serve(async (req) => {
     //      → labs, pharmacies, clinics in DB were never returned in explore mode
     // NEW: isEmergencyMode → nearby_hospitals; explore mode → nearby_providers with category filter
     let dbResults: any[] = [];
-    if (isEmergencyMode) {
-      const { data: nearbyHospitals, error: rpcError } = await supabaseClient.rpc(
-        "nearby_hospitals",
-        {
-          user_lat: latitude,
-          user_lng: longitude,
-          radius_km: radiusKm,
-        }
-      );
-      if (rpcError) {
-        console.error("[discover-hospitals] nearby_hospitals rpc failed", rpcError);
-        throw rpcError;
+    const initialDbFetch = await fetchNearbyProviderRows({
+      supabaseClient,
+      isEmergencyMode,
+      latitude,
+      longitude,
+      providerCategory,
+      radiusKm,
+      limit,
+    });
+    if (initialDbFetch.error) {
+      console.error(`[discover-hospitals] ${initialDbFetch.rpcName} rpc failed`, initialDbFetch.error);
+      if (isEmergencyMode) {
+        throw initialDbFetch.error;
       }
-      dbResults = Array.isArray(nearbyHospitals) ? nearbyHospitals : [];
+      // Non-fatal: continue with empty dbResults, let Mapbox/Google fill the gap.
     } else {
-      const { data: nearbyProviders, error: rpcError } = await supabaseClient.rpc(
-        "nearby_providers",
-        {
-          user_lat: latitude,
-          user_lng: longitude,
-          provider_type_filter: providerCategory,
-          radius_km: radiusKm,
-          result_limit: limit,
-        }
-      );
-      if (rpcError) {
-        console.error("[discover-hospitals] nearby_providers rpc failed", rpcError);
-        // Non-fatal: continue with empty dbResults, let Mapbox/Google fill the gap
-      } else {
-        dbResults = Array.isArray(nearbyProviders) ? nearbyProviders : [];
-      }
+      dbResults = initialDbFetch.rows;
     }
     const dispatchableDbResults = dbResults.filter((row: any) =>
       isDispatchableDatabaseRow(row)
@@ -532,36 +519,22 @@ serve(async (req) => {
             // PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — refresh must use same RPC as initial fetch
             // OLD: always refreshed via nearby_hospitals → non-hospital rows lost after upsert
             // NEW: isEmergencyMode → nearby_hospitals; explore → nearby_providers with category filter
-            if (isEmergencyMode) {
-              const { data: refreshedHospitals, error: refreshError } = await supabaseClient.rpc(
-                "nearby_hospitals",
-                {
-                  user_lat: latitude,
-                  user_lng: longitude,
-                  radius_km: radiusKm,
-                }
+            const refreshedDbFetch = await fetchNearbyProviderRows({
+              supabaseClient,
+              isEmergencyMode,
+              latitude,
+              longitude,
+              providerCategory,
+              radiusKm,
+              limit,
+            });
+            if (refreshedDbFetch.error) {
+              console.error(
+                `[discover-hospitals] ${refreshedDbFetch.rpcName} refresh failed after upsert`,
+                refreshedDbFetch.error,
               );
-              if (refreshError) {
-                console.error("[discover-hospitals] nearby_hospitals refresh failed after upsert", refreshError);
-              } else {
-                dbResults = Array.isArray(refreshedHospitals) ? refreshedHospitals : dbResults;
-              }
             } else {
-              const { data: refreshedProviders, error: refreshError } = await supabaseClient.rpc(
-                "nearby_providers",
-                {
-                  user_lat: latitude,
-                  user_lng: longitude,
-                  provider_type_filter: providerCategory,
-                  radius_km: radiusKm,
-                  result_limit: limit,
-                }
-              );
-              if (refreshError) {
-                console.error("[discover-hospitals] nearby_providers refresh failed after upsert", refreshError);
-              } else {
-                dbResults = Array.isArray(refreshedProviders) ? refreshedProviders : dbResults;
-              }
+              dbResults = refreshedDbFetch.rows;
             }
           }
         } else {
