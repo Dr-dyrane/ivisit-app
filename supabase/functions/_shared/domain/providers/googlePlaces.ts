@@ -28,6 +28,8 @@ const GOOGLE_PROVIDER_DETAIL_FIELD_MASK = [
   "types",
 ].join(",");
 
+const GOOGLE_PROVIDER_PHOTO_DETAIL_FIELD_MASK = "id,photos";
+
 const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
   const clean = value.trim();
@@ -141,4 +143,64 @@ export const fetchGoogleProviderDetails = async ({
   }
 
   return await response.json();
+};
+
+export const fetchGoogleProviderPhotoUrl = async ({
+  apiKey,
+  placeId,
+  maxHeightPx = 1200,
+}: {
+  apiKey: string;
+  placeId: string;
+  maxHeightPx?: number;
+}): Promise<string> => {
+  const safePlaceId = toSafeString(placeId);
+  if (!safePlaceId || !apiKey || safePlaceId.startsWith("demo:")) return "";
+
+  const detailsResponse = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(safePlaceId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": GOOGLE_PROVIDER_PHOTO_DETAIL_FIELD_MASK,
+      },
+    },
+  );
+
+  if (!detailsResponse.ok) return "";
+
+  const details = await detailsResponse.json();
+  const providerPhotoName = toSafeString(details?.photos?.[0]?.name);
+  if (!providerPhotoName) return "";
+
+  return fetchGoogleProviderPhotoByNameUrl({
+    apiKey,
+    photoName: providerPhotoName,
+    maxHeightPx,
+  });
+};
+
+export const fetchGoogleProviderPhotoByNameUrl = async ({
+  apiKey,
+  photoName,
+  maxHeightPx = 1200,
+}: {
+  apiKey: string;
+  photoName: string;
+  maxHeightPx?: number;
+}): Promise<string> => {
+  const safePhotoName = toSafeString(photoName);
+  if (!safePhotoName || !apiKey) return "";
+
+  const mediaEndpoint =
+    `https://places.googleapis.com/v1/${safePhotoName}/media?maxHeightPx=${Math.max(1, Math.round(maxHeightPx))}&skipHttpRedirect=true`;
+  const mediaResponse = await fetch(mediaEndpoint, {
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+    },
+  });
+
+  if (!mediaResponse.ok) return "";
+  const mediaData = await mediaResponse.json();
+  return toSafeString(mediaData?.photoUri);
 };

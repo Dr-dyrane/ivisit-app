@@ -500,6 +500,13 @@ Gate:
 - Validation: `git diff --check`, `rg` confirmed the stale checkpoint path is absent from `docs/INDEX.md`, and `Test-Path` confirmed the active Explore Care dossier/pass index and `discover-hospitals` handler paths exist.
 - Rollback: restore the prior docs links/runbook text if a missing active document reference is discovered.
 
+8.6 hospital media Google photo helper extraction note, 2026-05-19:
+
+- Added shared Google Places photo helpers to `_shared/domain/providers/googlePlaces.ts` for place-id-to-photo URL and photo-name-to-photo URL resolution.
+- Updated `hospital-media` to reuse the shared Google photo helpers while preserving redirect status, fallback image selection, cache-control behavior, and secret access.
+- Validation: `git diff --check`, `npx deno check supabase/functions/hospital-media/index.ts supabase/functions/_shared/domain/providers/googlePlaces.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline the previous place-details and media fetch helpers back into `hospital-media` if provider photo redirects regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

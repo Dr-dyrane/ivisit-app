@@ -1,4 +1,8 @@
 import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
+import {
+  fetchGoogleProviderPhotoByNameUrl,
+  fetchGoogleProviderPhotoUrl,
+} from "../_shared/domain/providers/googlePlaces.ts";
 import { corsHeaders, jsonResponse } from "../_shared/http/cors.ts";
 import { isMethod, isOptionsRequest } from "../_shared/http/request.ts";
 import { createServiceClient } from "../_shared/supabase/clients.ts";
@@ -31,38 +35,6 @@ const hashSeed = (seed: string) => {
 
 const pickFallback = (seed: string) =>
   FALLBACK_IMAGES[hashSeed(seed || "hospital") % FALLBACK_IMAGES.length];
-
-const fetchGoogleProviderPhotoUrl = async (placeId: string, apiKey: string) => {
-  const safePlaceId = toText(placeId);
-  if (!safePlaceId || !apiKey || safePlaceId.startsWith("demo:")) return "";
-
-  const detailsResponse = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(safePlaceId)}`,
-    {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "id,photos",
-      },
-    }
-  );
-
-  if (!detailsResponse.ok) return "";
-
-  const details = await detailsResponse.json();
-  const providerPhotoName = toText(details?.photos?.[0]?.name);
-  if (!providerPhotoName) return "";
-
-  const mediaEndpoint = `https://places.googleapis.com/v1/${providerPhotoName}/media?maxHeightPx=1200&skipHttpRedirect=true`;
-  const mediaResponse = await fetch(mediaEndpoint, {
-    headers: {
-      "X-Goog-Api-Key": apiKey,
-    },
-  });
-
-  if (!mediaResponse.ok) return "";
-  const mediaData = await mediaResponse.json();
-  return toText(mediaData?.photoUri);
-};
 
 Deno.serve(async (req) => {
   if (isOptionsRequest(req)) {
@@ -118,7 +90,9 @@ Deno.serve(async (req) => {
       : "";
     if (!hospital?.id) {
       const providerPhotoUrl =
-        placeId && googleApiKey ? await fetchGoogleProviderPhotoUrl(placeId, googleApiKey) : "";
+        placeId && googleApiKey
+          ? await fetchGoogleProviderPhotoUrl({ placeId, apiKey: googleApiKey })
+          : "";
       const fallbackUrl =
         providerPhotoUrl && isAbsoluteUrl(providerPhotoUrl)
           ? providerPhotoUrl
@@ -155,19 +129,16 @@ Deno.serve(async (req) => {
       providerPhotoName &&
       googleApiKey
     ) {
-      const mediaEndpoint = `https://places.googleapis.com/v1/${providerPhotoName}/media?maxHeightPx=1200&skipHttpRedirect=true`;
-      const mediaResponse = await fetch(mediaEndpoint, {
-        headers: {
-          "X-Goog-Api-Key": googleApiKey,
-        },
+      providerPhotoUrl = await fetchGoogleProviderPhotoByNameUrl({
+        photoName: providerPhotoName,
+        apiKey: googleApiKey,
       });
-      if (mediaResponse.ok) {
-        const mediaData = await mediaResponse.json();
-        providerPhotoUrl = toText(mediaData?.photoUri);
-      }
     }
     if (!providerPhotoUrl && hospital?.place_id && googleApiKey) {
-      providerPhotoUrl = await fetchGoogleProviderPhotoUrl(hospital.place_id, googleApiKey);
+      providerPhotoUrl = await fetchGoogleProviderPhotoUrl({
+        placeId: hospital.place_id,
+        apiKey: googleApiKey,
+      });
     }
     const hospitalImage = toText(hospital?.image);
     const imageUrl =
