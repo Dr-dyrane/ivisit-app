@@ -29,8 +29,9 @@ import {
   evaluateProviderDatabaseSufficiency,
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
-import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
-import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
+import { isOptionsRequest } from "../../_shared/http/request.ts";
+import { probeOptionalAuthHeader } from "../../_shared/supabase/auth.ts";
+import { createServiceClient } from "../../_shared/supabase/clients.ts";
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
 
@@ -42,24 +43,7 @@ serve(async (req) => {
   try {
     console.log("[discover-hospitals] request start", req.method);
 
-    const authHeader = getAuthorizationHeader(req);
-    if (authHeader) {
-      try {
-        const authClient = createUserClient(authHeader);
-        const {
-          data: { user },
-          error: authError,
-        } = await authClient.auth.getUser();
-        console.log("[discover-hospitals] auth header present", {
-          valid: !authError && !!user,
-        });
-      } catch (authCheckError) {
-        console.log(
-          "[discover-hospitals] auth check failed, continuing anonymously",
-          authCheckError
-        );
-      }
-    }
+    await probeOptionalAuthHeader(req, "discover-hospitals");
 
     const body = await req.json();
     const action = typeof body?.action === "string" ? body.action.trim() : "discover";

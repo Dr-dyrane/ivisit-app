@@ -465,6 +465,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/config.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline Google/Mapbox env lookup and configured media proxy URL construction back into `discover-hospitals` if runtime config resolution regresses.
 
+8.2 optional auth probe extraction note, 2026-05-19:
+
+- Added `_shared/supabase/auth.ts` with `probeOptionalAuthHeader` for non-fatal auth header validation and consistent anonymous-continuation logging.
+- Updated `discover-hospitals` to use the shared optional auth probe while preserving the existing request flow for anonymous and authenticated callers.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/supabase/auth.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline the local authorization header lookup, user client creation, and non-fatal `auth.getUser()` logging block back into `discover-hospitals` if optional auth diagnostics regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
