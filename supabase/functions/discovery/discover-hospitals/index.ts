@@ -1,13 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
-import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
 import { fetchNearbyProviderRows } from "../../_shared/domain/providers/database.ts";
 import {
   fetchExternalProviderData,
   type ProviderSource,
 } from "../../_shared/domain/providers/discoveryFlow.ts";
 import { enrichGoogleProviderDetails } from "../../_shared/domain/providers/enrichmentFlow.ts";
-import { shouldKeepProviderForRequestedCategory } from "../../_shared/domain/providers/guards.ts";
 import {
   buildProviderMediaProxyUrl,
 } from "../../_shared/domain/providers/media.ts";
@@ -16,7 +14,7 @@ import {
   MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
   REGION_LOCAL_FIRST_COUNTRY_CODES,
 } from "../../_shared/domain/providers/locality.ts";
-import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
+import { normalizeExternalProviderRows } from "../../_shared/domain/providers/normalizationFlow.ts";
 import { persistDiscoveredProviderRows } from "../../_shared/domain/providers/persistenceFlow.ts";
 import {
   parseProviderDiscoveryRequest,
@@ -27,7 +25,6 @@ import {
   isDispatchableDatabaseRow,
   isWithinDistanceKm,
   mergeCanonicalAndProviderRows,
-  withDistanceFromOrigin,
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
@@ -258,23 +255,15 @@ serve(async (req) => {
         console.error("[discover-hospitals] provider fetch failed", providerError);
       }
 
-      normalizedProviderHospitals = providerData
-        .map((place: any, index: number) =>
-          providerSource === "mapbox"
-            ? normalizeMapboxPlace(place, latitude, longitude, index)
-            : normalizeGooglePlace(place, latitude, longitude, index, buildHospitalMediaProxyUrl)
-        )
-        .map((place: any) => withProviderDefaults(place, providerSource, providerCategory))
-        .map((place: any) => withDistanceFromOrigin(place, latitude, longitude))
-        .filter(
-          (place: any) =>
-            !!place?.place_id &&
-            Number.isFinite(place?.latitude) &&
-            Number.isFinite(place?.longitude) &&
-            Number.isFinite(place?.distance_km) &&
-            place.distance_km <= radius / 1000 &&
-            shouldKeepProviderForRequestedCategory(place, providerCategory)
-        );
+      normalizedProviderHospitals = normalizeExternalProviderRows({
+        providerData,
+        providerSource,
+        latitude,
+        longitude,
+        radiusMeters: radius,
+        providerCategory,
+        buildMediaProxyUrl: buildHospitalMediaProxyUrl,
+      });
 
       if (mergeWithDatabase && normalizedProviderHospitals.length > 0) {
         const persistenceResult = await persistDiscoveredProviderRows({

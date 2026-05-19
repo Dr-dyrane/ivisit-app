@@ -444,6 +444,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline the dispatchable/category-filtered row derivation and comfort-target calculation back into `discover-hospitals` if external discovery skip behavior regresses.
 
+8.2 external provider normalization flow extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/normalizationFlow.ts` for Google/Mapbox normalization dispatch, provider defaults, origin distance decoration, radius filtering, and requested-category guards.
+- Updated `discover-hospitals` to call the shared normalization flow while preserving provider source handling, app-owned media proxy URLs, and merge/persistence behavior.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/normalizationFlow.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline the normalization/defaulting/distance/filter chain back into `discover-hospitals` if external provider rows regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
