@@ -551,6 +551,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline the previous local `runStep` function in `bootstrap-demo-ecosystem` and remove `runTimedStep` if timeline shape or edge bundling regresses.
 
+8.3 bootstrap pricing extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/pricing.ts` for demo service/room pricing baselines and their RPC-backed upsert routine.
+- Updated `bootstrap-demo-ecosystem` to import the shared pricing module while preserving summary readiness math through the same exported baseline arrays.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `SERVICE_PRICING_BASELINES`, `ROOM_PRICING_BASELINES`, and `ensureDemoPricing` back into `bootstrap-demo-ecosystem/index.ts` if pricing setup or Deno bundling regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
