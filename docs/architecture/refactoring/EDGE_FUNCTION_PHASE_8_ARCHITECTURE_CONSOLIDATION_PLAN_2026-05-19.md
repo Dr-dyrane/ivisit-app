@@ -451,6 +451,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/normalizationFlow.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline the normalization/defaulting/distance/filter chain back into `discover-hospitals` if external provider rows regress.
 
+8.2 provider response shaping extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/response.ts` for normalized provider result rows, canonical/provider merge response rows, and dispatchable/local database count summaries.
+- Updated `discover-hospitals` to keep HTTP response ownership while delegating merge-ready provider row shaping and database count metadata to the provider domain.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/response.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline provider result row mapping, canonical/provider merge invocation, result limiting, and dispatchable/local DB count filters back into `discover-hospitals` if response ordering or metadata counts regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

@@ -21,20 +21,15 @@ import {
   parseProviderEnrichmentRequest,
 } from "../../_shared/domain/providers/request.ts";
 import {
+  mergeProviderDiscoveryRows,
+  summarizeProviderDiscoveryDatabaseCounts,
+} from "../../_shared/domain/providers/response.ts";
+import {
   evaluateProviderDatabaseSufficiency,
-  isDispatchableDatabaseRow,
-  isWithinDistanceKm,
-  mergeCanonicalAndProviderRows,
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
-
-const toSafeString = (value: unknown, fallback = ""): string => {
-  if (typeof value !== "string") return fallback;
-  const clean = value.trim();
-  return clean.length > 0 ? clean : fallback;
-};
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
 
@@ -282,26 +277,23 @@ serve(async (req) => {
         providerPersistenceErrorCount += persistenceResult.providerPersistenceErrorCount;
       }
     }
-    const providerResults = normalizedProviderHospitals.map(
-      (place: any, index: number) => ({
-        id: `provider_${providerSource}_${index}`,
-        ...place,
-        google_phone: toSafeString(place?.phone),
-      })
-    );
     // EXP-6B: Filter DB rows by category before merging.
     // isEmergencyMode -> nearby_hospitals (all dispatchable hospitals, no category filter needed).
     // explore mode -> nearby_providers already filtered by provider_type, with secondary guards earlier.
-    const { merged: finalResults, prioritizedDbRows: prioritizedDbResults } =
-      mergeCanonicalAndProviderRows({
-        dbRows: isEmergencyMode ? dbResults : categoryFilteredDbResults,
-        providerRows: providerResults,
-        originLat: latitude,
-        originLng: longitude,
-        isPreferredRow: isDispatchableDatabaseRow,
-      });
-
-    const limitedResults = finalResults.slice(0, limit);
+    const { limitedResults, prioritizedDbResults } = mergeProviderDiscoveryRows({
+      dbResults,
+      categoryFilteredDbResults,
+      normalizedProviderRows: normalizedProviderHospitals,
+      providerSource,
+      isEmergencyMode,
+      latitude,
+      longitude,
+      limit,
+    });
+    const {
+      dispatchableDatabaseCount,
+      localDispatchableDatabaseCount,
+    } = summarizeProviderDiscoveryDatabaseCounts(prioritizedDbResults);
     console.log("[discover-hospitals] response", {
       total: limitedResults.length,
       providerSource,
@@ -324,13 +316,8 @@ serve(async (req) => {
           provider_category: providerCategory,
           is_emergency_mode: isEmergencyMode,
           database_count: dbResults.length,
-          dispatchable_database_count: prioritizedDbResults.filter((row: any) =>
-            isDispatchableDatabaseRow(row)
-          ).length,
-          local_dispatchable_database_count: prioritizedDbResults.filter((row: any) =>
-            isDispatchableDatabaseRow(row) &&
-            isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
-          ).length,
+          dispatchable_database_count: dispatchableDatabaseCount,
+          local_dispatchable_database_count: localDispatchableDatabaseCount,
           merged_count: limitedResults.length,
           provider_discovery_enabled: includeProviderDiscovery,
           provider_discovery_skipped: providerDiscoverySkipped,
