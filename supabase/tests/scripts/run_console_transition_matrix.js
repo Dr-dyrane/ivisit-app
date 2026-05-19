@@ -839,6 +839,10 @@ async function main() {
         name: `Transition Matrix Hospital ${TAG}`,
         address: '1 Matrix Way',
         status: 'available',
+        verified: true,
+        verification_status: 'verified',
+        emergency_eligible: true,
+        dispatch_eligible: true,
         available_beds: 6,
         total_beds: 20,
       })

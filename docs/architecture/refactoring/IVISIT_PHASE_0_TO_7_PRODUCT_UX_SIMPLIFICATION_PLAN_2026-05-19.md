@@ -57,14 +57,14 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 
 | Phase | Status | Owner surfaces | Started | Finished | Verification | Rollback notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Phase 0: Baseline Current Experience | Static audit complete; runtime smoke pending | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
-| Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapChooseCareModal` label copy only |
-| Phase 2: Fix Naming And Ownership | Static audit complete; compatibility alias kept | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
-| Phase 3: Improve Emergency Storytelling | Static copy alignment complete; runtime smoke pending | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved | Revert ambulance/bed decision copy and stage-base subtitle changes only |
-| Phase 4: Treat Location As First-Class | Static UX ownership pass complete; runtime smoke pending | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
-| Phase 5: Explore Care Data Hardening | Edge smoke complete; Google decision recorded; runtime UI smoke pending | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | 2026-05-19 | 2026-05-19 | `npm run hardening:edge-smoke` passed 81/81 with Google+Mapbox; `npm run hardening:edge-smoke -- --no-google` failed Tokyo/radiology | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback knowing global richness degrades |
-| Phase 6: Make Commit Feel Like One Guided Request | Static copy alignment complete; runtime smoke pending | Commit details, triage, payment, tracking handoff | 2026-05-19 | 2026-05-19 | `git diff --check`; contact/health/payment labels aligned; handlers untouched | Revert commit content copy files only; use edge/payment runbook if payment behavior changes |
-| Phase 7: Book Visit Integration | Static bridge audit complete; sheet migration deferred | Choose Care Book Visit bridge, Book Visit stack, future sheet design | 2026-05-19 | 2026-05-19 | `rg` bridge audit; route bridge closes Choose Care and pushes `/(user)/(stacks)/book-visit`; no map-sheet migration | Keep existing route bridge as fallback; feature-flag sheet integration only after emergency/location/explore runtime smoke |
+| Phase 0: Baseline Current Experience | Complete; runtime smoke green | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix; web smoke Welcome -> Map | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
+| Phase 1: Define Product Lanes | Complete; runtime smoke green | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned; rendered Choose Care smoke | Revert `MapChooseCareModal` label copy only |
+| Phase 2: Fix Naming And Ownership | Complete; runtime smoke green | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept; rendered modal open smoke | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
+| Phase 3: Improve Emergency Storytelling | Complete; runtime confidence green | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved; `npm run hardening:emergency-runtime-confidence` passed | Revert ambulance/bed decision copy and stage-base subtitle changes only |
+| Phase 4: Treat Location As First-Class | Complete; runtime confidence green | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled; web smoke reached map with pickup/location controls | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
+| Phase 5: Explore Care Data Hardening | Complete; edge and rendered smoke green | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | 2026-05-19 | 2026-05-19 | `npm run hardening:edge-smoke` passed 81/81 with Google+Mapbox; rendered map/provider cards smoke passed with Clearbit media blocked; `npm run hardening:edge-smoke -- --no-google` failed Tokyo/radiology | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback knowing global richness degrades |
+| Phase 6: Make Commit Feel Like One Guided Request | Complete; runtime confidence green | Commit details, triage, payment, tracking handoff | 2026-05-19 | 2026-05-19 | `git diff --check`; contact/health/payment labels aligned; handlers untouched; `npm run hardening:edge-payments`, emergency runtime, and visits runtime passed | Revert commit content copy files only; use edge/payment runbook if payment behavior changes |
+| Phase 7: Book Visit Integration | Complete; bridge remains route-owned | Choose Care Book Visit bridge, Book Visit stack, future sheet design | 2026-05-19 | 2026-05-19 | `rg` bridge audit; route bridge closes Choose Care and pushes `/(user)/(stacks)/book-visit`; no map-sheet migration; rendered Choose Care bridge surface opens | Keep existing route bridge as fallback; feature-flag sheet integration only after emergency/location/explore runtime smoke |
 | Phase 8: Edge Architecture Consolidation | Planned separately | Supabase Edge Functions and shared helpers | - | - | See Phase 8 plan | See edge rollback runbook and Phase 8 plan |
 
 ## Phase 0: Baseline Current Experience
@@ -482,6 +482,19 @@ npm run hardening:visits-runtime-confidence
 ```
 
 If a check is blocked by existing project issues, record the blocker and run the most targeted available script.
+
+Final Phase 0-7 verification run, 2026-05-19:
+
+- `git diff --check` passed.
+- `npm run hardening:edge-smoke` passed 81/81.
+- `npm run hardening:chat-rls` passed 23/23.
+- `npm run hardening:emergency` passed.
+- `npm run hardening:edge-payments` passed 6 payment/webhook functions.
+- `npm run hardening:emergency-runtime-confidence` passed after test fixture hospitals were updated to satisfy the live dispatch eligibility trigger.
+- `npm run hardening:visits-runtime-confidence` passed after the same fixture update.
+- `npm run build:web` passed.
+- Rendered web smoke passed via Playwright fallback: Welcome -> Continue -> `/map` -> Choose Care modal. Console had 0 errors after blocking fragile Clearbit logo URLs from hospital/provider image rendering. Remaining warnings were known platform/deprecation warnings: Expo AV, mobile web app meta, web Animated native driver fallback, and Google Maps Marker deprecation.
+- Browser plugin attempt was blocked for `localhost`/`127.0.0.1` with `ERR_BLOCKED_BY_CLIENT`, so rendered smoke used direct Playwright.
 
 ## Relationship To Phase 8
 

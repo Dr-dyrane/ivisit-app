@@ -33,7 +33,7 @@ import { FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-ico
 import { LinearGradient } from "expo-linear-gradient";
 
 import { COLORS } from "../../../../constants/colors";
-import { getCachedRemoteImageSource } from "../../mapHospitalImage";
+import { getCachedRemoteImageSource, isStableRemoteImageUrl } from "../../mapHospitalImage";
 import { TrackingDetailsCard } from "../../views/tracking/parts/MapTrackingParts";
 import FadeEndText from "../../../ui/FadeEndText";
 import { styles } from "./mapProviderDetail.styles";
@@ -53,7 +53,6 @@ const PROVIDER_HERO_IMAGE_SOURCES = new Set([
 	"provider_photo",
 	"provider_image",
 	"official_website_image",
-	"domain_logo",
 	"seed_image",
 	"deterministic_fallback",
 ]);
@@ -86,7 +85,7 @@ function getProviderHeroSource(provider) {
 			...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : []),
 		];
 		const uri = candidates.find(
-			(v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v),
+			(v) => isStableRemoteImageUrl(v),
 		);
 		return uri ? getCachedRemoteImageSource(uri) : null;
 	}
@@ -107,7 +106,7 @@ function getProviderHeroSource(provider) {
 		...(Array.isArray(provider?.googlePhotos) ? provider.googlePhotos : []),
 	];
 	const uri = candidates.find(
-		(v) => typeof v === "string" && v.trim().length > 0 && /^https?:\/\//i.test(v),
+		(v) => isStableRemoteImageUrl(v),
 	);
 	return uri ? getCachedRemoteImageSource(uri) : null;
 }

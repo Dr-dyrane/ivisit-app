@@ -5,6 +5,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import * as Haptics from "expo-haptics";
 import FadeEndText from "../ui/FadeEndText";
+import { isStableRemoteImageUrl } from "../map/mapHospitalImage";
 
 export default function HospitalCard({
 	hospital,
@@ -24,7 +25,7 @@ export default function HospitalCard({
 	const hospitalId = hospital?.id;
 	const rawHospitalName = typeof hospital?.name === "string" ? hospital.name : "Hospital";
 	const hospitalName = rawHospitalName.replace(/\s*\(demo\)\s*/gi, " ").trim();
-	const hospitalImageUri = typeof hospital?.image === "string" && hospital.image.length > 0 ? hospital.image : null;
+	const hospitalImageUri = isStableRemoteImageUrl(hospital?.image) ? hospital.image.trim() : null;
 	const hospitalRating = hospital?.rating ?? "--";
 	const isNotCertifiedHospital =
 		String(hospital?.verificationStatus || hospital?.verification_status || "").toLowerCase() ===

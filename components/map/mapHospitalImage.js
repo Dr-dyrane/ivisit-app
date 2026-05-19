@@ -7,7 +7,6 @@ const HOSPITAL_HERO_IMAGE_SOURCES = new Set([
 	"provider_photo",
 	"provider_image",
 	"official_website_image",
-	"domain_logo",
 	"seed_image",
 	"deterministic_fallback",
 ]);
@@ -15,11 +14,12 @@ const HOSPITAL_HERO_IMAGE_SOURCES = new Set([
 // PULLBACK NOTE: Add URL validation utility to prevent network errors
 // OLD: No validation, malformed URLs passed through to Image component
 // NEW: Validate protocol, format, and structure before caching
-function isValidUrl(string) {
+export function isStableRemoteImageUrl(string) {
 	if (typeof string !== "string" || string.trim().length === 0) return false;
 	try {
 		const url = new URL(string.trim());
-		return url.protocol === "http:" || url.protocol === "https:";
+		if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+		return url.hostname.toLowerCase() !== "logo.clearbit.com";
 	} catch {
 		return false;
 	}
@@ -51,7 +51,7 @@ export function getHospitalHeroSource(hospital) {
 	// PULLBACK NOTE: Validate URI before caching to prevent network errors
 	// OLD: Pass any non-empty string to getCachedRemoteImageSource
 	// NEW: Only pass valid URLs, fallback to default image
-	if (hasSourceGate && uri && isValidUrl(uri)) {
+	if (hasSourceGate && uri && isStableRemoteImageUrl(uri)) {
 		return getCachedRemoteImageSource(uri);
 	}
 	return DEFAULT_HOSPITAL_HERO_IMAGE;

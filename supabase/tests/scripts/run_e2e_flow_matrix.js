@@ -242,6 +242,10 @@ async function createFoundation(ctx) {
       name: `E2E Hospital ${TAG}`,
       address: '1 E2E Validation Ave',
       status: 'available',
+      verified: true,
+      verification_status: 'verified',
+      emergency_eligible: true,
+      dispatch_eligible: true,
       available_beds: 5,
       total_beds: 10,
       icu_beds_available: 2
