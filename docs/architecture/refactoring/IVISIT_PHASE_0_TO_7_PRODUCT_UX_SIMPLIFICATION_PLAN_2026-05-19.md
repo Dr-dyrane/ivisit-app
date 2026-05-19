@@ -58,7 +58,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase | Status | Owner surfaces | Started | Finished | Verification | Rollback notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Phase 0: Baseline Current Experience | Static audit complete; runtime smoke pending | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
-| Phase 1: Define Product Lanes | Planned | Welcome, Explore Intent, Choose Care copy/docs | - | - | Welcome one-action check; Explore emergency-first check | Revert copy/classification docs only |
+| Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapCareHistoryModal` label copy only |
 | Phase 2: Fix Naming And Ownership | Planned | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | - | - | `rg` import sweep; Choose Care entry smoke; no duplicate ownership sweep | Keep compatibility re-export if component rename causes churn |
 | Phase 3: Improve Emergency Storytelling | Planned | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | - | - | Ambulance/bed/both flow smoke; saved transport preservation check | Revert copy/presentation files before touching decision handlers |
 | Phase 4: Treat Location As First-Class | Planned | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | - | - | Manual coordinate validation; source-return matrix; payment state preservation | Revert Location Intent presentation changes only; preserve source payload contracts |
@@ -161,6 +161,12 @@ Implementation shape:
 - Product-language documentation first.
 - No runtime behavior change unless a mismatch is found.
 - Update copy only after checking actual screen owners.
+
+Phase 1 verification notes:
+
+- Welcome remains narrow: `Get help now` with one `Continue` intent.
+- Explore Intent keeps emergency actions first under `Choose care`.
+- Choose Care modal now names lanes as `Emergency now` and `Explore care`, matching this plan's product lanes.
 
 Gate:
 

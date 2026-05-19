@@ -319,7 +319,7 @@ export default function MapCareHistoryModal({
       {/* ── Emergency section label ────────────────────────────────── */}
       {hasExploreSection ? (
         <Text style={[styles.sectionLabel, { color: mutedColor }]}>
-          Emergency
+          Emergency now
         </Text>
       ) : null}
 
@@ -352,7 +352,7 @@ export default function MapCareHistoryModal({
         <View style={styles.exploreSection}>
           <View style={styles.exploreSectionHeader}>
             <Text style={[styles.sectionLabel, { color: mutedColor }]}>
-              Explore nearby care
+              Explore care
             </Text>
             {!isModalExpanded ? (
               <Pressable
