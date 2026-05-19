@@ -493,6 +493,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check` for both touched demo functions plus `_shared/supabase/auth.ts`, `npm run hardening:chat-rls`, and `npm run hardening:emergency` passed.
 - Rollback: inline each function's previous authorization-header lookup, `createUserClient`, and `auth.getUser()` block if demo auth behavior regresses.
 
+8.7 rollback and docs index update note, 2026-05-19:
+
+- Updated `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` for the Phase 8 shared helper ownership map and the `discover-hospitals` thin-entrypoint/handler topology.
+- Updated `docs/INDEX.md` to remove the stale Explore Care implementation checkpoint link and point active references at the Explore Care dossier and pass index.
+- Validation: `git diff --check`, `rg` confirmed the stale checkpoint path is absent from `docs/INDEX.md`, and `Test-Path` confirmed the active Explore Care dossier/pass index and `discover-hospitals` handler paths exist.
+- Rollback: restore the prior docs links/runbook text if a missing active document reference is discovered.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

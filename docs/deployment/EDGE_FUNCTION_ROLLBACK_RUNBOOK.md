@@ -1,6 +1,6 @@
 # Edge Function Rollback Runbook
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19
 
 This runbook is the trace point for iVisit Supabase Edge Function deployments, rollback, and function-loss investigation.
 
@@ -48,6 +48,12 @@ For TypeScript edge changes, also run:
 
 ```bash
 npx deno check supabase/functions/<function-folder>/index.ts
+```
+
+For thin entrypoints that import sibling handlers, check the public slug wrapper, the internal entrypoint, and the handler module together. Example:
+
+```bash
+npx deno check supabase/functions/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/handler.ts
 ```
 
 ## Deploy Commands
@@ -167,10 +173,28 @@ npx supabase functions deploy <slug>
 ## Shared Module Ownership
 
 - `_shared/http/cors.ts`: CORS and JSON response helpers.
+- `_shared/http/request.ts`: method guards, authorization header extraction, and safe JSON body reads.
+- `_shared/http/response.ts`: compatible JSON error/method responses for endpoints that do not use CORS helpers directly.
 - `_shared/env/env.ts`: env readers and boolean flags.
 - `_shared/supabase/clients.ts`: anon/user and service-role clients.
+- `_shared/supabase/auth.ts`: optional auth probes, required auth validation, and non-throwing authenticated-user reads.
 - `_shared/payments/stripe.ts`: Stripe secret and webhook secret access.
 - `_shared/domain/ids.ts`: display-id to UUID resolution.
 - `_shared/domain/providers/taxonomy.ts`: provider taxonomy and query hints.
+- `_shared/domain/providers/config.ts`: provider runtime config and app-owned provider media proxy URL construction.
+- `_shared/domain/providers/database.ts`: provider/hospital RPC read helpers.
+- `_shared/domain/providers/discoveryFlow.ts`: external provider source selection and local-first/wide-fallback fetch flow.
+- `_shared/domain/providers/enrichmentFlow.ts`: Google provider detail enrichment and persistence.
+- `_shared/domain/providers/normalizationFlow.ts`: external Google/Mapbox normalization, defaulting, distance, and category guard flow.
+- `_shared/domain/providers/persistenceFlow.ts`: provider discovery persistence, conflict fallback, provider table upsert, and DB refresh.
+- `_shared/domain/providers/response.ts`: provider result shaping, canonical/provider merge rows, and database count summaries.
+
+## Thin Entrypoint Notes
+
+- `discover-hospitals` public slug remains `supabase/functions/discover-hospitals/index.ts`.
+- That wrapper imports `supabase/functions/discovery/discover-hospitals/index.ts`.
+- The internal entrypoint is intentionally thin and calls `serve(handleDiscoverHospitalsRequest)`.
+- Request orchestration now lives in `supabase/functions/discovery/discover-hospitals/handler.ts`.
+- If deployment bundling fails, rollback by restoring the handler body directly into the internal `index.ts` and redeploying the unchanged public slug.
 
 Do not duplicate secret reads in endpoint files. Keep secret ownership in the shared helpers so audits can prove where sensitive values enter the runtime.

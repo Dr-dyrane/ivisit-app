@@ -1,6 +1,6 @@
 # iVisit Documentation Index
 
-Last Updated: 2026-05-16
+Last Updated: 2026-05-19
 
 ## Quick Rules Reference
 
@@ -170,7 +170,7 @@ docs/
 - Demo bootstrap 5-pass fix index: [./audit/demo/README.md](./audit/demo/README.md)
 - Last 24h location/search/UX/demo deep audit plan: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_LAST_24H_DEEP_AUDIT_PLAN_2026-05-11.md)
 - Last 24h location/search/UX/demo deep audit findings: [./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md](./audit/map/LOCATION_SEARCH_UIUX_DEMO_DEEP_AUDIT_FINDINGS_2026-05-11.md)
-- Explore Care implementation checkpoint: [./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md](./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md)
+- Explore Care active architecture: [flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md](./flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md)
 - Service sheet simplification audit: [./audit/map/IVISIT_SERVICE_SHEET_SIMPLIFICATION_AUDIT_2026-05-19.md](./audit/map/IVISIT_SERVICE_SHEET_SIMPLIFICATION_AUDIT_2026-05-19.md)
 - Service flow baseline matrix: [./audit/map/IVISIT_SERVICE_FLOW_BASELINE_MATRIX_2026-05-19.md](./audit/map/IVISIT_SERVICE_FLOW_BASELINE_MATRIX_2026-05-19.md)
 - Explore Care dossier: [flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md](./flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md)
@@ -296,7 +296,8 @@ docs/
 
 | Doc | Status |
 | --- | ------ |
-| [audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md](./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md) | ✅ COMPLETE — EXP-1–EXP-10 + DB + Nearby UI + MapScreen wiring |
+| [flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md](./flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md) | COMPLETE baseline architecture for EXP-1-EXP-10 + DB + Nearby UI + MapScreen wiring |
+| [flows/emergency/architecture/explore-care/passes/README.md](./flows/emergency/architecture/explore-care/passes/README.md) | Active pass index and rollback-note home for Explore Care changes |
 
 ### UX Issues Pass Plan (2026-05-10)
 
