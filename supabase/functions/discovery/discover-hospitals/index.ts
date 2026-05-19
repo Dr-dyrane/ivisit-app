@@ -25,6 +25,7 @@ import {
   normalizeCountryCode,
   shouldUseRegionLocalFirst,
 } from "../../_shared/domain/providers/locality.ts";
+import { fetchMapboxProviderPlaces } from "../../_shared/domain/providers/mapboxPlaces.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
 import {
   isWithinDistanceKm,
@@ -36,8 +37,6 @@ import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import {
   CATEGORY_TO_GOOGLE_TYPES,
-  CATEGORY_TO_MAPBOX_CATEGORY,
-  EXPLORE_CATEGORY_META_KEYWORDS,
   GOOGLE_TYPE_TO_PROVIDER,
   PROVIDER_TYPES,
   classifyProviderByName,
@@ -713,28 +712,15 @@ serve(async (req) => {
 
         // Fallback to Mapbox if Google returns no results or is disabled
         if (providerData.length === 0 && mapboxToken && includeMapboxPlaces) {
-          // PULLBACK NOTE: FIX-MAPBOX — category-aware Mapbox fetch strategy
-          const specificMapboxCategory = CATEGORY_TO_MAPBOX_CATEGORY[providerCategory] ?? null;
-          const keywordForCategory = EXPLORE_CATEGORY_META_KEYWORDS[providerCategory] || providerCategory;
-
-          let mapboxUrl: string;
-          if (mode === "text_search" && query) {
-            mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(query)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
-          } else if (specificMapboxCategory) {
-            mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/category/${specificMapboxCategory}?proximity=${longitude},${latitude}&limit=${limit}&access_token=${mapboxToken}`;
-          } else {
-            mapboxUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(keywordForCategory)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
-          }
-
-          console.log("[discover-hospitals] mapbox fallback fetch", { providerCategory, specificMapboxCategory, keywordForCategory });
-          const mapboxRes = await fetch(mapboxUrl);
-          const mapboxData = await mapboxRes.json();
-
-          providerData = Array.isArray(mapboxData?.features)
-            ? mapboxData.features
-            : Array.isArray(mapboxData?.suggestions)
-            ? mapboxData.suggestions
-            : [];
+          providerData = await fetchMapboxProviderPlaces({
+            accessToken: mapboxToken,
+            latitude,
+            longitude,
+            mode,
+            query,
+            limit,
+            providerCategory,
+          });
           providerSource = "mapbox";
           providerData = decorateScope(
             providerData,
@@ -743,27 +729,6 @@ serve(async (req) => {
           if (regionLocalFirstEnabled && providerData.length > 0) {
             wideProviderFallbackUsed = true;
             wideProviderFallbackCount = providerData.length;
-          }
-
-          if (providerData.length === 0 && specificMapboxCategory && mode !== "text_search") {
-            const fallbackQueryUrl = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(keywordForCategory)}&proximity=${longitude},${latitude}&types=poi&limit=${limit}&access_token=${mapboxToken}`;
-            console.log("[discover-hospitals] mapbox keyword fallback", { keywordForCategory });
-            const fallbackRes = await fetch(fallbackQueryUrl);
-            const fallbackData = await fallbackRes.json();
-
-            providerData = Array.isArray(fallbackData?.features)
-              ? fallbackData.features
-              : Array.isArray(fallbackData?.suggestions)
-              ? fallbackData.suggestions
-              : [];
-            providerData = decorateScope(
-              providerData,
-              regionLocalFirstEnabled ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL
-            );
-            if (regionLocalFirstEnabled && providerData.length > 0) {
-              wideProviderFallbackUsed = true;
-              wideProviderFallbackCount = providerData.length;
-            }
           }
         }
       } catch (providerError) {

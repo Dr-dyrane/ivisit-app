@@ -352,6 +352,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/googlePlaces.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `GOOGLE_PROVIDER_LIST_FIELD_MASK`, `GOOGLE_PROVIDER_DETAIL_FIELD_MASK`, `buildGoogleTextSearchQuery`, `fetchGoogleProviderPlaces`, and `fetchGoogleProviderDetails` to `discover-hospitals/index.ts` if Google provider discovery regresses.
 
+8.2 Mapbox Places client extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/mapboxPlaces.ts` for category-aware Mapbox Search Box URL construction, response extraction, and keyword fallback.
+- Updated the `discover-hospitals` engine to import `fetchMapboxProviderPlaces` while keeping Mapbox feature-flag checks, locality decoration, normalization, persistence, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/mapboxPlaces.ts`, and `npm run hardening:edge-smoke` passed. Diagnostic `node supabase/tests/scripts/run_edge_function_smoke_matrix.js --no-google` passed all cases except the known `tokyo/radiology` fallback coverage gap.
+- Rollback: restore the category-aware Mapbox fetch block, keyword fallback block, `CATEGORY_TO_MAPBOX_CATEGORY`, and `EXPLORE_CATEGORY_META_KEYWORDS` imports to `discover-hospitals/index.ts` if Mapbox fallback behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
