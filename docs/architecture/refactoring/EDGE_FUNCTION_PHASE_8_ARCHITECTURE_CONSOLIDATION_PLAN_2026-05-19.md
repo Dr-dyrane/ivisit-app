@@ -593,6 +593,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline `resolveSeedImage`, `choosePreferredImage`, and their media scoring helpers back into `bootstrap-demo-ecosystem/index.ts` if seed images or provider photo proxy behavior regresses.
 
+8.3 bootstrap staff extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/staff.ts` for demo auth user creation/reuse, profile role sync, doctor upserts, ambulance upserts, and hospital admin patching.
+- Updated `bootstrap-demo-ecosystem` to call the shared staff helper while preserving demo email format, display names, ambulance call signs, vehicle IDs, and the `ensure_demo_staff` timeline step.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/staff.ts supabase/functions/_shared/domain/demo/utils.ts supabase/functions/_shared/domain/demo/context.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: inline `toAuthEmail`, `toDisplayName`, `findAuthUserByEmail`, `ensureAuthUser`, `syncProfileRole`, and `ensureDemoStaff` back into `bootstrap-demo-ecosystem/index.ts` if staffing, profile roles, or ambulance assignment regress.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:

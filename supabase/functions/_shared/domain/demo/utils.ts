@@ -97,3 +97,6 @@ export const haversineDistanceKm = (
 
   return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
 };
+
+export const toGeometryPoint = (latitude: number, longitude: number): string =>
+  `SRID=4326;POINT(${longitude} ${latitude})`;
