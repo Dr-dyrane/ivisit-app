@@ -1,0 +1,371 @@
+# Edge Function Phase 8 Architecture Consolidation Plan
+
+Date: 2026-05-19
+Status: Planning only
+Scope: Supabase Edge Functions, shared helpers, verification scripts, rollback traceability
+
+## Purpose
+
+Phase 8 is the architecture consolidation phase after the seven product/UX stabilization phases. Its goal is not to create new deployed endpoints or rewrite working behavior. Its goal is to make iVisit's edge-function engine easier to trust, test, deploy, and roll back.
+
+The public function slugs must stay stable:
+
+- `discover-hospitals`
+- `bootstrap-demo-ecosystem`
+- `create-payment-intent`
+- `billing-quote`
+- `refresh-exchange-rates`
+- `manage-payment-methods`
+- `create-payout`
+- `stripe-webhook`
+- `hospital-media`
+- `demo-approve-cash-payment`
+- `demo-dispatch-reply`
+- `review-demo-auth`
+- `triage-copilot`
+
+## Documents Read Before Planning
+
+- `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`
+- `docs/REFACTORING_GUARDRAILS.md`
+- `docs/flows/emergency/architecture/explore-care/passes/README.md`
+- `docs/flows/emergency/architecture/contact-dispatch/passes/README.md`
+- `docs/flows/emergency/architecture/contact-dispatch/passes/CD-8_BACKEND_VERIFICATION.md`
+- `supabase/config.toml`
+- `supabase/tests/scripts/run_edge_function_smoke_matrix.js`
+- `supabase/tests/scripts/run_emergency_chat_rls_matrix.js`
+- `supabase/migrations/20260219000300_logistics.sql`
+- `supabase/migrations/20260219000700_security.sql`
+- `supabase/migrations/20260219010000_core_rpcs.sql`
+- Supabase Postgres best-practice notes for RLS, RLS performance, upsert safety, and indexes.
+
+## Lessons To Preserve
+
+1. Do not split deployed function slugs first. Keep public compatibility stable and modularize internals behind the same entrypoints.
+2. Every modularization pass needs a monolith baseline hash and rollback path.
+3. Shared secret access already belongs in `_shared/env`, `_shared/supabase`, and `_shared/payments`; do not reintroduce endpoint-local secret reads.
+4. Provider discovery must keep emergency hospital discovery and Explore Care provider discovery separate.
+5. Google Places is necessary for rich global provider coverage, but it must remain flag-gated, field-mask-limited, and observable.
+6. RLS must remain database-enforced. Edge functions can assist, but they must not become the only authorization layer.
+7. Complex RLS participant checks should use indexed helper functions and indexes on policy columns.
+8. Upserts and conflict targets are behavioral contracts. Do not replace them with select-then-insert logic.
+9. Existing verification scripts are assets, not afterthoughts. Phase 8 must extend them before moving behavior.
+10. Documentation links can drift; Phase 8 must update indexes and rollback runbooks as part of each pass.
+
+## Current Hotspots
+
+| Area | Current shape | Risk | Phase 8 direction |
+| --- | --- | --- | --- |
+| Provider discovery | `supabase/functions/discovery/discover-hospitals/index.ts` is the main engine, reached by wrapper slug `supabase/functions/discover-hospitals/index.ts` | High product trust, Google cost, global coverage, category leakage | Extract provider discovery internals behind same slug |
+| Demo bootstrap | `supabase/functions/bootstrap-demo-ecosystem/index.ts` is the largest function | Demo data integrity, seed duplication, live/demo confusion | Split by domain after seed matrix exists |
+| Payments | Several smaller functions repeat auth/client/payment patterns | High financial risk | Extract shared payment/auth/idempotency helpers with contract tests first |
+| Contact Dispatch demo reply | `demo-dispatch-reply` mixes auth, room lookup, AI call, insert/read state | Security and chat trust | Extract chat authorization + AI reply helper after RLS matrix passes |
+| Hospital media | Smaller but shares Google media concerns | Cost/secret/media redirect risk | Share Places media client with discovery after provider client is stable |
+
+## Target Internal Architecture
+
+Keep deployed slugs stable. Move internals toward:
+
+```text
+supabase/functions/
+  _shared/
+    http/
+      cors.ts
+      response.ts
+      request.ts
+      errors.ts
+    env/
+      env.ts
+      featureFlags.ts
+    supabase/
+      clients.ts
+      auth.ts
+      rpc.ts
+    observability/
+      logger.ts
+      timing.ts
+    domain/
+      providers/
+        taxonomy.ts
+        guards.ts
+        distance.ts
+        fallbackImages.ts
+        normalizeGoogle.ts
+        normalizeMapbox.ts
+        googlePlaces.ts
+        mapboxPlaces.ts
+        persistence.ts
+        discoveryFlow.ts
+      demo/
+        context.ts
+        organizations.ts
+        hospitals.ts
+        providers.ts
+        staff.ts
+        pricing.ts
+        wallets.ts
+      payments/
+        stripe.ts
+        actors.ts
+        records.ts
+        quotes.ts
+        idempotency.ts
+      emergencyChat/
+        rooms.ts
+        participants.ts
+        messages.ts
+        aiReply.ts
+```
+
+## Phase 8 Pass Plan
+
+### 8.0 Baseline And Freeze
+
+Do before moving code:
+
+- Record baseline hashes for each hotspot with `git log --oneline --follow`.
+- Record line counts.
+- Record current `supabase functions list` versions.
+- Confirm `supabase/config.toml` slug-to-entrypoint mapping.
+- Fix stale docs indexes found during planning.
+
+Gate:
+
+- `git diff --check`
+- `npm run hardening:edge-smoke`
+- `npm run hardening:edge-payments`
+- `npm run hardening:chat-rls`
+- `npm run hardening:emergency`
+- `npx deno check` for each touched edge entrypoint, where Deno is available.
+
+Rollback:
+
+- Use `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`.
+- Restore by function family, not individual helper, if a deployed slug fails.
+
+### 8.1 Shared HTTP, Env, Auth, And Observability
+
+This is the first implementation pass because it is low behavioral risk.
+
+Extract:
+
+- JSON body parsing
+- method guards
+- request id
+- duration timing
+- typed JSON error responses
+- auth header parsing
+- user/service client creation wrappers
+
+Do not change:
+
+- business logic
+- database queries
+- provider selection
+- payment mutation order
+
+Gate:
+
+- All edge smoke/payment/chat scripts still pass.
+- Response body shape remains compatible.
+
+### 8.2 Provider Discovery Extraction
+
+Owner: `discover-hospitals`.
+
+Extract pure/domain pieces first:
+
+- fallback image library
+- request parsing
+- category guards
+- distance helpers
+- Google normalization
+- Mapbox normalization
+- provider/hospital merge helpers
+- persistence helpers
+
+Only after pure extraction:
+
+- move Google Places calls into `providers/googlePlaces.ts`
+- move Mapbox calls into `providers/mapboxPlaces.ts`
+- move flow orchestration into `providers/discoveryFlow.ts`
+
+Hard constraints:
+
+- `discover-hospitals` slug remains public because guest map discovery depends on it.
+- Google Places remains gated by `ENABLE_GOOGLE_PLACES` plus request flags.
+- Field masks must stay narrow.
+- Emergency hospital discovery must not return non-emergency provider categories unless explicitly in Explore Care mode.
+
+Gate:
+
+- `npm run hardening:edge-smoke`
+- Run smoke matrix with Google on and off.
+- Verify Hemet, Festac, London, Nairobi, Dubai, Delhi, Tokyo, Sao Paulo, Sydney.
+- Verify categories: hospital, pharmacy, lab, radiology, urgent care, clinic, mental health, women's care, pediatrics.
+
+### 8.3 Demo Bootstrap Domain Split
+
+Owner: `bootstrap-demo-ecosystem`.
+
+Do not start until a seed/bootstrap matrix exists.
+
+Extract in this order:
+
+1. demo request context and auth
+2. organization creation/reuse
+3. wallet setup
+4. hospital/provider seed discovery
+5. hospital persistence and dedupe
+6. doctors/ambulances/staff
+7. pricing
+8. final response assembly
+
+Hard constraints:
+
+- Use atomic upserts where current behavior uses upserts.
+- Preserve demo/live separation.
+- Preserve Lagos/Festac known-good seed coverage.
+- Do not let demo bootstrap create duplicate canonical providers.
+
+Gate:
+
+- Add `run_bootstrap_demo_ecosystem_matrix.js` before extraction.
+- Existing data integrity and cleanup guards pass.
+
+### 8.4 Payment Function Consolidation
+
+Owners:
+
+- `create-payment-intent`
+- `billing-quote`
+- `manage-payment-methods`
+- `create-payout`
+- `refresh-exchange-rates`
+- `stripe-webhook`
+
+Extract:
+
+- actor resolution
+- organization/profile lookup
+- Stripe client access
+- payment record helpers
+- emergency request payment-state update helpers
+- idempotency helpers
+
+Hard constraints:
+
+- Do not expose Stripe client secrets beyond the intended response.
+- Do not weaken JWT settings.
+- `stripe-webhook` remains `verify_jwt = false` and must keep signature verification.
+- Payment record insertion order must preserve auditability.
+
+Gate:
+
+- `npm run hardening:edge-payments`
+- Manual Stripe webhook verification if webhook code changes.
+
+### 8.5 Contact Dispatch Edge Quality
+
+Owner: `demo-dispatch-reply`.
+
+Extract:
+
+- room/participant authorization lookup
+- message history read
+- AI provider choice
+- reply generation
+- reply persistence
+
+Hard constraints:
+
+- RLS remains the primary read/write boundary.
+- Demo AI must not bypass participant checks.
+- Realtime and idempotency expectations from CD-8 remain intact.
+
+Gate:
+
+- `npm run hardening:chat-rls`
+- Static RLS sweep confirms `emergency_chat_*` policies and indexes.
+
+### 8.6 Hospital Media And Places Client Sharing
+
+Owner: `hospital-media`.
+
+Extract only after provider Google client is stable:
+
+- shared Places details/media helpers
+- media field-mask constants
+- redirect/fallback behavior
+
+Hard constraints:
+
+- No raw secret exposure.
+- Missing media should degrade to app-owned fallback imagery.
+
+Gate:
+
+- Verify media redirect with a known `place_id`.
+- Verify non-Google fallback still works when Google is disabled.
+
+### 8.7 Config, Docs, And Rollback Ledger
+
+Update:
+
+- `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`
+- function inventory versions after deploy
+- docs index links
+- per-pass changed files, verification, rollback notes
+
+Fix discovered docs drift:
+
+- `docs/INDEX.md` references an Explore Care checkpoint path that no longer exists under `docs/audit/map/`.
+- Point future references at active `docs/flows/emergency/architecture/explore-care/` docs or restore the missing checkpoint if intentionally archived.
+
+### 8.8 Optional Final Thin Entrypoints
+
+Only after all earlier passes are green:
+
+```ts
+serve((req) => routeDiscoveryRequest(req));
+```
+
+Entrypoints should become thin routers, but only after behavior is locked by tests.
+
+## Non-Goals
+
+- Do not create new public edge slugs.
+- Do not rewrite database schema as part of function modularization.
+- Do not merge provider discovery with emergency dispatch.
+- Do not change Google cost posture without explicit feature-flag and quota decision.
+- Do not move Book Visit into this backend phase.
+- Do not optimize RLS by weakening policies.
+
+## Required Regression Matrix
+
+Before any Phase 8 deploy:
+
+```bash
+npm run hardening:edge-payments
+npm run hardening:chat-rls
+npm run hardening:emergency
+npm run hardening:edge-smoke
+```
+
+For touched function entrypoints:
+
+```bash
+npx deno check supabase/functions/<function-folder>/index.ts
+```
+
+After deploy:
+
+```bash
+npx supabase functions list
+npm run hardening:edge-smoke
+```
+
+## Decision
+
+Phase 8 should begin with `discover-hospitals` only after Phase 5 Explore Care hardening is green. Provider discovery is the most valuable backend engine to modularize first, but it is also the easiest to damage. The correct first code pass is shared HTTP/env/auth/observability extraction plus pure provider helpers, not a flow rewrite.
+

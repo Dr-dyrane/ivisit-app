@@ -88,6 +88,7 @@ export default function MapScreen() {
     changeServiceDetailService,
     closeAmbulanceDecision,
     closeBedDecision,
+    closeDecisionPhase,
     closeCommitDetails,
     closeCommitTriage,
     closeCommitPayment,
@@ -586,6 +587,18 @@ export default function MapScreen() {
     sheetPhase === MAP_SHEET_PHASES.HOSPITAL_LIST ||
     sheetPhase === MAP_SHEET_PHASES.HOSPITAL_DETAIL;
 
+  const handleTopLeftBack = useCallback(() => {
+    if (!isSignedIn) {
+      router.replace("/(auth)/");
+      return;
+    }
+    closeDecisionPhase();
+  }, [
+    closeDecisionPhase,
+    isSignedIn,
+    router,
+  ]);
+
   // PULLBACK NOTE: Pass 4 — tracking route reconciliation extracted to useMapTrackingSync
   const { trackingRouteInfo, setTrackingRouteInfo, trackingTimeline } =
     useMapTrackingSync({
@@ -873,7 +886,7 @@ export default function MapScreen() {
         isSignedIn={isSignedIn}
         isDecisionPhase={isDecisionPhase}
         profileImageSource={profileImageSource}
-        onBack={isSignedIn ? closeAmbulanceDecision : () => router.replace("/(auth)/")}
+        onBack={handleTopLeftBack}
         onOpenProfile={handleOpenProfile}
         visible={
           !mapLoadingState?.visible &&

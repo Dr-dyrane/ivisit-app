@@ -19,6 +19,11 @@ Unified search sheet, saved locations, and location-search integration audits.
 
 - `EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md` - Full wiring checkpoint for EXPLORE-CARE-01 (EXP-1–EXP-10 + DB + Nearby UI + MapScreen wiring). Records all passes, atom additions, `extraMarkers` prop, TanStack Query cache sharing, migration hygiene, and edge function deploy fix.
 
+### Service Sheet Simplification (2026-05-19)
+
+- `IVISIT_SERVICE_SHEET_SIMPLIFICATION_AUDIT_2026-05-19.md` - Problem statement, actual service-flow audit, feasibility decisions, and pass plan for simplifying iVisit's perceived service UX without collapsing critical map-sheet runtime responsibilities.
+- `IVISIT_SERVICE_FLOW_BASELINE_MATRIX_2026-05-19.md` - Current flow matrix for Welcome, map sheets, location management, profile/auth overlays, emergency decisions, Explore Care, tracking, history, and Book Visit before simplification passes.
+
 ### Map & Location Audits
 
 - `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` - Mixed-owner worktree checkpoint for Pass 18 with implemented-vs-needed status and deterministic staging buckets.

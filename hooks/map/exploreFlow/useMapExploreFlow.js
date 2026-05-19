@@ -432,6 +432,7 @@ export function useMapExploreFlow() {
     closeVisitDetail,
     closeAmbulanceDecision,
     closeBedDecision,
+    closeDecisionPhase,
   } = useMapSheetNavigation({
     sheetPhase,
     sheetPayload,
@@ -682,6 +683,7 @@ export function useMapExploreFlow() {
     openSearchSheet,
     closeAmbulanceDecision,
     closeBedDecision,
+    closeDecisionPhase,
     closeCommitDetails,
     closeCommitTriage,
     closeCommitPayment,

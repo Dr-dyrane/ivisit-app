@@ -266,7 +266,7 @@ export function useMapSheetNavigation({
     goBack();
   }, [goBack]);
 
-  const closeAmbulanceDecision = useCallback(() => {
+  const closeTransportDecision = useCallback(() => {
     clearCommitFlow();
     transitionTo(
       buildTrackingOrExploreReturnSheetView({
@@ -283,21 +283,30 @@ export function useMapSheetNavigation({
     sheetPayload?.sourceSnapState,
   ]);
 
-  const closeBedDecision = useCallback(() => {
-    clearCommitFlow();
-    transitionTo(
-      buildTrackingOrExploreReturnSheetView({
-        payload: sheetPayload,
-        defaultExploreSnapState,
-      }),
-    );
+  const closeAmbulanceDecision = closeTransportDecision;
+  const closeBedDecision = closeTransportDecision;
+
+  const closeDecisionPhase = useCallback(() => {
+    switch (sheetPhase) {
+      case MAP_SHEET_PHASES.BED_DECISION:
+        closeBedDecision();
+        return;
+      case MAP_SHEET_PHASES.HOSPITAL_LIST:
+        closeHospitalList();
+        return;
+      case MAP_SHEET_PHASES.HOSPITAL_DETAIL:
+        closeHospitalDetail();
+        return;
+      case MAP_SHEET_PHASES.AMBULANCE_DECISION:
+      default:
+        closeAmbulanceDecision();
+    }
   }, [
-    clearCommitFlow,
-    defaultExploreSnapState,
-    transitionTo,
-    sheetPayload?.sourcePayload,
-    sheetPayload?.sourcePhase,
-    sheetPayload?.sourceSnapState,
+    closeAmbulanceDecision,
+    closeBedDecision,
+    closeHospitalDetail,
+    closeHospitalList,
+    sheetPhase,
   ]);
 
   return {
@@ -317,5 +326,6 @@ export function useMapSheetNavigation({
     closeVisitDetail,
     closeAmbulanceDecision,
     closeBedDecision,
+    closeDecisionPhase,
   };
 }
