@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber, toNonNegativeInt } from "../../_shared/domain/numbers.ts";
+import { calculateDistanceKm } from "../../_shared/domain/providers/distance.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import {
@@ -636,38 +637,6 @@ const shouldKeepProviderForRequestedCategory = (row: any, requestedCategory: str
   const guard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
   if (!guard) return true;
   return guard.test(haystack);
-};
-
-const calculateDistanceKm = (
-  fromLat: number,
-  fromLng: number,
-  toLat: unknown,
-  toLng: unknown
-): number | null => {
-  const lat2 = toFiniteNumber(toLat);
-  const lng2 = toFiniteNumber(toLng);
-  if (
-    !Number.isFinite(fromLat) ||
-    !Number.isFinite(fromLng) ||
-    !Number.isFinite(lat2) ||
-    !Number.isFinite(lng2)
-  ) {
-    return null;
-  }
-
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-  const earthRadiusKm = 6371;
-  const dLat = toRadians(Number(lat2) - fromLat);
-  const dLng = toRadians(Number(lng2) - fromLng);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(fromLat)) *
-      Math.cos(toRadians(Number(lat2))) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const km = earthRadiusKm * c;
-  return Number.isFinite(km) ? Number(km.toFixed(3)) : null;
 };
 
 const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {

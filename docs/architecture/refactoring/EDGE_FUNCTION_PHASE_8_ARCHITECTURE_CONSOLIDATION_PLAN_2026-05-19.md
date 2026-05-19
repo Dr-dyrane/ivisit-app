@@ -295,6 +295,12 @@ Gate:
 - Verify Hemet, Festac, London, Nairobi, Dubai, Delhi, Tokyo, Sao Paulo, Sydney.
 - Verify categories: hospital, pharmacy, lab, radiology, urgent care, clinic, mental health, women's care, pediatrics.
 
+8.2 pure extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/distance.ts` for the pure `calculateDistanceKm` helper.
+- Updated the `discover-hospitals` engine to import the shared distance helper while preserving `withDistanceFromOrigin`, ranking, database queries, provider API calls, and response shapes in place.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/distance.ts`, and `npm run hardening:edge-smoke` passed.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
