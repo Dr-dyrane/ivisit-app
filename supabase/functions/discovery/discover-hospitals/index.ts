@@ -6,10 +6,8 @@ import {
   fetchExternalProviderData,
   type ProviderSource,
 } from "../../_shared/domain/providers/discoveryFlow.ts";
+import { enrichGoogleProviderDetails } from "../../_shared/domain/providers/enrichmentFlow.ts";
 import { shouldKeepProviderForRequestedCategory } from "../../_shared/domain/providers/guards.ts";
-import {
-  fetchGoogleProviderDetails,
-} from "../../_shared/domain/providers/googlePlaces.ts";
 import {
   buildProviderMediaProxyUrl,
 } from "../../_shared/domain/providers/media.ts";
@@ -19,10 +17,6 @@ import {
   REGION_LOCAL_FIRST_COUNTRY_CODES,
 } from "../../_shared/domain/providers/locality.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
-import {
-  toHospitalUpsertRow,
-  toProviderUpsertRow,
-} from "../../_shared/domain/providers/persistence.ts";
 import { persistDiscoveredProviderRows } from "../../_shared/domain/providers/persistenceFlow.ts";
 import {
   parseProviderDiscoveryRequest,
@@ -108,69 +102,17 @@ serve(async (req) => {
         );
       }
 
-      const supabaseClient = createServiceClient();
-      const details = await fetchGoogleProviderDetails({ apiKey: googleApiKey, placeId });
-      const normalized = withProviderDefaults(
-        normalizeGooglePlace(details, 0, 0, 0, buildHospitalMediaProxyUrl),
-        "google",
+      const {
+        enrichedRow,
+        persisted,
+        providerPersistenceError,
+      } = await enrichGoogleProviderDetails({
+        supabaseClient: createServiceClient(),
+        apiKey: googleApiKey,
+        placeId,
         providerCategory,
-      );
-      const upsertRow = toHospitalUpsertRow(normalized);
-      let persistedRow: any = null;
-      let providerPersistenceError: string | null = null;
-
-      if (
-        upsertRow?.place_id &&
-        upsertRow?.name &&
-        upsertRow?.address &&
-        Number.isFinite(upsertRow?.latitude) &&
-        Number.isFinite(upsertRow?.longitude)
-      ) {
-        const { data: hospitalRow, error: upsertError } = await supabaseClient
-          .from("hospitals")
-          .upsert(upsertRow, {
-            onConflict: "place_id",
-            ignoreDuplicates: false,
-          })
-          .select("*")
-          .maybeSingle();
-
-        if (upsertError) {
-          providerPersistenceError = upsertError.message || "provider_upsert_failed";
-          console.error("[discover-hospitals] provider detail upsert failed", upsertError);
-        } else {
-          persistedRow = hospitalRow;
-        }
-      }
-
-      if (persistedRow?.id) {
-        const providerUpsertRow = toProviderUpsertRow(persistedRow.id, {
-          ...normalized,
-          provider_type: providerCategory,
-        });
-        if (providerUpsertRow) {
-          const { error: providerError } = await supabaseClient
-            .from("providers")
-            .upsert(providerUpsertRow, {
-              onConflict: "hospital_id,provider_type",
-              ignoreDuplicates: false,
-            });
-          if (providerError) {
-            providerPersistenceError = providerError.message || providerPersistenceError;
-            console.error("[discover-hospitals] provider detail provider-row upsert failed", providerError);
-          }
-        }
-      }
-
-      const enrichedRow = {
-        ...(persistedRow || {}),
-        ...normalized,
-        id: persistedRow?.id ?? normalized.place_id,
-        google_phone: normalized.phone,
-        google_website: normalized.website,
-        google_rating: normalized.rating,
-        google_rating_count: (normalized as any).reviews_count,
-      };
+        buildMediaProxyUrl: buildHospitalMediaProxyUrl,
+      });
 
       return jsonResponse(
         {
@@ -180,7 +122,7 @@ serve(async (req) => {
             provider_category: providerCategory,
             provider_source: "google",
             google_enabled: true,
-            persisted: Boolean(persistedRow?.id),
+            persisted,
             provider_persistence_error: providerPersistenceError,
           },
         },

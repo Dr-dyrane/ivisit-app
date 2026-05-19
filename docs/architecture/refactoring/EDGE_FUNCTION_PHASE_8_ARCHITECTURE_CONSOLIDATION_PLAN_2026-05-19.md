@@ -430,6 +430,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/persistenceFlow.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local provider-only row dedupe, hospital upsert, coordinate conflict fallback, providers table upsert, and refresh block if provider persistence or canonical id refresh regresses.
 
+8.2 provider detail enrichment extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/enrichmentFlow.ts` for the `enrich_provider` Google detail fetch, normalization/defaulting, hospital upsert, provider-table upsert, and enriched row assembly.
+- Updated `discover-hospitals` to keep the same `enrich_provider` response shape and stable slug while delegating provider-detail persistence to the shared provider domain flow.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/enrichmentFlow.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline the provider detail fetch, normalization, hospital upsert, provider-table upsert, and enriched row assembly back into `discover-hospitals` if detail enrichment persistence regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
