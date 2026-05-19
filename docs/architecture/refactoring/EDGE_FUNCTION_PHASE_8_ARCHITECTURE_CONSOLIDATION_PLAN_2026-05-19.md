@@ -472,6 +472,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/supabase/auth.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline the local authorization header lookup, user client creation, and non-fatal `auth.getUser()` logging block back into `discover-hospitals` if optional auth diagnostics regress.
 
+8.8 discover-hospitals thin entrypoint note, 2026-05-19:
+
+- Added `supabase/functions/discovery/discover-hospitals/handler.ts` with `handleDiscoverHospitalsRequest` containing the existing request orchestration.
+- Reduced `supabase/functions/discovery/discover-hospitals/index.ts` to the stable `serve(handleDiscoverHospitalsRequest)` entrypoint while keeping the public `discover-hospitals` slug and wrapper unchanged.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/handler.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: move `handleDiscoverHospitalsRequest` body back into `index.ts` and call `serve(async (req) => { ... })` directly if module loading or deployment bundling regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
