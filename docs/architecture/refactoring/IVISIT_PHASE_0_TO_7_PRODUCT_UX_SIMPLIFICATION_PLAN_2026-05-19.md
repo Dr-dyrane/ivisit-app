@@ -60,7 +60,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase 0: Baseline Current Experience | Static audit complete; runtime smoke pending | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
 | Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapChooseCareModal` label copy only |
 | Phase 2: Fix Naming And Ownership | Static audit complete; compatibility alias kept | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
-| Phase 3: Improve Emergency Storytelling | Planned | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | - | - | Ambulance/bed/both flow smoke; saved transport preservation check | Revert copy/presentation files before touching decision handlers |
+| Phase 3: Improve Emergency Storytelling | Static copy alignment complete; runtime smoke pending | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved | Revert ambulance/bed decision copy and stage-base subtitle changes only |
 | Phase 4: Treat Location As First-Class | Planned | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | - | - | Manual coordinate validation; source-return matrix; payment state preservation | Revert Location Intent presentation changes only; preserve source payload contracts |
 | Phase 5: Explore Care Data Hardening | Planned | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | - | - | `npm run hardening:edge-smoke`; Google on/off checks; global location matrix | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback |
 | Phase 6: Make Commit Feel Like One Guided Request | Planned | Commit details, triage, payment, tracking handoff | - | - | Contact skip, triage update, payment -> tracking, reload persistence | Revert presentation first; use edge/payment runbook if payment behavior changes |
@@ -237,6 +237,13 @@ Implementation focus:
 - Explain combined flow as a guided request.
 - Preserve saved transport truth.
 - Preserve hospital-scoped service selection and pricing.
+
+Implemented static pass:
+
+- Combined ambulance + bed flow now labels the ambulance decision as `Step 1 of 2 - choose transport`.
+- Combined ambulance + bed flow now labels the bed decision as `Step 2 of 2 - choose bed`.
+- Saved transport confirmation remains a separate bed-stage card, so the second step still shows that transport was already selected.
+- Decision handlers, service selection, pricing, and saved transport state were not changed.
 
 Do not:
 

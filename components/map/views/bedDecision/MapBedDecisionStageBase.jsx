@@ -187,9 +187,7 @@ export default function MapBedDecisionStageBase({
 		const hospitalName =
 			decision.hospitalSummary?.title || hospital?.name || "";
 		if (careIntent === "both") {
-			return hospitalName
-				? `${MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP} - ${hospitalName}`
-				: MAP_BED_DECISION_COPY.SAVED_TRANSPORT_STEP;
+			return MAP_BED_DECISION_COPY.COMBINED_STEP_SUBTITLE;
 		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";

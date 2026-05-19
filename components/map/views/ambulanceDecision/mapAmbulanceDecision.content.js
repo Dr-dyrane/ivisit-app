@@ -16,7 +16,7 @@ export const MAP_AMBULANCE_DECISION_COPY = {
   UNAVAILABLE_CTA: "No dispatch available",
   OTHER_HOSPITALS_CTA: "Browse",
   SERVICE_DETAILS_CTA: "Details",
-  COMBINED_STEP_SUBTITLE: "Step 1 of 2 · Choose transport",
+  COMBINED_STEP_SUBTITLE: "Step 1 of 2 - choose transport",
   CURRENT_PILL: "Current",
   ROUTE_SOURCE_FALLBACK: "Dispatch origin",
   ROUTE_DESTINATION_TITLE: "My location",

@@ -175,7 +175,7 @@ export default function MapAmbulanceDecisionStageBase({
 		const hospitalName =
 			decision.hospitalSummary?.title || hospital?.name || "";
 		if (careIntent === "both") {
-			return hospitalName ? `Step 1 of 2 - ${hospitalName}` : "Step 1 of 2";
+			return MAP_AMBULANCE_DECISION_COPY.COMBINED_STEP_SUBTITLE;
 		}
 		const etaLabel =
 			typeof decision.etaLabel === "string" ? decision.etaLabel.trim() : "";
