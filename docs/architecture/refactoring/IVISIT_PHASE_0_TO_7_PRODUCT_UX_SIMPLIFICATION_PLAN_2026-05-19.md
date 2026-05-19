@@ -64,7 +64,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase 4: Treat Location As First-Class | Static UX ownership pass complete; runtime smoke pending | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
 | Phase 5: Explore Care Data Hardening | Edge smoke complete; Google decision recorded; runtime UI smoke pending | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | 2026-05-19 | 2026-05-19 | `npm run hardening:edge-smoke` passed 81/81 with Google+Mapbox; `npm run hardening:edge-smoke -- --no-google` failed Tokyo/radiology | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback knowing global richness degrades |
 | Phase 6: Make Commit Feel Like One Guided Request | Static copy alignment complete; runtime smoke pending | Commit details, triage, payment, tracking handoff | 2026-05-19 | 2026-05-19 | `git diff --check`; contact/health/payment labels aligned; handlers untouched | Revert commit content copy files only; use edge/payment runbook if payment behavior changes |
-| Phase 7: Book Visit Integration | Planned | Choose Care Book Visit bridge, Book Visit stack, future sheet design | - | - | Route bridge closes Choose Care; state isolation check | Keep existing route bridge as fallback; feature-flag sheet integration |
+| Phase 7: Book Visit Integration | Static bridge audit complete; sheet migration deferred | Choose Care Book Visit bridge, Book Visit stack, future sheet design | 2026-05-19 | 2026-05-19 | `rg` bridge audit; route bridge closes Choose Care and pushes `/(user)/(stacks)/book-visit`; no map-sheet migration | Keep existing route bridge as fallback; feature-flag sheet integration only after emergency/location/explore runtime smoke |
 | Phase 8: Edge Architecture Consolidation | Planned separately | Supabase Edge Functions and shared helpers | - | - | See Phase 8 plan | See edge rollback runbook and Phase 8 plan |
 
 ## Phase 0: Baseline Current Experience
@@ -420,6 +420,13 @@ Current state:
 
 - Choose Care routes to `/(user)/(stacks)/book-visit`.
 - This is acceptable until map-sheet booking is designed.
+
+Implemented static pass:
+
+- Confirmed Choose Care owns the `Book a visit` action only when `onBookVisit` is available for signed-in users.
+- Confirmed the bridge closes Choose Care and routes to `/(user)/(stacks)/book-visit`.
+- Confirmed Book Visit currently owns a separate flow: care type, specialty, provider, date/time, and booking summary.
+- Decision: do not move Book Visit into the map-sheet runtime during Phase 0-7; sheet integration belongs after emergency, location, and Explore Care runtime smoke are stable.
 
 Future target:
 
