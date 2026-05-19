@@ -316,6 +316,13 @@ Gate:
 - Preserved provider API calls, database reads/writes, merge behavior, and response shapes.
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
 
+8.2 fallback image extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/fallbackImages.ts` for the deterministic fallback image catalog and category-aware picker.
+- Updated the `discover-hospitals` engine to import `pickFallbackProviderImage` while keeping domain-logo inference, preferred-image ranking, persistence, provider API calls, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/fallbackImages.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the fallback image catalog and picker to `discover-hospitals/index.ts` if provider image selection regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

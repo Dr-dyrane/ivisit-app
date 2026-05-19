@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber, toNonNegativeInt } from "../../_shared/domain/numbers.ts";
 import { calculateDistanceKm } from "../../_shared/domain/providers/distance.ts";
+import { pickFallbackProviderImage } from "../../_shared/domain/providers/fallbackImages.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
 import {
   isWithinDistanceKm,
@@ -27,109 +28,6 @@ import {
   normaliseEmergencyLevel,
 } from "../../_shared/domain/providers/taxonomy.ts";
 import type { ProviderType } from "../../_shared/domain/providers/taxonomy.ts";
-
-// PULLBACK NOTE: EXPLORE-CARE-DATA-1 — Expanded fallback image library
-// OLD: 4 hospital-specific images used for all provider types
-// NEW: 12 hospital images + category-specific fallback arrays for richer UI
-const DEFAULT_HOSPITAL_IMAGES = [
-  "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-];
-
-// Category-specific fallback images for provider types
-const FALLBACK_IMAGES_BY_CATEGORY: Record<string, string[]> = {
-  hospital: DEFAULT_HOSPITAL_IMAGES,
-  pharmacy: [
-    "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1585435557343-3b6480329a73?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1584672073229-aca03c56ff42?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=1200&q=80",
-  ],
-  lab: [
-    "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1583947215259-7e5e029c1e3d?auto=format&fit=crop&w=1200&q=80",
-  ],
-  radiology: [
-    "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1583947215259-7e5e029c1e3d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1200&q=80",
-  ],
-  urgent_care: [
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80",
-  ],
-  clinic: [
-    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-  ],
-  mental_health: [
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1476900543704-4312b78632f8?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-  ],
-  womens_care: [
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
-  ],
-  pediatrics: [
-    "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1504419604952-10c1209773c4?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80",
-  ],
-};
 
 const DOMAIN_BLOCKLIST = [
   "google.com",
@@ -250,26 +148,6 @@ const isDispatchableDatabaseRow = (row: any): boolean => {
   );
 };
 
-const hashString = (seed: string): number => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-};
-
-// PULLBACK NOTE: EXPLORE-CARE-DATA-1 — Updated fallback image picker to support category-specific images
-// OLD: Always used DEFAULT_HOSPITAL_IMAGES for all provider types
-// NEW: Accepts providerCategory parameter, uses category-specific fallback arrays
-const pickFallbackHospitalImage = (seed: string, providerCategory?: string): string => {
-  const key = seed || "hospital";
-  const category = providerCategory || "hospital";
-  const categoryImages = FALLBACK_IMAGES_BY_CATEGORY[category] || DEFAULT_HOSPITAL_IMAGES;
-  const idx = hashString(key) % categoryImages.length;
-  return categoryImages[idx];
-};
-
 const isUrl = (value: string): boolean => /^https?:\/\//i.test(value);
 
 const parseDomain = (value: unknown): string | null => {
@@ -376,7 +254,7 @@ const resolveHospitalImage = (row: any) => {
 
   const providerCategory = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL);
   return {
-    image: pickFallbackHospitalImage(String(row?.place_id || row?.name || "hospital"), providerCategory),
+    image: pickFallbackProviderImage(String(row?.place_id || row?.name || "hospital"), providerCategory),
     image_source: "deterministic_fallback",
     image_confidence: 0.35,
   };
@@ -703,7 +581,7 @@ const toHospitalUpsertRow = (row: any) => {
     rating: toFiniteNumber(row?.rating) ?? 0,
     image:
       toSafeString(row?.image) ||
-      pickFallbackHospitalImage(String(row?.place_id || row?.name || "hospital"), providerCategory),
+      pickFallbackProviderImage(String(row?.place_id || row?.name || "hospital"), providerCategory),
     image_source: toSafeString(row?.image_source, "deterministic_fallback"),
     image_confidence:
       toFiniteNumber(row?.image_confidence) ??
