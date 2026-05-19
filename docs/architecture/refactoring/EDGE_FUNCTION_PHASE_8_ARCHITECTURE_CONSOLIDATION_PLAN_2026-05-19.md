@@ -558,6 +558,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: move `SERVICE_PRICING_BASELINES`, `ROOM_PRICING_BASELINES`, and `ensureDemoPricing` back into `bootstrap-demo-ecosystem/index.ts` if pricing setup or Deno bundling regresses.
 
+8.3 bootstrap finance extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/finance.ts` for organization fee sync, organization wallet setup, platform wallet top-up, and demo financial readiness thresholds.
+- Updated `bootstrap-demo-ecosystem` to import the shared finance readiness routine and exported wallet thresholds while preserving summary readiness checks.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `DEMO_ORG_WALLET_TARGET_BALANCE`, `DEMO_PLATFORM_WALLET_MIN_BALANCE`, and `ensureDemoFinancialReadiness` back into `bootstrap-demo-ecosystem/index.ts` if wallet setup or financial readiness regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
