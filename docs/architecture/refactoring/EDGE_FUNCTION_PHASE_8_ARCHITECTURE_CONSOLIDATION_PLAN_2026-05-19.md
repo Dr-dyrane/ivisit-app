@@ -423,6 +423,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/database.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `nearby_hospitals` / `nearby_providers` RPC blocks if DB read fallback or post-upsert refresh behavior regresses.
 
+8.2 provider persistence flow extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/persistenceFlow.ts` for provider-only dedupe, existing image lookup, hospital upsert, row-by-row conflict fallback, providers table upsert, and post-upsert canonical DB refresh.
+- Updated `discover-hospitals` to call the shared persistence flow while preserving provider persistence counters, fallback error logging, provider-table enrichment writes, and response behavior.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/persistenceFlow.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local provider-only row dedupe, hospital upsert, coordinate conflict fallback, providers table upsert, and refresh block if provider persistence or canonical id refresh regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
