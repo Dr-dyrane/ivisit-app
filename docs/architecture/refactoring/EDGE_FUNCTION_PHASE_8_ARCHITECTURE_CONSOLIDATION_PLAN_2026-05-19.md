@@ -373,6 +373,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/defaults.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `withProviderDefaults` to `discover-hospitals/index.ts` if provider classification, emergency eligibility, category confidence, or default image behavior regresses.
 
+8.2 provider row eligibility extraction note, 2026-05-19:
+
+- Expanded `_shared/domain/providers/rows.ts` to own demo-row detection, hospital dispatchability checks, and origin-distance decoration.
+- Updated the `discover-hospitals` engine to import `isDispatchableDatabaseRow` and `withDistanceFromOrigin` while preserving database queries, provider filtering, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `isDemoDatabaseRow`, `isDispatchableDatabaseRow`, and `withDistanceFromOrigin` to `discover-hospitals/index.ts` if database prioritization, emergency dispatchability, or wide-fallback distance behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

@@ -1,4 +1,11 @@
 import { toFiniteNumber } from "../numbers.ts";
+import { calculateDistanceKm } from "./distance.ts";
+import {
+  LOCALITY_SCOPE_LOCAL,
+  LOCALITY_SCOPE_WIDE_FALLBACK,
+  MAP_LOCAL_NEARBY_RADIUS_KM,
+} from "./locality.ts";
+import { PROVIDER_TYPES } from "./taxonomy.ts";
 
 const normalizeFacilityText = (value: unknown): string =>
   String(value || "")
@@ -16,6 +23,50 @@ const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
   const clean = value.trim();
   return clean.length > 0 ? clean : fallback;
+};
+
+const toSafeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
+export const isDemoDatabaseRow = (row: any): boolean => {
+  const placeId = toSafeString(row?.place_id, "").toLowerCase();
+  const verificationStatus = toSafeString(
+    row?.verification_status ?? row?.import_status,
+    ""
+  ).toLowerCase();
+  const features = toSafeStringArray(row?.features).map((feature) =>
+    feature.toLowerCase()
+  );
+
+  return (
+    placeId.startsWith("demo:") ||
+    verificationStatus.startsWith("demo") ||
+    features.some((feature) => feature.includes("demo"))
+  );
+};
+
+export const isDispatchableDatabaseRow = (row: any): boolean => {
+  const status = toSafeString(row?.status, "available").toLowerCase();
+  const verificationStatus = toSafeString(
+    row?.verification_status ?? row?.import_status,
+    ""
+  ).toLowerCase();
+
+  const providerType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
+  if (providerType !== PROVIDER_TYPES.HOSPITAL) return false;
+
+  return (
+    status === "available" &&
+    (row?.verified === true ||
+      isDemoDatabaseRow(row) ||
+      verificationStatus === "verified" ||
+      verificationStatus === "not_certified")
+  );
 };
 
 export const parseDistanceKm = (row: any): number | null => {
@@ -57,6 +108,23 @@ export const compareByDistance = (left: any, right: any): number => {
 export const isWithinDistanceKm = (row: any, radiusKm: number): boolean => {
   const distanceKm = parseDistanceKm(row);
   return Number.isFinite(distanceKm) && Number(distanceKm) <= radiusKm;
+};
+
+export const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {
+  const distanceKm =
+    parseDistanceKm(row) ?? calculateDistanceKm(originLat, originLng, row?.latitude, row?.longitude);
+  const localityScope = toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL);
+  const isWideFallback =
+    localityScope === LOCALITY_SCOPE_WIDE_FALLBACK &&
+    Number.isFinite(distanceKm) &&
+    Number(distanceKm) > MAP_LOCAL_NEARBY_RADIUS_KM;
+
+  return {
+    ...row,
+    distance_km: Number.isFinite(distanceKm) ? distanceKm : row?.distance_km,
+    provider_locality_scope: isWideFallback ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL,
+    is_wide_provider_fallback: isWideFallback,
+  };
 };
 
 export const prioritizeProviderRows = (

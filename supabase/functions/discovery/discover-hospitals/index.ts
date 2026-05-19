@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber } from "../../_shared/domain/numbers.ts";
-import { calculateDistanceKm } from "../../_shared/domain/providers/distance.ts";
 import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
 import { shouldKeepProviderForRequestedCategory } from "../../_shared/domain/providers/guards.ts";
 import {
@@ -26,17 +25,16 @@ import {
   toProviderUpsertRow,
 } from "../../_shared/domain/providers/persistence.ts";
 import {
+  isDispatchableDatabaseRow,
   isWithinDistanceKm,
   parseDistanceKm,
   prioritizeProviderRows,
   toMergeKey,
+  withDistanceFromOrigin,
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
-import {
-  CATEGORY_TO_GOOGLE_TYPES,
-  PROVIDER_TYPES,
-} from "../../_shared/domain/providers/taxonomy.ts";
+import { CATEGORY_TO_GOOGLE_TYPES } from "../../_shared/domain/providers/taxonomy.ts";
 
 const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
@@ -44,51 +42,7 @@ const toSafeString = (value: unknown, fallback = ""): string => {
   return clean.length > 0 ? clean : fallback;
 };
 
-const toSafeStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-};
-
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
-const isDemoDatabaseRow = (row: any): boolean => {
-  const placeId = toSafeString(row?.place_id, "").toLowerCase();
-  const verificationStatus = toSafeString(
-    row?.verification_status ?? row?.import_status,
-    ""
-  ).toLowerCase();
-  const features = toSafeStringArray(row?.features).map((feature) =>
-    feature.toLowerCase()
-  );
-
-  return (
-    placeId.startsWith("demo:") ||
-    verificationStatus.startsWith("demo") ||
-    features.some((feature) => feature.includes("demo"))
-  );
-};
-
-const isDispatchableDatabaseRow = (row: any): boolean => {
-  const status = toSafeString(row?.status, "available").toLowerCase();
-  const verificationStatus = toSafeString(
-    row?.verification_status ?? row?.import_status,
-    ""
-  ).toLowerCase();
-
-  // EXP-4 gate: if provider_type is present, only hospitals are dispatchable
-  const providerType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
-  if (providerType !== PROVIDER_TYPES.HOSPITAL) return false;
-
-  return (
-    status === "available" &&
-    (row?.verified === true ||
-      isDemoDatabaseRow(row) ||
-      verificationStatus === "verified" ||
-      verificationStatus === "not_certified")
-  );
-};
 
 const buildHospitalMediaProxyUrl = (placeId: string): string => {
   const supabaseUrl = toSafeString(
@@ -97,23 +51,6 @@ const buildHospitalMediaProxyUrl = (placeId: string): string => {
   ).replace(/\/$/, "");
   if (!supabaseUrl || !placeId) return "";
   return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
-};
-
-const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {
-  const distanceKm =
-    parseDistanceKm(row) ?? calculateDistanceKm(originLat, originLng, row?.latitude, row?.longitude);
-  const localityScope = toSafeString(row?.provider_locality_scope, LOCALITY_SCOPE_LOCAL);
-  const isWideFallback =
-    localityScope === LOCALITY_SCOPE_WIDE_FALLBACK &&
-    Number.isFinite(distanceKm) &&
-    Number(distanceKm) > MAP_LOCAL_NEARBY_RADIUS_KM;
-
-  return {
-    ...row,
-    distance_km: Number.isFinite(distanceKm) ? distanceKm : row?.distance_km,
-    provider_locality_scope: isWideFallback ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL,
-    is_wide_provider_fallback: isWideFallback,
-  };
 };
 
 serve(async (req) => {
