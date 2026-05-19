@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { isOptionsRequest } from "../_shared/http/request.ts";
 
 const toText = (value: unknown, fallback = "") => {
 	if (typeof value !== "string") return fallback;
@@ -89,7 +90,7 @@ const extractPromptFromAnthropic = (responseJson: Record<string, unknown>) => {
 };
 
 serve(async (req: Request) => {
-	if (req.method === "OPTIONS") {
+	if (isOptionsRequest(req)) {
 		return optionsResponse();
 	}
 

@@ -240,6 +240,12 @@ Gate:
 - Validation: `git diff --check`, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, `npm run hardening:chat-rls`, and `npm run hardening:emergency` passed.
 - Deno validation: `npx deno check supabase/functions/payments/billing-quote/index.ts`, `npx deno check supabase/functions/review-demo-auth/index.ts`, and `npx deno check` for the new shared helper files passed. Native `deno` remains unavailable on PATH; use `npx deno` locally or native Deno in deployment environments.
 
+8.1 follow-up extraction note, 2026-05-19:
+
+- Adopted `isOptionsRequest`, `getAuthorizationHeader`, and `jsonErrorResponse` in `demo-approve-cash-payment`.
+- Adopted `isOptionsRequest` in `triage-copilot` while preserving strict `req.json()` behavior and AI fallback response shapes.
+- Validation: `git diff --check`, `npx deno check` for both touched functions, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, and `npm run hardening:emergency` passed.
+
 ### 8.2 Provider Discovery Extraction
 
 Owner: `discover-hospitals`.

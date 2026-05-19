@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { getAuthorizationHeader, isOptionsRequest } from "../_shared/http/request.ts";
+import { jsonErrorResponse } from "../_shared/http/response.ts";
 import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const UUID_PATTERN =
@@ -27,12 +29,12 @@ const isDemoHospital = (hospital: any) => {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") ?? "";
+    const authHeader = getAuthorizationHeader(req);
     const userClient = createUserClient(authHeader);
     const adminClient = createServiceClient();
 
@@ -42,7 +44,7 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (userError || !user?.id) {
-      return jsonResponse({ success: false, error: "Unauthorized" }, { status: 401 });
+      return jsonErrorResponse("Unauthorized", 401);
     }
 
     const body = await req.json();
@@ -50,10 +52,7 @@ serve(async (req) => {
     const requestId = String(body?.requestId ?? "").trim();
 
     if (!UUID_PATTERN.test(paymentId) || !UUID_PATTERN.test(requestId)) {
-      return jsonResponse(
-        { success: false, error: "paymentId and requestId must be valid UUIDs" },
-        { status: 400 },
-      );
+      return jsonErrorResponse("paymentId and requestId must be valid UUIDs", 400);
     }
 
     const { data: requestRow, error: requestError } = await adminClient
@@ -67,10 +66,7 @@ serve(async (req) => {
     }
 
     if (!requestRow || String(requestRow.user_id) !== String(user.id)) {
-      return jsonResponse(
-        { success: false, error: "Request not found for this user" },
-        { status: 403 },
-      );
+      return jsonErrorResponse("Request not found for this user", 403);
     }
 
     const requestStatus = String(requestRow.status ?? "").trim().toLowerCase();
@@ -96,9 +92,9 @@ serve(async (req) => {
     }
 
     if (!isDemoHospital(hospitalRow)) {
-      return jsonResponse(
-        { success: false, error: "Demo auto-approval is only allowed for demo hospitals" },
-        { status: 403 },
+      return jsonErrorResponse(
+        "Demo auto-approval is only allowed for demo hospitals",
+        403,
       );
     }
 
@@ -114,16 +110,16 @@ serve(async (req) => {
     }
 
     if (!paymentRow) {
-      return jsonResponse({ success: false, error: "Payment not found" }, { status: 404 });
+      return jsonErrorResponse("Payment not found", 404);
     }
 
     const method = String(paymentRow.payment_method ?? "").trim().toLowerCase();
     const paymentRowStatus = String(paymentRow.status ?? "").trim().toLowerCase();
 
     if (method !== "cash") {
-      return jsonResponse(
-        { success: false, error: "Only cash payments can use the demo auto-approval lane" },
-        { status: 400 },
+      return jsonErrorResponse(
+        "Only cash payments can use the demo auto-approval lane",
+        400,
       );
     }
 
@@ -135,10 +131,7 @@ serve(async (req) => {
     }
 
     if (paymentRowStatus !== "pending") {
-      return jsonResponse(
-        { success: false, error: `Payment is not pending: ${paymentRowStatus}` },
-        { status: 400 },
-      );
+      return jsonErrorResponse(`Payment is not pending: ${paymentRowStatus}`, 400);
     }
 
     const { data: approvalResult, error: approvalError } = await adminClient.rpc(
@@ -154,10 +147,7 @@ serve(async (req) => {
     }
 
     if (!approvalResult?.success) {
-      return jsonResponse(
-        { success: false, error: approvalResult?.error || "Cash approval failed" },
-        { status: 400 },
-      );
+      return jsonErrorResponse(approvalResult?.error || "Cash approval failed", 400);
     }
 
     return jsonResponse(
@@ -166,6 +156,6 @@ serve(async (req) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return jsonResponse({ success: false, error: message }, { status: 500 });
+    return jsonErrorResponse(message, 500);
   }
 });
