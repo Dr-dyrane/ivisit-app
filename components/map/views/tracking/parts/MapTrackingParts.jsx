@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Platform,
   Pressable,
   Text,
   View,
@@ -169,18 +170,39 @@ export function MapTrackingTopSlot({
             strokeWidth={strokeWidth}
             fill="none"
           />
-          <AnimatedCircle
-            cx={ringSize / 2}
-            cy={ringSize / 2}
-            r={radius}
-            stroke={triageRingColor || (triageComplete ? "#16A34A" : COLORS.brandPrimary)}
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={ringDashOffset}
-            transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
-          />
+          {Platform.OS === "web" ? (
+            <Circle
+              cx={ringSize / 2}
+              cy={ringSize / 2}
+              r={radius}
+              stroke={
+                triageRingColor ||
+                (triageComplete ? "#16A34A" : COLORS.brandPrimary)
+              }
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={circumference * (1 - visualProgress)}
+              transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+            />
+          ) : (
+            <AnimatedCircle
+              cx={ringSize / 2}
+              cy={ringSize / 2}
+              r={radius}
+              stroke={
+                triageRingColor ||
+                (triageComplete ? "#16A34A" : COLORS.brandPrimary)
+              }
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={ringDashOffset}
+              transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+            />
+          )}
         </Svg>
         <MapHeaderIconButton
           onPress={onOpenTriage}

@@ -720,11 +720,6 @@ export function useMapCommitPaymentController({
           pendingApprovalState.paymentId &&
           pendingApprovalState.requestId
         ) {
-          const completionPayload = buildCommitPaymentCompletionPayload({
-            initiatedRequest,
-            result: initiationResult,
-            hospital,
-          });
           autoApprovalTimeoutRef.current = setTimeout(() => {
             autoApprovalTimeoutRef.current = null;
             void paymentService
@@ -732,15 +727,31 @@ export function useMapCommitPaymentController({
                 pendingApprovalState.paymentId,
                 pendingApprovalState.requestId,
               )
-              .then(() => handleRequestComplete(completionPayload))
-              .then(() => {
+              .then((approvalResponse) => {
+                const approvalResult = approvalResponse?.result || {};
+                const approvedCompletionPayload =
+                  buildCommitPaymentCompletionPayload({
+                    initiatedRequest,
+                    result: {
+                      ...initiationResult,
+                      ...approvalResult,
+                      requestId: initiationResult.requestId,
+                      displayId: initiationResult.displayId,
+                    },
+                    hospital,
+                  });
+                return handleRequestComplete(approvedCompletionPayload).then(
+                  () => approvedCompletionPayload,
+                );
+              })
+              .then((approvedCompletionPayload) => {
                 awaitingApprovalRef.current = false;
                 setPendingApproval?.(null);
                 setTransactionState(
                   MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
                   {
-                    displayId: completionPayload.displayId,
-                    requestId: completionPayload.requestId,
+                    displayId: approvedCompletionPayload.displayId,
+                    requestId: approvedCompletionPayload.requestId,
                   },
                 );
                 showToast("Provider confirmed the cash handoff.", "success");
@@ -862,6 +873,7 @@ export function useMapCommitPaymentController({
           initiatedRequest,
           result: {
             ...initiationResult,
+            request: settlementResult?.request || null,
             requestId:
               settlementResult?.request?.id || initiationResult.requestId,
             displayId:

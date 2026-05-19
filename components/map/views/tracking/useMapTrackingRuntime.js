@@ -12,6 +12,7 @@ import {
 } from "../../../emergency/triage/triageFlow.shared";
 import { buildMapCommitTriageSteps } from "../commitTriage/mapCommitTriage.helpers";
 import { buildTrackingViewState } from "./mapTracking.derived";
+import { buildTrackingRuntimeSnapshot } from "./mapTracking.snapshot";
 
 export const TRACKING_TRIAGE_STEP_FLOOR = 7;
 
@@ -169,6 +170,40 @@ export function useMapTrackingRuntime({
 			pendingApproval?.status ||
 			"").toLowerCase(),
 	);
+	const snapshotRouteInfo = useMemo(() => {
+		const liveCoordinates = Array.isArray(liveRouteInfo?.coordinates)
+			? liveRouteInfo.coordinates
+			: [];
+		const hasLiveRouteInfo =
+			(Number.isFinite(Number(liveRouteInfo?.durationSec)) &&
+				Number(liveRouteInfo.durationSec) >= 0) ||
+			liveCoordinates.length >= 2;
+		return hasLiveRouteInfo ? liveRouteInfo : routeInfo;
+	}, [liveRouteInfo, routeInfo]);
+
+	const trackingSnapshot = useMemo(
+		() =>
+			buildTrackingRuntimeSnapshot({
+				activeMapRequest,
+				activeAmbulanceTrip,
+				activeBedBooking,
+				pendingApproval,
+				routeInfo: snapshotRouteInfo,
+				ambulanceTelemetryHealth,
+				isArrived,
+				isPendingApproval,
+			}),
+		[
+			activeMapRequest,
+			activeAmbulanceTrip,
+			activeBedBooking,
+			ambulanceTelemetryHealth,
+			isArrived,
+			isPendingApproval,
+			pendingApproval,
+			snapshotRouteInfo,
+		],
+	);
 
 	const viewState = useMemo(
 		() =>
@@ -252,6 +287,7 @@ export function useMapTrackingRuntime({
 		triageHasData,
 		triageIsComplete,
 		triageProgressValue,
+		trackingSnapshot,
 		ambulanceTripProgress,
 		bedProgress,
 		formattedBedRemaining,

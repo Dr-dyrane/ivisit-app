@@ -211,11 +211,14 @@ export function useEmergencyHospitalSync({
 	// Demo hospital for active ambulance trip
 	const getActiveAmbulanceDemoHospital = useCallback((activeAmbulanceTrip) => {
 		if (!activeAmbulanceTrip?.hospitalId) return null;
-		const hospital = availableHospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ?? null;
+		const hospital =
+			availableHospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ??
+			hospitals.find((item) => item?.id === activeAmbulanceTrip.hospitalId) ??
+			null;
 		return demoEcosystemService.isDemoFlowActive({ hospital, demoModeEnabled: effectiveDemoModeEnabled })
 			? hospital
 			: null;
-	}, [availableHospitals, effectiveDemoModeEnabled]);
+	}, [availableHospitals, effectiveDemoModeEnabled, hospitals]);
 
 	// PULLBACK NOTE: Issue-3 fix — persist selectedHospital to survive reload
 	// Write whenever we have a real selected hospital from a resolved (non-loading) query.

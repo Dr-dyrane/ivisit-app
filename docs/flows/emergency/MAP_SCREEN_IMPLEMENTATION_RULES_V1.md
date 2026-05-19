@@ -157,6 +157,23 @@ Active-request exception:
 - the producing UI should patch context immediately and persist to backend non-blockingly when possible
 - do not store these facts only in `sheetPayload`; `sheetPayload` is navigation context, not operational truth
 
+Emergency flow state authority:
+
+- current operational diagnosis starts from [EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md](./EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+- the intended state direction is server row/RPC result -> TanStack query -> Zustand runtime store -> XState lifecycle -> Jotai/sheet presentation
+- server/query owns canonical request status, payment status, responder assignment, and persisted responder identity
+- Zustand owns the runtime snapshot used by map and tracking sheet
+- XState owns lifecycle gating and legal transitions; it does not prove responder, route, ETA, or telemetry payload completeness
+- Jotai and sheet payloads own presentation and navigation context only
+- tracking-ready is stronger than `requestId + hasActiveTrip`; ambulance tracking must have request id, hospital id, active status, route or ETA seed, pickup/patient context when available, and either responder identity or an explicit responder-hydrating state
+
+Audit-before-fix rule:
+
+- before changing emergency tracking, read the live tracker, this state-residency rule, and [../../architecture/refactoring/TRACKING_SHEET_LEARNINGS.md](../../architecture/refactoring/TRACKING_SHEET_LEARNINGS.md)
+- if code looks strange, check nearby `PULLBACK NOTE` comments, relevant audit docs, and git history before replacing it
+- do not patch a visible symptom until the contract violation is named: owner layer, user symptom, existing guard to preserve, and smallest safe change
+- candidate fixes should be recorded in [../../audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md](../../audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md) until verified
+
 Regression pattern to avoid:
 
 - A phase appears correct only after changing sheet state, closing/reopening, or restarting Metro.

@@ -406,24 +406,53 @@ export default function MapTrackingStageBase({
 	const heroHasResolvedEta = Boolean(
 		etaLabel && etaLabel !== "Pending" && etaLabel !== "—"
 	);
+	const ambulanceHasRouteSignal = Boolean(
+		heroHasResolvedEta ||
+			(Number.isFinite(ambulanceTripProgress) && ambulanceTripProgress > 0) ||
+			routeVisualProgress > 0,
+	);
+	const ambulanceHasArrived =
+		trackingKind === "ambulance" &&
+		(statusPhase === "arrived" || canMarkArrived || routeVisualProgress >= 1);
+	const ambulanceIsCompleted =
+		trackingKind === "ambulance" && statusPhase === "completed";
 	const heroTitle =
 		trackingKind === "pending"
 			? "Awaiting approval"
 			: trackingKind === "bed"
 				? serviceLabel
-				: responderName || "Finding driver";
+				: ambulanceIsCompleted
+					? "Visit complete"
+					: ambulanceHasArrived
+						? "Driver arrived"
+						: responderName ||
+							(ambulanceHasRouteSignal
+								? "Ambulance en route"
+								: "Assigning driver");
 	const heroSubtitle =
 		trackingKind === "bed"
 			? joinDisplayParts([hospitalName, secondaryTrackingLabel])
-			: toTitleCaseLabel(serviceLabel);
+			: ambulanceIsCompleted
+				? hospitalName
+				: ambulanceHasArrived
+					? "Confirm arrival to continue"
+					: responderName
+						? toTitleCaseLabel(serviceLabel)
+						: ambulanceHasRouteSignal
+							? "Dispatch confirmed"
+							: toTitleCaseLabel(serviceLabel);
 	const heroRightMeta =
 		trackingKind === "pending"
 			? "Pending"
 			: trackingKind === "bed"
 				? formattedBedRemaining || null
-				: heroHasResolvedEta
-					? etaLabel
-					: responderSafetyMeta || crewCountLabel || null;
+				: ambulanceIsCompleted
+					? "Complete"
+					: ambulanceHasArrived
+						? "Arrived"
+						: heroHasResolvedEta
+							? etaLabel
+							: responderSafetyMeta || crewCountLabel || null;
 	const heroAvatarIcon =
 		trackingKind === "pending"
 			? "hourglass-outline"

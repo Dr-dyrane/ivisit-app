@@ -222,6 +222,32 @@ export function buildCommitPaymentCompletionPayload({
 	hospital,
 }) {
 	const serviceType = initiatedRequest?.serviceType || "ambulance";
+	const responderName =
+		result?.responderName ?? result?.responder_name ?? result?.request?.responder_name ?? null;
+	const responderPhone =
+		result?.responderPhone ?? result?.responder_phone ?? result?.request?.responder_phone ?? null;
+	const responderVehicleType =
+		result?.responderVehicleType ??
+		result?.responder_vehicle_type ??
+		result?.request?.responder_vehicle_type ??
+		null;
+	const responderVehiclePlate =
+		result?.responderVehiclePlate ??
+		result?.responder_vehicle_plate ??
+		result?.request?.responder_vehicle_plate ??
+		null;
+	const ambulanceId =
+		result?.ambulanceId ??
+		result?.ambulance_id ??
+		result?.request?.ambulance_id ??
+		null;
+	const hasResponderAssignment = Boolean(
+		ambulanceId ||
+			responderName ||
+			responderPhone ||
+			responderVehicleType ||
+			responderVehiclePlate,
+	);
 	return {
 		success: true,
 		requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
@@ -233,7 +259,23 @@ export function buildCommitPaymentCompletionPayload({
 			hospital?.name ||
 			hospital?.title ||
 			"Hospital",
+		ambulanceId,
 		ambulanceType: initiatedRequest?.ambulanceType || null,
+		assignedAmbulance:
+			serviceType === "ambulance" && hasResponderAssignment
+				? {
+						id: ambulanceId || "ems_001",
+						type:
+							responderVehicleType ||
+							(typeof initiatedRequest?.ambulanceType === "object"
+								? initiatedRequest.ambulanceType?.title
+								: initiatedRequest?.ambulanceType) ||
+							"Ambulance",
+						plate: responderVehiclePlate || null,
+						name: responderName || null,
+						phone: responderPhone || null,
+					}
+				: null,
 		bedType: initiatedRequest?.bedType || null,
 		bedNumber: initiatedRequest?.bedNumber || null,
 		serviceType,

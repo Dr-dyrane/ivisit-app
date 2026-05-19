@@ -277,10 +277,13 @@ export const useAmbulanceAnimation = ({
 			Number.isFinite(responderLocation.longitude)
 	);
 	const initialHeading = useMemo(
-		() =>
-			hasLiveResponder && Number.isFinite(responderHeading)
+		() => {
+			const routeHeading = getInitialRouteHeading(routeCoordinates, initialProgress);
+			if (Number.isFinite(routeHeading)) return routeHeading;
+			return hasLiveResponder && Number.isFinite(responderHeading)
 				? responderHeading
-				: getInitialRouteHeading(routeCoordinates, initialProgress),
+				: null;
+		},
 		[hasLiveResponder, initialProgress, responderHeading, routeCoordinates]
 	);
 	const [ambulanceCoordinate, setAmbulanceCoordinate] = useState(null);
@@ -373,9 +376,10 @@ export const useAmbulanceAnimation = ({
 		const lookaheadDistance =
 			startProgress * routeProfile.totalMeters + HEADING_LOOKAHEAD_METERS;
 		const lookaheadCoordinate = getCoordinateAtDistance(routeProfile, lookaheadDistance);
-		const firstHeading = Number.isFinite(initialResponderHeading)
-			? initialResponderHeading
-			: calculateBearing(startCoordinate, lookaheadCoordinate);
+		const routeHeading = calculateBearing(startCoordinate, lookaheadCoordinate);
+		const firstHeading = Number.isFinite(routeHeading)
+			? routeHeading
+			: initialResponderHeading;
 		setCoordinateIfChanged(setAmbulanceCoordinate, startCoordinate);
 		setHeadingIfChanged(setAmbulanceHeading, firstHeading);
 
@@ -472,11 +476,7 @@ export const useAmbulanceAnimation = ({
 				? getCoordinateAtDistance(resolvedRouteProfile, resolvedRouteDistance)
 				: responderProjection?.projectedCoordinate || responderLocation;
 			setCoordinateIfChanged(setAmbulanceCoordinate, projectedCoordinate);
-			if (
-				!Number.isFinite(responderHeading) &&
-				Number.isFinite(resolvedRouteDistance) &&
-				resolvedRouteProfile
-			) {
+			if (Number.isFinite(resolvedRouteDistance) && resolvedRouteProfile) {
 				const lookaheadCoordinate = getCoordinateAtDistance(
 					resolvedRouteProfile,
 					resolvedRouteDistance + HEADING_LOOKAHEAD_METERS

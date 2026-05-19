@@ -61,7 +61,20 @@ export function buildTrackingViewState({
   const pickupLabel = currentLocation?.primaryText || "My location";
   const pickupDetail =
     currentLocation?.secondaryText || currentLocation?.formattedAddress || "";
-  const responder = activeAmbulanceTrip?.assignedAmbulance || null;
+  const responder = activeAmbulanceTrip?.assignedAmbulance || (
+    activeAmbulanceTrip?.responderName ||
+    activeAmbulanceTrip?.responderVehicleType ||
+    activeAmbulanceTrip?.responderVehiclePlate ||
+    activeAmbulanceTrip?.ambulanceId
+      ? {
+          id: activeAmbulanceTrip?.ambulanceId || null,
+          name: activeAmbulanceTrip?.responderName || null,
+          type: activeAmbulanceTrip?.responderVehicleType || null,
+          plate: activeAmbulanceTrip?.responderVehiclePlate || null,
+          vehicleNumber: activeAmbulanceTrip?.responderVehiclePlate || null,
+        }
+      : null
+  );
   const responderName =
     responder?.crew?.[0] ||
     responder?.name ||

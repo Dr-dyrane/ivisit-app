@@ -87,10 +87,14 @@ export function useMapTrackingController({
   const setActiveEmergencyChatRequestId = useSetAtom(activeEmergencyChatRequestIdAtom);
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
+    activeMapRequest?.raw?.activeAmbulanceTrip?.id ||
+    activeAmbulanceTrip?.id ||
     activeMapRequest?.raw?.activeAmbulanceTrip?.requestId ||
     activeAmbulanceTrip?.requestId ||
     null;
   const activeBedBookingRequestId =
+    activeMapRequest?.raw?.activeBedBooking?.id ||
+    activeBedBooking?.id ||
     activeMapRequest?.raw?.activeBedBooking?.requestId ||
     activeBedBooking?.requestId ||
     null;

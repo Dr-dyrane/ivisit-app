@@ -120,7 +120,13 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
 
   // Ensure room on mount
   useEffect(() => {
-    if (visible && requestId && !room?.id && !isEnsuring) {
+    if (
+      visible &&
+      requestId &&
+      !room?.id &&
+      !isEnsuring &&
+      lifecycle.isEnsuringRoom
+    ) {
       ensureRoom().catch((err) => {
         console.warn("[EmergencyContactDispatchModal] Room ensure failed:", err);
         lifecycle.sendFailure(err.message);

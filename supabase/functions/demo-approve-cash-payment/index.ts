@@ -29,6 +29,47 @@ const isDemoHospital = (hospital: any) => {
   );
 };
 
+const hydrateApprovedRequest = async (adminClient: any, requestId: string) => {
+  const { data: approvedRequest, error: approvedRequestError } =
+    await adminClient
+      .from("emergency_requests")
+      .select(
+        "id, display_id, status, payment_status, service_type, ambulance_id, responder_name, responder_phone, responder_vehicle_type, responder_vehicle_plate"
+      )
+      .eq("id", requestId)
+      .maybeSingle();
+
+  if (approvedRequestError) {
+    throw new Error(
+      `Approved request hydration failed: ${approvedRequestError.message}`,
+    );
+  }
+
+  return approvedRequest;
+};
+
+const buildApprovalResult = (approvalResult: any, approvedRequest: any) => {
+  if (!approvedRequest) return approvalResult;
+  return {
+    ...approvalResult,
+    ambulance_id:
+      approvalResult?.ambulance_id ?? approvedRequest.ambulance_id ?? null,
+    responder_name:
+      approvalResult?.responder_name ?? approvedRequest.responder_name ?? null,
+    responder_phone:
+      approvalResult?.responder_phone ?? approvedRequest.responder_phone ?? null,
+    responder_vehicle_type:
+      approvalResult?.responder_vehicle_type ??
+      approvedRequest.responder_vehicle_type ??
+      null,
+    responder_vehicle_plate:
+      approvalResult?.responder_vehicle_plate ??
+      approvedRequest.responder_vehicle_plate ??
+      null,
+    request: approvedRequest,
+  };
+};
+
 serve(async (req) => {
   if (isOptionsRequest(req)) {
     return optionsResponse();
@@ -56,7 +97,7 @@ serve(async (req) => {
 
     const { data: requestRow, error: requestError } = await adminClient
       .from("emergency_requests")
-      .select("id, user_id, status, payment_status, hospital_id")
+      .select("id, user_id, status, payment_status, service_type, hospital_id")
       .eq("id", requestId)
       .maybeSingle();
 
@@ -74,8 +115,15 @@ serve(async (req) => {
       ["accepted", "in_progress", "arrived", "completed"].includes(requestStatus) ||
       ["approved", "paid", "completed"].includes(paymentStatus)
     ) {
+      const approvedRequest = await hydrateApprovedRequest(adminClient, requestId);
       return jsonResponse(
-        { success: true, alreadyApproved: true, requestId, paymentId },
+        {
+          success: true,
+          alreadyApproved: true,
+          requestId,
+          paymentId,
+          result: buildApprovalResult({ success: true }, approvedRequest),
+        },
         { status: 200 },
       );
     }
@@ -123,8 +171,15 @@ serve(async (req) => {
     }
 
     if (paymentRowStatus === "completed") {
+      const approvedRequest = await hydrateApprovedRequest(adminClient, requestId);
       return jsonResponse(
-        { success: true, alreadyApproved: true, requestId, paymentId },
+        {
+          success: true,
+          alreadyApproved: true,
+          requestId,
+          paymentId,
+          result: buildApprovalResult({ success: true }, approvedRequest),
+        },
         { status: 200 },
       );
     }
@@ -149,8 +204,40 @@ serve(async (req) => {
       return jsonErrorResponse(approvalResult?.error || "Cash approval failed", 400);
     }
 
+    let approvedRequest = await hydrateApprovedRequest(adminClient, requestId);
+    if (
+      String(approvedRequest?.service_type ?? requestRow.service_type ?? "")
+        .trim()
+        .toLowerCase() === "ambulance" &&
+      !approvedRequest?.ambulance_id
+    ) {
+      const { error: assignError } = await adminClient.rpc(
+        "auto_assign_ambulance",
+        {
+          p_emergency_request_id: requestId,
+          p_max_distance_km: 50,
+          p_specialty_required: null,
+        },
+      );
+
+      if (assignError) {
+        console.warn(
+          "[demo-approve-cash-payment] demo ambulance auto-assign fallback failed",
+          assignError.message,
+        );
+      } else {
+        approvedRequest = await hydrateApprovedRequest(adminClient, requestId);
+      }
+    }
+
     return jsonResponse(
-      { success: true, approved: true, requestId, paymentId, result: approvalResult },
+      {
+        success: true,
+        approved: true,
+        requestId,
+        paymentId,
+        result: buildApprovalResult(approvalResult, approvedRequest),
+      },
       { status: 200 },
     );
   } catch (error) {
