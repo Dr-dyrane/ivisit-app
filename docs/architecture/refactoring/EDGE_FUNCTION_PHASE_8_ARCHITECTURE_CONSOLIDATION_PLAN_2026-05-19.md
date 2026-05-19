@@ -586,6 +586,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/utils.ts supabase/functions/_shared/domain/demo/context.ts supabase/functions/_shared/domain/demo/organization.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline the utility helpers back into `bootstrap-demo-ecosystem/index.ts` if normalization, coordinate keys, timestamps, or distance calculations regress.
 
+8.3 bootstrap media extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/media.ts` for demo seed image resolution, app-owned hospital-media proxy URL creation, domain-logo affinity scoring, and preferred image selection.
+- Updated `bootstrap-demo-ecosystem` to consume the shared media helpers while preserving provider photo, explicit seed image, domain-logo, and image-rank behavior.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: inline `resolveSeedImage`, `choosePreferredImage`, and their media scoring helpers back into `bootstrap-demo-ecosystem/index.ts` if seed images or provider photo proxy behavior regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
