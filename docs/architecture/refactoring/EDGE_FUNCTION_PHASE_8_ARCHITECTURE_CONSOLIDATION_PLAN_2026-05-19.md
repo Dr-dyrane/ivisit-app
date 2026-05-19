@@ -486,6 +486,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check` for all five touched payment functions plus `_shared/supabase/auth.ts`, `npm run hardening:edge-payments`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline each function's previous authorization-header lookup, `createUserClient`, and `auth.getUser()` block if payment auth behavior regresses.
 
+8.1 authenticated user reader demo adoption note, 2026-05-19:
+
+- Added `readAuthenticatedUser` to `_shared/supabase/auth.ts` for non-throwing authorization-header lookup, user client creation, and `auth.getUser()` results.
+- Updated `demo-approve-cash-payment` and `demo-dispatch-reply` to use the shared authenticated-user reader while preserving their existing `Unauthorized` 401 response shape.
+- Validation: `git diff --check`, `npx deno check` for both touched demo functions plus `_shared/supabase/auth.ts`, `npm run hardening:chat-rls`, and `npm run hardening:emergency` passed.
+- Rollback: inline each function's previous authorization-header lookup, `createUserClient`, and `auth.getUser()` block if demo auth behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

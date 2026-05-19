@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
-import { getAuthorizationHeader, isOptionsRequest } from "../_shared/http/request.ts";
+import { isOptionsRequest } from "../_shared/http/request.ts";
 import { jsonErrorResponse } from "../_shared/http/response.ts";
-import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
+import { readAuthenticatedUser } from "../_shared/supabase/auth.ts";
+import { createServiceClient } from "../_shared/supabase/clients.ts";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -34,14 +35,12 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = getAuthorizationHeader(req);
-    const userClient = createUserClient(authHeader);
     const adminClient = createServiceClient();
 
     const {
-      data: { user },
+      user,
       error: userError,
-    } = await userClient.auth.getUser();
+    } = await readAuthenticatedUser(req);
 
     if (userError || !user?.id) {
       return jsonErrorResponse("Unauthorized", 401);

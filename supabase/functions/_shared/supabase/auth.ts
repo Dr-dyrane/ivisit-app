@@ -85,3 +85,26 @@ export const requireAuthenticatedUser = async (
     user,
   };
 };
+
+export const readAuthenticatedUser = async (
+  req: Request,
+): Promise<{
+  authHeader: string;
+  supabaseClient: any;
+  user: any | null;
+  error: any | null;
+}> => {
+  const authHeader = getAuthorizationHeader(req);
+  const supabaseClient = createUserClient(authHeader);
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  return {
+    authHeader,
+    supabaseClient,
+    user: user ?? null,
+    error: error ?? null,
+  };
+};
