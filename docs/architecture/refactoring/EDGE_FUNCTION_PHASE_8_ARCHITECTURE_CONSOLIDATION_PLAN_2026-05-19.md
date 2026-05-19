@@ -387,6 +387,14 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `providerLocalityByPlaceId`, `prioritizedDbResults`, `seen`, and `merged` loops to `discover-hospitals/index.ts` if merge ordering or deduplication regresses.
 
+8.2 discover HTTP/auth helper adoption note, 2026-05-19:
+
+- Updated `discover-hospitals` to use `_shared/http/request.ts` for `OPTIONS` and authorization header handling.
+- Updated the anonymous auth-validity probe to use `_shared/supabase/clients.ts` instead of constructing an endpoint-local Supabase anon client.
+- Preserved the existing behavior where invalid auth is logged and discovery continues anonymously.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `req.method`, `req.headers.get("Authorization")`, and anon `createClient` code if request/auth probing regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

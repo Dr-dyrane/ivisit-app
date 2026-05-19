@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber } from "../../_shared/domain/numbers.ts";
 import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
@@ -32,7 +31,8 @@ import {
   withDistanceFromOrigin,
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
-import { createServiceClient } from "../../_shared/supabase/clients.ts";
+import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
+import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 import { CATEGORY_TO_GOOGLE_TYPES } from "../../_shared/domain/providers/taxonomy.ts";
 
 const toSafeString = (value: unknown, fallback = ""): string => {
@@ -53,21 +53,17 @@ const buildHospitalMediaProxyUrl = (placeId: string): string => {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
     console.log("[discover-hospitals] request start", req.method);
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(req);
     if (authHeader) {
       try {
-        const authClient = createClient(
-          getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
-          getEnv("SUPABASE_ANON_KEY", "EXPO_PUBLIC_SUPABASE_ANON_KEY"),
-          { global: { headers: { Authorization: authHeader } } }
-        );
+        const authClient = createUserClient(authHeader);
         const {
           data: { user },
           error: authError,
