@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import {
+  runTimedStep,
+  type TimedStepEntry,
+} from "../_shared/observability/timing.ts";
 import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const DEMO_HOSPITAL_OFFSETS = [
@@ -2089,17 +2093,9 @@ serve(async (req) => {
       radiusKm,
     };
 
-    const timeline: any[] = [];
-    const runStep = async (step: string, action: () => Promise<any>) => {
-      const startedAt = Date.now();
-      const data = await action();
-      timeline.push({
-        step,
-        duration_ms: Date.now() - startedAt,
-        data,
-      });
-      return data;
-    };
+    const timeline: TimedStepEntry[] = [];
+    const runStep = <TData>(step: string, action: () => Promise<TData>) =>
+      runTimedStep(timeline, step, action);
 
     const organizationResult = await runStep("ensure_org", () =>
       ensureDemoOrganization(adminClient, ctx),

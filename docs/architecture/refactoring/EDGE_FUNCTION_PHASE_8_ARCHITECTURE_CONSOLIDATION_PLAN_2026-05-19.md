@@ -544,6 +544,13 @@ Gate:
 - Validation: `git diff --check`, package JSON parse, and `npm run hardening:bootstrap-demo-matrix` passed. This was the non-mutating dry-run; `npm run hardening:bootstrap-demo-matrix:apply` remains the explicit live gate before bootstrap internals are split.
 - Rollback: remove the bootstrap matrix script and package scripts if the harness itself proves too invasive or incompatible with the live bootstrap contract.
 
+8.3 bootstrap timing helper extraction note, 2026-05-19:
+
+- Added `runTimedStep` and `TimedStepEntry` to `_shared/observability/timing.ts` so edge functions can build consistent timeline entries without each function owning local stopwatch boilerplate.
+- Updated `bootstrap-demo-ecosystem` to use the shared timing helper while preserving the existing `timeline[].step`, `timeline[].duration_ms`, and `timeline[].data` response contract.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: inline the previous local `runStep` function in `bootstrap-demo-ecosystem` and remove `runTimedStep` if timeline shape or edge bundling regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
