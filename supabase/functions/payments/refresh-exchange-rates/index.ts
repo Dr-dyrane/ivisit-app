@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getEnv } from "../../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
+import { jsonErrorResponse } from "../../_shared/http/response.ts";
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 type NormalizedRatesPayload = {
@@ -163,12 +165,12 @@ const normalizeRatesPayload = (
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(req);
     if (!authHeader) {
       throw new Error("Missing authorization header");
     }
@@ -286,12 +288,9 @@ serve(async (req) => {
       { status: 200 },
     );
   } catch (error) {
-    return jsonResponse(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 400 },
+    return jsonErrorResponse(
+      error instanceof Error ? error.message : "Unknown error",
+      400,
     );
   }
 });

@@ -1,16 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { maybeResolveDisplayId } from "../../_shared/domain/ids.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
 import { createStripeClient } from "../../_shared/payments/stripe.ts";
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(req);
     if (!authHeader) throw new Error("No authorization header");
 
     const supabaseClient = createUserClient(authHeader);

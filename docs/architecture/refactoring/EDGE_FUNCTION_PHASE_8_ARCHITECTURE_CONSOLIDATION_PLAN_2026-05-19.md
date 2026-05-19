@@ -246,6 +246,13 @@ Gate:
 - Adopted `isOptionsRequest` in `triage-copilot` while preserving strict `req.json()` behavior and AI fallback response shapes.
 - Validation: `git diff --check`, `npx deno check` for both touched functions, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, and `npm run hardening:emergency` passed.
 
+8.1 payment adoption note, 2026-05-19:
+
+- Adopted `isOptionsRequest` and `getAuthorizationHeader` in `create-payment-intent`, `create-payout`, and `manage-payment-methods`.
+- Adopted `isOptionsRequest`, `getAuthorizationHeader`, and `jsonErrorResponse` in `refresh-exchange-rates`, preserving its existing `{ success: false, error }` shape.
+- Preserved compatibility in payment endpoints that intentionally return `{ error }` without a `success` field on failure.
+- Validation: `git diff --check`, `npx deno check` for all four touched payment functions, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, and `npm run hardening:emergency` passed.
+
 ### 8.2 Provider Discovery Extraction
 
 Owner: `discover-hospitals`.
