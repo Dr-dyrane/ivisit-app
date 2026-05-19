@@ -689,6 +689,13 @@ Gate:
 - `npm run hardening:chat-rls`
 - Static RLS sweep confirms `emergency_chat_*` policies and indexes.
 
+8.5 demo dispatch AI extraction note, 2026-05-19:
+
+- Added `_shared/domain/emergencyChat/text.ts` for chat text coercion/body truncation and `_shared/domain/emergencyChat/demoDispatchAi.ts` for OpenAI, Anthropic, and fallback demo dispatch replies.
+- Updated `demo-dispatch-reply` to delegate AI provider selection and medically calm fallback generation while preserving prompt rules, model env names, reply limits, and provider metadata.
+- Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
+- Rollback: inline `toText`, `toSafeBody`, `fallbackReply`, `extractOpenAIText`, `generateOpenAIReply`, `generateAnthropicReply`, and `generateDemoDispatchReply` back into `demo-dispatch-reply/index.ts` if reply text, provider fallback, or secret lookup behavior regresses.
+
 ### 8.6 Hospital Media And Places Client Sharing
 
 Owner: `hospital-media`.
