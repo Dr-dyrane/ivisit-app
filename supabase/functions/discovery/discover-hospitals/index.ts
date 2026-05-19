@@ -1,14 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
+import {
+  buildConfiguredProviderMediaProxyUrl,
+  getProviderGooglePlacesConfig,
+  getProviderMapboxToken,
+} from "../../_shared/domain/providers/config.ts";
 import { fetchNearbyProviderRows } from "../../_shared/domain/providers/database.ts";
 import {
   fetchExternalProviderData,
   type ProviderSource,
 } from "../../_shared/domain/providers/discoveryFlow.ts";
 import { enrichGoogleProviderDetails } from "../../_shared/domain/providers/enrichmentFlow.ts";
-import {
-  buildProviderMediaProxyUrl,
-} from "../../_shared/domain/providers/media.ts";
 import {
   MAP_LOCAL_NEARBY_RADIUS_KM,
   MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
@@ -32,12 +33,6 @@ import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/req
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
-
-const buildHospitalMediaProxyUrl = (placeId: string): string =>
-  buildProviderMediaProxyUrl(
-    getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
-    placeId,
-  );
 
 serve(async (req) => {
   if (isOptionsRequest(req)) {
@@ -74,12 +69,10 @@ serve(async (req) => {
         throw new Error("placeId is required");
       }
 
-      const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
-      const googleApiKey = getEnv(
-        "GOOGLE_MAPS_API_KEY",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
-        "GOOGLE_MAPS_ANDROID_API_KEY",
-      );
+      const {
+        enabled: googlePlacesEnabled,
+        apiKey: googleApiKey,
+      } = getProviderGooglePlacesConfig();
 
       if (!googlePlacesEnabled || !googleApiKey) {
         return jsonResponse(
@@ -104,7 +97,7 @@ serve(async (req) => {
         apiKey: googleApiKey,
         placeId,
         providerCategory,
-        buildMediaProxyUrl: buildHospitalMediaProxyUrl,
+        buildMediaProxyUrl: buildConfiguredProviderMediaProxyUrl,
       });
 
       return jsonResponse(
@@ -122,7 +115,10 @@ serve(async (req) => {
       );
     }
 
-    const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+    const {
+      enabled: googlePlacesEnabled,
+      apiKey: googleApiKey,
+    } = getProviderGooglePlacesConfig();
     const {
       latitude,
       longitude,
@@ -143,12 +139,7 @@ serve(async (req) => {
       throw new Error("latitude and longitude are required");
     }
 
-    const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
-    const googleApiKey = getEnv(
-      "GOOGLE_MAPS_API_KEY",
-      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY",
-      "GOOGLE_MAPS_ANDROID_API_KEY",
-    );
+    const mapboxToken = getProviderMapboxToken();
 
     const supabaseClient = createServiceClient();
 
@@ -257,7 +248,7 @@ serve(async (req) => {
         longitude,
         radiusMeters: radius,
         providerCategory,
-        buildMediaProxyUrl: buildHospitalMediaProxyUrl,
+        buildMediaProxyUrl: buildConfiguredProviderMediaProxyUrl,
       });
 
       if (mergeWithDatabase && normalizedProviderHospitals.length > 0) {

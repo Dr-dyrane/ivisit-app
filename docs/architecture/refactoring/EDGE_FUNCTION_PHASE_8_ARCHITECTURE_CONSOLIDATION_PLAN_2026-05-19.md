@@ -458,6 +458,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/response.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline provider result row mapping, canonical/provider merge invocation, result limiting, and dispatchable/local DB count filters back into `discover-hospitals` if response ordering or metadata counts regress.
 
+8.2 provider runtime config extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/config.ts` for Google Places enablement/API key lookup, Mapbox token lookup, and the configured app-owned provider media proxy URL builder.
+- Updated `discover-hospitals` to consume provider runtime config helpers instead of owning env-name lists and media proxy configuration.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/config.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline Google/Mapbox env lookup and configured media proxy URL construction back into `discover-hospitals` if runtime config resolution regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
