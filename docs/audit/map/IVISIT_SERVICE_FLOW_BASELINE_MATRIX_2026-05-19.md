@@ -114,8 +114,10 @@ iVisit currently presents four user-facing lanes after Welcome:
 
 ## Immediate Follow-Up Checks
 
-1. Recheck top-left back behavior in bed and hospital decision phases after the `closeDecisionPhase` navigation-hook consolidation.
-2. Verify provider autoselect in one US and one non-US location after category switching.
-3. Verify MiniProfile -> Address & Location -> close returns to MiniProfileModal.
-4. Verify Location Intent return from `COMMIT_PAYMENT` preserves payment method/cost state.
-5. Verify Book Visit bridge still closes Choose Care before route push.
+1. Top-left back ownership: statically checked. `MapTopLeftControl` has one render site and delegates signed-in decision back to `closeDecisionPhase`.
+2. Provider autoselect: fixed identity fallback so provider sheet selection, map focus, and provider markers all use `id ?? placeId ?? name`.
+3. MiniProfile -> Address & Location -> close: statically checked. `sourcePhase: "miniProfile"` reopens `MiniProfileModal`.
+4. Location Intent return from `COMMIT_PAYMENT`: statically checked. Payment passes current `sheetPayload` as `sourcePayload`, then restores it on close.
+5. Book Visit bridge: statically checked. `handleBookVisitFromCare` closes Choose Care before route push.
+
+Runtime device/browser verification is still required before Phase 1 is considered fully release-ready.

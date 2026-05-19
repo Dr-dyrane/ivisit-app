@@ -57,7 +57,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 
 | Phase | Status | Owner surfaces | Started | Finished | Verification | Rollback notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Phase 0: Baseline Current Experience | In progress | `docs/audit/map/*`, `MapScreen`, map sheet navigation | 2026-05-19 | - | `git diff --check`; targeted source audit | Revert docs and the top-left navigation-hook consolidation if regression appears |
+| Phase 0: Baseline Current Experience | Static audit complete; runtime smoke pending | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
 | Phase 1: Define Product Lanes | Planned | Welcome, Explore Intent, Choose Care copy/docs | - | - | Welcome one-action check; Explore emergency-first check | Revert copy/classification docs only |
 | Phase 2: Fix Naming And Ownership | Planned | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | - | - | `rg` import sweep; Choose Care entry smoke; no duplicate ownership sweep | Keep compatibility re-export if component rename causes churn |
 | Phase 3: Improve Emergency Storytelling | Planned | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | - | - | Ambulance/bed/both flow smoke; saved transport preservation check | Revert copy/presentation files before touching decision handlers |
@@ -103,10 +103,19 @@ Current artifacts:
 Gate:
 
 - Top-left/back ownership checked.
-- Provider autoselect noted for verification.
-- Mini profile location return noted for verification.
-- Payment location return noted for verification.
+- Provider autoselect identity checked across sheet, map focus, and markers.
+- Mini profile location return checked by source payload.
+- Payment location return checked by source payload.
+- Book Visit bridge checked for modal close before route push.
 - `git diff --check`.
+
+Phase 0 verification notes:
+
+- `MapTopLeftControl` is rendered once from `MapScreen`; authenticated decision back now delegates to `closeDecisionPhase` in `useMapSheetNavigation`.
+- Provider autoselect uses `getProviderSelectionId(provider)` and now shares the same identity fallback for selected provider focus and provider marker selection.
+- `MiniProfileModal` calls `onOpenLocationIntent({ sourcePhase: "miniProfile" })`; `MapScreen` handles that return by reopening `MiniProfileModal`.
+- `MapCommitPayment` location search passes `sourcePhase: MAP_SHEET_PHASES.COMMIT_PAYMENT` plus the current `sheetPayload`; `MapScreen` restores that payload when Location Intent closes.
+- `handleBookVisitFromCare` calls `setCareHistoryVisible(false)` before pushing `/(user)/(stacks)/book-visit`.
 
 Rollback:
 

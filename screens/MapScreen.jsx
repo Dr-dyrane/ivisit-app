@@ -244,7 +244,7 @@ export default function MapScreen() {
     // PULLBACK NOTE: FIX-C — BUG-4: do NOT clear exploreProviderCategory on card/pin tap
     // OLD: setExploreProviderCategory(null) here — killed map pins the moment user tapped
     // NEW: category atom stays set → ProviderMarkers + TanStack cache stay alive during PROVIDER_DETAIL
-    setExploreProviderId(provider?.id ?? null);
+    setExploreProviderId(getProviderSelectionId(provider));
     setSheetPayload(
       buildProviderDetailSheetView({
         provider,
@@ -425,7 +425,7 @@ export default function MapScreen() {
   // OLD: selectedProvider not passed; useMapFocusedState only read sheetPayload.provider
   // NEW: resolved from exploreProviderId + exploreProviders; works in both LIST and DETAIL phases
   const selectedProvider = useMemo(
-    () => exploreProviders.find((p) => p?.id === exploreProviderId) ?? null,
+    () => exploreProviders.find((p) => getProviderSelectionId(p) === exploreProviderId) ?? null,
     [exploreProviders, exploreProviderId],
   );
 

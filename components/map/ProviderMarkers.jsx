@@ -57,6 +57,9 @@ const getBottomPinnedCenterOffset = (isSelected) => ({
   y: -getMarkerDimensions(isSelected).height / 6,
 });
 
+const getProviderMarkerId = (provider) =>
+  provider?.id ?? provider?.placeId ?? provider?.name ?? null;
+
 /**
  * Single provider pin — static pre-colored asset, no tintColor, no custom children.
  * Mirrors HospitalMarkers pattern exactly for maximum iOS stability.
@@ -114,13 +117,13 @@ const ProviderMarkers = ({ providers, selectedProviderId, onProviderPress }) => 
         p?.providerType !== PROVIDER_TYPES.HOSPITAL &&
         Number.isFinite(p?.coordinates?.latitude) &&
         Number.isFinite(p?.coordinates?.longitude) &&
-        p?.id
+        getProviderMarkerId(p)
     )
     .map((provider) => (
       <ProviderPin
-        key={provider.id}
+        key={`${getProviderMarkerId(provider)}:${provider.coordinates.latitude},${provider.coordinates.longitude}`}
         provider={provider}
-        isSelected={selectedProviderId === provider.id}
+        isSelected={selectedProviderId === getProviderMarkerId(provider)}
         onPress={onProviderPress}
       />
     ));
