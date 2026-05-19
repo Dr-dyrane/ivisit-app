@@ -253,6 +253,13 @@ Gate:
 - Preserved compatibility in payment endpoints that intentionally return `{ error }` without a `success` field on failure.
 - Validation: `git diff --check`, `npx deno check` for all four touched payment functions, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, and `npm run hardening:emergency` passed.
 
+8.1 dispatch/media/webhook adoption note, 2026-05-19:
+
+- Adopted `isOptionsRequest`, `getAuthorizationHeader`, and compatible `jsonErrorResponse` in `demo-dispatch-reply`.
+- Adopted shared request method helpers in `hospital-media` while preserving its existing media CORS headers and `{ error }` response bodies.
+- Adopted `isOptionsRequest` in `stripe-webhook` only. Raw body parsing and Stripe signature verification remain unchanged.
+- Validation: `git diff --check`, `npx deno check` for all three touched functions, `npm run hardening:edge-payments`, `npm run hardening:edge-smoke`, `npm run hardening:chat-rls`, and `npm run hardening:emergency` passed.
+
 ### 8.2 Provider Discovery Extraction
 
 Owner: `discover-hospitals`.

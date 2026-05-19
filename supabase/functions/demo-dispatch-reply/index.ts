@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
+import { getAuthorizationHeader, isOptionsRequest } from "../_shared/http/request.ts";
+import { jsonErrorResponse } from "../_shared/http/response.ts";
 import { createServiceClient, createUserClient } from "../_shared/supabase/clients.ts";
 
 const UUID_PATTERN =
@@ -154,12 +156,12 @@ ${JSON.stringify(context)}`,
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return optionsResponse();
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") ?? "";
+    const authHeader = getAuthorizationHeader(req);
     const userClient = createUserClient(authHeader);
     const adminClient = createServiceClient();
 
@@ -169,7 +171,7 @@ serve(async (req) => {
     } = await userClient.auth.getUser();
 
     if (userError || !user?.id) {
-      return jsonResponse({ success: false, error: "Unauthorized" }, { status: 401 });
+      return jsonErrorResponse("Unauthorized", 401);
     }
 
     const body = await req.json();
@@ -178,10 +180,7 @@ serve(async (req) => {
     const messageId = toText(body?.messageId);
 
     if (!UUID_PATTERN.test(roomId) || !UUID_PATTERN.test(requestId) || !UUID_PATTERN.test(messageId)) {
-      return jsonResponse(
-        { success: false, error: "roomId, requestId, and messageId must be valid UUIDs" },
-        { status: 400 },
-      );
+      return jsonErrorResponse("roomId, requestId, and messageId must be valid UUIDs", 400);
     }
 
     const { data: participant, error: participantError } = await adminClient
@@ -196,10 +195,7 @@ serve(async (req) => {
       throw new Error(`Participant lookup failed: ${participantError.message}`);
     }
     if (!participant) {
-      return jsonResponse(
-        { success: false, error: "Chat room not available for this user" },
-        { status: 403 },
-      );
+      return jsonErrorResponse("Chat room not available for this user", 403);
     }
 
     const { data: room, error: roomError } = await adminClient
@@ -243,10 +239,7 @@ serve(async (req) => {
       throw new Error(`Emergency request lookup failed: ${requestError.message}`);
     }
     if (!requestRow || String(requestRow.user_id) !== String(user.id)) {
-      return jsonResponse(
-        { success: false, error: "Request not found for this user" },
-        { status: 403 },
-      );
+      return jsonErrorResponse("Request not found for this user", 403);
     }
 
     const { data: hospitalRow, error: hospitalError } = requestRow.hospital_id
@@ -355,6 +348,6 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[demo-dispatch-reply] fatal", message);
-    return jsonResponse({ success: false, error: message }, { status: 500 });
+    return jsonErrorResponse(message, 500);
   }
 });

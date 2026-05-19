@@ -1,5 +1,6 @@
 import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
 import { corsHeaders, jsonResponse } from "../_shared/http/cors.ts";
+import { isMethod, isOptionsRequest } from "../_shared/http/request.ts";
 import { createServiceClient } from "../_shared/supabase/clients.ts";
 
 const mediaCorsHeaders = {
@@ -64,11 +65,11 @@ const fetchGoogleProviderPhotoUrl = async (placeId: string, apiKey: string) => {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (isOptionsRequest(req)) {
     return new Response("ok", { headers: mediaCorsHeaders });
   }
 
-  if (req.method !== "GET" && req.method !== "HEAD") {
+  if (!isMethod(req, "GET") && !isMethod(req, "HEAD")) {
     return jsonResponse(
       { error: "Method not allowed" },
       { status: 405, headers: mediaCorsHeaders },

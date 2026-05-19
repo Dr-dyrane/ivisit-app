@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
+import { isOptionsRequest } from "../../_shared/http/request.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import { constructStripeWebhookEvent } from "../../_shared/payments/stripe.ts";
 
 serve(async (req) => {
-    if (req.method === "OPTIONS") {
+    if (isOptionsRequest(req)) {
         return optionsResponse();
     }
 
