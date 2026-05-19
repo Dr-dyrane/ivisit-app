@@ -710,6 +710,12 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/demo-dispatch-reply/handler.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchData.ts supabase/functions/_shared/domain/emergencyChat/demoDispatchAi.ts supabase/functions/_shared/domain/emergencyChat/text.ts`, and `npm run hardening:chat-rls` passed.
 - Rollback: move `handleDemoDispatchReplyRequest` back into `index.ts` and call `serve(async (req) => { ... })` directly if function bundling or deployment entrypoint resolution regresses.
 
+8.5 emergency chat rollback runbook update note, 2026-05-19:
+
+- Updated `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` with the `demo-dispatch-reply` thin-entrypoint Deno check, `npm run hardening:chat-rls` rollback requirement, emergency chat shared module ownership map, and Contact Dispatch bundling rollback notes.
+- Validation: `git diff --check`, `npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/demo-dispatch-reply/handler.ts supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/bootstrap-demo-ecosystem/handler.ts`, `npm run hardening:chat-rls`, and `npm run hardening:bootstrap-demo-matrix` passed.
+- Rollback: restore the previous runbook text if the emergency chat ownership map or thin-entrypoint notes become stale after a future deployment layout change.
+
 ### 8.6 Hospital Media And Places Client Sharing
 
 Owner: `hospital-media`.

@@ -55,6 +55,7 @@ For thin entrypoints that import sibling handlers, check the public slug wrapper
 ```bash
 npx deno check supabase/functions/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/handler.ts
 npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/bootstrap-demo-ecosystem/handler.ts
+npx deno check supabase/functions/demo-dispatch-reply/index.ts supabase/functions/demo-dispatch-reply/handler.ts
 npm run hardening:bootstrap-demo-matrix
 ```
 
@@ -170,6 +171,7 @@ npx supabase functions deploy <slug>
 - Contact Dispatch: run `npm run hardening:chat-rls` and `npm run hardening:emergency`.
 - Payments: run `npm run hardening:edge-payments`; for Stripe live issues, verify webhook delivery in Stripe and confirm `stripe-webhook` is `verify_jwt = false`.
 - Bootstrap demo ecosystem: run `npm run hardening:bootstrap-demo-matrix` after any rollback. For live idempotency checks, use `npm run hardening:bootstrap-demo-matrix:apply` intentionally because it invokes the deployed function.
+- Contact Dispatch demo reply: run `npm run hardening:chat-rls` after any rollback, then verify a demo chat message still creates at most one automated dispatcher reply.
 - Hospital media: verify `hospital-media` redirects and that fallback images still resolve; it should not expose raw provider secrets.
 
 ## Shared Module Ownership
@@ -200,6 +202,9 @@ npx supabase functions deploy <slug>
 - `_shared/domain/demo/staff.ts`: demo auth user creation/reuse, profile role sync, doctor upserts, ambulance upserts, and hospital admin patching.
 - `_shared/domain/demo/summary.ts`: demo readiness counts, wallet checks, pricing checks, and final summary flags.
 - `_shared/domain/demo/utils.ts`: demo parsing, normalization, geometry, timestamps, stable IDs, and distance helpers.
+- `_shared/domain/emergencyChat/text.ts`: chat text coercion and body truncation.
+- `_shared/domain/emergencyChat/demoDispatchAi.ts`: demo dispatch OpenAI/Anthropic reply generation and medically calm fallback replies.
+- `_shared/domain/emergencyChat/demoDispatchData.ts`: demo dispatch participant, room, message, request, hospital, idempotency, recent-message, and reply-persistence helpers.
 
 ## Thin Entrypoint Notes
 
@@ -212,5 +217,9 @@ npx supabase functions deploy <slug>
 - That entrypoint is intentionally thin and calls `serve(handleBootstrapDemoEcosystemRequest)`.
 - Request orchestration now lives in `supabase/functions/bootstrap-demo-ecosystem/handler.ts`.
 - The bootstrap engine is split under `_shared/domain/demo/*`; if module bundling fails, rollback by restoring the handler body and required demo helpers directly into `index.ts`, then redeploying the unchanged `bootstrap-demo-ecosystem` slug.
+- `demo-dispatch-reply` public slug remains `supabase/functions/demo-dispatch-reply/index.ts`.
+- That entrypoint is intentionally thin and calls `serve(handleDemoDispatchReplyRequest)`.
+- Request orchestration now lives in `supabase/functions/demo-dispatch-reply/handler.ts`.
+- Contact Dispatch shared reply helpers live under `_shared/domain/emergencyChat/*`; if module bundling fails, rollback by restoring the handler body and required reply/data helpers directly into `index.ts`, then redeploying the unchanged `demo-dispatch-reply` slug.
 
 Do not duplicate secret reads in endpoint files. Keep secret ownership in the shared helpers so audits can prove where sensitive values enter the runtime.
