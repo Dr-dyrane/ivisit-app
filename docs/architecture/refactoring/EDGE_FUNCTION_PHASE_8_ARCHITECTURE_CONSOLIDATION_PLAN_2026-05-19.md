@@ -628,6 +628,12 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/bootstrap-demo-ecosystem/handler.ts supabase/functions/_shared/domain/demo/hospitals.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: move `handleBootstrapDemoEcosystemRequest` back into `index.ts` and call `serve(async (req) => { ... })` directly if function bundling or deployment entrypoint resolution regresses.
 
+8.3 bootstrap rollback runbook update note, 2026-05-19:
+
+- Updated `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` with the bootstrap thin-entrypoint Deno check, bootstrap matrix verification command, demo shared module ownership map, and rollback notes for `_shared/domain/demo/*`.
+- Validation: `git diff --check`, full bootstrap Deno check across `index.ts`, `handler.ts`, and `_shared/domain/demo/*`, `npm run hardening:bootstrap-demo-matrix`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the previous runbook text if the module ownership map or thin-entrypoint notes become stale after a future deployment layout change.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:

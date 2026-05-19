@@ -54,6 +54,8 @@ For thin entrypoints that import sibling handlers, check the public slug wrapper
 
 ```bash
 npx deno check supabase/functions/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/handler.ts
+npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/bootstrap-demo-ecosystem/handler.ts
+npm run hardening:bootstrap-demo-matrix
 ```
 
 ## Deploy Commands
@@ -167,7 +169,7 @@ npx supabase functions deploy <slug>
 - Provider discovery: run `npm run hardening:edge-smoke` after any rollback.
 - Contact Dispatch: run `npm run hardening:chat-rls` and `npm run hardening:emergency`.
 - Payments: run `npm run hardening:edge-payments`; for Stripe live issues, verify webhook delivery in Stripe and confirm `stripe-webhook` is `verify_jwt = false`.
-- Bootstrap demo ecosystem: rollback the outer shell and deployed function first. Split internal domain modules only after a dedicated seed/coverage matrix exists.
+- Bootstrap demo ecosystem: run `npm run hardening:bootstrap-demo-matrix` after any rollback. For live idempotency checks, use `npm run hardening:bootstrap-demo-matrix:apply` intentionally because it invokes the deployed function.
 - Hospital media: verify `hospital-media` redirects and that fallback images still resolve; it should not expose raw provider secrets.
 
 ## Shared Module Ownership
@@ -188,6 +190,16 @@ npx supabase functions deploy <slug>
 - `_shared/domain/providers/normalizationFlow.ts`: external Google/Mapbox normalization, defaulting, distance, and category guard flow.
 - `_shared/domain/providers/persistenceFlow.ts`: provider discovery persistence, conflict fallback, provider table upsert, and DB refresh.
 - `_shared/domain/providers/response.ts`: provider result shaping, canonical/provider merge rows, and database count summaries.
+- `_shared/domain/demo/context.ts`: demo context, stable demo user slug, coverage key, and seed scope helpers.
+- `_shared/domain/demo/finance.ts`: organization fee sync, organization wallet setup, platform wallet readiness, and demo financial thresholds.
+- `_shared/domain/demo/hospitals.ts`: Lagos/Festac catalog seeds, database seed normalization, fallback hospitals, demo hospital upsert/dedupe, stale-row retirement, and active demo hospital reload.
+- `_shared/domain/demo/media.ts`: demo seed image resolution, app-owned hospital-media proxy URL creation, domain logo affinity scoring, and preferred image selection.
+- `_shared/domain/demo/organization.ts`: coverage-scoped demo organization lookup/creation.
+- `_shared/domain/demo/pricing.ts`: demo service and room pricing baselines plus pricing upserts.
+- `_shared/domain/demo/providerSeeds.ts`: Mapbox and Google hospital seed discovery, external seed fallback ordering, and seed deduplication.
+- `_shared/domain/demo/staff.ts`: demo auth user creation/reuse, profile role sync, doctor upserts, ambulance upserts, and hospital admin patching.
+- `_shared/domain/demo/summary.ts`: demo readiness counts, wallet checks, pricing checks, and final summary flags.
+- `_shared/domain/demo/utils.ts`: demo parsing, normalization, geometry, timestamps, stable IDs, and distance helpers.
 
 ## Thin Entrypoint Notes
 
@@ -196,5 +208,9 @@ npx supabase functions deploy <slug>
 - The internal entrypoint is intentionally thin and calls `serve(handleDiscoverHospitalsRequest)`.
 - Request orchestration now lives in `supabase/functions/discovery/discover-hospitals/handler.ts`.
 - If deployment bundling fails, rollback by restoring the handler body directly into the internal `index.ts` and redeploying the unchanged public slug.
+- `bootstrap-demo-ecosystem` public slug remains `supabase/functions/bootstrap-demo-ecosystem/index.ts`.
+- That entrypoint is intentionally thin and calls `serve(handleBootstrapDemoEcosystemRequest)`.
+- Request orchestration now lives in `supabase/functions/bootstrap-demo-ecosystem/handler.ts`.
+- The bootstrap engine is split under `_shared/domain/demo/*`; if module bundling fails, rollback by restoring the handler body and required demo helpers directly into `index.ts`, then redeploying the unchanged `bootstrap-demo-ecosystem` slug.
 
 Do not duplicate secret reads in endpoint files. Keep secret ownership in the shared helpers so audits can prove where sensitive values enter the runtime.
