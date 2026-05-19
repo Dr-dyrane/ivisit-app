@@ -301,6 +301,14 @@ Gate:
 - Updated the `discover-hospitals` engine to import the shared distance helper while preserving `withDistanceFromOrigin`, ranking, database queries, provider API calls, and response shapes in place.
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/distance.ts`, and `npm run hardening:edge-smoke` passed.
 
+8.2 normalization extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/normalizeExternal.ts` for pure Mapbox and Google provider shape normalization.
+- Updated the `discover-hospitals` engine to import the normalization helpers while keeping media proxy URL construction in the entrypoint through an injected builder callback.
+- Preserved provider API calls, field masks, persistence order, merge behavior, and response shapes.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/normalizeExternal.ts`, and `npm run hardening:edge-smoke` passed.
+- Follow-up: `node supabase/tests/scripts/run_edge_function_smoke_matrix.js --no-google` still fails against the live function for `tokyo/radiology` with zero results. All other cases in that mode passed; track this as a provider coverage gap rather than a local extraction failure because the script exercises the deployed edge function.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
