@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { maybeResolveDisplayId } from "../../_shared/domain/ids.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
-import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
+import { isOptionsRequest } from "../../_shared/http/request.ts";
 import { createStripeClient } from "../../_shared/payments/stripe.ts";
-import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
+import { requireAuthenticatedUser } from "../../_shared/supabase/auth.ts";
+import { createServiceClient } from "../../_shared/supabase/clients.ts";
 
 serve(async (req) => {
   if (isOptionsRequest(req)) {
@@ -11,15 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = getAuthorizationHeader(req);
-    if (!authHeader) throw new Error("No authorization header");
-
-    const supabaseClient = createUserClient(authHeader);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
-    if (authError || !user) throw new Error("Invalid user");
+    const { user } = await requireAuthenticatedUser(req);
 
     const { action, organization_id, payment_method_id } = await req.json();
     const supabaseAdmin = createServiceClient();

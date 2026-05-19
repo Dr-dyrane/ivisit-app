@@ -479,6 +479,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/discovery/discover-hospitals/handler.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: move `handleDiscoverHospitalsRequest` body back into `index.ts` and call `serve(async (req) => { ... })` directly if module loading or deployment bundling regresses.
 
+8.1 required auth helper payment adoption note, 2026-05-19:
+
+- Added `requireAuthenticatedUser` to `_shared/supabase/auth.ts` for shared authorization-header lookup, user client creation, and `auth.getUser()` validation with caller-controlled error messages.
+- Updated `billing-quote`, `create-payment-intent`, `create-payout`, `manage-payment-methods`, and `refresh-exchange-rates` to use the shared required-auth helper while preserving their existing missing-header and invalid-user messages.
+- Validation: `git diff --check`, `npx deno check` for all five touched payment functions plus `_shared/supabase/auth.ts`, `npm run hardening:edge-payments`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline each function's previous authorization-header lookup, `createUserClient`, and `auth.getUser()` block if payment auth behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

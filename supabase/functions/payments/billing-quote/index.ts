@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
-import { getAuthorizationHeader, isOptionsRequest, readJsonBody } from "../../_shared/http/request.ts";
+import { isOptionsRequest, readJsonBody } from "../../_shared/http/request.ts";
 import { jsonErrorResponse } from "../../_shared/http/response.ts";
-import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
+import { requireAuthenticatedUser } from "../../_shared/supabase/auth.ts";
+import { createServiceClient } from "../../_shared/supabase/clients.ts";
 
 const normalizeCurrencyCode = (value: unknown, fallback = "") => {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
@@ -20,21 +21,9 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = getAuthorizationHeader(req);
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
-    }
-
-    const supabaseClient = createUserClient(authHeader);
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
-
-    if (authError || !user) {
-      throw new Error("Invalid user");
-    }
+    const { user } = await requireAuthenticatedUser(req, {
+      missingMessage: "Missing authorization header",
+    });
 
     const supabaseAdmin = createServiceClient();
 

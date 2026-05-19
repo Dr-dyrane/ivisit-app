@@ -49,3 +49,39 @@ export const probeOptionalAuthHeader = async (
     };
   }
 };
+
+export const requireAuthenticatedUser = async (
+  req: Request,
+  {
+    missingMessage = "No authorization header",
+    invalidMessage = "Invalid user",
+  }: {
+    missingMessage?: string;
+    invalidMessage?: string;
+  } = {},
+): Promise<{
+  authHeader: string;
+  supabaseClient: any;
+  user: any;
+}> => {
+  const authHeader = getAuthorizationHeader(req);
+  if (!authHeader) {
+    throw new Error(missingMessage);
+  }
+
+  const supabaseClient = createUserClient(authHeader);
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error || !user) {
+    throw new Error(invalidMessage);
+  }
+
+  return {
+    authHeader,
+    supabaseClient,
+    user,
+  };
+};
