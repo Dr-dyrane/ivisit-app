@@ -614,6 +614,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/providerSeeds.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline `getMapboxSeedHospitals`, `fetchGoogleNearbyPlaces`, `getGoogleSeedHospitals`, `getProviderSeedHospitals`, and `dedupeSeedHospitals` back into `bootstrap-demo-ecosystem/index.ts` if external seed coverage, Google flag gating, or Mapbox fallback behavior regresses.
 
+8.3 bootstrap hospital engine extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/hospitals.ts` for Lagos/Festac catalog seeds, database seed normalization, fallback hospitals, demo place IDs, hospital upsert/dedupe, catalog cleanup, stale-row retirement, and active hospital reload.
+- Reduced `bootstrap-demo-ecosystem/index.ts` to call shared hospital helpers for `preview_nearby_sources`, `ensure_demo_hospitals`, and post-staff refresh while preserving public function name and response contract.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/hospitals.ts supabase/functions/_shared/domain/demo/providerSeeds.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `_shared/domain/demo/hospitals.ts` contents back into `bootstrap-demo-ecosystem/index.ts` and replace the shared imports with the previous local helpers if catalog coverage, hospital persistence, stale-row retirement, or active hospital loading regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
