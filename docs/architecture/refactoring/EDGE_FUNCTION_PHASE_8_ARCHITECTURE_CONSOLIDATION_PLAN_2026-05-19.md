@@ -323,6 +323,14 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/fallbackImages.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the fallback image catalog and picker to `discover-hospitals/index.ts` if provider image selection regresses.
 
+8.2 category guard extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/guards.ts` for category keyword guard ownership and non-dental provider noise rejection.
+- Updated the `discover-hospitals` engine to import `shouldKeepProviderForRequestedCategory` and `hasProviderCategoryKeywordGuard`, preserving the old category-confidence branch where only categories with an explicit keyword guard can claim guard-backed confidence.
+- Preserved provider API calls, database reads/writes, merge behavior, and response shapes.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/guards.ts supabase/functions/_shared/domain/providers/fallbackImages.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `shouldKeepProviderForRequestedCategory` to `discover-hospitals/index.ts` if category filtering regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

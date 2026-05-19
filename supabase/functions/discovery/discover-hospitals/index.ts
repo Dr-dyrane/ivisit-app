@@ -4,6 +4,10 @@ import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber, toNonNegativeInt } from "../../_shared/domain/numbers.ts";
 import { calculateDistanceKm } from "../../_shared/domain/providers/distance.ts";
 import { pickFallbackProviderImage } from "../../_shared/domain/providers/fallbackImages.ts";
+import {
+  hasProviderCategoryKeywordGuard,
+  shouldKeepProviderForRequestedCategory,
+} from "../../_shared/domain/providers/guards.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
 import {
   isWithinDistanceKm,
@@ -14,13 +18,11 @@ import {
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import {
-  CATEGORY_RESULT_KEYWORD_GUARDS,
   CATEGORY_TO_GOOGLE_TYPES,
   CATEGORY_TO_MAPBOX_CATEGORY,
   EXPLORE_CATEGORY_META_KEYWORDS,
   GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES,
   GOOGLE_TYPE_TO_PROVIDER,
-  NON_DENTAL_PROVIDER_NOISE_GUARD,
   PROVIDER_TYPES,
   classifyProviderByName,
   deriveEmergencyEligible,
@@ -297,8 +299,7 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
   const requestedProviderType = (CATEGORY_TO_GOOGLE_TYPES[requestedCategory]
     ? requestedCategory
     : PROVIDER_TYPES.HOSPITAL) as ProviderType;
-  const categoryGuard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
-  const requestedCategoryGuardMatches = !!categoryGuard &&
+  const requestedCategoryGuardMatches = hasProviderCategoryKeywordGuard(requestedCategory) &&
     shouldKeepProviderForRequestedCategory(row, requestedCategory);
   const categoryMatchesRequest = categoryFromType === requestedProviderType;
   const canTrustGoogleType =
@@ -387,47 +388,6 @@ const buildGoogleTextSearchQuery = (
   if (explicitQuery) return explicitQuery;
   const categoryQueries = getGoogleQueriesForCategory(providerCategory, countryCode);
   return categoryQueries.slice(0, 4).join(" ");
-};
-
-const shouldKeepProviderForRequestedCategory = (row: any, requestedCategory: string): boolean => {
-  const haystack = [
-    row?.name,
-    row?.address,
-    row?.google_type,
-    ...(Array.isArray(row?.google_types) ? row.google_types : []),
-    ...(Array.isArray(row?.specialties) ? row.specialties : []),
-    ...(Array.isArray(row?.service_types) ? row.service_types : []),
-  ]
-    .filter(Boolean)
-    .join(" ");
-  if (
-    requestedCategory !== PROVIDER_TYPES.HOSPITAL &&
-    NON_DENTAL_PROVIDER_NOISE_GUARD.test(haystack)
-  ) {
-    return false;
-  }
-  const googleType = toSafeString(row?.google_type).toLowerCase();
-  const googleTypes = Array.isArray(row?.google_types)
-    ? row.google_types.map((entry: unknown) => toSafeString(entry).toLowerCase())
-    : [];
-  const broadMedicalTypes = new Set([googleType, ...googleTypes]);
-  if (
-    (requestedCategory === PROVIDER_TYPES.URGENT_CARE ||
-      requestedCategory === PROVIDER_TYPES.RADIOLOGY) &&
-    (
-      broadMedicalTypes.has("doctor") ||
-      broadMedicalTypes.has("hospital") ||
-      broadMedicalTypes.has("medical_center") ||
-      broadMedicalTypes.has("medical_clinic") ||
-      broadMedicalTypes.has("health") ||
-      broadMedicalTypes.has("service")
-    )
-  ) {
-    return true;
-  }
-  const guard = CATEGORY_RESULT_KEYWORD_GUARDS[requestedCategory];
-  if (!guard) return true;
-  return guard.test(haystack);
 };
 
 const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {
