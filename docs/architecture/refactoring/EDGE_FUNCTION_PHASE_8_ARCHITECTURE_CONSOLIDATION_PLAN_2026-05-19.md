@@ -366,6 +366,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/persistence.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `toGeometryPoint`, `toHospitalUpsertRow`, `enrichProviderData`, and `toProviderUpsertRow` to `discover-hospitals/index.ts` if provider persistence or provider detail data regresses.
 
+8.2 provider defaults extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/defaults.ts` for provider type classification, category confidence assignment, emergency eligibility derivation, default field normalization, and image defaulting.
+- Updated the `discover-hospitals` engine to import `withProviderDefaults` while keeping request parsing, external provider calls, database reads/writes, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/defaults.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `withProviderDefaults` to `discover-hospitals/index.ts` if provider classification, emergency eligibility, category confidence, or default image behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
