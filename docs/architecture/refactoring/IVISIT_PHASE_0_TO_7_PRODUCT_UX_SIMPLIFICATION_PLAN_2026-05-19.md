@@ -61,7 +61,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapChooseCareModal` label copy only |
 | Phase 2: Fix Naming And Ownership | Static audit complete; compatibility alias kept | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
 | Phase 3: Improve Emergency Storytelling | Static copy alignment complete; runtime smoke pending | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved | Revert ambulance/bed decision copy and stage-base subtitle changes only |
-| Phase 4: Treat Location As First-Class | Planned | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | - | - | Manual coordinate validation; source-return matrix; payment state preservation | Revert Location Intent presentation changes only; preserve source payload contracts |
+| Phase 4: Treat Location As First-Class | Static UX ownership pass complete; runtime smoke pending | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
 | Phase 5: Explore Care Data Hardening | Planned | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | - | - | `npm run hardening:edge-smoke`; Google on/off checks; global location matrix | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback |
 | Phase 6: Make Commit Feel Like One Guided Request | Planned | Commit details, triage, payment, tracking handoff | - | - | Contact skip, triage update, payment -> tracking, reload persistence | Revert presentation first; use edge/payment runbook if payment behavior changes |
 | Phase 7: Book Visit Integration | Planned | Choose Care Book Visit bridge, Book Visit stack, future sheet design | - | - | Route bridge closes Choose Care; state isolation check | Keep existing route bridge as fallback; feature-flag sheet integration |
@@ -274,6 +274,14 @@ Visible choices:
 - Saved places
 - Recent places
 - Enter manually
+
+Implemented static pass:
+
+- Confirmed `LOCATION_INTENT` is the single sheet owner for pickup selection, search, manual entry, saved places, recents, candidate confirmation, pin adjust, and save flows.
+- Confirmed ambulance decision, bed decision, and payment open Location Intent with `sourcePhase`, `sourceSnapState`, and `sourcePayload` instead of duplicating pickup UI.
+- Confirmed mini profile uses `sourcePhase: "miniProfile"` and reopens the profile modal after Location Intent closes.
+- Renamed default visible sections from generic `Places` / `Recents` / `Can't find it?` to `Saved places` / `Recent places` / `Enter manually`.
+- Reducer modes, manual coordinate validation flow, saved place handlers, and return payload contracts were not changed.
 
 Runtime responsibilities to preserve:
 
