@@ -621,6 +621,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/hospitals.ts supabase/functions/_shared/domain/demo/providerSeeds.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: move `_shared/domain/demo/hospitals.ts` contents back into `bootstrap-demo-ecosystem/index.ts` and replace the shared imports with the previous local helpers if catalog coverage, hospital persistence, stale-row retirement, or active hospital loading regresses.
 
+8.3 bootstrap thin entrypoint note, 2026-05-19:
+
+- Added `supabase/functions/bootstrap-demo-ecosystem/handler.ts` with `handleBootstrapDemoEcosystemRequest` containing the existing HTTP orchestration.
+- Reduced `supabase/functions/bootstrap-demo-ecosystem/index.ts` to the stable `serve(handleBootstrapDemoEcosystemRequest)` entrypoint while keeping the public Supabase function slug unchanged.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/bootstrap-demo-ecosystem/handler.ts supabase/functions/_shared/domain/demo/hospitals.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `handleBootstrapDemoEcosystemRequest` back into `index.ts` and call `serve(async (req) => { ... })` directly if function bundling or deployment entrypoint resolution regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
