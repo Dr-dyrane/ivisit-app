@@ -395,6 +395,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `req.method`, `req.headers.get("Authorization")`, and anon `createClient` code if request/auth probing regresses.
 
+8.2 provider request parsing extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/request.ts` for provider category parsing, provider enrichment request parsing, and discovery request flag/coordinate normalization.
+- Updated `discover-hospitals` to consume the parsed request context while preserving the existing invalid-coordinate error, Google feature flag behavior, and default request values.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/request.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `latitude`, `longitude`, `radius`, `mode`, `query`, provider category, and include flag parsing if request defaults or meta flags regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

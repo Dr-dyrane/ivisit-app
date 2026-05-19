@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
-import { clampLimit, toFiniteNumber } from "../../_shared/domain/numbers.ts";
+import { toFiniteNumber } from "../../_shared/domain/numbers.ts";
 import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
 import { shouldKeepProviderForRequestedCategory } from "../../_shared/domain/providers/guards.ts";
 import {
@@ -14,8 +14,6 @@ import {
   MAP_LOCAL_NEARBY_RADIUS_KM,
   MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
   REGION_LOCAL_FIRST_COUNTRY_CODES,
-  normalizeCountryCode,
-  shouldUseRegionLocalFirst,
 } from "../../_shared/domain/providers/locality.ts";
 import { fetchMapboxProviderPlaces } from "../../_shared/domain/providers/mapboxPlaces.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
@@ -23,6 +21,10 @@ import {
   toHospitalUpsertRow,
   toProviderUpsertRow,
 } from "../../_shared/domain/providers/persistence.ts";
+import {
+  parseProviderDiscoveryRequest,
+  parseProviderEnrichmentRequest,
+} from "../../_shared/domain/providers/request.ts";
 import {
   isDispatchableDatabaseRow,
   isWithinDistanceKm,
@@ -33,7 +35,6 @@ import {
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { getAuthorizationHeader, isOptionsRequest } from "../../_shared/http/request.ts";
 import { createServiceClient, createUserClient } from "../../_shared/supabase/clients.ts";
-import { CATEGORY_TO_GOOGLE_TYPES } from "../../_shared/domain/providers/taxonomy.ts";
 
 const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
@@ -82,15 +83,11 @@ serve(async (req) => {
     const body = await req.json();
     const action = typeof body?.action === "string" ? body.action.trim() : "discover";
     if (action === "enrich_provider") {
-      const placeId = toSafeString(body?.placeId ?? body?.place_id);
+      const { placeId, providerCategory } = parseProviderEnrichmentRequest(body);
       if (!placeId) {
         throw new Error("placeId is required");
       }
 
-      const providerCategory: string =
-        typeof body?.providerCategory === "string" && CATEGORY_TO_GOOGLE_TYPES[body.providerCategory]
-          ? body.providerCategory
-          : "hospital";
       const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
       const googleApiKey = getEnv(
         "GOOGLE_MAPS_API_KEY",
@@ -191,31 +188,26 @@ serve(async (req) => {
       );
     }
 
-    const latitude = toFiniteNumber(body?.latitude);
-    const longitude = toFiniteNumber(body?.longitude);
+    const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
+    const {
+      latitude,
+      longitude,
+      radius,
+      mode,
+      query,
+      limit,
+      includeProviderDiscovery,
+      includeMapboxPlaces,
+      includeGooglePlaces,
+      mergeWithDatabase,
+      countryCode,
+      providerCategory,
+      isEmergencyMode,
+      regionLocalFirstEnabled,
+    } = parseProviderDiscoveryRequest(body, { googlePlacesEnabled });
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       throw new Error("latitude and longitude are required");
     }
-
-    const radius = toFiniteNumber(body?.radius) ?? 15000;
-    const mode = body?.mode === "text_search" ? "text_search" : "nearby";
-    const query = typeof body?.query === "string" ? body.query.trim() : "";
-    const limit = clampLimit(body?.limit);
-    const includeProviderDiscovery = body?.includeProviderDiscovery !== false;
-    const includeMapboxPlaces = body?.includeMapboxPlaces !== false;
-    const googlePlacesEnabled = getBooleanEnv(false, "ENABLE_GOOGLE_PLACES", "EXPO_PUBLIC_ENABLE_GOOGLE_PLACES");
-    const includeGooglePlaces = body?.includeGooglePlaces === true && googlePlacesEnabled;
-    const mergeWithDatabase = body?.mergeWithDatabase !== false;
-    const countryCode = normalizeCountryCode(
-      body?.countryCode ?? body?.country_code ?? body?.regionCountryCode
-    );
-    // EXP-2: Provider category for explore mode. Defaults to "hospital" (emergency flow).
-    // Callers in explore mode pass e.g. "pharmacy", "lab", "clinic".
-    const providerCategory: string = typeof body?.providerCategory === "string" && CATEGORY_TO_GOOGLE_TYPES[body.providerCategory]
-      ? body.providerCategory
-      : "hospital";
-    const isEmergencyMode = providerCategory === "hospital";
-    const regionLocalFirstEnabled = shouldUseRegionLocalFirst(countryCode, providerCategory);
 
     const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
     const googleApiKey = getEnv(
