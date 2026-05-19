@@ -6,7 +6,7 @@
 //
 // Owns:
 //   - All modal rendering for MapScreen (MiniProfileModal, MapGuestProfileModal,
-//     MapCareHistoryModal, MapHistoryModal, MapHistoryPaymentModal, ServiceRatingModal x2)
+//     MapChooseCareModal, MapHistoryModal, MapHistoryPaymentModal, ServiceRatingModal x2)
 //
 // Does NOT own:
 //   - Modal visibility state — from useMapExploreFlow/useMapShell, passed in
@@ -16,7 +16,7 @@
 import MiniProfileModal from "../emergency/MiniProfileModal";
 import { ServiceRatingModal } from "../emergency/ServiceRatingModal";
 import MapGuestProfileModal from "./MapGuestProfileModal";
-import MapCareHistoryModal from "./MapCareHistoryModal";
+import MapChooseCareModal from "./MapChooseCareModal";
 import MapHistoryModal from "./history/MapHistoryModal";
 import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
 import { EmergencyContactDispatchModal } from "./communication/EmergencyContactDispatchModal";
@@ -31,7 +31,7 @@ import {
  *
  * Renders all modal overlays for the Map screen.
  * - Profile modals (signed-in and guest)
- * - Care history modal
+ * - Choose Care modal
  * - History modal (recent visits)
  * - History payment modal
  * - Service rating modals (recovered and in-flow tracking)
@@ -40,7 +40,7 @@ import {
  * @param {Object} props
  * @param {boolean} props.profileModalVisible - MiniProfileModal visibility
  * @param {boolean} props.guestProfileVisible - MapGuestProfileModal visibility
- * @param {boolean} props.careHistoryVisible - MapCareHistoryModal visibility
+ * @param {boolean} props.careHistoryVisible - MapChooseCareModal visibility
  * @param {boolean} props.recentVisitsModalVisible - MapHistoryModal visibility
  * @param {boolean} props.usesSidebarLayout - Whether sidebar layout is active
  * @param {Function} props.setProfileModalVisible - Set profile modal visibility
@@ -143,7 +143,7 @@ export default function MapModalOrchestrator({
         preferDrawerPresentation={usesSidebarLayout}
       />
 
-      <MapCareHistoryModal
+      <MapChooseCareModal
         visible={careHistoryVisible}
         onClose={() => setCareHistoryVisible(false)}
         onChooseCare={(mode) => {

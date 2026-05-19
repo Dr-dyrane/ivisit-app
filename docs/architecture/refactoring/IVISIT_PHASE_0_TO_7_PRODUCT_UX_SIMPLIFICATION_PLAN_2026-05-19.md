@@ -58,8 +58,8 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase | Status | Owner surfaces | Started | Finished | Verification | Rollback notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Phase 0: Baseline Current Experience | Static audit complete; runtime smoke pending | `docs/audit/map/*`, `MapScreen`, map sheet navigation, provider markers | 2026-05-19 | 2026-05-19 | `git diff --check`; targeted source audit; provider selection identity fix | Revert docs, top-left navigation-hook consolidation, or provider selection identity fix if regression appears |
-| Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapCareHistoryModal` label copy only |
-| Phase 2: Fix Naming And Ownership | Planned | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | - | - | `rg` import sweep; Choose Care entry smoke; no duplicate ownership sweep | Keep compatibility re-export if component rename causes churn |
+| Phase 1: Define Product Lanes | Static audit complete; copy aligned | Welcome, Explore Intent, Choose Care copy/docs | 2026-05-19 | 2026-05-19 | Welcome one-action check; Explore emergency-first check; Choose Care lane labels aligned | Revert `MapChooseCareModal` label copy only |
+| Phase 2: Fix Naming And Ownership | Static audit complete; compatibility alias kept | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
 | Phase 3: Improve Emergency Storytelling | Planned | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | - | - | Ambulance/bed/both flow smoke; saved transport preservation check | Revert copy/presentation files before touching decision handlers |
 | Phase 4: Treat Location As First-Class | Planned | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | - | - | Manual coordinate validation; source-return matrix; payment state preservation | Revert Location Intent presentation changes only; preserve source payload contracts |
 | Phase 5: Explore Care Data Hardening | Planned | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | - | - | `npm run hardening:edge-smoke`; Google on/off checks; global location matrix | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback |
@@ -196,6 +196,13 @@ Ownership checks:
 - `useMapSheetNavigation` owns sheet open/close contracts.
 - `MapModalOrchestrator` owns modal rendering.
 - Location source-return belongs to the Location Intent contract.
+
+Phase 2 verification notes:
+
+- The real Choose Care implementation now lives in `components/map/MapChooseCareModal.jsx`.
+- `components/map/MapCareHistoryModal.jsx` remains as a compatibility re-export for historical docs/imports.
+- `MapModalOrchestrator` imports and renders `MapChooseCareModal`.
+- `careHistoryVisible` and `setCareHistoryVisible` remain unchanged for now because they are map-store state keys with broader blast radius.
 
 Gate:
 

@@ -26,7 +26,8 @@ The specific concern is:
 - `components/welcome/welcomeContent.js`
 - `components/map/views/exploreIntent/MapExploreIntentCareSection.jsx`
 - `components/map/views/exploreIntent/MapExploreIntentProfileTrigger.jsx`
-- `components/map/MapCareHistoryModal.jsx`
+- `components/map/MapChooseCareModal.jsx`
+- `components/map/MapCareHistoryModal.jsx` compatibility re-export
 - `components/map/MapGuestProfileModal.jsx`
 - `components/map/MapModalOrchestrator.jsx`
 - `components/map/views/shared/MapTopLeftControl.jsx`
@@ -95,7 +96,7 @@ Decision:
 
 ### 3. Choose Care Modal Has Outgrown Its Name
 
-`MapCareHistoryModal` is no longer just care history. It is now the service picker for:
+`MapChooseCareModal` is the service picker for:
 
 Emergency:
 
@@ -416,7 +417,7 @@ Risk: Low to medium
 
 Problem:
 
-- `MapCareHistoryModal` is now a service picker, not a history modal.
+- `MapChooseCareModal` is now the service picker; `MapCareHistoryModal` remains only as a compatibility re-export.
 
 Proposed change:
 
@@ -428,7 +429,8 @@ Proposed change:
 
 Files likely touched:
 
-- `components/map/MapCareHistoryModal.jsx`
+- `components/map/MapChooseCareModal.jsx`
+- `components/map/MapCareHistoryModal.jsx` compatibility re-export
 - `components/map/MapModalOrchestrator.jsx`
 - `hooks/map/state/mapExploreFlow.store.js`
 - `hooks/map/history/useMapHistoryFlow.js`

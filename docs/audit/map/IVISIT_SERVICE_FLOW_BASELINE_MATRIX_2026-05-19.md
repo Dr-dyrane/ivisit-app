@@ -102,7 +102,7 @@ iVisit currently presents four user-facing lanes after Welcome:
 
 - Welcome remains narrow and does not expose the full service catalog.
 - Explore Intent keeps emergency actions visible before broader care discovery.
-- Choose Care is a service picker, despite the current `MapCareHistoryModal` name.
+- Choose Care is a service picker owned by `MapChooseCareModal`; `MapCareHistoryModal` remains only as a compatibility re-export.
 - Location Intent is a first-class subsystem and cannot be flattened without replacing its source-return, saved-place, manual-entry, and keyboard contracts.
 - Mini profile and guest profile are modal overlays, not service sheets.
 - Emergency hospital discovery and Explore Care provider discovery must stay separate.
