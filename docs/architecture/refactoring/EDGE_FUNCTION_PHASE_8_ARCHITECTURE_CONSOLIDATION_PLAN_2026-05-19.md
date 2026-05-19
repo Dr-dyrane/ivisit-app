@@ -536,6 +536,14 @@ Gate:
 - Add `run_bootstrap_demo_ecosystem_matrix.js` before extraction.
 - Existing data integrity and cleanup guards pass.
 
+8.3 bootstrap matrix harness note, 2026-05-19:
+
+- Added `supabase/tests/scripts/run_bootstrap_demo_ecosystem_matrix.js` as the required safety harness before splitting `bootstrap-demo-ecosystem`.
+- Added `npm run hardening:bootstrap-demo-matrix` for non-mutating dry-run validation and `npm run hardening:bootstrap-demo-matrix:apply` for explicit live idempotent phase checks.
+- Matrix locations: Hemet, Festac/Lagos, London, Nairobi, and Delhi. Matrix phases: `prepare`, `hospitals`, `staff`, `pricing`, and `summary`.
+- Validation: `git diff --check`, package JSON parse, and `npm run hardening:bootstrap-demo-matrix` passed. This was the non-mutating dry-run; `npm run hardening:bootstrap-demo-matrix:apply` remains the explicit live gate before bootstrap internals are split.
+- Rollback: remove the bootstrap matrix script and package scripts if the harness itself proves too invasive or incompatible with the live bootstrap contract.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:

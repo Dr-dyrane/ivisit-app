@@ -64,6 +64,8 @@
     "hardening:emergency-runtime-confidence": "npm run hardening:console-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert",
     "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js",
     "hardening:edge-smoke": "node supabase/tests/scripts/run_edge_function_smoke_matrix.js",
+    "hardening:bootstrap-demo-matrix": "node supabase/tests/scripts/run_bootstrap_demo_ecosystem_matrix.js",
+    "hardening:bootstrap-demo-matrix:apply": "node supabase/tests/scripts/run_bootstrap_demo_ecosystem_matrix.js --apply",
     "hardening:edge-payments": "node supabase/tests/scripts/assert_edge_function_payment_contract.js",
     "hardening:chat-rls": "node supabase/tests/scripts/run_emergency_chat_rls_matrix.js",
     "hardening:console-matrix": "node supabase/tests/scripts/run_console_transition_matrix.js",
