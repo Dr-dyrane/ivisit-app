@@ -12,6 +12,15 @@ import {
   choosePreferredProviderImage,
   resolveProviderImage,
 } from "../../_shared/domain/providers/media.ts";
+import {
+  LOCALITY_SCOPE_LOCAL,
+  LOCALITY_SCOPE_WIDE_FALLBACK,
+  MAP_LOCAL_NEARBY_RADIUS_KM,
+  MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
+  REGION_LOCAL_FIRST_COUNTRY_CODES,
+  normalizeCountryCode,
+  shouldUseRegionLocalFirst,
+} from "../../_shared/domain/providers/locality.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
 import {
   isWithinDistanceKm,
@@ -50,11 +59,6 @@ const toSafeStringArray = (value: unknown): string[] => {
 };
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
-const MAP_LOCAL_NEARBY_RADIUS_KM = 5;
-const MAP_LOCAL_NEARBY_COMFORT_THRESHOLD = 3;
-const REGION_LOCAL_FIRST_COUNTRY_CODES = new Set(["NG"]);
-const LOCALITY_SCOPE_LOCAL = "local";
-const LOCALITY_SCOPE_WIDE_FALLBACK = "wide_fallback";
 const GOOGLE_PROVIDER_LIST_FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -77,15 +81,6 @@ const GOOGLE_PROVIDER_DETAIL_FIELD_MASK = [
   "primaryType",
   "types",
 ].join(",");
-
-const normalizeCountryCode = (value: unknown): string => {
-  const clean = toSafeString(value).toUpperCase();
-  return /^[A-Z]{2}$/.test(clean) ? clean : "";
-};
-
-const shouldUseRegionLocalFirst = (countryCode: string, providerCategory: string): boolean =>
-  providerCategory !== PROVIDER_TYPES.HOSPITAL &&
-  REGION_LOCAL_FIRST_COUNTRY_CODES.has(countryCode);
 
 const isDemoDatabaseRow = (row: any): boolean => {
   const placeId = toSafeString(row?.place_id, "").toLowerCase();

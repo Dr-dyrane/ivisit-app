@@ -338,6 +338,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/media.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `resolveHospitalImage`, `choosePreferredImage`, domain blocklist, name stopwords, URL/domain parsing, and image-source rank constants to `discover-hospitals/index.ts` if provider images regress.
 
+8.2 provider locality extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/locality.ts` for provider locality scopes, local-nearby thresholds, region-local-first country codes, country-code normalization, and the local-first predicate.
+- Updated the `discover-hospitals` engine to import those constants/helpers while preserving the local-first/wide-fallback flow, provider API calls, database reads/writes, merge behavior, and response shapes.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/locality.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `LOCALITY_SCOPE_LOCAL`, `LOCALITY_SCOPE_WIDE_FALLBACK`, `MAP_LOCAL_NEARBY_RADIUS_KM`, `MAP_LOCAL_NEARBY_COMFORT_THRESHOLD`, `REGION_LOCAL_FIRST_COUNTRY_CODES`, `normalizeCountryCode`, and `shouldUseRegionLocalFirst` to `discover-hospitals/index.ts` if locality fallback behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
