@@ -165,3 +165,9 @@ export const choosePreferredProviderImage = (existing: any, candidate: any) => {
   if (candidateConfidence > existingConfidence) return candidate;
   return existing;
 };
+
+export const buildProviderMediaProxyUrl = (supabaseUrl: string, placeId: string): string => {
+  const baseUrl = toSafeString(supabaseUrl).replace(/\/$/, "");
+  if (!baseUrl || !placeId) return "";
+  return `${baseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
+};

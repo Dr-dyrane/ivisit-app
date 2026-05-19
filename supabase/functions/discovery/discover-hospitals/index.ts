@@ -7,7 +7,10 @@ import {
   fetchGoogleProviderDetails,
   fetchGoogleProviderPlaces,
 } from "../../_shared/domain/providers/googlePlaces.ts";
-import { choosePreferredProviderImage } from "../../_shared/domain/providers/media.ts";
+import {
+  buildProviderMediaProxyUrl,
+  choosePreferredProviderImage,
+} from "../../_shared/domain/providers/media.ts";
 import {
   LOCALITY_SCOPE_LOCAL,
   LOCALITY_SCOPE_WIDE_FALLBACK,
@@ -44,14 +47,11 @@ const toSafeString = (value: unknown, fallback = ""): string => {
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
 
-const buildHospitalMediaProxyUrl = (placeId: string): string => {
-  const supabaseUrl = toSafeString(
+const buildHospitalMediaProxyUrl = (placeId: string): string =>
+  buildProviderMediaProxyUrl(
     getEnv("SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_URL"),
-    "",
-  ).replace(/\/$/, "");
-  if (!supabaseUrl || !placeId) return "";
-  return `${supabaseUrl}/functions/v1/hospital-media?place_id=${encodeURIComponent(placeId)}`;
-};
+    placeId,
+  );
 
 serve(async (req) => {
   if (isOptionsRequest(req)) {

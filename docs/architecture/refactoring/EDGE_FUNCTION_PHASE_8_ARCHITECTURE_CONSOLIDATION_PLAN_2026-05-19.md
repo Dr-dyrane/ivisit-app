@@ -402,6 +402,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/request.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `latitude`, `longitude`, `radius`, `mode`, `query`, provider category, and include flag parsing if request defaults or meta flags regress.
 
+8.2 provider media proxy extraction note, 2026-05-19:
+
+- Expanded `_shared/domain/providers/media.ts` with `buildProviderMediaProxyUrl` for stable app-owned hospital-media function URLs.
+- Updated `discover-hospitals` to delegate proxy URL construction while preserving the existing `SUPABASE_URL` lookup and `hospital-media?place_id=` URL shape.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/media.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `buildHospitalMediaProxyUrl` URL construction if provider photos stop resolving through the app-owned media endpoint.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
