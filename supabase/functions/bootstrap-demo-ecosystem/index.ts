@@ -13,6 +13,7 @@ import {
   ROOM_PRICING_BASELINES,
   SERVICE_PRICING_BASELINES,
 } from "../_shared/domain/demo/pricing.ts";
+import { ensureDemoOrganization } from "../_shared/domain/demo/organization.ts";
 import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
 import {
@@ -1117,48 +1118,6 @@ const buildFallbackHospital = (ctx: DemoContext, slotIndex: number) => {
     latitude,
     longitude,
   };
-};
-
-const ensureDemoOrganization = async (admin: any, ctx: DemoContext) => {
-  const scopeKey = resolveDemoSeedScopeKey(ctx);
-  const contactEmail = `demo+coverage-${scopeKey}@ivisit-demo.local`;
-
-  const { data: existing, error: existingError } = await admin
-    .from("organizations")
-    .select("id,name,contact_email")
-    .eq("contact_email", contactEmail)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(`organization lookup failed: ${existingError.message}`);
-  }
-
-  if (existing?.id) {
-    return { organization: existing, created: false };
-  }
-
-  const payload = {
-    name: `iVisit Coverage Network ${scopeKey.toUpperCase()}`,
-    contact_email: contactEmail,
-    fee_tier: "standard",
-    ivisit_fee_percentage: 2.5,
-    is_active: true,
-    updated_at: nowIso(),
-  };
-
-  const { data: created, error: createError } = await admin
-    .from("organizations")
-    .insert(payload)
-    .select("id,name,contact_email")
-    .single();
-
-  if (createError) {
-    throw new Error(`organization create failed: ${createError.message}`);
-  }
-
-  return { organization: created, created: true };
 };
 
 const listDemoHospitals = async (

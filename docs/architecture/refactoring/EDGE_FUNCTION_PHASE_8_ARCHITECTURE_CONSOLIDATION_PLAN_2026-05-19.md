@@ -572,6 +572,13 @@ Gate:
 - Validation: `rg` confirmed slug/coverage helpers now only live in the shared context module, `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/context.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: move `DemoContext`, `toSafeUserSlug`, `toCoverageAxisKey`, `toCoverageKey`, and the context object literal back into `bootstrap-demo-ecosystem/index.ts` if demo identity scoping or coverage keys regress.
 
+8.3 bootstrap organization extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/organization.ts` for coverage-scoped demo organization lookup/creation and contact-email ownership.
+- Updated `bootstrap-demo-ecosystem` to call the shared organization helper while preserving the same `organizations` select/insert contract and organization timeline step.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/context.ts supabase/functions/_shared/domain/demo/organization.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `ensureDemoOrganization` back into `bootstrap-demo-ecosystem/index.ts` if organization reuse, contact-email scoping, or Deno bundling regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:

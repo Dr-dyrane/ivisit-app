@@ -33,3 +33,8 @@ export const buildDemoContext = (
   longitude,
   radiusKm,
 });
+
+export const resolveDemoSeedScopeKey = (ctx: DemoContext): string => {
+  // Keep demo seed scope user-stable so GPS drift does not create duplicate demo orgs.
+  return ctx.userSlug;
+};
