@@ -63,7 +63,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase 3: Improve Emergency Storytelling | Static copy alignment complete; runtime smoke pending | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved | Revert ambulance/bed decision copy and stage-base subtitle changes only |
 | Phase 4: Treat Location As First-Class | Static UX ownership pass complete; runtime smoke pending | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
 | Phase 5: Explore Care Data Hardening | Edge smoke complete; Google decision recorded; runtime UI smoke pending | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | 2026-05-19 | 2026-05-19 | `npm run hardening:edge-smoke` passed 81/81 with Google+Mapbox; `npm run hardening:edge-smoke -- --no-google` failed Tokyo/radiology | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback knowing global richness degrades |
-| Phase 6: Make Commit Feel Like One Guided Request | Planned | Commit details, triage, payment, tracking handoff | - | - | Contact skip, triage update, payment -> tracking, reload persistence | Revert presentation first; use edge/payment runbook if payment behavior changes |
+| Phase 6: Make Commit Feel Like One Guided Request | Static copy alignment complete; runtime smoke pending | Commit details, triage, payment, tracking handoff | 2026-05-19 | 2026-05-19 | `git diff --check`; contact/health/payment labels aligned; handlers untouched | Revert commit content copy files only; use edge/payment runbook if payment behavior changes |
 | Phase 7: Book Visit Integration | Planned | Choose Care Book Visit bridge, Book Visit stack, future sheet design | - | - | Route bridge closes Choose Care; state isolation check | Keep existing route bridge as fallback; feature-flag sheet integration |
 | Phase 8: Edge Architecture Consolidation | Planned separately | Supabase Edge Functions and shared helpers | - | - | See Phase 8 plan | See edge rollback runbook and Phase 8 plan |
 
@@ -383,6 +383,14 @@ Implementation focus:
 - back behavior
 - payment finalizing feedback
 - tracking handoff clarity
+
+Implemented static pass:
+
+- Contact steps now read as contact surfaces: `Contact email`, `Contact code`, and `Contact phone`.
+- Triage now reads as `Health details` instead of a generic quick check.
+- Payment CTA now reads as `Confirm request`, so bed-only and combined flows are not forced into ambulance-only dispatch language.
+- Payment finalizing copy now says the request is being confirmed, not only dispatch.
+- Commit controllers, persistence, payment validation, and tracking handoff logic were not changed.
 
 Do not:
 

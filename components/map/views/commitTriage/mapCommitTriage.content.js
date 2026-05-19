@@ -1,5 +1,5 @@
 export const MAP_COMMIT_TRIAGE_COPY = {
-	HEADER_TITLE: "Quick check",
+	HEADER_TITLE: "Health details",
 	SKIP: "Skip",
 	SKIP_ALL: "Skip for now",
 	CONTINUE: "Continue",
