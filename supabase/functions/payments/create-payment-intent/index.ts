@@ -1,54 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
 import { maybeResolveDisplayId } from "../../_shared/domain/ids.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { isOptionsRequest } from "../../_shared/http/request.ts";
 import { requireAuthenticatedUser } from "../../_shared/supabase/auth.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import { createStripeClient } from "../../_shared/payments/stripe.ts";
-
-const ensurePatientCustomerId = async ({
-    supabaseAdmin,
-    stripe,
-    userId,
-    userEmail,
-}: {
-    supabaseAdmin: any;
-    stripe: Stripe;
-    userId: string;
-    userEmail?: string | null;
-}) => {
-    const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("id, full_name, stripe_customer_id")
-        .eq("id", userId)
-        .single();
-
-    if (profileError || !profile) {
-        throw new Error("Profile not found");
-    }
-
-    if (profile.stripe_customer_id) {
-        return profile.stripe_customer_id as string;
-    }
-
-    const customer = await stripe.customers.create({
-        email: userEmail || undefined,
-        name: profile.full_name || userEmail || undefined,
-        metadata: { user_id: userId },
-    });
-
-    const { error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({ stripe_customer_id: customer.id })
-        .eq("id", userId);
-
-    if (updateError) {
-        throw new Error(`Could not store Stripe customer: ${updateError.message}`);
-    }
-
-    return customer.id;
-};
+import { ensurePatientCustomerId } from "../../_shared/payments/customers.ts";
 
 serve(async (req) => {
     if (isOptionsRequest(req)) {

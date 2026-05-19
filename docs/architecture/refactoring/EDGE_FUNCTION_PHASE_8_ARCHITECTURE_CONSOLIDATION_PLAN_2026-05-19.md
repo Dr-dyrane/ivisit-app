@@ -666,6 +666,13 @@ Gate:
 - `npm run hardening:edge-payments`
 - Manual Stripe webhook verification if webhook code changes.
 
+8.4 payment customer helper extraction note, 2026-05-19:
+
+- Added `_shared/payments/customers.ts` for patient Stripe customer lookup/creation and profile `stripe_customer_id` persistence.
+- Updated `create-payment-intent` to use the shared customer helper while preserving customer metadata, profile lookup, and stored customer behavior.
+- Validation: `git diff --check`, `npx deno check supabase/functions/payments/create-payment-intent/index.ts supabase/functions/_shared/payments/customers.ts`, and `npm run hardening:edge-payments` passed.
+- Rollback: inline `ensurePatientCustomerId` back into `create-payment-intent/index.ts` if Stripe customer creation or profile persistence regresses.
+
 ### 8.5 Contact Dispatch Edge Quality
 
 Owner: `demo-dispatch-reply`.
