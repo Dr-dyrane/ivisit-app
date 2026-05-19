@@ -5,6 +5,7 @@ import {
   LOCALITY_SCOPE_WIDE_FALLBACK,
   MAP_LOCAL_NEARBY_RADIUS_KM,
 } from "./locality.ts";
+import { shouldKeepProviderForRequestedCategory } from "./guards.ts";
 import { PROVIDER_TYPES } from "./taxonomy.ts";
 
 const normalizeFacilityText = (value: unknown): string =>
@@ -211,4 +212,68 @@ export const mergeCanonicalAndProviderRows = ({
   }
 
   return { merged, prioritizedDbRows };
+};
+
+export const evaluateProviderDatabaseSufficiency = ({
+  dbRows,
+  isEmergencyMode,
+  providerCategory,
+  mode,
+  limit,
+  mergeWithDatabase,
+  nearbyComfortThreshold,
+  localNearbyComfortThreshold,
+}: {
+  dbRows: any[];
+  isEmergencyMode: boolean;
+  providerCategory: string;
+  mode: "nearby" | "text_search";
+  limit: number;
+  mergeWithDatabase: boolean;
+  nearbyComfortThreshold: number;
+  localNearbyComfortThreshold: number;
+}): {
+  dispatchableDbResults: any[];
+  localDispatchableDbResults: any[];
+  categoryFilteredDbResults: any[];
+  databaseComfortTarget: number;
+  localComfortTarget: number;
+  hasEnoughDbResults: boolean;
+} => {
+  const dispatchableDbResults = dbRows.filter((row: any) =>
+    isDispatchableDatabaseRow(row)
+  );
+  const localDispatchableDbResults = dispatchableDbResults.filter((row: any) =>
+    isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
+  );
+  const categoryFilteredDbResults = isEmergencyMode
+    ? dbRows
+    : dbRows.filter((row: any) => {
+        const rowType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
+        return rowType === providerCategory &&
+          shouldKeepProviderForRequestedCategory(row, providerCategory);
+      });
+  const relevantDbResults = isEmergencyMode ? dispatchableDbResults : categoryFilteredDbResults;
+  const localRelevantDbResults = isEmergencyMode
+    ? localDispatchableDbResults
+    : categoryFilteredDbResults.filter((row: any) =>
+        isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
+      );
+  const databaseComfortTarget =
+    mode === "nearby" ? Math.min(limit, nearbyComfortThreshold) : limit;
+  const localComfortTarget =
+    mode === "nearby" ? Math.min(limit, localNearbyComfortThreshold) : limit;
+  const hasEnoughDbResults =
+    mergeWithDatabase &&
+    relevantDbResults.length >= databaseComfortTarget &&
+    localRelevantDbResults.length >= localComfortTarget;
+
+  return {
+    dispatchableDbResults,
+    localDispatchableDbResults,
+    categoryFilteredDbResults,
+    databaseComfortTarget,
+    localComfortTarget,
+    hasEnoughDbResults,
+  };
 };

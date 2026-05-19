@@ -23,6 +23,7 @@ import {
   parseProviderEnrichmentRequest,
 } from "../../_shared/domain/providers/request.ts";
 import {
+  evaluateProviderDatabaseSufficiency,
   isDispatchableDatabaseRow,
   isWithinDistanceKm,
   mergeCanonicalAndProviderRows,
@@ -195,37 +196,27 @@ serve(async (req) => {
     } else {
       dbResults = initialDbFetch.rows;
     }
-    const dispatchableDbResults = dbResults.filter((row: any) =>
-      isDispatchableDatabaseRow(row)
-    );
-    const localDispatchableDbResults = dispatchableDbResults.filter((row: any) =>
-      isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
-    );
+    const {
+      dispatchableDbResults,
+      localDispatchableDbResults,
+      categoryFilteredDbResults,
+      databaseComfortTarget,
+      localComfortTarget,
+      hasEnoughDbResults,
+    } = evaluateProviderDatabaseSufficiency({
+      dbRows: dbResults,
+      isEmergencyMode,
+      providerCategory,
+      mode,
+      limit,
+      mergeWithDatabase,
+      nearbyComfortThreshold: MAP_NEARBY_COMFORT_THRESHOLD,
+      localNearbyComfortThreshold: MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
+    });
     // PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — hasEnoughDbResults for explore mode
     // OLD: always used dispatchableDbResults (isDispatchable=false for all non-hospitals)
     //      → explore mode ALWAYS triggered external discovery even when DB had results
     // NEW: explore mode uses category-guarded DB count; emergency mode keeps dispatchable count
-    const categoryFilteredDbResults = isEmergencyMode
-      ? dbResults
-      : dbResults.filter((row: any) => {
-          const rowType = toSafeString(row?.provider_type, "hospital").toLowerCase();
-          return rowType === providerCategory &&
-            shouldKeepProviderForRequestedCategory(row, providerCategory);
-        });
-    const relevantDbResults = isEmergencyMode ? dispatchableDbResults : categoryFilteredDbResults;
-    const localRelevantDbResults = isEmergencyMode
-      ? localDispatchableDbResults
-      : categoryFilteredDbResults.filter((row: any) => isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM));
-    const databaseComfortTarget =
-      mode === "nearby" ? Math.min(limit, MAP_NEARBY_COMFORT_THRESHOLD) : limit;
-    const localComfortTarget =
-      mode === "nearby"
-        ? Math.min(limit, MAP_LOCAL_NEARBY_COMFORT_THRESHOLD)
-        : limit;
-    const hasEnoughDbResults =
-      mergeWithDatabase &&
-      relevantDbResults.length >= databaseComfortTarget &&
-      localRelevantDbResults.length >= localComfortTarget;
     if (hasEnoughDbResults) {
       providerDiscoverySkipped = true;
       providerDiscoverySkipReason = "database_sufficient";

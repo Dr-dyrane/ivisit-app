@@ -437,6 +437,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/enrichmentFlow.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: inline the provider detail fetch, normalization, hospital upsert, provider-table upsert, and enriched row assembly back into `discover-hospitals` if detail enrichment persistence regresses.
 
+8.2 provider database sufficiency extraction note, 2026-05-19:
+
+- Added `evaluateProviderDatabaseSufficiency` to `_shared/domain/providers/rows.ts` for dispatchable row filtering, category-guarded DB filtering, local-radius checks, comfort targets, and database-sufficient skip decisions.
+- Updated `discover-hospitals` to call the shared sufficiency helper while preserving the EXP-6/PULLBACK behavior for emergency versus explore mode.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: inline the dispatchable/category-filtered row derivation and comfort-target calculation back into `discover-hospitals` if external discovery skip behavior regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
