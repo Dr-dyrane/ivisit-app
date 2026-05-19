@@ -14,6 +14,21 @@ import {
   SERVICE_PRICING_BASELINES,
 } from "../_shared/domain/demo/pricing.ts";
 import { ensureDemoOrganization } from "../_shared/domain/demo/organization.ts";
+import {
+  coordinateKey,
+  exactLocationKey,
+  haversineDistanceKm,
+  isUrl,
+  normalizeFacilityText,
+  normalizeHospitalName,
+  nowIso,
+  toFiniteNumber,
+  toNonNegativeInt,
+  toSafeString,
+  toSafeStringArray,
+  toStableIdFragment,
+  uniqueStrings,
+} from "../_shared/domain/demo/utils.ts";
 import { getBooleanEnv, getEnv } from "../_shared/env/env.ts";
 import { jsonResponse, optionsResponse } from "../_shared/http/cors.ts";
 import {
@@ -329,79 +344,6 @@ type DemoFallbackCatalog = {
   hospitals: DemoFallbackHospital[];
 };
 
-const toFiniteNumber = (value: unknown): number | null => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-};
-
-const toSafeString = (value: unknown, fallback = ""): string => {
-  if (typeof value !== "string") return fallback;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : fallback;
-};
-
-const toSafeStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-};
-
-const toNonNegativeInt = (value: unknown, fallback = 0): number => {
-  const n = toFiniteNumber(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(0, Math.round(n));
-};
-
-const uniqueStrings = (values: string[]): string[] => {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  values.forEach((value) => {
-    const normalized = value.trim();
-    if (!normalized) return;
-    if (seen.has(normalized)) return;
-    seen.add(normalized);
-    out.push(normalized);
-  });
-  return out;
-};
-
-const stripDemoSuffixes = (value: string) =>
-  value
-    .replace(/\s*(?:\((?:demo)\))+$/i, "")
-    .replace(/\s*\(demo\)/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
-const normalizeHospitalName = (value: unknown, fallback = "Nearby Hospital") =>
-  toSafeString(stripDemoSuffixes(toSafeString(value, fallback)), fallback);
-const normalizeFacilityText = (value: unknown) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-const isUrl = (value: string) => /^https?:\/\//i.test(value);
-const coordinateKey = (value: unknown, precision = 3) => {
-  const n = toFiniteNumber(value);
-  return Number.isFinite(n) ? Number(n).toFixed(precision) : "0.000";
-};
-
-const exactLocationKey = (latitude: unknown, longitude: unknown) => {
-  const lat = toFiniteNumber(latitude);
-  const lng = toFiniteNumber(longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
-  return `${lat}|${lng}`;
-};
-
-const toStableIdFragment = (value: string, fallback: string) => {
-  const normalized = String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 32);
-  return normalized || fallback;
-};
-
 const isBootstrapDemoFeature = (feature: string) => {
   const normalized = String(feature || "")
     .trim()
@@ -675,28 +617,6 @@ const choosePreferredImage = (existing: any, candidate: any) => {
   if (existingRank > candidateRank) return existing;
   if (candidateConfidence > existingConfidence) return candidate;
   return existing;
-};
-
-const nowIso = () => new Date().toISOString();
-
-const toRadians = (value: number) => (value * Math.PI) / 180;
-
-const haversineDistanceKm = (
-  a: { latitude: number; longitude: number },
-  b: { latitude: number; longitude: number },
-) => {
-  const earthRadiusKm = 6371;
-  const latDelta = toRadians(b.latitude - a.latitude);
-  const lngDelta = toRadians(b.longitude - a.longitude);
-  const lat1 = toRadians(a.latitude);
-  const lat2 = toRadians(b.latitude);
-
-  const sinLat = Math.sin(latDelta / 2);
-  const sinLng = Math.sin(lngDelta / 2);
-  const haversine =
-    sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
-
-  return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(haversine)));
 };
 
 const findCityDemoFallbackCatalog = (
