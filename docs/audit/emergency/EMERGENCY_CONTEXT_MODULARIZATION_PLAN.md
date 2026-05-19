@@ -1,3 +1,10 @@
+> **HISTORICAL NOTICE — 2026-05-19**
+> This modularization plan is **complete**. EmergencyContext.jsx has been fully retired (Gold Standard Phase 5, all sub-passes 5a–5f done).
+> Retained for historical context only.
+> **See:** [`docs/architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../../architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) for Phase 5 completion record.
+
+---
+
 # EmergencyContext.jsx Modularization Plan
 
 **Current:** `contexts/EmergencyContext.jsx` - **2,168 lines**

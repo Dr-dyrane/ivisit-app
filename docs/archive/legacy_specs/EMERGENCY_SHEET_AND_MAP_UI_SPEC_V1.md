@@ -1,3 +1,13 @@
+> **ARCHIVAL NOTICE — 2026-05-19**
+> This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
+> It is the original sheet/map UI spec from 2026-04-21. Sheet phase contracts and tracking UI rules are now maintained in the tracking audit and implementation rules.
+> **Current replacements:**
+> - Active implementation contract: [`docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+> - Tracking sheet audit (all passes complete): [`docs/audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md`](../../../audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)
+> - Current working truth: [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+
+---
+
 # Emergency Sheet And Map UI Spec (v1)
 
 > Status: Active design reference

@@ -25,13 +25,22 @@ iVisit uses a **Role-Based Doctrine Tree**. Every folder has one role. Every new
 
 ### Routing Rules
 
-- A new **phase dossier** or **flow spec** → `docs/flows/<domain>/`
-- A new **audit** or **evidence report** → `docs/audit/`
-- A new **design token** or **visual spec** → `docs/design/`
-- A new **cross-cutting architectural decision** → `docs/architecture/`
-- A new **sprint checkpoint** → update `SPONSOR_SPRINT.md` in place
-- A new **product rule** → update `rules.json`; everything else defers to it
-- A **superseded doc** → move to `docs/archive/<historical|legacy_specs>/` with an archival notice
+> **Full decision tree and naming conventions: [`CONTRIBUTING.md`](./CONTRIBUTING.md)**
+
+| Doc type | Destination |
+|---|---|
+| Phase dossier / flow spec | `docs/flows/<domain>/` |
+| Audit / evidence report / checkpoint | `docs/audit/<domain>/` |
+| Map checkpoint | `docs/audit/map/checkpoints/` |
+| Map pass or tightening | `docs/audit/map/passes/` |
+| Map JSON manifest | `docs/audit/map/manifests/` |
+| Design token / visual spec | `docs/design/` |
+| Cross-cutting architectural decision | `docs/architecture/` |
+| SCC item | `docs/project_state/context/scc/` |
+| Sprint checkpoint | Update `SPONSOR_SPRINT.md` in place — no new file |
+| Product rule | Update `rules.json` — no new file |
+| Superseded doc | `docs/archive/<historical\|legacy_specs>/` + archival notice |
+| New `docs/` root file | **Requires senior review. Almost always wrong.** |
 
 ### Authority Order
 
@@ -242,10 +251,14 @@ All schema, RPC, and migration conventions live under `supabase/docs/`:
 
 ### **Adding New Documents**
 
-1. **Route by Role**: Follow the Folder Roles table above when adding a new doc.
-2. **Update Maps First**: When runtime paths change, update workflow/flow maps first; keep deep-dive docs in sync afterward.
-3. **Prefer Links**: Use map-and-link updates over duplicating long prose across files.
-4. **No Root Clutter**: Do not introduce new top-level files at `docs/` root; all non-doctrine files belong in a role folder.
+> See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full anti-litter checklist and decision tree.
+
+1. **Route by Role**: Follow the Folder Roles table above. When uncertain, consult the decision tree in `CONTRIBUTING.md`.
+2. **Search before creating**: Check `INDEX.md` — if a similar doc exists, update it instead of creating a new one.
+3. **Update Maps First**: When runtime paths change, update workflow/flow maps first; keep deep-dive docs in sync afterward.
+4. **Prefer Links**: Use map-and-link updates over duplicating long prose across files.
+5. **No Root Clutter**: Do not introduce new top-level files at `docs/` root; all non-doctrine files belong in a role folder.
+6. **SCCs go in `scc/`**: All `SCC-NNN_*` files belong in `docs/project_state/context/scc/`, not the context root.
 
 ### **Archival Protocol**
 

@@ -1,3 +1,12 @@
+> **HISTORICAL NOTICE — 2026-05-19**
+> This file is retained in place for historical context. It describes the map flow state as of 2026-04-20.
+> It is **no longer the working truth**. Use the live tracker and implementation rules for current state.
+> **Current replacements:**
+> - Working truth: [`EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](./EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+> - Active contract: [`MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](./MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+
+---
+
 # Map Flow Final Polish Audit (2026-04-20)
 
 > Status: Active audit

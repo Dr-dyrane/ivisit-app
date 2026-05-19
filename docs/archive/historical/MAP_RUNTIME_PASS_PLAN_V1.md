@@ -1,3 +1,13 @@
+> **ARCHIVAL NOTICE — 2026-05-19**
+> This file was moved from `docs/flows/emergency/architecture/` to `docs/archive/historical/` during the 2026-05-19 docs cleanup.
+> It is the original 98-pass runtime execution plan. The passes it describes have been completed or superseded by the Gold Standard state roadmap and MapScreen decomposition passes.
+> **Current replacements:**
+> - Gold Standard state roadmap: [`docs/architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../../architecture/state/GOLD_STANDARD_STATE_ROADMAP.md)
+> - Refactoring bible: [`docs/architecture/refactoring/REFACTORING_BIBLE.md`](../../architecture/refactoring/REFACTORING_BIBLE.md)
+> - Current working truth: [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+
+---
+
 # Map Runtime Pass Plan (v1)
 
 > Status: Active execution plan

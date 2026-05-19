@@ -1,3 +1,11 @@
+> **HISTORICAL NOTICE — 2026-05-19**
+> This is a completed audit from 2026-04-24. The state sync and animation issues it identified have been addressed in the tracking sheet passes (A–G) and tracking tightening pass.
+> Retained for historical context only.
+> **Current reference:** [`docs/audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md`](../map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md)
+> **Working truth:** [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+
+---
+
 # Emergency Flow State Sync & Animation Audit
 
 **Date:** 2026-04-24

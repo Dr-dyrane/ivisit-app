@@ -1,3 +1,13 @@
+> **ARCHIVAL NOTICE — 2026-05-19**
+> This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
+> It is the original V1 explore-intent audit. It has been superseded by the Explore Care dossier and EXP-pass series.
+> **Current replacements:**
+> - Active explore-care architecture: [`docs/flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md`](../../../flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md)
+> - Pass index: [`docs/flows/emergency/architecture/explore-care/passes/README.md`](../../../flows/emergency/architecture/explore-care/passes/README.md)
+> - Current working truth: [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+
+---
+
 # Map Explore / Intent Audit And System (v1)
 
 > Status: Active audit and build plan
