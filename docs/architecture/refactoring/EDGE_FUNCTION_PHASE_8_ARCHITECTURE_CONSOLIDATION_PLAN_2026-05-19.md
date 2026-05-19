@@ -607,6 +607,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/summary.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline `listDemoHospitals` and `getDemoSummary` back into `bootstrap-demo-ecosystem/index.ts` if readiness flags or summary counts regress.
 
+8.3 bootstrap external provider seed extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/providerSeeds.ts` for Mapbox hospital seed discovery, Google Places hospital seed discovery, provider fallback ordering, and seed deduplication.
+- Updated `bootstrap-demo-ecosystem` to delegate external provider seed discovery while keeping database/catalog seed selection and hospital persistence local for the next split.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/providerSeeds.ts supabase/functions/_shared/domain/demo/media.ts supabase/functions/_shared/domain/demo/utils.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: inline `getMapboxSeedHospitals`, `fetchGoogleNearbyPlaces`, `getGoogleSeedHospitals`, `getProviderSeedHospitals`, and `dedupeSeedHospitals` back into `bootstrap-demo-ecosystem/index.ts` if external seed coverage, Google flag gating, or Mapbox fallback behavior regresses.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
