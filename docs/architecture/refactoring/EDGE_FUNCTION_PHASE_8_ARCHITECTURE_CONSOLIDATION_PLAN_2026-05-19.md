@@ -409,6 +409,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/media.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore the local `buildHospitalMediaProxyUrl` URL construction if provider photos stop resolving through the app-owned media endpoint.
 
+8.2 provider discovery flow extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/discoveryFlow.ts` for the external provider fetch sequence: Google local-first/wide fallback, Mapbox fallback, locality decoration, and fetch counters.
+- Updated `discover-hospitals` to call the shared flow helper while preserving the endpoint-level provider fetch catch/log behavior, provider normalization, persistence, merge, and response meta.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/discoveryFlow.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore the local `fetchGooglePlacesForRadius`, `decorateScope`, Google local/wide fetch, and Mapbox fallback block if provider source selection or fallback counters regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

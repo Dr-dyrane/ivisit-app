@@ -2,23 +2,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { toFiniteNumber } from "../../_shared/domain/numbers.ts";
 import { withProviderDefaults } from "../../_shared/domain/providers/defaults.ts";
+import {
+  fetchExternalProviderData,
+  type ProviderSource,
+} from "../../_shared/domain/providers/discoveryFlow.ts";
 import { shouldKeepProviderForRequestedCategory } from "../../_shared/domain/providers/guards.ts";
 import {
   fetchGoogleProviderDetails,
-  fetchGoogleProviderPlaces,
 } from "../../_shared/domain/providers/googlePlaces.ts";
 import {
   buildProviderMediaProxyUrl,
   choosePreferredProviderImage,
 } from "../../_shared/domain/providers/media.ts";
 import {
-  LOCALITY_SCOPE_LOCAL,
-  LOCALITY_SCOPE_WIDE_FALLBACK,
   MAP_LOCAL_NEARBY_RADIUS_KM,
   MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
   REGION_LOCAL_FIRST_COUNTRY_CODES,
 } from "../../_shared/domain/providers/locality.ts";
-import { fetchMapboxProviderPlaces } from "../../_shared/domain/providers/mapboxPlaces.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
 import {
   toHospitalUpsertRow,
@@ -219,7 +219,7 @@ serve(async (req) => {
     const supabaseClient = createServiceClient();
 
     let providerData: any[] = [];
-    let providerSource = "database";
+    let providerSource: ProviderSource = "database";
     let normalizedProviderHospitals: any[] = [];
     let providerDiscoverySkipped = false;
     let providerDiscoverySkipReason = "";
@@ -315,83 +315,27 @@ serve(async (req) => {
 
     if (includeProviderDiscovery && !hasEnoughDbResults) {
       try {
-        // Google Places is the primary Explore Care provider source when the
-        // server flag is enabled. Mapbox remains a fallback for outage/quota
-        // resilience and for local development without Google billing.
-        const fetchGooglePlacesForRadius = async (searchRadius: number) => {
-          if (!googleApiKey || !includeGooglePlaces) return [];
-          console.log("[discover-hospitals] google fetch", {
-            providerCategory,
-            radius: searchRadius,
-            regionLocalFirstEnabled,
-            countryCode: countryCode || null,
-          });
-          return fetchGoogleProviderPlaces({
-            apiKey: googleApiKey,
-            latitude,
-            longitude,
-            radius: searchRadius,
-            mode,
-            query,
-            limit,
-            providerCategory,
-            countryCode,
-          });
-        };
-
-        const decorateScope = (places: any[], scope: string) =>
-          places.map((place: any) => ({ ...place, provider_locality_scope: scope }));
-
-        if (regionLocalFirstEnabled && mode === "nearby") {
-          const localRadius = Math.min(radius, MAP_LOCAL_NEARBY_RADIUS_KM * 1000);
-          const localGooglePlaces = await fetchGooglePlacesForRadius(localRadius);
-          if (localGooglePlaces.length > 0) {
-            providerData = decorateScope(localGooglePlaces, LOCALITY_SCOPE_LOCAL);
-            providerSource = "google";
-          }
-          localProviderFetchCount = providerData.length;
-
-          if (providerData.length < localComfortTarget) {
-            const wideGooglePlaces = await fetchGooglePlacesForRadius(radius);
-            if (wideGooglePlaces.length > 0) {
-              providerData = [
-                ...providerData,
-                ...decorateScope(wideGooglePlaces, LOCALITY_SCOPE_WIDE_FALLBACK),
-              ];
-              providerSource = "google";
-              wideProviderFallbackUsed = true;
-              wideProviderFallbackCount = wideGooglePlaces.length;
-            }
-          }
-        } else {
-          const googlePlaces = await fetchGooglePlacesForRadius(radius);
-          if (googlePlaces.length > 0) {
-            providerData = decorateScope(googlePlaces, LOCALITY_SCOPE_LOCAL);
-            providerSource = "google";
-          }
-        }
-
-        // Fallback to Mapbox if Google returns no results or is disabled
-        if (providerData.length === 0 && mapboxToken && includeMapboxPlaces) {
-          providerData = await fetchMapboxProviderPlaces({
-            accessToken: mapboxToken,
-            latitude,
-            longitude,
-            mode,
-            query,
-            limit,
-            providerCategory,
-          });
-          providerSource = "mapbox";
-          providerData = decorateScope(
-            providerData,
-            regionLocalFirstEnabled ? LOCALITY_SCOPE_WIDE_FALLBACK : LOCALITY_SCOPE_LOCAL
-          );
-          if (regionLocalFirstEnabled && providerData.length > 0) {
-            wideProviderFallbackUsed = true;
-            wideProviderFallbackCount = providerData.length;
-          }
-        }
+        const externalProviderResult = await fetchExternalProviderData({
+          googleApiKey,
+          mapboxToken,
+          includeGooglePlaces,
+          includeMapboxPlaces,
+          latitude,
+          longitude,
+          radius,
+          mode,
+          query,
+          limit,
+          providerCategory,
+          countryCode,
+          regionLocalFirstEnabled,
+          localComfortTarget,
+        });
+        providerData = externalProviderResult.providerData;
+        providerSource = externalProviderResult.providerSource;
+        localProviderFetchCount = externalProviderResult.localProviderFetchCount;
+        wideProviderFallbackCount = externalProviderResult.wideProviderFallbackCount;
+        wideProviderFallbackUsed = externalProviderResult.wideProviderFallbackUsed;
       } catch (providerError) {
         console.error("[discover-hospitals] provider fetch failed", providerError);
       }
