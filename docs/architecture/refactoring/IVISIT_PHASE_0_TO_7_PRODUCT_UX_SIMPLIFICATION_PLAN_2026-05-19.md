@@ -62,7 +62,7 @@ This table is the living checkpoint ledger. Update it before starting a phase, a
 | Phase 2: Fix Naming And Ownership | Static audit complete; compatibility alias kept | Choose Care modal, history modal, profile/auth overlays, sheet navigation owners | 2026-05-19 | 2026-05-19 | `rg` import sweep; Choose Care implementation moved to `MapChooseCareModal`; compatibility re-export kept | Revert `MapModalOrchestrator` import and `MapChooseCareModal` move if component resolution regresses |
 | Phase 3: Improve Emergency Storytelling | Static copy alignment complete; runtime smoke pending | Ambulance decision, bed decision, service detail, combined ambulance+bed flow | 2026-05-19 | 2026-05-19 | `git diff --check`; combined ambulance+bed subtitles owned by copy constants; saved transport card preserved | Revert ambulance/bed decision copy and stage-base subtitle changes only |
 | Phase 4: Treat Location As First-Class | Static UX ownership pass complete; runtime smoke pending | `LOCATION_INTENT`, location hooks, mini profile location entry, payment pickup entry | 2026-05-19 | 2026-05-19 | `git diff --check`; source-return call sites audited; default choices relabeled | Revert `mapLocationIntent.model.js` copy changes only; preserve source payload contracts |
-| Phase 5: Explore Care Data Hardening | Planned | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | - | - | `npm run hardening:edge-smoke`; Google on/off checks; global location matrix | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback |
+| Phase 5: Explore Care Data Hardening | Edge smoke complete; Google decision recorded; runtime UI smoke pending | Provider list/detail, provider markers, provider discovery adapter, edge smoke matrix | 2026-05-19 | 2026-05-19 | `npm run hardening:edge-smoke` passed 81/81 with Google+Mapbox; `npm run hardening:edge-smoke -- --no-google` failed Tokyo/radiology | Disable Google Places flag if cost/failure risk appears; preserve DB/Mapbox fallback knowing global richness degrades |
 | Phase 6: Make Commit Feel Like One Guided Request | Planned | Commit details, triage, payment, tracking handoff | - | - | Contact skip, triage update, payment -> tracking, reload persistence | Revert presentation first; use edge/payment runbook if payment behavior changes |
 | Phase 7: Book Visit Integration | Planned | Choose Care Book Visit bridge, Book Visit stack, future sheet design | - | - | Route bridge closes Choose Care; state isolation check | Keep existing route bridge as fallback; feature-flag sheet integration |
 | Phase 8: Edge Architecture Consolidation | Planned separately | Supabase Edge Functions and shared helpers | - | - | See Phase 8 plan | See edge rollback runbook and Phase 8 plan |
@@ -326,6 +326,14 @@ Hardening focus:
 - provider/hospital separation
 - fallback data when live provider APIs are weak
 - no blank provider list when fallback data exists
+
+Implemented audit pass:
+
+- Provider list/detail identity was repaired earlier in Phase 0 so auto-select, card selection, marker selection, and map focus can use provider fallback identity (`id`, `placeId`, then `name`).
+- The global edge smoke matrix passed with Google + Mapbox enabled across 9 locations and 9 categories: Hemet, Festac, London, Nairobi, Dubai, Delhi, Tokyo, Sao Paulo, and Sydney.
+- The no-Google smoke matrix failed `tokyo/radiology` with 0 results and showed thin fallback counts in several categories, confirming Google is required for real and rich global Explore Care.
+- Decision: Google Places stays enabled for Explore Care provider discovery, gated by environment flags and query keys; Mapbox/database remain cost-safe fallback lanes.
+- Emergency hospital discovery must remain separated from Explore Care provider discovery; Explore Care provider results must not become emergency dispatch candidates unless they pass emergency eligibility rules.
 
 Known global smoke locations:
 
