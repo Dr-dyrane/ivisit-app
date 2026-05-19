@@ -345,6 +345,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/locality.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `LOCALITY_SCOPE_LOCAL`, `LOCALITY_SCOPE_WIDE_FALLBACK`, `MAP_LOCAL_NEARBY_RADIUS_KM`, `MAP_LOCAL_NEARBY_COMFORT_THRESHOLD`, `REGION_LOCAL_FIRST_COUNTRY_CODES`, `normalizeCountryCode`, and `shouldUseRegionLocalFirst` to `discover-hospitals/index.ts` if locality fallback behavior regresses.
 
+8.2 Google Places client extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/googlePlaces.ts` for Google Places field masks, text-search query construction, list search, and detail lookup.
+- Updated the `discover-hospitals` engine to import `fetchGoogleProviderPlaces` and `fetchGoogleProviderDetails` while keeping Google feature-flag checks, request flow, normalization, persistence, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/googlePlaces.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `GOOGLE_PROVIDER_LIST_FIELD_MASK`, `GOOGLE_PROVIDER_DETAIL_FIELD_MASK`, `buildGoogleTextSearchQuery`, `fetchGoogleProviderPlaces`, and `fetchGoogleProviderDetails` to `discover-hospitals/index.ts` if Google provider discovery regresses.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.

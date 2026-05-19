@@ -9,6 +9,10 @@ import {
   shouldKeepProviderForRequestedCategory,
 } from "../../_shared/domain/providers/guards.ts";
 import {
+  fetchGoogleProviderDetails,
+  fetchGoogleProviderPlaces,
+} from "../../_shared/domain/providers/googlePlaces.ts";
+import {
   choosePreferredProviderImage,
   resolveProviderImage,
 } from "../../_shared/domain/providers/media.ts";
@@ -34,12 +38,10 @@ import {
   CATEGORY_TO_GOOGLE_TYPES,
   CATEGORY_TO_MAPBOX_CATEGORY,
   EXPLORE_CATEGORY_META_KEYWORDS,
-  GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES,
   GOOGLE_TYPE_TO_PROVIDER,
   PROVIDER_TYPES,
   classifyProviderByName,
   deriveEmergencyEligible,
-  getGoogleQueriesForCategory,
   normaliseEmergencyLevel,
 } from "../../_shared/domain/providers/taxonomy.ts";
 import type { ProviderType } from "../../_shared/domain/providers/taxonomy.ts";
@@ -59,29 +61,6 @@ const toSafeStringArray = (value: unknown): string[] => {
 };
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
-const GOOGLE_PROVIDER_LIST_FIELD_MASK = [
-  "places.id",
-  "places.displayName",
-  "places.formattedAddress",
-  "places.location",
-  "places.primaryType",
-  "places.types",
-].join(",");
-const GOOGLE_PROVIDER_DETAIL_FIELD_MASK = [
-  "id",
-  "displayName",
-  "formattedAddress",
-  "location",
-  "rating",
-  "userRatingCount",
-  "nationalPhoneNumber",
-  "internationalPhoneNumber",
-  "websiteUri",
-  "photos",
-  "primaryType",
-  "types",
-].join(",");
-
 const isDemoDatabaseRow = (row: any): boolean => {
   const placeId = toSafeString(row?.place_id, "").toLowerCase();
   const verificationStatus = toSafeString(
@@ -216,17 +195,6 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
   };
 };
 
-const buildGoogleTextSearchQuery = (
-  providerCategory: string,
-  query: string,
-  countryCode = "",
-): string => {
-  const explicitQuery = toSafeString(query);
-  if (explicitQuery) return explicitQuery;
-  const categoryQueries = getGoogleQueriesForCategory(providerCategory, countryCode);
-  return categoryQueries.slice(0, 4).join(" ");
-};
-
 const withDistanceFromOrigin = (row: any, originLat: number, originLng: number) => {
   const distanceKm =
     parseDistanceKm(row) ?? calculateDistanceKm(originLat, originLng, row?.latitude, row?.longitude);
@@ -249,112 +217,6 @@ const toGeometryPoint = (latitude: unknown, longitude: unknown): string | null =
   const lng = toFiniteNumber(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return `SRID=4326;POINT(${lng} ${lat})`;
-};
-
-const fetchGoogleProviderPlaces = async ({
-  apiKey,
-  latitude,
-  longitude,
-  radius,
-  mode,
-  query,
-  limit,
-  providerCategory,
-  countryCode,
-}: {
-  apiKey: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
-  mode: "nearby" | "text_search";
-  query: string;
-  limit: number;
-  // PULLBACK NOTE: FIX-A — BUG-1/2: thread providerCategory so Google fetch returns correct type
-  // OLD: no providerCategory param — always fetched "hospital" type
-  // NEW: derive includedTypes from CATEGORY_TO_GOOGLE_TYPES[providerCategory]
-  providerCategory: string;
-  countryCode?: string;
-}) => {
-  const textSearchQuery =
-    mode === "text_search" || GOOGLE_TEXT_SEARCH_FIRST_CATEGORIES.has(providerCategory)
-      ? buildGoogleTextSearchQuery(providerCategory, query, countryCode)
-      : "";
-  const useTextSearch = !!textSearchQuery;
-  const endpoint = useTextSearch
-    ? "https://places.googleapis.com/v1/places:searchText"
-    : "https://places.googleapis.com/v1/places:searchNearby";
-  // Keep list discovery on the leanest useful field set. Richer details
-  // (phone, website, rating, photos) should be fetched only from an explicit
-  // provider-detail enrichment path so list browsing cannot fan out costs.
-  const fieldMask = GOOGLE_PROVIDER_LIST_FIELD_MASK;
-  // PULLBACK NOTE: FIX-A — derive includedTypes from category mapping, fallback to hospital
-  // OLD: hardcoded ["hospital"] / "hospital" regardless of caller
-  // NEW: CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"]
-  const googleTypes = CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"];
-  const primaryGoogleType = googleTypes[0] ?? "hospital";
-  const body =
-    useTextSearch
-      ? {
-          textQuery: textSearchQuery,
-          pageSize: limit,
-          locationBias: {
-            circle: {
-              center: { latitude, longitude },
-              radius: Math.max(1, Math.round(radius)),
-            },
-          },
-        }
-      : {
-          includedTypes: googleTypes,
-          maxResultCount: limit,
-          rankPreference: "DISTANCE",
-          locationRestriction: {
-            circle: {
-              center: { latitude, longitude },
-              radius: Math.max(1, Math.round(radius)),
-            },
-          },
-        };
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": fieldMask,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error(`google places fetch failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return Array.isArray(data?.places) ? data.places : [];
-};
-
-const fetchGoogleProviderDetails = async ({
-  apiKey,
-  placeId,
-}: {
-  apiKey: string;
-  placeId: string;
-}) => {
-  const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-    method: "GET",
-    headers: {
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": GOOGLE_PROVIDER_DETAIL_FIELD_MASK,
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`google place details fetch failed: ${response.status} ${text}`);
-  }
-
-  return await response.json();
 };
 
 // Keep persistence schema-safe: only write columns that exist on public.hospitals.
