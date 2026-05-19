@@ -4,6 +4,12 @@ import { getBooleanEnv, getEnv } from "../../_shared/env/env.ts";
 import { clampLimit, toFiniteNumber, toNonNegativeInt } from "../../_shared/domain/numbers.ts";
 import { calculateDistanceKm } from "../../_shared/domain/providers/distance.ts";
 import { normalizeGooglePlace, normalizeMapboxPlace } from "../../_shared/domain/providers/normalizeExternal.ts";
+import {
+  isWithinDistanceKm,
+  parseDistanceKm,
+  prioritizeProviderRows,
+  toMergeKey,
+} from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 import {
@@ -169,12 +175,6 @@ const toSafeStringArray = (value: unknown): string[] => {
     .filter((item) => item.length > 0);
 };
 
-const normalizeFacilityText = (value: unknown): string =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
 const MAP_LOCAL_NEARBY_RADIUS_KM = 5;
 const MAP_LOCAL_NEARBY_COMFORT_THRESHOLD = 3;
@@ -213,15 +213,6 @@ const shouldUseRegionLocalFirst = (countryCode: string, providerCategory: string
   providerCategory !== PROVIDER_TYPES.HOSPITAL &&
   REGION_LOCAL_FIRST_COUNTRY_CODES.has(countryCode);
 
-// PULLBACK NOTE: FIX-PHARMACY-DUPLICATES — Increase coordinate precision for deduplication.
-// OLD: precision=3 (~111m) blurred nearby providers together.
-// NEW: precision=5 (~1m) preserves pharmacy/provider-level accuracy.
-const coordinateKey = (value: unknown, precision = 5): string | null => {
-  const n = toFiniteNumber(value);
-  if (!Number.isFinite(n)) return null;
-  return Number(n).toFixed(precision);
-};
-
 const isDemoDatabaseRow = (row: any): boolean => {
   const placeId = toSafeString(row?.place_id, "").toLowerCase();
   const verificationStatus = toSafeString(
@@ -258,58 +249,6 @@ const isDispatchableDatabaseRow = (row: any): boolean => {
       verificationStatus === "not_certified")
   );
 };
-
-const parseDistanceKm = (row: any): number | null => {
-  const numericDistance = toFiniteNumber(
-    row?.distance_km ?? row?.distanceKm ?? row?.distance
-  );
-  if (Number.isFinite(numericDistance)) {
-    return numericDistance;
-  }
-
-  const distanceLabel = toSafeString(row?.distance, "");
-  if (!distanceLabel) return null;
-
-  const match = distanceLabel.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-
-  const parsed = Number(match[1]);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const compareByDistance = (left: any, right: any): number => {
-  const leftDistance = parseDistanceKm(left);
-  const rightDistance = parseDistanceKm(right);
-  const leftHasDistance = Number.isFinite(leftDistance);
-  const rightHasDistance = Number.isFinite(rightDistance);
-
-  if (leftHasDistance && rightHasDistance && leftDistance !== rightDistance) {
-    return leftDistance - rightDistance;
-  }
-  if (leftHasDistance !== rightHasDistance) {
-    return leftHasDistance ? -1 : 1;
-  }
-
-  return String(left?.name || "").localeCompare(String(right?.name || ""), undefined, {
-    sensitivity: "base",
-  });
-};
-
-const isWithinDistanceKm = (row: any, radiusKm: number): boolean => {
-  const distanceKm = parseDistanceKm(row);
-  return Number.isFinite(distanceKm) && Number(distanceKm) <= radiusKm;
-};
-
-const prioritizeDatabaseRows = (rows: any[]): any[] =>
-  [...rows].sort((left, right) => {
-    const leftDispatchable = isDispatchableDatabaseRow(left);
-    const rightDispatchable = isDispatchableDatabaseRow(right);
-    if (leftDispatchable !== rightDispatchable) {
-      return leftDispatchable ? -1 : 1;
-    }
-
-    return compareByDistance(left, right);
-  });
 
 const hashString = (seed: string): number => {
   let hash = 0;
@@ -559,33 +498,6 @@ const withProviderDefaults = (row: any, providerSource: string, requestedCategor
     ...normalized,
     ...imageMeta,
   };
-};
-
-const toMergeKey = (row: any): string => {
-  const name = normalizeFacilityText(row?.name);
-  const address = normalizeFacilityText(row?.address);
-  const latitude = coordinateKey(row?.latitude);
-  const longitude = coordinateKey(row?.longitude);
-
-  // PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Prioritize address/coordinates over name.
-  // Provider APIs can return the same facility with slightly different names.
-  if (address && latitude && longitude) {
-    return `location:${address}|${latitude}|${longitude}`;
-  }
-  if (latitude && longitude) {
-    return `coords:${latitude}|${longitude}`;
-  }
-  if (address) {
-    return `address:${address}`;
-  }
-
-  const placeId =
-    typeof row?.place_id === "string" ? row.place_id.trim().toLowerCase() : "";
-  if (placeId) return `place:${placeId}`;
-  if (name) return `name:${name}`;
-
-  const id = typeof row?.id === "string" ? row.id : "unknown";
-  return `id:${id}`;
 };
 
 const buildGoogleTextSearchQuery = (
@@ -1579,10 +1491,11 @@ serve(async (req) => {
     // isEmergencyMode → nearby_hospitals (all dispatchable hospitals, no category filter needed)
     // explore mode → nearby_providers already filtered by provider_type, but secondary guard
     // ensures no cross-category leakage if RPC returns unexpected rows.
-    const prioritizedDbResults = prioritizeDatabaseRows(
+    const prioritizedDbResults = prioritizeProviderRows(
       isEmergencyMode
         ? dbResults
-        : categoryFilteredDbResults
+        : categoryFilteredDbResults,
+      isDispatchableDatabaseRow,
     );
 
     for (const row of prioritizedDbResults) {

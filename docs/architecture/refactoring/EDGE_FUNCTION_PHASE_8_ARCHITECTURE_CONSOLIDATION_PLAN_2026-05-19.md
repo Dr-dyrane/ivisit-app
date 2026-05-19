@@ -309,6 +309,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/normalizeExternal.ts`, and `npm run hardening:edge-smoke` passed.
 - Follow-up: `node supabase/tests/scripts/run_edge_function_smoke_matrix.js --no-google` still fails against the live function for `tokyo/radiology` with zero results. All other cases in that mode passed; track this as a provider coverage gap rather than a local extraction failure because the script exercises the deployed edge function.
 
+8.2 provider row extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/rows.ts` for pure distance parsing, distance sorting, local-radius checks, merge-key generation, and generic provider row prioritization.
+- Updated the `discover-hospitals` engine to pass its existing `isDispatchableDatabaseRow` predicate into the shared prioritizer, preserving emergency/provider ordering rules in the entrypoint.
+- Preserved provider API calls, database reads/writes, merge behavior, and response shapes.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/rows.ts`, and `npm run hardening:edge-smoke` passed.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
