@@ -600,6 +600,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/staff.ts supabase/functions/_shared/domain/demo/utils.ts supabase/functions/_shared/domain/demo/context.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: inline `toAuthEmail`, `toDisplayName`, `findAuthUserByEmail`, `ensureAuthUser`, `syncProfileRole`, and `ensureDemoStaff` back into `bootstrap-demo-ecosystem/index.ts` if staffing, profile roles, or ambulance assignment regress.
 
+8.3 bootstrap summary extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/summary.ts` for demo hospital listing, staffing counts, pricing counts, wallet balances, fee checks, and readiness flag calculation.
+- Updated `bootstrap-demo-ecosystem` to call the shared summary helper while preserving the `summary` timeline step and response fields.
+- Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/summary.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: inline `listDemoHospitals` and `getDemoSummary` back into `bootstrap-demo-ecosystem/index.ts` if readiness flags or summary counts regress.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:
