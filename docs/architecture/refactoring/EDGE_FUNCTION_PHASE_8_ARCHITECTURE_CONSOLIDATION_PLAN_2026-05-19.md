@@ -1,7 +1,7 @@
 # Edge Function Phase 8 Architecture Consolidation Plan
 
 Date: 2026-05-19
-Status: Planning only
+Status: Phase 8.0 baseline and freeze in progress
 Scope: Supabase Edge Functions, shared helpers, verification scripts, rollback traceability
 
 ## Purpose
@@ -121,6 +121,8 @@ supabase/functions/
 
 ### 8.0 Baseline And Freeze
 
+Status: Started 2026-05-19 after Phase 0-7 runtime gate commit `f90845a6`.
+
 Do before moving code:
 
 - Record baseline hashes for each hotspot with `git log --oneline --follow`.
@@ -142,6 +144,64 @@ Rollback:
 
 - Use `docs/deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`.
 - Restore by function family, not individual helper, if a deployed slug fails.
+
+Baseline snapshot recorded 2026-05-19:
+
+| Public slug / owner | Local entrypoint | Lines | HEAD blob hash | Live version |
+| --- | --- | ---: | --- | ---: |
+| `discover-hospitals` engine | `supabase/functions/discovery/discover-hospitals/index.ts` | 1666 | `952ef09e958db54662752a6135ced66af72f77cd` | 93 |
+| `discover-hospitals` wrapper | `supabase/functions/discover-hospitals/index.ts` | 1 | `70a1d1ec1ffe08d6f0e5c6e8f8a7e32ad9b20a67` | 93 |
+| `bootstrap-demo-ecosystem` | `supabase/functions/bootstrap-demo-ecosystem/index.ts` | 1985 | `a74a689cf6072239f8cdaada290c3715ef4d54f6` | 42 |
+| `create-payment-intent` | `supabase/functions/payments/create-payment-intent/index.ts` | 306 | `ff196e986647934ec4990c3d0ca059d0dab0c835` | 30 |
+| `billing-quote` | `supabase/functions/payments/billing-quote/index.ts` | 123 | `924bd4b316e248d7a86a96fe77a35c0bb9e32b66` | 17 |
+| `refresh-exchange-rates` | `supabase/functions/payments/refresh-exchange-rates/index.ts` | 270 | `5811ac5eb45d560cb11c1a8bd9b5370decdc68c4` | 18 |
+| `manage-payment-methods` | `supabase/functions/payments/manage-payment-methods/index.ts` | 111 | `b5225ee132ea63986a631947b475b94434bfc872` | 30 |
+| `create-payout` | `supabase/functions/payments/create-payout/index.ts` | 77 | `3242b7af1b6d4cde75e3853b629c88af6d2f47c6` | 30 |
+| `stripe-webhook` | `supabase/functions/webhooks/stripe-webhook/index.ts` | 219 | `d22874f95bf034130f6e1e93d2212b516db30f71` | 31 |
+| `hospital-media` | `supabase/functions/hospital-media/index.ts` | 176 | `c5607cd60d0c9e70103e3dd894d14cc41909a3e7` | 22 |
+| `demo-approve-cash-payment` | `supabase/functions/demo-approve-cash-payment/index.ts` | 144 | `401a280a38c24d14401357904810f5448fef4bb2` | 18 |
+| `demo-dispatch-reply` | `supabase/functions/demo-dispatch-reply/index.ts` | 317 | `bd074bbcf67b3612942a8a64b07fdacf04ea752c` | 7 |
+| `review-demo-auth` | `supabase/functions/review-demo-auth/index.ts` | 138 | `8d6ffa79914dbb34d18fc0ffcac90f9e82fbc163` | 17 |
+| `triage-copilot` | `supabase/functions/triage-copilot/index.ts` | 165 | `770484278ad85af467269b2bfc699af6567ccd9d` | 22 |
+
+Slug-to-entrypoint mapping confirmed in `supabase/config.toml`:
+
+| Slug | Entrypoint | JWT |
+| --- | --- | --- |
+| `manage-payment-methods` | `./functions/payments/manage-payment-methods/index.ts` | true |
+| `bootstrap-demo-ecosystem` | `./functions/bootstrap-demo-ecosystem/index.ts` | false |
+| `discover-hospitals` | `./functions/discover-hospitals/index.ts` | false |
+| `demo-approve-cash-payment` | `./functions/demo-approve-cash-payment/index.ts` | false |
+| `demo-dispatch-reply` | `./functions/demo-dispatch-reply/index.ts` | false |
+| `review-demo-auth` | `./functions/review-demo-auth/index.ts` | false |
+| `triage-copilot` | `./functions/triage-copilot/index.ts` | false |
+| `hospital-media` | `./functions/hospital-media/index.ts` | false |
+| `billing-quote` | `./functions/payments/billing-quote/index.ts` | true |
+| `refresh-exchange-rates` | `./functions/payments/refresh-exchange-rates/index.ts` | true |
+| `create-payment-intent` | `./functions/payments/create-payment-intent/index.ts` | true |
+| `create-payout` | `./functions/payments/create-payout/index.ts` | true |
+| `stripe-webhook` | `./functions/webhooks/stripe-webhook/index.ts` | false |
+
+Existing shared helpers at Phase 8 start:
+
+- `_shared/domain/ids.ts`
+- `_shared/domain/numbers.ts`
+- `_shared/domain/providers/taxonomy.ts`
+- `_shared/env/env.ts`
+- `_shared/http/cors.ts`
+- `_shared/payments/stripe.ts`
+- `_shared/supabase/clients.ts`
+
+Recent hotspot history was captured with `git log --follow -3` for each entrypoint. The recurring recent anchor is `bedd529f refactor(edge): share function foundations`; `discover-hospitals` also has recent provider-discovery-specific commits `d7ad11e9`, `12c0c27a`, and `713623c1`.
+
+Baseline gate run, 2026-05-19:
+
+- `git diff --check` passed.
+- `npm run hardening:edge-smoke` passed 81/81 with Google + Mapbox enabled.
+- `npm run hardening:edge-payments` passed 6 payment/webhook functions.
+- `npm run hardening:chat-rls` passed 23/23.
+- `npm run hardening:emergency` passed.
+- `deno --version` failed because Deno is not installed on this machine; run `npx deno check` or native `deno check` in an environment with Deno before deploying edge-function code movement.
 
 ### 8.1 Shared HTTP, Env, Auth, And Observability
 
@@ -368,4 +428,3 @@ npm run hardening:edge-smoke
 ## Decision
 
 Phase 8 should begin with `discover-hospitals` only after Phase 5 Explore Care hardening is green. Provider discovery is the most valuable backend engine to modularize first, but it is also the easiest to damage. The correct first code pass is shared HTTP/env/auth/observability extraction plus pure provider helpers, not a flow rewrite.
-
