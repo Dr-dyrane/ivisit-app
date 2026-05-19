@@ -331,6 +331,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/guards.ts supabase/functions/_shared/domain/providers/fallbackImages.ts`, and `npm run hardening:edge-smoke` passed.
 - Rollback: restore `shouldKeepProviderForRequestedCategory` to `discover-hospitals/index.ts` if category filtering regresses.
 
+8.2 provider media extraction note, 2026-05-19:
+
+- Added `_shared/domain/providers/media.ts` for provider image resolution, safe domain-logo inference, and preferred-image ranking.
+- Updated the `discover-hospitals` engine to import `resolveProviderImage` and `choosePreferredProviderImage` while keeping the Supabase media proxy URL builder, provider API calls, database reads/writes, merge behavior, and response shapes in the entrypoint.
+- Validation: `git diff --check`, `npx deno check supabase/functions/discovery/discover-hospitals/index.ts supabase/functions/_shared/domain/providers/media.ts`, and `npm run hardening:edge-smoke` passed.
+- Rollback: restore `resolveHospitalImage`, `choosePreferredImage`, domain blocklist, name stopwords, URL/domain parsing, and image-source rank constants to `discover-hospitals/index.ts` if provider images regress.
+
 ### 8.3 Demo Bootstrap Domain Split
 
 Owner: `bootstrap-demo-ecosystem`.
