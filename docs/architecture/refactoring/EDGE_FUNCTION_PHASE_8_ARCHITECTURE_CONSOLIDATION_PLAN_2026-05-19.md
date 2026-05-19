@@ -565,6 +565,13 @@ Gate:
 - Validation: `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
 - Rollback: move `DEMO_ORG_WALLET_TARGET_BALANCE`, `DEMO_PLATFORM_WALLET_MIN_BALANCE`, and `ensureDemoFinancialReadiness` back into `bootstrap-demo-ecosystem/index.ts` if wallet setup or financial readiness regresses.
 
+8.3 bootstrap context extraction note, 2026-05-19:
+
+- Added `_shared/domain/demo/context.ts` for `DemoContext`, demo user slug normalization, and coverage-key construction.
+- Updated `bootstrap-demo-ecosystem` to build demo context through the shared helper while leaving request parsing and auth resolution local for this pass.
+- Validation: `rg` confirmed slug/coverage helpers now only live in the shared context module, `git diff --check`, `npx deno check supabase/functions/bootstrap-demo-ecosystem/index.ts supabase/functions/_shared/domain/demo/context.ts supabase/functions/_shared/domain/demo/finance.ts supabase/functions/_shared/domain/demo/pricing.ts`, and `npm run hardening:bootstrap-demo-matrix` passed. The matrix run was the non-mutating dry-run.
+- Rollback: move `DemoContext`, `toSafeUserSlug`, `toCoverageAxisKey`, `toCoverageKey`, and the context object literal back into `bootstrap-demo-ecosystem/index.ts` if demo identity scoping or coverage keys regress.
+
 ### 8.4 Payment Function Consolidation
 
 Owners:

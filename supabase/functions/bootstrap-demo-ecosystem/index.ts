@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
+  buildDemoContext,
+  type DemoContext,
+} from "../_shared/domain/demo/context.ts";
+import {
   DEMO_ORG_WALLET_TARGET_BALANCE,
   DEMO_PLATFORM_WALLET_MIN_BALANCE,
   ensureDemoFinancialReadiness,
@@ -297,15 +301,6 @@ const GOOGLE_PROVIDER_LIMIT = 8;
 const DEMO_MIN_HOSPITALS = 5;
 const DEMO_MAX_HOSPITALS = 6;
 
-type DemoContext = {
-  userId: string;
-  userSlug: string;
-  coverageKey: string;
-  latitude: number;
-  longitude: number;
-  radiusKm: number;
-};
-
 type DemoFallbackHospital = {
   name: string;
   address: string;
@@ -342,11 +337,6 @@ const toSafeString = (value: unknown, fallback = ""): string => {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : fallback;
-};
-
-const toSafeUserSlug = (value: string) => {
-  const normalized = value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
-  return normalized.length > 0 ? normalized.toLowerCase() : "guestdemo";
 };
 
 const toSafeStringArray = (value: unknown): string[] => {
@@ -402,14 +392,6 @@ const exactLocationKey = (latitude: unknown, longitude: unknown) => {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
   return `${lat}|${lng}`;
 };
-
-const toCoverageAxisKey = (value: number) =>
-  `${value >= 0 ? "p" : "n"}${Math.round(Math.abs(value) * 100)
-    .toString()
-    .padStart(4, "0")}`;
-
-const toCoverageKey = (latitude: number, longitude: number) =>
-  `${toCoverageAxisKey(latitude)}_${toCoverageAxisKey(longitude)}`;
 
 const toStableIdFragment = (value: string, fallback: string) => {
   const normalized = String(value || "")
@@ -1902,14 +1884,12 @@ serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ctx: DemoContext = {
-      userId: effectiveUserId,
-      userSlug: toSafeUserSlug(effectiveUserId),
-      coverageKey: toCoverageKey(Number(latitude), Number(longitude)),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+    const ctx = buildDemoContext(
+      effectiveUserId,
+      Number(latitude),
+      Number(longitude),
       radiusKm,
-    };
+    );
 
     const timeline: TimedStepEntry[] = [];
     const runStep = <TData>(step: string, action: () => Promise<TData>) =>
