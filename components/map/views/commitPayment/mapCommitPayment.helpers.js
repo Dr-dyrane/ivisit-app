@@ -222,6 +222,25 @@ export function buildCommitPaymentCompletionPayload({
 	hospital,
 }) {
 	const serviceType = initiatedRequest?.serviceType || "ambulance";
+	const requestRow =
+		result?.request && typeof result.request === "object" ? result.request : null;
+	const resultRequestIdIsOnlyIdentity =
+		result?.requestId && !result?.displayId && !requestRow?.display_id;
+	const canonicalRequestId =
+		result?.id ??
+		requestRow?.id ??
+		initiatedRequest?._realId ??
+		(resultRequestIdIsOnlyIdentity ? result.requestId : null) ??
+		result?.requestId ??
+		initiatedRequest?.requestId ??
+		null;
+	const displayRequestId =
+		result?.displayId ??
+		requestRow?.display_id ??
+		initiatedRequest?._displayId ??
+		initiatedRequest?.displayId ??
+		initiatedRequest?.requestId ??
+		null;
 	const responderName =
 		result?.responderName ?? result?.responder_name ?? result?.request?.responder_name ?? null;
 	const responderPhone =
@@ -250,9 +269,10 @@ export function buildCommitPaymentCompletionPayload({
 	);
 	return {
 		success: true,
-		requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
-		displayId:
-			result?.displayId || initiatedRequest?._displayId || initiatedRequest?.requestId,
+		id: canonicalRequestId,
+		_realId: canonicalRequestId,
+		requestId: canonicalRequestId || displayRequestId,
+		displayId: displayRequestId || canonicalRequestId,
 		hospitalId: initiatedRequest?.hospitalId || hospital?.id || null,
 		hospitalName:
 			initiatedRequest?.hospitalName ||
@@ -301,11 +321,30 @@ export function buildPendingApprovalState({
 	hospital,
 }) {
 	const serviceType = initiatedRequest?.serviceType || "ambulance";
+	const requestRow =
+		result?.request && typeof result.request === "object" ? result.request : null;
+	const resultRequestIdIsOnlyIdentity =
+		result?.requestId && !result?.displayId && !requestRow?.display_id;
+	const canonicalRequestId =
+		result?.id ??
+		requestRow?.id ??
+		initiatedRequest?._realId ??
+		(resultRequestIdIsOnlyIdentity ? result.requestId : null) ??
+		result?.requestId ??
+		initiatedRequest?.requestId ??
+		null;
+	const displayRequestId =
+		result?.displayId ??
+		requestRow?.display_id ??
+		initiatedRequest?._displayId ??
+		initiatedRequest?.displayId ??
+		initiatedRequest?.requestId ??
+		null;
 	return {
-		id: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
-		requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId,
-		displayId:
-			result?.displayId || initiatedRequest?._displayId || initiatedRequest?.requestId,
+		id: canonicalRequestId,
+		_realId: canonicalRequestId,
+		requestId: canonicalRequestId || displayRequestId,
+		displayId: displayRequestId || canonicalRequestId,
 		paymentId: result?.paymentId || null,
 		demoAutoApprove: result?.demoAutoApproveEligible === true,
 		hospitalId: initiatedRequest?.hospitalId || hospital?.id || null,

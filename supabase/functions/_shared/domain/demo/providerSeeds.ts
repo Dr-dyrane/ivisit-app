@@ -12,6 +12,22 @@ import {
 const MAPBOX_PROVIDER_LIMIT = 8;
 const GOOGLE_PROVIDER_LIMIT = 8;
 const DEMO_MIN_HOSPITALS = 5;
+const NON_HOSPITAL_SEED_PATTERN =
+  /\b(blood bank|blood center|blood centre|blood donation|plasma|donor center|donation center|laboratory|lab\b|pharmacy|veterinary|animal hospital|dental|dentist|optical|optometry)\b/i;
+
+const isLikelyHospitalSeed = (row: any) => {
+  const text = [
+    row?.name,
+    row?.displayName?.text,
+    row?.address,
+    row?.formattedAddress,
+    row?.place_formatted,
+  ]
+    .map((value) => toSafeString(value, ""))
+    .filter(Boolean)
+    .join(" ");
+  return !NON_HOSPITAL_SEED_PATTERN.test(text);
+};
 
 const getMapboxSeedHospitals = async (ctx: DemoContext) => {
   const mapboxToken = getEnv("MAPBOX_ACCESS_TOKEN", "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN");
@@ -50,6 +66,7 @@ const getMapboxSeedHospitals = async (ctx: DemoContext) => {
   }
 
   return rows
+    .filter(isLikelyHospitalSeed)
     .map((row: any, index: number) => {
       const properties = row?.properties ?? {};
       const geometryCoordinates = Array.isArray(row?.geometry?.coordinates)
@@ -177,7 +194,7 @@ const getGoogleSeedHospitals = async (ctx: DemoContext) => {
   const rows = await fetchGoogleNearbyPlaces(ctx, googleApiKey);
 
   const mappedRows = await Promise.all(
-    rows.map(async (row: any, index: number) => {
+    rows.filter(isLikelyHospitalSeed).map(async (row: any, index: number) => {
       const latitude = toFiniteNumber(row?.location?.latitude) ?? ctx.latitude;
       const longitude =
         toFiniteNumber(row?.location?.longitude) ?? ctx.longitude;

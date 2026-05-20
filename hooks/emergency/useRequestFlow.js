@@ -47,6 +47,26 @@ const getRequestUserCheckin = (request) => {
   return candidate && typeof candidate === "object" ? candidate : null;
 };
 
+const getHospitalCoordinate = (hospital) => {
+  const latitude = toFiniteNumber(
+    hospital?.latitude ??
+      hospital?.lat ??
+      hospital?.coords?.latitude ??
+      hospital?.coordinates?.latitude ??
+      hospital?.location?.latitude,
+  );
+  const longitude = toFiniteNumber(
+    hospital?.longitude ??
+      hospital?.lng ??
+      hospital?.lon ??
+      hospital?.coords?.longitude ??
+      hospital?.coordinates?.longitude ??
+      hospital?.location?.longitude,
+  );
+  if (latitude == null || longitude == null) return null;
+  return { latitude, longitude };
+};
+
 const normalizeRequestCostSnapshot = (raw) => {
   if (!raw || typeof raw !== "object") return null;
 
@@ -763,13 +783,25 @@ export const useRequestFlow = (props) => {
       }
 
       const nowIso = new Date().toISOString();
-      const visitId = request?.requestId
-        ? String(request.requestId)
-        : `local_${Date.now()}`;
+      const canonicalRequestId =
+        request?.id ??
+        request?._realId ??
+        (request?.request?.id ?? null);
+      const displayRequestId =
+        request?.displayId ??
+        request?.display_id ??
+        request?.request?.display_id ??
+        null;
+      const mutationRequestId = canonicalRequestId
+        ? String(canonicalRequestId)
+        : request?.requestId
+          ? String(request.requestId)
+          : `local_${Date.now()}`;
+      const runtimeRequestId = mutationRequestId;
       const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
 
       try {
-        await updateRequest?.(visitId, {
+        await updateRequest?.(mutationRequestId, {
           status: EmergencyRequestStatus.ACCEPTED,
           hospitalId,
           hospitalName: request?.hospitalName ?? hospital?.name ?? null,
@@ -783,7 +815,7 @@ export const useRequestFlow = (props) => {
         });
       } catch (err) {
         try {
-          await setRequestStatus?.(visitId, EmergencyRequestStatus.ACCEPTED);
+          await setRequestStatus?.(mutationRequestId, EmergencyRequestStatus.ACCEPTED);
         } catch (e) {}
       }
 
@@ -792,7 +824,7 @@ export const useRequestFlow = (props) => {
         // overwritten by MONITORING in the same try block (silent drop — CONFIRMED never observable)
         // OLD: CONFIRMED → MONITORING (two writes; first is invisible to all subscribers)
         // NEW: write MONITORING directly — correct terminal state for an accepted dispatch
-        await updateVisit?.(visitId, {
+        await updateVisit?.(mutationRequestId, {
           lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
           lifecycleUpdatedAt: nowIso,
         });
@@ -814,15 +846,18 @@ export const useRequestFlow = (props) => {
               : `${Math.max(1, Math.round(routeEtaSeconds / 60))} min`
             : "En route");
         startAmbulanceTrip({
+          id: canonicalRequestId ? String(canonicalRequestId) : null,
           hospitalId,
-          requestId: visitId,
+          requestId: runtimeRequestId,
+          displayId: displayRequestId ? String(displayRequestId) : runtimeRequestId,
           status: EmergencyRequestStatus.ACCEPTED,
           ambulanceId: request?.ambulanceId ?? null,
           ambulanceType: request?.ambulanceType ?? null,
           assignedAmbulance: request?.assignedAmbulance ?? null,
           currentResponderLocation: request?.currentResponderLocation ?? null,
           currentResponderHeading: request?.currentResponderHeading ?? null,
-          hospitalCoordinate: request?.hospitalCoordinate ?? null,
+          hospitalCoordinate:
+            request?.hospitalCoordinate ?? getHospitalCoordinate(hospital),
           patientLocation: request?.patientLocation ?? null,
           estimatedArrival: fallbackEtaLabel,
           etaSeconds: routeEtaSeconds,
@@ -838,8 +873,10 @@ export const useRequestFlow = (props) => {
           currentRoute?.duration ??
           null;
         startBedBooking({
+          id: canonicalRequestId ? String(canonicalRequestId) : null,
           hospitalId,
-          requestId: visitId,
+          requestId: runtimeRequestId,
+          displayId: displayRequestId ? String(displayRequestId) : runtimeRequestId,
           status: EmergencyRequestStatus.ACCEPTED,
           hospitalName: request?.hospitalName ?? hospital?.name ?? null,
           specialty: request?.specialty ?? null,
@@ -857,11 +894,11 @@ export const useRequestFlow = (props) => {
         const userCheckin = getRequestUserCheckin(request);
         void triageService
           .collectAndPersist({
-            requestId: visitId,
+            requestId: mutationRequestId,
             stage: "routing",
             request: {
               ...request,
-              requestId: visitId,
+              requestId: runtimeRequestId,
               hospitalId,
               hospitalName: request?.hospitalName ?? hospital?.name ?? null,
             },
@@ -877,7 +914,7 @@ export const useRequestFlow = (props) => {
             const severityBand = snapshot?.severity?.band ?? "unknown";
             const careType = snapshot?.careType?.type ?? "unknown";
             console.log(
-              `[useRequestFlow] triage captured (routing): requestId=${visitId} severity=${severityBand} careType=${careType}`,
+              `[useRequestFlow] triage captured (routing): requestId=${mutationRequestId} severity=${severityBand} careType=${careType}`,
             );
           })
           .catch((triageError) => {
@@ -891,7 +928,12 @@ export const useRequestFlow = (props) => {
       inflightByTypeRef.current[request.serviceType] = false;
       clearSelectedHospital();
       onRequestComplete?.();
-      return { ok: true, requestId: visitId, serviceType: request.serviceType };
+      return {
+        ok: true,
+        requestId: mutationRequestId,
+        displayId: displayRequestId ?? runtimeRequestId,
+        serviceType: request.serviceType,
+      };
     },
     [blockResult, canStartRequest],
   );

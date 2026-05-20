@@ -35,29 +35,65 @@ export function useQuotedPriceMap({
     [getAmount, getCurrency, items],
   );
 
-  const quoteResults = useQueries({
-    queries: normalizedItems.map((entry) =>
-      buildBillingQuoteQueryConfig({
-        amount: entry.amount,
-        sourceCurrency: entry.currency,
-        preferences,
-        billingCountryCode,
-        billingCurrencyCode,
-        enabled:
-          enabled &&
-          Number.isFinite(entry.amount) &&
-          entry.amount >= 0 &&
-          Boolean(entry.key),
+  const quoteEntries = useMemo(
+    () =>
+      normalizedItems.map((entry) => {
+        const config = buildBillingQuoteQueryConfig({
+          amount: entry.amount,
+          sourceCurrency: entry.currency,
+          preferences,
+          billingCountryCode,
+          billingCurrencyCode,
+          enabled:
+            enabled &&
+            Number.isFinite(entry.amount) &&
+            entry.amount >= 0 &&
+            Boolean(entry.key),
+        });
+        return {
+          ...entry,
+          queryConfig: config,
+          querySignature: JSON.stringify(config.queryKey),
+        };
       }),
-    ),
+    [
+      billingCountryCode,
+      billingCurrencyCode,
+      enabled,
+      normalizedItems,
+      preferences,
+    ],
+  );
+
+  const uniqueQuoteConfigs = useMemo(() => {
+    const seen = new Set();
+    const configs = [];
+    quoteEntries.forEach((entry) => {
+      if (seen.has(entry.querySignature)) return;
+      seen.add(entry.querySignature);
+      configs.push(entry.queryConfig);
+    });
+    return configs;
+  }, [quoteEntries]);
+
+  const quoteResults = useQueries({
+    queries: uniqueQuoteConfigs,
   });
 
   return useMemo(() => {
     const nextMap = {};
+    const quoteBySignature = new Map();
 
-    normalizedItems.forEach((entry, index) => {
+    uniqueQuoteConfigs.forEach((config, index) => {
+      quoteBySignature.set(
+        JSON.stringify(config.queryKey),
+        quoteResults[index]?.data || null,
+      );
+    });
+
+    quoteEntries.forEach((entry) => {
       if (!entry?.key) return;
-      const quote = quoteResults[index]?.data || null;
+      const quote = quoteBySignature.get(entry.querySignature) || null;
       nextMap[entry.key] = {
         amount: entry.amount,
         currency: entry.currency,
@@ -71,7 +107,7 @@ export function useQuotedPriceMap({
     });
 
     return nextMap;
-  }, [normalizedItems, quoteResults]);
+  }, [quoteEntries, quoteResults, uniqueQuoteConfigs]);
 }
 
 export default useQuotedPriceMap;

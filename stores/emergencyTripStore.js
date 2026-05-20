@@ -18,20 +18,32 @@ import { areRuntimeStateValuesEqual } from '../utils/emergencyContextHelpers';
 const STORAGE_KEY = StorageKeys.EMERGENCY_STATE;
 
 // PULLBACK NOTE: Tracking sheet — startedAt preservation invariant.
+const getRequestIdentityKeys = (record) => {
+  if (!record || typeof record !== "object") return [];
+  return [
+    record.id,
+    record.requestId,
+    record.displayId,
+    record.display_id,
+    record._realId,
+    record.bookingId,
+    record.request?.id,
+    record.request?.display_id,
+  ]
+    .filter((value) => value != null && value !== "")
+    .map((value) => String(value));
+};
+
 // Returns a trip-like object (or null) where `startedAt` is preserved from the
 // previous value when (a) both refer to the same requestId, and (b) the next
 // value's `startedAt` is missing/non-finite. Falls through unchanged otherwise.
 // Identifies "same trip" by requestId or id (loose-string compare to absorb
 // number/string drift across server payloads).
 const sameTripIdentity = (a, b) => {
-  if (!a || !b) return false;
-  const aReq = a.requestId != null ? String(a.requestId) : null;
-  const bReq = b.requestId != null ? String(b.requestId) : null;
-  if (aReq && bReq && aReq === bReq) return true;
-  const aId = a.id != null ? String(a.id) : null;
-  const bId = b.id != null ? String(b.id) : null;
-  if (aId && bId && aId === bId) return true;
-  return false;
+  const aKeys = getRequestIdentityKeys(a);
+  const bKeys = getRequestIdentityKeys(b);
+  if (!aKeys.length || !bKeys.length) return false;
+  return aKeys.some((key) => bKeys.includes(key));
 };
 
 // `startedAt` is an immutable real-world moment for a given trip identity
@@ -41,13 +53,48 @@ const sameTripIdentity = (a, b) => {
 // Metro reloads race between hydration and server merges, and a fresh
 // `Date.now()` from the query's fallback path ends up replacing the persisted
 // start time, visually resetting trip progress.
-const preserveTripStartedAt = (prev, next) => {
+const hasUsableEtaSeconds = (value) =>
+  Number.isFinite(Number(value)) && Number(value) > 0;
+
+const preserveTripTrackingRuntime = (prev, next) => {
   if (!next) return next;
   if (!prev) return next;
   if (!sameTripIdentity(prev, next)) return next;
-  if (!Number.isFinite(prev.startedAt)) return next;
-  if (prev.startedAt === next.startedAt) return next;
-  return { ...next, startedAt: prev.startedAt };
+
+  const merged = { ...next };
+
+  if (Number.isFinite(prev.startedAt)) {
+    merged.startedAt = prev.startedAt;
+  }
+
+  if (!hasUsableEtaSeconds(merged.etaSeconds) && hasUsableEtaSeconds(prev.etaSeconds)) {
+    merged.etaSeconds = Number(prev.etaSeconds);
+  }
+
+  if (!merged.estimatedArrival && prev.estimatedArrival) {
+    merged.estimatedArrival = prev.estimatedArrival;
+  }
+
+  if (!merged.etaSource && prev.etaSource) {
+    merged.etaSource = prev.etaSource;
+  }
+
+  if (
+    (!Array.isArray(merged.route) || merged.route.length < 2) &&
+    Array.isArray(prev.route) &&
+    prev.route.length >= 2
+  ) {
+    merged.route = prev.route;
+  }
+
+  return merged;
+};
+
+const mergeHydratedTripState = (current, stored) => {
+  if (!current) return stored;
+  if (!stored) return current;
+  if (!sameTripIdentity(current, stored)) return current;
+  return preserveTripTrackingRuntime(stored, current);
 };
 
 // Trip state shape
@@ -94,7 +141,7 @@ export const useEmergencyTripStore = create(
       set((state) => {
         const prev = state.activeAmbulanceTrip;
         const raw = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
-        const next = preserveTripStartedAt(prev, raw);
+        const next = preserveTripTrackingRuntime(prev, raw);
 
         if (!areRuntimeStateValuesEqual(next, prev)) state.activeAmbulanceTrip = next;
       });
@@ -104,7 +151,7 @@ export const useEmergencyTripStore = create(
       set((state) => {
         const prev = state.activeBedBooking;
         const raw = typeof nextValueOrUpdater === 'function' ? nextValueOrUpdater(prev) : nextValueOrUpdater;
-        const next = preserveTripStartedAt(prev, raw);
+        const next = preserveTripTrackingRuntime(prev, raw);
         if (!areRuntimeStateValuesEqual(next, prev)) state.activeBedBooking = next;
       });
     },
@@ -129,7 +176,7 @@ export const useEmergencyTripStore = create(
             ? { ...state.activeAmbulanceTrip.assignedAmbulance, ...updates.assignedAmbulance }
             : state.activeAmbulanceTrip.assignedAmbulance,
         };
-        state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, merged);
+        state.activeAmbulanceTrip = preserveTripTrackingRuntime(state.activeAmbulanceTrip, merged);
       });
     },
     
@@ -137,7 +184,7 @@ export const useEmergencyTripStore = create(
       set((state) => {
         if (!state.activeBedBooking) return;
         const merged = { ...state.activeBedBooking, ...updates };
-        state.activeBedBooking = preserveTripStartedAt(state.activeBedBooking, merged);
+        state.activeBedBooking = preserveTripTrackingRuntime(state.activeBedBooking, merged);
       });
     },
     
@@ -189,7 +236,7 @@ export const useEmergencyTripStore = create(
     // NEW: single atomic Zustand action — one write, no partial state window
     transitionPendingToActive: (trip) => {
       set((state) => {
-        state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, trip);
+        state.activeAmbulanceTrip = preserveTripTrackingRuntime(state.activeAmbulanceTrip, trip);
         state.pendingApproval = null;
       });
     },
@@ -246,10 +293,10 @@ export const useEmergencyTripStore = create(
     hydrateFromServer: (activeAmbulance, activeBed, pending) => {
       set((state) => {
         if (activeAmbulance !== undefined) {
-          state.activeAmbulanceTrip = preserveTripStartedAt(state.activeAmbulanceTrip, activeAmbulance);
+          state.activeAmbulanceTrip = preserveTripTrackingRuntime(state.activeAmbulanceTrip, activeAmbulance);
         }
         if (activeBed !== undefined) {
-          state.activeBedBooking = preserveTripStartedAt(state.activeBedBooking, activeBed);
+          state.activeBedBooking = preserveTripTrackingRuntime(state.activeBedBooking, activeBed);
         }
         if (pending !== undefined) state.pendingApproval = pending;
         state.lastSyncAt = Date.now();
@@ -266,9 +313,21 @@ export const useEmergencyTripStore = create(
         if (storedState && typeof storedState === 'object') {
           const normalized = normalizeEmergencyState(storedState);
           set((state) => {
-            if (normalized.activeAmbulanceTrip?.requestId) state.activeAmbulanceTrip = normalized.activeAmbulanceTrip;
-            if (normalized.activeBedBooking?.requestId) state.activeBedBooking = normalized.activeBedBooking;
-            if (normalized.pendingApproval?.requestId) state.pendingApproval = normalized.pendingApproval;
+            if (normalized.activeAmbulanceTrip?.requestId) {
+              state.activeAmbulanceTrip = mergeHydratedTripState(
+                state.activeAmbulanceTrip,
+                normalized.activeAmbulanceTrip,
+              );
+            }
+            if (normalized.activeBedBooking?.requestId) {
+              state.activeBedBooking = mergeHydratedTripState(
+                state.activeBedBooking,
+                normalized.activeBedBooking,
+              );
+            }
+            if (normalized.pendingApproval?.requestId && !state.pendingApproval) {
+              state.pendingApproval = normalized.pendingApproval;
+            }
             if (storedState.eventGates) state.eventGates = storedState.eventGates;
           });
         }

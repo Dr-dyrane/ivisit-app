@@ -109,8 +109,7 @@ export function useMapTracking({
     // PULLBACK NOTE: Phase 8 — Pass C: XState gate
     // Treat trip as inactive if EITHER Zustand identity is missing OR
     // XState lifecycle says no active trip. Closes the race during cleanup.
-    const isTripActive = Boolean(trackingRequestKey) && hasActiveTrip;
-    if (!isTripActive) {
+    if (!trackingRequestKey) {
       if (sheetPhase === MAP_SHEET_PHASES.TRACKING) {
         setSheetView(buildExploreIntentSheetView(defaultExploreSnapState));
       }
@@ -130,7 +129,10 @@ export function useMapTracking({
       return;
     }
 
-    if (sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT) {
+    if (
+      sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT &&
+      (hasActiveTrip || shouldForceAutoOpen)
+    ) {
       openTracking();
     }
   }, [

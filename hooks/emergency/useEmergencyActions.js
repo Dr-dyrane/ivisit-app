@@ -39,6 +39,31 @@ const hasSameRequestIdentity = (a, b) => {
   return aKeys.some((key) => bKeys.includes(key));
 };
 
+const normalizeTripIdentity = (trip) => {
+  const canonicalRequestId =
+    trip?.id != null && trip.id !== ""
+      ? String(trip.id)
+      : trip?._realId != null && trip._realId !== ""
+        ? String(trip._realId)
+        : trip?.request?.id != null && trip.request.id !== ""
+          ? String(trip.request.id)
+          : trip?.requestId != null && trip.requestId !== ""
+            ? String(trip.requestId)
+            : null;
+  const displayId =
+    trip?.displayId != null && trip.displayId !== ""
+      ? String(trip.displayId)
+      : trip?.display_id != null && trip.display_id !== ""
+        ? String(trip.display_id)
+        : trip?.request?.display_id != null && trip.request.display_id !== ""
+          ? String(trip.request.display_id)
+          : trip?.requestId != null && trip.requestId !== ""
+            ? String(trip.requestId)
+            : canonicalRequestId;
+
+  return { canonicalRequestId, displayId };
+};
+
 export function useEmergencyActions({
   activeAmbulanceTrip,
   activeBedBookingRef,
@@ -185,11 +210,14 @@ export function useEmergencyActions({
   const startAmbulanceTrip = useCallback(
     (trip) => {
       if (!trip?.hospitalId) return;
+      const { canonicalRequestId, displayId } = normalizeTripIdentity(trip);
 
       // DIAGNOSTIC LOG
       const logPrefix = `[EmergencyActions.startAmbulanceTrip ${Date.now().toString(36).slice(-4)}]`;
       console.log(`${logPrefix} Called with:`, {
         requestId: trip?.requestId,
+        canonicalRequestId,
+        displayId,
         status: trip?.status,
         assignedAmbulanceName: trip?.assignedAmbulance?.name,
         stack: new Error().stack?.split("\n").slice(1, 4).join(" | "),
@@ -236,7 +264,8 @@ export function useEmergencyActions({
       const nextTrip = {
         id: trip.id ?? null,
         hospitalId: trip.hospitalId,
-        requestId: trip.requestId ?? null,
+        requestId: canonicalRequestId,
+        displayId,
         status: trip.status ?? null,
         ambulanceId: assignedAmbulance?.id ?? trip.ambulanceId ?? null,
         ambulanceType: trip.ambulanceType ?? assignedAmbulance?.type ?? null,

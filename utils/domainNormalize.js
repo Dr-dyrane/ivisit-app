@@ -148,15 +148,44 @@ export const normalizeEmergencyState = (raw) => {
 	const normalizeTrip = (trip) => {
 		if (!trip || typeof trip !== "object") return null;
 		if (!trip?.hospitalId) return null;
+		const id =
+			typeof trip.id === "string"
+				? trip.id
+				: typeof trip.id === "number"
+					? String(trip.id)
+					: typeof trip._realId === "string"
+						? trip._realId
+						: typeof trip._realId === "number"
+							? String(trip._realId)
+							: null;
+		const requestId =
+			typeof trip.requestId === "string"
+				? trip.requestId
+				: typeof trip.requestId === "number"
+					? String(trip.requestId)
+					: null;
+		const displayId =
+			typeof trip.displayId === "string"
+				? trip.displayId
+				: typeof trip.displayId === "number"
+					? String(trip.displayId)
+					: typeof trip.display_id === "string"
+						? trip.display_id
+						: typeof trip.display_id === "number"
+							? String(trip.display_id)
+							: requestId;
 		return {
 			...trip,
+			id,
 			hospitalId: String(trip.hospitalId),
-			requestId:
-				typeof trip.requestId === "string"
-					? trip.requestId
-					: typeof trip.requestId === "number"
-						? String(trip.requestId)
-						: null,
+			requestId,
+			displayId,
+			_realId:
+				typeof trip._realId === "string"
+					? trip._realId
+					: typeof trip._realId === "number"
+						? String(trip._realId)
+						: id,
 			startedAt: coerceStartedAtMs(trip.startedAt) ?? Date.now(),
 		};
 	};
@@ -164,15 +193,44 @@ export const normalizeEmergencyState = (raw) => {
 	const normalizeBooking = (booking) => {
 		if (!booking || typeof booking !== "object") return null;
 		if (!booking?.hospitalId) return null;
+		const id =
+			typeof booking.id === "string"
+				? booking.id
+				: typeof booking.id === "number"
+					? String(booking.id)
+					: typeof booking._realId === "string"
+						? booking._realId
+						: typeof booking._realId === "number"
+							? String(booking._realId)
+							: null;
+		const requestId =
+			typeof booking.requestId === "string"
+				? booking.requestId
+				: typeof booking.requestId === "number"
+					? String(booking.requestId)
+					: null;
+		const displayId =
+			typeof booking.displayId === "string"
+				? booking.displayId
+				: typeof booking.displayId === "number"
+					? String(booking.displayId)
+					: typeof booking.display_id === "string"
+						? booking.display_id
+						: typeof booking.display_id === "number"
+							? String(booking.display_id)
+							: requestId;
 		return {
 			...booking,
+			id,
 			hospitalId: String(booking.hospitalId),
-			requestId:
-				typeof booking.requestId === "string"
-					? booking.requestId
-					: typeof booking.requestId === "number"
-						? String(booking.requestId)
-						: null,
+			requestId,
+			displayId,
+			_realId:
+				typeof booking._realId === "string"
+					? booking._realId
+					: typeof booking._realId === "number"
+						? String(booking._realId)
+						: id,
 			bookingId:
 				typeof booking.bookingId === "string"
 					? booking.bookingId
@@ -188,15 +246,44 @@ export const normalizeEmergencyState = (raw) => {
 	const normalizePendingApproval = (pendingApproval) => {
 		if (!pendingApproval || typeof pendingApproval !== "object") return null;
 		if (!pendingApproval?.hospitalId) return null;
+		const id =
+			typeof pendingApproval.id === "string"
+				? pendingApproval.id
+				: typeof pendingApproval.id === "number"
+					? String(pendingApproval.id)
+					: typeof pendingApproval._realId === "string"
+						? pendingApproval._realId
+						: typeof pendingApproval._realId === "number"
+							? String(pendingApproval._realId)
+							: null;
+		const requestId =
+			typeof pendingApproval.requestId === "string"
+				? pendingApproval.requestId
+				: typeof pendingApproval.requestId === "number"
+					? String(pendingApproval.requestId)
+					: null;
+		const displayId =
+			typeof pendingApproval.displayId === "string"
+				? pendingApproval.displayId
+				: typeof pendingApproval.displayId === "number"
+					? String(pendingApproval.displayId)
+					: typeof pendingApproval.display_id === "string"
+						? pendingApproval.display_id
+						: typeof pendingApproval.display_id === "number"
+							? String(pendingApproval.display_id)
+							: requestId;
 		return {
 			...pendingApproval,
+			id,
 			hospitalId: String(pendingApproval.hospitalId),
-			requestId:
-				typeof pendingApproval.requestId === "string"
-					? pendingApproval.requestId
-					: typeof pendingApproval.requestId === "number"
-						? String(pendingApproval.requestId)
-						: null,
+			requestId,
+			displayId,
+			_realId:
+				typeof pendingApproval._realId === "string"
+					? pendingApproval._realId
+					: typeof pendingApproval._realId === "number"
+						? String(pendingApproval._realId)
+						: id,
 			paymentId:
 				typeof pendingApproval.paymentId === "string"
 					? pendingApproval.paymentId

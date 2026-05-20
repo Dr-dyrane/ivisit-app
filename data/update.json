@@ -3,24 +3,24 @@
   "_lastCommitDate": "2026-05-19T20:28:46-07:00",
   "version": "1.0.5",
   "date": "2026-05-20",
-  "title": "Emergency Tracking Hardening",
-  "summary": "Tightened emergency tracking state, action eligibility, route ownership, and tracking-sheet UI resilience for the staging release.",
+  "title": "Payment to Tracking Stabilization",
+  "summary": "Stabilized the emergency payment-to-tracking handoff, ETA rehydration, demo provider seeding, and rating modal behavior for staging.",
   "changes": [
     {
-      "type": "improvement",
-      "message": "Centralized tracking stage, hero, and action decisions so ambulance, bed, pending, arrived, delayed, lost, and completed states stay aligned."
+      "type": "bugfix",
+      "message": "Preserved canonical request identity and ETA state across payment approval, realtime updates, hydration, and Contact Dispatch."
     },
     {
       "type": "bugfix",
-      "message": "Scoped live route and tracking UI state by request identity so a new emergency request cannot inherit stale ETA, route, progress, or title-animation state."
+      "message": "Prevented duplicate rating modal flashes by resolving recovered and in-flow rating through a single modal surface."
     },
     {
-      "type": "improvement",
-      "message": "Kept Contact Dispatch available during recoverable tracking interruptions while preserving completed-state terminal behavior."
+      "type": "bugfix",
+      "message": "Hardened demo hospital bootstrap against duplicate location conflicts and non-hospital provider seeds."
     },
     {
       "type": "quality",
-      "message": "Added pure tracking model assertions and hardened tracking-sheet text rendering for staging verification."
+      "message": "Documented the verified no-reload cash approval tracking flow and remaining data cleanup notes."
     }
   ]
 }

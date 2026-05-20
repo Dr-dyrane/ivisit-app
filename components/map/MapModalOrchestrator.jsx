@@ -6,7 +6,7 @@
 //
 // Owns:
 //   - All modal rendering for MapScreen (MiniProfileModal, MapGuestProfileModal,
-//     MapChooseCareModal, MapHistoryModal, MapHistoryPaymentModal, ServiceRatingModal x2)
+//     MapChooseCareModal, MapHistoryModal, MapHistoryPaymentModal, ServiceRatingModal)
 //
 // Does NOT own:
 //   - Modal visibility state — from useMapExploreFlow/useMapShell, passed in
@@ -34,7 +34,7 @@ import {
  * - Choose Care modal
  * - History modal (recent visits)
  * - History payment modal
- * - Service rating modals (recovered and in-flow tracking)
+ * - Service rating modal (tracking takes priority over recovered rating)
  * - Contact Dispatch modal
  *
  * @param {Object} props
@@ -124,6 +124,22 @@ export default function MapModalOrchestrator({
   // PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat modal state
   const [emergencyChatModalVisible] = useAtom(emergencyChatModalVisibleAtom);
   const [activeEmergencyChatRequestId] = useAtom(activeEmergencyChatRequestIdAtom);
+  const ratingState = trackingRatingState?.visible
+    ? trackingRatingState
+    : recoveredRatingState?.visible
+      ? recoveredRatingState
+      : null;
+  const ratingHandlers = trackingRatingState?.visible
+    ? {
+        onClose: closeTrackingRating,
+        onSkip: skipTrackingRating,
+        onSubmit: submitTrackingRating,
+      }
+    : {
+        onClose: closeRecoveredRating,
+        onSkip: handleSkipRecoveredRating,
+        onSubmit: handleSubmitRecoveredRating,
+      };
   return (
     <>
       <MiniProfileModal
@@ -182,29 +198,14 @@ export default function MapModalOrchestrator({
       />
 
       <ServiceRatingModal
-        visible={Boolean(recoveredRatingState?.visible && !trackingRatingState?.visible)}
-        serviceType={recoveredRatingState?.serviceType || "visit"}
-        title={recoveredRatingState?.title || "Rate your visit"}
-        subtitle={recoveredRatingState?.subtitle || null}
-        serviceDetails={recoveredRatingState?.serviceDetails || null}
-        onClose={closeRecoveredRating}
-        onSkip={handleSkipRecoveredRating}
-        onSubmit={handleSubmitRecoveredRating}
-        surfaceVariant="map"
-        preferDrawerPresentation={usesSidebarLayout}
-      />
-
-      {/* PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal */}
-      {/* Lifted from MapTrackingStageBase so it survives sheet phase transitions */}
-      <ServiceRatingModal
-        visible={Boolean(trackingRatingState?.visible)}
-        serviceType={trackingRatingState?.serviceType || "visit"}
-        title={trackingRatingState?.title || "Rate your visit"}
-        subtitle={trackingRatingState?.subtitle || null}
-        serviceDetails={trackingRatingState?.serviceDetails || null}
-        onClose={closeTrackingRating}
-        onSkip={skipTrackingRating}
-        onSubmit={submitTrackingRating}
+        visible={Boolean(ratingState?.visible)}
+        serviceType={ratingState?.serviceType || "visit"}
+        title={ratingState?.title || "Rate your visit"}
+        subtitle={ratingState?.subtitle || null}
+        serviceDetails={ratingState?.serviceDetails || null}
+        onClose={ratingHandlers.onClose}
+        onSkip={ratingHandlers.onSkip}
+        onSubmit={ratingHandlers.onSubmit}
         surfaceVariant="map"
         preferDrawerPresentation={usesSidebarLayout}
       />

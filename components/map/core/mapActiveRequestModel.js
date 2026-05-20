@@ -253,9 +253,11 @@ function resolveStatusLabel({
 		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
 		if (status === EmergencyRequestStatus.ARRIVED) return "Complete";
 		if (etaElapsed) return "Arrived";
+		const etaLabel = formatHeaderEtaLabel(etaSeconds, startedAt, nowMs);
+		if (etaLabel) return etaLabel;
 		if (telemetryState === "lost") return "Tracking lost";
 		if (telemetryState === "stale") return "Tracking delayed";
-		return formatHeaderEtaLabel(etaSeconds, startedAt, nowMs) || "Live";
+		return "Live";
 	}
 
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.BED || pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED) {
@@ -450,8 +452,8 @@ export function buildActiveMapRequestModel({
 		canConfirmArrival:
 			kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE &&
 			etaElapsed &&
-			status !== EmergencyRequestStatus.ARRIVED &&
-			status !== EmergencyRequestStatus.COMPLETED,
+			(status === EmergencyRequestStatus.IN_PROGRESS ||
+				status === EmergencyRequestStatus.ACCEPTED),
 		canCompleteAmbulance:
 			kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE &&
 			status === EmergencyRequestStatus.ARRIVED,

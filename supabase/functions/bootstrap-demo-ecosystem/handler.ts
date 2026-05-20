@@ -27,11 +27,14 @@ export const handleBootstrapDemoEcosystemRequest = async (req: Request) => {
     return optionsResponse();
   }
 
+  let phase = "unknown";
+  const timeline: TimedStepEntry[] = [];
+
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
 
     const body = await req.json();
-    const phase = toSafeString(body?.phase, "full");
+    phase = toSafeString(body?.phase, "full");
     const requestedUserId = toSafeString(body?.userId, "");
     const latitude = toFiniteNumber(body?.latitude);
     const longitude = toFiniteNumber(body?.longitude);
@@ -68,7 +71,6 @@ export const handleBootstrapDemoEcosystemRequest = async (req: Request) => {
       radiusKm,
     );
 
-    const timeline: TimedStepEntry[] = [];
     const runStep = <TData>(step: string, action: () => Promise<TData>) =>
       runTimedStep(timeline, step, action);
 
@@ -159,10 +161,16 @@ export const handleBootstrapDemoEcosystemRequest = async (req: Request) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[bootstrap-demo-ecosystem] fatal", message);
     return jsonResponse(
       {
         ok: false,
         error: message,
+        phase:
+          typeof phase === "string" && phase.length > 0
+            ? phase
+            : "unknown",
+        timeline,
       },
       { status: 500 },
     );

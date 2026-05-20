@@ -28,18 +28,40 @@ import { parsePointGeometry } from "../../utils/emergencyRealtimeProjection";
 import {
 	normalizeRouteCoordinates,
 } from "../../utils/emergencyContextHelpers";
-import { useEmergencyTripStore } from "../../stores/emergencyTripStore";
+import { useEmergencyTripStore, useStoreHydrated } from "../../stores/emergencyTripStore";
 
 export const ACTIVE_TRIP_QUERY_KEY = ["activeTrip"];
 
 const STALE_TIME = 10 * 1000;
 const REFETCH_INTERVAL = 15 * 1000;
 
-const isActiveStatus = (status) =>
-	status === "pending_approval" ||
+const isDispatchedStatus = (status) =>
 	status === "in_progress" ||
 	status === "accepted" ||
 	status === "arrived";
+
+const getRequestIdentityKeys = (record) => {
+	if (!record || typeof record !== "object") return [];
+	return [
+		record.id,
+		record.requestId,
+		record.displayId,
+		record.display_id,
+		record._realId,
+		record.bookingId,
+		record.request?.id,
+		record.request?.display_id,
+	]
+		.filter((value) => value != null && value !== "")
+		.map((value) => String(value));
+};
+
+const hasSameRequestIdentity = (a, b) => {
+	const aKeys = getRequestIdentityKeys(a);
+	const bKeys = getRequestIdentityKeys(b);
+	if (!aKeys.length || !bKeys.length) return false;
+	return aKeys.some((key) => bKeys.includes(key));
+};
 
 /**
  * Build the normalized ambulance trip snapshot from a raw server record.
@@ -50,13 +72,7 @@ const isActiveStatus = (status) =>
  */
 async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip, parseEtaToSeconds) {
 	const parsePoint = parsePointGeometry;
-	const isSameAmbulanceTrip = !!(
-		previousAmbulanceTrip &&
-		((previousAmbulanceTrip?.id && activeAmbulance?.id &&
-			String(previousAmbulanceTrip.id) === String(activeAmbulance.id)) ||
-			(previousAmbulanceTrip?.requestId && activeAmbulance?.requestId &&
-				String(previousAmbulanceTrip.requestId) === String(activeAmbulance.requestId)))
-	);
+	const isSameAmbulanceTrip = hasSameRequestIdentity(previousAmbulanceTrip, activeAmbulance);
 
 	const loc = parsePoint(activeAmbulance.responderLocation);
 	let fullAmbulance = null;
@@ -102,13 +118,25 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
 	const hasResponderIdentity = !!(
 		activeAmbulance.responderName || activeAmbulance.responderPhone ||
 		activeAmbulance.responderVehicleType || activeAmbulance.responderVehiclePlate ||
-		activeAmbulance.ambulanceId || loc
+		activeAmbulance.ambulanceId || fullAmbulance?.id || loc
 	);
+	const fullAmbulanceName =
+		fullAmbulance?.name ||
+		fullAmbulance?.callSign ||
+		fullAmbulance?.vehicleNumber ||
+		fullAmbulance?.licensePlate ||
+		null;
+	const fullAmbulancePlate =
+		fullAmbulance?.vehicleNumber ||
+		fullAmbulance?.licensePlate ||
+		fullAmbulance?.plate ||
+		null;
 
 	return {
 		id: activeAmbulance.id ?? null,
 		hospitalId: activeAmbulance.hospitalId,
-		requestId: activeAmbulance.requestId,
+		requestId: activeAmbulance.id ?? activeAmbulance.requestId ?? null,
+		displayId: activeAmbulance.displayId ?? activeAmbulance.requestId ?? null,
 		status: activeAmbulance.status,
 		triage: triageSnapshot,
 		triageSnapshot,
@@ -134,13 +162,18 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
 			? {
 					...fullAmbulance,
 					...(previousAmbulanceTrip?.assignedAmbulance || {}),
-					id: activeAmbulance.ambulanceId || "ems_001",
+					id: activeAmbulance.ambulanceId || fullAmbulance?.id || "ems_001",
 					type: activeAmbulance.responderVehicleType || fullAmbulance?.type || "Ambulance",
-					plate: activeAmbulance.responderVehiclePlate || fullAmbulance?.vehicleNumber,
+					plate: activeAmbulance.responderVehiclePlate || fullAmbulancePlate,
+					vehicleNumber:
+						activeAmbulance.responderVehiclePlate ||
+						fullAmbulancePlate ||
+						previousAmbulanceTrip?.assignedAmbulance?.vehicleNumber ||
+						null,
 					name:
 						activeAmbulance.responderName ||
 						previousAmbulanceTrip?.assignedAmbulance?.name ||
-						fullAmbulance?.name ||
+						fullAmbulanceName ||
 						null,
 					phone:
 						activeAmbulance.responderPhone ||
@@ -174,6 +207,7 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
  * @param {Function} parseEtaToSeconds - ETA string → seconds parser from useEmergencyActions
  */
 export function useActiveTripQuery({ parseEtaToSeconds }) {
+	const hydrated = useStoreHydrated();
 	const setActiveAmbulanceTrip = useEmergencyTripStore((s) => s.setActiveAmbulanceTrip);
 	const setActiveBedBooking = useEmergencyTripStore((s) => s.setActiveBedBooking);
 	const setPendingApproval = useEmergencyTripStore((s) => s.setPendingApproval);
@@ -201,10 +235,10 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			const activeRequests = await emergencyRequestsService.list();
 
 			const activeAmbulance = activeRequests.find(
-				(r) => r?.serviceType === "ambulance" && isActiveStatus(r?.status)
+				(r) => r?.serviceType === "ambulance" && isDispatchedStatus(r?.status)
 			);
 			const activeBed = activeRequests.find(
-				(r) => r?.serviceType === "bed" && isActiveStatus(r?.status)
+				(r) => r?.serviceType === "bed" && isDispatchedStatus(r?.status)
 			);
 			// PULLBACK NOTE: Pass 1 raw-status sweep — OLD: "pending_approval" inline  NEW: EmergencyRequestStatus.PENDING_APPROVAL
 			const pendingMatch = activeRequests.find((r) => r?.status === EmergencyRequestStatus.PENDING_APPROVAL);
@@ -226,8 +260,9 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 						{
 							id: activeBed.id ?? null,
 							hospitalId: activeBed.hospitalId,
-							bookingId: activeBed.bookingId ?? activeBed.requestId ?? null,
-							requestId: activeBed.requestId ?? activeBed.bookingId ?? null,
+							bookingId: activeBed.id ?? activeBed.bookingId ?? activeBed.requestId ?? null,
+							requestId: activeBed.id ?? activeBed.requestId ?? activeBed.bookingId ?? null,
+							displayId: activeBed.displayId ?? activeBed.requestId ?? null,
 							status: activeBed.status ?? null,
 							triage: activeBed.triage ?? null,
 							triageSnapshot: activeBed.triageSnapshot ?? null,
@@ -257,7 +292,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 						: null);
 				pending = {
 					id: pendingMatch.id ?? null,
-					requestId: pendingMatch.requestId,
+					requestId: pendingMatch.id ?? pendingMatch.requestId ?? null,
 					displayId: pendingMatch.displayId ?? pendingMatch.requestId ?? null,
 					hospitalId: pendingMatch.hospitalId,
 					hospitalName: pendingMatch.hospitalName,
@@ -285,6 +320,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		refetchInterval: REFETCH_INTERVAL,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,
+		enabled: hydrated,
 	});
 
 	// Auto-sync query result → Zustand store
@@ -307,6 +343,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		status === "CANCELLED";
 
 	useEffect(() => {
+		if (!hydrated) return;
 		if (!query.data) return;
 
 		const storeState = useEmergencyTripStore.getState();
@@ -325,7 +362,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 
 			const storeTrip = storeState.activeAmbulanceTrip;
 			// If same trip identity and store has assignedAmbulance but query doesn't (or has incomplete)
-			const sameTrip = storeTrip && queryTrip.requestId && storeTrip.requestId === queryTrip.requestId;
+			const sameTrip = hasSameRequestIdentity(storeTrip, queryTrip);
 			if (!sameTrip) {
 				return queryTrip;
 			}
@@ -368,7 +405,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		setActiveAmbulanceTrip(finalTrip);
 		setActiveBedBooking(mergeBedBooking(query.data.bedBooking));
 		setPendingApproval(query.data.pending);
-	}, [query.data, setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval]);
+	}, [hydrated, query.data, setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval]);
 
 	return query;
 }

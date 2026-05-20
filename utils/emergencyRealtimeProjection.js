@@ -201,7 +201,7 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 	return {
 		...prevTrip,
 		id: record.id ?? prevTrip.id,
-		requestId: record.display_id ?? prevTrip.requestId,
+		requestId: record.id ?? prevTrip.id ?? prevTrip.requestId,
 		displayId: record.display_id ?? prevTrip.displayId ?? null,
 		status: record.status ?? prevTrip.status,
 		hospitalId: record.hospital_id ?? prevTrip.hospitalId ?? null,

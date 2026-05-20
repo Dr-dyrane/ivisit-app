@@ -134,11 +134,37 @@ const invokePhase = async ({ phase, latitude, longitude, radiusKm, userId }) => 
 	});
 
 	if (error) {
-		throw new Error(error.message || `Demo provisioning failed at phase: ${phase}`);
+		let responseDetails = null;
+		try {
+			const context = error.context;
+			if (context && typeof context.json === "function") {
+				responseDetails = await context.json();
+			} else if (context && typeof context.text === "function") {
+				const text = await context.text();
+				responseDetails = text ? { error: text } : null;
+			}
+		} catch (_parseError) {
+			responseDetails = null;
+		}
+
+		const serverMessage =
+			responseDetails?.error ||
+			responseDetails?.message ||
+			error.message ||
+			`Demo provisioning failed at phase: ${phase}`;
+		const nextError = new Error(`${serverMessage} (phase: ${phase})`);
+		nextError.phase = phase;
+		nextError.details = responseDetails;
+		throw nextError;
 	}
 
 	if (!data?.ok) {
-		throw new Error(data?.error || `Demo provisioning failed at phase: ${phase}`);
+		const nextError = new Error(
+			`${data?.error || "Demo provisioning failed"} (phase: ${phase})`,
+		);
+		nextError.phase = phase;
+		nextError.details = data;
+		throw nextError;
 	}
 
 	return data;

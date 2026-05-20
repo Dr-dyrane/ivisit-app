@@ -295,6 +295,8 @@ const DEMO_FEATURE_FLAGS = [
   "ivisit_demo",
 ];
 const DEMO_SHARED_FLAG = "demo_shared";
+const NON_HOSPITAL_SEED_PATTERN =
+  /\b(blood bank|blood center|blood centre|blood donation|plasma|donor center|donation center|laboratory|lab\b|pharmacy|veterinary|animal hospital|dental|dentist|optical|optometry)\b/i;
 
 const DEMO_MIN_HOSPITALS = 5;
 const DEMO_MAX_HOSPITALS = 6;
@@ -361,6 +363,19 @@ const isDemoSeedRow = (row: any) => {
     /^emergency care center\s+\d+$/i.test(name) ||
     /^coverage(?:\s+[a-z0-9_:-]+)?\s+zone\s+\d+$/i.test(address)
   );
+};
+
+const isLikelyHospitalSeed = (row: any) => {
+  const text = [
+    row?.name,
+    row?.address,
+    row?.formattedAddress,
+    row?.place_formatted,
+  ]
+    .map((value) => toSafeString(value, ""))
+    .filter(Boolean)
+    .join(" ");
+  return !NON_HOSPITAL_SEED_PATTERN.test(text);
 };
 
 const nudgeDemoLocation = (
@@ -502,6 +517,7 @@ export const getNearbySeedHospitals = async (admin: any, ctx: DemoContext) => {
       ...(metadataById.get(toSafeString(row?.id, "")) || {}),
     }))
     .filter((row) => !isDemoSeedRow(row))
+    .filter(isLikelyHospitalSeed)
     .map((row) => {
       const coords = parseHospitalCoordinates(row);
       return {
@@ -715,11 +731,18 @@ export const ensureDemoHospitals = async (
     const existingAtLocation = existingByLocation.get(
       exactLocationKey(row.latitude, row.longitude),
     );
-    const existing =
-      existingByPlace ||
-      (isDemoSeedRow(existingAtLocation) ? existingAtLocation : null);
+    const locationDemoRow = isDemoSeedRow(existingAtLocation)
+      ? existingAtLocation
+      : null;
+    const hasDifferentLocationOccupant =
+      existingAtLocation?.id &&
+      existingByPlace?.id &&
+      existingAtLocation.id !== existingByPlace.id;
+    const existing = locationDemoRow || existingByPlace || null;
     const adjustedLocation =
-      existingAtLocation && !existing
+      existingAtLocation &&
+      !locationDemoRow &&
+      (!existing || hasDifferentLocationOccupant)
         ? nudgeDemoLocation(row.latitude, row.longitude, slotIndex)
         : { latitude: row.latitude, longitude: row.longitude };
     const preferredImage = choosePreferredImage(existing, row);

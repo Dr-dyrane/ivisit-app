@@ -26,6 +26,13 @@ const PROVIDER_FOCUS_PHASES = new Set([
   MAP_SHEET_PHASES.PROVIDER_DETAIL,
 ]);
 
+const normalizeCoordinate = (value) => {
+  const latitude = Number(value?.latitude ?? value?.lat);
+  const longitude = Number(value?.longitude ?? value?.lng ?? value?.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { latitude, longitude };
+};
+
 export function useMapFocusedState({
   sheetPhase,
   sheetPayload,
@@ -110,10 +117,16 @@ export function useMapFocusedState({
     sheetPayload?.hospital,
   ]);
 
-  const mapFocusedHospitalCoordinate = useMemo(
-    () => getDestinationCoordinate(mapFocusedHospital),
-    [mapFocusedHospital],
-  );
+  const mapFocusedHospitalCoordinate = useMemo(() => {
+    const focusedCoordinate = getDestinationCoordinate(mapFocusedHospital);
+    if (focusedCoordinate) return focusedCoordinate;
+    return normalizeCoordinate(
+      activeMapRequest?.raw?.activeAmbulanceTrip?.hospitalCoordinate,
+    );
+  }, [
+    activeMapRequest?.raw?.activeAmbulanceTrip?.hospitalCoordinate,
+    mapFocusedHospital,
+  ]);
 
   const mapServiceMarkerKind = useMemo(() => {
     if (historyVisitDetailsVisible) return null;
@@ -162,15 +175,6 @@ export function useMapFocusedState({
     const hasUserCoords = u && u.latitude != null && u.longitude != null;
     if (mapServiceMarkerKind === "ambulance" && hasHospitalCoords && hasUserCoords) {
       const bearing = calculateBearing(h, u);
-      // Debug logging to trace coordinate issues
-      if (__DEV__) {
-        console.log("[AMBULANCE-FACING]", {
-          hospital: { lat: h.latitude, lng: h.longitude },
-          user: { lat: u.latitude, lng: u.longitude },
-          bearing: bearing,
-          valid: Number.isFinite(bearing),
-        });
-      }
       if (Number.isFinite(bearing) && bearing >= 0 && bearing < 360) {
         return bearing;
       }

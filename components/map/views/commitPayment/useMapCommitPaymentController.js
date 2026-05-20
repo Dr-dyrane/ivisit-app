@@ -12,6 +12,7 @@ import { useToast } from "../../../../contexts/ToastContext";
 import { useEmergencyContactsStore } from "../../../../stores/emergencyContactsStore";
 import { selectReachableEmergencyContacts } from "../../../../stores/emergencyContactsSelectors";
 import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRequests";
+import { useInvalidateActiveTrip } from "../../../../hooks/emergency/useActiveTripQuery";
 import { useRequestFlow } from "../../../../hooks/emergency/useRequestFlow";
 import { useMedicalProfile } from "../../../../hooks/user/useMedicalProfile";
 import { useVisits } from "../../../../contexts/VisitsContext";
@@ -90,6 +91,7 @@ export function useMapCommitPaymentController({
   const { profile: medicalProfile } = useMedicalProfile();
   const { createRequest, updateRequest, updateTriage, setRequestStatus } =
     useEmergencyRequests();
+  const invalidateActiveTrip = useInvalidateActiveTrip();
   const { addVisit, updateVisit } = useVisits();
   const {
     hospitals,
@@ -643,6 +645,10 @@ export function useMapCommitPaymentController({
     setInfoMessage("");
     const pendingStartedAt = Date.now();
     let transactionRequestIds = { displayId: null, requestId: null };
+    setTransactionState(
+      MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT,
+      transactionRequestIds,
+    );
 
     try {
       let chargeOrganizationId = null;
@@ -653,6 +659,10 @@ export function useMapCommitPaymentController({
         if (!chargeOrganizationId) {
           const nextMessage =
             "Card checkout is unavailable for this hospital right now.";
+          setTransactionState(
+            MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
+            transactionRequestIds,
+          );
           setErrorMessage(nextMessage);
           showToast(nextMessage, "error");
           return;
@@ -686,6 +696,10 @@ export function useMapCommitPaymentController({
           initiationResult?.reason,
           `Could not submit ${requestVerb}.`,
         );
+        setTransactionState(
+          MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
+          transactionRequestIds,
+        );
         setErrorMessage(nextMessage);
         showToast(nextMessage, "error");
         return;
@@ -715,17 +729,22 @@ export function useMapCommitPaymentController({
           transactionRequestIds,
         );
         showToast("Waiting for hospital approval.", "info");
+        const approvalRequestId =
+          pendingApprovalState.id ||
+          pendingApprovalState._realId ||
+          initiationResult.requestId ||
+          null;
         if (
           pendingApprovalState.demoAutoApprove &&
           pendingApprovalState.paymentId &&
-          pendingApprovalState.requestId
+          approvalRequestId
         ) {
           autoApprovalTimeoutRef.current = setTimeout(() => {
             autoApprovalTimeoutRef.current = null;
             void paymentService
               .requestDemoCashAutoApproval(
                 pendingApprovalState.paymentId,
-                pendingApprovalState.requestId,
+                approvalRequestId,
               )
               .then((approvalResponse) => {
                 const approvalResult = approvalResponse?.result || {};
@@ -744,7 +763,8 @@ export function useMapCommitPaymentController({
                   () => approvedCompletionPayload,
                 );
               })
-              .then((approvedCompletionPayload) => {
+              .then(async (approvedCompletionPayload) => {
+                await invalidateActiveTrip();
                 awaitingApprovalRef.current = false;
                 setPendingApproval?.(null);
                 setTransactionState(
@@ -761,7 +781,53 @@ export function useMapCommitPaymentController({
                   }
                 }, 800);
               })
-              .catch((error) => {
+              .catch(async (error) => {
+                const recoveredSettlement = await paymentService
+                  .waitForEmergencyPaymentSettlement(approvalRequestId, {
+                    timeoutMs: 8000,
+                    pollIntervalMs: 900,
+                  })
+                  .catch(() => null);
+
+                if (recoveredSettlement?.success) {
+                  const recoveredCompletionPayload =
+                    buildCommitPaymentCompletionPayload({
+                      initiatedRequest,
+                      result: {
+                        ...initiationResult,
+                        request: recoveredSettlement.request || null,
+                        requestId:
+                          recoveredSettlement.request?.id ||
+                          initiationResult.requestId,
+                        displayId:
+                          recoveredSettlement.request?.display_id ||
+                          initiationResult.displayId,
+                        estimatedArrival:
+                          recoveredSettlement.request?.estimated_arrival ||
+                          initiationResult.estimatedArrival,
+                      },
+                      hospital,
+                    });
+                  await handleRequestComplete(recoveredCompletionPayload);
+                  await invalidateActiveTrip();
+                  awaitingApprovalRef.current = false;
+                  setPendingApproval?.(null);
+                  setTransactionState(
+                    MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
+                    {
+                      displayId: recoveredCompletionPayload.displayId,
+                      requestId: recoveredCompletionPayload.requestId,
+                    },
+                  );
+                  showToast("Provider confirmed the cash handoff.", "success");
+                  setTimeout(() => {
+                    if (isMountedRef.current) {
+                      onConfirm?.();
+                    }
+                  }, 800);
+                  return;
+                }
+
                 awaitingApprovalRef.current = false;
                 const nextMessage = normalizeApiErrorMessage(
                   error?.message,
@@ -886,6 +952,7 @@ export function useMapCommitPaymentController({
           hospital,
         });
         await handleRequestComplete(completionPayload);
+        await invalidateActiveTrip();
         setTransactionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED, {
           displayId: completionPayload.displayId,
           requestId: completionPayload.requestId,
@@ -910,6 +977,7 @@ export function useMapCommitPaymentController({
         hospital,
       });
       await handleRequestComplete(completionPayload);
+      await invalidateActiveTrip();
       setTransactionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED, {
         displayId: completionPayload.displayId,
         requestId: completionPayload.requestId,
@@ -948,6 +1016,7 @@ export function useMapCommitPaymentController({
     handleRequestComplete,
     handleRequestInitiated,
     hospital,
+    invalidateActiveTrip,
     isBedFlow,
     isCombinedFlow,
     isIdleState,

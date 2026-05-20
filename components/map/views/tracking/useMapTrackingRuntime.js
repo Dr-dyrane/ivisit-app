@@ -16,6 +16,10 @@ import { buildTrackingViewState } from "./mapTracking.derived";
 import { buildTrackingRuntimeSnapshot } from "./mapTracking.snapshot";
 
 export const TRACKING_TRIAGE_STEP_FLOOR = 7;
+const ARRIVAL_TRANSITION_STATUSES = new Set([
+  EmergencyRequestStatus.IN_PROGRESS,
+  EmergencyRequestStatus.ACCEPTED,
+]);
 
 export function useMapTrackingRuntime({
   hospitals = [],
@@ -194,6 +198,7 @@ export function useMapTrackingRuntime({
       ""
     ).toLowerCase(),
   );
+  const canTransitionToArrived = ARRIVAL_TRANSITION_STATUSES.has(resolvedStatus);
   const snapshotRouteInfo = useMemo(() => {
     const liveCoordinates = Array.isArray(scopedLiveRouteInfo?.coordinates)
       ? scopedLiveRouteInfo.coordinates
@@ -206,8 +211,10 @@ export function useMapTrackingRuntime({
   }, [scopedLiveRouteInfo, routeInfo]);
   const shouldShowArrivedStage = Boolean(
     isArrived ||
-      ambulanceComputedStatus === "Arrived" ||
-      activeMapRequest?.canConfirmArrival,
+      (!isPendingApproval &&
+        canTransitionToArrived &&
+        (ambulanceComputedStatus === "Arrived" ||
+          activeMapRequest?.canConfirmArrival)),
   );
 
   const trackingSnapshot = useMemo(

@@ -81,12 +81,17 @@ export const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
   );
   const rawTelemetryTs = trip?.responderTelemetryAt ?? trip?.updatedAt ?? null;
   const telemetryTsMs = parseTimestampMs(rawTelemetryTs);
+  const startedAtMs = parseTimestampMs(trip?.startedAt ?? trip?.createdAt);
 
   if (!isTrackedStatus || !hasResponderLocation || !telemetryTsMs) {
     return { ...inactive, lastUpdateAt: rawTelemetryTs, hasResponderLocation };
   }
 
-  const ageMs = Math.max(0, nowMs - telemetryTsMs);
+  const effectiveTelemetryTsMs =
+    Number.isFinite(startedAtMs) && startedAtMs > telemetryTsMs
+      ? startedAtMs
+      : telemetryTsMs;
+  const ageMs = Math.max(0, nowMs - effectiveTelemetryTsMs);
   const ageSeconds = Math.floor(ageMs / 1000);
   const ageLabel = formatTelemetryAge(ageSeconds);
   const state =

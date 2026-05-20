@@ -4,6 +4,11 @@ import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../../constants/notif
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../constants/visits";
 
+const ARRIVAL_TRANSITION_STATUSES = new Set([
+	EmergencyRequestStatus.IN_PROGRESS,
+	EmergencyRequestStatus.ACCEPTED,
+]);
+
 export const useEmergencyHandlers = ({
 	activeAmbulanceTrip,
 	activeBedBooking,
@@ -195,6 +200,14 @@ export const useEmergencyHandlers = ({
 
 	const onMarkAmbulanceArrived = useCallback(async () => {
 		if (!activeAmbulanceTrip?.requestId) return;
+		const currentStatus = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
+		if (!ARRIVAL_TRANSITION_STATUSES.has(currentStatus)) {
+			console.warn(
+				"[EmergencyHandlers] blocked arrival transition for status:",
+				currentStatus || "unknown",
+			);
+			return { ok: false, error: new Error("Arrival is not available yet.") };
+		}
 		const result = await createBaseHandler("MarkAmbulanceArrived", {
 			requests: [
 				setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.ARRIVED),
@@ -214,6 +227,14 @@ export const useEmergencyHandlers = ({
 
 	const onMarkBedOccupied = useCallback(async () => {
 		if (!activeBedBooking?.requestId) return;
+		const currentStatus = String(activeBedBooking?.status ?? "").toLowerCase();
+		if (!ARRIVAL_TRANSITION_STATUSES.has(currentStatus)) {
+			console.warn(
+				"[EmergencyHandlers] blocked bed check-in transition for status:",
+				currentStatus || "unknown",
+			);
+			return { ok: false, error: new Error("Check-in is not available yet.") };
+		}
 		const result = await createBaseHandler("MarkBedOccupied", {
 			requests: [
 				setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.ARRIVED),

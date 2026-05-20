@@ -540,6 +540,14 @@ const EmergencyRequestModal = React.memo(({
 		const isUuidRequestId = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(requestId));
 		const emergencyRequestUuid =
 			pendingApproval?.id ?? (isUuidRequestId ? String(requestId) : null);
+		const canonicalApprovalRequestId =
+			emergencyRequestUuid ||
+			(isUuidRequestId ? String(requestId) : null) ||
+			null;
+		const approvalDisplayId =
+			displayId ||
+			(!isUuidRequestId && requestId ? String(requestId) : null) ||
+			canonicalApprovalRequestId;
 		const pendingServiceType =
 			pendingApproval?.serviceType || (mode === 'booking' ? 'bed' : 'ambulance');
 		const isPendingAmbulance = pendingServiceType === 'ambulance';
@@ -605,8 +613,9 @@ const EmergencyRequestModal = React.memo(({
 					pendingServiceType === 'bed'
 						? {
 							success: true,
-							requestId,
-							displayId,
+							id: canonicalApprovalRequestId,
+							requestId: canonicalApprovalRequestId || requestId,
+							displayId: approvalDisplayId,
 							estimatedArrival: waitTime ?? '15 mins',
 							hospitalId: pendingApproval.hospitalId,
 							hospitalName: pendingApproval.hospitalName,
@@ -620,8 +629,9 @@ const EmergencyRequestModal = React.memo(({
 						}
 						: {
 							success: true,
-							requestId,
-							displayId,
+							id: canonicalApprovalRequestId,
+							requestId: canonicalApprovalRequestId || requestId,
+							displayId: approvalDisplayId,
 							hospitalId: pendingApproval.hospitalId,
 							hospitalName: pendingApproval.hospitalName,
 							ambulanceId: rowAmbulanceId ?? null,

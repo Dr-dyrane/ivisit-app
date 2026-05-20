@@ -119,6 +119,7 @@ export function getDestinationCoordinate(hospital) {
 		hospital?.latitude ??
 			hospital?.lat ??
 			hospital?.coords?.latitude ??
+			hospital?.coordinates?.latitude ??
 			hospital?.location?.latitude,
 	);
 	const longitude = Number(
@@ -126,6 +127,7 @@ export function getDestinationCoordinate(hospital) {
 			hospital?.lng ??
 			hospital?.lon ??
 			hospital?.coords?.longitude ??
+			hospital?.coordinates?.longitude ??
 			hospital?.location?.longitude,
 	);
 

@@ -617,3 +617,237 @@ Interruption rule:
 ## Immediate Next Pass
 
 Continue TS-1 and TS-2 from the current snapshot slice. The next runtime step is to complete the pure stage table, then route hero/top-slot decisions through that model. Keep the already found Contact Dispatch UUID/retry fix in verification scope, but do not expand Contact Dispatch beyond tracking-entry runtime QA.
+
+## Expanded Reload Regression Audit - 2026-05-20
+
+Status: Audit Only
+Risk: High
+
+Companion artifact: [Payment To Tracking Full Flow Map - 2026-05-20](../PAYMENT_TO_TRACKING_FULL_FLOW_MAP_2026-05-20.md)
+
+Reason for expansion:
+
+- User-reported behavior: tracking sheet ETA/status/details update only after app/web/page reload.
+- Existing docs already classify this as a passive hydration / entry reconciliation failure, not a visual-only bug.
+- This pass validates the concrete current code path before any fix is attempted.
+
+### Verified Contracts
+
+1. **Canonical request identity is the emergency request row UUID**
+   - Source: `docs/flows/emergency/workflow_map.md`
+   - Contract: `emergency_requests.id` is canonical UUID; `display_id` is UI-facing only and must resolve to UUID before mutations/subscriptions.
+
+2. **Tracking-ready is stronger than `requestId + hasActiveTrip`**
+   - Source: `docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`
+   - Required tracking-ready fields: request id, hospital id, active status, route or ETA seed, pickup/patient context when available, and responder identity or explicit responder-hydrating state.
+
+3. **Payment must hand tracking a warm dispatch snapshot before navigation**
+   - Source: `docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`
+   - Required handoff fields: canonical emergency request UUID, hospital id, route seed, ETA seed, `startedAt`, pickup coordinate, and any responder identity returned by approval.
+
+4. **Realtime cannot create the active trip**
+   - Source: `docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`
+   - Current code confirms it: `hooks/emergency/useEmergencyRealtime.js` only merges if `prev` exists, so missing or malformed first-trip state must be repaired by completion/query/hydration, not realtime.
+
+### Current Code Proof Trail
+
+#### A. Request creation returns two identities
+
+`hooks/emergency/useRequestFlow.js` creates a display id first:
+
+- `visitId = request.requestId || local_*`
+- `createRequest({ requestId: visitId })`
+
+`services/emergencyRequestsService.js` sends that as `display_id`, and the backend returns:
+
+- `id: data.request_id` - canonical UUID
+- `requestId: data.display_id` - UI display id
+
+`handleRequestInitiated()` then returns:
+
+- `requestId: realId` - UUID
+- `displayId` - display id
+
+This part is correct, but it makes the next step sensitive to whether downstream code treats `requestId` as UUID or display id.
+
+#### B. Cash approval hydration was added, but frontend pins identity back to initiation result
+
+Commit evidence:
+
+- `2e67c66a` added hydrated approval result handling in `components/map/views/commitPayment/useMapCommitPaymentController.js`.
+- The edge function now hydrates `approvedRequest` and returns `result.request`.
+
+Current frontend code:
+
+- `approvalResult = approvalResponse?.result || {}`
+- then builds `result: { ...initiationResult, ...approvalResult, requestId: initiationResult.requestId, displayId: initiationResult.displayId }`
+
+So even after the edge function returns a hydrated request object, the completion payload forcibly keeps:
+
+- `requestId = initiationResult.requestId` - UUID
+- `displayId = initiationResult.displayId` - display id
+
+That can be valid if every downstream layer preserves `id` separately. It currently does not.
+
+#### C. Completion payload drops canonical `id`
+
+`components/map/views/commitPayment/mapCommitPayment.helpers.js` builds:
+
+- `requestId: result?.requestId || initiatedRequest?._realId || initiatedRequest?.requestId`
+- `displayId: result?.displayId || initiatedRequest?._displayId || initiatedRequest?.requestId`
+- responder fields from `result` / `result.request`
+
+It does not expose `id: result.request.id` or another durable row-id field to `handleRequestComplete()`.
+
+#### D. `handleRequestComplete()` starts active ambulance trip with no `id`
+
+Current code:
+
+- `visitId = request?.requestId ? String(request.requestId) : local_*`
+- `startAmbulanceTrip({ requestId: visitId, ... })`
+
+No `id`, `_realId`, or `displayId` is passed into `startAmbulanceTrip()`.
+
+Resulting optimistic/runtime trip shape after payment approval:
+
+```js
+{
+  id: null,
+  requestId: "<emergency_requests.id UUID>",
+  status: "accepted",
+  etaSeconds: ...,
+  assignedAmbulance: ...
+}
+```
+
+#### E. Server/query hydration later produces a different shape for the same trip
+
+`services/emergencyRequestsService.js` normalizes rows as:
+
+```js
+{
+  id: r.id,
+  requestId: r.display_id,
+  displayId: r.display_id,
+  ...
+}
+```
+
+`hooks/emergency/useActiveTripQuery.js` then builds:
+
+```js
+{
+  id: activeAmbulance.id,
+  requestId: activeAmbulance.requestId,
+  ...
+}
+```
+
+Resulting hydrated trip shape:
+
+```js
+{
+  id: "<emergency_requests.id UUID>",
+  requestId: "<display_id>",
+  status: "...",
+  etaSeconds: ...
+}
+```
+
+The same active emergency can therefore move from:
+
+```js
+{ id: null, requestId: UUID }
+```
+
+to:
+
+```js
+{ id: UUID, requestId: display_id }
+```
+
+That identity migration is the central reload-regression risk.
+
+### Why Reload Appears To Fix It
+
+Reload starts from server/query/persisted canonical shape instead of the live payment handoff shape:
+
+- query row has `id = UUID`
+- query row has `requestId = display_id`
+- route/ETA may be re-seeded after mount
+- tracking route signature refs remount
+- stale optimistic handoff state is gone or overwritten
+
+So reload does not prove the live system works. It bypasses the bad first-handoff shape and restarts from a settled server-shaped trip.
+
+### Confirmed Fragile Comparisons
+
+1. **Query merge preserves responder only when `requestId` matches**
+   - `hooks/emergency/useActiveTripQuery.js`
+   - Current check: `storeTrip && queryTrip.requestId && storeTrip.requestId === queryTrip.requestId`
+   - Fails for optimistic `{ requestId: UUID }` vs hydrated `{ requestId: display_id }`.
+   - Consequence: a store trip with richer responder data can be replaced by a query trip that the merge treats as different.
+
+2. **Query snapshot preservation checks id OR requestId, but only if both sides carry the same field**
+   - `buildAmbulanceTripSnapshot()` checks previous `id` against active row `id`, or previous `requestId` against active row `requestId`.
+   - Optimistic trip has `id: null`, `requestId: UUID`.
+   - Active row has `id: UUID`, `requestId: display_id`.
+   - Neither branch matches.
+   - Consequence: preserved route, map ETA source, and `startedAt` can be lost or recalculated.
+
+3. **Store startedAt invariant also depends on same identity**
+   - `stores/emergencyTripStore.js` preserves `startedAt` only when `sameTripIdentity(prev, next)` is true.
+   - With `{ id: null, requestId: UUID }` vs `{ id: UUID, requestId: display_id }`, the identity check can fail.
+   - Consequence: the query fallback `hydratedAtMs` can become the new `startedAt`, shifting progress/arrival timing.
+
+4. **Realtime event gates match against `id`, `display_id`, `request_id`, or `current_call`**
+   - If the store trip lacks `id` and its `requestId` is UUID, `emergency_requests` row events still match by row `id`.
+   - `ambulances.current_call` events can also match by UUID.
+   - So realtime matching is not the primary blank-ETA cause, but it still cannot create a missing trip and cannot repair query overwrite identity loss.
+
+### Related Document Drift
+
+`docs/architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` says the 2026-04-27 fix for `useActiveTripQuery.js` included both:
+
+1. `useEmergencyTripStore.getState()` inside `queryFn`
+2. `enabled: hydrated`
+
+Current `hooks/emergency/useActiveTripQuery.js` has the imperative `getState()` read, but no visible `enabled: hydrated` query option.
+
+This is a real drift from documented fix recipe. The store boundary protects some `startedAt` overwrites, but the missing query gate still allows first-query timing to race hydration and payment handoff.
+
+### What Is Probably Not The Primary Cause
+
+Do not remove or weaken the May 3 ETA atom fix.
+
+Existing protection:
+
+- `useMapTrackingSync.js` scopes route info by `requestKey`.
+- it preserves `durationSec` for the same request.
+- `useMapTrackingRuntime.js` subscribes directly to `trackingRouteInfoAtom` and uses `durationSec` as an ETA fallback.
+
+That fix addressed the older atom wipe + signature-ref deadlock where ETA showed `--` until Metro reload. The current evidence points one layer earlier: the active trip identity changes shape between payment handoff and query hydration.
+
+### Confidence Level
+
+High confidence that the reload regression is caused by active tracking state identity/readiness drift, not by presentation styling.
+
+Most-proven failure chain:
+
+1. payment creates request and receives UUID + display id
+2. approval completion payload passes UUID as `requestId`, but no durable `id`
+3. active trip starts as `{ id: null, requestId: UUID }`
+4. query hydration later normalizes same row as `{ id: UUID, requestId: display_id }`
+5. same-trip guards fail in query merge, query snapshot preservation, and store `startedAt` preservation
+6. tracking ETA/status/responder data can appear stale until reload restarts from canonical query/server shape
+
+### Fix Direction To Verify Later
+
+Do not patch during this audit, but the smallest safe fix should preserve these invariants:
+
+- keep canonical row UUID in `activeAmbulanceTrip.id`
+- keep display id in `activeAmbulanceTrip.requestId` or an explicit `displayId`, consistently
+- update same-trip helpers to compare all known aliases (`id`, `requestId`, `displayId`, `_realId`, `request.id`, `request.display_id`) before deciding the trip changed
+- restore or replace the documented `enabled: hydrated` gate for active-trip query
+- keep immediate tracking open, but render an explicit responder-hydrating/assigning state until tracking-ready fields arrive
+- keep the May 3 route-duration atom preservation intact

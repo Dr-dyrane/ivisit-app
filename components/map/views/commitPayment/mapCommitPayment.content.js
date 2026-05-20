@@ -8,7 +8,7 @@ export const MAP_COMMIT_PAYMENT_COPY = {
 	CTA_DONE: "Done",
 	STATUS_PROCESSING_PAYMENT_TITLE: "Confirming payment",
 	STATUS_PROCESSING_PAYMENT_DESCRIPTION:
-		"Securing your card.",
+		"Sending your request securely.",
 	// Clear that payment is through and the request is being confirmed.
 	STATUS_FINALIZING_TITLE: "Payment confirmed",
 	STATUS_FINALIZING_DESCRIPTION:
