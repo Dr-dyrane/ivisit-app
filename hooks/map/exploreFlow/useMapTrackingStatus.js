@@ -10,7 +10,7 @@
 //   5. Jotai (ephemeral UI state - THIS FILE)
 
 import { useEffect, useMemo, useCallback, useRef } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import {
   trackingStatusPhaseAtom,
   trackingProgressValueAtom,
@@ -18,8 +18,10 @@ import {
   sheetTitleColorAtom,
   heroUnderlayGradientAtom,
   trackingCtaThemeAtom,
+  trackingVisualRequestKeyAtom,
+  getHeroUnderlayGradientForPhase,
+  buildTrackingCtaThemeForPhase,
 } from "../../../atoms/mapScreenAtoms";
-import { useTripProgress } from "../../emergency/useTripProgress";
 import { useToast } from "../../../contexts/ToastContext";
 
 // Status transition thresholds (progress 0-1)
@@ -52,6 +54,25 @@ function normalizeSnapshotPhase(trackingSnapshot) {
   ).trim();
   if (!stage || stage === "idle") return null;
   return stage;
+}
+
+function resolveTrackingVisualRequestKey({
+  trackingSnapshot,
+  trackingKind,
+  activeAmbulanceTrip,
+  activeBedBooking,
+}) {
+  const requestId =
+    trackingSnapshot?.requestId ??
+    activeAmbulanceTrip?.requestId ??
+    activeAmbulanceTrip?.id ??
+    activeBedBooking?.requestId ??
+    activeBedBooking?.bookingId ??
+    activeBedBooking?.id ??
+    null;
+  if (!requestId) return null;
+  const kind = trackingSnapshot?.kind || trackingKind || "tracking";
+  return `${kind}:${requestId}`;
 }
 
 /**
@@ -89,6 +110,9 @@ export function useMapTrackingStatus({
   const [statusPhase, setStatusPhase] = useAtom(trackingStatusPhaseAtom);
   const [progressValue, setProgressValue] = useAtom(trackingProgressValueAtom);
   const [hasAnimated, setHasAnimated] = useAtom(hasSheetTitleAnimatedAtom);
+  const [visualRequestKey, setVisualRequestKey] = useAtom(
+    trackingVisualRequestKeyAtom,
+  );
 
   // Ref: suppress arrival toast on remount when already arrived; reset on any non-arrived phase
   const hasFiredArrivedToastRef = useRef(statusPhase === "arrived");
@@ -97,6 +121,19 @@ export function useMapTrackingStatus({
   const titleColor = useAtomValue(sheetTitleColorAtom);
   const heroGradient = useAtomValue(heroUnderlayGradientAtom);
   const ctaTheme = useAtomValue(trackingCtaThemeAtom);
+  const currentVisualRequestKey = useMemo(
+    () =>
+      resolveTrackingVisualRequestKey({
+        trackingSnapshot,
+        trackingKind,
+        activeAmbulanceTrip,
+        activeBedBooking,
+      }),
+    [activeAmbulanceTrip, activeBedBooking, trackingKind, trackingSnapshot],
+  );
+  const visualStateMatchesRequest =
+    Boolean(currentVisualRequestKey) &&
+    visualRequestKey === currentVisualRequestKey;
 
   // Calculate raw progress from various sources
   const rawProgress = useMemo(() => {
@@ -177,6 +214,28 @@ export function useMapTrackingStatus({
 
   // Sync status phase to atom (with reset of animation flag on change)
   useEffect(() => {
+    if (!currentVisualRequestKey && visualRequestKey) {
+      setVisualRequestKey(null);
+      setStatusPhase("en_route");
+      setProgressValue(0);
+      setHasAnimated(false);
+      hasFiredArrivedToastRef.current = false;
+      return;
+    }
+    if (!currentVisualRequestKey) return;
+
+    if (
+      currentVisualRequestKey &&
+      visualRequestKey !== currentVisualRequestKey
+    ) {
+      setVisualRequestKey(currentVisualRequestKey);
+      setStatusPhase(nextStatusPhase);
+      setProgressValue(rawProgress);
+      setHasAnimated(false);
+      hasFiredArrivedToastRef.current = nextStatusPhase === "arrived";
+      return;
+    }
+
     if (nextStatusPhase !== statusPhase) {
       setStatusPhase(nextStatusPhase);
       setHasAnimated(false); // Reset animation flag for new status
@@ -192,37 +251,68 @@ export function useMapTrackingStatus({
         hasFiredArrivedToastRef.current = false;
       }
     }
-  }, [nextStatusPhase, statusPhase, setStatusPhase, setHasAnimated, showToast]);
+  }, [
+    currentVisualRequestKey,
+    nextStatusPhase,
+    rawProgress,
+    setHasAnimated,
+    setProgressValue,
+    setStatusPhase,
+    setVisualRequestKey,
+    showToast,
+    statusPhase,
+    visualRequestKey,
+  ]);
 
   // Sync progress value
   useEffect(() => {
+    if (!visualStateMatchesRequest) return;
     if (Math.abs(rawProgress - progressValue) > 0.01) {
       setProgressValue(rawProgress);
     }
-  }, [rawProgress, progressValue, setProgressValue]);
+  }, [rawProgress, progressValue, setProgressValue, visualStateMatchesRequest]);
 
   // Mark animation as complete
   const markTitleAnimated = useCallback(() => {
+    if (!visualStateMatchesRequest) return;
     setHasAnimated(true);
-  }, [setHasAnimated]);
+  }, [setHasAnimated, visualStateMatchesRequest]);
 
   // Reset all status state (for cleanup)
   const resetStatus = useCallback(() => {
+    setVisualRequestKey(currentVisualRequestKey);
     setStatusPhase("en_route");
     setProgressValue(0);
     setHasAnimated(false);
-  }, [setStatusPhase, setProgressValue, setHasAnimated]);
+  }, [
+    currentVisualRequestKey,
+    setHasAnimated,
+    setProgressValue,
+    setStatusPhase,
+    setVisualRequestKey,
+  ]);
+
+  const effectiveStatusPhase = visualStateMatchesRequest
+    ? statusPhase
+    : nextStatusPhase;
+  const effectiveHasAnimated = visualStateMatchesRequest ? hasAnimated : false;
+  const effectiveHeroGradient = visualStateMatchesRequest
+    ? heroGradient
+    : getHeroUnderlayGradientForPhase(effectiveStatusPhase);
+  const effectiveCtaTheme = visualStateMatchesRequest
+    ? ctaTheme
+    : buildTrackingCtaThemeForPhase(effectiveStatusPhase);
 
   return {
     // Status
-    statusPhase,
+    statusPhase: effectiveStatusPhase,
     progressValue: rawProgress,
-    shouldAnimateTitle: !hasAnimated,
+    shouldAnimateTitle: !effectiveHasAnimated,
 
     // Visual tokens
     titleColor,
-    heroGradient,
-    ctaTheme,
+    heroGradient: effectiveHeroGradient,
+    ctaTheme: effectiveCtaTheme,
 
     // Actions
     markTitleAnimated,

@@ -22,6 +22,7 @@ import { database, StorageKeys } from "../database";
 // in-memory defaults because Jotai cannot track non-atom mutables.
 
 const TRACKING_VIZ_DEFAULTS = {
+  requestKey: null,
   statusPhase: "en_route",
   progressValue: 0,
   hasSheetTitleAnimated: false,
@@ -287,6 +288,15 @@ export const mapVisitDetailSourceSurfaceAtom = atom(null);
 // Tracking is live data; should never restart on Metro reload or cold start
 
 /**
+ * Owner key for persisted tracking visualization state.
+ * Status/progress/title-animation atoms are only valid for this request.
+ */
+export const trackingVisualRequestKeyAtom = persistedTrackingAtom(
+  "requestKey",
+  null,
+);
+
+/**
  * Current tracking status phase for visual theming (PERSISTED via database)
  * Mirrors the pure tracking stage visualPhase:
  * 'pending_approval' | 'assigning' | 'dispatch_confirmed' | 'en_route' |
@@ -344,12 +354,16 @@ export const sheetTitleColorAtom = atom(() => null);
 const HERO_GRADIENT_ACCENT = ["#0EA5E9", "#38BDF8", "#7DD3FC"]; // sky-500 → 400 → 300
 const HERO_GRADIENT_SUCCESS = ["#059669", "#10B981", "#34D399"]; // emerald-600 → 500 → 400
 
-export const heroUnderlayGradientAtom = atom((get) => {
-  const statusPhase = get(trackingStatusPhaseAtom);
+export function getHeroUnderlayGradientForPhase(statusPhase) {
   if (statusPhase === "arrived" || statusPhase === "completed") {
     return HERO_GRADIENT_SUCCESS;
   }
   return HERO_GRADIENT_ACCENT;
+}
+
+export const heroUnderlayGradientAtom = atom((get) => {
+  const statusPhase = get(trackingStatusPhaseAtom);
+  return getHeroUnderlayGradientForPhase(statusPhase);
 });
 
 /**
@@ -363,10 +377,7 @@ export const heroUnderlayGradientAtom = atom((get) => {
  *      in-progress trips. Arrival CTA continues to "pop" green; non-arrival
  *      CTAs stay muted to keep the eye on the progress fill.
  */
-export const trackingCtaThemeAtom = atom((get) => {
-  const statusPhase = get(trackingStatusPhaseAtom);
-  const isDarkMode = get(mapThemeAtom);
-
+export function buildTrackingCtaThemeForPhase(statusPhase, isDarkMode = false) {
   const isArrivedPhase =
     statusPhase === "arrived" || statusPhase === "completed";
 
@@ -396,6 +407,12 @@ export const trackingCtaThemeAtom = atom((get) => {
         ? "#7DD3FC"
         : "#075985",
   };
+}
+
+export const trackingCtaThemeAtom = atom((get) => {
+  const statusPhase = get(trackingStatusPhaseAtom);
+  const isDarkMode = get(mapThemeAtom);
+  return buildTrackingCtaThemeForPhase(statusPhase, isDarkMode);
 });
 
 // Placeholder for mapThemeAtom (will be defined if needed)

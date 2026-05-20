@@ -429,7 +429,7 @@ Implementation note:
 
 ### TS-6 — Request-Scoped UI Atoms
 
-Status: Planned
+Status: Complete
 Risk: Medium
 
 Tasks:
@@ -447,6 +447,13 @@ Acceptance:
 
 - New trip never inherits old title animation, arrival phase, or progress.
 - Same trip reload preserves meaningful state where intended.
+
+Implementation note:
+
+- Added `trackingVisualRequestKeyAtom` to the persisted tracking visualization bundle so status phase, progress, and title-animation state carry an explicit request owner.
+- `useMapTrackingStatus.js` now derives a visual owner key from the canonical `trackingSnapshot` plus active trip/booking fallbacks. If the persisted owner differs from the current tracking request, the hook renders from the fresh snapshot-derived phase immediately, then claims the new owner and resets animation/progress state.
+- Derived hero-gradient and CTA-theme helpers can now be evaluated against the effective request-scoped phase, preventing a one-render flash from a previous request's persisted phase.
+- Contact Dispatch tracking-entry state was inspected during this pass. Its active request id already acts as the modal owner; broader chat atom cleanup remains outside this tracking-sheet TS-6 slice.
 
 ### TS-7 — Web/Native Render Hardening
 
