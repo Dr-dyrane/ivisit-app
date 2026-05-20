@@ -38,7 +38,9 @@ function resolveCtaIconName(action = {}) {
 function renderCtaIcon(action, iconColor, isDarkMode = false) {
   const iconName = resolveCtaIconName(action);
   if (action?.iconFamily === "material-community") {
-    return <MaterialCommunityIcons name={iconName} size={32} color={iconColor} />;
+    return (
+      <MaterialCommunityIcons name={iconName} size={32} color={iconColor} />
+    );
   }
   if (action?.key === "share") {
     return (
@@ -48,7 +50,9 @@ function renderCtaIcon(action, iconColor, isDarkMode = false) {
           size={34}
           color={iconColor}
         />
-        <View style={[styles.shareEtaIconBadge, { backgroundColor: iconColor }]}>
+        <View
+          style={[styles.shareEtaIconBadge, { backgroundColor: iconColor }]}
+        >
           <MaterialCommunityIcons
             name="plus-thick"
             size={10}
@@ -158,14 +162,20 @@ export function MapTrackingTopSlot({
           { transform: [{ scale: breathScale }] },
         ]}
       >
-        <Svg width={ringSize} height={ringSize} style={styles.triageProgressSvg}>
+        <Svg
+          width={ringSize}
+          height={ringSize}
+          style={styles.triageProgressSvg}
+        >
           <Circle
             cx={ringSize / 2}
             cy={ringSize / 2}
             r={radius}
             stroke={
               triageTrackColor ||
-              (triageComplete ? "rgba(22,163,74,0.35)" : "rgba(148,163,184,0.34)")
+              (triageComplete
+                ? "rgba(22,163,74,0.35)"
+                : "rgba(148,163,184,0.34)")
             }
             strokeWidth={strokeWidth}
             fill="none"
@@ -279,7 +289,9 @@ export function MapTrackingTopSlot({
           </Text>
         ) : null}
       </View>
-      <View style={[styles.topSlotSide, styles.topSlotSideRight]}>{rightAction}</View>
+      <View style={[styles.topSlotSide, styles.topSlotSideRight]}>
+        {rightAction}
+      </View>
     </View>
   );
 }
@@ -317,12 +329,23 @@ export function TrackingTeamHeroCard({
             <Ionicons name={avatarIcon} size={20} color="#FFFFFF" />
           </View>
           <View style={styles.teamHeroCopy}>
-            <Text numberOfLines={1} style={[styles.teamHeroTitle, { color: titleColor }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
+              allowFontScaling
+              maxFontSizeMultiplier={1.45}
+              style={[styles.teamHeroTitle, { color: titleColor }]}
+            >
               {title || "--"}
             </Text>
             {subtitle ? (
               <Text
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                allowFontScaling
+                maxFontSizeMultiplier={1.35}
                 style={[styles.teamHeroSubtitle, { color: mutedColor }]}
               >
                 {subtitle}
@@ -333,6 +356,10 @@ export function TrackingTeamHeroCard({
             <View style={styles.teamHeroRight}>
               <Text
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.76}
+                allowFontScaling
+                maxFontSizeMultiplier={1.35}
                 style={[styles.teamHeroRightText, { color: mutedColor }]}
               >
                 {rightMeta}
@@ -348,6 +375,10 @@ export function TrackingTeamHeroCard({
                 >
                   <Text
                     numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.25}
                     style={[
                       styles.teamHeroStateText,
                       { color: stateTextColor || mutedColor },
@@ -388,7 +419,14 @@ export function TrackingCtaButton({
         ) : (
           <>
             {renderCtaIcon(action, iconColor, isDarkMode)}
-            <Text numberOfLines={1} style={[styles.ctaButtonText, { color: labelColor }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.76}
+              allowFontScaling
+              maxFontSizeMultiplier={1.35}
+              style={[styles.ctaButtonText, { color: labelColor }]}
+            >
               {action.label}
             </Text>
           </>
@@ -424,7 +462,10 @@ export function TrackingRouteCard({
     <View
       style={[
         styles.routeCard,
-        { backgroundColor: elevatedSurfaceColor, borderRadius: routeCardRadius },
+        {
+          backgroundColor: elevatedSurfaceColor,
+          borderRadius: routeCardRadius,
+        },
       ]}
     >
       <LinearGradient
@@ -436,7 +477,9 @@ export function TrackingRouteCard({
       />
 
       <View style={styles.routeHeader}>
-        <View style={[styles.servicePill, { backgroundColor: toneColors.surface }]}>
+        <View
+          style={[styles.servicePill, { backgroundColor: toneColors.surface }]}
+        >
           <Ionicons
             name={trackingKind === "bed" ? "bed-outline" : "car-outline"}
             size={15}
@@ -450,8 +493,17 @@ export function TrackingRouteCard({
           </Text>
         </View>
         {requestLabel ? (
-          <View style={[styles.requestPill, { backgroundColor: toneColors.surface }]}>
-            <Ionicons name="receipt-outline" size={15} color={toneColors.icon} />
+          <View
+            style={[
+              styles.requestPill,
+              { backgroundColor: toneColors.surface },
+            ]}
+          >
+            <Ionicons
+              name="receipt-outline"
+              size={15}
+              color={toneColors.icon}
+            />
             <Text
               numberOfLines={1}
               style={[styles.requestPillText, { color: toneColors.text }]}
@@ -464,7 +516,12 @@ export function TrackingRouteCard({
 
       <View style={styles.stopList}>
         <View style={styles.stopConnectorWrap}>
-          <View style={[styles.stopConnector, { backgroundColor: connectorTrackColor }]} />
+          <View
+            style={[
+              styles.stopConnector,
+              { backgroundColor: connectorTrackColor },
+            ]}
+          />
           <View
             style={[
               styles.stopConnectorProgress,
@@ -478,18 +535,37 @@ export function TrackingRouteCard({
 
         <View style={styles.stopRow}>
           <View
-            style={[styles.stopIconWrap, { backgroundColor: hospitalIconSurfaceColor }]}
+            style={[
+              styles.stopIconWrap,
+              { backgroundColor: hospitalIconSurfaceColor },
+            ]}
           >
             <Ionicons name="business-outline" size={18} color={titleColor} />
           </View>
           <View style={styles.stopCopyWrap}>
             <View style={styles.stopCopy}>
-              <Text style={[styles.stopLabel, { color: mutedColor }]}>Hospital</Text>
-              <Text numberOfLines={1} style={[styles.stopTitle, { color: titleColor }]}>
+              <Text style={[styles.stopLabel, { color: mutedColor }]}>
+                Hospital
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.78}
+                allowFontScaling
+                maxFontSizeMultiplier={1.35}
+                style={[styles.stopTitle, { color: titleColor }]}
+              >
                 {hospitalName}
               </Text>
               {hospitalAddress ? (
-                <Text numberOfLines={1} style={[styles.stopSubtitle, { color: mutedColor }]}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stopSubtitle, { color: mutedColor }]}
+                >
                   {hospitalAddress}
                 </Text>
               ) : null}
@@ -506,18 +582,37 @@ export function TrackingRouteCard({
 
         <View style={styles.stopRow}>
           <View
-            style={[styles.stopIconWrap, { backgroundColor: pickupIconSurfaceColor }]}
+            style={[
+              styles.stopIconWrap,
+              { backgroundColor: pickupIconSurfaceColor },
+            ]}
           >
             <Ionicons name="navigate" size={18} color={toneColors.icon} />
           </View>
           <View style={styles.stopCopyWrap}>
             <View style={styles.stopCopy}>
-              <Text style={[styles.stopLabel, { color: mutedColor }]}>Pickup</Text>
-              <Text numberOfLines={1} style={[styles.stopTitle, { color: titleColor }]}>
+              <Text style={[styles.stopLabel, { color: mutedColor }]}>
+                Pickup
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.78}
+                allowFontScaling
+                maxFontSizeMultiplier={1.35}
+                style={[styles.stopTitle, { color: titleColor }]}
+              >
                 {pickupLabel}
               </Text>
               {pickupDetail ? (
-                <Text numberOfLines={1} style={[styles.stopSubtitle, { color: mutedColor }]}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stopSubtitle, { color: mutedColor }]}
+                >
                   {pickupDetail}
                 </Text>
               ) : null}
@@ -538,7 +633,9 @@ export function TrackingRouteCard({
 
 function renderRatingStars(value, color, mutedColor) {
   const numeric = Number(value);
-  const clamped = Number.isFinite(numeric) ? Math.max(0, Math.min(5, numeric)) : 0;
+  const clamped = Number.isFinite(numeric)
+    ? Math.max(0, Math.min(5, numeric))
+    : 0;
   const stars = [];
   for (let i = 1; i <= 5; i += 1) {
     let name = "star-outline";
@@ -596,7 +693,9 @@ export function TrackingDetailsCard({
         style={styles.detailCardGradient}
       />
       <HeaderTag style={styles.detailHeaderRow} {...headerProps}>
-        <Text style={[styles.detailHeader, { color: mutedColor }]}>{headerLabel}</Text>
+        <Text style={[styles.detailHeader, { color: mutedColor }]}>
+          {headerLabel}
+        </Text>
         {collapsible ? (
           <View style={styles.detailHeaderChevron}>
             <Ionicons
@@ -618,11 +717,17 @@ export function TrackingDetailsCard({
             return (
               <View
                 key={`${detail.label}-${index}`}
-                style={[styles.detailRow, { backgroundColor: requestSurfaceColor }]}
+                style={[
+                  styles.detailRow,
+                  { backgroundColor: requestSurfaceColor },
+                ]}
               >
                 <View style={styles.detailLeading}>
                   <View
-                    style={[styles.detailIconWrap, { backgroundColor: tone.surface }]}
+                    style={[
+                      styles.detailIconWrap,
+                      { backgroundColor: tone.surface },
+                    ]}
                   >
                     <Ionicons
                       name={detail.icon || "information-circle-outline"}
@@ -638,8 +743,13 @@ export function TrackingDetailsCard({
                   starsNode
                 ) : (
                   <Text
-                    numberOfLines={detail.valueNumberOfLines || valueNumberOfLines}
-                    style={[styles.detailValue, { color: detail.valueColor || titleColor }]}
+                    numberOfLines={
+                      detail.valueNumberOfLines || valueNumberOfLines
+                    }
+                    style={[
+                      styles.detailValue,
+                      { color: detail.valueColor || titleColor },
+                    ]}
                   >
                     {detail.value}
                   </Text>
@@ -702,7 +812,14 @@ export function TrackingBottomActionButton({
           {bottomAction.loading ? (
             <ActivityIndicator size="small" color={bottomActionSpinnerColor} />
           ) : (
-            <Text style={[styles.cancelCtaText, { color: bottomActionTextColor }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.76}
+              allowFontScaling
+              maxFontSizeMultiplier={1.35}
+              style={[styles.cancelCtaText, { color: bottomActionTextColor }]}
+            >
               {toTitleCaseLabel(bottomAction.label)}
             </Text>
           )}

@@ -163,7 +163,7 @@ components/map/views/tracking/
 
 ### TS-0 — Baseline Audit
 
-Status: In progress
+Status: Complete
 Risk: Low
 
 Tasks:
@@ -265,7 +265,7 @@ payment approval result
 
 ### TS-1 — Canonical Runtime Snapshot
 
-Status: In progress
+Status: Complete
 Risk: Medium
 
 Tasks:
@@ -457,7 +457,7 @@ Implementation note:
 
 ### TS-7 — Web/Native Render Hardening
 
-Status: Planned
+Status: Complete
 Risk: Low
 
 Tasks:
@@ -472,9 +472,15 @@ Acceptance:
 - No `collapsable` warning on web.
 - No blank or overlapping tracking card on mobile large text.
 
+Implementation note:
+
+- Tracking hero, CTA, route-stop, and bottom-action text now use bounded font scaling with `adjustsFontSizeToFit`, minimum scales, and max font multipliers so large text is less likely to clip inside fixed tracking controls.
+- The triage progress ring already uses a static `Circle` path on web and an animated circle only on native, preserving the web-safe SVG contract.
+- Verification for this pass is recorded under TS-8/TS-9 with `git diff --check`, `npm run hardening:tracking-state-models`, and `npm run build:web`.
+
 ### TS-8 — Regression Harness
 
-Status: Planned
+Status: Complete
 Risk: Medium
 
 Tasks:
@@ -499,9 +505,14 @@ Acceptance:
 
 - Tracking pass can be validated without relying only on device tapping.
 
+Implementation note:
+
+- Added `supabase/tests/scripts/assert_tracking_state_models.js` and `npm run hardening:tracking-state-models`.
+- The harness validates the pure snapshot/stage/hero/action/timeline contracts: assigning fallback, ETA-only dispatch confirmation, responder hero copy, lost telemetry recoverability for Contact Dispatch/cancel, completed terminal policy, bed check-in eligibility, request-owned route equality, and legacy `map_route` normalization.
+
 ### TS-9 — Rollout And Rollback
 
-Status: Planned
+Status: Complete
 Risk: Low
 
 Tasks:
@@ -520,6 +531,14 @@ Rollback:
 Acceptance:
 
 - If the pass regresses, tracking can return to the current stable sprite + sheet state without losing emergency dispatch functionality.
+
+Implementation note:
+
+- Runtime changes landed in small checkpoint commits:
+  - `778f0dcc` - `Tighten emergency tracking stage actions`
+  - `aa4e8e62` - `Scope tracking UI atoms by request`
+- Final finishing slice keeps the sprite renderer untouched, adds only tracking text resilience plus pure-model assertions, and updates this pass record.
+- Rollback preference is to revert the latest tracking-model/UI commits in reverse order while preserving any independently verified emergency dispatch/payment fixes.
 
 ## Implementation Order
 
