@@ -26,7 +26,7 @@ import {
   buildTrackingSecondaryActions,
   resolveTrackingHeaderActionHandler,
 } from "./mapTracking.model";
-
+import { buildTrackingActionSurfacePolicy } from "./mapTracking.actions";
 
 export function useMapTrackingController({
   activeAmbulanceTrip,
@@ -48,6 +48,7 @@ export function useMapTrackingController({
   onAddBedFromTracking,
   onAddAmbulanceFromTracking,
   onOpenCommitTriageFromTracking,
+  trackingSnapshot,
   headerActionRequest,
   onConsumeHeaderActionRequest,
   snapState,
@@ -83,8 +84,12 @@ export function useMapTrackingController({
   const setRatingState = useSetAtom(trackingRatingStateAtom);
   const setRecoveredRatingState = useSetAtom(recoveredRatingStateAtom);
   // PULLBACK NOTE: Contact Dispatch CD-7 — emergency chat atoms for modal orchestration
-  const setEmergencyChatModalVisible = useSetAtom(emergencyChatModalVisibleAtom);
-  const setActiveEmergencyChatRequestId = useSetAtom(activeEmergencyChatRequestIdAtom);
+  const setEmergencyChatModalVisible = useSetAtom(
+    emergencyChatModalVisibleAtom,
+  );
+  const setActiveEmergencyChatRequestId = useSetAtom(
+    activeEmergencyChatRequestIdAtom,
+  );
   const handledHeaderActionRef = useRef(null);
   const activeAmbulanceRequestId =
     activeMapRequest?.raw?.activeAmbulanceTrip?.id ||
@@ -102,6 +107,10 @@ export function useMapTrackingController({
     activeMapRequest?.raw?.pendingApproval?.requestId ||
     pendingApproval?.requestId ||
     null;
+  const actionSurfacePolicy = useMemo(
+    () => buildTrackingActionSurfacePolicy({ trackingSnapshot }),
+    [trackingSnapshot],
+  );
 
   const openTrackingTriage = useCallback(() => {
     onOpenCommitTriageFromTracking?.({
@@ -153,7 +162,12 @@ export function useMapTrackingController({
     if (!requestId) return;
     setActiveEmergencyChatRequestId(requestId);
     setEmergencyChatModalVisible(true);
-  }, [activeAmbulanceRequestId, activeBedBookingRequestId, setActiveEmergencyChatRequestId, setEmergencyChatModalVisible]);
+  }, [
+    activeAmbulanceRequestId,
+    activeBedBookingRequestId,
+    setActiveEmergencyChatRequestId,
+    setEmergencyChatModalVisible,
+  ]);
 
   const runBusyAction = useCallback(async (key, handler) => {
     if (typeof handler !== "function") return;
@@ -169,7 +183,10 @@ export function useMapTrackingController({
     if (!pendingApproval?.requestId) return;
     const lifecycleUpdatedAt = new Date().toISOString();
     await Promise.all([
-      setRequestStatus(pendingApproval.requestId, EmergencyRequestStatus.CANCELLED),
+      setRequestStatus(
+        pendingApproval.requestId,
+        EmergencyRequestStatus.CANCELLED,
+      ),
       cancelVisit(pendingApproval.requestId),
       updateVisit?.(pendingApproval.requestId, {
         lifecycleState: EMERGENCY_VISIT_LIFECYCLE.CANCELLED,
@@ -186,7 +203,8 @@ export function useMapTrackingController({
   ]);
 
   const handleCompleteAmbulanceWithRating = useCallback(async () => {
-    const visitId = activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
+    const visitId =
+      activeAmbulanceTrip?.id ?? activeAmbulanceTrip?.requestId ?? null;
     const hospitalTitle = activeAmbulanceTrip?.hospitalName || hospitalName;
     const providerName =
       activeAmbulanceTrip?.assignedAmbulance?.name ||
@@ -300,10 +318,15 @@ export function useMapTrackingController({
       buildTrackingSecondaryActions({
         activeAmbulanceRequestId,
         activeBedBookingRequestId,
-        onAddBedFromTracking,
-        onAddAmbulanceFromTracking,
+        onAddBedFromTracking: actionSurfacePolicy.canAddCompanionService
+          ? onAddBedFromTracking
+          : null,
+        onAddAmbulanceFromTracking: actionSurfacePolicy.canAddCompanionService
+          ? onAddAmbulanceFromTracking
+          : null,
       }),
     [
+      actionSurfacePolicy.canAddCompanionService,
       activeAmbulanceRequestId,
       activeBedBookingRequestId,
       onAddAmbulanceFromTracking,
@@ -318,12 +341,19 @@ export function useMapTrackingController({
         activeAmbulanceRequestId,
         activeBedBookingRequestId,
         runBusyAction,
-        handleCancelPendingRequest,
-        onCancelAmbulanceTrip,
-        onCancelBedBooking,
+        handleCancelPendingRequest: actionSurfacePolicy.canCancel
+          ? handleCancelPendingRequest
+          : null,
+        onCancelAmbulanceTrip: actionSurfacePolicy.canCancel
+          ? onCancelAmbulanceTrip
+          : null,
+        onCancelBedBooking: actionSurfacePolicy.canCancel
+          ? onCancelBedBooking
+          : null,
         busyAction,
       }),
     [
+      actionSurfacePolicy.canCancel,
       activeAmbulanceRequestId,
       activeBedBookingRequestId,
       busyAction,
@@ -337,18 +367,25 @@ export function useMapTrackingController({
 
   useEffect(() => {
     if (!headerActionRequest?.type || !headerActionRequest?.requestedAt) return;
-    if (handledHeaderActionRef.current === headerActionRequest.requestedAt) return;
+    if (handledHeaderActionRef.current === headerActionRequest.requestedAt)
+      return;
     handledHeaderActionRef.current = headerActionRequest.requestedAt;
     const handler = resolveTrackingHeaderActionHandler({
       headerActionRequest,
       triageRequestId,
-      openTrackingTriage,
-      onAddBedFromTracking,
+      openTrackingTriage: actionSurfacePolicy.canOpenTriage
+        ? openTrackingTriage
+        : null,
+      onAddBedFromTracking: actionSurfacePolicy.canAddCompanionService
+        ? onAddBedFromTracking
+        : null,
       destructiveAction,
       onConsumeHeaderActionRequest,
     });
     handler?.();
   }, [
+    actionSurfacePolicy.canAddCompanionService,
+    actionSurfacePolicy.canOpenTriage,
     destructiveAction,
     headerActionRequest?.requestedAt,
     headerActionRequest?.type,
@@ -388,14 +425,20 @@ export function useMapTrackingController({
     () =>
       buildTrackingMidActions({
         triageRequestId,
-        openTrackingTriage,
+        openTrackingTriage: actionSurfacePolicy.canOpenTriage
+          ? openTrackingTriage
+          : null,
         secondaryActions,
         primaryAction,
         trackingKind,
         handleShareEta,
-        onOpenContactDispatch: handleOpenContactDispatch,
+        onOpenContactDispatch: actionSurfacePolicy.canOpenContactDispatch
+          ? handleOpenContactDispatch
+          : null,
       }),
     [
+      actionSurfacePolicy.canOpenContactDispatch,
+      actionSurfacePolicy.canOpenTriage,
       handleShareEta,
       handleOpenContactDispatch,
       openTrackingTriage,
@@ -429,6 +472,7 @@ export function useMapTrackingController({
     trackingDetailRows,
     midActions,
     bottomAction,
+    actionSurfacePolicy,
     onOpenContactDispatch: handleOpenContactDispatch,
   };
 }

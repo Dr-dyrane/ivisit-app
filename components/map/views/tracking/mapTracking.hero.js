@@ -106,7 +106,9 @@ export function buildTrackingHeroModel({
   if (isEnRoute || isConfirmed) {
     return {
       title: isEnRoute ? "Ambulance en route" : "Dispatch confirmed",
-      subtitle: "Dispatch confirmed",
+      subtitle: isEnRoute
+        ? "Dispatch confirmed"
+        : toTitleCaseLabel(serviceLabel),
       rightMeta: heroHasResolvedEta
         ? etaLabel
         : responderSafetyMeta || crewCountLabel || null,

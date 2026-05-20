@@ -360,7 +360,7 @@ export function useMapTrackingSync({
   ]);
 
   return {
-    trackingRouteInfo,
+    trackingRouteInfo: scopedTrackingRouteInfo,
     setTrackingRouteInfo,
     trackingTimeline,
   };

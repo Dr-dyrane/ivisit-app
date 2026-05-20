@@ -277,6 +277,7 @@ export default function MapTrackingStageBase({
 
   const {
     openTrackingTriage,
+    actionSurfacePolicy,
     primaryAction,
     trackingDetailRows,
     midActions,
@@ -303,6 +304,7 @@ export default function MapTrackingStageBase({
     onAddBedFromTracking,
     onAddAmbulanceFromTracking,
     onOpenCommitTriageFromTracking,
+    trackingSnapshot,
     headerActionRequest,
     onConsumeHeaderActionRequest,
     snapState,
@@ -563,7 +565,9 @@ export default function MapTrackingStageBase({
               triageTrackColor={themeTokens.triageTrackColor}
               onToggle={handleSheetToggle}
               onOpenTriage={openTrackingTriage}
-              showTriage={Boolean(triageRequestId)}
+              showTriage={Boolean(
+                triageRequestId && actionSurfacePolicy?.canOpenTriage,
+              )}
               triageComplete={triageIsComplete}
               triageProgress={triageProgressValue}
               showToggle={canToggleSnapState}

@@ -11,6 +11,7 @@ import {
   triageStepAnswered,
 } from "../../../emergency/triage/triageFlow.shared";
 import { buildMapCommitTriageSteps } from "../commitTriage/mapCommitTriage.helpers";
+import { buildTrackingActionEligibility } from "./mapTracking.actions";
 import { buildTrackingViewState } from "./mapTracking.derived";
 import { buildTrackingRuntimeSnapshot } from "./mapTracking.snapshot";
 
@@ -286,23 +287,31 @@ export function useMapTrackingRuntime({
     return Math.max(0, Math.min(1, ambulanceTripProgress));
   }, [ambulanceTripProgress, resolvedStatus, viewState.trackingKind]);
 
-  // PULLBACK NOTE: Phase 5b — use machine isArrived flag instead of raw status
-  const canMarkArrived =
-    viewState.trackingKind === "ambulance" &&
-    (activeMapRequest?.canConfirmArrival ||
-      ambulanceComputedStatus === "Arrived") &&
-    !isArrived;
-  const canCompleteAmbulance =
-    viewState.trackingKind === "ambulance" &&
-    (activeMapRequest?.canCompleteAmbulance || isArrived);
-  const canCheckInBed =
-    viewState.trackingKind === "bed" && bedStatus === "Ready" && !isArrived;
-  const canCompleteBed =
-    viewState.trackingKind === "bed" &&
-    (activeMapRequest?.canCompleteBed || isArrived);
-  const shouldPromoteTriage =
-    Boolean(pendingApproval?.requestId) &&
-    (!triageHasData || !triageIsComplete);
+  const actionEligibility = useMemo(
+    () =>
+      buildTrackingActionEligibility({
+        trackingSnapshot,
+        trackingKind: viewState.trackingKind,
+        activeMapRequest,
+        ambulanceComputedStatus,
+        bedStatus,
+        isArrived,
+        triageHasData,
+        triageIsComplete,
+        pendingApprovalRequestId: pendingApproval?.requestId ?? null,
+      }),
+    [
+      activeMapRequest,
+      ambulanceComputedStatus,
+      bedStatus,
+      isArrived,
+      pendingApproval?.requestId,
+      trackingSnapshot,
+      triageHasData,
+      triageIsComplete,
+      viewState.trackingKind,
+    ],
+  );
 
   return {
     triageRequestId,
@@ -319,11 +328,7 @@ export function useMapTrackingRuntime({
     ambulanceComputedStatus,
     resolvedStatus,
     routeVisualProgress,
-    canMarkArrived,
-    canCompleteAmbulance,
-    canCheckInBed,
-    canCompleteBed,
-    shouldPromoteTriage,
+    ...actionEligibility,
     onCancelAmbulanceTrip,
     onMarkAmbulanceArrived,
     onCompleteAmbulanceTrip,

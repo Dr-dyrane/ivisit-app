@@ -14,7 +14,7 @@ export function buildTrackingPrimaryAction({
   canCompleteBed,
   handleCompleteBedWithRating,
 }) {
-  if (shouldPromoteTriage) {
+  if (shouldPromoteTriage && typeof openTrackingTriage === "function") {
     return {
       key: "intake",
       label: "Continue check-in",
@@ -112,7 +112,10 @@ export function buildTrackingDestructiveAction({
   onCancelBedBooking,
   busyAction,
 }) {
-  if (pendingApprovalRequestId) {
+  if (
+    pendingApprovalRequestId &&
+    typeof handleCancelPendingRequest === "function"
+  ) {
     return {
       key: "cancel-pending",
       label: "Cancel request",
@@ -121,7 +124,7 @@ export function buildTrackingDestructiveAction({
       loading: busyAction === "cancel",
     };
   }
-  if (activeAmbulanceRequestId) {
+  if (activeAmbulanceRequestId && typeof onCancelAmbulanceTrip === "function") {
     return {
       key: "cancel-ambulance",
       label: "Cancel request",
@@ -130,7 +133,7 @@ export function buildTrackingDestructiveAction({
       loading: busyAction === "cancel",
     };
   }
-  if (activeBedBookingRequestId) {
+  if (activeBedBookingRequestId && typeof onCancelBedBooking === "function") {
     return {
       key: "cancel-bed",
       label: "Cancel booking",
@@ -193,7 +196,7 @@ export function buildTrackingMidActions({
 }) {
   const actions = [];
 
-  if (triageRequestId) {
+  if (triageRequestId && typeof openTrackingTriage === "function") {
     actions.push({
       key: "info",
       label: toTitleCaseLabel("My information"),
@@ -253,10 +256,7 @@ export function buildTrackingMidActions({
       primaryAction.key === "complete-ambulance"
     ) {
       // Complete Request is promoted to the bottom primary slot after arrival.
-    } else if (
-      trackingKind === "bed" &&
-      primaryAction.key === "complete-bed"
-    ) {
+    } else if (trackingKind === "bed" && primaryAction.key === "complete-bed") {
       // Complete Stay is promoted to the bottom primary slot after check-in.
     } else {
       actions.push({
@@ -289,7 +289,10 @@ export function buildTrackingBottomAction({
   // OLD: returned action objects without disabled field; UI only checked loading
   // NEW: disabled=true when another action is in-flight so CTA truthfully reflects unavailable state
   let action = null;
-  if (trackingKind === "ambulance" && primaryAction?.key === "complete-ambulance") {
+  if (
+    trackingKind === "ambulance" &&
+    primaryAction?.key === "complete-ambulance"
+  ) {
     action = {
       ...primaryAction,
       label: "Complete Request",
@@ -322,7 +325,11 @@ export function resolveTrackingHeaderActionHandler({
     return null;
   }
 
-  if (headerActionRequest.type === "triage" && triageRequestId) {
+  if (
+    headerActionRequest.type === "triage" &&
+    triageRequestId &&
+    typeof openTrackingTriage === "function"
+  ) {
     return () => {
       onConsumeHeaderActionRequest?.();
       openTrackingTriage();

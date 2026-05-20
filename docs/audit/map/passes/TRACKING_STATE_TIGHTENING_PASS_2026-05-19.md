@@ -359,6 +359,7 @@ Implementation note:
 - `trackingRouteInfoAtom` now carries `requestKey` and `routeSource` in addition to duration, distance, and coordinates.
 - `mapTracking.timeline.js` includes route ownership in normalization/equality so two route snapshots with the same duration but different owners are not treated as equivalent.
 - `useMapTrackingSync.js` scopes live route emissions to the active request, preserves duration only when the current atom owner matches that request, and ignores route duration/polyline when the atom belongs to a previous request. Reconciliation now writes `etaSource` from the scoped route source instead of the old ambiguous `map_route`.
+- Follow-up review fix: `useMapTrackingSync.js` now returns the scoped route info to `MapScreen`, preventing the map route fallback from briefly rendering stale coordinates from a previous request when the new active trip has no stored route yet.
 - `useMapTrackingRuntime.js` also scopes its direct route-atom fallback before using `durationSec` for progress or snapshot route info.
 - `mapTracking.snapshot.js` normalizes ETA sources to `trip`, `live_route`, `stored_route`, `fallback`, or `none`; legacy `map_route` is read as `live_route`.
 
@@ -392,10 +393,11 @@ Implementation note:
 - Added `components/map/views/tracking/mapTracking.hero.js` and moved hero/header copy models out of `MapTrackingStageBase.jsx` and `mapTracking.presentation.js`.
 - `MapTrackingStageBase.jsx` now calls `buildTrackingHeroModel()` / `buildTrackingHeaderModel()` and passes the returned model fields directly into the hero card and top slot; it no longer owns the responder/ETA/stage copy tree.
 - The model encodes the documented copy contract, including `approaching` -> "Almost there", arrival/completion outranking route/ETA, and bed states retaining bed-specific copy.
+- Follow-up review fix: `dispatch_confirmed` no longer repeats "Dispatch confirmed" as both title and subtitle; the subtitle falls back to the service label while `en_route` keeps the dispatch-confirmed support copy.
 
 ### TS-5 — Action Eligibility Model
 
-Status: Planned
+Status: Complete
 Risk: Medium
 
 Tasks:
@@ -415,6 +417,15 @@ Tasks:
 Acceptance:
 
 - Action availability cannot disagree with hero/stage state.
+
+Implementation note:
+
+- Added `components/map/views/tracking/mapTracking.actions.js` with a pure `buildTrackingActionEligibility()` model keyed by `trackingSnapshot.trackingStage`.
+- `useMapTrackingRuntime.js` now derives `shouldPromoteTriage`, arrival, completion, and bed action booleans through that model instead of assembling them from scattered raw/computed status checks.
+- Added `buildTrackingActionSurfacePolicy()` so triage, Contact Dispatch, companion-service, and cancel surfaces are hidden when the current stage is idle, terminal, or pending as appropriate.
+- Hardened `mapTracking.model.js` so hidden policies remove action handlers rather than rendering no-op buttons.
+- Review correction: only `completed` is treated as terminal for action surfaces. `lost` and `delayed` remain recoverable tracking exception states, so Contact Dispatch and cancel remain available during a signal interruption.
+- `MapTrackingStageBase.jsx` top-slot triage visibility and controller-driven header actions now consume the same action surface policy instead of bypassing it with raw request ids/callbacks.
 
 ### TS-6 — Request-Scoped UI Atoms
 
