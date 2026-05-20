@@ -12,6 +12,8 @@ export function buildTrackingHeroModel({
   responderSafetyMeta,
   crewCountLabel,
   formattedBedRemaining,
+  canMarkArrived = false,
+  canCompleteAmbulance = false,
 } = {}) {
   const stage = trackingSnapshot?.trackingStage || TRACKING_STAGES.IDLE;
   const isPending = stage === TRACKING_STAGES.PENDING_APPROVAL;
@@ -57,7 +59,11 @@ export function buildTrackingHeroModel({
   if (isArrived) {
     return {
       title: "Driver arrived",
-      subtitle: "Confirm arrival to continue",
+      subtitle: canMarkArrived
+        ? "Confirm arrival to continue"
+        : canCompleteAmbulance
+          ? "Complete request to finish"
+          : "Arrival confirmed",
       rightMeta: "Arrived",
       avatarIcon: "person",
     };

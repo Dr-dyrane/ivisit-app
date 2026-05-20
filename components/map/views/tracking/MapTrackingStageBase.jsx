@@ -457,6 +457,8 @@ export default function MapTrackingStageBase({
     responderSafetyMeta,
     crewCountLabel,
     formattedBedRemaining,
+    canMarkArrived,
+    canCompleteAmbulance,
   });
   const headerModel = buildTrackingHeaderModel({
     trackingSnapshot,
