@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Animated,
+	Keyboard,
 	PanResponder,
 	Platform,
 	Pressable,
@@ -62,6 +63,8 @@ export default function MapModalShell({
 	backAccessibilityLabel = "Go back",
 	backIconName = "chevron-back",
 	presentationModeOverride = null,
+	keyboardAware = false,
+	keyboardAvoidingOffset = 0,
 	children,
 }) {
 	const { isDarkMode } = useTheme();
@@ -116,6 +119,7 @@ export default function MapModalShell({
 		: MAP_SHEET_SNAP_STATES.EXPANDED;
 	const [shouldRender, setShouldRender] = useState(visible);
 	const [modalSnapState, setModalSnapState] = useState(resolvedDefaultSnapState);
+	const [keyboardHeight, setKeyboardHeight] = useState(0);
 	const prevModalSnapStateRef = useRef(resolvedDefaultSnapState);
 	const prevExternalSnapStateRef = useRef(snapState);
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
@@ -193,6 +197,29 @@ export default function MapModalShell({
 		visible,
 	]);
 
+	useEffect(() => {
+		if (!visible || !keyboardAware || isWeb) {
+			setKeyboardHeight(0);
+			return undefined;
+		}
+
+		const handleKeyboardShow = (event) => {
+			const nextHeight = Number(event?.endCoordinates?.height);
+			setKeyboardHeight(Number.isFinite(nextHeight) ? Math.max(0, nextHeight) : 0);
+		};
+		const handleKeyboardHide = () => {
+			setKeyboardHeight(0);
+		};
+		const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+		const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+		const showSubscription = Keyboard.addListener(showEvent, handleKeyboardShow);
+		const hideSubscription = Keyboard.addListener(hideEvent, handleKeyboardHide);
+
+		return () => {
+			showSubscription.remove();
+			hideSubscription.remove();
+		};
+	}, [isWeb, keyboardAware, visible]);
 
 	useEffect(() => {
 		const closedOffset = isDrawer
@@ -346,6 +373,10 @@ export default function MapModalShell({
 	const resolvedTopClearance = topClearance ?? surfaceConfig.topClearance;
 	const browserTopOffset = isWeb ? Math.max(0, browserInsetTop || 0) : 0;
 	const browserBottomOffset = isWeb ? Math.max(0, browserInsetBottom || 0) : 0;
+	const keyboardBottomOffset =
+		keyboardAware && !isWeb
+			? Math.max(0, keyboardHeight - (insets?.bottom || 0) + keyboardAvoidingOffset)
+			: 0;
 	const hostWidth = isDrawer
 		? Math.min(
 				drawerWidthForMotion,
@@ -864,12 +895,12 @@ export default function MapModalShell({
 								left: hostLeft,
 								right: undefined,
 								top: (surfaceConfig.modalTopInset ?? drawerTopInset) + browserTopOffset,
-								bottom: hostBottom + browserBottomOffset,
+								bottom: hostBottom + browserBottomOffset + keyboardBottomOffset,
 							}
 						: {
 								left: 0,
 								right: 0,
-								bottom: browserBottomOffset,
+								bottom: browserBottomOffset + keyboardBottomOffset,
 							},
 					{
 						transform: isDrawer ? [{ translateX: slideAnim }] : [{ translateY: slideAnim }],

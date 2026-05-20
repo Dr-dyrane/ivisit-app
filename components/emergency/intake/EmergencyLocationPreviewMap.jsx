@@ -805,6 +805,11 @@ export default function EmergencyLocationPreviewMap({
     routeBoundsCoordinates.length >= 2 &&
     Number.isFinite(resolvedRouteInfo.durationSec) &&
     resolvedRouteInfo.durationSec > 0;
+  const activeTrackingAmbulance =
+    serviceMarkerKind === "ambulance" && activeTracking;
+  const trackingAmbulanceFallbackCoordinate = activeTrackingAmbulance
+    ? selectedHospitalCoordinate
+    : null;
   const canonicalAnimationRouteCoordinates = useMemo(() => {
     if (!shouldAnimateAmbulance || routeBoundsCoordinates.length < 2) return [];
     return orientRouteTowardPickup(
@@ -866,7 +871,10 @@ export default function EmergencyLocationPreviewMap({
     serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
       ? animatedAmbulanceCoordinate ||
         canonicalAnimationRouteCoordinates[0] ||
+        trackingAmbulanceFallbackCoordinate ||
         previewServiceMarkerCoordinate
+      : activeTrackingAmbulance
+        ? trackingAmbulanceFallbackCoordinate || previewServiceMarkerCoordinate
       : previewServiceMarkerCoordinate;
   const effectiveServiceMarkerHeading =
     serviceMarkerKind === "ambulance" && shouldAnimateAmbulance
@@ -881,6 +889,8 @@ export default function EmergencyLocationPreviewMap({
           activeTracking &&
           Number.isFinite(trackingRouteFlowHeading)
         ? trackingRouteFlowHeading
+      : activeTrackingAmbulance && Number.isFinite(fallbackServiceMarkerHeading)
+        ? fallbackServiceMarkerHeading
       : previewServiceMarkerHeading;
   const effectiveAmbulanceMarkerImage = useMemo(
     () =>

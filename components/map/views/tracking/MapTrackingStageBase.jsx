@@ -33,6 +33,23 @@ import { useMapTrackingStatus } from "../../../../hooks/map/exploreFlow/useMapTr
 import { buildTrackingThemeTokens } from "./mapTracking.theme";
 import styles from "./mapTracking.styles";
 
+const MID_SNAP_ACTION_LIMIT = 3;
+
+const MID_ACTION_PRIORITY = {
+  arrived: 0,
+  "contact-dispatch": 1,
+  info: 2,
+  bed: 3,
+  ambulance: 4,
+  share: 5,
+};
+
+function getMidActionPriority(action, statusPhase) {
+  if (!action?.key) return 99;
+  if (statusPhase === "arrived" && action.key === "arrived") return -1;
+  return MID_ACTION_PRIORITY[action.key] ?? 50;
+}
+
 export default function MapTrackingStageBase({
   sheetHeight,
   snapState,
@@ -336,6 +353,20 @@ export default function MapTrackingStageBase({
   const isBottomCompletionAction =
     bottomAction?.key === "complete-ambulance" ||
     bottomAction?.key === "complete-bed";
+  const visibleMidActions = useMemo(() => {
+    if (isExpanded || midActions.length <= MID_SNAP_ACTION_LIMIT) {
+      return midActions;
+    }
+    return [...midActions]
+      .sort((a, b) => {
+        const priorityDelta =
+          getMidActionPriority(a, statusPhase) -
+          getMidActionPriority(b, statusPhase);
+        if (priorityDelta !== 0) return priorityDelta;
+        return midActions.indexOf(a) - midActions.indexOf(b);
+      })
+      .slice(0, MID_SNAP_ACTION_LIMIT);
+  }, [isExpanded, midActions, statusPhase]);
   const themeTokens = useMemo(
     () =>
       buildTrackingThemeTokens({
@@ -458,7 +489,7 @@ export default function MapTrackingStageBase({
         mutedColor={themeTokens.mutedColor}
       />
 
-      {midActions.length ? (
+      {visibleMidActions.length ? (
         // PULLBACK NOTE: Phase 8 — Restored original bg; only animate icon/text colors on arrival
         <View
           style={[
@@ -466,7 +497,7 @@ export default function MapTrackingStageBase({
             { backgroundColor: themeTokens.secondaryCtaSurface },
           ]}
         >
-          {midActions.map((action, index) => {
+          {visibleMidActions.map((action, index) => {
             // PULLBACK NOTE: Phase 8 — On arrival, mute siblings; pop the confirm-arrival CTA
             const isArrivedPhase = statusPhase === "arrived";
             const isArrivalAction = action.key === "arrived";
@@ -499,7 +530,7 @@ export default function MapTrackingStageBase({
                 action={action}
                 isGrouped
                 isDarkMode={isDarkMode}
-                showDivider={index < midActions.length - 1}
+                showDivider={index < visibleMidActions.length - 1}
                 iconColor={iconColor}
                 labelColor={labelColor}
               />

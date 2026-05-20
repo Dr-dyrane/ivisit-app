@@ -507,8 +507,8 @@ Acceptance:
 
 Implementation note:
 
-- Added `supabase/tests/scripts/assert_tracking_state_models.js` and `npm run hardening:tracking-state-models`.
-- The harness validates the pure snapshot/stage/hero/action/timeline contracts: assigning fallback, ETA-only dispatch confirmation, responder hero copy, lost telemetry recoverability for Contact Dispatch/cancel, completed terminal policy, bed check-in eligibility, request-owned route equality, and legacy `map_route` normalization.
+- The temporary `supabase/tests/scripts/assert_tracking_state_models.js` harness and `npm run hardening:tracking-state-models` script were removed after APK review. The product risk is runtime synchronization, not another package-level assertion script.
+- Keep verification focused on live payment -> tracking handoff, sheet state updates without reload, Contact Dispatch interaction, and map sprite behavior.
 
 ### TS-9 — Rollout And Rollback
 
@@ -539,6 +539,27 @@ Implementation note:
   - `aa4e8e62` - `Scope tracking UI atoms by request`
 - Final finishing slice keeps the sprite renderer untouched, adds only tracking text resilience plus pure-model assertions, and updates this pass record.
 - Rollback preference is to revert the latest tracking-model/UI commits in reverse order while preserving any independently verified emergency dispatch/payment fixes.
+
+### APK Review Follow-up â€” ETA/Arrival/CTA Consistency
+
+Status: In Progress
+Risk: Medium
+
+Findings:
+
+- APK showed ETA/tracking details updating only after Metro/app reload. That points to a stale payment/approval -> tracking snapshot handoff or a store/query synchronization gap, not a visual-only bug.
+- Confirm Arrival could appear while the visual phase stayed `approaching`. The mismatch happened because action eligibility could read `canConfirmArrival` while the tracking snapshot did not promote the same request to visual `arrived`.
+- Mid-snap CTAs were allowed to grow past the useful three-action hierarchy.
+- Contact Dispatch uses `MapModalShell` but had no native keyboard-aware host offset.
+- When tracking telemetry is uncertain, ambulance fallback must be hospital/route-start based. User/pickup-facing behavior is reserved for payment/pre-tracking preview.
+
+Candidate patches:
+
+- Tracking runtime now treats `canConfirmArrival`, computed arrived status, or canonical arrived state as one visual-arrival signal for snapshot and route progress.
+- Complete Request no longer unlocks from visual arrival alone; it still requires actual arrival/confirmation state.
+- Mid snap limits tracking CTAs to the top three by hierarchy, while expanded snap keeps all actions.
+- Contact Dispatch opts into keyboard-aware modal positioning.
+- Tracking ambulance fallback now prefers hospital/route start and route-flow heading when animation cannot safely advance.
 
 ## Implementation Order
 

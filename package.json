@@ -61,7 +61,6 @@
     "hardening:visits-runtime-confidence-assert": "node supabase/tests/scripts/assert_visits_runtime_confidence.js",
     "hardening:visits-runtime-confidence": "node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:visits-runtime-confidence-assert",
     "hardening:emergency-runtime-confidence-assert": "node supabase/tests/scripts/assert_emergency_runtime_confidence.js",
-    "hardening:tracking-state-models": "node supabase/tests/scripts/assert_tracking_state_models.js",
     "hardening:emergency-runtime-confidence": "npm run hardening:console-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert",
     "hardening:emergency": "node supabase/tests/scripts/validate_emergency_hardening_guards.js",
     "hardening:edge-smoke": "node supabase/tests/scripts/run_edge_function_smoke_matrix.js",

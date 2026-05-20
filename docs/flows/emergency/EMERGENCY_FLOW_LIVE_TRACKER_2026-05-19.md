@@ -118,6 +118,20 @@ Before the app treats an ambulance request as tracking-ready, it should have:
 
 If assignment is not ready, the UI can show a believable "dispatch accepted, assigning responder" moment, but should not imply live telemetry is healthy.
 
+## Tracking And Payment Sheet Contract
+
+The payment/approval sheet must hand tracking a warm dispatch snapshot before navigation. That snapshot should include the canonical emergency request UUID, hospital id, route seed, ETA seed, `startedAt`, pickup coordinate when known, and any responder identity returned by approval. Tracking should never require a Metro reload or app reload to discover ETA, arrival eligibility, or driver details that were already known during payment approval.
+
+Tracking owns live presentation after the handoff:
+
+- ETA and route progress must tick from `etaSeconds + startedAt` and hydrated active-trip data without waiting for a page reload.
+- When `canConfirmArrival` is true, ETA has elapsed, or the canonical status is `arrived`, the visual phase is `arrived`; the Confirm Arrival CTA must turn into the arrival-highlighted action in the same render.
+- Completion actions require actual arrival/confirmation state. Visual arrival alone must not promote Complete Request.
+- Mid snap shows at most three CTAs by hierarchy: Confirm Arrival, Contact Dispatch, medical information/reserve/request/share. Expanded snap can show the full group.
+- If tracking telemetry is delayed, stale, or missing, the ambulance marker stays at the hospital or route start. It must not fall back to the user/pickup coordinate during tracking.
+- During tracking, the ambulance sprite heading follows the route polyline. User-facing orientation remains a pre-tracking/payment-sheet fallback only.
+- Contact Dispatch is tracking-adjacent: it must open above tracking, remain keyboard-aware on native, and preserve the tracking sheet state behind it.
+
 ## Current Suspicions
 
 1. Cash auto-approval handoff starts tracking from an initiation payload, not the hydrated approval/assignment payload.

@@ -21,7 +21,6 @@ export function buildTrackingActionEligibility({
   const isAmbulance = trackingKind === "ambulance";
   const isBed = trackingKind === "bed";
   const isPending = stage === TRACKING_STAGES.PENDING_APPROVAL;
-  const isArrivedStage = stage === TRACKING_STAGES.ARRIVED;
   const isTerminal = TERMINAL_ACTION_STAGES.has(stage);
   const canActOnActiveStage = !isPending && !isTerminal;
 
@@ -34,23 +33,18 @@ export function buildTrackingActionEligibility({
       isAmbulance &&
       canActOnActiveStage &&
       !isArrived &&
-      !isArrivedStage &&
       (activeMapRequest?.canConfirmArrival ||
         ambulanceComputedStatus === "Arrived"),
     canCompleteAmbulance:
       isAmbulance &&
       canActOnActiveStage &&
-      (activeMapRequest?.canCompleteAmbulance || isArrived || isArrivedStage),
+      (activeMapRequest?.canCompleteAmbulance || isArrived),
     canCheckInBed:
-      isBed &&
-      canActOnActiveStage &&
-      !isArrived &&
-      !isArrivedStage &&
-      bedStatus === "Ready",
+      isBed && canActOnActiveStage && !isArrived && bedStatus === "Ready",
     canCompleteBed:
       isBed &&
       canActOnActiveStage &&
-      (activeMapRequest?.canCompleteBed || isArrived || isArrivedStage),
+      (activeMapRequest?.canCompleteBed || isArrived),
   };
 }
 

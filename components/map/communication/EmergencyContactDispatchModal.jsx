@@ -227,6 +227,7 @@ export function EmergencyContactDispatchModal({ visible, onClose }) {
       maxHeightRatio={0.92}
       scrollEnabled={true}
       footerSlot={composerSlot}
+      keyboardAware={true}
     >
       {/* Status Strip */}
       {statusText && (

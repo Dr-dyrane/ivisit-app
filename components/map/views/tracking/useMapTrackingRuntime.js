@@ -204,6 +204,11 @@ export function useMapTrackingRuntime({
       liveCoordinates.length >= 2;
     return hasLiveRouteInfo ? scopedLiveRouteInfo : routeInfo;
   }, [scopedLiveRouteInfo, routeInfo]);
+  const shouldShowArrivedStage = Boolean(
+    isArrived ||
+      ambulanceComputedStatus === "Arrived" ||
+      activeMapRequest?.canConfirmArrival,
+  );
 
   const trackingSnapshot = useMemo(
     () =>
@@ -214,7 +219,7 @@ export function useMapTrackingRuntime({
         pendingApproval,
         routeInfo: snapshotRouteInfo,
         ambulanceTelemetryHealth,
-        isArrived,
+        isArrived: shouldShowArrivedStage,
         isPendingApproval,
         progress: ambulanceTripProgress,
       }),
@@ -227,6 +232,7 @@ export function useMapTrackingRuntime({
       isArrived,
       isPendingApproval,
       pendingApproval,
+      shouldShowArrivedStage,
       snapshotRouteInfo,
     ],
   );
@@ -239,7 +245,7 @@ export function useMapTrackingRuntime({
         hospital,
         payload,
         currentLocation,
-        routeInfo,
+        routeInfo: snapshotRouteInfo,
         activeMapRequest,
         activeAmbulanceTrip,
         activeBedBooking,
@@ -271,7 +277,7 @@ export function useMapTrackingRuntime({
       pendingApproval,
       remainingBedSeconds,
       resolvedStatus,
-      routeInfo,
+      snapshotRouteInfo,
     ],
   );
 
@@ -279,13 +285,19 @@ export function useMapTrackingRuntime({
     if (viewState.trackingKind !== "ambulance") return 0;
     if (
       resolvedStatus === EmergencyRequestStatus.ARRIVED ||
-      resolvedStatus === EmergencyRequestStatus.COMPLETED
+      resolvedStatus === EmergencyRequestStatus.COMPLETED ||
+      shouldShowArrivedStage
     ) {
       return 1;
     }
     if (!Number.isFinite(ambulanceTripProgress)) return 0;
     return Math.max(0, Math.min(1, ambulanceTripProgress));
-  }, [ambulanceTripProgress, resolvedStatus, viewState.trackingKind]);
+  }, [
+    ambulanceTripProgress,
+    resolvedStatus,
+    shouldShowArrivedStage,
+    viewState.trackingKind,
+  ]);
 
   const actionEligibility = useMemo(
     () =>
