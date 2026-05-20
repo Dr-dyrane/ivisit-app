@@ -126,11 +126,14 @@ Tracking owns live presentation after the handoff:
 
 - ETA and route progress must tick from `etaSeconds + startedAt` and hydrated active-trip data without waiting for a page reload.
 - When `canConfirmArrival` is true, ETA has elapsed, or the canonical status is `arrived`, the visual phase is `arrived`; the Confirm Arrival CTA must turn into the arrival-highlighted action in the same render.
+- Arrival affordance is a full UI state, not just eligibility: show the arrival toast once, mute sibling CTA rows, render Confirm Arrival as a green button with white icon/text, then promote Complete Request as the non-muted bottom primary after confirmation.
 - Completion actions require actual arrival/confirmation state. Visual arrival alone must not promote Complete Request.
 - Mid snap shows at most three CTAs by hierarchy: Confirm Arrival, Contact Dispatch, medical information/reserve/request/share. Expanded snap can show the full group.
 - If tracking telemetry is delayed, stale, or missing, the ambulance marker stays at the hospital or route start. It must not fall back to the user/pickup coordinate during tracking.
 - During tracking, the ambulance sprite heading follows the route polyline. User-facing orientation remains a pre-tracking/payment-sheet fallback only.
 - Contact Dispatch is tracking-adjacent: it must open above tracking, remain keyboard-aware on native, and preserve the tracking sheet state behind it.
+
+Reload rule: tracking sheet ETA, status phase, CTA colors, and route progress must update from React state/store/query updates. Any fix that requires a Metro reload, app reload, or sheet remount to reveal current ETA or arrival state is incomplete.
 
 ## Current Suspicions
 

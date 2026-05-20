@@ -514,15 +514,17 @@ export default function MapTrackingStageBase({
 
             const iconColor = isArrivedPhase
               ? isArrivalAction
-                ? ctaTheme.arrivalBg // Pop green on arrival
+                ? ctaTheme.arrivalText
                 : ctaTheme.mutedText // Mute siblings
               : baseIconColor;
 
             const labelColor = isArrivedPhase
               ? isArrivalAction
-                ? ctaTheme.arrivalBg
+                ? ctaTheme.arrivalText
                 : ctaTheme.mutedText
               : themeTokens.titleColor;
+            const buttonBackgroundColor =
+              isArrivedPhase && isArrivalAction ? ctaTheme.arrivalBg : null;
 
             return (
               <TrackingCtaButton
@@ -533,6 +535,7 @@ export default function MapTrackingStageBase({
                 showDivider={index < visibleMidActions.length - 1}
                 iconColor={iconColor}
                 labelColor={labelColor}
+                backgroundColor={buttonBackgroundColor}
               />
             );
           })}

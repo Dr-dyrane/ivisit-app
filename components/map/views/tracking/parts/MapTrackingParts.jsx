@@ -400,6 +400,7 @@ export function TrackingCtaButton({
   action,
   iconColor,
   labelColor,
+  backgroundColor = null,
   isDarkMode = false,
   showDivider = false,
   isGrouped = false,
@@ -411,6 +412,7 @@ export function TrackingCtaButton({
         style={({ pressed }) => [
           styles.ctaButton,
           isGrouped ? styles.ctaButtonGrouped : null,
+          backgroundColor ? { backgroundColor } : null,
           pressed ? styles.ctaButtonPressed : null,
         ]}
       >

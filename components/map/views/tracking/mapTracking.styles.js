@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
 	},
 	ctaButtonGrouped: {
 		backgroundColor: "transparent",
-		borderRadius: 0,
+		...squircle(18),
 		paddingHorizontal: 8,
 	},
 	ctaDivider: {

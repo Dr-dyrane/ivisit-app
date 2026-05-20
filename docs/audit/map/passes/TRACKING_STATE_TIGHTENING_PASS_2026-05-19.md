@@ -549,6 +549,7 @@ Findings:
 
 - APK showed ETA/tracking details updating only after Metro/app reload. That points to a stale payment/approval -> tracking snapshot handoff or a store/query synchronization gap, not a visual-only bug.
 - Confirm Arrival could appear while the visual phase stayed `approaching`. The mismatch happened because action eligibility could read `canConfirmArrival` while the tracking snapshot did not promote the same request to visual `arrived`.
+- Arrival UI regression was broader than logic: the expected state is toast-once, muted sibling CTA rows, a green Confirm Arrival button, and then a non-muted bottom Complete Request CTA after arrival confirmation.
 - Mid-snap CTAs were allowed to grow past the useful three-action hierarchy.
 - Contact Dispatch uses `MapModalShell` but had no native keyboard-aware host offset.
 - When tracking telemetry is uncertain, ambulance fallback must be hospital/route-start based. User/pickup-facing behavior is reserved for payment/pre-tracking preview.
@@ -556,6 +557,8 @@ Findings:
 Candidate patches:
 
 - Tracking runtime now treats `canConfirmArrival`, computed arrived status, or canonical arrived state as one visual-arrival signal for snapshot and route progress.
+- Tracking arrival presentation restores the green Confirm Arrival button state instead of only tinting its icon/text.
+- Reload/remount is not an acceptable completion condition: ETA, tracking details, arrival phase, and CTA state must update synchronously through React state/store/query paths.
 - Complete Request no longer unlocks from visual arrival alone; it still requires actual arrival/confirmation state.
 - Mid snap limits tracking CTAs to the top three by hierarchy, while expanded snap keeps all actions.
 - Contact Dispatch opts into keyboard-aware modal positioning.
