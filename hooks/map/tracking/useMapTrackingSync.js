@@ -45,6 +45,12 @@ function mergeTrackingRouteInfo(
   const incomingCoordinates = normalizedIncoming.coordinates;
 
   return {
+    requestKey:
+      normalizedIncoming.requestKey ?? normalizedCurrent.requestKey ?? null,
+    routeSource:
+      normalizedIncoming.routeSource !== "none"
+        ? normalizedIncoming.routeSource
+        : normalizedCurrent.routeSource,
     durationSec:
       normalizedIncoming.durationSec ?? normalizedCurrent.durationSec ?? null,
     distanceMeters:
@@ -61,6 +67,8 @@ function mergeTrackingRouteInfo(
 }
 
 const EMPTY_TRACKING_ROUTE_INFO = {
+  requestKey: null,
+  routeSource: "none",
   durationSec: null,
   distanceMeters: null,
   coordinates: [],
@@ -74,8 +82,9 @@ export function useMapTrackingSync({
   isTrackingMapActive = false,
   trackingKind = null,
 }) {
-  const [trackingRouteInfo, setTrackingRouteInfoState] =
-    useAtom(trackingRouteInfoAtom);
+  const [trackingRouteInfo, setTrackingRouteInfoState] = useAtom(
+    trackingRouteInfoAtom,
+  );
   const setIsCalculatingRoute = useSetAtom(isCalculatingRouteAtom);
   const setRouteCalculationError = useSetAtom(routeCalculationErrorAtom);
   const previousRequestKeyRef = useRef(UNINITIALIZED_REQUEST_KEY);
@@ -97,20 +106,25 @@ export function useMapTrackingSync({
     (nextRouteInfo) => {
       const nextPayload =
         nextRouteInfo && typeof nextRouteInfo === "object" ? nextRouteInfo : {};
+      const scopedPayload = {
+        ...nextPayload,
+        requestKey: normalizedActiveRequestKey,
+        routeSource: "live_route",
+      };
 
-      if ("isCalculatingRoute" in nextPayload) {
-        setIsCalculatingRoute(Boolean(nextPayload.isCalculatingRoute));
+      if ("isCalculatingRoute" in scopedPayload) {
+        setIsCalculatingRoute(Boolean(scopedPayload.isCalculatingRoute));
       }
 
-      if ("routeError" in nextPayload) {
-        setRouteCalculationError(nextPayload.routeError ?? null);
+      if ("routeError" in scopedPayload) {
+        setRouteCalculationError(scopedPayload.routeError ?? null);
       }
 
       setTrackingRouteInfoState((current) => {
         const merged = mergeTrackingRouteInfo(
           current,
-          nextPayload,
-          Boolean(nextPayload.isCalculatingRoute),
+          scopedPayload,
+          Boolean(scopedPayload.isCalculatingRoute),
         );
         return areTrackingRouteInfosEqual(current, merged) ? current : merged;
       });
@@ -119,6 +133,7 @@ export function useMapTrackingSync({
       setIsCalculatingRoute,
       setRouteCalculationError,
       setTrackingRouteInfoState,
+      normalizedActiveRequestKey,
     ],
   );
 
@@ -137,11 +152,8 @@ export function useMapTrackingSync({
     setRouteCalculationError(null);
 
     if (!normalizedActiveRequestKey) {
-      // PULLBACK NOTE: ETA fix — preserve durationSec on reset; only wipe coordinates + identity.
-      // durationSec is live map data and is never stale. Wiping it here causes a signature-ref
-      // deadlock: the map won't re-emit because the route hasn't changed, leaving the atom null.
       setTrackingRouteInfoState((current) => {
-        const reset = { ...EMPTY_TRACKING_ROUTE_INFO, durationSec: current?.durationSec ?? null };
+        const reset = EMPTY_TRACKING_ROUTE_INFO;
         return areTrackingRouteInfosEqual(current, reset) ? current : reset;
       });
       return;
@@ -158,21 +170,40 @@ export function useMapTrackingSync({
       // if present, otherwise keep the live atom value, otherwise null.
       setTrackingRouteInfoState((current) => {
         const storeDuration =
-          Number.isFinite(activeAmbulanceTrip?.etaSeconds) && activeAmbulanceTrip.etaSeconds > 0
+          Number.isFinite(activeAmbulanceTrip?.etaSeconds) &&
+          activeAmbulanceTrip.etaSeconds > 0
             ? Math.round(Number(activeAmbulanceTrip.etaSeconds))
             : null;
+        const sameRequest = current?.requestKey === normalizedActiveRequestKey;
         const seededRouteInfo = normalizeTrackingRouteInfo({
-          durationSec: storeDuration ?? current?.durationSec ?? null,
+          requestKey: normalizedActiveRequestKey,
+          routeSource: storeDuration
+            ? "trip"
+            : sameRequest
+              ? current?.routeSource
+              : "none",
+          durationSec:
+            storeDuration ??
+            (sameRequest ? current?.durationSec : null) ??
+            null,
           coordinates: activeAmbulanceTrip?.route,
         });
-        return areTrackingRouteInfosEqual(current, seededRouteInfo) ? current : seededRouteInfo;
+        return areTrackingRouteInfosEqual(current, seededRouteInfo)
+          ? current
+          : seededRouteInfo;
       });
       return;
     }
 
     // PULLBACK NOTE: ETA fix — preserve durationSec in fallthrough reset (same reason as above).
     setTrackingRouteInfoState((current) => {
-      const reset = { ...EMPTY_TRACKING_ROUTE_INFO, durationSec: current?.durationSec ?? null };
+      const sameRequest = current?.requestKey === normalizedActiveRequestKey;
+      const reset = {
+        ...EMPTY_TRACKING_ROUTE_INFO,
+        requestKey: normalizedActiveRequestKey,
+        routeSource: sameRequest ? current?.routeSource : "none",
+        durationSec: sameRequest ? (current?.durationSec ?? null) : null,
+      };
       return areTrackingRouteInfosEqual(current, reset) ? current : reset;
     });
   }, [
@@ -204,6 +235,10 @@ export function useMapTrackingSync({
 
       const seeded = {
         ...normalizedCurrent,
+        requestKey: normalizedActiveRequestKey,
+        routeSource: normalizedCurrent.durationSec
+          ? "stored_route"
+          : normalizedCurrent.routeSource,
         durationSec:
           normalizedCurrent.durationSec ??
           (Number.isFinite(activeAmbulanceTrip?.etaSeconds)
@@ -223,9 +258,15 @@ export function useMapTrackingSync({
     trackingKind,
   ]);
 
+  const scopedTrackingRouteInfo =
+    trackingRouteInfo?.requestKey === normalizedActiveRequestKey
+      ? trackingRouteInfo
+      : EMPTY_TRACKING_ROUTE_INFO;
+
   const trackingRouteCoordinates = useMemo(
-    () => normalizeTrackingRouteCoordinates(trackingRouteInfo?.coordinates),
-    [trackingRouteInfo?.coordinates],
+    () =>
+      normalizeTrackingRouteCoordinates(scopedTrackingRouteInfo?.coordinates),
+    [scopedTrackingRouteInfo?.coordinates],
   );
 
   const activeTripRouteSignature = useMemo(
@@ -241,13 +282,15 @@ export function useMapTrackingSync({
   const trackingTimeline = useMemo(
     () => ({
       etaSeconds:
-        activeAmbulanceTrip?.etaSeconds ?? trackingRouteInfo?.durationSec ?? null,
+        activeAmbulanceTrip?.etaSeconds ??
+        scopedTrackingRouteInfo?.durationSec ??
+        null,
       startedAt: activeAmbulanceTrip?.startedAt ?? null,
     }),
     [
       activeAmbulanceTrip?.etaSeconds,
       activeAmbulanceTrip?.startedAt,
-      trackingRouteInfo?.durationSec,
+      scopedTrackingRouteInfo?.durationSec,
     ],
   );
 
@@ -263,7 +306,7 @@ export function useMapTrackingSync({
 
     const updates = {};
     const nowMs = Date.now();
-    const routeEtaSeconds = Number(trackingRouteInfo?.durationSec);
+    const routeEtaSeconds = Number(scopedTrackingRouteInfo?.durationSec);
     const rawTripEtaSeconds = activeAmbulanceTrip?.etaSeconds;
     const hasPolylineRoute = trackingRouteCoordinates.length >= 2;
     const shouldReconcileRouteTimeline = shouldReconcileTrackingTimeline({
@@ -280,7 +323,7 @@ export function useMapTrackingSync({
         1,
         Math.ceil(routeEtaSeconds / 60),
       )} min`;
-      updates.etaSource = "map_route";
+      updates.etaSource = scopedTrackingRouteInfo?.routeSource || "live_route";
       updates.startedAt = nowMs;
     }
 
@@ -311,7 +354,8 @@ export function useMapTrackingSync({
     patchActiveAmbulanceTrip,
     trackingKind,
     trackingRouteCoordinates,
-    trackingRouteInfo?.durationSec,
+    scopedTrackingRouteInfo?.durationSec,
+    scopedTrackingRouteInfo?.routeSource,
     trackingRouteSignature,
   ]);
 

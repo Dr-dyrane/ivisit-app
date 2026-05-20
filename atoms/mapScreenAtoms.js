@@ -177,6 +177,8 @@ export const historyPaymentStateAtom = atom({
  * Updated by Mapbox route calculation during active tracking
  */
 export const trackingRouteInfoAtom = atom({
+  requestKey: null,
+  routeSource: "none",
   durationSec: null,
   distanceMeters: null,
   coordinates: [],
@@ -286,14 +288,22 @@ export const mapVisitDetailSourceSurfaceAtom = atom(null);
 
 /**
  * Current tracking status phase for visual theming (PERSISTED via database)
- * 'en_route' | 'approaching' | 'arrived' | 'completed'
+ * Mirrors the pure tracking stage visualPhase:
+ * 'pending_approval' | 'assigning' | 'dispatch_confirmed' | 'en_route' |
+ * 'approaching' | 'arrived' | 'completed' | 'delayed' | 'lost'
  */
-export const trackingStatusPhaseAtom = persistedTrackingAtom("statusPhase", "en_route");
+export const trackingStatusPhaseAtom = persistedTrackingAtom(
+  "statusPhase",
+  "en_route",
+);
 
 /**
  * Tracking progress value (0-1) for gradient underlay and animations (PERSISTED via database)
  */
-export const trackingProgressValueAtom = persistedTrackingAtom("progressValue", 0);
+export const trackingProgressValueAtom = persistedTrackingAtom(
+  "progressValue",
+  0,
+);
 
 /**
  * Whether sheet title has animated for current status change (PERSISTED via database)
@@ -357,7 +367,8 @@ export const trackingCtaThemeAtom = atom((get) => {
   const statusPhase = get(trackingStatusPhaseAtom);
   const isDarkMode = get(mapThemeAtom);
 
-  const isArrivedPhase = statusPhase === "arrived" || statusPhase === "completed";
+  const isArrivedPhase =
+    statusPhase === "arrived" || statusPhase === "completed";
 
   return {
     // Non-arrival CTAs: muted theme
@@ -371,11 +382,19 @@ export const trackingCtaThemeAtom = atom((get) => {
 
     // Status pill — accent (in-progress) vs success (arrived); never red.
     statusBg: isArrivedPhase
-      ? (isDarkMode ? "rgba(16,185,129,0.18)" : "#D1FAE5")
-      : (isDarkMode ? "rgba(56,189,248,0.18)" : "#E0F2FE"),
+      ? isDarkMode
+        ? "rgba(16,185,129,0.18)"
+        : "#D1FAE5"
+      : isDarkMode
+        ? "rgba(56,189,248,0.18)"
+        : "#E0F2FE",
     statusText: isArrivedPhase
-      ? (isDarkMode ? "#34D399" : "#065F46")
-      : (isDarkMode ? "#7DD3FC" : "#075985"),
+      ? isDarkMode
+        ? "#34D399"
+        : "#065F46"
+      : isDarkMode
+        ? "#7DD3FC"
+        : "#075985",
   };
 });
 

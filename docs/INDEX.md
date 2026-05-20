@@ -100,14 +100,14 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 - Tracking sheet learnings: [architecture/refactoring/TRACKING_SHEET_LEARNINGS.md](./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md)
 - Map explore flow modularization: [architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md](./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md)
 - Map route-state architecture audit: [audit/map/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_ARCHITECTURE_AUDIT_2026-04-29.md)
-- Map route-state hardening checkpoint: [audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)
-- Map entity render checkpoint: [audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](./audit/map/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md)
-- Demo bootstrap bloat remediation: [audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](./audit/map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md)
+- Map route-state hardening checkpoint: [audit/map/checkpoints/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md](./audit/map/checkpoints/MAP_ROUTE_STATE_HARDENING_CHECKPOINT_2026-04-29.md)
+- Map entity render checkpoint: [audit/map/checkpoints/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md](./audit/map/checkpoints/MAP_ENTITY_RENDER_STATE_CHECKPOINT_2026-05-01.md)
+- Demo bootstrap bloat remediation: [audit/map/checkpoints/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](./audit/map/checkpoints/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md)
 - Hospital marker render rule: [audit/map/HOSPITAL_MARKER_RENDER_RULE_2026-05-06.md](./audit/map/HOSPITAL_MARKER_RENDER_RULE_2026-05-06.md)
-- Ambulance 3D telemetry pass: [audit/map/AMBULANCE_3D_TELEMETRY_PASS.md](./audit/map/AMBULANCE_3D_TELEMETRY_PASS.md)
-- MapScreen pass 18 checkpoint: [audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md](./audit/map/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md)
+- Ambulance 3D telemetry pass: [audit/map/passes/AMBULANCE_3D_TELEMETRY_PASS.md](./audit/map/passes/AMBULANCE_3D_TELEMETRY_PASS.md)
+- MapScreen pass 18 checkpoint: [audit/map/checkpoints/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md](./audit/map/checkpoints/MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md)
 - Layout runtime shell audit: [audit/map/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md](./audit/map/LAYOUT_RUNTIME_SHELL_AUDIT_2026-04-24.md)
-- Final MapScreen orchestrator checkpoint: [audit/map/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md](./audit/map/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md)
+- Final MapScreen orchestrator checkpoint: [audit/map/checkpoints/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md](./audit/map/checkpoints/FINAL_MAPSCREEN_ORCHESTRATOR_CHECKPOINT.md)
 
 ### Search / Location UX Audits
 
@@ -122,7 +122,7 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 ### iVisit Phase 0–8 Product/Architecture Plans (2026-05-19)
 
-- Phase 0–8 product UX simplification: [architecture/refactoring/IVISIT_PHASE_0_TO_8_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md](./architecture/refactoring/IVISIT_PHASE_0_TO_8_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md)
+- Phase 0–7 product UX simplification: [architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md](./architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md)
 - Edge Function Phase 8 architecture consolidation: [architecture/refactoring/EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md](./architecture/refactoring/EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md)
 - Refactoring bible: [architecture/refactoring/REFACTORING_BIBLE.md](./architecture/refactoring/REFACTORING_BIBLE.md)
 - Stash audit (224-file categorization): [architecture/refactoring/STASH_AUDIT.md](./architecture/refactoring/STASH_AUDIT.md)
@@ -243,11 +243,11 @@ These files are preserved for audit trail and context but are no longer current 
 
 ### Historical / Early Audits
 
-- Architecture audit 2026-04-08: [audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md](./audit/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
+- Architecture audit 2026-04-08: [audit/planning/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md](./audit/planning/ARCHITECTURE_AUDIT_2026-04-08_CONTEXT_ENRICHED.md)
 - System reconstruction report 2026-03-02: [audit/planning/ivisit_full_system_reconstruction_report_2026-03-02.md](./audit/planning/ivisit_full_system_reconstruction_report_2026-03-02.md)
 - JSON artifacts (schema/flow graphs 2026-03-02): [audit/inventory/](./audit/inventory/)
-- Risk status 2026-04-23: [audit/RISK_STATUS_2026-04-23.md](./audit/RISK_STATUS_2026-04-23.md)
-- Re-audit 2026-04-25: [audit/REAUDIT_2026-04-25.md](./audit/REAUDIT_2026-04-25.md)
+- Risk status 2026-04-23: [audit/planning/RISK_STATUS_2026-04-23.md](./audit/planning/RISK_STATUS_2026-04-23.md)
+- Re-audit 2026-04-25: [audit/planning/REAUDIT_2026-04-25.md](./audit/planning/REAUDIT_2026-04-25.md)
 
 ---
 
@@ -320,7 +320,6 @@ When adding a new document:
 
 All stack comparison audits are under `audit/screens/`. Quick links:
 
-- [BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/HELP_SUPPORT_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/INSURANCE_STACK_COMPARISON_AUDIT_2026-04-29.md)
 - [NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md](./audit/screens/NOTIFICATIONS_STACK_COMPARISON_AUDIT_2026-04-29.md)

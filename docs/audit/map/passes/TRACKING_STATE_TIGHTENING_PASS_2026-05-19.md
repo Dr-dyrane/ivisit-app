@@ -2,7 +2,7 @@
 
 Date: 2026-05-19
 Target release: iVisit 1.0.6 open-testing candidate
-Status: In progress
+Status: Complete
 Owner: Map runtime / emergency tracking
 
 ## Source Of Truth And Audit Rule
@@ -213,6 +213,7 @@ payment approval result
    - Evidence: `hooks/emergency/useEmergencyRealtime.js` only merges ambulance events when `prev` exists.
    - Contract: creating the active trip must come from request completion, active-trip query hydration, or an explicit pending-to-active transition. Realtime cannot rescue an empty store by itself.
    - User-visible risk: if completion payload is stale and query hydration is delayed, tracking can open from lifecycle/request identity before responder fields arrive.
+   - Applied fix: `hooks/emergency/useRequestFlow.js` now allows `handleRequestComplete()` to proceed when the active pending approval belongs to the same request, and `hooks/emergency/useEmergencyActions.js` uses the existing `transitionPendingToActive()` store action when that same pending request becomes the ambulance trip. This preserves blockers for unrelated active requests while removing the pending -> active split-write window.
 
 4. **Active-trip query currently treats `pending_approval` as an active ambulance candidate**
    - Evidence: `hooks/emergency/useActiveTripQuery.js` includes `pending_approval` in `isActiveStatus`, then chooses `activeAmbulance` before separately deriving `pendingMatch`.
@@ -292,10 +293,16 @@ Implementation note:
 
 - Added `components/map/views/tracking/mapTracking.snapshot.js` with a pure `buildTrackingRuntimeSnapshot()` and exported tracking stage constants.
 - `components/map/views/tracking/useMapTrackingRuntime.js` now builds and returns `trackingSnapshot` without yet rewiring hero, top slot, or CTA presentation. This keeps the first slice observational and low blast-radius.
+- Continued slice: `useMapTrackingStatus()` now accepts `trackingSnapshot` and uses `trackingSnapshot.trackingStage` as the visual phase before falling back to the legacy derivation.
+- Continued slice: `mapTracking.presentation.js` now exports `buildTrackingHeroModel()` so hero title/subtitle/right-meta/avatar decisions can consume the same snapshot stage table.
+- Continued slice: `MapTrackingStageBase.jsx` now passes `trackingSnapshot` into the status hook and hero model. Legacy hero variables remain as fallbacks while TS-2 finishes the full presentation cutover.
+- Verification: `npx prettier --check components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, `git diff --check -- components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, and `npm run hardening:emergency-runtime-confidence-assert` passed.
+- Continued handoff slice: `hooks/emergency/useRequestFlow.js` and `hooks/emergency/useEmergencyActions.js` now close the same-request pending approval -> active ambulance trip handoff using the atomic Zustand action. This implements the tracking lesson from `TRACKING_SHEET_LEARNINGS.md` section 2.2/2.12 without changing the payment sheet interaction.
+- Verification: `npm run hardening:emergency-runtime-confidence-assert`, `npx prettier --check hooks/emergency/useRequestFlow.js hooks/emergency/useEmergencyActions.js components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, `git diff --check -- hooks/emergency/useRequestFlow.js hooks/emergency/useEmergencyActions.js components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, and `npm run build:web` passed after the handoff slice.
 
 ### TS-2 — Stage Taxonomy
 
-Status: Planned
+Status: In progress
 Risk: Medium
 
 Tasks:
@@ -319,9 +326,16 @@ Acceptance:
 
 - The hero, top slot, CTA color, and sheet title all consume the same `trackingStage`.
 
+Implementation note:
+
+- Added `components/map/views/tracking/mapTracking.stage.js` as the pure stage classifier and stage metadata table. `mapTracking.snapshot.js` now assembles runtime facts, calls the classifier, and returns `trackingStage`, `trackingStageGroup`, `visualPhase`, and `isTrackingReady`.
+- `useMapTrackingRuntime.js` now passes trip progress into the snapshot so `approaching` comes from the same stage taxonomy instead of a separate hook threshold.
+- `useMapTrackingStatus.js` now syncs Jotai status atoms from `trackingSnapshot.visualPhase`, and `atoms/mapScreenAtoms.js` documents the expanded visual-phase set.
+- `mapTracking.presentation.js` now owns both `buildTrackingHeroModel()` and `buildTrackingHeaderModel()`. `MapTrackingStageBase.jsx` removed the legacy hero fallback tree and consumes those snapshot-backed models for the hero and top slot title.
+
 ### TS-3 — ETA And Route Contract
 
-Status: Planned
+Status: Complete
 Risk: High
 
 Tasks:
@@ -340,9 +354,17 @@ Acceptance:
 - Metro reload/app kill does not reset visible progress for the same request.
 - A new request cannot inherit stale ETA from the previous request.
 
+Implementation note:
+
+- `trackingRouteInfoAtom` now carries `requestKey` and `routeSource` in addition to duration, distance, and coordinates.
+- `mapTracking.timeline.js` includes route ownership in normalization/equality so two route snapshots with the same duration but different owners are not treated as equivalent.
+- `useMapTrackingSync.js` scopes live route emissions to the active request, preserves duration only when the current atom owner matches that request, and ignores route duration/polyline when the atom belongs to a previous request. Reconciliation now writes `etaSource` from the scoped route source instead of the old ambiguous `map_route`.
+- `useMapTrackingRuntime.js` also scopes its direct route-atom fallback before using `durationSec` for progress or snapshot route info.
+- `mapTracking.snapshot.js` normalizes ETA sources to `trip`, `live_route`, `stored_route`, `fallback`, or `none`; legacy `map_route` is read as `live_route`.
+
 ### TS-4 — Hero Model Extraction
 
-Status: Planned
+Status: Complete
 Risk: Low
 
 Tasks:
@@ -364,6 +386,12 @@ Tasks:
 Acceptance:
 
 - `MapTrackingStageBase.jsx` receives `heroModel` and does not branch on responder/ETA directly.
+
+Implementation note:
+
+- Added `components/map/views/tracking/mapTracking.hero.js` and moved hero/header copy models out of `MapTrackingStageBase.jsx` and `mapTracking.presentation.js`.
+- `MapTrackingStageBase.jsx` now calls `buildTrackingHeroModel()` / `buildTrackingHeaderModel()` and passes the returned model fields directly into the hero card and top slot; it no longer owns the responder/ETA/stage copy tree.
+- The model encodes the documented copy contract, including `approaching` -> "Almost there", arrival/completion outranking route/ETA, and bed states retaining bed-specific copy.
 
 ### TS-5 — Action Eligibility Model
 

@@ -1,17 +1,10 @@
-import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
+import {
+  getTrackingStageMeta,
+  resolveTrackingStage,
+  TRACKING_STAGES,
+} from "./mapTracking.stage";
 
-export const TRACKING_STAGES = Object.freeze({
-  IDLE: "idle",
-  PENDING_APPROVAL: "pending_approval",
-  ASSIGNING: "assigning",
-  DISPATCH_CONFIRMED: "dispatch_confirmed",
-  EN_ROUTE: "en_route",
-  APPROACHING: "approaching",
-  ARRIVED: "arrived",
-  COMPLETED: "completed",
-  DELAYED: "delayed",
-  LOST: "lost",
-});
+export { TRACKING_STAGE_GROUPS, TRACKING_STAGES } from "./mapTracking.stage";
 
 export const TRACKING_KINDS = Object.freeze({
   IDLE: "idle",
@@ -20,14 +13,10 @@ export const TRACKING_KINDS = Object.freeze({
   PENDING: "pending",
 });
 
-const ACTIVE_STATUSES = new Set([
-  EmergencyRequestStatus.IN_PROGRESS,
-  EmergencyRequestStatus.ACCEPTED,
-  EmergencyRequestStatus.ARRIVED,
-]);
-
 function normalizeStatus(value) {
-  const status = String(value ?? "").trim().toLowerCase();
+  const status = String(value ?? "")
+    .trim()
+    .toLowerCase();
   return status || null;
 }
 
@@ -35,6 +24,22 @@ function normalizeNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeEtaSource(value, fallback = "none") {
+  const source = String(value ?? "").trim();
+  if (!source) return fallback;
+  if (source === "map_route") return "live_route";
+  if (
+    source === "trip" ||
+    source === "live_route" ||
+    source === "stored_route" ||
+    source === "fallback" ||
+    source === "none"
+  ) {
+    return source;
+  }
+  return fallback;
 }
 
 function getRequestId(record) {
@@ -55,16 +60,16 @@ function hasResponderIdentity(activeAmbulanceTrip) {
   const assigned = activeAmbulanceTrip.assignedAmbulance;
   return Boolean(
     activeAmbulanceTrip.ambulanceId ||
-      activeAmbulanceTrip.responderName ||
-      activeAmbulanceTrip.responderPhone ||
-      activeAmbulanceTrip.responderVehicleType ||
-      activeAmbulanceTrip.responderVehiclePlate ||
-      assigned?.id ||
-      assigned?.name ||
-      assigned?.phone ||
-      assigned?.type ||
-      assigned?.plate ||
-      assigned?.vehicleNumber,
+    activeAmbulanceTrip.responderName ||
+    activeAmbulanceTrip.responderPhone ||
+    activeAmbulanceTrip.responderVehicleType ||
+    activeAmbulanceTrip.responderVehiclePlate ||
+    assigned?.id ||
+    assigned?.name ||
+    assigned?.phone ||
+    assigned?.type ||
+    assigned?.plate ||
+    assigned?.vehicleNumber,
   );
 }
 
@@ -102,11 +107,17 @@ function resolveEta({ kind, record, routeInfo }) {
   );
 
   if (tripEta !== null && tripEta >= 0) {
-    return { etaSeconds: tripEta, etaSource: record?.etaSource || "trip" };
+    return {
+      etaSeconds: tripEta,
+      etaSource: normalizeEtaSource(record?.etaSource, "trip"),
+    };
   }
 
   if (routeEta !== null && routeEta >= 0) {
-    return { etaSeconds: routeEta, etaSource: "live_route" };
+    return {
+      etaSeconds: routeEta,
+      etaSource: normalizeEtaSource(routeInfo?.routeSource, "live_route"),
+    };
   }
 
   return { etaSeconds: null, etaSource: "none" };
@@ -119,67 +130,6 @@ function resolveRoute({ kind, activeAmbulanceTrip, routeInfo }) {
   return normalizeRoute(activeAmbulanceTrip?.route);
 }
 
-function resolveTrackingStage({
-  kind,
-  status,
-  isArrived,
-  isPendingApproval,
-  hasResponder,
-  hasRoute,
-  hasEta,
-  telemetryState,
-}) {
-  if (kind === TRACKING_KINDS.IDLE || !kind) return TRACKING_STAGES.IDLE;
-
-  if (status === EmergencyRequestStatus.COMPLETED) {
-    return TRACKING_STAGES.COMPLETED;
-  }
-
-  if (isArrived || status === EmergencyRequestStatus.ARRIVED) {
-    return TRACKING_STAGES.ARRIVED;
-  }
-
-  if (
-    isPendingApproval ||
-    kind === TRACKING_KINDS.PENDING ||
-    status === EmergencyRequestStatus.PENDING_APPROVAL
-  ) {
-    return TRACKING_STAGES.PENDING_APPROVAL;
-  }
-
-  if (kind === TRACKING_KINDS.BED) {
-    return hasEta ? TRACKING_STAGES.EN_ROUTE : TRACKING_STAGES.DISPATCH_CONFIRMED;
-  }
-
-  const hasMovementSignal = hasRoute || hasEta;
-
-  if (telemetryState === "lost" && !hasMovementSignal) {
-    return TRACKING_STAGES.LOST;
-  }
-
-  if (telemetryState === "stale" && !hasMovementSignal) {
-    return TRACKING_STAGES.DELAYED;
-  }
-
-  if (hasResponder && hasMovementSignal) {
-    return TRACKING_STAGES.EN_ROUTE;
-  }
-
-  if (hasResponder) {
-    return TRACKING_STAGES.DISPATCH_CONFIRMED;
-  }
-
-  if (ACTIVE_STATUSES.has(status) && hasMovementSignal) {
-    return TRACKING_STAGES.DISPATCH_CONFIRMED;
-  }
-
-  if (ACTIVE_STATUSES.has(status)) {
-    return TRACKING_STAGES.ASSIGNING;
-  }
-
-  return hasMovementSignal ? TRACKING_STAGES.DISPATCH_CONFIRMED : TRACKING_STAGES.ASSIGNING;
-}
-
 export function buildTrackingRuntimeSnapshot({
   activeMapRequest = null,
   activeAmbulanceTrip = null,
@@ -189,6 +139,7 @@ export function buildTrackingRuntimeSnapshot({
   ambulanceTelemetryHealth = null,
   isArrived = false,
   isPendingApproval = false,
+  progress = null,
 } = {}) {
   const kind = resolveKind({
     activeMapRequest,
@@ -209,9 +160,10 @@ export function buildTrackingRuntimeSnapshot({
   const { etaSeconds, etaSource } = resolveEta({ kind, record, routeInfo });
   const hasRoute = route.length >= 2;
   const hasEta = Number.isFinite(etaSeconds) && etaSeconds >= 0;
-  const hasResponder = kind === TRACKING_KINDS.AMBULANCE
-    ? hasResponderIdentity(activeAmbulanceTrip)
-    : false;
+  const hasResponder =
+    kind === TRACKING_KINDS.AMBULANCE
+      ? hasResponderIdentity(activeAmbulanceTrip)
+      : false;
   const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
   const trackingStage = resolveTrackingStage({
     kind,
@@ -221,26 +173,25 @@ export function buildTrackingRuntimeSnapshot({
     hasResponder,
     hasRoute,
     hasEta,
+    progress,
     telemetryState,
   });
+  const stageMeta = getTrackingStageMeta(trackingStage);
 
   return {
     kind,
     requestId,
     status,
     trackingStage,
-    isTrackingReady:
-      Boolean(requestId) &&
-      (trackingStage === TRACKING_STAGES.DISPATCH_CONFIRMED ||
-        trackingStage === TRACKING_STAGES.EN_ROUTE ||
-        trackingStage === TRACKING_STAGES.APPROACHING ||
-        trackingStage === TRACKING_STAGES.ARRIVED ||
-        trackingStage === TRACKING_STAGES.COMPLETED),
+    trackingStageGroup: stageMeta.group,
+    visualPhase: stageMeta.visualPhase,
+    isTrackingReady: Boolean(requestId) && stageMeta.isTrackingReady,
     hasResponder,
     hasRoute,
     hasEta,
     etaSeconds,
     etaSource,
+    progress: Number.isFinite(progress) ? progress : null,
     telemetryState,
     telemetryStage:
       kind === TRACKING_KINDS.AMBULANCE &&

@@ -1,14 +1,14 @@
 import { useCallback, useRef, useMemo, useEffect } from "react";
 import * as Location from "expo-location";
 import {
-	EMERGENCY_VISIT_LIFECYCLE,
-	VISIT_STATUS,
-	VISIT_TYPES,
+  EMERGENCY_VISIT_LIFECYCLE,
+  VISIT_STATUS,
+  VISIT_TYPES,
 } from "../../constants/visits";
 import {
-	ACTIVE_EMERGENCY_REQUEST_ERROR_CODE,
-	ACTIVE_EMERGENCY_REQUEST_STATUSES,
-	emergencyRequestsService,
+  ACTIVE_EMERGENCY_REQUEST_ERROR_CODE,
+  ACTIVE_EMERGENCY_REQUEST_STATUSES,
+  emergencyRequestsService,
 } from "../../services/emergencyRequestsService";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
@@ -18,8 +18,8 @@ import { notificationDispatcher } from "../../services/notificationDispatcher";
 import { triageService } from "../../services/triageService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import {
-	DEFAULT_APP_COORDINATES,
-	toPointWkt,
+  DEFAULT_APP_COORDINATES,
+  toPointWkt,
 } from "../../constants/locationDefaults";
 import { useLocationStore } from "../../stores/locationStore";
 import { useEmergencyContactsStore } from "../../stores/emergencyContactsStore";
@@ -37,794 +37,945 @@ const getRequestLocationFallback = () => {
 };
 
 const toFiniteNumber = (value) => {
-	const n = Number(value);
-	return Number.isFinite(n) ? n : null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 };
 
 const getRequestUserCheckin = (request) => {
-	if (!request || typeof request !== "object") return null;
-	const candidate = request.triageCheckin ?? request.userCheckin ?? null;
-	return candidate && typeof candidate === "object" ? candidate : null;
+  if (!request || typeof request !== "object") return null;
+  const candidate = request.triageCheckin ?? request.userCheckin ?? null;
+  return candidate && typeof candidate === "object" ? candidate : null;
 };
 
 const normalizeRequestCostSnapshot = (raw) => {
-	if (!raw || typeof raw !== "object") return null;
+  if (!raw || typeof raw !== "object") return null;
 
-	const baseCost = toFiniteNumber(raw.base_cost ?? raw.baseCost);
-	const grossTotal = toFiniteNumber(raw.total_cost ?? raw.totalCost ?? raw.total_amount);
+  const baseCost = toFiniteNumber(raw.base_cost ?? raw.baseCost);
+  const grossTotal = toFiniteNumber(
+    raw.total_cost ?? raw.totalCost ?? raw.total_amount,
+  );
 
-	let feeAmount = toFiniteNumber(
-		raw.feeAmount ?? raw.fee_amount ?? raw.service_fee ?? raw.ivisit_fee_amount
-	);
+  let feeAmount = toFiniteNumber(
+    raw.feeAmount ?? raw.fee_amount ?? raw.service_fee ?? raw.ivisit_fee_amount,
+  );
 
-	if (feeAmount == null && Array.isArray(raw.breakdown)) {
-		const breakdownFee = raw.breakdown.reduce((sum, item) => {
-			const type = String(item?.type || "").toLowerCase();
-			const name = String(item?.name || "").toLowerCase();
-			const looksLikeFee = type === "fee" || name.includes("fee");
-			if (!looksLikeFee) return sum;
-			const itemCost = Number(item?.cost);
-			return Number.isFinite(itemCost) ? sum + itemCost : sum;
-		}, 0);
-		if (breakdownFee > 0) {
-			feeAmount = Number(breakdownFee.toFixed(2));
-		}
-	}
+  if (feeAmount == null && Array.isArray(raw.breakdown)) {
+    const breakdownFee = raw.breakdown.reduce((sum, item) => {
+      const type = String(item?.type || "").toLowerCase();
+      const name = String(item?.name || "").toLowerCase();
+      const looksLikeFee = type === "fee" || name.includes("fee");
+      if (!looksLikeFee) return sum;
+      const itemCost = Number(item?.cost);
+      return Number.isFinite(itemCost) ? sum + itemCost : sum;
+    }, 0);
+    if (breakdownFee > 0) {
+      feeAmount = Number(breakdownFee.toFixed(2));
+    }
+  }
 
-	const totalBeforeFee = (() => {
-		if (grossTotal != null && feeAmount != null) {
-			return Number(Math.max(0, grossTotal - feeAmount).toFixed(2));
-		}
-		if (grossTotal != null) return grossTotal;
-		if (baseCost != null) return baseCost;
-		return null;
-	})();
+  const totalBeforeFee = (() => {
+    if (grossTotal != null && feeAmount != null) {
+      return Number(Math.max(0, grossTotal - feeAmount).toFixed(2));
+    }
+    if (grossTotal != null) return grossTotal;
+    if (baseCost != null) return baseCost;
+    return null;
+  })();
 
-	if (baseCost == null && totalBeforeFee == null) return null;
+  if (baseCost == null && totalBeforeFee == null) return null;
 
-	return {
-		base_cost: baseCost ?? totalBeforeFee,
-		distance_surcharge: toFiniteNumber(raw.distance_surcharge),
-		urgency_surcharge: toFiniteNumber(raw.urgency_surcharge),
-		total_cost: totalBeforeFee ?? baseCost,
-		totalCost: totalBeforeFee ?? baseCost,
-		breakdown: Array.isArray(raw.breakdown) ? raw.breakdown : undefined,
-		feeAmount,
-		grossTotal,
-		source: "modal_pricing_snapshot",
-	};
+  return {
+    base_cost: baseCost ?? totalBeforeFee,
+    distance_surcharge: toFiniteNumber(raw.distance_surcharge),
+    urgency_surcharge: toFiniteNumber(raw.urgency_surcharge),
+    total_cost: totalBeforeFee ?? baseCost,
+    totalCost: totalBeforeFee ?? baseCost,
+    breakdown: Array.isArray(raw.breakdown) ? raw.breakdown : undefined,
+    feeAmount,
+    grossTotal,
+    source: "modal_pricing_snapshot",
+  };
 };
 
 const getRequestedLocation = (request) => {
-	if (!request || typeof request !== "object") return null;
-	const candidate = request.patientLocation ?? request.location ?? null;
-	if (!candidate) return null;
+  if (!request || typeof request !== "object") return null;
+  const candidate = request.patientLocation ?? request.location ?? null;
+  if (!candidate) return null;
 
-	if (Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude)) {
-		return {
-			latitude: Number(candidate.latitude),
-			longitude: Number(candidate.longitude),
-		};
-	}
+  if (
+    Number.isFinite(candidate.latitude) &&
+    Number.isFinite(candidate.longitude)
+  ) {
+    return {
+      latitude: Number(candidate.latitude),
+      longitude: Number(candidate.longitude),
+    };
+  }
 
-	if (Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng)) {
-		return {
-			latitude: Number(candidate.lat),
-			longitude: Number(candidate.lng),
-		};
-	}
+  if (Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng)) {
+    return {
+      latitude: Number(candidate.lat),
+      longitude: Number(candidate.lng),
+    };
+  }
 
-	return null;
+  return null;
 };
 
 const hasActiveRequestRecord = (record) => {
-	const requestKey = record?.requestId ?? record?.id ?? null;
-	if (!requestKey) return false;
-	const status = String(record?.status ?? "").trim().toLowerCase();
-	if (!status) return true;
-	return ACTIVE_EMERGENCY_REQUEST_STATUSES.includes(status);
+  const requestKey = record?.requestId ?? record?.id ?? null;
+  if (!requestKey) return false;
+  const status = String(record?.status ?? "")
+    .trim()
+    .toLowerCase();
+  if (!status) return true;
+  return ACTIVE_EMERGENCY_REQUEST_STATUSES.includes(status);
 };
 
-const hasActivePendingApproval = (pendingApproval, serviceType) => {
-	if (!pendingApproval || pendingApproval.serviceType !== serviceType) return false;
-	return hasActiveRequestRecord(pendingApproval);
+const getRequestIdentityKeys = (record) => {
+  if (!record || typeof record !== "object") return [];
+  return [
+    record.requestId,
+    record.id,
+    record._realId,
+    record.displayId,
+    record.display_id,
+  ]
+    .filter((value) => value != null && value !== "")
+    .map((value) => String(value));
+};
+
+const hasSameRequestIdentity = (a, b) => {
+  const aKeys = getRequestIdentityKeys(a);
+  const bKeys = getRequestIdentityKeys(b);
+  if (aKeys.length === 0 || bKeys.length === 0) return false;
+  return aKeys.some((key) => bKeys.includes(key));
+};
+
+const hasActivePendingApproval = (
+  pendingApproval,
+  serviceType,
+  candidateRequest = null,
+) => {
+  if (!pendingApproval || pendingApproval.serviceType !== serviceType)
+    return false;
+  if (
+    candidateRequest &&
+    hasSameRequestIdentity(pendingApproval, candidateRequest)
+  )
+    return false;
+  return hasActiveRequestRecord(pendingApproval);
 };
 
 const isActiveRequestUniqueConstraintError = (code, raw) => {
-	if (code !== "23505") return false;
-	return (
-		raw.includes("emergency_requests_one_active_bed_per_user_idx") ||
-		raw.includes("emergency_requests_one_active_ambulance_per_user_idx") ||
-		raw.includes("uniq_active_bed_per_user") ||
-		raw.includes("uniq_active_ambulance_per_user")
-	);
+  if (code !== "23505") return false;
+  return (
+    raw.includes("emergency_requests_one_active_bed_per_user_idx") ||
+    raw.includes("emergency_requests_one_active_ambulance_per_user_idx") ||
+    raw.includes("uniq_active_bed_per_user") ||
+    raw.includes("uniq_active_ambulance_per_user")
+  );
 };
 
 /**
  * 💡 STABILITY NOTE:
- * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned 
+ * This hook uses a "Latest Props Ref" pattern (ref-guarded props) to ensure that the returned
  * action handlers (handleRequestInitiated, handleRequestComplete) are perfectly stable (referentially).
- * 
- * WHY: This prevents infinite re-render loops in components like EmergencyRequestModal that 
- * register effects based on these handlers. Even if the parent passes anonymous functions 
+ *
+ * WHY: This prevents infinite re-render loops in components like EmergencyRequestModal that
+ * register effects based on these handlers. Even if the parent passes anonymous functions
  * as props, this hook won't re-create its internal stability-critical callbacks.
  */
 export const useRequestFlow = (props) => {
-	const propsRef = useRef(props);
-	useEffect(() => {
-		propsRef.current = props;
-	}, [props]);
+  const propsRef = useRef(props);
+  useEffect(() => {
+    propsRef.current = props;
+  }, [props]);
 
-	// Initialize payment flow
-	const paymentFlow = usePaymentFlow();
+  // Initialize payment flow
+  const paymentFlow = usePaymentFlow();
 
-	// Extract stable refs for use in callbacks
-	const {
-		createRequest,
-		updateRequest,
-		addVisit,
-		updateVisit,
-		setRequestStatus,
-		startAmbulanceTrip,
-		startBedBooking,
-		clearSelectedHospital,
-		hospitals,
-		onRequestComplete,
-	} = props;
+  // Extract stable refs for use in callbacks
+  const {
+    createRequest,
+    updateRequest,
+    addVisit,
+    updateVisit,
+    setRequestStatus,
+    startAmbulanceTrip,
+    startBedBooking,
+    clearSelectedHospital,
+    hospitals,
+    onRequestComplete,
+  } = props;
 
-	const inflightByTypeRef = useRef({ ambulance: false, bed: false });
+  const inflightByTypeRef = useRef({ ambulance: false, bed: false });
 
-	const blockResult = useCallback((reason, extra) => {
-		return { ok: false, reason, ...extra };
-	}, []);
+  const blockResult = useCallback((reason, extra) => {
+    return { ok: false, reason, ...extra };
+  }, []);
 
-	const successResult = useCallback((reason, extra) => {
-		return { ok: true, reason, ...extra };
-	}, []);
+  const successResult = useCallback((reason, extra) => {
+    return { ok: true, reason, ...extra };
+  }, []);
 
-	const getSnapshots = useCallback(() => {
-		const { preferences, medicalProfile, emergencyContacts, user } = propsRef.current;
-		const storeBackedContacts = selectReachableEmergencyContacts(
-			useEmergencyContactsStore.getState(),
-		);
-		const currentEmergencyContacts =
-			Array.isArray(storeBackedContacts) && storeBackedContacts.length > 0
-				? storeBackedContacts
-				: emergencyContacts;
-		const shareMedicalProfile = preferences?.privacyShareMedicalProfile === true;
-		const shareEmergencyContacts =
-			preferences?.privacyShareEmergencyContacts === true;
+  const getSnapshots = useCallback(() => {
+    const { preferences, medicalProfile, emergencyContacts, user } =
+      propsRef.current;
+    const storeBackedContacts = selectReachableEmergencyContacts(
+      useEmergencyContactsStore.getState(),
+    );
+    const currentEmergencyContacts =
+      Array.isArray(storeBackedContacts) && storeBackedContacts.length > 0
+        ? storeBackedContacts
+        : emergencyContacts;
+    const shareMedicalProfile =
+      preferences?.privacyShareMedicalProfile === true;
+    const shareEmergencyContacts =
+      preferences?.privacyShareEmergencyContacts === true;
 
-		const shared = {
-			medicalProfile: shareMedicalProfile ? medicalProfile : null,
-			emergencyContacts: shareEmergencyContacts ? currentEmergencyContacts : null,
-		};
+    const shared = {
+      medicalProfile: shareMedicalProfile ? medicalProfile : null,
+      emergencyContacts: shareEmergencyContacts
+        ? currentEmergencyContacts
+        : null,
+    };
 
-		const patient = {
-			fullName: user?.fullName ?? null,
-			phone: user?.phone ?? null,
-			email: user?.email ?? null,
-			username: user?.username ?? null,
-		};
+    const patient = {
+      fullName: user?.fullName ?? null,
+      phone: user?.phone ?? null,
+      email: user?.email ?? null,
+      username: user?.username ?? null,
+    };
 
-		return { patient, shared };
-	}, []);
+    return { patient, shared };
+  }, []);
 
-	const canStartRequest = useCallback(
-		(serviceType) => {
-			const { activeAmbulanceTrip, activeBedBooking, pendingApproval } =
-				propsRef.current;
-			if (hasActivePendingApproval(pendingApproval, serviceType)) return false;
-			if (serviceType === "ambulance") {
-				return !hasActiveRequestRecord(activeAmbulanceTrip);
-			}
-			if (serviceType === "bed") {
-				return !hasActiveRequestRecord(activeBedBooking);
-			}
-			return false;
-		},
-		[]
-	);
+  const canStartRequest = useCallback(
+    (serviceType, candidateRequest = null) => {
+      const { activeAmbulanceTrip, activeBedBooking, pendingApproval } =
+        propsRef.current;
+      if (
+        hasActivePendingApproval(pendingApproval, serviceType, candidateRequest)
+      )
+        return false;
+      if (serviceType === "ambulance") {
+        return !hasActiveRequestRecord(activeAmbulanceTrip);
+      }
+      if (serviceType === "bed") {
+        return !hasActiveRequestRecord(activeBedBooking);
+      }
+      return false;
+    },
+    [],
+  );
 
-	const handleRequestInitiated = useCallback(
-		async (request) => {
-			const {
-				hospitals,
-				requestHospitalId,
-				selectedHospital,
-				createRequest,
-				addVisit,
-				selectedSpecialty,
-				updateRequest,
-				preferences,
-				effectiveDemoModeEnabled,
-			} = propsRef.current;
+  const handleRequestInitiated = useCallback(
+    async (request) => {
+      const {
+        hospitals,
+        requestHospitalId,
+        selectedHospital,
+        createRequest,
+        addVisit,
+        selectedSpecialty,
+        updateRequest,
+        preferences,
+        effectiveDemoModeEnabled,
+      } = propsRef.current;
 
-			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
-				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
-			}
+      if (
+        request?.serviceType !== "ambulance" &&
+        request?.serviceType !== "bed"
+      ) {
+        return blockResult("INVALID_SERVICE_TYPE", {
+          serviceType: request?.serviceType ?? null,
+        });
+      }
 
-			if (!canStartRequest(request.serviceType)) {
-				return blockResult("ALREADY_ACTIVE", { serviceType: request.serviceType });
-			}
+      if (!canStartRequest(request.serviceType)) {
+        return blockResult("ALREADY_ACTIVE", {
+          serviceType: request.serviceType,
+        });
+      }
 
-			if (inflightByTypeRef.current[request.serviceType] === true) {
-				return blockResult("IN_FLIGHT", { serviceType: request.serviceType });
-			}
+      if (inflightByTypeRef.current[request.serviceType] === true) {
+        return blockResult("IN_FLIGHT", { serviceType: request.serviceType });
+      }
 
-			let hospitalId =
-				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
+      let hospitalId =
+        request?.hospitalId ??
+        requestHospitalId ??
+        selectedHospital?.id ??
+        null;
 
-			// 🤖 AUTO-DISPATCH: Select best hospital if none provided
-			if (!hospitalId && hospitals && hospitals.length > 0) {
-				const requestedLocation = getRequestedLocation(request);
-				if (requestedLocation) {
-					const bestHospital = DispatchService.selectBestHospital(hospitals, requestedLocation);
-					if (bestHospital) {
-						hospitalId = bestHospital.id;
-						console.log('[useRequestFlow] Auto-dispatch selected hospital:', bestHospital.name);
-					}
-				}
+      // 🤖 AUTO-DISPATCH: Select best hospital if none provided
+      if (!hospitalId && hospitals && hospitals.length > 0) {
+        const requestedLocation = getRequestedLocation(request);
+        if (requestedLocation) {
+          const bestHospital = DispatchService.selectBestHospital(
+            hospitals,
+            requestedLocation,
+          );
+          if (bestHospital) {
+            hospitalId = bestHospital.id;
+            console.log(
+              "[useRequestFlow] Auto-dispatch selected hospital:",
+              bestHospital.name,
+            );
+          }
+        }
 
-				if (!hospitalId) {
-					try {
-						// Get user location for dispatch calculation
-						const currentLocation = await Location.getCurrentPositionAsync({});
-						const userLocation = {
-							latitude: currentLocation.coords.latitude,
-							longitude: currentLocation.coords.longitude
-						};
+        if (!hospitalId) {
+          try {
+            // Get user location for dispatch calculation
+            const currentLocation = await Location.getCurrentPositionAsync({});
+            const userLocation = {
+              latitude: currentLocation.coords.latitude,
+              longitude: currentLocation.coords.longitude,
+            };
 
-						const bestHospital = DispatchService.selectBestHospital(hospitals, userLocation);
-						if (bestHospital) {
-							hospitalId = bestHospital.id;
-							console.log('[useRequestFlow] Auto-dispatch selected hospital:', bestHospital.name);
-						}
-					} catch (locationError) {
-						console.warn('[useRequestFlow] Auto-dispatch failed, using fallback:', locationError);
-						// Fallback to first available hospital
-						hospitalId = hospitals[0]?.id;
-					}
-				}
-			}
+            const bestHospital = DispatchService.selectBestHospital(
+              hospitals,
+              userLocation,
+            );
+            if (bestHospital) {
+              hospitalId = bestHospital.id;
+              console.log(
+                "[useRequestFlow] Auto-dispatch selected hospital:",
+                bestHospital.name,
+              );
+            }
+          } catch (locationError) {
+            console.warn(
+              "[useRequestFlow] Auto-dispatch failed, using fallback:",
+              locationError,
+            );
+            // Fallback to first available hospital
+            hospitalId = hospitals[0]?.id;
+          }
+        }
+      }
 
-			if (!hospitalId) {
-				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
-			}
+      if (!hospitalId) {
+        return blockResult("MISSING_HOSPITAL", {
+          serviceType: request.serviceType,
+        });
+      }
 
-			const now = new Date();
-			const nowIso = now.toISOString();
-			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-			const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
-			const date = nowIso.slice(0, 10);
-			const time = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-				const { patient, shared } = getSnapshots();
-				const userCheckin = getRequestUserCheckin(request);
-				const patientSnapshot = userCheckin
-					? { ...patient, triage: userCheckin }
-					: patient;
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const visitId = request?.requestId
+        ? String(request.requestId)
+        : `local_${Date.now()}`;
+      const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
+      const date = nowIso.slice(0, 10);
+      const time = now.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const { patient, shared } = getSnapshots();
+      const userCheckin = getRequestUserCheckin(request);
+      const patientSnapshot = userCheckin
+        ? { ...patient, triage: userCheckin }
+        : patient;
 
-			inflightByTypeRef.current[request.serviceType] = true;
-			try {
-				let liveUserLocation = getRequestedLocation(request);
-				let patientLocation = liveUserLocation ? toPointWkt(liveUserLocation) : null;
-				if (!liveUserLocation) {
-					try {
-						const currentLocation = await Location.getCurrentPositionAsync({});
-						liveUserLocation = {
-							latitude: currentLocation.coords.latitude,
-							longitude: currentLocation.coords.longitude
-						};
-						patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
-					} catch (locationError) {
-						console.warn('[useRequestFlow] Could not get user location:', locationError);
-						// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
-						const fallback = getRequestLocationFallback();
-						liveUserLocation = fallback;
-						patientLocation = toPointWkt(fallback);
-					}
-				}
+      inflightByTypeRef.current[request.serviceType] = true;
+      try {
+        let liveUserLocation = getRequestedLocation(request);
+        let patientLocation = liveUserLocation
+          ? toPointWkt(liveUserLocation)
+          : null;
+        if (!liveUserLocation) {
+          try {
+            const currentLocation = await Location.getCurrentPositionAsync({});
+            liveUserLocation = {
+              latitude: currentLocation.coords.latitude,
+              longitude: currentLocation.coords.longitude,
+            };
+            patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
+          } catch (locationError) {
+            console.warn(
+              "[useRequestFlow] Could not get user location:",
+              locationError,
+            );
+            // PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+            const fallback = getRequestLocationFallback();
+            liveUserLocation = fallback;
+            patientLocation = toPointWkt(fallback);
+          }
+        }
 
-				const hospitalCoords = hospital?.coordinates && Number.isFinite(hospital.coordinates.latitude) && Number.isFinite(hospital.coordinates.longitude)
-					? hospital.coordinates
-					: (Number.isFinite(hospital?.latitude) && Number.isFinite(hospital?.longitude)
-						? { latitude: hospital.latitude, longitude: hospital.longitude }
-						: null);
+        const hospitalCoords =
+          hospital?.coordinates &&
+          Number.isFinite(hospital.coordinates.latitude) &&
+          Number.isFinite(hospital.coordinates.longitude)
+            ? hospital.coordinates
+            : Number.isFinite(hospital?.latitude) &&
+                Number.isFinite(hospital?.longitude)
+              ? { latitude: hospital.latitude, longitude: hospital.longitude }
+              : null;
 
-				let computedDistanceKm = 0;
-				if (liveUserLocation && hospitalCoords) {
-					try {
-						// Ambulance origin is assumed to be the selected hospital.
-						computedDistanceKm = DispatchService.calculateDistance(liveUserLocation, hospitalCoords) || 0;
-					} catch (e) {
-						console.warn('[useRequestFlow] Distance calculation failed:', e);
-					}
-				}
+        let computedDistanceKm = 0;
+        if (liveUserLocation && hospitalCoords) {
+          try {
+            // Ambulance origin is assumed to be the selected hospital.
+            computedDistanceKm =
+              DispatchService.calculateDistance(
+                liveUserLocation,
+                hospitalCoords,
+              ) || 0;
+          } catch (e) {
+            console.warn("[useRequestFlow] Distance calculation failed:", e);
+          }
+        }
 
-				const computedEtaSeconds = Number.isFinite(computedDistanceKm) && computedDistanceKm > 0
-					? Math.max(120, Math.round(computedDistanceKm * 60 * 3)) // ~3 min/km, min 2 mins
-					: null;
-				const computedEtaLabel = computedEtaSeconds == null
-					? null
-					: (computedEtaSeconds < 60
-						? `${computedEtaSeconds}s`
-						: (computedEtaSeconds % 60 === 0
-							? `${Math.floor(computedEtaSeconds / 60)} min`
-							: `${Math.floor(computedEtaSeconds / 60)}m ${computedEtaSeconds % 60}s`));
+        const computedEtaSeconds =
+          Number.isFinite(computedDistanceKm) && computedDistanceKm > 0
+            ? Math.max(120, Math.round(computedDistanceKm * 60 * 3)) // ~3 min/km, min 2 mins
+            : null;
+        const computedEtaLabel =
+          computedEtaSeconds == null
+            ? null
+            : computedEtaSeconds < 60
+              ? `${computedEtaSeconds}s`
+              : computedEtaSeconds % 60 === 0
+                ? `${Math.floor(computedEtaSeconds / 60)} min`
+                : `${Math.floor(computedEtaSeconds / 60)}m ${computedEtaSeconds % 60}s`;
 
-				const derivedEstimatedArrival =
-					request?.estimatedArrival ??
-					(request?.serviceType === 'ambulance' ? (hospital?.eta || computedEtaLabel) : (hospital?.waitTime || computedEtaLabel)) ??
-					null;
+        const derivedEstimatedArrival =
+          request?.estimatedArrival ??
+          (request?.serviceType === "ambulance"
+            ? hospital?.eta || computedEtaLabel
+            : hospital?.waitTime || computedEtaLabel) ??
+          null;
 
-				// Calculate cost for the emergency request.
-				// Prefer the modal-calculated pricing snapshot so bed booking uses the selected room price.
-				let costData = normalizeRequestCostSnapshot(request?.pricingSnapshot);
-				try {
-					if (!costData) {
-						costData = await serviceCostService.calculateEmergencyCost(
-							request.serviceType,
-							{
-								distance: computedDistanceKm,
-								isUrgent: request?.isUrgent || false
-							}
-						);
-					}
-				} catch (costError) {
-					console.warn('[useRequestFlow] Cost calculation failed:', costError);
-					// Continue without cost - payment will be handled separately
-				}
+        // Calculate cost for the emergency request.
+        // Prefer the modal-calculated pricing snapshot so bed booking uses the selected room price.
+        let costData = normalizeRequestCostSnapshot(request?.pricingSnapshot);
+        try {
+          if (!costData) {
+            costData = await serviceCostService.calculateEmergencyCost(
+              request.serviceType,
+              {
+                distance: computedDistanceKm,
+                isUrgent: request?.isUrgent || false,
+              },
+            );
+          }
+        } catch (costError) {
+          console.warn("[useRequestFlow] Cost calculation failed:", costError);
+          // Continue without cost - payment will be handled separately
+        }
 
-				// Determine payment method for atomic RPC.
-				// Demo hospitals now use the real cash-approval path so the backend still creates
-				// actual emergency, payment, and visit records before dispatch is released.
-				const requestedPaymentMethodId =
-					request?.paymentMethod?.id ||
-					(request?.paymentMethod?.is_cash ? 'cash_payment' : null);
-				const isDemoCashApprovalFlow = demoEcosystemService.shouldSimulatePayments({
-					hospital,
-					demoModeEnabled:
-						effectiveDemoModeEnabled ??
-						(preferences?.demoModeEnabled !== false),
-				});
-				const paymentMethodId =
-					requestedPaymentMethodId ||
-					(isDemoCashApprovalFlow ? 'cash_payment' : null);
-				const isCashPayment =
-					typeof paymentMethodId === 'string' && paymentMethodId.toLowerCase().includes('cash');
-				const awaitsPaymentConfirmation =
-					request?.deferDispatchUntilPayment === true && !isCashPayment;
+        // Determine payment method for atomic RPC.
+        // Demo hospitals now use the real cash-approval path so the backend still creates
+        // actual emergency, payment, and visit records before dispatch is released.
+        const requestedPaymentMethodId =
+          request?.paymentMethod?.id ||
+          (request?.paymentMethod?.is_cash ? "cash_payment" : null);
+        const isDemoCashApprovalFlow =
+          demoEcosystemService.shouldSimulatePayments({
+            hospital,
+            demoModeEnabled:
+              effectiveDemoModeEnabled ??
+              preferences?.demoModeEnabled !== false,
+          });
+        const paymentMethodId =
+          requestedPaymentMethodId ||
+          (isDemoCashApprovalFlow ? "cash_payment" : null);
+        const isCashPayment =
+          typeof paymentMethodId === "string" &&
+          paymentMethodId.toLowerCase().includes("cash");
+        const awaitsPaymentConfirmation =
+          request?.deferDispatchUntilPayment === true && !isCashPayment;
 
-				console.log('[useRequestFlow] 📋 Creating Emergency Request:', {
-					displayId: visitId,
-					hospitalId,
-					serviceType: request.serviceType,
-					paymentMethod: paymentMethodId,
-					requestedPaymentMethod: requestedPaymentMethodId,
-					demoCashApprovalFlow: isDemoCashApprovalFlow,
-					isCashPayment,
-					awaitsPaymentConfirmation,
-					totalCost: costData?.total_cost || costData?.totalCost,
-					baseCost: costData?.base_cost,
-					feeAmount: costData?.feeAmount ?? null,
-					grossTotal: costData?.grossTotal ?? null,
-					costSource: costData?.source || "serviceCostService",
-					hasCostData: !!costData,
-				});
+        console.log("[useRequestFlow] 📋 Creating Emergency Request:", {
+          displayId: visitId,
+          hospitalId,
+          serviceType: request.serviceType,
+          paymentMethod: paymentMethodId,
+          requestedPaymentMethod: requestedPaymentMethodId,
+          demoCashApprovalFlow: isDemoCashApprovalFlow,
+          isCashPayment,
+          awaitsPaymentConfirmation,
+          totalCost: costData?.total_cost || costData?.totalCost,
+          baseCost: costData?.base_cost,
+          feeAmount: costData?.feeAmount ?? null,
+          grossTotal: costData?.grossTotal ?? null,
+          costSource: costData?.source || "serviceCostService",
+          hasCostData: !!costData,
+        });
 
-				const createdRequest = await createRequest({
-					requestId: visitId, // Display ID (AMB-xxx)
-					serviceType: request.serviceType,
-					hospitalId,
-					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-					specialty: request?.specialty ?? selectedSpecialty ?? null,
-					ambulanceType: request?.ambulanceType ?? null,
-					ambulanceId: request?.ambulanceId ?? null,
-					bedNumber: request?.bedNumber ?? null,
-					bedType: request?.bedType ?? null,
-					bedCount: request?.bedCount ?? null,
-					estimatedArrival: derivedEstimatedArrival,
-					status: EmergencyRequestStatus.IN_PROGRESS,
-					patient: patientSnapshot,
-					shared,
-					patientLocation,
-					// Cost and Payment information (used by atomic RPC)
-					...(costData && {
-						base_cost: costData.base_cost,
-						distance_surcharge: costData.distance_surcharge,
-						urgency_surcharge: costData.urgency_surcharge,
-						total_cost: costData.total_cost ?? costData.totalCost,
-						totalCost: costData.totalCost ?? costData.total_cost,
-						cost_breakdown: costData.breakdown,
-						feeAmount: costData.feeAmount,
-						payment_status: 'pending',
-					}),
-					// Payment method — triggers atomic RPC path in emergencyRequestsService
-					payment_method_id: paymentMethodId,
-					paymentMethodId: paymentMethodId,
-					deferDispatchUntilPayment: awaitsPaymentConfirmation,
-				});
+        const createdRequest = await createRequest({
+          requestId: visitId, // Display ID (AMB-xxx)
+          serviceType: request.serviceType,
+          hospitalId,
+          hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+          specialty: request?.specialty ?? selectedSpecialty ?? null,
+          ambulanceType: request?.ambulanceType ?? null,
+          ambulanceId: request?.ambulanceId ?? null,
+          bedNumber: request?.bedNumber ?? null,
+          bedType: request?.bedType ?? null,
+          bedCount: request?.bedCount ?? null,
+          estimatedArrival: derivedEstimatedArrival,
+          status: EmergencyRequestStatus.IN_PROGRESS,
+          patient: patientSnapshot,
+          shared,
+          patientLocation,
+          // Cost and Payment information (used by atomic RPC)
+          ...(costData && {
+            base_cost: costData.base_cost,
+            distance_surcharge: costData.distance_surcharge,
+            urgency_surcharge: costData.urgency_surcharge,
+            total_cost: costData.total_cost ?? costData.totalCost,
+            totalCost: costData.totalCost ?? costData.total_cost,
+            cost_breakdown: costData.breakdown,
+            feeAmount: costData.feeAmount,
+            payment_status: "pending",
+          }),
+          // Payment method — triggers atomic RPC path in emergencyRequestsService
+          payment_method_id: paymentMethodId,
+          paymentMethodId: paymentMethodId,
+          deferDispatchUntilPayment: awaitsPaymentConfirmation,
+        });
 
-				// 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
-				const realId = createdRequest?.id || visitId;
-				const displayId = createdRequest?.requestId || visitId;
-				const backendRequiresApproval = createdRequest?.requiresApproval || false;
-				const requiresApproval = backendRequiresApproval;
-				const backendAwaitsPaymentConfirmation =
-					createdRequest?.awaitsPaymentConfirmation === true;
-				const normalizedPaymentStatus =
-					createdRequest?.paymentStatus ||
-					(requiresApproval || backendAwaitsPaymentConfirmation ? "pending" : "completed");
-				const demoAutoApproveEligible =
-					isDemoCashApprovalFlow && isCashPayment && requiresApproval;
+        // 🔑 CRITICAL: Use the REAL UUID from the DB, not the display ID
+        const realId = createdRequest?.id || visitId;
+        const displayId = createdRequest?.requestId || visitId;
+        const backendRequiresApproval =
+          createdRequest?.requiresApproval || false;
+        const requiresApproval = backendRequiresApproval;
+        const backendAwaitsPaymentConfirmation =
+          createdRequest?.awaitsPaymentConfirmation === true;
+        const normalizedPaymentStatus =
+          createdRequest?.paymentStatus ||
+          (requiresApproval || backendAwaitsPaymentConfirmation
+            ? "pending"
+            : "completed");
+        const demoAutoApproveEligible =
+          isDemoCashApprovalFlow && isCashPayment && requiresApproval;
 
-				console.log('[useRequestFlow] ✅ Request Created:', {
-					realId,
-					displayId,
-					paymentStatus: normalizedPaymentStatus,
-					requiresApproval,
-					backendRequiresApproval,
-					backendAwaitsPaymentConfirmation,
-					demoAutoApproveEligible,
-					isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
-				});
+        console.log("[useRequestFlow] ✅ Request Created:", {
+          realId,
+          displayId,
+          paymentStatus: normalizedPaymentStatus,
+          requiresApproval,
+          backendRequiresApproval,
+          backendAwaitsPaymentConfirmation,
+          demoAutoApproveEligible,
+          isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(realId),
+        });
 
-				// 🏥 Visit is NOW created by backend trigger (sync_emergency_to_visit)
-				// No frontend addVisit() needed — eliminates RLS and UUID errors.
+        // 🏥 Visit is NOW created by backend trigger (sync_emergency_to_visit)
+        // No frontend addVisit() needed — eliminates RLS and UUID errors.
 
-				// 💰 CASH APPROVAL: Notify org_admin if payment needs approval
-				if (requiresApproval) {
-					try {
-						// Resolve org ID for notification targeting
-						const orgId = hospital?.organization_id || hospital?.organizationId;
-						await notificationDispatcher.dispatchCashApprovalToOrgAdmins({
-							organizationId: orgId,
-							paymentId: createdRequest.paymentId,
-							requestId: realId,
-							totalAmount: costData?.total_cost || costData?.totalCost || 0,
-							feeAmount: createdRequest.feeAmount || 0,
-							hospitalName: request?.hospitalName || hospital?.name || 'Hospital',
-							serviceType: request.serviceType,
-							displayId,
-						});
+        // 💰 CASH APPROVAL: Notify org_admin if payment needs approval
+        if (requiresApproval) {
+          try {
+            // Resolve org ID for notification targeting
+            const orgId = hospital?.organization_id || hospital?.organizationId;
+            await notificationDispatcher.dispatchCashApprovalToOrgAdmins({
+              organizationId: orgId,
+              paymentId: createdRequest.paymentId,
+              requestId: realId,
+              totalAmount: costData?.total_cost || costData?.totalCost || 0,
+              feeAmount: createdRequest.feeAmount || 0,
+              hospitalName:
+                request?.hospitalName || hospital?.name || "Hospital",
+              serviceType: request.serviceType,
+              displayId,
+            });
 
-						// Notify the patient that they're waiting
-						await notificationDispatcher.dispatchEmergencyUpdate(
-							{ id: realId },
-							'pending_approval'
-						);
+            // Notify the patient that they're waiting
+            await notificationDispatcher.dispatchEmergencyUpdate(
+              { id: realId },
+              "pending_approval",
+            );
 
-						console.log('[useRequestFlow] 📨 Cash approval notifications sent');
-					} catch (notifError) {
-						// Non-blocking: request was still created successfully
-						console.warn('[useRequestFlow] Cash approval notification failed (non-blocking):', notifError);
-					}
-				}
+            console.log("[useRequestFlow] 📨 Cash approval notifications sent");
+          } catch (notifError) {
+            // Non-blocking: request was still created successfully
+            console.warn(
+              "[useRequestFlow] Cash approval notification failed (non-blocking):",
+              notifError,
+            );
+          }
+        }
 
-				// Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
-				const triagePersist = propsRef.current?.updateTriage;
-				if (typeof triagePersist === "function") {
-					void triageService
-						.collectAndPersist({
-							requestId: realId,
-							stage: "post_request",
-							request: {
-								...request,
-								requestId: displayId,
-								hospitalId,
-								hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-							},
-							hospitals,
-							selectedHospitalId: hospitalId,
-							medicalProfile: propsRef.current?.medicalProfile ?? null,
-							emergencyContacts: propsRef.current?.emergencyContacts ?? [],
-							userCheckin,
-							currentRoute: null,
-							persist: triagePersist,
-						})
-						.then((snapshot) => {
-							const severityBand = snapshot?.severity?.band ?? "unknown";
-							const careType = snapshot?.careType?.type ?? "unknown";
-							console.log(
-								`[useRequestFlow] triage captured (post_request): requestId=${realId} severity=${severityBand} careType=${careType}`
-							);
-						})
-						.catch((triageError) => {
-							console.warn("[useRequestFlow] triage post-request capture failed (non-blocking):", triageError);
-						});
+        // Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
+        const triagePersist = propsRef.current?.updateTriage;
+        if (typeof triagePersist === "function") {
+          void triageService
+            .collectAndPersist({
+              requestId: realId,
+              stage: "post_request",
+              request: {
+                ...request,
+                requestId: displayId,
+                hospitalId,
+                hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+              },
+              hospitals,
+              selectedHospitalId: hospitalId,
+              medicalProfile: propsRef.current?.medicalProfile ?? null,
+              emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+              userCheckin,
+              currentRoute: null,
+              persist: triagePersist,
+            })
+            .then((snapshot) => {
+              const severityBand = snapshot?.severity?.band ?? "unknown";
+              const careType = snapshot?.careType?.type ?? "unknown";
+              console.log(
+                `[useRequestFlow] triage captured (post_request): requestId=${realId} severity=${severityBand} careType=${careType}`,
+              );
+            })
+            .catch((triageError) => {
+              console.warn(
+                "[useRequestFlow] triage post-request capture failed (non-blocking):",
+                triageError,
+              );
+            });
 
-					// Cash approvals can wait in pending_approval; refresh triage during that wait window.
-					if (requiresApproval) {
-						setTimeout(() => {
-							void triageService
-								.collectAndPersist({
-									requestId: realId,
-									stage: "waiting_approval",
-									request: {
-										...request,
-										requestId: displayId,
-										hospitalId,
-										hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-									},
-									hospitals,
-									selectedHospitalId: hospitalId,
-									medicalProfile: propsRef.current?.medicalProfile ?? null,
-									emergencyContacts: propsRef.current?.emergencyContacts ?? [],
-									userCheckin,
-									currentRoute: null,
-									persist: triagePersist,
-								})
-								.then((snapshot) => {
-									const severityBand = snapshot?.severity?.band ?? "unknown";
-									const careType = snapshot?.careType?.type ?? "unknown";
-									console.log(
-										`[useRequestFlow] triage captured (waiting_approval): requestId=${realId} severity=${severityBand} careType=${careType}`
-									);
-								})
-								.catch((triageError) => {
-									console.warn("[useRequestFlow] triage waiting-approval capture failed (non-blocking):", triageError);
-								});
-						}, 2500);
-					}
-				}
+          // Cash approvals can wait in pending_approval; refresh triage during that wait window.
+          if (requiresApproval) {
+            setTimeout(() => {
+              void triageService
+                .collectAndPersist({
+                  requestId: realId,
+                  stage: "waiting_approval",
+                  request: {
+                    ...request,
+                    requestId: displayId,
+                    hospitalId,
+                    hospitalName:
+                      request?.hospitalName ?? hospital?.name ?? null,
+                  },
+                  hospitals,
+                  selectedHospitalId: hospitalId,
+                  medicalProfile: propsRef.current?.medicalProfile ?? null,
+                  emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+                  userCheckin,
+                  currentRoute: null,
+                  persist: triagePersist,
+                })
+                .then((snapshot) => {
+                  const severityBand = snapshot?.severity?.band ?? "unknown";
+                  const careType = snapshot?.careType?.type ?? "unknown";
+                  console.log(
+                    `[useRequestFlow] triage captured (waiting_approval): requestId=${realId} severity=${severityBand} careType=${careType}`,
+                  );
+                })
+                .catch((triageError) => {
+                  console.warn(
+                    "[useRequestFlow] triage waiting-approval capture failed (non-blocking):",
+                    triageError,
+                  );
+                });
+            }, 2500);
+          }
+        }
 
-				return {
-					ok: true,
-					requestId: realId,
-					displayId,
-					serviceType: request.serviceType,
-					estimatedArrival: derivedEstimatedArrival,
-					etaSeconds: computedEtaSeconds,
-					requiresApproval,
-					awaitsPaymentConfirmation: backendAwaitsPaymentConfirmation,
-					demoAutoApproveEligible,
-					paymentId: createdRequest?.paymentId || null,
-					paymentStatus: normalizedPaymentStatus,
-				};
-			} catch (err) {
-				inflightByTypeRef.current[request.serviceType] = false;
-				const code = err?.code ?? null;
-				const message = typeof err?.message === "string" ? err.message : "";
-				const details = typeof err?.details === "string" ? err.details : "";
-				const hint = typeof err?.hint === "string" ? err.hint : "";
-				const raw = `${message} ${details} ${hint}`.toLowerCase();
-				if (code === ACTIVE_EMERGENCY_REQUEST_ERROR_CODE) {
-					return blockResult("ALREADY_ACTIVE", {
-						serviceType: err?.serviceType || request.serviceType,
-						activeRequest: err?.activeRequest ?? null,
-					});
-				}
-				if (isActiveRequestUniqueConstraintError(code, raw)) {
-					return blockResult("CONCURRENCY_DB", { serviceType: request.serviceType });
-				}
-				throw err;
-			}
-		},
-		[blockResult, canStartRequest, getSnapshots]
-	);
+        return {
+          ok: true,
+          requestId: realId,
+          displayId,
+          serviceType: request.serviceType,
+          estimatedArrival: derivedEstimatedArrival,
+          etaSeconds: computedEtaSeconds,
+          requiresApproval,
+          awaitsPaymentConfirmation: backendAwaitsPaymentConfirmation,
+          demoAutoApproveEligible,
+          paymentId: createdRequest?.paymentId || null,
+          paymentStatus: normalizedPaymentStatus,
+        };
+      } catch (err) {
+        inflightByTypeRef.current[request.serviceType] = false;
+        const code = err?.code ?? null;
+        const message = typeof err?.message === "string" ? err.message : "";
+        const details = typeof err?.details === "string" ? err.details : "";
+        const hint = typeof err?.hint === "string" ? err.hint : "";
+        const raw = `${message} ${details} ${hint}`.toLowerCase();
+        if (code === ACTIVE_EMERGENCY_REQUEST_ERROR_CODE) {
+          return blockResult("ALREADY_ACTIVE", {
+            serviceType: err?.serviceType || request.serviceType,
+            activeRequest: err?.activeRequest ?? null,
+          });
+        }
+        if (isActiveRequestUniqueConstraintError(code, raw)) {
+          return blockResult("CONCURRENCY_DB", {
+            serviceType: request.serviceType,
+          });
+        }
+        throw err;
+      }
+    },
+    [blockResult, canStartRequest, getSnapshots],
+  );
 
-	const handleRequestComplete = useCallback(
-		async (request) => {
-			const {
-				hospitals,
-				requestHospitalId,
-				selectedHospital,
-				updateRequest,
-				setRequestStatus,
-				updateVisit,
-				startAmbulanceTrip,
-				startBedBooking,
-				clearSelectedHospital,
-				onRequestComplete,
-				selectedSpecialty,
-				currentRoute
-			} = propsRef.current;
+  const handleRequestComplete = useCallback(
+    async (request) => {
+      const {
+        hospitals,
+        requestHospitalId,
+        selectedHospital,
+        updateRequest,
+        setRequestStatus,
+        updateVisit,
+        startAmbulanceTrip,
+        startBedBooking,
+        clearSelectedHospital,
+        onRequestComplete,
+        selectedSpecialty,
+        currentRoute,
+      } = propsRef.current;
 
-			if (request?.serviceType !== "ambulance" && request?.serviceType !== "bed") {
-				return blockResult("INVALID_SERVICE_TYPE", { serviceType: request?.serviceType ?? null });
-			}
+      if (
+        request?.serviceType !== "ambulance" &&
+        request?.serviceType !== "bed"
+      ) {
+        return blockResult("INVALID_SERVICE_TYPE", {
+          serviceType: request?.serviceType ?? null,
+        });
+      }
 
-			if (!canStartRequest(request.serviceType)) {
-				// PULLBACK NOTE: PT-A diagnostic — ALREADY_ACTIVE in handleRequestComplete is expected when server-sync beats the auto-approval timeout (EC-3 verified clean)
-				console.info('[PT-A][RequestFlow] handleRequestComplete blocked: ALREADY_ACTIVE (trip may be server-synced) | serviceType=', request.serviceType);
-				return blockResult("ALREADY_ACTIVE", { serviceType: request.serviceType });
-			}
+      if (!canStartRequest(request.serviceType, request)) {
+        // PULLBACK NOTE: PT-A diagnostic — ALREADY_ACTIVE in handleRequestComplete is expected when server-sync beats the auto-approval timeout (EC-3 verified clean)
+        console.info(
+          "[PT-A][RequestFlow] handleRequestComplete blocked: ALREADY_ACTIVE (trip may be server-synced) | serviceType=",
+          request.serviceType,
+        );
+        return blockResult("ALREADY_ACTIVE", {
+          serviceType: request.serviceType,
+        });
+      }
 
-			const hospitalId =
-				request?.hospitalId ?? requestHospitalId ?? selectedHospital?.id ?? null;
-			if (!hospitalId) {
-				return blockResult("MISSING_HOSPITAL", { serviceType: request.serviceType });
-			}
+      const hospitalId =
+        request?.hospitalId ??
+        requestHospitalId ??
+        selectedHospital?.id ??
+        null;
+      if (!hospitalId) {
+        return blockResult("MISSING_HOSPITAL", {
+          serviceType: request.serviceType,
+        });
+      }
 
-			const nowIso = new Date().toISOString();
-			const visitId = request?.requestId ? String(request.requestId) : `local_${Date.now()}`;
-			const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
+      const nowIso = new Date().toISOString();
+      const visitId = request?.requestId
+        ? String(request.requestId)
+        : `local_${Date.now()}`;
+      const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
 
-			try {
-				await updateRequest?.(visitId, {
-					status: EmergencyRequestStatus.ACCEPTED,
-					hospitalId,
-					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-					specialty: request?.specialty ?? selectedSpecialty ?? null,
-					ambulanceType: request?.ambulanceType ?? null,
-					ambulanceId: request?.ambulanceId ?? null,
-					bedNumber: request?.bedNumber ?? null,
-					bedType: request?.bedType ?? null,
-					bedCount: request?.bedCount ?? null,
-					estimatedArrival: request?.estimatedArrival ?? null,
-				});
-			} catch (err) {
-				try {
-					await setRequestStatus?.(visitId, EmergencyRequestStatus.ACCEPTED);
-				} catch (e) {
-				}
-			}
+      try {
+        await updateRequest?.(visitId, {
+          status: EmergencyRequestStatus.ACCEPTED,
+          hospitalId,
+          hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+          specialty: request?.specialty ?? selectedSpecialty ?? null,
+          ambulanceType: request?.ambulanceType ?? null,
+          ambulanceId: request?.ambulanceId ?? null,
+          bedNumber: request?.bedNumber ?? null,
+          bedType: request?.bedType ?? null,
+          bedCount: request?.bedCount ?? null,
+          estimatedArrival: request?.estimatedArrival ?? null,
+        });
+      } catch (err) {
+        try {
+          await setRequestStatus?.(visitId, EmergencyRequestStatus.ACCEPTED);
+        } catch (e) {}
+      }
 
-			try {
-				// PULLBACK NOTE: PT-G — removed duplicate updateVisit(CONFIRMED) that was immediately
-				// overwritten by MONITORING in the same try block (silent drop — CONFIRMED never observable)
-				// OLD: CONFIRMED → MONITORING (two writes; first is invisible to all subscribers)
-				// NEW: write MONITORING directly — correct terminal state for an accepted dispatch
-				await updateVisit?.(visitId, {
-					lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
-					lifecycleUpdatedAt: nowIso,
-				});
-			} catch (e) {
-			}
+      try {
+        // PULLBACK NOTE: PT-G — removed duplicate updateVisit(CONFIRMED) that was immediately
+        // overwritten by MONITORING in the same try block (silent drop — CONFIRMED never observable)
+        // OLD: CONFIRMED → MONITORING (two writes; first is invisible to all subscribers)
+        // NEW: write MONITORING directly — correct terminal state for an accepted dispatch
+        await updateVisit?.(visitId, {
+          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
+          lifecycleUpdatedAt: nowIso,
+        });
+      } catch (e) {}
 
-			if (request.serviceType === "ambulance") {
-				const routeEtaSeconds = request?.etaSeconds ?? currentRoute?.durationSec ?? currentRoute?.duration ?? null;
-				// PULLBACK NOTE: PT-G — null guard on fallbackEtaLabel: show 'En route' instead of blank
-				// when no etaSeconds or estimatedArrival is available on dispatch
-				const fallbackEtaLabel =
-					request?.estimatedArrival ??
-					(Number.isFinite(routeEtaSeconds)
-						? (routeEtaSeconds < 60
-							? `${Math.max(1, Math.round(routeEtaSeconds))}s`
-							: `${Math.max(1, Math.round(routeEtaSeconds / 60))} min`)
-						: 'En route');
-				startAmbulanceTrip({
-					hospitalId,
-					requestId: visitId,
-					status: EmergencyRequestStatus.ACCEPTED,
-					ambulanceId: request?.ambulanceId ?? null,
-					ambulanceType: request?.ambulanceType ?? null,
-					assignedAmbulance: request?.assignedAmbulance ?? null,
-					currentResponderLocation: request?.currentResponderLocation ?? null,
-					currentResponderHeading: request?.currentResponderHeading ?? null,
-					hospitalCoordinate: request?.hospitalCoordinate ?? null,
-					patientLocation: request?.patientLocation ?? null,
-					estimatedArrival: fallbackEtaLabel,
-					etaSeconds: routeEtaSeconds,
-					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-					route: currentRoute?.coordinates ?? null,
-				});
-			}
+      if (request.serviceType === "ambulance") {
+        const routeEtaSeconds =
+          request?.etaSeconds ??
+          currentRoute?.durationSec ??
+          currentRoute?.duration ??
+          null;
+        // PULLBACK NOTE: PT-G — null guard on fallbackEtaLabel: show 'En route' instead of blank
+        // when no etaSeconds or estimatedArrival is available on dispatch
+        const fallbackEtaLabel =
+          request?.estimatedArrival ??
+          (Number.isFinite(routeEtaSeconds)
+            ? routeEtaSeconds < 60
+              ? `${Math.max(1, Math.round(routeEtaSeconds))}s`
+              : `${Math.max(1, Math.round(routeEtaSeconds / 60))} min`
+            : "En route");
+        startAmbulanceTrip({
+          hospitalId,
+          requestId: visitId,
+          status: EmergencyRequestStatus.ACCEPTED,
+          ambulanceId: request?.ambulanceId ?? null,
+          ambulanceType: request?.ambulanceType ?? null,
+          assignedAmbulance: request?.assignedAmbulance ?? null,
+          currentResponderLocation: request?.currentResponderLocation ?? null,
+          currentResponderHeading: request?.currentResponderHeading ?? null,
+          hospitalCoordinate: request?.hospitalCoordinate ?? null,
+          patientLocation: request?.patientLocation ?? null,
+          estimatedArrival: fallbackEtaLabel,
+          etaSeconds: routeEtaSeconds,
+          hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+          route: currentRoute?.coordinates ?? null,
+        });
+      }
 
-			if (request.serviceType === "bed") {
-				const routeEtaSeconds = request?.etaSeconds ?? currentRoute?.durationSec ?? currentRoute?.duration ?? null;
-				startBedBooking({
-					hospitalId,
-					requestId: visitId,
-					status: EmergencyRequestStatus.ACCEPTED,
-					hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-					specialty: request?.specialty ?? null,
-					bedNumber: request?.bedNumber ?? null,
-					bedType: request?.bedType ?? null,
-					bedCount: request?.bedCount ?? null,
-					estimatedWait: request?.estimatedArrival ?? null,
-					etaSeconds: routeEtaSeconds,
-				});
-			}
+      if (request.serviceType === "bed") {
+        const routeEtaSeconds =
+          request?.etaSeconds ??
+          currentRoute?.durationSec ??
+          currentRoute?.duration ??
+          null;
+        startBedBooking({
+          hospitalId,
+          requestId: visitId,
+          status: EmergencyRequestStatus.ACCEPTED,
+          hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+          specialty: request?.specialty ?? null,
+          bedNumber: request?.bedNumber ?? null,
+          bedType: request?.bedType ?? null,
+          bedCount: request?.bedCount ?? null,
+          estimatedWait: request?.estimatedArrival ?? null,
+          etaSeconds: routeEtaSeconds,
+        });
+      }
 
-			// Non-blocking routing-stage triage refresh (parallel to active trip/booking lifecycle).
-			const triagePersist = propsRef.current?.updateTriage;
-			if (typeof triagePersist === "function") {
-				const userCheckin = getRequestUserCheckin(request);
-				void triageService
-					.collectAndPersist({
-						requestId: visitId,
-						stage: "routing",
-						request: {
-							...request,
-							requestId: visitId,
-							hospitalId,
-							hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-						},
-						hospitals,
-						selectedHospitalId: hospitalId,
-						medicalProfile: propsRef.current?.medicalProfile ?? null,
-						emergencyContacts: propsRef.current?.emergencyContacts ?? [],
-						userCheckin,
-						currentRoute,
-						persist: triagePersist,
-					})
-					.then((snapshot) => {
-						const severityBand = snapshot?.severity?.band ?? "unknown";
-						const careType = snapshot?.careType?.type ?? "unknown";
-						console.log(
-							`[useRequestFlow] triage captured (routing): requestId=${visitId} severity=${severityBand} careType=${careType}`
-						);
-					})
-					.catch((triageError) => {
-						console.warn("[useRequestFlow] triage routing capture failed (non-blocking):", triageError);
-					});
-			}
+      // Non-blocking routing-stage triage refresh (parallel to active trip/booking lifecycle).
+      const triagePersist = propsRef.current?.updateTriage;
+      if (typeof triagePersist === "function") {
+        const userCheckin = getRequestUserCheckin(request);
+        void triageService
+          .collectAndPersist({
+            requestId: visitId,
+            stage: "routing",
+            request: {
+              ...request,
+              requestId: visitId,
+              hospitalId,
+              hospitalName: request?.hospitalName ?? hospital?.name ?? null,
+            },
+            hospitals,
+            selectedHospitalId: hospitalId,
+            medicalProfile: propsRef.current?.medicalProfile ?? null,
+            emergencyContacts: propsRef.current?.emergencyContacts ?? [],
+            userCheckin,
+            currentRoute,
+            persist: triagePersist,
+          })
+          .then((snapshot) => {
+            const severityBand = snapshot?.severity?.band ?? "unknown";
+            const careType = snapshot?.careType?.type ?? "unknown";
+            console.log(
+              `[useRequestFlow] triage captured (routing): requestId=${visitId} severity=${severityBand} careType=${careType}`,
+            );
+          })
+          .catch((triageError) => {
+            console.warn(
+              "[useRequestFlow] triage routing capture failed (non-blocking):",
+              triageError,
+            );
+          });
+      }
 
-			inflightByTypeRef.current[request.serviceType] = false;
-			clearSelectedHospital();
-			onRequestComplete?.();
-			return { ok: true, requestId: visitId, serviceType: request.serviceType };
-		},
-		[blockResult, canStartRequest]
-	);
+      inflightByTypeRef.current[request.serviceType] = false;
+      clearSelectedHospital();
+      onRequestComplete?.();
+      return { ok: true, requestId: visitId, serviceType: request.serviceType };
+    },
+    [blockResult, canStartRequest],
+  );
 
-	// 🚨 QUICK EMERGENCY: Auto-dispatch without hospital selection
-	const handleQuickEmergency = useCallback(async (serviceType = "ambulance") => {
-		const { hospitals } = propsRef.current;
+  // 🚨 QUICK EMERGENCY: Auto-dispatch without hospital selection
+  const handleQuickEmergency = useCallback(
+    async (serviceType = "ambulance") => {
+      const { hospitals } = propsRef.current;
 
-		if (!canStartRequest(serviceType)) {
-			return blockResult("ALREADY_ACTIVE", { serviceType });
-		}
+      if (!canStartRequest(serviceType)) {
+        return blockResult("ALREADY_ACTIVE", { serviceType });
+      }
 
-		if (inflightByTypeRef.current[serviceType] === true) {
-			return blockResult("IN_FLIGHT", { serviceType });
-		}
+      if (inflightByTypeRef.current[serviceType] === true) {
+        return blockResult("IN_FLIGHT", { serviceType });
+      }
 
-		inflightByTypeRef.current[serviceType] = true;
+      inflightByTypeRef.current[serviceType] = true;
 
-		try {
-			// Get user location first
-			let userLocation = null;
-			try {
-				const currentLocation = await Location.getCurrentPositionAsync({});
-				userLocation = {
-					latitude: currentLocation.coords.latitude,
-					longitude: currentLocation.coords.longitude
-				};
-			} catch (locationError) {
-				console.warn('[useRequestFlow] Quick emergency location failed, using fallback:', locationError);
-				// PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
-				userLocation = getRequestLocationFallback();
-			}
+      try {
+        // Get user location first
+        let userLocation = null;
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({});
+          userLocation = {
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+          };
+        } catch (locationError) {
+          console.warn(
+            "[useRequestFlow] Quick emergency location failed, using fallback:",
+            locationError,
+          );
+          // PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
+          userLocation = getRequestLocationFallback();
+        }
 
-			// Auto-select best hospital
-			const bestHospital = DispatchService.selectBestHospital(hospitals || [], userLocation);
-			if (!bestHospital) {
-				return blockResult("NO_HOSPITALS", { serviceType });
-			}
+        // Auto-select best hospital
+        const bestHospital = DispatchService.selectBestHospital(
+          hospitals || [],
+          userLocation,
+        );
+        if (!bestHospital) {
+          return blockResult("NO_HOSPITALS", { serviceType });
+        }
 
-			// Create visitId for the request
-			const visitId = `quick_${Date.now()}`;
+        // Create visitId for the request
+        const visitId = `quick_${Date.now()}`;
 
-			// Create emergency request with auto-selected hospital
-			const result = await handleRequestInitiated({
-				serviceType,
-				hospitalId: bestHospital.id,
-				requestId: visitId,
-				autoDispatched: true,
-				dispatchScore: bestHospital.dispatchScore
-			});
+        // Create emergency request with auto-selected hospital
+        const result = await handleRequestInitiated({
+          serviceType,
+          hospitalId: bestHospital.id,
+          requestId: visitId,
+          autoDispatched: true,
+          dispatchScore: bestHospital.dispatchScore,
+        });
 
-			return successResult("REQUEST_CREATED", {
-				requestId: result.requestId || visitId,
-				hospital: bestHospital.name,
-				hospitalId: bestHospital.id,
-				autoDispatched: true,
-				dispatchScore: bestHospital.dispatchScore
-			});
+        return successResult("REQUEST_CREATED", {
+          requestId: result.requestId || visitId,
+          hospital: bestHospital.name,
+          hospitalId: bestHospital.id,
+          autoDispatched: true,
+          dispatchScore: bestHospital.dispatchScore,
+        });
+      } catch (error) {
+        console.error("[useRequestFlow] Quick emergency failed:", error);
+        return blockResult("REQUEST_FAILED", {
+          serviceType,
+          error: error.message,
+        });
+      } finally {
+        inflightByTypeRef.current[serviceType] = false;
+      }
+    },
+    [blockResult, canStartRequest, handleRequestInitiated, successResult],
+  );
 
-		} catch (error) {
-			console.error('[useRequestFlow] Quick emergency failed:', error);
-			return blockResult("REQUEST_FAILED", { serviceType, error: error.message });
-		} finally {
-			inflightByTypeRef.current[serviceType] = false;
-		}
-	}, [blockResult, canStartRequest, handleRequestInitiated, successResult]);
-
-	return useMemo(() => ({
-		handleRequestInitiated,
-		handleRequestComplete,
-		handleQuickEmergency
-	}), [handleRequestInitiated, handleRequestComplete, handleQuickEmergency]);
+  return useMemo(
+    () => ({
+      handleRequestInitiated,
+      handleRequestComplete,
+      handleQuickEmergency,
+    }),
+    [handleRequestInitiated, handleRequestComplete, handleQuickEmergency],
+  );
 };

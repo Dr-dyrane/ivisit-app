@@ -29,7 +29,10 @@ export function formatHospitalDistanceLabel(hospital) {
 }
 
 export function resolveDistanceLabel(routeInfo, hospital) {
-  if (Number.isFinite(routeInfo?.distanceMeters) && routeInfo.distanceMeters > 0) {
+  if (
+    Number.isFinite(routeInfo?.distanceMeters) &&
+    routeInfo.distanceMeters > 0
+  ) {
     return formatDistanceMeters(routeInfo.distanceMeters) || "--";
   }
   return formatHospitalDistanceLabel(hospital);
@@ -90,7 +93,9 @@ export function getToneColors({ tone, isDarkMode }) {
       };
     default:
       return {
-        surface: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.86)",
+        surface: isDarkMode
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(255,255,255,0.86)",
         text: isDarkMode ? "#E2E8F0" : "#334155",
         icon: isDarkMode ? "#CBD5E1" : "#475569",
       };
@@ -125,8 +130,10 @@ export function resolveTransportServiceLabel(value) {
   const raw = String(value || "").trim();
   if (!raw) return "Transport";
   const normalized = raw.toLowerCase();
-  if (normalized.includes("bls") || normalized.includes("basic")) return "Everyday care";
-  if (normalized.includes("als") || normalized.includes("advanced")) return "Extra support";
+  if (normalized.includes("bls") || normalized.includes("basic"))
+    return "Everyday care";
+  if (normalized.includes("als") || normalized.includes("advanced"))
+    return "Extra support";
   if (
     normalized.includes("icu") ||
     normalized.includes("critical") ||
@@ -144,7 +151,12 @@ export function resolveTransportServiceLabel(value) {
 export function resolveBedServiceLabel(value) {
   if (value && typeof value === "object") {
     const fromObject =
-      value.title || value.label || value.name || value.service_name || value.room_type || null;
+      value.title ||
+      value.label ||
+      value.name ||
+      value.service_name ||
+      value.room_type ||
+      null;
     if (typeof fromObject === "string" && fromObject.trim()) {
       return resolveBedServiceLabel(fromObject);
     }
@@ -170,14 +182,20 @@ export function resolveBedServiceLabel(value) {
     return "High-support care";
   }
   if (normalized.includes("maternity")) return "Maternity room";
-  if (normalized.includes("child") || normalized.includes("paediatric") || normalized.includes("pediatric")) {
+  if (
+    normalized.includes("child") ||
+    normalized.includes("paediatric") ||
+    normalized.includes("pediatric")
+  ) {
     return "Children's care";
   }
   return raw;
 }
 
 export function isGenericTransportLabel(label) {
-  const normalized = String(label || "").trim().toLowerCase();
+  const normalized = String(label || "")
+    .trim()
+    .toLowerCase();
   return (
     !normalized ||
     normalized === "transport" ||

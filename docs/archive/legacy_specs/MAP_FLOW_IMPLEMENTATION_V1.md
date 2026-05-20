@@ -2,9 +2,9 @@
 > This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
 > It contains partially stale content. The doc itself declares its stale sections and defers to the replacements below.
 > **Current replacements:**
-> - Active flow contract: [`docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
-> - Current working truth: [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
-> - Product doctrine: [`docs/flows/emergency/MASTER_REFERENCE_FLOW_V1.md`](../../../flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+> - Active flow contract: [`docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
+> - Current working truth: [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
+> - Product doctrine: [`docs/flows/emergency/MASTER_REFERENCE_FLOW_V1.md`](../../flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 
 ---
 

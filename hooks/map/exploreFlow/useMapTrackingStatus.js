@@ -25,7 +25,7 @@ import { useToast } from "../../../contexts/ToastContext";
 // Status transition thresholds (progress 0-1)
 const STATUS_THRESHOLDS = {
   APPROACHING: 0.7, // 70% progress = approaching destination
-  ARRIVED: 0.95,    // 95% progress = arrived
+  ARRIVED: 0.95, // 95% progress = arrived
 };
 
 /**
@@ -44,6 +44,14 @@ function deriveStatusPhase({
   if (progress >= STATUS_THRESHOLDS.ARRIVED) return "arrived";
   if (progress >= STATUS_THRESHOLDS.APPROACHING) return "approaching";
   return "en_route";
+}
+
+function normalizeSnapshotPhase(trackingSnapshot) {
+  const stage = String(
+    trackingSnapshot?.visualPhase || trackingSnapshot?.trackingStage || "",
+  ).trim();
+  if (!stage || stage === "idle") return null;
+  return stage;
 }
 
 /**
@@ -65,6 +73,7 @@ function deriveStatusPhase({
  * @param {number} params.nowMs - Current timestamp for animation sync
  */
 export function useMapTrackingStatus({
+  trackingSnapshot = null,
   trackingKind,
   activeAmbulanceTrip,
   activeBedBooking,
@@ -95,7 +104,10 @@ export function useMapTrackingStatus({
 
     if (trackingKind === "ambulance" && activeAmbulanceTrip) {
       // Use trip progress if available
-      if (typeof ambulanceTripProgress === "number" && !isNaN(ambulanceTripProgress)) {
+      if (
+        typeof ambulanceTripProgress === "number" &&
+        !isNaN(ambulanceTripProgress)
+      ) {
         return Math.max(0, Math.min(1, ambulanceTripProgress));
       }
 
@@ -103,7 +115,10 @@ export function useMapTrackingStatus({
       const etaSeconds = activeAmbulanceTrip?.etaSeconds;
       const startedAt = activeAmbulanceTrip?.startedAt;
       if (etaSeconds && startedAt) {
-        const startTime = typeof startedAt === "number" ? startedAt : new Date(startedAt).getTime();
+        const startTime =
+          typeof startedAt === "number"
+            ? startedAt
+            : new Date(startedAt).getTime();
         const elapsed = (nowMs || Date.now()) - startTime;
         const total = etaSeconds * 1000;
         return Math.max(0, Math.min(1, elapsed / total));
@@ -113,10 +128,14 @@ export function useMapTrackingStatus({
     if (trackingKind === "bed" && activeBedBooking) {
       // Bed bookings have simpler progress
       const checkInAt = activeBedBooking?.checkInAt;
-      const estimatedDuration = activeBedBooking?.estimatedDurationMinutes || 60;
+      const estimatedDuration =
+        activeBedBooking?.estimatedDurationMinutes || 60;
 
       if (checkInAt) {
-        const startTime = typeof checkInAt === "number" ? checkInAt : new Date(checkInAt).getTime();
+        const startTime =
+          typeof checkInAt === "number"
+            ? checkInAt
+            : new Date(checkInAt).getTime();
         const elapsed = (nowMs || Date.now()) - startTime;
         const total = estimatedDuration * 60 * 1000;
         return Math.max(0, Math.min(1, elapsed / total));
@@ -124,19 +143,37 @@ export function useMapTrackingStatus({
     }
 
     return 0;
-  }, [trackingKind, activeAmbulanceTrip, activeBedBooking, ambulanceTripProgress, nowMs]);
+  }, [
+    trackingKind,
+    activeAmbulanceTrip,
+    activeBedBooking,
+    ambulanceTripProgress,
+    nowMs,
+  ]);
 
   // Derive status phase from all inputs
   const nextStatusPhase = useMemo(() => {
+    const snapshotPhase = normalizeSnapshotPhase(trackingSnapshot);
+    if (snapshotPhase) return snapshotPhase;
+
     return deriveStatusPhase({
       isArrived,
-      isCompleted: !activeAmbulanceTrip && !activeBedBooking && !isPendingApproval,
+      isCompleted:
+        !activeAmbulanceTrip && !activeBedBooking && !isPendingApproval,
       progress: rawProgress,
       tripStatus: activeAmbulanceTrip?.status,
       bookingStatus: activeBedBooking?.status,
       canMarkArrived,
     });
-  }, [isArrived, activeAmbulanceTrip, activeBedBooking, isPendingApproval, rawProgress, canMarkArrived]);
+  }, [
+    activeAmbulanceTrip,
+    activeBedBooking,
+    canMarkArrived,
+    isArrived,
+    isPendingApproval,
+    rawProgress,
+    trackingSnapshot,
+  ]);
 
   // Sync status phase to atom (with reset of animation flag on change)
   useEffect(() => {
@@ -147,7 +184,9 @@ export function useMapTrackingStatus({
       if (nextStatusPhase === "arrived" && !hasFiredArrivedToastRef.current) {
         hasFiredArrivedToastRef.current = true;
         // PULLBACK NOTE: defer one frame so the button turns green before the toast appears
-        requestAnimationFrame(() => showToast("Your driver has arrived", "success"));
+        requestAnimationFrame(() =>
+          showToast("Your driver has arrived", "success"),
+        );
       }
       if (nextStatusPhase !== "arrived") {
         hasFiredArrivedToastRef.current = false;

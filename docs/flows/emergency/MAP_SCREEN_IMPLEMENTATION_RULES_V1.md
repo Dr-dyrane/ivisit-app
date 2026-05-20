@@ -9,9 +9,9 @@ Related references:
 - [architecture/README.md](./architecture/README.md)
 - [architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
 - [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
-- [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
-- [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
-- [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](./MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
+- [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../../archive/legacy_specs/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
+- [MAP_FLOW_IMPLEMENTATION_V1.md](../../archive/legacy_specs/MAP_FLOW_IMPLEMENTATION_V1.md)
+- [MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md](../../archive/legacy_specs/MAP_EXPLORE_INTENT_AUDIT_AND_SYSTEM_V1.md)
 - [architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md](./architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md)
 - [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
 
@@ -21,11 +21,11 @@ Before changing the map shell, sheet shell, or active header UI, review these re
 
 1. [../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md](../../research/APPLE_MAPS_IPHONE_UI_REFERENCE.md)
    - first stop for Apple Maps behavior and latest Apple visual-language guidance
-2. [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](./EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
+2. [EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md](../../archive/legacy_specs/EMERGENCY_SHEET_AND_MAP_UI_SPEC_V1.md)
    - product-state and decision-surface spec
 3. [../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](../../design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md)
    - token, component-family, and reuse guidance
-4. [MAP_FLOW_IMPLEMENTATION_V1.md](./MAP_FLOW_IMPLEMENTATION_V1.md)
+4. [MAP_FLOW_IMPLEMENTATION_V1.md](../../archive/legacy_specs/MAP_FLOW_IMPLEMENTATION_V1.md)
    - runtime ownership and composition map
 5. [architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md](./architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md)
    - sheet refactor boundaries and known visual exceptions
@@ -411,7 +411,7 @@ Current bridge modal family:
 - [MapHospitalDetailsModal.jsx](../../../components/map/MapHospitalDetailsModal.jsx)
 - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
 - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
-- [MapRecentVisitsModal.jsx](../../../components/map/MapRecentVisitsModal.jsx)
+- `MapRecentVisitsModal` historical map-owned history surface
 
 Rules:
 
@@ -449,7 +449,7 @@ Current consumers:
   - [MapExploreLoadingOverlay.jsx](../../../components/map/surfaces/MapExploreLoadingOverlay.jsx)
   - [MapGuestProfileModal.jsx](../../../components/map/MapGuestProfileModal.jsx)
   - [MapCareHistoryModal.jsx](../../../components/map/MapCareHistoryModal.jsx)
-  - [MapRecentVisitsModal.jsx](../../../components/map/MapRecentVisitsModal.jsx)
+  - `MapRecentVisitsModal` historical map-owned history surface
   - [MapLocationModal.jsx](../../../components/map/surfaces/search/MapLocationModal.jsx)
   - [components/map/views/shared/useMapStageResponsiveMetrics.js](../../../components/map/views/shared/useMapStageResponsiveMetrics.js)
   - [components/map/views/exploreIntent/useMapExploreIntentResponsiveMetrics.js](../../../components/map/views/exploreIntent/useMapExploreIntentResponsiveMetrics.js)

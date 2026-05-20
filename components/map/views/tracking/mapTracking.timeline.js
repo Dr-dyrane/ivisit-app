@@ -40,7 +40,10 @@ export function shouldReconcileTrackingTimeline({
   toleranceSeconds = TIMELINE_RECONCILE_TOLERANCE_SECONDS,
 }) {
   const resolvedRouteEtaSeconds = Number(routeEtaSeconds);
-  if (!Number.isFinite(resolvedRouteEtaSeconds) || resolvedRouteEtaSeconds <= 0) {
+  if (
+    !Number.isFinite(resolvedRouteEtaSeconds) ||
+    resolvedRouteEtaSeconds <= 0
+  ) {
     return false;
   }
 
@@ -53,7 +56,10 @@ export function shouldReconcileTrackingTimeline({
     return true;
   }
 
-  if (Math.abs(resolvedRouteEtaSeconds - resolvedTripEtaSeconds) > toleranceSeconds) {
+  if (
+    Math.abs(resolvedRouteEtaSeconds - resolvedTripEtaSeconds) >
+    toleranceSeconds
+  ) {
     return true;
   }
 
@@ -71,7 +77,10 @@ export function shouldReconcileTrackingTimeline({
     return true;
   }
 
-  return Math.abs(resolvedRouteEtaSeconds - snapshotRemainingSeconds) > toleranceSeconds;
+  return (
+    Math.abs(resolvedRouteEtaSeconds - snapshotRemainingSeconds) >
+    toleranceSeconds
+  );
 }
 
 export function normalizeTrackingRouteCoordinates(route = []) {
@@ -90,8 +99,7 @@ export function normalizeTrackingRouteCoordinates(route = []) {
 export function buildTrackingRouteSignature(route = []) {
   return normalizeTrackingRouteCoordinates(route)
     .map(
-      (point) =>
-        `${point.latitude.toFixed(5)}:${point.longitude.toFixed(5)}`,
+      (point) => `${point.latitude.toFixed(5)}:${point.longitude.toFixed(5)}`,
     )
     .join("|");
 }
@@ -106,6 +114,14 @@ function normalizeTrackingMetric(value) {
 
 export function normalizeTrackingRouteInfo(routeInfo = {}) {
   return {
+    requestKey:
+      routeInfo?.requestKey != null && routeInfo.requestKey !== ""
+        ? String(routeInfo.requestKey)
+        : null,
+    routeSource:
+      typeof routeInfo?.routeSource === "string" && routeInfo.routeSource.trim()
+        ? routeInfo.routeSource.trim()
+        : "none",
     durationSec: normalizeTrackingMetric(routeInfo?.durationSec),
     distanceMeters: normalizeTrackingMetric(routeInfo?.distanceMeters),
     coordinates: normalizeTrackingRouteCoordinates(routeInfo?.coordinates),
@@ -117,6 +133,8 @@ export function areTrackingRouteInfosEqual(left, right) {
   const normalizedRight = normalizeTrackingRouteInfo(right);
 
   return (
+    normalizedLeft.requestKey === normalizedRight.requestKey &&
+    normalizedLeft.routeSource === normalizedRight.routeSource &&
     normalizedLeft.durationSec === normalizedRight.durationSec &&
     normalizedLeft.distanceMeters === normalizedRight.distanceMeters &&
     buildTrackingRouteSignature(normalizedLeft.coordinates) ===
