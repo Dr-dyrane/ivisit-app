@@ -1,22 +1,26 @@
 {
-  "_lastCommitHash": "9cbd640",
-  "_lastCommitDate": "2026-05-15T00:15:49-07:00",
+  "_lastCommitHash": "65d29942",
+  "_lastCommitDate": "2026-05-19T20:28:46-07:00",
   "version": "1.0.5",
-  "date": "2026-05-17",
-  "title": "Pharmacy Deduplication Fix",
-  "summary": "Fixed duplicate pharmacy entries in the provider list by improving coordinate-based deduplication in the discovery edge function.",
+  "date": "2026-05-20",
+  "title": "Emergency Tracking Hardening",
+  "summary": "Tightened emergency tracking state, action eligibility, route ownership, and tracking-sheet UI resilience for the staging release.",
   "changes": [
     {
-      "type": "bugfix",
-      "message": "Increased coordinate precision from 3 to 5 decimal places (~111m → ~1m) in discover-hospitals edge function for accurate deduplication."
+      "type": "improvement",
+      "message": "Centralized tracking stage, hero, and action decisions so ambulance, bed, pending, arrived, delayed, lost, and completed states stay aligned."
     },
     {
       "type": "bugfix",
-      "message": "Fixed duplicate providers appearing when Google Places and Mapbox return slightly different coordinates for the same location."
+      "message": "Scoped live route and tracking UI state by request identity so a new emergency request cannot inherit stale ETA, route, progress, or title-animation state."
     },
     {
       "type": "improvement",
-      "message": "Provider list now shows unique pharmacies without duplicate entries at the same physical location."
+      "message": "Kept Contact Dispatch available during recoverable tracking interruptions while preserving completed-state terminal behavior."
+    },
+    {
+      "type": "quality",
+      "message": "Added pure tracking model assertions and hardened tracking-sheet text rendering for staging verification."
     }
   ]
 }
