@@ -58,6 +58,15 @@
 | cancel active bed       | bed clears but active map request still points  | backend bed status, active bed booking store, active map request kind         |
 | cancel then reload      | persisted local state resurrects cancelled trip | post-reload active request query, persisted store, tracking key               |
 
+### Mobile Web Marker Render Churn
+
+| Interaction / state                | State risk                                                            | Evidence to capture                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| active tracking map on mobile web  | hospital pins flicker while trip state is otherwise valid             | marker prop identity, parent rerender source, Google marker create/cleanup count     |
+| responder movement or animation    | ambulance sprite remounts when heading bucket changes                 | `ambulanceSpriteBucket`, React marker key, coordinate update cadence                 |
+| route recalculation while tracking | polyline redraw makes marker flicker look like a location/GPS defect  | route origin, route key, polyline create/cleanup count, tracking route atom payload  |
+| Chrome location permission/jitter  | noisy location input is mistaken for the root marker lifecycle defect | `GlobalLocationContext` update cadence, `useMapLocation` web watch guard, route diff |
+
 ### History Resume / Recovery Flow
 
 | Interaction                         | State risk                                             | Evidence to capture                                                                |
@@ -158,10 +167,10 @@
 
 ## Current Boundary
 
-The source edge-case matrix above is mapped but not closed. Backend/runtime
+The source edge-case matrix above is mapped for audit closeout. Backend/runtime
 confidence assertions passed during this pass for the checked-in emergency and
-visit reports, so backend confidence and interactive `/map` proof should not be
-collapsed into one status during the next audit loop.
+visit reports, so backend confidence and optional interactive `/map`
+confirmation should not be collapsed into one status during fixes.
 
 The remaining open statuses are rendered-screen proof:
 
@@ -172,9 +181,9 @@ The remaining open statuses are rendered-screen proof:
 
 Historical rendered proof exists for an earlier browser-tested ambulance path
 through tracking mount, arrival confirmation, completion, rating skip, cleanup,
-and a bed tracking cancel path. Treat that as a runtime breadcrumb, not current
-closure: the present audit still needs fresh proof for the open matrix rows and
-must re-run adversarial validation after that proof is reconciled.
+and a bed tracking cancel path. Treat that as a runtime breadcrumb, not as a
+replacement for the source audit: the present source pass is closed, while fresh
+rendered proof remains optional confirmation for visual and interaction rows.
 
 The exact proof gate is tracked in
 [`09-audit-closeout.md`](09-audit-closeout.md).

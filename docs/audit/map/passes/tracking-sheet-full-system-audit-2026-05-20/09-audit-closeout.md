@@ -1,22 +1,24 @@
-# Audit Completion Checkpoint
+# Audit Source Closeout
 
-> This is a checkpoint for the tracking-map audit. It separates evidence already
-> gathered from evidence still missing. It is not an audit closeout and it is not
-> permission to stop the audit.
+> This is the source closeout for the tracking-map audit. It separates defended
+> source findings from optional rendered confirmation and implementation work.
 
-## Checkpoint Verdict
+## Source Verdict
 
-The audit is still open. Source mapping is deep, but a complete audit needs the
-remaining rendered `/map` proof and then another adversarial pass against the
-expanded evidence.
+The source-induction pass is now complete for the core tracking-map invariant
+families, and the fresh adversarial validation pass has challenged the expanded
+proof set. Rendered `/map` testing is useful later as confirmation, but it is
+not the finish gate for this source audit.
 
-| Layer                        | Checkpoint status        | Evidence                                                                                                     |
-| ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Tracking source spine        | mapped, challenge again  | Coverage ledger in `02-system-contracts.md` is mapped for listed tracking tiers.                             |
-| Backend/API contracts        | mapped with runtime help | RPC/status/store/query/realtime/chat lanes are mapped; local runtime confidence assertions pass.             |
-| Audit skepticism             | first pass complete      | `08-adversarial-validation.md` defended the code and downgraded overbroad route/display/action claims.       |
-| Reload/rehydrate source path | source-mapped            | Store/query/lifecycle/visual-atom hydration defenses are mapped in `03-backend-api-store.md`.                |
-| Interactive `/map` UI proof  | open                     | Need rendered proof for detents, modal remount perception, reload visuals, chat, cancel, rating, and bed UX. |
+| Layer                          | Checkpoint status        | Evidence                                                                                                |
+| ------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Tracking source spine          | mapped, challenge again  | Coverage ledger in `02-system-contracts.md` is mapped for listed tracking tiers.                        |
+| Backend/API contracts          | mapped with runtime help | RPC/status/store/query/realtime/chat lanes are mapped; local runtime confidence assertions pass.        |
+| Audit skepticism               | fresh pass complete      | `08-adversarial-validation.md` defended the code twice and narrowed overbroad source-induction claims.  |
+| Reload/rehydrate source path   | source-mapped            | Store/query/lifecycle/visual-atom hydration defenses are mapped in `03-backend-api-store.md`.           |
+| Tracking induction proof       | source-proved            | Core transition families are proved in the induction progress table below.                              |
+| Map render lifecycle proof     | source-proved            | Marker, polyline, camera, route-info, and location/render boundaries are mapped and classified.         |
+| Optional rendered confirmation | deferred                 | Browser/device proof may confirm the source proof later, but it is no longer the audit close condition. |
 
 ## What Is Now Proven
 
@@ -114,37 +116,50 @@ session. Continuing the proof gate from here requires one of:
   request into tracking
 - deliberate demo/test seeding that can survive long enough for UI inspection
 
-## What Is Still Not Proven
+## Source Induction Results
 
-### Interactive `/map` Proof Gate
+### Proof Gate Results
 
-| Scenario                             | Must inspect                                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Pending cash ambulance               | Sheet/header copy, pending actions, no fake dispatched movement.                                        |
-| Active no responder/no movement      | Assigning/preparing parity across header, hero, title, CTA.                                             |
-| Active no responder plus route ETA   | ETA appears without responder-overclaim copy.                                                           |
-| Responder plus movement              | Header/hero/route/ETA agree.                                                                            |
-| Arrival before and after confirm     | Confirm vs complete action and hero semantics.                                                          |
-| Complete to rating, then skip/submit | No live chrome resurrection; terminal context preserved only where needed.                              |
-| Raw modal close on tracking rating   | Decide whether dismiss-only behavior is intended or a cleanup defect.                                   |
-| Contact Dispatch open/send/close     | Request key, ETA, route line, header, and modal focus remain coherent.                                  |
-| Pickup changes or reloads mid-trip   | Committed pickup coordinate, map route origin, route-card label, and share text remain product-correct. |
-| Cancel pending/active/bed            | Failure and success feedback, sheet/header cleanup, reload result.                                      |
-| Reload pending/active/arrived/rating | Cold-start hydration visuals and request-scoped phase/progress state.                                   |
-| Bed ready/check-in/complete          | Capacity truth, ready/check-in copy, terminal cleanup.                                                  |
-| Half-snap action limit               | Urgent next action remains visible or bottom-promoted on mobile.                                        |
+| Transition / state family            | Source proof result                                                                                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pending cash ambulance               | Pending approval copy is protected in sheet/hero/header; it does not claim dispatch before approval.                                                             |
+| Active no responder/no movement      | Sheet/hero can honestly render assigning/preparing; floating header still overstates with `En Route`.                                                            |
+| Active no responder plus route ETA   | Route/ETA can promote to `dispatch_confirmed` without responder proof; product meaning remains a surviving finding.                                              |
+| Responder plus movement              | Runtime responder identity is useful but may be local/fallback-enriched, not necessarily backend assignment proof.                                               |
+| Arrival before and after confirm     | Hero/action model refines arrived semantics; broader header/stage parity remains a finding.                                                                      |
+| Complete to rating, then skip/submit | Completion-to-rating intentionally defers cleanup; skip/submit are proved terminal finalizers.                                                                   |
+| Raw modal close on tracking rating   | Raw close only clears the rating atom and is not a terminal finalizer.                                                                                           |
+| Contact Dispatch open/send/close     | Chat is room/modal-scoped; mapped as not a direct route/trip mutator, with modal-gate naming risk documented.                                                    |
+| Pickup changes or reloads mid-trip   | Committed `patientLocation`, ambient route origin, and rendered pickup label are separate producers; source proof preserves the split as a finding.              |
+| Mobile-web marker stability          | Marker/polyline/camera churn is render lifecycle, not backend/location truth.                                                                                    |
+| Cancel pending/active/bed            | Successful cancel paths clean pending/trip/bed state after backend/visit writes.                                                                                 |
+| Reload pending/active/arrived/rating | Store/query/lifecycle/route seeding are mapped; route atom reads are request-key scoped while producer ownership remains contextual.                             |
+| Bed ready/check-in/complete          | Bed lifecycle/timer/capacity semantics are separate from ambulance movement; completion follows the same deferred rating cleanup model when rating is requested. |
+| Half-snap action limit               | Action policy and bottom-action promotion are mapped; unresolved UX priority belongs in fix planning, not source truth discovery.                                |
+
+### Induction Progress
+
+| Slice                                    | Status        | Result                                                                                                                                                                       |
+| ---------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live chrome session vs readiness         | source-proved | Lifecycle predicate exists and commit optimism is intentional, but header/close consumers still accept request-key-only visibility after lifecycle false.                    |
+| Pending/assigning/no-responder semantics | source-proved | Pending is protected and clean no-responder/no-route sheet semantics are honest; route/ETA promotion and floating-header `En Route` collapse remain findings.                |
+| Route/ETA request ownership              | source-proved | Atom reads/seeding are request-key scoped, but route callback payloads are unowned and context-stamped, so stale focus/origin/hospital can still become current-route truth. |
+| Terminal/rating cleanup                  | source-proved | Cancel success cleans active store; complete-to-rating intentionally defers cleanup; skip/submit finalize; raw rating close remains non-finalizing.                          |
+| Map render lifecycle                     | source-proved | Marker/polyline/camera churn is presentation-side; only route-info emission crosses into tracking truth, and Chrome geolocation is not the primary proven cause.             |
 
 ## Audit Finish Gate
 
-The audit is not finished until:
+The source audit gate is now satisfied for the mapped tracking-map scope:
 
-1. The interactive `/map` proof scenarios are exercised or explicitly blocked
-   with the exact missing prerequisite.
-2. Runtime observations are reconciled back into the source modules and edge
-   case matrix.
-3. Findings that runtime disproves are downgraded or removed.
-4. A fresh adversarial validation pass challenges the updated findings.
-5. Only then is the fix plan promoted from provisional to actionable.
+1. Every source writer/reader/fallback for the core invariants is linked back to
+   the relevant module and edge-case row.
+2. Findings that the code disproves are downgraded or removed.
+3. A fresh adversarial validation pass challenges the updated findings.
+4. The fix plan is promoted from provisional to actionable.
+
+This does not mean every product behavior is correct. It means the audit has
+done the source work needed before advising fixes: the surviving findings are
+defended, narrowed, and mapped to source evidence.
 
 ## Current High-Confidence Findings
 
@@ -156,6 +171,8 @@ These survived the source audit and adversarial defense:
 4. Visit detail resume identity.
 5. Raw rating close semantics.
 6. Companion timing policy ambiguity.
+7. Route/ETA callback ownership as contextual producer risk.
+8. Mobile-web marker/polyline churn as a visual lifecycle stability issue.
 
 These were narrowed, not discarded:
 
@@ -164,4 +181,4 @@ These were narrowed, not discarded:
 3. Bottom CTA disable behavior exists; mid-action and non-completion failure
    feedback are weaker.
 4. Pickup truth is split across committed coordinate, ambient route origin, and
-   ambient pickup label; runtime proof must decide whether that is correct.
+   ambient pickup label; induction proof must decide whether that is correct.

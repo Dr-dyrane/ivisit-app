@@ -97,8 +97,8 @@ flowchart TD
 ## Regression Candidates
 
 Priority labels in this section are provisional audit severity labels. They are
-not final implementation order until the full audit evidence loop and the next
-adversarial validation pass are complete.
+not final implementation order by themselves; final repair order is the
+defended order in `07-fix-plan.md`.
 
 ### Audit Correction - Live chrome and tracking readiness are not one predicate
 
@@ -307,10 +307,11 @@ Fix direction:
 | Floating header status | active map request + telemetry                                      | canonical tracking stage + telemetry overlay            |
 | Rating modal           | tracking rating atom or recovered rating atom                       | one effective modal state, tracking priority            |
 
-## Provisional Next Runtime Pass
+## Actionable Repair Route
 
-This sequence remains provisional until the audit completes and the next
-adversarial pass survives the expanded evidence.
+The source audit and adversarial pass are complete for this route. The sequence
+below is now a repair route, with optional rendered confirmation kept separate
+from source proof.
 
 1. Finish the audit distinction between live-chrome lifecycle gating and
    tracking-ready snapshot gating.

@@ -4,9 +4,9 @@
 > plan, not new runtime evidence. The full preserved audit remains in
 > `00-full-audit-preserved.md`.
 
-> Audit gate: this plan is parked and provisional while the tracking audit is
-> still open. Slice numbers are hypotheses from current evidence, not final fix
-> priority.
+> Audit gate: source induction and adversarial validation are complete for the
+> mapped tracking-map scope. This plan is now actionable, but fixes should still
+> preserve the narrowed conclusions in `08-adversarial-validation.md`.
 
 ## Fix Order
 

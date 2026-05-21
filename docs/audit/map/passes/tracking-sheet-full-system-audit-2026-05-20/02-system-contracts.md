@@ -109,22 +109,22 @@ audit. "Mapped" means the current behavior is represented in a section below.
 "Read" means reviewed but not yet fully cross-linked to every downstream
 consumer.
 
-| Tier                        | Files                                                                                                                                                                                         | Coverage state                  |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| Tracking stage/render       | `MapTrackingStageBase.jsx`, `MapTrackingOrchestrator.jsx`, `parts/MapTrackingParts.jsx`                                                                                                       | mapped                          |
-| Tracking pure models        | `mapTracking.stage.js`, `snapshot.js`, `actions.js`, `model.js`, `hero.js`, `derived.js`, `timeline.js`                                                                                       | mapped                          |
-| Tracking style/theme/share  | `mapTracking.presentation.js`, `theme.js`, `styles.js`, `share.js`                                                                                                                            | mapped                          |
-| Tracking controller/runtime | `useMapTrackingRuntime.js`, `useMapTrackingController.js`                                                                                                                                     | mapped                          |
-| Tracking open/header/status | `useMapTracking.js`, `useMapTrackingHeader.js`, `useMapTrackingStatus.js`, `useMapTrackingTimer.js`                                                                                           | mapped                          |
-| Route sync/map focus        | `useMapTrackingSync.js`, `useMapFocusedState.js`, `MapScreen.jsx` tracking route wiring                                                                                                       | mapped                          |
-| Active request/header       | `mapActiveRequestModel.js`, `mapActiveSessionPresentation.js`, `useMapDerivedData.js`, `MapSheetOrchestrator.jsx` tracking case                                                               | mapped                          |
-| Trip store/query/lifecycle  | `emergencyTripStore.js`, `useActiveTripQuery.js`, `useTripLifecycle.js`, `useTripProgress.js`, `tripLifecycleMachine.js`                                                                      | mapped                          |
-| Trip actions/handlers       | `useEmergencyActions.js`, `useEmergencyHandlers.js`, `useEmergencyRealtime.js`, `useEmergencyServerSync.js`, `emergencyRealtimeProjection.js`                                                 | mapped                          |
-| Payment/request handoff     | `useRequestFlow.js`, `useMapCommitFlow.js`, `useMapCommitPaymentController.js`, `mapCommitPayment.transaction.js`, `usePaymentScreenModel.js`, `emergencyRequestsService.js`, payment helpers | mapped                          |
-| Rating recovery             | `useTrackingRatingFlow.js`, `mapTracking.rating.js`, rating atoms, `MapModalOrchestrator.jsx`                                                                                                 | mapped                          |
-| History detail/resume       | `useMapHistoryFlow.js`, `useMapShell.js`, `MapVisitDetailStageBase.jsx`, `useMapVisitDetailModel.js`, `history.presentation.js`, sheet/route detail wiring                                    | mapped                          |
-| Contact dispatch            | chat atoms, chat hooks, `EmergencyContactDispatchModal.jsx`, composer/message-list/quick-action leaf components, `MapModalOrchestrator.jsx`, `emergencyChatService.js`, emergency chat RPCs   | mapped, live UI run open        |
-| Backend/API contract        | emergency request RPCs, status guards, dispatch/ETA helpers, chat RPCs, realtime projection helpers, runtime tests                                                                            | mapped, confidence asserts pass |
+| Tier                        | Files                                                                                                                                                                                         | Coverage state                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Tracking stage/render       | `MapTrackingStageBase.jsx`, `MapTrackingOrchestrator.jsx`, `parts/MapTrackingParts.jsx`                                                                                                       | mapped                           |
+| Tracking pure models        | `mapTracking.stage.js`, `snapshot.js`, `actions.js`, `model.js`, `hero.js`, `derived.js`, `timeline.js`                                                                                       | mapped                           |
+| Tracking style/theme/share  | `mapTracking.presentation.js`, `theme.js`, `styles.js`, `share.js`                                                                                                                            | mapped                           |
+| Tracking controller/runtime | `useMapTrackingRuntime.js`, `useMapTrackingController.js`                                                                                                                                     | mapped                           |
+| Tracking open/header/status | `useMapTracking.js`, `useMapTrackingHeader.js`, `useMapTrackingStatus.js`, `useMapTrackingTimer.js`                                                                                           | mapped                           |
+| Route sync/map focus        | `useMapTrackingSync.js`, `useMapFocusedState.js`, `MapScreen.jsx` tracking route wiring                                                                                                       | mapped                           |
+| Active request/header       | `mapActiveRequestModel.js`, `mapActiveSessionPresentation.js`, `useMapDerivedData.js`, `MapSheetOrchestrator.jsx` tracking case                                                               | mapped                           |
+| Trip store/query/lifecycle  | `emergencyTripStore.js`, `useActiveTripQuery.js`, `useTripLifecycle.js`, `useTripProgress.js`, `tripLifecycleMachine.js`                                                                      | mapped                           |
+| Trip actions/handlers       | `useEmergencyActions.js`, `useEmergencyHandlers.js`, `useEmergencyRealtime.js`, `useEmergencyServerSync.js`, `emergencyRealtimeProjection.js`                                                 | mapped                           |
+| Payment/request handoff     | `useRequestFlow.js`, `useMapCommitFlow.js`, `useMapCommitPaymentController.js`, `mapCommitPayment.transaction.js`, `usePaymentScreenModel.js`, `emergencyRequestsService.js`, payment helpers | mapped                           |
+| Rating recovery             | `useTrackingRatingFlow.js`, `mapTracking.rating.js`, rating atoms, `MapModalOrchestrator.jsx`                                                                                                 | mapped                           |
+| History detail/resume       | `useMapHistoryFlow.js`, `useMapShell.js`, `MapVisitDetailStageBase.jsx`, `useMapVisitDetailModel.js`, `history.presentation.js`, sheet/route detail wiring                                    | mapped                           |
+| Contact dispatch            | chat atoms, chat hooks, `EmergencyContactDispatchModal.jsx`, composer/message-list/quick-action leaf components, `MapModalOrchestrator.jsx`, `emergencyChatService.js`, emergency chat RPCs   | mapped, induction challenge open |
+| Backend/API contract        | emergency request RPCs, status guards, dispatch/ETA helpers, chat RPCs, realtime projection helpers, runtime tests                                                                            | mapped, confidence asserts pass  |
 
 ### Remaining Coverage Before "Comprehensive"
 
@@ -134,27 +134,27 @@ thousands of references, many of which are adjacent emergency/intake/payment
 surfaces rather than active tracking itself. Before marking the audit complete,
 finish these passes:
 
-| Remaining pass               | Why it is still open                                                                                                                           | Proof required                                                                                               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Commit flow shell            | Payment/detail/triage phases can reopen or preserve sheet payloads that later seed tracking.                                                   | Mapped; direct `openTracking()` is intentional optimism, but its comment overstates the lifecycle backstop.  |
-| Active request/header parity | Header still derives from active session model, not directly from `trackingSnapshot`.                                                          | Mapped; parity gaps remain active findings, especially no-responder active states and lifecycle cleanup.     |
-| Contact dispatch runtime     | Chat modal should be UI-only, but visible atom mirroring and room lifecycle can remount surfaces.                                              | Mapped; still needs live open/close/send proof that ETA/header state does not drift.                         |
-| History/detail resume        | Selected history matching exists in row selection and collapsed detail action, but primary detail resume still has a global active-trip guard. | Mapped; primary detail CTA should reuse selected-history-to-active-request identity before opening tracking. |
-| Rating close semantics       | Shell close and Escape route through skip, but the raw close handler only clears the rating atom.                                              | Mapped; preserve shell-to-skip behavior and avoid future direct raw-close terminal dismissals.               |
-| Reload/rehydrate parity      | Trip store, visual atoms, rating atoms, and XState hydrate on different clocks.                                                                | Source-mapped; store/query/lifecycle guards are documented, cold-start UI proof still open.                  |
-| Device/runtime UI pass       | Code maps cannot prove mobile sheet detents, collapsed action visibility, or modal flashes.                                                    | Web/mobile screenshots or logs for pending, active, arrived, complete, chat, cancel, bed.                    |
+| Remaining pass               | Why it is still open                                                                                                                           | Proof required                                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Commit flow shell            | Payment/detail/triage phases can reopen or preserve sheet payloads that later seed tracking.                                                   | Mapped; direct `openTracking()` is intentional optimism, but its comment overstates the lifecycle backstop.       |
+| Active request/header parity | Header still derives from active session model, not directly from `trackingSnapshot`.                                                          | Mapped; parity gaps remain active findings, especially no-responder active states and lifecycle cleanup.          |
+| Contact dispatch state proof | Chat modal should be UI-only, but visible atom mirroring and room lifecycle can remount surfaces.                                              | Prove from code that open/close/send cannot mutate request key, route atom, active trip, or lifecycle state.      |
+| History/detail resume        | Selected history matching exists in row selection and collapsed detail action, but primary detail resume still has a global active-trip guard. | Mapped; primary detail CTA should reuse selected-history-to-active-request identity before opening tracking.      |
+| Rating close semantics       | Shell close and Escape route through skip, but the raw close handler only clears the rating atom.                                              | Mapped; preserve shell-to-skip behavior and avoid future direct raw-close terminal dismissals.                    |
+| Reload/rehydrate parity      | Trip store, visual atoms, rating atoms, and XState hydrate on different clocks.                                                                | Prove source ordering and guards across hydration, query enablement, visual atom reset, and active model rebuild. |
+| Map render lifecycle proof   | Marker, polyline, camera, route, and location effects can continuously recreate rendered map objects while tracking state is valid.            | Source-proved in `04-tracking-ui-surfaces.md`; churn is presentation-side except the route-info callback bridge.  |
 
 Implementation sequencing now lives in
 [`07-fix-plan.md`](07-fix-plan.md), which orders these mapped gaps into repair
-slices with acceptance checks and runtime proof requirements.
+slices. Those slices are now actionable because the induction proof and fresh
+adversarial validation pass have finished for the mapped tracking-map scope.
 
 ### Current Audit Boundary
 
-The tracking spine named in this ledger is mapped, but the audit is still open.
-The strongest current findings were challenged in
+The tracking spine named in this ledger is mapped for the source audit. The
+strongest current findings were challenged twice in
 [`08-adversarial-validation.md`](08-adversarial-validation.md), and reload,
-terminal, chat, and realtime boundaries have code evidence. The next audit loop
-must add rendered `/map` proof and challenge the findings again.
+terminal, chat, realtime, route, and render boundaries have code evidence.
 
 Local confidence evidence is also available:
 
@@ -166,11 +166,10 @@ Local confidence evidence is also available:
   scenarios named `cardAmbulance`, `trackingContract`, `completion`,
   `cashAmbulance`, `bedReservation`, `tipFlow`, and `transitionAudit`.
 
-The largest current gap is interactive `/map` proof:
-mobile/web sheet detents, modal remount perception, cold-start reload visuals,
-and screen-level parity for pending, active, arrived, complete/rating, chat,
-cancel, and bed stories. That proof gate is tracked in
-[`09-audit-closeout.md`](09-audit-closeout.md).
+The largest current gap is no longer source discovery. Core induction is
+complete for request identity, lifecycle meaning, route/ETA scope, hospital
+destination, pickup truth, modal isolation, terminal cleanup, and map-render
+semantics, and the fresh adversarial pass has narrowed the surviving findings.
 
 ## Connected Decision Map
 

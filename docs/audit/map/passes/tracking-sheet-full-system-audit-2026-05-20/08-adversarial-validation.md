@@ -22,6 +22,28 @@
 | Runtime responder fallback truth     | Survives                | Trip start can enrich responder identity from broadly listed ambulances without explicit handoff assignment.            |
 | Readiness chain field ownership      | Survives, narrowed      | Identity/hospital/status, pickup context, route/ETA, and assignment come from different producers.                      |
 | Pickup coordinate versus label truth | Survives, narrowed      | Trip/request pickup coordinate is preserved, but route origin and rendered/share pickup copy read shell location truth. |
+| New induction proof set              | Defended, survives      | The second pass narrows several findings but does not disprove the core source-induction results.                       |
+
+## Fresh Adversarial Pass - Source Induction Claims
+
+This pass starts from the position that the current code is probably more
+careful than the audit implies. The audit claim only survives where the code
+still leaves contradictory meaning possible after existing guards are credited.
+
+| Induction claim                          | Best defense of current code                                                                                                                                                                                                                                                                                   | Result after defense                                                                                                                                                                                                                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live chrome is not fully lifecycle-gated | `useMapTracking()` already requires `trackingRequestKey` and `hasActiveTrip` for normal auto-open, preserves an intentional commit-force path, and closes tracking when the request key disappears. The header also suppresses itself during expanded sheet and active modal states.                           | Survives, narrowed. The ordinary open path is defended, but `isHeaderVisible`, `useMapTrackingHeader().trackingHeaderVisible`, and the auto-close effect still accept a truthy request key without proving `hasActiveTrip`. The issue is stale chrome, not initial open.   |
+| Pending/no-responder semantics overstate | The sheet stage resolver explicitly protects pending approval, assigns `ASSIGNING` for active ambulance states with no responder and no movement signal, and the hero can say `Assigning driver`. Route/ETA promotion can be read as useful logistics confidence rather than fake responder confidence.        | Survives, narrowed. The sheet/hero are largely defensible. The surviving defect is the floating header vocabulary collapsing active ambulance states to `En Route`, plus the unresolved product decision that route/ETA without responder may read as dispatch proof.      |
+| Route/ETA can attach to wrong request    | `useMapTrackingSync()` stamps incoming route data with the current normalized request key, resets on request-key changes, seeds from stored trip ETA/route for same-request ambulance trips, scopes runtime reads by request key, and only patches the active ambulance trip when tracking is active.          | Survives, heavily narrowed. Cross-request reads are well defended. The remaining risk is contextual producer ownership: `EmergencyLocationPreviewMap` emits route data without request/hospital id, so a stale callback can be stamped as current if focus/origin drifted. |
+| Terminal/rating cleanup is incomplete    | Active and pending cancel paths clean only after backend/visit writes; completion-to-rating intentionally defers store cleanup so the rating modal has visit/service context; skip and submit both resolve the visit/recovery claim and finalize local tracking state.                                         | Survives only for raw close semantics. The terminal flow is mostly defended. `closeRating()` still only clears the rating atom, and `MapModalOrchestrator` wires tracking modal close directly to it, so close is not equivalent to skip/submit/finalize.                  |
+| Marker flicker means tracking truth bug  | Web markers and polylines are render adapters around Google Maps objects. Recreating a marker when coordinate/image/title/handler props change is a presentation lifecycle event, and `RouteLayer` sprite remounts are a visual implementation detail. None of this mutates backend, lifecycle, or trip store. | Downgraded. Marker/hospital/ambulance flicker is not evidence that backend tracking or Chrome geolocation truth is wrong. It remains a visual performance/stability finding, with one bridge: route callbacks can still feed route/ETA truth.                              |
+| Runtime responder truth is fake          | `startAmbulanceTrip()` enriches trips from explicit assignment first, then by id/hospital/list fallback. That gives the UI a useful responder-like object while the request continues hydrating, and query hydration preserves richer same-request data rather than erasing it.                                | Survives as provenance, not falsehood. The code is allowed to show useful runtime responder information, but the audit must not treat `hasResponder` as proof that canonical backend assignment arrived in the payment handoff.                                            |
+| Pickup truth split is always wrong       | Ambient current location is a legitimate live-device source for route recalculation, while `patientLocation` preserves the committed request coordinate. Removing pickup edits from tracking also reduced one obvious local-state lie.                                                                         | Survives as disharmony risk, not automatic bug. The source code intentionally has separate lanes; the audit should flag only places where copy/share/route claims request pickup while reading ambient shell location.                                                     |
+
+Fresh-pass conclusion: the code is not sloppy. It has meaningful gates,
+preservation logic, request-key scoping, and terminal cleanup protections. The
+findings that remain are therefore narrower and more architectural: predicate
+ownership, provenance, callback ownership, and visual lifecycle stability.
 
 ## Claims That Survived
 
@@ -338,13 +360,13 @@ and non-completion failure messaging remain the real target.
 
 ## Current Impact
 
-This pass disproved several overbroad phrasings, preserved several real findings,
-and added two boundaries the audit must keep distinct before fix advice is
-promoted:
+These passes disproved several overbroad phrasings, preserved several real
+findings, and added boundaries the fixes must keep distinct:
 
 1. live chrome lifecycle vs tracking-ready snapshot
 2. canonical responder assignment vs optimistic runtime responder enrichment
 3. committed pickup coordinate vs ambient route origin and pickup label
 
-Implementation order remains parked in `07-fix-plan.md` until the audit closes
-and a fresh validation pass survives the remaining runtime proof gates.
+Implementation order is now actionable in `07-fix-plan.md`. Optional rendered
+runtime proof can still confirm visual and interaction behavior, but it is not a
+source-audit blocker.
