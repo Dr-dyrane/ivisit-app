@@ -7,15 +7,16 @@
 
 ### Cash Ambulance Flow
 
-| Step                       | Backend/API check                                               | Store/lifecycle check                               | UI check                                                       |
-| -------------------------- | --------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| create cash request        | RPC returns UUID/display id/payment pending                     | pending approval contains UUID and display id       | payment sheet acknowledges pending/approval state immediately  |
-| approval before assignment | status accepted/in_progress may lack responder                  | active trip exists but responder false              | assigning/preparing copy, no fake driver name                  |
-| approval with ETA route    | ETA/route exists before responder                               | route atom scoped to request key                    | ETA may show, but dispatch copy should not overclaim responder |
-| responder hydrated         | ambulance identity appears from approval/query/realtime         | same request preserves ETA and route                | hero/header can move to dispatch/en route                      |
-| ETA elapsed                | active status accepted/in_progress and arrival eligibility true | lifecycle active, not arrived                       | hero says confirm arrival and CTA confirms                     |
-| user confirms arrival      | backend/store status arrived                                    | `canCompleteAmbulance` true, `canMarkArrived` false | hero says complete request and CTA completes                   |
-| complete request           | backend completed/visit created                                 | active lifecycle false                              | rating visible, tracking chrome suppressed                     |
+| Step                       | Backend/API check                                                                             | Store/lifecycle check                                                     | UI check                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| create cash request        | RPC returns UUID/display id/payment pending                                                   | pending approval contains UUID and display id                             | payment sheet acknowledges pending/approval state immediately           |
+| approval before assignment | status accepted/in_progress may lack responder                                                | active trip exists but responder false                                    | assigning/preparing copy, no fake driver name                           |
+| local responder fallback   | completion payload has no explicit assignment, trip start can choose local ambulance fallback | runtime responder fields may become truthy before server assignment proof | do not count `hasResponder=true` alone as canonical assignment evidence |
+| approval with ETA route    | ETA/route exists before responder                                                             | route atom scoped to request key                                          | ETA may show, but dispatch copy should not overclaim responder          |
+| responder hydrated         | ambulance identity appears from approval/query/realtime                                       | same request preserves ETA and route                                      | hero/header can move to dispatch/en route                               |
+| ETA elapsed                | active status accepted/in_progress and arrival eligibility true                               | lifecycle active, not arrived                                             | hero says confirm arrival and CTA confirms                              |
+| user confirms arrival      | backend/store status arrived                                                                  | `canCompleteAmbulance` true, `canMarkArrived` false                       | hero says complete request and CTA completes                            |
+| complete request           | backend completed/visit created                                                               | active lifecycle false                                                    | rating visible, tracking chrome suppressed                              |
 
 ### Modal Interaction Flow
 
@@ -90,47 +91,93 @@
 | modal owns focus                | modal surface stable                 | hidden until focus returns               | modal atom, `hasActiveMapModal`, request key, ETA before and after close        |
 | completed/rating                | rating/complete, no live chrome      | hidden unless deliberately terminal      | `hasActiveTrip=false`, rating visible                                           |
 
+### Readiness Chain Flow
+
+| Boundary              | Truth expected before moving on                                                                                     | Evidence to capture                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| approval / settlement | canonical id, hospital id, active payment/request status, any assignment fields actually returned                   | approval result/request row, settlement row columns, responder fields          |
+| completion payload    | initiated pickup context preserved, explicit assignment fields not fabricated, ETA absence visible                  | payload `patientLocation`, route/ETA fields, responder producer path           |
+| optimistic trip start | runtime created only with hospital id and canonical request continuity                                              | trip `id`/`requestId`/`displayId`, `hospitalId`, local assignment fallback use |
+| query merge           | server row corrects status/assignment without erasing same-request route/ETA/start                                  | previous trip, active row, normalized trip, identity overlap                   |
+| realtime patch        | patch only matching active trip; terminal update clears; emergency/ambulance events do not create missing trip      | event keys, event age, merged trip, responder/location patch                   |
+| snapshot and render   | stage/copy distinguish canonical assignment from runtime responder-like enrichment when product meaning requires it | snapshot flags, hero title, header label, CTA set                              |
+
+### Pickup Truth Flow
+
+| Interaction                                 | State risk                                                                                          | Evidence to capture                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| commit payment freezes pickup coordinate    | completion payload keeps `patientLocation`, but human label may not be persisted with the trip      | commit-time location label, `patientLocation`, trip fields after start                     |
+| active map location changes during tracking | preview route recalculates from ambient `activeLocation` while trip keeps request pickup coordinate | old/new `activeLocation`, stored `trip.patientLocation`, route atom coordinates and ETA    |
+| route card expanded after location change   | pickup label/detail can follow `currentLocationDetails` rather than committed request               | route card pickup label/detail, active session pickup label/detail, trip pickup coordinate |
+| share ETA after location change             | share payload can inherit ambient pickup label                                                      | share message pickup line, trip `patientLocation`, current shell location label            |
+| reload active trip                          | query rebuilds coordinate truth but UI label still comes from current location model                | hydrated trip `patientLocation`, restored shell location label, rendered route card        |
+
 ## Edge Case Coverage Tracker
 
-| Case                                          | Backend lane                                       | API lane                                                            | UI lane                                           | Status                    |
-| --------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- | ------------------------- |
-| Cash pending approval                         | request/payment pending rows                       | pending approval store + query                                      | `pending_approval`, no dispatch actions           | partial                   |
-| Cash auto-approved with responder             | approved request + ambulance assignment            | hydrated approval result starts trip                                | en route or dispatch confirmed                    | verified manually         |
-| Cash auto-approved before responder hydrate   | accepted request, assignment delayed               | same request preserved through query/realtime                       | assigning/preparing copy, no fake driver          | open                      |
-| Card payment processing                       | payment intent + settlement                        | settlement waits on UUID and invalidates active trip before dismiss | payment sheet committed/finalizing state          | code-mapped, needs UI run |
-| Wallet/immediate payment                      | active request row                                 | direct completion payload then active-trip invalidation             | immediate tracking shell                          | code-mapped, needs UI run |
-| Reload during pending                         | persisted/query request                            | hydration gate + alias match; query waits for store hydration       | pending approval restored                         | code-mapped, needs UI run |
-| Reload during active trip                     | active request + route fields                      | persisted store first, query merge second, runtime fields preserved | ETA and route persist                             | code-mapped, needs UI run |
-| Contact Dispatch open/close                   | unique chat room per request UUID                  | room creation uses canonical id and chat cache only                 | modal should not disturb tracking                 | code-mapped, needs UI run |
-| Contact Dispatch realtime lifecycle           | room-scoped message subscription                   | visible + room + lifecycle gates, message-key cache only            | `CLOSED` expected on close/remount, not ETA loss  | code-mapped, needs UI run |
-| Modal gate mismatch                           | chat/rating/history modal visible                  | explore and shell compute different active-modal sets               | header, FAB, recovery gates suppress consistently | code-mapped, needs UI run |
-| ETA elapsed before confirm                    | accepted/in_progress request                       | computed arrival eligibility                                        | hero says confirm, CTA confirm                    | fixed by current slice    |
-| User confirmed arrival                        | arrived request/lifecycle                          | action model exposes complete                                       | hero says complete, CTA complete                  | fixed by current slice    |
-| Complete request/rating                       | visit/request completed                            | defer cleanup + rating atom                                         | single rating modal, no tracking reopen           | partially verified        |
-| Rating close without skip/submit              | visit may still be rating-pending                  | shell close routes to skip; raw close only clears atom              | no stranded tracking chrome                       | code-mapped, raw risk     |
-| Cancel pending approval                       | patient update -> cancelled + visit cancel         | pending approval cleared; error copy not local                      | pending sheet and header close                    | code-mapped, needs UI run |
-| Cancel active request                         | patient update -> cancelled                        | store clears active trip only on success; error copy not local      | tracking chrome closes                            | code-mapped, needs UI run |
-| Cancel active bed                             | patient update -> cancelled                        | store clears active bed only on success; error copy not local       | bed tracking chrome closes                        | code-mapped, needs UI run |
-| Lost/stale telemetry with route               | telemetry health                                   | route fallback preserved                                            | warning overlay, actions still available          | code-mapped, needs UI run |
-| Lost/stale telemetry without route            | telemetry health                                   | no movement signal                                                  | delayed/lost state, no fake ETA                   | code-mapped, needs UI run |
-| Route key mismatch hides ETA                  | active trip preserved but route atom key differs   | strict route key equality, tolerant store/query identity            | valid ETA/route visible for active request        | code-mapped, needs UI run |
-| Bed-only booking                              | bed status/lifecycle + bed resource sync           | active bed booking store and 15-minute hold fallback                | bed reserved/ready/complete                       | code-mapped, needs UI run |
-| Bed capacity after cancel/complete            | resource sync restores backend beds                | hospital realtime updates provider availability only                | active tracking closes separately from capacity   | code-mapped, needs UI run |
-| Demo bootstrap provider truth                 | verified available demo rows, stale rows full      | refreshed post-staff hospital rows                                  | active request hospital id wins over stale rows   | code-mapped, needs UI run |
-| Active hospital object/id mismatch            | active request row vs sheet payload                | object resolution still prefers payload before id lookup            | provider label/address/coords match request id    | code-mapped, fix open     |
-| Ambulance + bed companion                     | both active records                                | one-record exclusivity mapped; timing still broad                   | no hidden companion state                         | code-mapped, timing open  |
-| Companion action after arrival                | arrived request or completion-ready bed            | policy ignores primary arrival/complete eligibility                 | no operationally stale companion CTA              | code-mapped, fix open     |
-| Visit detail resume                           | visit lifecycle                                    | row selection guarded; detail primary CTA still action-label driven | resume only when selected visit matches active    | code-mapped, fix open     |
-| Visit detail resume id mismatch               | selected history request vs active row             | collapsed action guarded; primary detail resume still global        | no wrong-trip resume                              | open targeted fix         |
-| Rating-pending history appears active         | visit lifecycle `rating_pending`                   | grouped under `active_now`, primary action rate                     | rate state does not imply live tracking           | code-mapped, needs UI run |
-| Recovered rating during active tracking       | terminal visit/rating claim                        | recovered rating suppressed while active                            | no stale modal over active tracking               | partially verified        |
-| Persisted visual atom mismatch                | active request remains canonical                   | visual atoms persist separately from trip store                     | no old phase/progress on new request              | code-mapped, needs UI run |
-| Header/sheet parity across all stages         | same backend row/status                            | header model still separate from tracking snapshot                  | header, hero, and CTA agree                       | code-mapped, fix open     |
-| Arrival/cancel action failure feedback        | RPC/status transition failure                      | busy state clears without local toast for several lanes             | failed action explains and preserves state        | code-mapped, fix open     |
-| Staff terminal update during patient tracking | console/staff RPC completes or cancels request     | realtime/query terminal event clears active store                   | live chrome closes; rating/recovery if relevant   | code-mapped, needs UI run |
-| Ambiguous frontend status string              | caller passes non-canonical status to `setStatus`  | service normalizes unknown status to `in_progress`                  | action code uses explicit constants only          | code-mapped, guard target |
-| Synthetic request label despite display id    | aggregate label falls back to UUID-derived label   | trip/bed display ids skipped by tracking label order                | real display id shown when available              | code-mapped, fix open     |
-| Half-snap action hidden by priority           | mid action exists in model but not visible in half | visible mid actions capped to three by priority                     | critical next action visible or bottom-promoted   | code-mapped, needs UI run |
+| Case                                          | Backend lane                                        | API lane                                                            | UI lane                                                       | Status                                 |
+| --------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------- |
+| Cash pending approval                         | request/payment pending rows                        | pending approval store + query                                      | `pending_approval`, no dispatch actions                       | backend confidence pass, UI proof open |
+| Cash auto-approved with responder             | approved request + ambulance assignment             | hydrated approval result starts trip                                | en route or dispatch confirmed                                | verified manually                      |
+| Cash auto-approved before responder hydrate   | accepted request, assignment delayed                | same request preserved through query/realtime                       | assigning/preparing copy, no fake driver                      | open                                   |
+| Local ambulance fallback before assignment    | approved request without explicit responder payload | trip start may populate `assignedAmbulance` from `activeAmbulances` | runtime responder bit vs canonical assignment truth separated | newly mapped, proof open               |
+| Card payment processing                       | payment intent + settlement                         | settlement waits on UUID and invalidates active trip before dismiss | payment sheet committed/finalizing state                      | code-mapped, needs UI run              |
+| Wallet/immediate payment                      | active request row                                  | direct completion payload then active-trip invalidation             | immediate tracking shell                                      | code-mapped, needs UI run              |
+| Reload during pending                         | persisted/query request                             | hydration gate + alias match; query waits for store hydration       | pending approval restored                                     | code-mapped, needs UI run              |
+| Reload during active trip                     | active request + route fields                       | persisted store first, query merge second, runtime fields preserved | ETA and route persist                                         | code-mapped, needs UI run              |
+| Contact Dispatch open/close                   | unique chat room per request UUID                   | room creation uses canonical id and chat cache only                 | modal should not disturb tracking                             | code-mapped, needs UI run              |
+| Contact Dispatch realtime lifecycle           | room-scoped message subscription                    | visible + room + lifecycle gates, message-key cache only            | `CLOSED` expected on close/remount, not ETA loss              | code-mapped, needs UI run              |
+| Modal gate mismatch                           | chat/rating/history modal visible                   | explore and shell compute different active-modal sets               | header, FAB, recovery gates suppress consistently             | code-mapped, needs UI run              |
+| ETA elapsed before confirm                    | accepted/in_progress request                        | computed arrival eligibility                                        | hero says confirm, CTA confirm                                | fixed by current slice                 |
+| User confirmed arrival                        | arrived request/lifecycle                           | action model exposes complete                                       | hero says complete, CTA complete                              | fixed by current slice                 |
+| Complete request/rating                       | visit/request completed                             | defer cleanup + rating atom                                         | single rating modal, no tracking reopen                       | backend confidence pass, UI proof open |
+| Rating close without skip/submit              | visit may still be rating-pending                   | shell close routes to skip; raw close only clears atom              | no stranded tracking chrome                                   | code-mapped, raw risk                  |
+| Cancel pending approval                       | patient update -> cancelled + visit cancel          | pending approval cleared; error copy not local                      | pending sheet and header close                                | code-mapped, needs UI run              |
+| Cancel active request                         | patient update -> cancelled                         | store clears active trip only on success; error copy not local      | tracking chrome closes                                        | code-mapped, needs UI run              |
+| Cancel active bed                             | patient update -> cancelled                         | store clears active bed only on success; error copy not local       | bed tracking chrome closes                                    | code-mapped, needs UI run              |
+| Lost/stale telemetry with route               | telemetry health                                    | route fallback preserved                                            | warning overlay, actions still available                      | code-mapped, needs UI run              |
+| Lost/stale telemetry without route            | telemetry health                                    | no movement signal                                                  | delayed/lost state, no fake ETA                               | code-mapped, needs UI run              |
+| Route key mismatch hides ETA                  | active trip preserved but route atom key differs    | strict route key equality, tolerant store/query identity            | valid ETA/route visible for active request                    | code-mapped, needs UI run              |
+| Pickup coordinate/label drift                 | active request row/trip keeps `patientLocation`     | preview map and route-card label consume live location model        | route/share copy still describes committed pickup             | code-mapped, proof open                |
+| Bed-only booking                              | bed status/lifecycle + bed resource sync            | active bed booking store and 15-minute hold fallback                | bed reserved/ready/complete                                   | backend confidence pass, UI proof open |
+| Bed capacity after cancel/complete            | resource sync restores backend beds                 | hospital realtime updates provider availability only                | active tracking closes separately from capacity               | code-mapped, needs UI run              |
+| Demo bootstrap provider truth                 | verified available demo rows, stale rows full       | refreshed post-staff hospital rows                                  | active request hospital id wins over stale rows               | code-mapped, needs UI run              |
+| Active hospital object/id mismatch            | active request row vs sheet payload                 | object resolution still prefers payload before id lookup            | provider label/address/coords match request id                | code-mapped, fix open                  |
+| Ambulance + bed companion                     | both active records                                 | one-record exclusivity mapped; timing still broad                   | no hidden companion state                                     | code-mapped, timing open               |
+| Companion action after arrival                | arrived request or completion-ready bed             | policy ignores primary arrival/complete eligibility                 | no operationally stale companion CTA                          | code-mapped, fix open                  |
+| Visit detail resume                           | visit lifecycle                                     | row selection guarded; detail primary CTA still action-label driven | resume only when selected visit matches active                | code-mapped, fix open                  |
+| Visit detail resume id mismatch               | selected history request vs active row              | collapsed action guarded; primary detail resume still global        | no wrong-trip resume                                          | open targeted fix                      |
+| Rating-pending history appears active         | visit lifecycle `rating_pending`                    | grouped under `active_now`, primary action rate                     | rate state does not imply live tracking                       | code-mapped, needs UI run              |
+| Recovered rating during active tracking       | terminal visit/rating claim                         | recovered rating suppressed while active                            | no stale modal over active tracking                           | code-mapped, UI proof open             |
+| Persisted visual atom mismatch                | active request remains canonical                    | visual atoms persist separately from trip store                     | no old phase/progress on new request                          | code-mapped, needs UI run              |
+| Header/sheet parity across all stages         | same backend row/status                             | header model still separate from tracking snapshot                  | header, hero, and CTA agree                                   | code-mapped, fix open                  |
+| Arrival/cancel action failure feedback        | RPC/status transition failure                       | busy state clears without local toast for several lanes             | failed action explains and preserves state                    | code-mapped, fix open                  |
+| Staff terminal update during patient tracking | console/staff RPC completes or cancels request      | realtime/query terminal event clears active store                   | live chrome closes; rating/recovery if relevant               | code-mapped, needs UI run              |
+| Ambiguous frontend status string              | caller passes non-canonical status to `setStatus`   | service normalizes unknown status to `in_progress`                  | action code uses explicit constants only                      | code-mapped, guard target              |
+| Synthetic request label despite display id    | aggregate label falls back to UUID-derived label    | trip/bed display ids skipped by tracking label order                | real display id shown when available                          | code-mapped, fix open                  |
+| Half-snap action hidden by priority           | mid action exists in model but not visible in half  | visible mid actions capped to three by priority                     | critical next action visible or bottom-promoted               | code-mapped, needs UI run              |
+
+## Current Boundary
+
+The source edge-case matrix above is mapped but not closed. Backend/runtime
+confidence assertions passed during this pass for the checked-in emergency and
+visit reports, so backend confidence and interactive `/map` proof should not be
+collapsed into one status during the next audit loop.
+
+The remaining open statuses are rendered-screen proof:
+
+- web/mobile sheet detents and half-snap action visibility
+- Contact Dispatch open/send/close perception
+- reload visuals for pending, active, arrived, and rating states
+- cancel/rating/bed screen transitions and failure feedback
+
+Historical rendered proof exists for an earlier browser-tested ambulance path
+through tracking mount, arrival confirmation, completion, rating skip, cleanup,
+and a bed tracking cancel path. Treat that as a runtime breadcrumb, not current
+closure: the present audit still needs fresh proof for the open matrix rows and
+must re-run adversarial validation after that proof is reconciled.
+
+The exact proof gate is tracked in
+[`09-audit-closeout.md`](09-audit-closeout.md).
 
 ## Audit Method
 

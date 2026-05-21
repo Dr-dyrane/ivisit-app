@@ -96,6 +96,33 @@ flowchart TD
 
 ## Regression Candidates
 
+Priority labels in this section are provisional audit severity labels. They are
+not final implementation order until the full audit evidence loop and the next
+adversarial validation pass are complete.
+
+### Audit Correction - Live chrome and tracking readiness are not one predicate
+
+The current source contracts already reject the stronger claim that
+`trackingRequestKey + hasActiveTrip` is a tracking-ready proof:
+
+- `EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` says tracking-ready is stronger
+  than `requestId + hasActiveTrip`.
+- `MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` requires request id, hospital id,
+  active status, route or ETA seed, pickup/patient context when available, and
+  responder identity or an explicit responder-hydrating state.
+- Current `buildTrackingRuntimeSnapshot()` computes `isTrackingReady` from
+  request id plus stage metadata. It does not carry or verify hospital id,
+  pickup/patient context, or an explicit responder-hydrating state.
+
+Audit consequence:
+
+- A lifecycle-derived boolean may still be the correct **live chrome** gate for
+  closing or suppressing sheet/header affordances after terminal cleanup.
+- It is not the **tracking readiness** contract, and it cannot by itself prove
+  that open tracking may imply healthy route, telemetry, or responder truth.
+- The final audit must keep four concepts separate: active request identity,
+  active lifecycle, live chrome visibility, and tracking-ready snapshot.
+
 ### P1 - Tracking lifecycle gate is documented but not fully enforced
 
 Evidence:
@@ -111,9 +138,14 @@ Risk:
 
 Fix direction:
 
-- Define one derived boolean: `isTrackingSessionActive = Boolean(trackingRequestKey) && hasActiveTrip`.
-- Use it in tracking sheet close logic and tracking header visibility.
+- Pressure-test one derived live-chrome boolean, currently hypothesized as
+  `isTrackingSessionActive = Boolean(trackingRequestKey) && hasActiveTrip`.
+- Use it only where the audit proves it is the right sheet/header
+  close-or-suppress gate.
 - Keep a separate `canOptimisticallyOpenFromCommit` flag for the payment handoff instead of letting any request key behave as active.
+- Do not treat this boolean as `isTrackingReady`; the stronger snapshot contract
+  still needs hospital, status, route-or-ETA, patient/pickup context when
+  available, and responder or responder-hydrating truth.
 
 ### P1 - Payment finish directly opens tracking and bypasses the claimed backstop
 
@@ -192,6 +224,31 @@ Fix direction:
   - responder + no movement = `dispatch_confirmed`
   - responder + movement = `en_route`
 
+### P2 - Runtime responder truth can outrun canonical assignment proof
+
+Evidence:
+
+- `buildCommitPaymentCompletionPayload()` only attaches `assignedAmbulance` when
+  approval/result data includes responder assignment evidence.
+- `startAmbulanceTrip()` can later populate `assignedAmbulance` from
+  `activeAmbulances` fallback when explicit assignment is absent.
+- `buildTrackingRuntimeSnapshot()` treats assignment-like fields on the active
+  trip as `hasResponder`.
+
+Risk:
+
+- A runtime trip can become responder-truthy before the audit has proven that
+  backend assignment truth reached the handoff.
+- Stage/copy audits that only inspect `hasResponder=true` can miss whether the
+  UI is showing canonical dispatch confidence or optimistic local enrichment.
+
+Fix direction:
+
+- Keep separate audit evidence for canonical assignment truth, optimistic local
+  responder/runtime shape, and explicit responder-hydrating states.
+- Do not let local fallback identity silently satisfy the documented
+  tracking-ready assignment requirement without an intentional product contract.
+
 ### P2 - Request label can fall back to UUID
 
 Evidence:
@@ -250,14 +307,20 @@ Fix direction:
 | Floating header status | active map request + telemetry                                      | canonical tracking stage + telemetry overlay            |
 | Rating modal           | tracking rating atom or recovered rating atom                       | one effective modal state, tracking priority            |
 
-## Recommended Next Runtime Pass
+## Provisional Next Runtime Pass
 
-1. Add `isTrackingSessionActive` in `useMapExploreFlow`.
-2. Use it in `useMapTracking` close logic and `useMapTrackingHeader` visibility.
+This sequence remains provisional until the audit completes and the next
+adversarial pass survives the expanded evidence.
+
+1. Finish the audit distinction between live-chrome lifecycle gating and
+   tracking-ready snapshot gating.
+2. Pressure-test whether `isTrackingSessionActive` belongs in
+   `useMapExploreFlow`, `useMapTracking`, and `useMapTrackingHeader`.
 3. Change tracking hospital resolution so active request `hospitalId` wins over `sheetPayload`.
 4. Normalize `requestLabel` display id priority.
 5. Move header status/tone to consume `trackingSnapshot.trackingStage`.
-6. Decide whether no-responder + ETA should be `assigning` or a new `preparing_dispatch` stage.
+6. Decide whether no-responder + ETA should be `assigning`, responder-hydrating,
+   or a new `preparing_dispatch` stage.
 7. Add a narrow pure-model test matrix for:
    - pending approval
    - accepted without responder/no ETA

@@ -6,18 +6,22 @@
 
 ## Verdict Summary
 
-| Audit claim                         | Adversarial verdict     | Result                                                                                                  |
-| ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------- |
-| Lifecycle-gated live chrome         | Survives                | Auto-open is mostly gated, but header visibility and tracking close still have request-key-only paths.  |
-| Active hospital resolver            | Survives                | Id selection is stronger than object selection, but object selection still lets preferred/payload win.  |
-| Header/sheet stage parity           | Survives                | Header has useful action awareness, but non-terminal ambulance fallback still says `En Route`.          |
-| History/detail resume identity      | Survives, narrowed      | Row selection is defended; detail modal resume remains global `hasActiveTrip` plus `openTracking()`.    |
-| Action feedback and disabled states | Partially survives      | Bottom action disabling exists; mid actions and `{ ok: false }` surfacing remain weaker.                |
-| Companion action timing             | Survives                | Current policy blocks idle/pending/terminal only, not arrival/check-in/complete substate.               |
-| Route request-key parity            | Downgraded              | The hook does contextual request stamping; the remaining risk is stale contextual callbacks, not alias. |
-| Display id label priority           | Downgraded              | `activeMapRequest` already prefers record `displayId`; remaining risk is fallback priority hardening.   |
-| Rating close semantics              | Survives                | Skip/submit finalize; raw close only clears the atom.                                                   |
-| Modal gate mismatch                 | Survives as naming risk | The mismatch is intentional in places, but the current names do not expose those distinct meanings.     |
+| Audit claim                          | Adversarial verdict     | Result                                                                                                                  |
+| ------------------------------------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Lifecycle-gated live chrome          | Survives                | Auto-open is mostly gated, but header visibility and tracking close still have request-key-only paths.                  |
+| Active hospital resolver             | Survives                | Id selection is stronger than object selection, but object selection still lets preferred/payload win.                  |
+| Header/sheet stage parity            | Survives                | Header has useful action awareness, but non-terminal ambulance fallback still says `En Route`.                          |
+| History/detail resume identity       | Survives, narrowed      | Row selection is defended; detail modal resume remains global `hasActiveTrip` plus `openTracking()`.                    |
+| Action feedback and disabled states  | Partially survives      | Bottom action disabling exists; mid actions and `{ ok: false }` surfacing remain weaker.                                |
+| Companion action timing              | Survives                | Current policy blocks idle/pending/terminal only, not arrival/check-in/complete substate.                               |
+| Route request-key parity             | Downgraded              | The hook does contextual request stamping; the remaining risk is stale contextual callbacks, not alias.                 |
+| Display id label priority            | Downgraded              | `activeMapRequest` already prefers record `displayId`; remaining risk is fallback priority hardening.                   |
+| Rating close semantics               | Survives                | Skip/submit finalize; raw close only clears the atom.                                                                   |
+| Modal gate mismatch                  | Survives as naming risk | The mismatch is intentional in places, but the current names do not expose those distinct meanings.                     |
+| Live chrome vs tracking readiness    | Survives correction     | Written contracts explicitly say `requestId + hasActiveTrip` is not tracking-ready proof.                               |
+| Runtime responder fallback truth     | Survives                | Trip start can enrich responder identity from broadly listed ambulances without explicit handoff assignment.            |
+| Readiness chain field ownership      | Survives, narrowed      | Identity/hospital/status, pickup context, route/ETA, and assignment come from different producers.                      |
+| Pickup coordinate versus label truth | Survives, narrowed      | Trip/request pickup coordinate is preserved, but route origin and rendered/share pickup copy read shell location truth. |
 
 ## Claims That Survived
 
@@ -42,6 +46,29 @@ Why the finding survives:
 Narrowed fix: do not remove the commit optimism. Add a separately named live
 chrome predicate for header/sheet visibility and cleanup, while preserving the
 commit-origin path that opens an assigning/pending shell.
+
+### Live Chrome Vs Tracking Readiness
+
+Defense found:
+
+- `useMapTracking()` is intentionally allowed to open an optimistic sheet after
+  commit while the richer snapshot is still settling.
+- The code already has a runtime snapshot and a stage table, so it is not using
+  only one raw request key for every visual decision.
+
+Why the correction survives:
+
+- `EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` explicitly says tracking-ready is
+  stronger than `requestId + hasActiveTrip`.
+- `MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` requires hospital id, active status,
+  route or ETA seed, pickup/patient context when available, and responder or
+  responder-hydrating truth in addition to request identity.
+- Current `buildTrackingRuntimeSnapshot().isTrackingReady` is computed from
+  request id plus stage metadata and does not carry all of those fields.
+
+Narrowed conclusion: a lifecycle/session predicate may still be right for live
+chrome visibility and terminal cleanup, but it is not the final readiness
+predicate. The audit must keep those boundaries separate.
 
 ### Active Hospital Resolver
 
@@ -83,6 +110,91 @@ Why the finding survives:
 Narrowed fix: the header does not need to mirror every sheet detail, but its
 fallback stage vocabulary should be responder-aware so assigning/preparing does
 not read as en route.
+
+### Runtime Responder Fallback Truth
+
+Defense found:
+
+- `buildCommitPaymentCompletionPayload()` only constructs
+  `assignedAmbulance` when approval/result data includes responder assignment
+  evidence.
+- Query hydration preserves responder identity for the same request instead of
+  erasing richer runtime data with a partial row.
+
+Why the finding survives:
+
+- `startAmbulanceTrip()` does not stop at explicit handoff assignment. It falls
+  back from explicit assignment to ambulance lookup by id, hospital, any
+  available ambulance, then the first ambulance.
+- `useAmbulances()` loads `ambulanceService.list()`, and `ambulanceService.list()`
+  selects the ambulances table broadly rather than only the request's assigned
+  ambulance/current call.
+- `buildTrackingRuntimeSnapshot()` derives `hasResponder` from the resulting
+  active trip assignment-like fields.
+
+Narrowed conclusion: `hasResponder=true` is a runtime fact, but not by itself
+proof that canonical backend assignment reached the payment handoff. The audit
+must track canonical assignment, optimistic local responder enrichment, and
+responder-hydrating state separately.
+
+### Readiness Chain Field Ownership
+
+Defense found:
+
+- `approve_cash_payment()` returns responder/ambulance fields from the request
+  after approval.
+- The demo auto-approval edge function rehydrates the approved request and may
+  call `auto_assign_ambulance()` before returning a wrapped result.
+- Payment completion invalidates the active-trip query after optimistic trip
+  start, so the store is not expected to live forever on only handoff payload.
+
+Why the field map still survives:
+
+- The direct approval RPC output is assignment-focused; the demo edge function
+  is the path that rehydrates and embeds a request row in the returned result.
+- Card settlement polling selects a request row with id, display id, hospital,
+  status, payment status, ambulance and responder columns, but route remains a
+  map/runtime concern.
+- Commit request initiation carries pickup/patient context into request creation
+  and completion payload, while the runtime snapshot does not itself verify that
+  context.
+- Query hydration can rebuild patient location and responder fields from the
+  active request row, while realtime remains patch-only for an already existing
+  trip and does not create route truth.
+
+Narrowed conclusion: the readiness chain is not one payload. The audit should
+continue labeling fields by producer and reconciliation path before it decides
+which presentation states may claim dispatch, responder, or telemetry
+confidence.
+
+### Pickup Coordinate Versus Label Truth
+
+Defense found:
+
+- Commit payment captures `patientLocation` from the commit-time pickup and the
+  trip/query path preserves that coordinate.
+- Stored tracking route coordinates can continue to feed the map once they are
+  available.
+- Tracking no longer exposes an in-sheet pickup edit control because that local
+  shell mutation was not a live request destination update.
+
+Why the finding survives:
+
+- Commit initiation captures `locationLabel`, but the completion payload that
+  starts tracking carries `patientLocation` forward without that label.
+- `MapScreen` passes `currentLocationDetails` into the tracking sheet and
+  `activeLocation` into the preview map.
+- `buildTrackingViewState()` creates route-card pickup label/detail from
+  `currentLocation` only; it does not read `activeAmbulanceTrip.patientLocation`.
+- `buildTrackingSharePayload()` uses the view-state `pickupLabel`.
+- `EmergencyLocationPreviewMap` calculates its route origin from the live
+  `location` prop before emitting new route info.
+
+Narrowed conclusion: this is not proof that the route card is always wrong. It
+is proof that tracking currently has separate producers for committed pickup
+coordinate, ambient route origin, and human pickup label. The runtime proof gate
+must deliberately change or reload location during an active trip before the
+audit decides whether that split is product-correct or a state-disharmony bug.
 
 ### History/Detail Resume Identity
 
@@ -224,17 +336,15 @@ and non-completion failure messaging remain the real target.
 - Preserve the lifecycle, hospital resolver, header parity, detail resume,
   companion timing, and raw rating close findings as active.
 
-## Implementation Impact
+## Current Impact
 
-The audit is not hallucinating, but it was too aggressive in a few phrasings.
-The highest-confidence implementation order after adversarial review is:
+This pass disproved several overbroad phrasings, preserved several real findings,
+and added two boundaries the audit must keep distinct before fix advice is
+promoted:
 
-1. Lifecycle-gated live chrome.
-2. Active hospital resolver.
-3. Header/sheet stage parity.
-4. Detail resume identity.
-5. Raw rating close semantics.
-6. Mid-action failure feedback.
-7. Companion timing policy.
-8. Route callback event scoping.
-9. Display label provenance hardening.
+1. live chrome lifecycle vs tracking-ready snapshot
+2. canonical responder assignment vs optimistic runtime responder enrichment
+3. committed pickup coordinate vs ambient route origin and pickup label
+
+Implementation order remains parked in `07-fix-plan.md` until the audit closes
+and a fresh validation pass survives the remaining runtime proof gates.

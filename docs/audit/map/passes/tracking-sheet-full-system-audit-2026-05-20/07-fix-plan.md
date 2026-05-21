@@ -4,6 +4,10 @@
 > plan, not new runtime evidence. The full preserved audit remains in
 > `00-full-audit-preserved.md`.
 
+> Audit gate: this plan is parked and provisional while the tracking audit is
+> still open. Slice numbers are hypotheses from current evidence, not final fix
+> priority.
+
 ## Fix Order
 
 | Slice | Fix                             | Why first                                                                                 | Primary modules | Status  |
@@ -24,6 +28,12 @@
 Goal: derive one live tracking predicate for header and sheet visibility, likely
 equivalent to `Boolean(trackingRequestKey) && hasActiveTrip`, while preserving
 optimistic payment-to-tracking entry.
+
+Boundary: this slice is about live chrome lifecycle only. It must not be renamed
+or implemented as a full tracking-ready predicate unless the stronger readiness
+contract is separately proven: request id, hospital id, active status, route or
+ETA seed, pickup/patient context when available, and responder or explicit
+responder-hydrating truth.
 
 Evidence:
 
