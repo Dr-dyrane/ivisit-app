@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -14,17 +20,17 @@ Add `featured` and `sponsored` flags to provider results so the filter strip and
 
 ## Files
 
-- `constants/providerTypes.js` — sort mode constants
-- `components/map/views/providerList/MapProviderListSheet.jsx` — FilterStrip + ProviderCard badge
+- `constants/providerTypes.js` â€” sort mode constants
+- `components/map/views/providerList/MapProviderListSheet.jsx` â€” FilterStrip + ProviderCard badge
 
 ## Reference Files
 
-- `services/hospitalsService.js` — `discoverNearbyProviders` response shape
+- `services/hospitalsService.js` â€” `discoverNearbyProviders` response shape
 
 ## Guardrails
 
 - No new Supabase tables needed for v1. Flags come from Places API metadata or a simple `isFeatured` / `isSponsored` boolean in the normalized provider row.
-- No payment or billing logic in this pass — flags are display-only.
+- No payment or billing logic in this pass â€” flags are display-only.
 - `Sponsored` sort mode shows sponsored providers first, then by distance.
 - `Featured` sort mode shows featured providers first, then by distance.
 - `Nearest` sort mode ignores flags entirely.
@@ -32,8 +38,8 @@ Add `featured` and `sponsored` flags to provider results so the filter strip and
 ## Flag Source
 
 For v1:
-- `isFeatured` — set by the service adapter based on Places API `rating >= 4.5` or explicit metadata field.
-- `isSponsored` — reserved for future ad/partnership integration; defaults to `false` in v1.
+- `isFeatured` â€” set by the service adapter based on Places API `rating >= 4.5` or explicit metadata field.
+- `isSponsored` â€” reserved for future ad/partnership integration; defaults to `false` in v1.
 
 ## Sort Behavior
 
@@ -58,8 +64,8 @@ For v1:
 
 ## Changed Files
 
-- `constants/providerTypes.js` — sort mode constants added
-- `components/map/views/providerList/MapProviderListSheet.jsx` — badge + sort logic
+- `constants/providerTypes.js` â€” sort mode constants added
+- `components/map/views/providerList/MapProviderListSheet.jsx` â€” badge + sort logic
 
 ## Verification
 

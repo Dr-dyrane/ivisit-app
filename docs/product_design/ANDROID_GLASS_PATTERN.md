@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-03-02
+---
+
 # Android Glass Layer Pattern
 
 Last Updated: 2026-03-02

@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -46,7 +52,7 @@ Multiple temporal dead zone errors occurred across components where variables we
 
 ## Prevention Strategy
 
-### ✅ Best Practices for Variable Declaration Order
+### âœ… Best Practices for Variable Declaration Order
 
 1. **Hooks First**: Always call all hooks at the top of the component
 2. **State Variables**: Declare all useState variables
@@ -55,7 +61,7 @@ Multiple temporal dead zone errors occurred across components where variables we
 5. **Effects**: Use useEffect and other effects last
 6. **Conditional Logic**: Use variables in conditionals after declaration
 
-### ✅ Recommended Declaration Order
+### âœ… Recommended Declaration Order
 
 ```jsx
 const Component = () => {
@@ -85,12 +91,12 @@ const Component = () => {
 };
 ```
 
-### ❌ Common Anti-Patterns to Avoid
+### âŒ Common Anti-Patterns to Avoid
 
 ```jsx
 // BAD - Variable used before declaration
 const bad = () => {
-  const show = derived > 0; // ❌ Error: derived not defined
+  const show = derived > 0; // âŒ Error: derived not defined
   const [state, setState] = useState();
   const { data } = useHook();
   const derived = data?.value; // Declared after usage
@@ -101,7 +107,7 @@ const bad = () => {
 // BAD - Event handler used before declaration
 const alsoBad = () => {
   useEffect(() => {
-    handleClick(); // ❌ Error: handleClick not defined
+    handleClick(); // âŒ Error: handleClick not defined
   }, [handleClick]);
   
   const handleClick = () => {

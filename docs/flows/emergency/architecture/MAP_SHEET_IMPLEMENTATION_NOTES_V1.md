@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-18
+---
+
 # Map Sheet Implementation Notes (v1)
 
 > Status: Active implementation reference

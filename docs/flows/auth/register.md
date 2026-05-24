@@ -1,4 +1,10 @@
-# **iVisit Mobile App – Registration Flow Bible (Updated)**
+---
+status: living
+owner: product
+last_updated: 2026-01-11
+---
+
+# **iVisit Mobile App â€“ Registration Flow Bible (Updated)**
 
 **Purpose:** Defines full architecture, UI/UX, data flow, and coding standards for the registration flow. Modular, single-field-per-screen, mobile-first, Expo/React Native, Apple-style touch interactions.
 
@@ -28,7 +34,7 @@ iVisit is an international, mobile-first healthcare app. The registration flow:
 
 ## **2. Registration Stages (Updated)**
 
-### **Stage 0 – Choose Registration Method**
+### **Stage 0 â€“ Choose Registration Method**
 
 **Purpose:** Let user select phone or email for registration.
 
@@ -44,12 +50,12 @@ iVisit is an international, mobile-first healthcare app. The registration flow:
 
 **Data Flow:**
 
-* Set `method` → advance to Stage 1
+* Set `method` â†’ advance to Stage 1
 * Store method in `registrationContext`
 
 ---
 
-### **Stage 1 – OTP Verification**
+### **Stage 1 â€“ OTP Verification**
 
 **Purpose:** Validate user ownership of phone/email
 
@@ -60,8 +66,8 @@ iVisit is an international, mobile-first healthcare app. The registration flow:
 
 **Data Flow:**
 
-1. User submits phone/email → call `authService.requestOtp({ email | phone })` (sends OTP)
-2. Store OTP in state → verify OTP → advance to Stage 2
+1. User submits phone/email â†’ call `authService.requestOtp({ email | phone })` (sends OTP)
+2. Store OTP in state â†’ verify OTP â†’ advance to Stage 2
 
 **State Example:**
 
@@ -72,19 +78,19 @@ const [otpSent, setOtpSent] = useState(false);
 
 ---
 
-### **Stage 2 – Core Profile Setup**
+### **Stage 2 â€“ Core Profile Setup**
 
 **Purpose:** Collect essential user info (username, full name, avatar)
 
 * **Component:** `ProfileForm`
-* Single-field-per-screen: name → username → avatar
+* Single-field-per-screen: name â†’ username â†’ avatar
 * Fade and scale transitions for input focus
 * Avatar upload triggers `imageService.uploadImage(uri)`
 
 **Data Flow:**
 
-* Collect `profileData` → `{ fullName, username, avatar }`
-* Submit → temporarily store in `registrationContext` or local state
+* Collect `profileData` â†’ `{ fullName, username, avatar }`
+* Submit â†’ temporarily store in `registrationContext` or local state
 * Do **not require password yet**
 * Navigate to main app after Stage 2
 
@@ -100,7 +106,7 @@ const [profileData, setProfileData] = useState({
 
 ---
 
-### **Stage 3 – Optional Post-Login Completion / Onboarding**
+### **Stage 3 â€“ Optional Post-Login Completion / Onboarding**
 
 **Screens:**
 
@@ -120,9 +126,9 @@ const [profileData, setProfileData] = useState({
 
 **Data Flow:**
 
-* Each card collects info → call `authService.updateUser(newData)`
-* Password creation → call `authService.setPassword({ password })`
-* Optional → user can skip and still login via OTP
+* Each card collects info â†’ call `authService.updateUser(newData)`
+* Password creation â†’ call `authService.setPassword({ password })`
+* Optional â†’ user can skip and still login via OTP
 
 **State Example:**
 
@@ -185,10 +191,10 @@ const useSignUp = () => {
 
 **Data Flow Summary:**
 
-1. Stage 0 → method selection → Stage 1
-2. Stage 1 → OTP → call `authService.requestOtp` / `authService.verifyOtp`
-3. Stage 2 → profile → store in context → navigate to app
-4. Stage 3 (optional) → password + other details → `authService.updateUser` / `authService.setPassword`
+1. Stage 0 â†’ method selection â†’ Stage 1
+2. Stage 1 â†’ OTP â†’ call `authService.requestOtp` / `authService.verifyOtp`
+3. Stage 2 â†’ profile â†’ store in context â†’ navigate to app
+4. Stage 3 (optional) â†’ password + other details â†’ `authService.updateUser` / `authService.setPassword`
 
 ---
 
@@ -197,7 +203,7 @@ const useSignUp = () => {
 * **Apple easing:** `[0.21, 0.47, 0.32, 0.98]`
 * Stage transitions: slide-left/right
 * Input focus: scale 1.02
-* Button press: scale 0.95–0.98
+* Button press: scale 0.95â€“0.98
 * OTP errors: shake
 * Avatar: scale/pulse on selection
 * Progress bar: animated, optional color gradient
@@ -239,7 +245,7 @@ const useSignUp = () => {
 ## **8. Flow Diagram (Textual)**
 
 ```
-Stage 0 – Method → Stage 1 – OTP → Stage 2 – Profile → [Optional Stage 3: Password + Onboarding] → App
+Stage 0 â€“ Method â†’ Stage 1 â€“ OTP â†’ Stage 2 â€“ Profile â†’ [Optional Stage 3: Password + Onboarding] â†’ App
 ```
 
 * OTP login available even if password not set
@@ -247,7 +253,7 @@ Stage 0 – Method → Stage 1 – OTP → Stage 2 – Profile → [Optional Sta
 
 ---
 
-# **Registration Flow – Developer Implementation Guide**
+# **Registration Flow â€“ Developer Implementation Guide**
 
 ## **1. Global Notes**
 
@@ -281,7 +287,7 @@ const [errors, setErrors] = useState({});
 
 ---
 
-## **3. Stage 0 – Registration Method Selection**
+## **3. Stage 0 â€“ Registration Method Selection**
 
 **Component:** `SignUpMethodCard`
 
@@ -307,7 +313,7 @@ type SignUpMethodCardProps = {
 
 ---
 
-## **4. Stage 1 – OTP Verification**
+## **4. Stage 1 â€“ OTP Verification**
 
 **Component:** `OTPInputCard`
 
@@ -340,12 +346,12 @@ const [localOtp, setLocalOtp] = useState("");
 
 **Backend Flow:**
 
-* Call `authService.requestOtp({ email | phone })` → sends OTP
-* Verify OTP → advance `setStage(2)`
+* Call `authService.requestOtp({ email | phone })` â†’ sends OTP
+* Verify OTP â†’ advance `setStage(2)`
 
 ---
 
-## **5. Stage 2 – Core Profile Setup**
+## **5. Stage 2 â€“ Core Profile Setup**
 
 **Component:** `ProfileForm`
 
@@ -372,19 +378,19 @@ const [avatar, setAvatar] = useState(profileData.avatar);
 
 * Stepper card layout (single input per screen)
 * Input focus: scale 1.02
-* Avatar upload: opens image picker → `imageService.uploadImage(uri)` → sets URL
+* Avatar upload: opens image picker â†’ `imageService.uploadImage(uri)` â†’ sets URL
 * Animated progress bar
 * Apple easing transitions
 
 **Backend Flow:**
 
-* `useSignUp()` hook → `authService.register({ email|phone, username, fullName, imageUri })`
+* `useSignUp()` hook â†’ `authService.register({ email|phone, username, fullName, imageUri })`
 * Update `AuthContext` with token + user
 * Navigate to main app
 
 ---
 
-## **6. Stage 3 – Optional Post-Login Completion**
+## **6. Stage 3 â€“ Optional Post-Login Completion**
 
 **Components:**
 
@@ -413,7 +419,7 @@ type Stage3CardProps = {
 **Backend Flow:**
 
 * `authService.updateUser(newData)` per card
-* Optional completion → can skip → navigate to app
+* Optional completion â†’ can skip â†’ navigate to app
 
 ---
 
@@ -439,7 +445,7 @@ type Stage3CardProps = {
 ```
 
 * Each component handles UI + internal field state
-* All API calls via hooks/contexts → services → (Supabase + `database/`)
+* All API calls via hooks/contexts â†’ services â†’ (Supabase + `database/`)
 * Registration state passed via props or context
 
 ---
@@ -479,18 +485,18 @@ const useSignUp = () => {
 
 ## **10. Coding Workflow**
 
-1. **Build Stage 0 Component** → test card selection + state update
-2. **Build Stage 1 OTP Component** → test sending OTP & verification
-3. **Build Stage 2 ProfileForm** → test field inputs + avatar upload
-4. **Stage 3 Components** → modular, swipable cards, optional
-5. **Integrate `SignupScreen` Controller** → handles `stage` state and transitions
-6. **Integrate `AuthContext` + hooks** → ensure token storage + navigation
-7. **Add Animations** → micro-interactions, Apple easing
-8. **Add optional illustrations / Lottie** → visual enrichment
+1. **Build Stage 0 Component** â†’ test card selection + state update
+2. **Build Stage 1 OTP Component** â†’ test sending OTP & verification
+3. **Build Stage 2 ProfileForm** â†’ test field inputs + avatar upload
+4. **Stage 3 Components** â†’ modular, swipable cards, optional
+5. **Integrate `SignupScreen` Controller** â†’ handles `stage` state and transitions
+6. **Integrate `AuthContext` + hooks** â†’ ensure token storage + navigation
+7. **Add Animations** â†’ micro-interactions, Apple easing
+8. **Add optional illustrations / Lottie** â†’ visual enrichment
 
 ---
 
-## **11. SignupScreen – Stage Controller Skeleton**
+## **11. SignupScreen â€“ Stage Controller Skeleton**
 
 ```jsx
 import React, { useState } from "react";
@@ -565,7 +571,7 @@ const SignupScreen = () => {
         );
 
       case 3:
-        // Optional Stage 3 – can be multiple cards
+        // Optional Stage 3 â€“ can be multiple cards
         return (
           <>
             <EmergencyContactsCard
@@ -620,7 +626,7 @@ export default SignupScreen;
 
 3. **Keyboard Handling:**
 
-   * `KeyboardAvoidingView` ensures inputs aren’t hidden on mobile
+   * `KeyboardAvoidingView` ensures inputs arenâ€™t hidden on mobile
 
 4. **Loading States:**
 

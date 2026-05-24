@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-07
+---
+
 # Payment Workflow Map
 
 This map covers both emergency in-flow payments and wallet/payment-management flows.

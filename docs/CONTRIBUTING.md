@@ -1,6 +1,12 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Docs Contributing Rules
 
-> **TL;DR — Before you create a file, know its folder. If you can't name the folder, you shouldn't create the file yet.**
+> **TL;DR â€” Before you create a file, know its folder. If you can't name the folder, you shouldn't create the file yet.**
 
 ---
 
@@ -18,57 +24,57 @@ Neither is acceptable.
 
 ```
 What is this document?
-│
-├── A locked product truth or active sprint state?
-│     └── docs/ root only  (rules.json, MASTER_BLUEPRINT.md, SPONSOR_SPRINT.md)
-│         ⚠️  Do NOT add new root files. Update existing ones instead.
-│
-├── A runtime flow map, phase dossier, or domain contract?
-│     └── docs/flows/<domain>/
-│         e.g. flows/emergency/, flows/auth/, flows/payment/
-│
-├── A cross-cutting architectural decision, roadmap, or refactor bible?
-│     └── docs/architecture/
-│         subfolders: state/, refactoring/, location/, ux/, map/, emergency/, stores/, overview/, roadmap/
-│
-├── A design system spec, token definition, or motion doctrine?
-│     └── docs/design/
-│
-├── A point-in-time audit, evidence report, or pass checkpoint?
-│     └── docs/audit/<domain>/
-│         subfolders: map/, screens/, state/, emergency/, planning/, payment/, welcome/, demo/, checkpoints/
-│         map audits go in:
-│           - audit/map/checkpoints/  — CHECKPOINT files
-│           - audit/map/passes/       — PASS or TIGHTENING files
-│           - audit/map/manifests/    — .json manifests
-│           - audit/map/             — all other map audits
-│
-├── A Supabase Change Control item (SCC)?
-│     └── docs/project_state/context/scc/
-│         Do NOT drop SCCs in project_state/context/ root.
-│
-├── A sprint tracker, quick-start, or project context note?
-│     └── docs/project_state/
-│
-├── An ops/deployment guide?
-│     └── docs/deployment/
-│
-├── A console/web-dashboard spec?
-│     └── docs/console/
-│
-├── External reference material (Apple HIG, platform docs)?
-│     └── docs/research/
-│
-├── Contributor onboarding?
-│     └── docs/onboarding/
-│
-├── Marketing / brand / product design?
-│     └── docs/product_design/
-│
-└── A superseded or archived document?
-      └── docs/archive/historical/   — completed pass plans, old progress logs
-          docs/archive/legacy_specs/ — old specs replaced by V2+ docs
-          ⚠️  Always add an ARCHIVAL NOTICE banner to the file before moving it.
+â”‚
+â”œâ”€â”€ A locked product truth or active sprint state?
+â”‚     â””â”€â”€ docs/ root only  (rules.json, MASTER_BLUEPRINT.md, SPONSOR_SPRINT.md)
+â”‚         âš ï¸  Do NOT add new root files. Update existing ones instead.
+â”‚
+â”œâ”€â”€ A runtime flow map, phase dossier, or domain contract?
+â”‚     â””â”€â”€ docs/flows/<domain>/
+â”‚         e.g. flows/emergency/, flows/auth/, flows/payment/
+â”‚
+â”œâ”€â”€ A cross-cutting architectural decision, roadmap, or refactor bible?
+â”‚     â””â”€â”€ docs/architecture/
+â”‚         subfolders: state/, refactoring/, location/, ux/, map/, emergency/, stores/, overview/, roadmap/
+â”‚
+â”œâ”€â”€ A design system spec, token definition, or motion doctrine?
+â”‚     â””â”€â”€ docs/design/
+â”‚
+â”œâ”€â”€ A point-in-time audit, evidence report, or pass checkpoint?
+â”‚     â””â”€â”€ docs/audit/<domain>/
+â”‚         subfolders: map/, screens/, state/, emergency/, planning/, payment/, welcome/, demo/, checkpoints/
+â”‚         map audits go in:
+â”‚           - audit/map/checkpoints/  â€” CHECKPOINT files
+â”‚           - audit/map/passes/       â€” PASS or TIGHTENING files
+â”‚           - audit/map/manifests/    â€” .json manifests
+â”‚           - audit/map/             â€” all other map audits
+â”‚
+â”œâ”€â”€ A Supabase Change Control item (SCC)?
+â”‚     â””â”€â”€ docs/project_state/context/scc/
+â”‚         Do NOT drop SCCs in project_state/context/ root.
+â”‚
+â”œâ”€â”€ A sprint tracker, quick-start, or project context note?
+â”‚     â””â”€â”€ docs/project_state/
+â”‚
+â”œâ”€â”€ An ops/deployment guide?
+â”‚     â””â”€â”€ docs/deployment/
+â”‚
+â”œâ”€â”€ A console/web-dashboard spec?
+â”‚     â””â”€â”€ docs/console/
+â”‚
+â”œâ”€â”€ External reference material (Apple HIG, platform docs)?
+â”‚     â””â”€â”€ docs/research/
+â”‚
+â”œâ”€â”€ Contributor onboarding?
+â”‚     â””â”€â”€ docs/onboarding/
+â”‚
+â”œâ”€â”€ Marketing / brand / product design?
+â”‚     â””â”€â”€ docs/product_design/
+â”‚
+â””â”€â”€ A superseded or archived document?
+      â””â”€â”€ docs/archive/historical/   â€” completed pass plans, old progress logs
+          docs/archive/legacy_specs/ â€” old specs replaced by V2+ docs
+          âš ï¸  Always add an ARCHIVAL NOTICE banner to the file before moving it.
 ```
 
 ---
@@ -85,7 +91,7 @@ What is this document?
 | Config / data | lowercase with hyphens (e.g. `rules.json`) |
 
 Do **not** use dates as a substitute for a meaningful name.
-Do **not** use `DRAFT_`, `NEW_`, `TEMP_`, or `WIP_` prefixes — finish the doc or don't commit it.
+Do **not** use `DRAFT_`, `NEW_`, `TEMP_`, or `WIP_` prefixes â€” finish the doc or don't commit it.
 
 ---
 
@@ -95,7 +101,7 @@ Only these files live at `docs/` root:
 
 | File | Role |
 |---|---|
-| `rules.json` | Locked system rules — tiebreaker |
+| `rules.json` | Locked system rules â€” tiebreaker |
 | `MASTER_BLUEPRINT.md` | Locked product vision |
 | `SPONSOR_SPRINT.md` | Mutable active sprint state |
 | `REFACTORING_GUARDRAILS.md` | Code standards |
@@ -111,12 +117,12 @@ Only these files live at `docs/` root:
 
 Before committing any new doc:
 
-- [ ] **Correct folder** — matches the decision tree above
-- [ ] **Not a duplicate** — search `INDEX.md` first; if a similar doc exists, update it instead
-- [ ] **Meaningful name** — no `TEMP_`, `NEW_`, `DRAFT_`, date-only names
-- [ ] **INDEX.md updated** — new entry added to the correct section
-- [ ] **Links valid** — any links you added resolve to real files
-- [ ] **No root clutter** — not added to `docs/` root unless it's doctrine
+- [ ] **Correct folder** â€” matches the decision tree above
+- [ ] **Not a duplicate** â€” search `INDEX.md` first; if a similar doc exists, update it instead
+- [ ] **Meaningful name** â€” no `TEMP_`, `NEW_`, `DRAFT_`, date-only names
+- [ ] **INDEX.md updated** â€” new entry added to the correct section
+- [ ] **Links valid** â€” any links you added resolve to real files
+- [ ] **No root clutter** â€” not added to `docs/` root unless it's doctrine
 
 ---
 
@@ -126,13 +132,13 @@ When a document is superseded:
 
 1. Add this banner at the top of the old file:
    ```markdown
-   > ⚠️ ARCHIVAL NOTICE — This document has been superseded.
+   > âš ï¸ ARCHIVAL NOTICE â€” This document has been superseded.
    > Current reference: [replacement doc](../path/to/replacement.md)
    > Retained for historical context only. Do not use for implementation decisions.
    ```
 2. Move the file to `docs/archive/historical/` or `docs/archive/legacy_specs/`
-3. Update `INDEX.md` — move the entry to Section 5 (Historical / Archive Docs)
-4. Do **not** delete files — history must be preserved
+3. Update `INDEX.md` â€” move the entry to Section 5 (Historical / Archive Docs)
+4. Do **not** delete files â€” history must be preserved
 
 ---
 

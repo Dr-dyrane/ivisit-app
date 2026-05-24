@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-01-12
+---
+
 # FAB Analysis & Review
 
 > **Date**: 2026-01-12  
@@ -14,7 +20,7 @@ The Floating Action Button (FAB) is a **critical UX element** in iVisit's emerge
 
 ## Current State Analysis
 
-### 🎯 Current FAB Implementation
+### ðŸŽ¯ Current FAB Implementation
 
 #### Architecture
 - **Context-Driven**: `FABContext.jsx` manages global FAB state
@@ -26,7 +32,7 @@ The Floating Action Button (FAB) is a **critical UX element** in iVisit's emerge
 
 | Screen | FAB Role | Icon | Visibility Rules |
 |--------|----------|------|------------------|
-| **EmergencyScreen** | Mode toggle (SOS ↔ Bed) | `medical` / `bed-patient` | Hidden when hospital selected OR sheet collapsed |
+| **EmergencyScreen** | Mode toggle (SOS â†” Bed) | `medical` / `bed-patient` | Hidden when hospital selected OR sheet collapsed |
 | **VisitsScreen** | Add new visit | `add-outline` | Always visible |
 | **MoreScreen** | Hidden | - | Always hidden |
 | **Stack Screens** | Hidden | - | Auto-hidden via `isInStack` |
@@ -68,7 +74,7 @@ The FAB serves as a **consistent action trigger** throughout:
 
 ## Verdicts & Recommendations
 
-### Verdict 1: ✅ KEEP FAB - Critical UX Element
+### Verdict 1: âœ… KEEP FAB - Critical UX Element
 
 **Reasoning:**
 - Emergency scenarios require **immediate access** to critical functions
@@ -76,7 +82,7 @@ The FAB serves as a **consistent action trigger** throughout:
 - Consistent positioning creates **muscle memory** for users
 - Apple HIG compliance ensures **platform familiarity**
 
-### Verdict 2: 🔄 MAINTAIN DUAL TABS - Better UX
+### Verdict 2: ðŸ”„ MAINTAIN DUAL TABS - Better UX
 
 **Recommendation:** Keep separate SOS and Bed tabs in navigation
 
@@ -90,7 +96,7 @@ The FAB serves as a **consistent action trigger** throughout:
 - **Pros:** Reduced navigation complexity
 - **Cons:** Mode switching during high-stress emergency situations, potential confusion
 
-### Verdict 3: 🌍 GLOBAL FAB MIGRATION - Essential
+### Verdict 3: ðŸŒ GLOBAL FAB MIGRATION - Essential
 
 **Recommendation:** Migrate all inline FAB implementations to the global system
 
@@ -109,7 +115,7 @@ The FAB serves as a **consistent action trigger** throughout:
 #### Tasks:
 - [ ] Identify all inline FAB implementations across codebase
 - [ ] Document current FAB usage patterns and behaviors
-- [ ] Create migration priority matrix (critical → nice-to-have)
+- [ ] Create migration priority matrix (critical â†’ nice-to-have)
 
 #### Expected Findings:
 - Profile save FABs

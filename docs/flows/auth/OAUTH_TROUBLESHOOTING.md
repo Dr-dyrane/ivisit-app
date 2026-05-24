@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-01-31
+---
+
 # OAuth Troubleshooting Guide
 
 ## Overview
@@ -12,17 +18,17 @@ This document covers common OAuth authentication issues in the iVisit app across
 ### How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           OAuth Flow Diagram                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  1. User taps "Sign in with Google"                                         │
-│  2. Supabase generates OAuth URL with redirect_to parameter                 │
-│  3. WebBrowser.openAuthSessionAsync opens the OAuth URL                     │
-│  4. User authenticates with Google                                          │
-│  5. Google redirects to Supabase                                            │
-│  6. Supabase redirects to our app's redirect URL                            │
-│  7. Deep link handler catches the redirect and processes auth               │
-└─────────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                           OAuth Flow Diagram                                 â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  1. User taps "Sign in with Google"                                         â”‚
+â”‚  2. Supabase generates OAuth URL with redirect_to parameter                 â”‚
+â”‚  3. WebBrowser.openAuthSessionAsync opens the OAuth URL                     â”‚
+â”‚  4. User authenticates with Google                                          â”‚
+â”‚  5. Google redirects to Supabase                                            â”‚
+â”‚  6. Supabase redirects to our app's redirect URL                            â”‚
+â”‚  7. Deep link handler catches the redirect and processes auth               â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### Key URLs
@@ -48,7 +54,7 @@ This document covers common OAuth authentication issues in the iVisit app across
 
 ### Required URLs in Supabase Dashboard
 
-Go to **Authentication → URL Configuration → Redirect URLs** and add:
+Go to **Authentication â†’ URL Configuration â†’ Redirect URLs** and add:
 
 ```
 # Production

@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-28
+---
+
 # Archive Notice: Orchestrator Refactor Historical Documents
 
 **Date:** 2026-04-25  

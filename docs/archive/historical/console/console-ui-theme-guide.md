@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - Cross-repo material.
 > This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
 > For current iVisit Console docs, see the `ivisit-console` repository directly.
@@ -10,7 +16,7 @@
 ## Overview
 This document outlines the complete design system, color scheme, and reusable component patterns for the iVisit console version. The mobile app uses a sophisticated dark/light theme system with emergency-focused branding.
 
-## 🎨 Color System
+## ðŸŽ¨ Color System
 
 ### Primary Brand Colors
 ```javascript
@@ -78,7 +84,7 @@ card: {
 }
 ```
 
-## 🏗️ Design Principles
+## ðŸ—ï¸ Design Principles
 
 ### Border Radius System
 - **xl**: 16px (larger cards)
@@ -97,7 +103,7 @@ card: {
 - **Active Elements**: shadowColor: COLORS.brandPrimary, shadowOpacity: 0.3-0.4
 - **Subtle**: shadowOpacity: 0.03-0.08
 
-## 🧩 Reusable Component Patterns
+## ðŸ§© Reusable Component Patterns
 
 ### 1. Card Components
 
@@ -340,7 +346,7 @@ const TripSummaryCard = ({ status, eta, driverInfo, actions }) => {
         </View>
         <View style={styles.identityText}>
           <Text style={styles.nameText}>{driverName}</Text>
-          <Text style={styles.metaText}>{rating} ★ • {vehicle}</Text>
+          <Text style={styles.metaText}>{rating} â˜… â€¢ {vehicle}</Text>
         </View>
       </View>
 
@@ -503,7 +509,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-## 🎯 Key UI Patterns for Console
+## ðŸŽ¯ Key UI Patterns for Console
 
 ### 1. Badge System
 ```jsx
@@ -607,7 +613,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-## 🌙 Dark Mode Implementation
+## ðŸŒ™ Dark Mode Implementation
 
 ### Theme Context Pattern
 ```jsx
@@ -624,7 +630,7 @@ const useThemeColors = () => {
 };
 ```
 
-## 📱 Responsive Considerations
+## ðŸ“± Responsive Considerations
 
 ### Breakpoint System
 - **Mobile**: < 768px
@@ -637,7 +643,7 @@ const useThemeColors = () => {
 3. **Larger Touch Targets**: Increase minimum click areas to 44px
 4. **Density Controls**: Allow users to adjust spacing and information density
 
-## 🚀 Implementation Recommendations
+## ðŸš€ Implementation Recommendations
 
 ### For Console Development:
 1. **CSS Variables**: Use CSS custom properties for theme switching

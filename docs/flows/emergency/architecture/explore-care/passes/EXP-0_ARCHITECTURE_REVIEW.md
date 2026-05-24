@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -36,7 +42,7 @@ Confirm Explore Care is a non-emergency ephemeral query feature, not a new navig
 ## Decisions
 
 - Explore care is owned by the map explore flow, not the emergency domain.
-- `nearby_providers` RPC added to `core_rpcs` migration — no emergency filter.
+- `nearby_providers` RPC added to `core_rpcs` migration â€” no emergency filter.
 - `nearby_hospitals` RPC emergency filter is not changed.
 - Provider rows stay in TanStack Query (L2). No Zustand entry.
 - No new navigation route. Sheet mounts inside `/map` screen tree.

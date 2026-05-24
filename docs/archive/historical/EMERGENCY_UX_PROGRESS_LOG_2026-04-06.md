@@ -1,4 +1,10 @@
-# Emergency UX Progress Log — 2026-04-06
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
+# Emergency UX Progress Log â€” 2026-04-06
 
 > Status: Active checkpoint log  
 > Scope: `ivisit-app`  
@@ -9,7 +15,7 @@
 We solved a large amount of emergency UX and runtime hardening work in one stretch:
 
 - web map rendering and route quality
-- choose-location → choose-hospital transition smoothness
+- choose-location â†’ choose-hospital transition smoothness
 - mobile web safe-area / CTA reliability
 - responsive hospital review layouts across size classes
 - iPad restructuring to a true Apple-style split view
@@ -47,7 +53,7 @@ This file is the short-term memory for that work.
 
 ---
 
-### 2) The choose-location → choose-hospital handoff is much smoother
+### 2) The choose-location â†’ choose-hospital handoff is much smoother
 
 #### Transition problems addressed
 
@@ -214,7 +220,7 @@ This is especially important for:
 
 #### Bridge doctrine now locked
 
-- the new intake flow owns the calm, stepwise front half: `request_started` → `confirm_location` → `finding_nearby_help` → `proposed_hospital`
+- the new intake flow owns the calm, stepwise front half: `request_started` â†’ `confirm_location` â†’ `finding_nearby_help` â†’ `proposed_hospital`
 - the current bridge surface is the existing `EmergencyRequestModal`, but it is now treated as the intentional `dispatch_clearance` checkpoint
 - legacy responder/tracking code is still reused after this handoff, which keeps the live map and telemetry truth without forcing a full rewrite first
 
@@ -249,7 +255,7 @@ The next 12 screens are now explicitly planned as:
 - Web md
 - Web lg
 - Web xl
-- Web 2xl–3xl
+- Web 2xlâ€“3xl
 - Web ultra-wide
 
 This keeps the emergency flow aligned with the welcome-screen responsive discipline instead of stretching one phone UI everywhere.

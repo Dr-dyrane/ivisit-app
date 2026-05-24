@@ -1,4 +1,10 @@
-> **ARCHIVAL NOTICE — 2026-05-19**
+---
+status: historical
+owner: -
+last_updated: 2026-05-19
+---
+
+> **ARCHIVAL NOTICE â€” 2026-05-19**
 > This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
 > It contains partially stale content. The doc itself declares its stale sections and defers to the replacements below.
 > **Current replacements:**
@@ -10,10 +16,10 @@
 
 # Map Flow Implementation (v1)
 
-> Status: Mixed — sections marked stale below are superseded
+> Status: Mixed â€” sections marked stale below are superseded
 > Scope: `/map` -> `explore_intent`, decision phases, commit, payment, tracking
 
-## ⚠️ Authoritative Current-State Override
+## âš ï¸ Authoritative Current-State Override
 
 When this file and the live audit disagree, the audit wins:
 
@@ -224,7 +230,7 @@ Rendering rule:
 
 - do not repeat hospital/service summary inside the body
 - the body should feel like the guest profile identity bridge: avatar, one prompt, one input, one CTA
-- header copy stays user-facing: task as title (`Confirm email`, `Enter code`, `Add phone number`), request context as subtitle (`For {hospital} · {transport tier}`)
+- header copy stays user-facing: task as title (`Confirm email`, `Enter code`, `Add phone number`), request context as subtitle (`For {hospital} Â· {transport tier}`)
 - single-input microsteps use the shared squircle inline action input: input and CTA share one continuous field, with a reserved right slide lane for press/loading motion
 - email and phone may prefill from local AsyncStorage contact memory only when the draft/session has no stronger value; clearing the field removes the remembered value
 
@@ -389,7 +395,7 @@ Locked boundary:
 - `TRACKING` still needs its own native map sheet projection after payment stabilization
 - backend demo/simulation state must never leak into patient-facing payment copy
 - payment method labels should read as real-world states such as `Provider confirmation`, `Not available for this request`, or `Balance checkout`
-- once a payment method is selected, the payment section collapses to a compact row such as `Cash · Provider confirmation` with a small `Change` pill; tapping `Change` expands the full selector list
+- once a payment method is selected, the payment section collapses to a compact row such as `Cash Â· Provider confirmation` with a small `Change` pill; tapping `Change` expands the full selector list
 - web and native both use the same SetupIntent-backed add-card lane: native mounts Stripe `CardField`, web mounts Stripe.js Elements, and both persist only safe card metadata through `paymentService.addPaymentMethod(...)`
 
 ## `COMMIT_PAYMENT` Resolution States
@@ -604,7 +610,7 @@ Current parity note for `service_detail`:
 
 ## Hospital Data Consistency Fix
 
-The inconsistent “one hospital vs several hospitals” behavior had three causes:
+The inconsistent â€œone hospital vs several hospitalsâ€ behavior had three causes:
 
 1. `useHospitals` caches by location bucket, and the previous bucket precision was too coarse for map exploration.
 2. `useHospitals` exposes both a display subset and the full discovered set, but `EmergencyContext` was consuming the display subset.

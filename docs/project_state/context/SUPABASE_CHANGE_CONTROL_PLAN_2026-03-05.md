@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-07
+---
+
 # Supabase Change Control Plan (2026-03-05)
 
 ## Purpose

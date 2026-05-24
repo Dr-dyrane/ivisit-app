@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
 # Welcome Screen Dossier
 
 > Status: Active

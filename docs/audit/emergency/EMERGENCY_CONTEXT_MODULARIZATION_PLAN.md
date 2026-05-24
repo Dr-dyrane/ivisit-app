@@ -1,9 +1,15 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
-> This modularization plan is **complete**. EmergencyContext.jsx has been fully retired (Gold Standard Phase 5, all sub-passes 5a–5f done).
+> **HISTORICAL NOTICE â€” 2026-05-19**
+> This modularization plan is **complete**. EmergencyContext.jsx has been fully retired (Gold Standard Phase 5, all sub-passes 5aâ€“5f done).
 > Retained for historical context only.
 > **See:** [`docs/architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../../architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) for Phase 5 completion record.
 

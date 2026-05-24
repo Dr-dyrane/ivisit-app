@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -28,23 +34,23 @@ The search sheet has solid architectural foundations (Map Pass 18) but fails the
 
 | Principle | Current State | Violation Severity | Fix Required |
 |-----------|--------------|-------------------|--------------|
-| **"Reduce cognitive load"** | 2 mode chips + 5+ sections visible | 🔴 High | Remove mode chips, auto-select by context |
-| **"Show only what is needed at the moment"** | "Nearby now" always visible | 🔴 High | Progressive disclosure - show on intent |
-| **"Prefer removal over addition"** | 7 visible actions | 🔴 High | Reduce to 3 primary actions |
-| **"Make the next step unmistakable"** | Competing mode chips | 🔴 High | Single primary: "Current Location" |
-| **"Prioritize stressed users"** | Dense, decision-heavy UI | 🔴 High | Calm, reduced-density design |
-| **"Use motion to support understanding"** | Jarring phase cuts | 🟡 Medium | Purposeful transitions |
-| **"Make every state understandable"** | "Set pickup area" empty state | 🟡 Medium | Clear guidance, not generic |
+| **"Reduce cognitive load"** | 2 mode chips + 5+ sections visible | ðŸ”´ High | Remove mode chips, auto-select by context |
+| **"Show only what is needed at the moment"** | "Nearby now" always visible | ðŸ”´ High | Progressive disclosure - show on intent |
+| **"Prefer removal over addition"** | 7 visible actions | ðŸ”´ High | Reduce to 3 primary actions |
+| **"Make the next step unmistakable"** | Competing mode chips | ðŸ”´ High | Single primary: "Current Location" |
+| **"Prioritize stressed users"** | Dense, decision-heavy UI | ðŸ”´ High | Calm, reduced-density design |
+| **"Use motion to support understanding"** | Jarring phase cuts | ðŸŸ¡ Medium | Purposeful transitions |
+| **"Make every state understandable"** | "Set pickup area" empty state | ðŸŸ¡ Medium | Clear guidance, not generic |
 
 ### Apple HIG - Critical Violations
 
 | HIG Principle | Current Implementation | Apple Standard | Gap |
 |--------------|-------------------------|----------------|-----|
-| **Progressive Disclosure** | All sections visible | Show only needed now | 🔴 Major |
-| **Single Primary Action** | Mode chips compete | One clear hero action | 🔴 Major |
-| **Spatial Continuity** | Sheet teleportation | Preserve context in transitions | 🟡 Moderate |
-| **Minimum Touch Targets** | 40px icon shells | 44px minimum | 🟢 Compliant |
-| **Dynamic Type** | Hard-coded sizes | Support accessibility sizing | 🟡 Partial |
+| **Progressive Disclosure** | All sections visible | Show only needed now | ðŸ”´ Major |
+| **Single Primary Action** | Mode chips compete | One clear hero action | ðŸ”´ Major |
+| **Spatial Continuity** | Sheet teleportation | Preserve context in transitions | ðŸŸ¡ Moderate |
+| **Minimum Touch Targets** | 40px icon shells | 44px minimum | ðŸŸ¢ Compliant |
+| **Dynamic Type** | Hard-coded sizes | Support accessibility sizing | ðŸŸ¡ Partial |
 
 ---
 
@@ -55,24 +61,24 @@ The search sheet has solid architectural foundations (Map Pass 18) but fails the
 **Current Architecture (Correctly Implemented):**
 ```
 SearchContext (Global)
-    ↓
+    â†“
 useMapSearchSheetModel (Local State Container)
-    ↓
+    â†“
 MapSearchSheetSections (Pure Presentational)
 ```
 
 **Strengths:**
-- ✅ Clear separation of concerns
-- ✅ Request cancellation via `requestIdRef`
-- ✅ Session token management for Mapbox
-- ✅ Proper cleanup on unmount
-- ✅ Model-View pattern enables testing
+- âœ… Clear separation of concerns
+- âœ… Request cancellation via `requestIdRef`
+- âœ… Session token management for Mapbox
+- âœ… Proper cleanup on unmount
+- âœ… Model-View pattern enables testing
 
 **Weaknesses:**
-- ⚠️ Anemic model - mostly derived values
-- ⚠️ No coordination between location search and hospital search
-- ⚠️ Missing loading state orchestration
-- ⚠️ No error boundary integration
+- âš ï¸ Anemic model - mostly derived values
+- âš ï¸ No coordination between location search and hospital search
+- âš ï¸ Missing loading state orchestration
+- âš ï¸ No error boundary integration
 
 **Apple Would Approve:** The architecture is solid. The problem is **presentation layer density**, not data flow.
 
@@ -84,22 +90,22 @@ MapSearchSheetSections (Pure Presentational)
 
 ```
 1. User taps "iVisit Maps" pill
-   └─> Decision 1: Which mode? (Find care vs Set pickup)
+   â””â”€> Decision 1: Which mode? (Find care vs Set pickup)
    
 2. User sees empty state
-   └─> "Set pickup area" - vague, requires interpretation
+   â””â”€> "Set pickup area" - vague, requires interpretation
    
 3. User sees competing sections
-   └─> Nearby hospitals (distraction from location task)
-   └─> Recent queries (chips, hard to scan)
-   └─> Popular searches (more noise)
+   â””â”€> Nearby hospitals (distraction from location task)
+   â””â”€> Recent queries (chips, hard to scan)
+   â””â”€> Popular searches (more noise)
    
 4. User types location
-   └─> 240ms debounce (good)
-   └─> Results appear (no loading feedback)
+   â””â”€> 240ms debounce (good)
+   â””â”€> Results appear (no loading feedback)
    
 5. User selects location
-   └─> Sheet closes (no confirmation, no visual feedback)
+   â””â”€> Sheet closes (no confirmation, no visual feedback)
 ```
 
 **Cognitive Load Score: 7/10 (High)**  
@@ -153,7 +159,7 @@ Apple Target: 3/10 (Low)
 
 **Test:** If someone using this app were underpaid, stressed, and in an emergency, would this UI feel respectful or demanding?
 
-**Current Verdict: DEMANDING** ❌
+**Current Verdict: DEMANDING** âŒ
 
 **Why:**
 - Requires mode decision before action
@@ -176,17 +182,17 @@ Apple Target: 3/10 (Low)
 ### What Makes UI Feel "Intentional"
 
 **Current Search Sheet:**
-- ❌ Feels assembled from parts
-- ❌ Mode chips suggest incomplete decision
-- ❌ "Nearby now" suggests algorithmic, not designed
-- ❌ Recent queries as chips feel expedient, not thoughtful
+- âŒ Feels assembled from parts
+- âŒ Mode chips suggest incomplete decision
+- âŒ "Nearby now" suggests algorithmic, not designed
+- âŒ Recent queries as chips feel expedient, not thoughtful
 
 **Apple-Level Intentional:**
-- ✅ Every element earns its place
-- ✅ Single primary action per context
-- ✅ Progressive disclosure reveals depth
-- ✅ Motion explains state changes
-- ✅ Typography creates clear hierarchy
+- âœ… Every element earns its place
+- âœ… Single primary action per context
+- âœ… Progressive disclosure reveals depth
+- âœ… Motion explains state changes
+- âœ… Typography creates clear hierarchy
 
 ### The Fix: Intentional Simplification
 
@@ -212,7 +218,7 @@ Apple Target: 3/10 (Low)
 - [ ] **Add Saved Locations section (Home/Work)**
   - Pull from user profile saved addresses
   - Show at top of search sheet when available
-  - One-tap selection with clear icons (🏠 🏢)
+  - One-tap selection with clear icons (ðŸ  ðŸ¢)
   - Files: `MapSearchSheetSections.jsx`, `useMapSearchSheetModel.js`
   - **State Management**: Add `savedLocations` array to model (L5/UI state)
   - **useEffect Rule**: N/A (presentational only)
@@ -238,8 +244,8 @@ Apple Target: 3/10 (Low)
 
 - [ ] **P1-1: Remove mode chips entirely**
   - Auto-select mode based on entry point
-  - Explore intent opens → Search mode
-  - Change pickup opens → Location mode
+  - Explore intent opens â†’ Search mode
+  - Change pickup opens â†’ Location mode
   - File: `MapSearchSheetSections.jsx`
   - **State Management**: No changes (L5/UI only)
   - **useEffect Rule**: N/A (presentational only)
@@ -293,7 +299,7 @@ Apple Target: 3/10 (Low)
 
 **Objective:** Remove friction points and add foundation features.
 
-### P1-1: Mode Chips Removed ✅
+### P1-1: Mode Chips Removed âœ…
 **Problem:** Mode chips [Find care] [Set pickup] required user decision, violated "single primary action" rule.
 
 **Solution:** 
@@ -310,7 +316,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-2: Saved Locations Added ✅
+### P1-2: Saved Locations Added âœ…
 **Problem:** No Home/Work shortcuts, required typing for frequent locations.
 
 **Solution:**
@@ -328,13 +334,13 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-3: Smart Query Detection ✅
+### P1-3: Smart Query Detection âœ…
 **Problem:** Search results always showed hospitals first, regardless of user intent.
 
 **Solution:** Implemented intent detection to dynamically order sections:
-- Address-like queries (numbers, street types, zip codes) → Places first
-- Care-related queries (hospital, clinic, urgent) → Hospitals first
-- Neutral queries → Hospitals first (default)
+- Address-like queries (numbers, street types, zip codes) â†’ Places first
+- Care-related queries (hospital, clinic, urgent) â†’ Hospitals first
+- Neutral queries â†’ Hospitals first (default)
 
 **Files:**
 - `components/map/surfaces/search/useMapSearchSheetModel.js` (detectQueryIntent, orderedQuerySections)
@@ -343,7 +349,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-4: Hospital Result Capping ✅
+### P1-4: Hospital Result Capping âœ…
 **Problem:** Nearby hospitals dominated search results (10+ items), pushing location areas far down.
 
 **Solution:** Cap hospital results to 5 max.
@@ -355,7 +361,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-5: Hero Blade CTA Logic ✅
+### P1-5: Hero Blade CTA Logic âœ…
 **Problem:** Hero blade always showed country code, didn't indicate location state clearly.
 
 **Solution:** Dynamic CTA based on location comparison:
@@ -371,7 +377,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-6: Clear History Confirmation ✅
+### P1-6: Clear History Confirmation âœ…
 **Problem:** No confirmation before clearing search history.
 
 **Solution:** Added confirmation dialog with clear/cancel actions.
@@ -383,7 +389,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-7: Mapbox Location Suggestions ✅
+### P1-7: Mapbox Location Suggestions âœ…
 **Problem:** No address search integration for location selection.
 
 **Solution:** Added debounced Mapbox address search via SearchContext.
@@ -395,7 +401,7 @@ Apple Target: 3/10 (Low)
 
 ---
 
-### P1-8: Location Comparison Utility ✅
+### P1-8: Location Comparison Utility âœ…
 **Problem:** `isUsingDeviceLocation` logic was flawed due to incorrect destructuring.
 
 **Root Cause:** Used `{ location: deviceLocation }` but `useGlobalLocation()` returns `userLocation` directly.
@@ -416,19 +422,19 @@ Apple Target: 3/10 (Low)
 ## 9. Current State Assessment (Post-Phase 1)
 
 **Completed:**
-- ✅ Mode chips removed (single interface)
-- ✅ Saved locations integrated (Home/Work shortcuts)
-- ✅ Smart query detection (intent-based ordering)
-- ✅ Hospital capping (5 max)
-- ✅ Hero blade CTA with location comparison
-- ✅ Clear history confirmation
-- ✅ Mapbox address search
-- ✅ Address quality validation
+- âœ… Mode chips removed (single interface)
+- âœ… Saved locations integrated (Home/Work shortcuts)
+- âœ… Smart query detection (intent-based ordering)
+- âœ… Hospital capping (5 max)
+- âœ… Hero blade CTA with location comparison
+- âœ… Clear history confirmation
+- âœ… Mapbox address search
+- âœ… Address quality validation
 
 **Remaining from Original Phase 1:**
-- ⚠️ Recent queries as rows (still chips)
-- ⚠️ "Nearby now" progressive disclosure (still always visible)
-- ⚠️ Improved empty state copy
+- âš ï¸ Recent queries as rows (still chips)
+- âš ï¸ "Nearby now" progressive disclosure (still always visible)
+- âš ï¸ Improved empty state copy
 
 **Current Grade:** B- (7.2/10) - Up from D+ (5.4/10)
 **Target Grade:** B+ (8.5/10)
@@ -459,10 +465,10 @@ Apple Target: 3/10 (Low)
 - `MapExploreIntentHospitalSummaryCard.jsx:191-204` - Shows location setup card
 
 **Gap:** 
-- ✅ Auto-open works
-- ⚠️ No visual onboarding - user is dropped into search sheet without context
-- ⚠️ "Turn on location" button buried in card, not prominent
-- ⚠️ No explanation WHY location is needed
+- âœ… Auto-open works
+- âš ï¸ No visual onboarding - user is dropped into search sheet without context
+- âš ï¸ "Turn on location" button buried in card, not prominent
+- âš ï¸ No explanation WHY location is needed
 
 **Apple Would:**
 - Full-screen modal explaining location value
@@ -491,10 +497,10 @@ Apple Target: 3/10 (Low)
 - Settings link opens app settings
 
 **Gap:**
-- ✅ Can proceed without location
-- ⚠️ No explanation of what user is missing
-- ⚠️ No re-prompt strategy (ever)
-- ⚠️ "Turn on location" sounds optional, not recommended
+- âœ… Can proceed without location
+- âš ï¸ No explanation of what user is missing
+- âš ï¸ No re-prompt strategy (ever)
+- âš ï¸ "Turn on location" sounds optional, not recommended
 
 **Apple Would:**
 - In-app explanation before system prompt
@@ -511,7 +517,7 @@ Apple Target: 3/10 (Low)
 **Current iVisit Behavior:**
 ```
 1. User in explore intent sees: "iVisit Maps" search pill
-2. Taps pill → Opens search sheet
+2. Taps pill â†’ Opens search sheet
 3. Sees mode chips: [Find care] [Set pickup]
 4. Must decide which mode
 5. Location mode shows current location row + search
@@ -524,15 +530,15 @@ Apple Target: 3/10 (Low)
 - `MapSearchSheetSections.jsx:367-400` - Current location section
 
 **Gap:**
-- 🔴 Search pill text doesn't suggest location change
-- 🔴 Mode chips require decision
-- 🔴 No direct "Change location" action visible
-- 🔴 Current location row looks like info, not action
+- ðŸ”´ Search pill text doesn't suggest location change
+- ðŸ”´ Mode chips require decision
+- ðŸ”´ No direct "Change location" action visible
+- ðŸ”´ Current location row looks like info, not action
 
 **Apple Would:**
-- Search pill: "📍 Current Location" (tap to change)
-- Or separate location pill: "📍 123 Main St"
-- Single tap → Location-focused sheet
+- Search pill: "ðŸ“ Current Location" (tap to change)
+- Or separate location pill: "ðŸ“ 123 Main St"
+- Single tap â†’ Location-focused sheet
 - Map-first, not list-first
 
 ---
@@ -541,36 +547,36 @@ Apple Target: 3/10 (Low)
 
 Per `docs/REFACTORING_GUARDRAILS.md`, each pass must be reviewed across **four explicit tracks**:
 
-### Pass 1: Foundation — Tracks Summary
+### Pass 1: Foundation â€” Tracks Summary
 
 | Track | Status | Details |
 |-------|--------|---------|
-| **State Management** | ✅ L5/UI only | No server/client state changes; `savedLocations`, `showNearbyHospitals` as UI state |
-| **UI Quality** | ✅ Apple HIG alignment | Typography reduction, spacing standardization, mode chip removal |
-| **DRY/Modular** | ✅ Component extraction | `RecentQueryRow` component, `SavedLocationChip` component |
-| **Documentation** | ✅ This audit | Intent documented; outcome will be recorded post-pass |
+| **State Management** | âœ… L5/UI only | No server/client state changes; `savedLocations`, `showNearbyHospitals` as UI state |
+| **UI Quality** | âœ… Apple HIG alignment | Typography reduction, spacing standardization, mode chip removal |
+| **DRY/Modular** | âœ… Component extraction | `RecentQueryRow` component, `SavedLocationChip` component |
+| **Documentation** | âœ… This audit | Intent documented; outcome will be recorded post-pass |
 
-### Pass 2: Enhance — Tracks Summary
-
-| Track | Status | Details |
-|-------|--------|---------|
-| **State Management** | ✅ L5/UI + L3 (Zustand) | `recentQueries` management via SearchContext (existing pattern) |
-| **UI Quality** | ✅ Venue suggestions | Hospital-specific entrance types, visual hierarchy |
-| **DRY/Modular** | ✅ Helper extraction | `buildVenueSuggestions()` in helpers file |
-| **Documentation** | ✅ Will update post-pass | Changes to SearchContext, new components |
-
-### Pass 3: Future — Tracks Summary (Deferred)
+### Pass 2: Enhance â€” Tracks Summary
 
 | Track | Status | Details |
 |-------|--------|---------|
-| **State Management** | ⚠️ L5 + L2 (Query) | Map drag requires geocoding query, real-time location updates |
-| **UI Quality** | ⚠️ Map-first UX | Significant UX change, requires user testing |
-| **DRY/Modular** | ⚠️ New component | `DraggablePickupMap` as reusable component |
-| **Documentation** | ⚠️ Postponed | Will document when infrastructure ready |
+| **State Management** | âœ… L5/UI + L3 (Zustand) | `recentQueries` management via SearchContext (existing pattern) |
+| **UI Quality** | âœ… Venue suggestions | Hospital-specific entrance types, visual hierarchy |
+| **DRY/Modular** | âœ… Helper extraction | `buildVenueSuggestions()` in helpers file |
+| **Documentation** | âœ… Will update post-pass | Changes to SearchContext, new components |
+
+### Pass 3: Future â€” Tracks Summary (Deferred)
+
+| Track | Status | Details |
+|-------|--------|---------|
+| **State Management** | âš ï¸ L5 + L2 (Query) | Map drag requires geocoding query, real-time location updates |
+| **UI Quality** | âš ï¸ Map-first UX | Significant UX change, requires user testing |
+| **DRY/Modular** | âš ï¸ New component | `DraggablePickupMap` as reusable component |
+| **Documentation** | âš ï¸ Postponed | Will document when infrastructure ready |
 
 ---
 
-### ⚡ useEffect Decision Tree (Applied to This Audit)
+### âš¡ useEffect Decision Tree (Applied to This Audit)
 
 Per `docs/REFACTORING_GUARDRAILS.md`, before adding any `useEffect`:
 
@@ -580,7 +586,7 @@ Per `docs/REFACTORING_GUARDRAILS.md`, before adding any `useEffect`:
 | Is it a ref mirroring state? | `searchInputRef` for focus | YES | Inline `ref.current = x` |
 | Is it machine state? | Sheet open/closed | YES | Jotai atom (L5) |
 | Is it server data? | Location suggestions | YES | TanStack Query (L2) |
-| Is it real side-effect? | Map animation on select | YES | `useEffect` ✓ |
+| Is it real side-effect? | Map animation on select | YES | `useEffect` âœ“ |
 
 **Rule:** All Pass 1-2 changes are presentational. **No new `useEffect` calls required.**
 
@@ -591,16 +597,16 @@ Per `docs/REFACTORING_GUARDRAILS.md`, before adding any `useEffect`:
 Per `docs/REFACTORING_GUARDRAILS.md` canonical layers:
 
 ```
-L1: Supabase/Realtime (Server truth) — NOT TOUCHED
-L2: TanStack Query (Server cache) — NOT TOUCHED  
-L3: Zustand (Persistent client) — MAYBE (saved locations from profile)
-L4: XState (Lifecycle) — NOT TOUCHED
-L5: Jotai (Ephemeral UI) — ✅ CHANGES HERE
+L1: Supabase/Realtime (Server truth) â€” NOT TOUCHED
+L2: TanStack Query (Server cache) â€” NOT TOUCHED  
+L3: Zustand (Persistent client) â€” MAYBE (saved locations from profile)
+L4: XState (Lifecycle) â€” NOT TOUCHED
+L5: Jotai (Ephemeral UI) â€” âœ… CHANGES HERE
 ```
 
-**Pass 1:** Add to model → `savedLocations` (L5/UI state)  
-**Pass 2:** Modify SearchContext → `recentQueries` management (L3, existing pattern)  
-**Pass 3:** Geocoding on drag → TanStack Query (L2)
+**Pass 1:** Add to model â†’ `savedLocations` (L5/UI state)  
+**Pass 2:** Modify SearchContext â†’ `recentQueries` management (L3, existing pattern)  
+**Pass 3:** Geocoding on drag â†’ TanStack Query (L2)
 
 ---
 
@@ -610,7 +616,7 @@ Per Safe Modularization Methodology (Section 11 of Guardrails):
 
 **Before Pass 1:**
 - [ ] Count lines in target files
-- [ ] Categorize: helpers → `utils/`, UI → `components/`, state → `hooks/`
+- [ ] Categorize: helpers â†’ `utils/`, UI â†’ `components/`, state â†’ `hooks/`
 - [ ] List contract keys in `useMapSearchSheetModel` return value
 
 **During Pass 1:**
@@ -621,7 +627,7 @@ Per Safe Modularization Methodology (Section 11 of Guardrails):
 
 **After Pass 1:**
 - [ ] Update `hooks/map/index.js` barrel exports if new components
-- [ ] Record line count: before → after
+- [ ] Record line count: before â†’ after
 - [ ] Document in pass outcome doc
 
 ---
@@ -630,7 +636,7 @@ Per Safe Modularization Methodology (Section 11 of Guardrails):
 
 Per Section 13 of Guardrails:
 
-**⚠️ CRITICAL: NO COMMITS WITHOUT EXPLICIT USER CONFIRMATION**
+**âš ï¸ CRITICAL: NO COMMITS WITHOUT EXPLICIT USER CONFIRMATION**
 
 **Before Pass 1:**
 ```bash
@@ -639,18 +645,18 @@ git log --oneline --follow hooks/map/exploreFlow/useMapSearchSheetModel.js | hea
 ```
 
 **Before ANY changes:**
-1. **Discuss the pass** — Review deliverables, scope, and approach with user
-2. **Get explicit confirmation** — "Ready to start Pass X?"
-3. **Confirm no conflicts** — User may have uncommitted work or other priorities
+1. **Discuss the pass** â€” Review deliverables, scope, and approach with user
+2. **Get explicit confirmation** â€” "Ready to start Pass X?"
+3. **Confirm no conflicts** â€” User may have uncommitted work or other priorities
 4. **Only then proceed** with implementation
 
 **After each deliverable:**
 ```
-feat(map): Pass 1 — Remove mode chips
+feat(map): Pass 1 â€” Remove mode chips
 
 - Removed ModeChip components from MapSearchSheetSections
 - Auto-select location mode on change-pickup entry
-- Lines: MapSearchSheetSections.jsx 641 → 590
+- Lines: MapSearchSheetSections.jsx 641 â†’ 590
 - No state management changes
 ```
 
@@ -685,7 +691,7 @@ feat(map): Pass 1 — Remove mode chips
 **Current:** Generic search pill  
 **Improved:**
 ```
-1. Explore intent shows: "📍 [Current Address]" 
+1. Explore intent shows: "ðŸ“ [Current Address]" 
 2. Subtle "Change" button or tap entire pill
 3. Opens location-focused sheet (no mode chips)
 4. Top: Current location (editable)

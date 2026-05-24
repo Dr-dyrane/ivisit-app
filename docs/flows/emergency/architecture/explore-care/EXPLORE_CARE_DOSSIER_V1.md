@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-17
+---
+
 # Explore Care Feature Dossier V1
 
 Status: Implemented, runtime verification pending
 Documented: 2026-05-16
-Scope: map screen explore mode — non-emergency nearby provider discovery
+Scope: map screen explore mode â€” non-emergency nearby provider discovery
 
 ## Product Goal
 
@@ -10,8 +16,8 @@ When a user is on the map but does not have an active emergency, they can discov
 
 The product goal is simple:
 
-- no new navigation route — user stays on `/map`
-- category chip tap → sheet of nearby providers + colored map pins
+- no new navigation route â€” user stays on `/map`
+- category chip tap â†’ sheet of nearby providers + colored map pins
 - tapping a pin highlights it; tapping a card in the sheet highlights the matching pin
 - closing the sheet resets the map to its default state
 - emergency flow is completely unaffected
@@ -25,7 +31,7 @@ After an emergency resolves, or during a non-urgent situation, the user needs to
 ### Local iVisit References
 
 - `docs/REFACTORING_GUARDRAILS.md`
-  - five-layer rule: Supabase/Realtime → TanStack Query → Zustand → XState → Jotai
+  - five-layer rule: Supabase/Realtime â†’ TanStack Query â†’ Zustand â†’ XState â†’ Jotai
   - useEffect rule: effects only for real side effects
 - `docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`
   - MapScreen must stay thin
@@ -33,16 +39,16 @@ After an emergency resolves, or during a non-urgent situation, the user needs to
 - `docs/architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md`
   - explore flow is already modular; explore care must not bloat MapScreen
 - `components/map/MapCareHistoryModal.jsx`
-  - Choose Care modal — owns entry chips
+  - Choose Care modal â€” owns entry chips
 - `components/emergency/intake/EmergencyLocationPreviewMap.jsx`
-  - map surface — `extraMarkers` prop now available for additional marker layers
+  - map surface â€” `extraMarkers` prop now available for additional marker layers
 - `services/hospitalsService.js`
-  - `discoverNearbyProviders` — category-aware Places fetch
+  - `discoverNearbyProviders` â€” category-aware Places fetch
 
 ### Supabase References
 
-- `nearby_hospitals` RPC — emergency path, strict `provider_type='hospital' AND emergency_eligible=true` filter
-- `nearby_providers` RPC — explore path, category-scoped, no emergency filter
+- `nearby_hospitals` RPC â€” emergency path, strict `provider_type='hospital' AND emergency_eligible=true` filter
+- `nearby_providers` RPC â€” explore path, category-scoped, no emergency filter
 
 ## Product Definition
 
@@ -75,19 +81,19 @@ Choose Care modal (`MapCareHistoryModal`):
 
 `MapProviderListSheet`:
 - title = category label (e.g. "Nearby Pharmacies")
-- skeleton loading — never blank
-- bucket sections by travel time: < 5 min · 5–10 min · 10–20 min · 20+ min
+- skeleton loading â€” never blank
+- bucket sections by travel time: < 5 min Â· 5â€“10 min Â· 10â€“20 min Â· 20+ min
 - filter strip: Nearest / Featured / Sponsored
 - empty state with category icon and copy
-- close button → resets explore state, dismisses sheet and map pins
+- close button â†’ resets explore state, dismisses sheet and map pins
 
 ### Map Markers
 
 `ProviderMarkers`:
 - colored circular callout markers, color per `EXPLORE_CATEGORY_META[providerType].markerTint`
 - only rendered when `exploreProviderCategory` is active and providers have loaded
-- tapping a pin calls `handleSelectExploreProvider` → highlights selected pin
-- provider list sheet card tap → also highlights pin via `exploreProviderIdAtom`
+- tapping a pin calls `handleSelectExploreProvider` â†’ highlights selected pin
+- provider list sheet card tap â†’ also highlights pin via `exploreProviderIdAtom`
 
 ## Five-Layer State Architecture
 
@@ -107,21 +113,21 @@ Consumer facade:
 - `useNearbyProviders({ providerCategory, location, enabled, radius, limit, includeGoogle })`
 
 Zero-extra-request rule:
-- `MapScreen` and `MapProviderListSheet` both call `useNearbyProviders` with the same default params → single cache entry, no duplicate fetches
+- `MapScreen` and `MapProviderListSheet` both call `useNearbyProviders` with the same default params â†’ single cache entry, no duplicate fetches
 
 ### Layer 3: Zustand
 
-Nothing new. Explore care state is ephemeral — Jotai only.
+Nothing new. Explore care state is ephemeral â€” Jotai only.
 
 ### Layer 4: XState
 
-Nothing new. No lifecycle machine needed — open/close is boolean.
+Nothing new. No lifecycle machine needed â€” open/close is boolean.
 
 ### Layer 5: Jotai
 
 Atoms in `atoms/mapFlowAtoms.js`:
-- `exploreProviderCategoryAtom` — which category chip is active (null = closed)
-- `exploreProviderIdAtom` — which provider pin is selected (null = none)
+- `exploreProviderCategoryAtom` â€” which category chip is active (null = closed)
+- `exploreProviderIdAtom` â€” which provider pin is selected (null = none)
 
 Rules:
 - atoms do not duplicate provider rows (those live in TanStack Query)
@@ -154,7 +160,7 @@ Behavior:
 
 ### Constants
 
-- `constants/providerTypes.js` — `PROVIDER_TYPES`, `EXPLORE_CATEGORIES`, `EXPLORE_CATEGORY_META`
+- `constants/providerTypes.js` â€” `PROVIDER_TYPES`, `EXPLORE_CATEGORIES`, `EXPLORE_CATEGORY_META`
 
 ### Service
 
@@ -167,19 +173,19 @@ Behavior:
 
 ### State
 
-- `atoms/mapFlowAtoms.js` — `exploreProviderCategoryAtom`, `exploreProviderIdAtom`
+- `atoms/mapFlowAtoms.js` â€” `exploreProviderCategoryAtom`, `exploreProviderIdAtom`
 
 ### UI
 
-- `components/map/MapCareHistoryModal.jsx` — Explore section + category chips
-- `components/map/views/providerList/MapProviderListSheet.jsx` — bucketed provider list
-- `components/map/ProviderMarkers.jsx` — category-colored map pins
+- `components/map/MapCareHistoryModal.jsx` â€” Explore section + category chips
+- `components/map/views/providerList/MapProviderListSheet.jsx` â€” bucketed provider list
+- `components/map/ProviderMarkers.jsx` â€” category-colored map pins
 
 ### Map Integration
 
-- `components/emergency/intake/EmergencyLocationPreviewMap.jsx` — `extraMarkers` prop
-- `screens/MapScreen.jsx` — wiring: atoms, handlers, `useNearbyProviders`, `extraMarkers`, `MapProviderListSheet` mount
-- `components/map/MapModalOrchestrator.jsx` — `handleExploreCare` prop passthrough
+- `components/emergency/intake/EmergencyLocationPreviewMap.jsx` â€” `extraMarkers` prop
+- `screens/MapScreen.jsx` â€” wiring: atoms, handlers, `useNearbyProviders`, `extraMarkers`, `MapProviderListSheet` mount
+- `components/map/MapModalOrchestrator.jsx` â€” `handleExploreCare` prop passthrough
 
 ## Data Implementation Notes
 
@@ -234,7 +240,7 @@ const isHospital = providerType === PROVIDER_TYPES.HOSPITAL;
 
 ### Fallback Images (Category-Specific)
 
-✅ **Implemented:** Edge function now supports category-specific fallback images.
+âœ… **Implemented:** Edge function now supports category-specific fallback images.
 - 12 hospital images (expanded from 4)
 - 8 images per category: pharmacy, lab, radiology, urgent_care, clinic, mental_health, womens_care, pediatrics
 
@@ -258,25 +264,25 @@ Owner: App Data
 
 Goal: Define `PROVIDER_TYPES`, `EXPLORE_CATEGORIES`, and `EXPLORE_CATEGORY_META`.
 
-### Pass EXP-2: Edge Function — Category-Aware Places Fetch
+### Pass EXP-2: Edge Function â€” Category-Aware Places Fetch
 
 Owner: Backend
 
 Goal: Extend `discover-hospitals` edge function to support category-scoped provider discovery.
 
-### Pass EXP-3: Schema — Discriminator Columns + nearby_providers RPC
+### Pass EXP-3: Schema â€” Discriminator Columns + nearby_providers RPC
 
 Owner: Backend
 
 Goal: Add `provider_type` and `emergency_eligible` discriminator columns to `hospitals`; add `nearby_providers` RPC.
 
-### Pass EXP-4: Service Adapter — Emergency Strict Filter
+### Pass EXP-4: Service Adapter â€” Emergency Strict Filter
 
 Owner: App Data
 
 Goal: Add `discoverNearbyProviders` to `hospitalsService.js` and ensure `nearby_hospitals` RPC still filters `emergency_eligible=true`.
 
-### Pass EXP-5: Choose Care Modal — Explore Section
+### Pass EXP-5: Choose Care Modal â€” Explore Section
 
 Owner: UI / UX
 
@@ -328,7 +334,7 @@ Goal: Time-bucket sections, skeleton, filter strip polish pass.
 
 Owner: Map Flow
 
-Goal: Wire all Explore Care components into `MapScreen` — atoms, handlers, `useNearbyProviders`, `extraMarkers`, `MapProviderListSheet`.
+Goal: Wire all Explore Care components into `MapScreen` â€” atoms, handlers, `useNearbyProviders`, `extraMarkers`, `MapProviderListSheet`.
 
 ## Regression Guardrails
 
@@ -362,7 +368,7 @@ Product:
 Architecture:
 - TanStack Query owns all provider data (L2)
 - Jotai owns category selection and selected provider id (L5)
-- MapScreen stays thin — wiring only, no chat/query logic inline
+- MapScreen stays thin â€” wiring only, no chat/query logic inline
 - Zero extra network requests when sheet and map both show providers
 
 ## Rollback Plan

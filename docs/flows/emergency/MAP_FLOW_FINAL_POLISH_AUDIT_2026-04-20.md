@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
+> **HISTORICAL NOTICE â€” 2026-05-19**
 > This file is retained in place for historical context. It describes the map flow state as of 2026-04-20.
 > It is **no longer the working truth**. Use the live tracker and implementation rules for current state.
 > **Current replacements:**

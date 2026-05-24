@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-11
+---
+
 # App-Wide Surface Audit For Location
 
 **Date:** 2026-05-10

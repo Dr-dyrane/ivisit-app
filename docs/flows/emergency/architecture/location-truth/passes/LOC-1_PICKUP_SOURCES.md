@@ -1,15 +1,21 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
 # LOC-1 Pickup Sources
 
-**Status:** ✅ COMPLETE  
+**Status:** âœ… COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand), L5 (Jotai)  
 **Date:** 2026-05-15  
 **Depends on:** None  
-**Risk Level:** 🔴 HIGH
+**Risk Level:** ðŸ”´ HIGH
 **Baseline:** `TBD`  
 **Commit:** `TBD`
 
@@ -86,7 +92,7 @@ const ENABLE_LOC_HARDENING_LOC1 = false;
 - [x] `normalizePickupSource()` mapper function implemented
 - [x] `sourceMetadata` included in all truth returns
 - [x] Enum values unchanged (backward compatible)
-- [x] No feature flag — always active
+- [x] No feature flag â€” always active
 
 ## Implementation Summary
 
@@ -113,6 +119,6 @@ git revert <commit-hash> --no-edit
 ## Notes
 
 - PULLBACK NOTE format: `// PULLBACK NOTE: LOC-1 // OLD: ... // NEW: ...`
-- Existing enum values preserved — only added new sources
+- Existing enum values preserved â€” only added new sources
 - `normalizePickupSource()` provides backward compatibility for legacy strings
 - `sourceMetadata` enables LOC-4 cache determinism with canonical source

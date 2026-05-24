@@ -1,4 +1,10 @@
-### 🚀 The "iVisit Global Payment Sync" Prompt
+---
+status: living
+owner: product
+last_updated: 2026-04-28
+---
+
+### ðŸš€ The "iVisit Global Payment Sync" Prompt
 
 **System Prompt & Context:**
 
@@ -45,25 +51,25 @@
 
 **Execution Directive:**
 
-> Provide the full TypeScript code for the Edge Functions and the React/React Native components. Use placeholders for all environment variables. Ensure the logic is "Lean Startup" ready—efficient and scalable.
+> Provide the full TypeScript code for the Edge Functions and the React/React Native components. Use placeholders for all environment variables. Ensure the logic is "Lean Startup" readyâ€”efficient and scalable.
 
 ---
 
-### 🛡️ Why this prompt works for your ecosystem:
+### ðŸ›¡ï¸ Why this prompt works for your ecosystem:
 
-* **Payout Logic:** It explicitly mentions "Destination Charges." This is how Uber works—the passenger pays $100, Stripe automatically takes $2.50 for you (iVisit), and sends $97.50 to the Doctor's Stripe account.
+* **Payout Logic:** It explicitly mentions "Destination Charges." This is how Uber worksâ€”the passenger pays $100, Stripe automatically takes $2.50 for you (iVisit), and sends $97.50 to the Doctor's Stripe account.
 * **Infrastructure Synergy:** By using Supabase Edge Functions, you keep your `ivisit-app` and `ivisit-console` in sync. When a payment happens, the Edge Function updates your central Postgres DB instantly.
 * **No Redirection:** It forces the AI to use "Embedded Connect" components and "PaymentSheet," ensuring the user never leaves your "Liquid Glass" environment.
 
 ---
 
-# 🚀 iVisit Payment System Architecture
+# ðŸš€ iVisit Payment System Architecture
 
-## 📋 **Finalized Payment Flow**
+## ðŸ“‹ **Finalized Payment Flow**
 
-### **👥 User Flow (Patient)**
+### **ðŸ‘¥ User Flow (Patient)**
 ```
-Request Service → Automatic Payment → Complete Service
+Request Service â†’ Automatic Payment â†’ Complete Service
 ```
 1. **User requests** ambulance/bed reservation.
 2. **Cost estimation**: `serviceCostService` calculates total based on base, distance, and urgency.
@@ -74,22 +80,22 @@ Request Service → Automatic Payment → Complete Service
    - **Digital**: Processed automatically upon completion.
    - **Cash**: Provider manually confirms receipt in Console.
 
-### **🏥 Provider Flow (Hospital/Org Admin)**
+### **ðŸ¥ Provider Flow (Hospital/Org Admin)**
 ```
-Receive Service → Wallet Credited → Can Request Payout
+Receive Service â†’ Wallet Credited â†’ Can Request Payout
 ```
 1. **Hospital receives**: 97.5% of payment amount
 2. **Wallet balance**: Updated automatically
 3. **Payout request**: Can withdraw to debit card/bank
 4. **No payout fees**: Free to collect their money
 
-### **💰 Fee Distribution**
+### **ðŸ’° Fee Distribution**
 
 #### **When User Pays $150**
 ```
 User Card Charged: $150.00
-├── Hospital Receives: $146.25 (97.5%)
-└── iVisit Fee: $3.75 (2.5%)
+â”œâ”€â”€ Hospital Receives: $146.25 (97.5%)
+â””â”€â”€ iVisit Fee: $3.75 (2.5%)
 ```
 
 #### **Per-Organization Configuration**
@@ -99,15 +105,15 @@ User Card Charged: $150.00
 - **Non-Profit**: Reduced fee for qualified organizations
 - **Custom**: Special negotiated rates
 
-### **🏦 iVisit Main Wallet**
+### **ðŸ¦ iVisit Main Wallet**
 ```
 Collects 2.5% from ALL transactions:
-├── **Digital Payments**: Automatically split during Stripe payout or Wallet transfer.
-├── **Cash Payments**: Manually triggered by Provider; 2.5% is **deducted** from Org Wallet balance as debt settlement.
-└── **Payout processing**: $0 (free for providers).
+â”œâ”€â”€ **Digital Payments**: Automatically split during Stripe payout or Wallet transfer.
+â”œâ”€â”€ **Cash Payments**: Manually triggered by Provider; 2.5% is **deducted** from Org Wallet balance as debt settlement.
+â””â”€â”€ **Payout processing**: $0 (free for providers).
 ```
 
-### 📖 **Scenario Walkthrough: $150 Bed Booking**
+### ðŸ“– **Scenario Walkthrough: $150 Bed Booking**
 *Context: All balances are initially $0.00.*
 
 1. **The Request**: A Patient books a bed for **$150**.
@@ -130,7 +136,7 @@ Collects 2.5% from ALL transactions:
    - **iVisit Console**: Shows **$3.85** revenue collected.
    - **Patient App**: Shows a completed booking; status: **Paid**.
 
-## 🗂️ **Database Schema**
+## ðŸ—‚ï¸ **Database Schema**
 
 ### **Core Tables**
 ```sql
@@ -172,7 +178,7 @@ UPDATE ivisit_main_wallet
 SET balance = balance + ivisit_deduction_amount;
 ```
 
-## 📱 **Mobile App Implementation**
+## ðŸ“± **Mobile App Implementation**
 
 ### **Payment Flow**
 1. **Service Selection**: User chooses ambulance/bed
@@ -208,7 +214,7 @@ MINIMUM_FEE_AMOUNT=0.50
 MAXIMUM_FEE_AMOUNT=100.00
 ```
 
-## 🖥️ **Console Implementation**
+## ðŸ–¥ï¸ **Console Implementation**
 
 ### **Admin Features**
 - **Organization Fee Management**: Set per-organization rates
@@ -221,7 +227,7 @@ MAXIMUM_FEE_AMOUNT=100.00
 - **WalletManagement**: Organization wallets
 - **PaymentDashboard**: Transaction analytics
 
-## 🔄 **Edge Cases**
+## ðŸ”„ **Edge Cases**
 
 ### **Cash Payments & Wallet Cap**
 - **Trigger**: User selects "Cash" in iVisit App.
@@ -247,48 +253,48 @@ MAXIMUM_FEE_AMOUNT=100.00
 - **Partial Coverage**: Pay remaining amount
 - **Claims Tracking**: Separate from payment flow
 
-## 🚀 **Implementation Steps**
+## ðŸš€ **Implementation Steps**
 
 ### **Phase 1: Mobile App**
-1. ✅ Update paymentService.js with fee calculation
-2. ✅ Create database migrations for fee tracking
-3. 🔄 Update InsuranceScreen → PaymentScreen
-4. ⏳ Implement seamless payment flow
-5. ⏳ Add automatic charging after service
+1. âœ… Update paymentService.js with fee calculation
+2. âœ… Create database migrations for fee tracking
+3. ðŸ”„ Update InsuranceScreen â†’ PaymentScreen
+4. â³ Implement seamless payment flow
+5. â³ Add automatic charging after service
 
 ### **Phase 2: Database**
-1. ✅ Create fee tracking tables
-2. ✅ Implement per-organization fee configuration
-3. ✅ Add iVisit main wallet
-4. ⏳ Create automatic fee distribution triggers
-5. ⏳ Add fee analytics views
+1. âœ… Create fee tracking tables
+2. âœ… Implement per-organization fee configuration
+3. âœ… Add iVisit main wallet
+4. â³ Create automatic fee distribution triggers
+5. â³ Add fee analytics views
 
 ### **Phase 3: Console**
-1. ✅ Create organization fee management
-2. ✅ Build wallet management interface
-3. ⏳ Implement payout processing
-4. ⏳ Add fee analytics dashboard
-5. ⏳ Create admin fee configuration
+1. âœ… Create organization fee management
+2. âœ… Build wallet management interface
+3. â³ Implement payout processing
+4. â³ Add fee analytics dashboard
+5. â³ Create admin fee configuration
 
-## 🎯 **Success Criteria**
+## ðŸŽ¯ **Success Criteria**
 
 ### **User Experience**
-- ✅ Seamless one-tap payments
-- ✅ No fee breakdown shown to users
-- ✅ Automatic charging after service
-- ✅ Multiple payment methods supported
+- âœ… Seamless one-tap payments
+- âœ… No fee breakdown shown to users
+- âœ… Automatic charging after service
+- âœ… Multiple payment methods supported
 
 ### **Provider Experience**
-- ✅ Automatic wallet credits
-- ✅ Free payout processing
-- ✅ Real-time balance updates
-- ✅ Per-organization fee configuration
+- âœ… Automatic wallet credits
+- âœ… Free payout processing
+- âœ… Real-time balance updates
+- âœ… Per-organization fee configuration
 
 ### **Admin Experience**
-- ✅ Complete fee tracking
-- ✅ Per-organization management
-- ✅ Revenue analytics
-- ✅ Wallet oversight
+- âœ… Complete fee tracking
+- âœ… Per-organization management
+- âœ… Revenue analytics
+- âœ… Wallet oversight
 
 ---
 
@@ -296,18 +302,18 @@ MAXIMUM_FEE_AMOUNT=100.00
 
 ---
 
-# 🛠️ **Stripe Dashboard Setup Guide**
+# ðŸ› ï¸ **Stripe Dashboard Setup Guide**
 
 Follow these steps to synchronize your Stripe Dashboard with the iVisit "Reflection" architecture.
 
-### **1. 🏗️ Connect Setup**
+### **1. ðŸ—ï¸ Connect Setup**
 iVisit uses **Stripe Connect** to distribute funds to Hospitals (Organizations).
 - Go to **Connect** in your Stripe Dashboard.
 - Click **Complete Setup** or **Get Started**.
 - Choose **Platform** as your integration type.
 - Under **Settings > Connect > Onboarding Options**, ensure **Embedded Onboarding** or **Express Onboarding** is enabled for the "Zero Redirect" experience.
 
-### **2. 🪝 Webhook Configuration**
+### **2. ðŸª Webhook Configuration**
 The Webhook is the heartbeat of the "Sync" flow. Without it, your DB wallets will never update.
 - Go to **Developers > Webhooks**.
 - Click **Add endpoint**.
@@ -320,20 +326,20 @@ The Webhook is the heartbeat of the "Sync" flow. Without it, your DB wallets wil
     - `payout.failed` (Notifies of bank issues)
 - **Select account events**: Check the box "Listen to events on Connected accounts" (since payouts happen on destination accounts).
 
-### **3. 🔑 Environment Variables**
+### **3. ðŸ”‘ Environment Variables**
 Configure these in your **Supabase Dashboard** under **Edge Functions > Secrets**:
 - `STRIPE_SECRET_KEY`: Your live/test Secret Key (`sk_...`).
 - `STRIPE_WEBHOOK_SECRET`: The signing secret provided after creating the Webhook (`whsec_...`).
 - `SUPABASE_URL`: Your project URL.
 - `SUPABASE_SERVICE_ROLE_KEY`: Your admin key (required for wallet mutations).
 
-### **4. 🎨 UI Synchronization (Liquid Glass)**
+### **4. ðŸŽ¨ UI Synchronization (Liquid Glass)**
 To match the **Dyrane UI** Canon:
 - Go to **Settings > Branding**.
 - Set the **Accent Color** to match your platform primary (e.g., `#000000` or `#121212`).
 - Set the **Border Radius** to **Standard** (matching our squircle-3xl preference).
 
-### **5. 💳 Payment Methods**
+### **5. ðŸ’³ Payment Methods**
 - Go to **Settings > Payment Methods**.
 - Ensure **Cards**, **Apple Pay**, and **Google Pay** are enabled to maintain the "Seamless like Uber" completion rule.
 

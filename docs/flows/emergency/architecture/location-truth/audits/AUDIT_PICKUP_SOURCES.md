@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -12,7 +18,7 @@
 
 ## Requirement Checklist
 
-### 1. Normalize pickup source hierarchy ✅
+### 1. Normalize pickup source hierarchy âœ…
 **Requirement:** Define canonical source enum with clear hierarchy
 
 **Current State:**
@@ -49,7 +55,7 @@ const GLOBAL_SAVED_FALLBACK_SOURCES = new Set([
 
 ---
 
-### 2. Ensure manual wins ✅
+### 2. Ensure manual wins âœ…
 **Requirement:** SESSION_MANUAL should have highest priority
 
 **Current State:**
@@ -74,7 +80,7 @@ if (hasValidPickupCoordinates(sessionManualLocation)) {
 
 ---
 
-### 3. Mark fallback/demo/missing explicitly ✅
+### 3. Mark fallback/demo/missing explicitly âœ…
 **Requirement:** Add metadata flags to distinguish fallback, demo, missing states
 
 **Current State:**

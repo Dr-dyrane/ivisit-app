@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-03-20
+---
+
 # Marketing Strategy: "The 5-Minute Frequency"
 
 ## I. Strategic Foundation
@@ -38,4 +44,4 @@ iVisit is the infrastructure for on-demand medical security. We represent the sh
 | Technology | "AES-256 Encryption." | "Absolute Trust. Instant Connection." |
 
 ---
-*Created for iVisit Command • 2024*
+*Created for iVisit Command â€¢ 2024*

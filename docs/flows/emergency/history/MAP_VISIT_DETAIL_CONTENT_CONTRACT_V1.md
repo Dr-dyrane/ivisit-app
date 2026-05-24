@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-23
+---
+
 # Map Visit Detail Content Contract V1
 
 ## Purpose
@@ -84,11 +90,11 @@ The top slot should stay quiet.
 Examples:
 
 - `Odyssey Hospice`
-  `Upcoming • Apr 23 / 10:40 AM`
+  `Upcoming â€¢ Apr 23 / 10:40 AM`
 - `Odyssey Hospice`
-  `Active • 6 min away`
+  `Active â€¢ 6 min away`
 - `Odyssey Hospice`
-  `Completed • Apr 18 / 3:20 PM`
+  `Completed â€¢ Apr 18 / 3:20 PM`
 
 The top slot is not the place for dense metadata.
 
@@ -109,17 +115,17 @@ Examples:
 
 - Scheduled visit:
   - title: `Telehealth follow-up`
-  - secondary: `Cardiology • Dr. A. Bello`
+  - secondary: `Cardiology â€¢ Dr. A. Bello`
   - pill: `Apr 23 / 10:40 AM`
 
 - Ambulance:
   - title: `Everyday care transport`
-  - secondary: `Demo Driver 2 • Type III`
+  - secondary: `Demo Driver 2 â€¢ Type III`
   - pill: `6 min away`
 
 - Bed:
   - title: `Private room reservation`
-  - secondary: `Private room • Bed 12`
+  - secondary: `Private room â€¢ Bed 12`
   - pill: `Waiting approval`
 
 ## Content by Request Type

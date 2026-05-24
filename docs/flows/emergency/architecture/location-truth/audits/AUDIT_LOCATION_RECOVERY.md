@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -12,7 +18,7 @@
 
 ## Requirement Checklist
 
-### 1. Classify location failures ✅
+### 1. Classify location failures âœ…
 **Requirement:** Distinguish between permission/GPS/timeout/stale/missing failures
 
 **Current State:**
@@ -48,7 +54,7 @@ const [locationSource, setLocationSource] = useState("unknown");
 
 ---
 
-### 2. Add specific CTAs for each failure type ✅
+### 2. Add specific CTAs for each failure type âœ…
 **Requirement:** Each failure type should have a specific recovery action
 
 **Current State:**
@@ -84,12 +90,12 @@ if (locationError) {
 
 | Failure Type | Current Representation | CTA | Status |
 |-------------|----------------------|-----|--------|
-| Permission denied | `locationPermissionStatus === "denied"` | "Retry" | ❌ Wrong CTA |
-| Services disabled | `locationPermissionStatus === "services_disabled"` | "Retry" | ❌ Wrong CTA |
-| GPS timeout | Not classified | "Retry" | ❌ Not distinguished |
-| GPS stale | Not classified | "Retry" | ❌ Not distinguished |
-| GPS unavailable | `locationSource === "location_unavailable"` | "Retry" | ❌ Generic CTA |
-| No location at all | `locationSource === "unknown"` | "Retry" | ❌ Generic CTA |
+| Permission denied | `locationPermissionStatus === "denied"` | "Retry" | âŒ Wrong CTA |
+| Services disabled | `locationPermissionStatus === "services_disabled"` | "Retry" | âŒ Wrong CTA |
+| GPS timeout | Not classified | "Retry" | âŒ Not distinguished |
+| GPS stale | Not classified | "Retry" | âŒ Not distinguished |
+| GPS unavailable | `locationSource === "location_unavailable"` | "Retry" | âŒ Generic CTA |
+| No location at all | `locationSource === "unknown"` | "Retry" | âŒ Generic CTA |
 
 ### Missing Failure Classifications
 
@@ -107,24 +113,24 @@ if (locationError) {
 
 | Current CTA | When Shown | Correct? |
 |-------------|------------|----------|
-| "Retry" | All failures | ❌ No |
-| "Open Settings" | Never | ❌ Missing |
-| "Enable Location Services" | Never | ❌ Missing |
-| "Enter Address Manually" | Never | ❌ Missing |
-| "Refresh Location" | Never | ❌ Missing |
+| "Retry" | All failures | âŒ No |
+| "Open Settings" | Never | âŒ Missing |
+| "Enable Location Services" | Never | âŒ Missing |
+| "Enter Address Manually" | Never | âŒ Missing |
+| "Refresh Location" | Never | âŒ Missing |
 
 ### Required CTAs by Failure Type
 
 | Failure Type | Required CTA | Current CTA |
 |-------------|--------------|-------------|
-| Permission denied | Open Settings | Retry ❌ |
-| Services disabled | Enable Location Services | Retry ❌ |
-| GPS timeout | Retry GPS | Retry ⚠️ (close but not specific) |
-| GPS stale | Refresh Location | Retry ❌ |
-| GPS unavailable | Enter Address Manually | Retry ❌ |
-| GPS low accuracy | Retry GPS | Retry ⚠️ |
-| Network error | Retry GPS | Retry ⚠️ |
-| No location at all | Enter Address Manually | Retry ❌ |
+| Permission denied | Open Settings | Retry âŒ |
+| Services disabled | Enable Location Services | Retry âŒ |
+| GPS timeout | Retry GPS | Retry âš ï¸ (close but not specific) |
+| GPS stale | Refresh Location | Retry âŒ |
+| GPS unavailable | Enter Address Manually | Retry âŒ |
+| GPS low accuracy | Retry GPS | Retry âš ï¸ |
+| Network error | Retry GPS | Retry âš ï¸ |
+| No location at all | Enter Address Manually | Retry âŒ |
 
 ---
 

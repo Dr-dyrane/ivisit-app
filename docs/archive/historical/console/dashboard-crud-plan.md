@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - Cross-repo material.
 > This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
 > For current iVisit Console docs, see the `ivisit-console` repository directly.
@@ -10,7 +16,7 @@
 ## Overview
 Comprehensive dashboard plan for full CRUD operations on all Supabase tables. This dashboard will provide administrative control over the entire iVisit ecosystem.
 
-## 🗄️ Database Schema Analysis
+## ðŸ—„ï¸ Database Schema Analysis
 
 ### Core Tables Identified:
 1. **profiles** - User management with roles (patient, provider, admin)
@@ -22,7 +28,7 @@ Comprehensive dashboard plan for full CRUD operations on all Supabase tables. Th
 7. **notifications** - System notifications
 8. **insurance_policies** - Insurance management
 
-## 🎯 Dashboard Architecture
+## ðŸŽ¯ Dashboard Architecture
 
 ### Authentication & Authorization
 ```javascript
@@ -574,7 +580,7 @@ JOIN public.profiles p ON n.user_id = p.id;
 - Priority management
 - Campaign tracking
 
-## 🎨 Dashboard UI Components
+## ðŸŽ¨ Dashboard UI Components
 
 ### Layout Structure
 ```jsx
@@ -642,7 +648,7 @@ JOIN public.profiles p ON n.user_id = p.id;
 />
 ```
 
-## 🔧 Technical Implementation
+## ðŸ”§ Technical Implementation
 
 ### Frontend Stack
 ```javascript
@@ -714,7 +720,7 @@ const useCreateUser = () => {
 };
 ```
 
-## 📊 Analytics & Reporting
+## ðŸ“Š Analytics & Reporting
 
 ### Key Metrics
 ```javascript
@@ -751,7 +757,7 @@ const generateReport = async (type, dateRange, filters) => {
 };
 ```
 
-## 🔒 Security Considerations
+## ðŸ”’ Security Considerations
 
 ### Row Level Security (RLS) with Sponsor Support
 ```sql
@@ -960,7 +966,7 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-## 🚀 Implementation Roadmap
+## ðŸš€ Implementation Roadmap
 
 ### Phase 1: Core Infrastructure (Week 1-2)
 - [ ] Dashboard layout and navigation
@@ -1017,7 +1023,7 @@ $$ LANGUAGE plpgsql;
 - [ ] Sponsor performance metrics
 - [ ] Multi-tenant reporting
 
-## 📱 Responsive Design
+## ðŸ“± Responsive Design
 
 ### Breakpoints
 ```css
@@ -1038,7 +1044,7 @@ $$ LANGUAGE plpgsql;
 }
 ```
 
-## 🎯 Performance Optimization
+## ðŸŽ¯ Performance Optimization
 
 ### Strategies
 - **Virtual Scrolling**: For large data tables

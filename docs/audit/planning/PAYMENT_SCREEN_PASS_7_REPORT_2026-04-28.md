@@ -1,12 +1,18 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# Payment Screen — Pass 7 Finalization Report
+# Payment Screen â€” Pass 7 Finalization Report
 
 **Date:** 2026-04-28
 **Scope:** Payment screen MD+ liquid-glass sidebar, header alignment, modal centering, no-borders rule, dead-code removal
-**Status:** ✅ COMPLETE & VERIFIED
+**Status:** âœ… COMPLETE & VERIFIED
 
 ---
 
@@ -27,21 +33,21 @@ Bring the Payment screen (Management + Checkout variants) to Apple HIG-level qua
 
 ```
 app/(user)/payment.* (route)
-└── PaymentScreenOrchestrator        (entry — phase/variant chooser, header insets owner)
-    └── PaymentStageBase              (shell: motion, sidebar overlay, scroll handling)
-        ├── PaymentManagementVariant  (mode-specific composition)
-        └── PaymentCheckoutVariant    (mode-specific composition)
-            ├── PaymentScreenComponents (cards, sections, modals)
-            ├── PaymentMethodSelector
-            ├── AddPaymentMethodModal (.jsx + .web.jsx)
-            └── MapHistoryPaymentShell (transaction detail — left drawer at MD+)
+â””â”€â”€ PaymentScreenOrchestrator        (entry â€” phase/variant chooser, header insets owner)
+    â””â”€â”€ PaymentStageBase              (shell: motion, sidebar overlay, scroll handling)
+        â”œâ”€â”€ PaymentManagementVariant  (mode-specific composition)
+        â””â”€â”€ PaymentCheckoutVariant    (mode-specific composition)
+            â”œâ”€â”€ PaymentScreenComponents (cards, sections, modals)
+            â”œâ”€â”€ PaymentMethodSelector
+            â”œâ”€â”€ AddPaymentMethodModal (.jsx + .web.jsx)
+            â””â”€â”€ MapHistoryPaymentShell (transaction detail â€” left drawer at MD+)
 ```
 
 **Single source of truth:** `paymentSidebarLayout.js` (`computePaymentSidebarLayout`, `computeHeaderClearance`, `getPaymentSidebarGlassTokens`, `PAYMENT_SIDEBAR_HIG`).
 
 ---
 
-## 3. Visual Spec — MD+ (TABLET / DESKTOP)
+## 3. Visual Spec â€” MD+ (TABLET / DESKTOP)
 
 | Property | Value |
 |---|---|
@@ -73,7 +79,7 @@ rightInset     = 0
 
 ---
 
-## 4. Modals — MD+ Centered Presentation
+## 4. Modals â€” MD+ Centered Presentation
 
 All payment modals respond to `surfaceConfig.modalPresentationMode`:
 
@@ -84,13 +90,13 @@ All payment modals respond to `surfaceConfig.modalPresentationMode`:
 | `AddPaymentMethodModal` (orchestrator wrapper) | slide | fade |
 | `MapHistoryPaymentModal` (transaction detail) | bottom-sheet | left-drawer (inherits `MapModalShell`) |
 
-**Z-index fix:** `MapModalShell` root bumped **220 → 10001** so detail sheets stack above `ScrollAwareHeader` (zIndex 9999) on web.
+**Z-index fix:** `MapModalShell` root bumped **220 â†’ 10001** so detail sheets stack above `ScrollAwareHeader` (zIndex 9999) on web.
 
 ---
 
 ## 5. iVisit No-Borders Rule
 
-Active payment surfaces — all visible borders removed:
+Active payment surfaces â€” all visible borders removed:
 
 | File | Borders removed |
 |---|---|
@@ -103,7 +109,7 @@ Active payment surfaces — all visible borders removed:
 - Vertical rhythm (gap-based separation)
 - Squircle elevation (cards via `theme.card` + shadow, not outlines)
 
-> Native `AddPaymentMethodModal.jsx` retains only `borderWidth: 0` declarations (already invisible — left as-is for Stripe `CardField` compatibility).
+> Native `AddPaymentMethodModal.jsx` retains only `borderWidth: 0` declarations (already invisible â€” left as-is for Stripe `CardField` compatibility).
 
 ---
 
@@ -116,8 +122,8 @@ Active payment surfaces — all visible borders removed:
 ## 7. Dead Code Removed
 
 ### 7.1 Deleted files
-- `components/payment/SimplifiedPaymentScreen.jsx` (zero imports — orphan)
-- `components/payment/PaymentProcessingScreen.jsx` (zero imports — orphan)
+- `components/payment/SimplifiedPaymentScreen.jsx` (zero imports â€” orphan)
+- `components/payment/PaymentProcessingScreen.jsx` (zero imports â€” orphan)
 
 ### 7.2 Cleaned within active files
 | File | Removal |
@@ -127,7 +133,7 @@ Active payment surfaces — all visible borders removed:
 | `PaymentScreenOrchestrator.jsx` | Unused `variantGroup` memo + `getStackViewportVariantGroup` import |
 
 ### 7.3 Documentation
-- `docs/flows/payment/payment.md` — `SimplifiedPaymentScreen` reference replaced with current orchestrator architecture
+- `docs/flows/payment/payment.md` â€” `SimplifiedPaymentScreen` reference replaced with current orchestrator architecture
 
 ---
 
@@ -147,22 +153,22 @@ All MD+ logic gated by `surfaceConfig.overlayLayout === "left-sidebar"`. Compact
 
 ```
 components/payment/
-├── PaymentScreenOrchestrator.jsx   (entry point, 202 lines)
-├── PaymentStageBase.jsx             (shell + sidebar layout, 144 lines)
-├── PaymentManagementVariant.jsx     (wallet/methods mode, 184 lines)
-├── PaymentCheckoutVariant.jsx       (checkout mode, 165 lines)
-├── PaymentScreenComponents.jsx      (cards, sections, modals, 760 lines)
-├── PaymentMethodSelector.jsx        (saved methods list)
-├── AddPaymentMethodModal.jsx        (native — RN)
-├── AddPaymentMethodModal.web.jsx    (web variant)
-├── paymentScreenComponents.styles.js
-├── paymentScreen.theme.js
-├── paymentScreen.content.js
-├── paymentSidebarLayout.js          (single source of truth)
-└── tokens/paymentGlassTokens.js
+â”œâ”€â”€ PaymentScreenOrchestrator.jsx   (entry point, 202 lines)
+â”œâ”€â”€ PaymentStageBase.jsx             (shell + sidebar layout, 144 lines)
+â”œâ”€â”€ PaymentManagementVariant.jsx     (wallet/methods mode, 184 lines)
+â”œâ”€â”€ PaymentCheckoutVariant.jsx       (checkout mode, 165 lines)
+â”œâ”€â”€ PaymentScreenComponents.jsx      (cards, sections, modals, 760 lines)
+â”œâ”€â”€ PaymentMethodSelector.jsx        (saved methods list)
+â”œâ”€â”€ AddPaymentMethodModal.jsx        (native â€” RN)
+â”œâ”€â”€ AddPaymentMethodModal.web.jsx    (web variant)
+â”œâ”€â”€ paymentScreenComponents.styles.js
+â”œâ”€â”€ paymentScreen.theme.js
+â”œâ”€â”€ paymentScreen.content.js
+â”œâ”€â”€ paymentSidebarLayout.js          (single source of truth)
+â””â”€â”€ tokens/paymentGlassTokens.js
 ```
 
-`PaymentScreenComponents.jsx` is approaching the 500-line soft cap (760 lines) — flagged as a future refactor candidate. Logical split candidates: `PaymentHistoryModal`, `AddFundsModal`, and identity/summary sections each into their own files.
+`PaymentScreenComponents.jsx` is approaching the 500-line soft cap (760 lines) â€” flagged as a future refactor candidate. Logical split candidates: `PaymentHistoryModal`, `AddFundsModal`, and identity/summary sections each into their own files.
 
 ---
 
@@ -184,6 +190,6 @@ components/payment/
 
 ## 11. Pending / Future Work
 
-- **Pass 8 — Apple HIG sweep** for remaining stack pages: `InsuranceScreen`, `MedicalProfileScreen`, `HelpSupportScreen`, `MoreScreen`
-- **Refactor candidate:** `PaymentScreenComponents.jsx` (760 lines) → split into per-component files
+- **Pass 8 â€” Apple HIG sweep** for remaining stack pages: `InsuranceScreen`, `MedicalProfileScreen`, `HelpSupportScreen`, `MoreScreen`
+- **Refactor candidate:** `PaymentScreenComponents.jsx` (760 lines) â†’ split into per-component files
 - **Optional:** Extract Stripe-specific input styling so `AddPaymentMethodModal.jsx` border-zero declarations can be cleanly removed

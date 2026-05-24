@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-13
+---
+
 # Location And Address Management Architecture
 
 **Date:** 2026-05-10
@@ -573,7 +579,7 @@ This separation lets local save succeed even if future cloud sync fails.
 
 ```txt
 addressSearch
-  ↓ user selects address
+  â†“ user selects address
 candidateDecision
   Address group
     selected label
@@ -598,7 +604,7 @@ Notes:
 
 ```txt
 candidateDecision
-  ↓ Add to saved places
+  â†“ Add to saved places
 saveCategory
   Solid category orbs
     Home
@@ -608,7 +614,7 @@ saveCategory
     Pharmacy
     Care
     Other
-  ↓ choose category
+  â†“ choose category
 saveDetails
   Address group
   Optional label / unit / responder note
@@ -659,7 +665,7 @@ Rules:
 
 ```txt
 default
-  ↓ tap saved orb / row
+  â†“ tap saved orb / row
 candidateDecision
   Address group
   CTA group
@@ -674,7 +680,7 @@ candidateDecision
 
 ```txt
 manualStep
-  ↓ geocode succeeds
+  â†“ geocode succeeds
 candidateDecision
   Address group
   CTA group
@@ -689,7 +695,7 @@ candidateDecision
 
 ```txt
 default/search
-  ↓ tap recent
+  â†“ tap recent
 candidateDecision
   Address group
   CTA group

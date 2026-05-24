@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -84,29 +90,29 @@ Successfully completed the 10-pass modularization plan plus embedded view hook a
 ## Three-Layer Architecture Deployed
 
 ```
-┌─────────────────────────────────────────┐
-│  LAYER 1: TanStack Query                │
-│  (Server State)                         │
-│  | usePaymentMethodsQuery               │
-│  | useWalletBalanceQuery                │
-│  | Caching, invalidation, deduping      │
-└─────────────────────────────────────────┘
-            ↓
-┌─────────────────────────────────────────┐
-│  LAYER 2: Zustand                       │
-│  (Persistent Client State)            │
-│  | usePaymentPreferencesStore           │
-│  | useEmergencyTripStore                │
-│  | AsyncStorage persistence             │
-└─────────────────────────────────────────┘
-            ↓
-┌─────────────────────────────────────────┐
-│  LAYER 3: Jotai                         │
-│  (Ephemeral UI State)                   │
-│  | 45+ atoms across 4 files             │
-│  | Derived atoms for computed state   │
-│  | No provider needed                   │
-└─────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  LAYER 1: TanStack Query                â”‚
+â”‚  (Server State)                         â”‚
+â”‚  | usePaymentMethodsQuery               â”‚
+â”‚  | useWalletBalanceQuery                â”‚
+â”‚  | Caching, invalidation, deduping      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+            â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  LAYER 2: Zustand                       â”‚
+â”‚  (Persistent Client State)            â”‚
+â”‚  | usePaymentPreferencesStore           â”‚
+â”‚  | useEmergencyTripStore                â”‚
+â”‚  | AsyncStorage persistence             â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+            â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  LAYER 3: Jotai                         â”‚
+â”‚  (Ephemeral UI State)                   â”‚
+â”‚  | 45+ atoms across 4 files             â”‚
+â”‚  | Derived atoms for computed state   â”‚
+â”‚  | No provider needed                   â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -116,42 +122,42 @@ Successfully completed the 10-pass modularization plan plus embedded view hook a
 ### Atoms (4 files, ~300 lines)
 ```
 atoms/
-├── mapScreenAtoms.ts      (12 atoms - modal, rating, tracking)
-├── paymentAtoms.ts        (13 atoms - payment flow)
-├── commitAtoms.ts         (11 atoms - wizard flow)
-└── searchAtoms.ts         (10 atoms - search state)
+â”œâ”€â”€ mapScreenAtoms.ts      (12 atoms - modal, rating, tracking)
+â”œâ”€â”€ paymentAtoms.ts        (13 atoms - payment flow)
+â”œâ”€â”€ commitAtoms.ts         (11 atoms - wizard flow)
+â””â”€â”€ searchAtoms.ts         (10 atoms - search state)
 ```
 
 ### Shell Hooks (5 files, ~800 lines)
 ```
 hooks/map/shell/
-├── useMapShell.js
-├── useMapModals.js
-├── useMapScreenEffects.js
-├── useMapHistoryFlow.js
-├── useMapTrackingState.js
-└── index.js
+â”œâ”€â”€ useMapShell.js
+â”œâ”€â”€ useMapModals.js
+â”œâ”€â”€ useMapScreenEffects.js
+â”œâ”€â”€ useMapHistoryFlow.js
+â”œâ”€â”€ useMapTrackingState.js
+â””â”€â”€ index.js
 ```
 
 ### Payment Queries (2 files)
 ```
 hooks/payment/
-├── usePaymentMethodsQuery.ts
-├── useWalletBalanceQuery.ts
-└── index.ts
+â”œâ”€â”€ usePaymentMethodsQuery.ts
+â”œâ”€â”€ useWalletBalanceQuery.ts
+â””â”€â”€ index.ts
 ```
 
 ### Zustand Stores (1 file)
 ```
 stores/
-├── paymentPreferencesStore.ts
-└── index.js (updated)
+â”œâ”€â”€ paymentPreferencesStore.ts
+â””â”€â”€ index.js (updated)
 ```
 
 ### Components (1 file)
 ```
 components/map/
-└── MapScreenModals.jsx (95 lines)
+â””â”€â”€ MapScreenModals.jsx (95 lines)
 ```
 
 ---

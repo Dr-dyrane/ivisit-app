@@ -1,16 +1,22 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Emergency State Management Architecture Refactor
 
-> **Reconciliation Note — 2026-05-24:** This document describes the **Phase 1 parallel-implementation** state. The migration has since completed through **Phase 6+**. Reality update:
+> **Reconciliation Note â€” 2026-05-24:** This document describes the **Phase 1 parallel-implementation** state. The migration has since completed through **Phase 6+**. Reality update:
 >
 > - `EmergencyContextAdapter.jsx` and `EmergencyContextProviders.jsx` referenced below **no longer exist** as separate files; their roles collapsed back into a single thin `contexts/EmergencyContext.jsx` (~228 lines) that orchestrates `hooks/emergency/*`.
-> - `useMapExploreFlow` and the broader map flow now consume the five-layer architecture directly (stores + atoms + machines + query) — the parallel-implementation phasing is complete.
+> - `useMapExploreFlow` and the broader map flow now consume the five-layer architecture directly (stores + atoms + machines + query) â€” the parallel-implementation phasing is complete.
 > - The "Next Steps" list at the bottom of this doc has been fully executed except for the optional final deletion (intentionally retained as a thin shell).
 >
 > Current entry-point references:
 >
-> - [`../overview/ARCHITECTURE.md`](../overview/ARCHITECTURE.md) — system overview (v2.0)
-> - [`../state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md) — full migration phases
-> - [`../stores/STORES_README.md`](../stores/STORES_README.md) — 22-store Layer 3 inventory
+> - [`../overview/ARCHITECTURE.md`](../overview/ARCHITECTURE.md) â€” system overview (v2.0)
+> - [`../state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md) â€” full migration phases
+> - [`../stores/STORES_README.md`](../stores/STORES_README.md) â€” 22-store Layer 3 inventory
 >
 > The body below is retained for historical context.
 
@@ -136,21 +142,21 @@ const hasActiveTrip = !!(store.activeAmbulanceTrip?.requestId || store.activeBed
 
 ```
 stores/
-├── emergencyTripStore.js         # Zustand store with full CRUD
-├── emergencyTripSelectors.js     # Pure selectors + React hooks
-└── index.js                      # Barrel exports
+â”œâ”€â”€ emergencyTripStore.js         # Zustand store with full CRUD
+â”œâ”€â”€ emergencyTripSelectors.js     # Pure selectors + React hooks
+â””â”€â”€ index.js                      # Barrel exports
 
 hooks/emergency/
-├── useEmergencySyncEngine.js     # Realtime sync + subscriptions
-├── useEmergencyLifecycle.js      # Complete/cancel/arrived handlers
-├── useEmergencyTripRuntime.js    # Combined runtime hook
-├── bedBookingRuntime.js            # Bed booking normalization (existing)
-└── index.js                      # Barrel exports
+â”œâ”€â”€ useEmergencySyncEngine.js     # Realtime sync + subscriptions
+â”œâ”€â”€ useEmergencyLifecycle.js      # Complete/cancel/arrived handlers
+â”œâ”€â”€ useEmergencyTripRuntime.js    # Combined runtime hook
+â”œâ”€â”€ bedBookingRuntime.js            # Bed booking normalization (existing)
+â””â”€â”€ index.js                      # Barrel exports
 
 contexts/
-├── EmergencyContextAdapter.jsx   # Thin context adapter
-├── EmergencyContextProviders.jsx # Service proxies
-└── EmergencyContext.jsx          # Original (preserved)
+â”œâ”€â”€ EmergencyContextAdapter.jsx   # Thin context adapter
+â”œâ”€â”€ EmergencyContextProviders.jsx # Service proxies
+â””â”€â”€ EmergencyContext.jsx          # Original (preserved)
 ```
 
 ## Benefits

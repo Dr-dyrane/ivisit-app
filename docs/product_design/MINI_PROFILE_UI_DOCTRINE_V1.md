@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-05-24
+---
+
 # Mini Profile UI Doctrine - Design System Migration Guide
 
 ## Overview

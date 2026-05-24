@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-28
+---
+
 # Commit Details Controller Refactor Plan
 
 **Target:** `useMapCommitDetailsController.js` (678 lines -> <400 lines)

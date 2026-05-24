@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-01
+---
+
 # Emergency Workflow Map
 
 This is the deterministic runtime map for ambulance and bed emergency flows.

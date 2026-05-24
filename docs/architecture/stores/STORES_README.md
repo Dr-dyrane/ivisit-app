@@ -1,9 +1,15 @@
-# Zustand Stores — Layer 3 Inventory
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
+# Zustand Stores â€” Layer 3 Inventory
 
 > **Version:** 2.0
 > **Date:** 2026-05-24
 > **Scope:** `stores/` in `ivisit-app`
-> **Role:** Layer 3 of the five-layer Gold Standard architecture — persisted, cross-surface client snapshots.
+> **Role:** Layer 3 of the five-layer Gold Standard architecture â€” persisted, cross-surface client snapshots.
 
 For the overall architecture see [`architecture/overview/ARCHITECTURE.md`](../overview/ARCHITECTURE.md). For the in-code dev guide see [`stores/README.md`](../../../stores/README.md). For the migration history that produced these stores see [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md).
 
@@ -11,12 +17,12 @@ For the overall architecture see [`architecture/overview/ARCHITECTURE.md`](../ov
 
 ## 1. Layer Position
 
-Zustand is Layer 3. It sits between TanStack Query (L2 — server cache) and XState/Jotai (L4/L5 — lifecycle and ephemeral UI).
+Zustand is Layer 3. It sits between TanStack Query (L2 â€” server cache) and XState/Jotai (L4/L5 â€” lifecycle and ephemeral UI).
 
 ```
-L1 Supabase  →  L2 TanStack Query  →  L3 Zustand  →  L4 XState  →  L5 Jotai
-                                       ▲
-                                       │
+L1 Supabase  â†’  L2 TanStack Query  â†’  L3 Zustand  â†’  L4 XState  â†’  L5 Jotai
+                                       â–²
+                                       â”‚
                   persisted client snapshots live here
 ```
 
@@ -36,32 +42,32 @@ If only some are true, pick another layer instead of a store.
 
 Twenty-two store files exist in `stores/`. Most pair a `*Store.js` with optional `*Selectors.js` (pure derived reads) and an XState machine in `machines/`.
 
-### 2A · Emergency surface
+### 2A Â· Emergency surface
 
 | Store | Selectors | Machine | Domain |
 |---|---|---|---|
 | `emergencyTripStore.js` | `emergencyTripSelectors.js` | `tripLifecycleMachine.js` | Active ambulance trips, bed bookings, pending approvals, event-gate versioning |
 | `emergencyContactsStore.js` | `emergencyContactsSelectors.js` | `emergencyContactsMachine.js` | Patient emergency contacts (five-layer reference implementation) |
 
-### 2B · Trip / map / route
+### 2B Â· Trip / map / route
 
 | Store | Selectors | Machine | Domain |
 |---|---|---|---|
-| `mapRouteStore.js` | — | `mapRouteMachine.js` | Active route payload, ETA seed, route preview state |
-| `lastHospitalStore.js` | — | — | Most-recent selected hospital (issue-3 reload-lag fix) |
-| `coverageStore.js` | — | — | Live/demo coverage mode + nearby coverage counts |
-| `locationStore.js` | — | — | Pickup truth, manual address, recents |
-| `modeStore.js` | — | — | Service mode (`emergency` \| `booking`), serviceType, viewMode, selectedSpecialty |
+| `mapRouteStore.js` | â€” | `mapRouteMachine.js` | Active route payload, ETA seed, route preview state |
+| `lastHospitalStore.js` | â€” | â€” | Most-recent selected hospital (issue-3 reload-lag fix) |
+| `coverageStore.js` | â€” | â€” | Live/demo coverage mode + nearby coverage counts |
+| `locationStore.js` | â€” | â€” | Pickup truth, manual address, recents |
+| `modeStore.js` | â€” | â€” | Service mode (`emergency` \| `booking`), serviceType, viewMode, selectedSpecialty |
 
-### 2C · Booking / payment
+### 2C Â· Booking / payment
 
 | Store | Selectors | Machine | Domain |
 |---|---|---|---|
-| `bookVisitStore.js` | — | `bookVisitMachine.js` | Multi-step book-visit flow draft + lifecycle |
-| `billingQuoteStore.js` | — | `billingQuoteMachine.js` | FX-aware billing quote lane |
-| `paymentPreferencesStore.ts` | — | — | Persisted user payment preferences (TS) |
+| `bookVisitStore.js` | â€” | `bookVisitMachine.js` | Multi-step book-visit flow draft + lifecycle |
+| `billingQuoteStore.js` | â€” | `billingQuoteMachine.js` | FX-aware billing quote lane |
+| `paymentPreferencesStore.ts` | â€” | â€” | Persisted user payment preferences (TS) |
 
-### 2D · Profile / care continuity
+### 2D Â· Profile / care continuity
 
 | Store | Selectors | Machine | Domain |
 |---|---|---|---|
@@ -70,11 +76,11 @@ Twenty-two store files exist in `stores/`. Most pair a `*Store.js` with optional
 | `notificationsStore.js` | `notificationsSelectors.js` | `notificationsMachine.js` | In-app notifications inbox + unread counts |
 | `helpSupportStore.js` | `helpSupportSelectors.js` | `helpSupportMachine.js` | Help / support ticket state |
 
-### 2E · Barrel
+### 2E Â· Barrel
 
 | File | Role |
 |---|---|
-| `index.js` | Public barrel exports. **Not every store is re-exported** — some are imported directly by their owning hooks (e.g. `mapRouteStore`, `medicalProfileStore`, `visitsStore`, `billingQuoteStore`, `paymentPreferencesStore`). |
+| `index.js` | Public barrel exports. **Not every store is re-exported** â€” some are imported directly by their owning hooks (e.g. `mapRouteStore`, `medicalProfileStore`, `visitsStore`, `billingQuoteStore`, `paymentPreferencesStore`). |
 
 ---
 
@@ -108,7 +114,7 @@ Twenty-two store files exist in `stores/`. Most pair a `*Store.js` with optional
 
 - A store action mutates **its own** store only. Cross-store coordination happens in hooks/controllers (e.g. `hooks/emergency/useEmergencyActions.js`), never inside an action body.
 
-### 3.7 Realtime is L1 → L2 → L3 (one direction)
+### 3.7 Realtime is L1 â†’ L2 â†’ L3 (one direction)
 
 - Realtime events (L1) invalidate TanStack Query (L2). Queries may then populate a store (L3) through a hook. Realtime must not push directly into stores.
 
@@ -127,7 +133,7 @@ Twenty-two store files exist in `stores/`. Most pair a `*Store.js` with optional
 | Async fetch inside a store action | Move to a service (`services/`) called from a hook |
 | `useState` mirroring a store value | Subscribe with `useXStore` selector instead |
 | Mutating outside an action (`state.x = ...` from a hook) | Always go through an action |
-| Replacing `null` with `{}` to "simplify" | Preserve the null sentinel — UI distinguishes |
+| Replacing `null` with `{}` to "simplify" | Preserve the null sentinel â€” UI distinguishes |
 
 ---
 

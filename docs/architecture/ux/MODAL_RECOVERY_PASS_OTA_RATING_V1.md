@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-09
+---
+
 # Modal Recovery Pass: OTA Updates And Ratings
 
 Status: in progress
@@ -54,7 +60,7 @@ First glance:
 
 ```txt
 Rate your {service}
-★★★★★
+â˜…â˜…â˜…â˜…â˜…
 
 Add a note     >
 Add a tip      >

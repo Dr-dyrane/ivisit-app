@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -165,7 +171,7 @@ components/map/views/tracking/
 
 ## Pass Tracker
 
-### TS-0 — Baseline Audit
+### TS-0 â€” Baseline Audit
 
 Status: Complete
 Risk: Low
@@ -267,7 +273,7 @@ payment approval result
     - User-visible symptom: a single invalid/transient failure can feel like a persistent connection-lost loop rather than a controlled retry state.
     - Candidate patch already present in the worktree: only run `ensureRoom()` while the chat lifecycle is in `ensuringRoom`; after error, wait for explicit Retry.
 
-### TS-1 — Canonical Runtime Snapshot
+### TS-1 â€” Canonical Runtime Snapshot
 
 Status: Complete
 Risk: Medium
@@ -304,7 +310,7 @@ Implementation note:
 - Continued handoff slice: `hooks/emergency/useRequestFlow.js` and `hooks/emergency/useEmergencyActions.js` now close the same-request pending approval -> active ambulance trip handoff using the atomic Zustand action. This implements the tracking lesson from `TRACKING_SHEET_LEARNINGS.md` section 2.2/2.12 without changing the payment sheet interaction.
 - Verification: `npm run hardening:emergency-runtime-confidence-assert`, `npx prettier --check hooks/emergency/useRequestFlow.js hooks/emergency/useEmergencyActions.js components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, `git diff --check -- hooks/emergency/useRequestFlow.js hooks/emergency/useEmergencyActions.js components/map/views/tracking/MapTrackingStageBase.jsx components/map/views/tracking/mapTracking.presentation.js hooks/map/exploreFlow/useMapTrackingStatus.js`, and `npm run build:web` passed after the handoff slice.
 
-### TS-2 — Stage Taxonomy
+### TS-2 â€” Stage Taxonomy
 
 Status: In progress
 Risk: Medium
@@ -337,7 +343,7 @@ Implementation note:
 - `useMapTrackingStatus.js` now syncs Jotai status atoms from `trackingSnapshot.visualPhase`, and `atoms/mapScreenAtoms.js` documents the expanded visual-phase set.
 - `mapTracking.presentation.js` now owns both `buildTrackingHeroModel()` and `buildTrackingHeaderModel()`. `MapTrackingStageBase.jsx` removed the legacy hero fallback tree and consumes those snapshot-backed models for the hero and top slot title.
 
-### TS-3 — ETA And Route Contract
+### TS-3 â€” ETA And Route Contract
 
 Status: Complete
 Risk: High
@@ -367,7 +373,7 @@ Implementation note:
 - `useMapTrackingRuntime.js` also scopes its direct route-atom fallback before using `durationSec` for progress or snapshot route info.
 - `mapTracking.snapshot.js` normalizes ETA sources to `trip`, `live_route`, `stored_route`, `fallback`, or `none`; legacy `map_route` is read as `live_route`.
 
-### TS-4 — Hero Model Extraction
+### TS-4 â€” Hero Model Extraction
 
 Status: Complete
 Risk: Low
@@ -399,7 +405,7 @@ Implementation note:
 - The model encodes the documented copy contract, including `approaching` -> "Almost there", arrival/completion outranking route/ETA, and bed states retaining bed-specific copy.
 - Follow-up review fix: `dispatch_confirmed` no longer repeats "Dispatch confirmed" as both title and subtitle; the subtitle falls back to the service label while `en_route` keeps the dispatch-confirmed support copy.
 
-### TS-5 — Action Eligibility Model
+### TS-5 â€” Action Eligibility Model
 
 Status: Complete
 Risk: Medium
@@ -431,7 +437,7 @@ Implementation note:
 - Review correction: only `completed` is treated as terminal for action surfaces. `lost` and `delayed` remain recoverable tracking exception states, so Contact Dispatch and cancel remain available during a signal interruption.
 - `MapTrackingStageBase.jsx` top-slot triage visibility and controller-driven header actions now consume the same action surface policy instead of bypassing it with raw request ids/callbacks.
 
-### TS-6 — Request-Scoped UI Atoms
+### TS-6 â€” Request-Scoped UI Atoms
 
 Status: Complete
 Risk: Medium
@@ -459,7 +465,7 @@ Implementation note:
 - Derived hero-gradient and CTA-theme helpers can now be evaluated against the effective request-scoped phase, preventing a one-render flash from a previous request's persisted phase.
 - Contact Dispatch tracking-entry state was inspected during this pass. Its active request id already acts as the modal owner; broader chat atom cleanup remains outside this tracking-sheet TS-6 slice.
 
-### TS-7 — Web/Native Render Hardening
+### TS-7 â€” Web/Native Render Hardening
 
 Status: Complete
 Risk: Low
@@ -482,7 +488,7 @@ Implementation note:
 - The triage progress ring already uses a static `Circle` path on web and an animated circle only on native, preserving the web-safe SVG contract.
 - Verification for this pass is recorded under TS-8/TS-9 with `git diff --check`, `npm run hardening:tracking-state-models`, and `npm run build:web`.
 
-### TS-8 — Regression Harness
+### TS-8 â€” Regression Harness
 
 Status: Complete
 Risk: Medium
@@ -514,7 +520,7 @@ Implementation note:
 - The temporary `supabase/tests/scripts/assert_tracking_state_models.js` harness and `npm run hardening:tracking-state-models` script were removed after APK review. The product risk is runtime synchronization, not another package-level assertion script.
 - Keep verification focused on live payment -> tracking handoff, sheet state updates without reload, Contact Dispatch interaction, and map sprite behavior.
 
-### TS-9 — Rollout And Rollback
+### TS-9 â€” Rollout And Rollback
 
 Status: Complete
 Risk: Low
@@ -544,7 +550,7 @@ Implementation note:
 - Final finishing slice keeps the sprite renderer untouched, adds only tracking text resilience plus pure-model assertions, and updates this pass record.
 - Rollback preference is to revert the latest tracking-model/UI commits in reverse order while preserving any independently verified emergency dispatch/payment fixes.
 
-### APK Review Follow-up — ETA/Arrival/CTA Consistency
+### APK Review Follow-up â€” ETA/Arrival/CTA Consistency
 
 Status: In Progress
 Risk: Medium

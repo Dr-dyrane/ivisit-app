@@ -1,4 +1,10 @@
-> **ARCHIVAL NOTICE — 2026-05-19**
+---
+status: historical
+owner: -
+last_updated: 2026-05-19
+---
+
+> **ARCHIVAL NOTICE â€” 2026-05-19**
 > This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
 > It is the original V1 explore-intent audit. It has been superseded by the Explore Care dossier and EXP-pass series.
 > **Current replacements:**
@@ -369,7 +375,7 @@ Required hierarchy:
 
 1. close button
 2. avatar
-3. `What’s your name?`
+3. `Whatâ€™s your name?`
 4. text field
 5. shared FAB drives continue
 

@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-02
+---
+
 # Emergency Architecture Guide
 
 > Status: Active refactor guide

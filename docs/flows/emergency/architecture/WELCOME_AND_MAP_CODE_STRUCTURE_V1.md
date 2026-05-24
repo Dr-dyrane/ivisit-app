@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-12
+---
+
 # Welcome And Map Code Structure (v1)
 
 > Status: Active structure rule

@@ -1,9 +1,15 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
-> This is a completed audit from 2026-04-24. The state sync and animation issues it identified have been addressed in the tracking sheet passes (A–G) and tracking tightening pass.
+> **HISTORICAL NOTICE â€” 2026-05-19**
+> This is a completed audit from 2026-04-24. The state sync and animation issues it identified have been addressed in the tracking sheet passes (Aâ€“G) and tracking tightening pass.
 > Retained for historical context only.
 > **Current reference:** [`docs/audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md`](../map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md)
 > **Working truth:** [`docs/flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
@@ -64,15 +70,15 @@ The ambulance marker animation and the tracking sheet progress bar use **differe
 **Current Mixed Responsibilities:**
 ```
 useMapExploreFlow.js
-├── Sheet phase management (sheetPhase, sheetView, snapPoints)
-├── Hospital selection logic (selectedHospital, featuredHospital, nearestHospital)
-├── Tracking coordination (trackingRequestKey, trackingVisible, openTracking)
-├── Header component generation (trackingHeaderLeftComponent, trackingHeaderRightComponent)
-├── Layout computation (usesSidebarLayout, surfaceConfig)
-├── Visit/history integration (recentVisits, openVisitDetail)
-├── Search integration (searchQuery, setSearchSheetMode)
-├── Commit flow state (commitFlow, setCommitFlow, clearCommitFlow)
-└── 45+ useCallbacks, 15+ useEffects, 12+ useMemos
+â”œâ”€â”€ Sheet phase management (sheetPhase, sheetView, snapPoints)
+â”œâ”€â”€ Hospital selection logic (selectedHospital, featuredHospital, nearestHospital)
+â”œâ”€â”€ Tracking coordination (trackingRequestKey, trackingVisible, openTracking)
+â”œâ”€â”€ Header component generation (trackingHeaderLeftComponent, trackingHeaderRightComponent)
+â”œâ”€â”€ Layout computation (usesSidebarLayout, surfaceConfig)
+â”œâ”€â”€ Visit/history integration (recentVisits, openVisitDetail)
+â”œâ”€â”€ Search integration (searchQuery, setSearchSheetMode)
+â”œâ”€â”€ Commit flow state (commitFlow, setCommitFlow, clearCommitFlow)
+â””â”€â”€ 45+ useCallbacks, 15+ useEffects, 12+ useMemos
 ```
 
 ---
@@ -111,33 +117,33 @@ useEffect(() => {
 **Current State Architecture:**
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    EMERGENCY STATE SOURCES                      │
-├─────────────────────────────────────────────────────────────────┤
-│  Zustand Store (emergencyTripStore.js)                         │
-│  ├── activeAmbulanceTrip     -> Server sync writes here        │
-│  ├── activeBedBooking                                          │
-│  ├── pendingApproval                                           │
-│  ├── commitFlow                                                │
-│  └── eventGates                                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  useMapExploreFlow Local State                                   │
-│  ├── sheetPhase              -> UI phase                        │
-│  ├── sheetView               -> Current sheet config            │
-│  ├── sheetSnapState          -> Collapsed/expanded              │
-│  ├── commitFlow              -> Duplicated with store??         │
-│  └── selectedHospital        -> Also in global search state     │
-├─────────────────────────────────────────────────────────────────┤
-│  useMapExploreFlow Refs                                          │
-│  ├── trackingDismissedRef    -> Not reactive, causes bugs       │
-│  ├── suppressCommitRestoreRef  -> Commit flow guard             │
-│  └── lastTrackingRequestKeyRef -> For detecting changes         │
-├─────────────────────────────────────────────────────────────────┤
-│  EmergencyUIContext (contexts/EmergencyUIContext.jsx)            │
-│  ├── snapIndex               -> Bottom sheet position           │
-│  ├── isAnimating             -> Animation lock                  │
-│  └── searchQuery             -> Search state                    │
-└─────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    EMERGENCY STATE SOURCES                      â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Zustand Store (emergencyTripStore.js)                         â”‚
+â”‚  â”œâ”€â”€ activeAmbulanceTrip     -> Server sync writes here        â”‚
+â”‚  â”œâ”€â”€ activeBedBooking                                          â”‚
+â”‚  â”œâ”€â”€ pendingApproval                                           â”‚
+â”‚  â”œâ”€â”€ commitFlow                                                â”‚
+â”‚  â””â”€â”€ eventGates                                                  â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  useMapExploreFlow Local State                                   â”‚
+â”‚  â”œâ”€â”€ sheetPhase              -> UI phase                        â”‚
+â”‚  â”œâ”€â”€ sheetView               -> Current sheet config            â”‚
+â”‚  â”œâ”€â”€ sheetSnapState          -> Collapsed/expanded              â”‚
+â”‚  â”œâ”€â”€ commitFlow              -> Duplicated with store??         â”‚
+â”‚  â””â”€â”€ selectedHospital        -> Also in global search state     â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  useMapExploreFlow Refs                                          â”‚
+â”‚  â”œâ”€â”€ trackingDismissedRef    -> Not reactive, causes bugs       â”‚
+â”‚  â”œâ”€â”€ suppressCommitRestoreRef  -> Commit flow guard             â”‚
+â”‚  â””â”€â”€ lastTrackingRequestKeyRef -> For detecting changes         â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  EmergencyUIContext (contexts/EmergencyUIContext.jsx)            â”‚
+â”‚  â”œâ”€â”€ snapIndex               -> Bottom sheet position           â”‚
+â”‚  â”œâ”€â”€ isAnimating             -> Animation lock                  â”‚
+â”‚  â””â”€â”€ searchQuery             -> Search state                    â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Problems:**
@@ -181,13 +187,13 @@ export const computedProgressAtom = atom((get) => {
 **Target Structure:**
 ```
 hooks/map/exploreFlow/
-├── useMapExploreFlow.js              -> 200 lines max, orchestrates sub-hooks
-├── useMapSheetPhase.js               -> Phase state machine
-├── useMapHospitalSelection.js        -> Hospital picker logic
-├── useMapTracking.js                 -> Tracking coordination (replaces lines 575-687)
-├── useMapTrackingHeader.js            -> Header component generation (lines 1087-1209)
-├── useMapCommitFlow.js               -> Commit flow state management
-└── useMapAnimationSync.js            -> Bridges Jotai atoms to map components
+â”œâ”€â”€ useMapExploreFlow.js              -> 200 lines max, orchestrates sub-hooks
+â”œâ”€â”€ useMapSheetPhase.js               -> Phase state machine
+â”œâ”€â”€ useMapHospitalSelection.js        -> Hospital picker logic
+â”œâ”€â”€ useMapTracking.js                 -> Tracking coordination (replaces lines 575-687)
+â”œâ”€â”€ useMapTrackingHeader.js            -> Header component generation (lines 1087-1209)
+â”œâ”€â”€ useMapCommitFlow.js               -> Commit flow state management
+â””â”€â”€ useMapAnimationSync.js            -> Bridges Jotai atoms to map components
 ```
 
 **useMapExploreFlow.js After:**

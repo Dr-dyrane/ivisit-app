@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # iVisit Documentation Index
 
 Last Updated: 2026-05-24
@@ -13,14 +19,14 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 | Doc | Role |
 |---|---|
-| [`rules.json`](./rules.json) | **Tiebreaker** — HIG compliance, product doctrine |
-| [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) | Locked — product vision |
-| [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md) | Mutable — current sprint state and priorities |
+| [`rules.json`](./rules.json) | **Tiebreaker** â€” HIG compliance, product doctrine |
+| [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) | Locked â€” product vision |
+| [`SPONSOR_SPRINT.md`](./SPONSOR_SPRINT.md) | Mutable â€” current sprint state and priorities |
 | [`REFACTORING_GUARDRAILS.md`](./REFACTORING_GUARDRAILS.md) | Code standards, five-layer architecture, useEffect rules |
-| [`README.md`](./README.md) | Docs portal — folder roles, routing rules |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Anti-litter rules — folder decision tree, naming, archival protocol |
-| [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) | Five-layer gold standard — phases 1–7, completion record |
-| [`audit/postmortems/`](./audit/postmortems/) | Incident postmortems (blameless, append-only) — Phase 6d iOS map loading + future incidents |
+| [`README.md`](./README.md) | Docs portal â€” folder roles, routing rules |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Anti-litter rules â€” folder decision tree, naming, archival protocol |
+| [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) | Five-layer gold standard â€” phases 1â€“7, completion record |
+| [`audit/postmortems/`](./audit/postmortems/) | Incident postmortems (blameless, append-only) â€” Phase 6d iOS map loading + future incidents |
 | [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md) | System overview |
 | [`architecture/stores/STORES_README.md`](./architecture/stores/STORES_README.md) | Stores inventory |
 
@@ -28,10 +34,10 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 | Type | Target | Max |
 |---|---|---|
-| Routes | 20–100 | 150 |
-| Screens | 250–400 | 500 |
-| Components | 80–250 | 350 |
-| Hooks | 80–200 | 300 |
+| Routes | 20â€“100 | 150 |
+| Screens | 250â€“400 | 500 |
+| Components | 80â€“250 | 350 |
+| Hooks | 80â€“200 | 300 |
 
 > >800 lines = refactor candidate. >1000 lines = architectural violation (unless generated).
 
@@ -60,7 +66,7 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
    Most recent tracking-state audit. Current defects and intended fixes.
 
 6. **[audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)**
-   Full tracking sheet audit (passes A–G complete). Phase contracts, Apple HIG polish.
+   Full tracking sheet audit (passes Aâ€“G complete). Phase contracts, Apple HIG polish.
 
 ### Other active emergency flow docs
 
@@ -93,7 +99,7 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 ## 3. Active Map / Tracking Docs
 
-- Tracking sheet audit (A–G complete): [audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)
+- Tracking sheet audit (Aâ€“G complete): [audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md](./audit/map/TRACKING_SHEET_PHASE_AUDIT_2026-04-26.md)
 - Map checkpoints index: [audit/map/checkpoints/](./audit/map/checkpoints/)
 - Map passes index: [audit/map/passes/](./audit/map/passes/)
 - Map JSON manifests: [audit/map/manifests/](./audit/map/manifests/)
@@ -123,9 +129,9 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 ## 4. Active Refactoring Plans
 
-### iVisit Phase 0–8 Product/Architecture Plans (2026-05-19)
+### iVisit Phase 0â€“8 Product/Architecture Plans (2026-05-19)
 
-- Phase 0–7 product UX simplification: [architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md](./architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md)
+- Phase 0â€“7 product UX simplification: [architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md](./architecture/refactoring/IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md)
 - Edge Function Phase 8 architecture consolidation: [architecture/refactoring/EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md](./architecture/refactoring/EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md)
 - Refactoring bible: [architecture/refactoring/REFACTORING_BIBLE.md](./architecture/refactoring/REFACTORING_BIBLE.md)
 - Stash audit (224-file categorization): [architecture/refactoring/STASH_AUDIT.md](./architecture/refactoring/STASH_AUDIT.md)
@@ -145,11 +151,11 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 - Root-cause audit + 5-pass plan: [audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
 - Pass index: [audit/demo/README.md](./audit/demo/README.md)
-- Pass 1 — server user-scoped scope key: [audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md](./audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md)
-- Pass 2 — cross-org sweep: [audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md](./audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md)
-- Pass 3 — DB cleanup migration: [audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md](./audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md)
-- Pass 4 — client coverage gate: [audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md](./audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md)
-- Pass 5 — doc update + SQL migration: [audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md](./audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md)
+- Pass 1 â€” server user-scoped scope key: [audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md](./audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md)
+- Pass 2 â€” cross-org sweep: [audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md](./audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md)
+- Pass 3 â€” DB cleanup migration: [audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md](./audit/demo/PASS_3_DB_CLEANUP_MIGRATION.md)
+- Pass 4 â€” client coverage gate: [audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md](./audit/demo/PASS_4_CLIENT_COVERAGE_GATE.md)
+- Pass 5 â€” doc update + SQL migration: [audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md](./audit/demo/PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md)
 
 ### Location Architecture Plans
 
@@ -206,18 +212,18 @@ These files are preserved for audit trail and context but are no longer current 
 
 | File | Status |
 |---|---|
-| `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | Historical — not working truth |
-| `audit/emergency/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md` | Historical — issues addressed |
-| `audit/emergency/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md` | Historical — issues addressed |
-| `audit/emergency/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md` | Historical — EmergencyContext retired |
-| `audit/planning/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md` | Historical — refactor complete |
-| `audit/planning/UNIFIED_MODULARIZATION_PASS_PLAN.md` | Historical — passes complete |
+| `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | Historical â€” not working truth |
+| `audit/emergency/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md` | Historical â€” issues addressed |
+| `audit/emergency/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md` | Historical â€” issues addressed |
+| `audit/emergency/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md` | Historical â€” EmergencyContext retired |
+| `audit/planning/CURRENT_STATE_ORCHESTRATOR_REFACTOR_2026-04-25.md` | Historical â€” refactor complete |
+| `audit/planning/UNIFIED_MODULARIZATION_PASS_PLAN.md` | Historical â€” passes complete |
 
 ---
 
 ## 6. Raw Audits / Checkpoints
 
-### Orchestrator Refactor Checkpoints (2026-04-25) — COMPLETE
+### Orchestrator Refactor Checkpoints (2026-04-25) â€” COMPLETE
 
 - [audit/checkpoints/FINAL_MIGRATION_SUMMARY.md](./audit/checkpoints/FINAL_MIGRATION_SUMMARY.md)
 - [audit/checkpoints/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md](./audit/checkpoints/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md)
@@ -297,10 +303,10 @@ All schema, RPC, and migration conventions live under `supabase/docs/`.
 
 When adding a new document:
 
-- [ ] Add to correct section in this INDEX (sections 1–6 above)
+- [ ] Add to correct section in this INDEX (sections 1â€“6 above)
 - [ ] Add to **Workflow Maps** if flow-related
 - [ ] If superseded: add archival notice to the old doc, move to `archive/` if its folder becomes misleading
-- [ ] Never delete historical docs — archive with notice
+- [ ] Never delete historical docs â€” archive with notice
 
 ### Archival Requirements
 

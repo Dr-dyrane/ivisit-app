@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-07
+---
+
 # iVisit Workflow Maps
 
 This folder contains distributed workflow maps by domain. The goal is to make backend flow visible without a single monolithic doc.

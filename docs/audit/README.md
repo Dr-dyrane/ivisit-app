@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-10
+---
+
 # Audit Documentation
 
 System-wide audit reports, implementation checkpoints, and UI/UX reviews.
@@ -15,4 +21,4 @@ System-wide audit reports, implementation checkpoints, and UI/UX reviews.
 | [checkpoints/](checkpoints/) | Key implementation checkpoints |
 | [planning/](planning/) | Refactor plans, roadmaps, orchestration |
 | [inventory/](inventory/) | Codebase analysis snapshots |
-| [demo/](demo/) | Demo bootstrap duplicate hospital bug — 5-pass fix audit |
+| [demo/](demo/) | Demo bootstrap duplicate hospital bug â€” 5-pass fix audit |

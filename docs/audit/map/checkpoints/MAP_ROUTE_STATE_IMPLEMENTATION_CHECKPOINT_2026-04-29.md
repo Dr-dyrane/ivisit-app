@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -22,7 +28,7 @@ This checkpoint covers the missing lifecycle and UI layers.
 
 ## What Landed
 
-### Layer 1–3 follow-through stayed intact
+### Layer 1â€“3 follow-through stayed intact
 
 The existing route hardening remains the base:
 

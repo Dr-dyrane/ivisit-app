@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -5,7 +11,7 @@
 # Audit Round 3: Provider Discovery Flow
 
 **Date:** 2026-05-15  
-**Scope:** Trace from canonical pickup → query key → cache → hospital list  
+**Scope:** Trace from canonical pickup â†’ query key â†’ cache â†’ hospital list  
 **Status:** COMPLETE
 
 ---
@@ -20,43 +26,43 @@ The provider discovery flow uses a module-level global cache (`globalHospitalCac
 
 ## Code Path Analysis
 
-### Path: Canonical Pickup → Hospital List
+### Path: Canonical Pickup â†’ Hospital List
 
 ```
 resolveMapPickupLocationTruth({ manualLocation, globalUserLocation, globalLocationSource })
-    ↓
+    â†“
 Returns: { activeLocation, source: "session_manual" | "device", ... }
-    ↓
+    â†“
 useEmergencyHospitalSync({ location: userLocation })
-    ↓
+    â†“
 useHospitals({ location: userLocation, demoModeEnabled, demoBootstrapEnabled, userId })
-    ↓
+    â†“
 normalizeLocation(location) - validates coordinates
-    ↓
+    â†“
 buildLocationBucketKey(normalizedLocation) - creates cache key
-    ↓
+    â†“
 globalHospitalCache.keyedSnapshots[locationKey] - check cache
-    ↓
+    â†“
 If cached: return cached hospitals
-    ↓
+    â†“
 If not cached: hospitalsService.discoverNearby(lat, lng, 50000)
-    ↓
+    â†“
 supabase.functions.invoke('discover-hospitals', { latitude, longitude, radius, ... })
-    ↓
+    â†“
 Edge Function returns: DB hospitals + Mapbox Places + Google Places
-    ↓
+    â†“
 _hydrateHospitalRows(rawHospitals) - enrich with images, wait times
-    ↓
+    â†“
 sortHospitalsByDistance(hydrated)
-    ↓
+    â†“
 categorizeHospitals(displaySource)
-    ↓
+    â†“
 getDisplayHospitals(displaySource, normalizedLocation)
-    ↓
+    â†“
 calculateDynamicWaitTime(hospital, normalizedLocation)
-    ↓
+    â†“
 globalHospitalCache.keyedSnapshots[locationKey] = snapshot
-    ↓
+    â†“
 Return: { hospitals, allHospitals, categories, isLoading, error }
 ```
 
@@ -231,18 +237,18 @@ let globalHospitalCache = {
 **Determinism Issues:**
 
 1. **Source Not Included:**
-   - Manual location at 37.775,-122.419 → key: `"37.775,-122.419"`
-   - GPS location at 37.775,-122.419 → key: `"37.775,-122.419"`
+   - Manual location at 37.775,-122.419 â†’ key: `"37.775,-122.419"`
+   - GPS location at 37.775,-122.419 â†’ key: `"37.775,-122.419"`
    - Same cache entry for both sources
 
 2. **Demo Mode Not Included:**
-   - Demo hospitals at 37.775,-122.419 → key: `"37.775,-122.419"`
-   - Live hospitals at 37.775,-122.419 → key: `"37.775,-122.419"`
+   - Demo hospitals at 37.775,-122.419 â†’ key: `"37.775,-122.419"`
+   - Live hospitals at 37.775,-122.419 â†’ key: `"37.775,-122.419"`
    - Same cache entry for both modes
 
 3. **Places Options Not Included:**
-   - With Mapbox Places → key: `"37.775,-122.419"`
-   - Without Mapbox Places → key: `"37.775,-122.419"`
+   - With Mapbox Places â†’ key: `"37.775,-122.419"`
+   - Without Mapbox Places â†’ key: `"37.775,-122.419"`
    - Same cache entry for both options
 
 ---

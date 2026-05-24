@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -12,7 +18,7 @@
 
 ## Requirement Checklist
 
-### 1. Derive from canonical pickup only ✅
+### 1. Derive from canonical pickup only âœ…
 **Requirement:** Provider discovery should only use canonical pickup from resolveMapPickupLocationTruth
 
 **Current State:**
@@ -24,7 +30,7 @@ const {
   isLoading: isLoadingHospitals,
   refetch: refetchHospitals,
 } = useHospitals({
-  location: userLocation,  // ❌ Not canonical pickup
+  location: userLocation,  // âŒ Not canonical pickup
   demoModeEnabled: forceDemoFetch,
   demoBootstrapEnabled: false,
   skipInternalLocationLookup: true,
@@ -43,7 +49,7 @@ const {
 
 ---
 
-### 2. Include coordinate/source in query keys ✅
+### 2. Include coordinate/source in query keys âœ…
 **Requirement:** Cache keys should include both coordinates AND source to prevent collisions
 
 **Current State:**
@@ -73,19 +79,19 @@ globalHospitalCache.keyedSnapshots[locationKey] = snapshot;
 
 | Component | Location Source | Canonical? |
 |-----------|----------------|------------|
-| useEmergencyHospitalSync | userLocation (EmergencyContext) | ❌ No |
-| useHospitals | externalLocation (passed in) | ❌ No |
-| GlobalLocationContext | userLocation (GPS/fallback) | ❌ No |
-| locationStore | userLocation (persisted) | ❌ No |
-| mapExploreFlow | manualLocation (ephemeral) | ❌ No |
+| useEmergencyHospitalSync | userLocation (EmergencyContext) | âŒ No |
+| useHospitals | externalLocation (passed in) | âŒ No |
+| GlobalLocationContext | userLocation (GPS/fallback) | âŒ No |
+| locationStore | userLocation (persisted) | âŒ No |
+| mapExploreFlow | manualLocation (ephemeral) | âŒ No |
 
 ### Canonical Pickup Location
 
 | Component | Location Source | Canonical? |
 |-----------|----------------|------------|
-| resolveMapPickupLocationTruth | Returns activeLocation | ✅ Yes |
-| useMapLocation | activeLocation (from truth) | ✅ Yes |
-| mapExploreFlow | activeLocation (from truth) | ✅ Yes |
+| resolveMapPickupLocationTruth | Returns activeLocation | âœ… Yes |
+| useMapLocation | activeLocation (from truth) | âœ… Yes |
+| mapExploreFlow | activeLocation (from truth) | âœ… Yes |
 
 **Gap:** Provider discovery uses EmergencyContext userLocation, not canonical pickup from resolveMapPickupLocationTruth
 
@@ -107,18 +113,18 @@ function buildLocationBucketKey(location) {
 ### Cache Collision Scenarios
 
 **Scenario 1: Manual vs GPS at same coordinates**
-- Manual pickup at 37.775,-122.419 → cache key: "37.775,-122.419"
-- GPS pickup at 37.775,-122.419 → cache key: "37.775,-122.419"
+- Manual pickup at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
+- GPS pickup at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
 - **Collision:** Manual hospitals cached, GPS fetch returns cached manual hospitals
 
 **Scenario 2: Demo vs Live at same coordinates**
-- Demo mode at 37.775,-122.419 → cache key: "37.775,-122.419"
-- Live mode at 37.775,-122.419 → cache key: "37.775,-122.419"
+- Demo mode at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
+- Live mode at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
 - **Collision:** Demo hospitals cached, live fetch returns cached demo hospitals
 
 **Scenario 3: Different Places options**
-- With Mapbox Places at 37.775,-122.419 → cache key: "37.775,-122.419"
-- Without Mapbox Places at 37.775,-122.419 → cache key: "37.775,-122.419"
+- With Mapbox Places at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
+- Without Mapbox Places at 37.775,-122.419 â†’ cache key: "37.775,-122.419"
 - **Collision:** Places hospitals cached, no-Places fetch returns cached Places hospitals
 
 ---
@@ -149,15 +155,15 @@ const queryKey = ['hospitals', {
 
 ```
 EmergencyContext.userLocation (GPS/fallback)
-    ↓
+    â†“
 useEmergencyHospitalSync({ location: userLocation })
-    ↓
+    â†“
 useHospitals({ location: userLocation })
-    ↓
-buildLocationBucketKey(location)  // ❌ No source
-    ↓
+    â†“
+buildLocationBucketKey(location)  // âŒ No source
+    â†“
 globalHospitalCache.keyedSnapshots[locationKey]
-    ↓
+    â†“
 hospitalsService.discoverNearby(lat, lng, radius)
 ```
 
@@ -169,20 +175,20 @@ hospitalsService.discoverNearby(lat, lng, radius)
 
 ```
 User enters manual address
-    ↓
-handleManualConfirm() → geocode → setActiveCandidate()
-    ↓
-commitLocation() → handleSearchLocation()
-    ↓
+    â†“
+handleManualConfirm() â†’ geocode â†’ setActiveCandidate()
+    â†“
+commitLocation() â†’ handleSearchLocation()
+    â†“
 setManualLocation({ location, source: "session_manual" })
-    ↓
+    â†“
 resolveMapPickupLocationTruth({ manualLocation })
-    ↓
+    â†“
 Returns canonical pickup: { activeLocation, source: "session_manual" }
-    ↓
-useMapLocation uses canonical pickup ✅
-    ↓
-BUT useEmergencyHospitalSync uses EmergencyContext.userLocation ❌
+    â†“
+useMapLocation uses canonical pickup âœ…
+    â†“
+BUT useEmergencyHospitalSync uses EmergencyContext.userLocation âŒ
 ```
 
 **Gap:** Manual pickup not propagated to EmergencyContext

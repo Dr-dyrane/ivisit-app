@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -12,7 +18,7 @@
 
 ## Requirement Checklist
 
-### 1. Verify geocoding is always called for manual addresses ✅
+### 1. Verify geocoding is always called for manual addresses âœ…
 **Requirement:** Manual entry must go through geocoding before becoming pickup
 
 **Current State:**
@@ -30,15 +36,15 @@ const handleManualConfirm = useCallback(async () => {
 ```
 
 **Issues Found:**
-- Geocoding IS called in `handleManualConfirm` ✅
-- Fallback geocoding with partial address if primary fails ✅
+- Geocoding IS called in `handleManualConfirm` âœ…
+- Fallback geocoding with partial address if primary fails âœ…
 - BUT: `setManualLocation()` can be called directly without geocoding (see below)
 
 **Impact:** MEDIUM - Geocoding exists in manual entry flow, but bypass possible
 
 ---
 
-### 2. Verify coordinates are attached to pickup object ✅
+### 2. Verify coordinates are attached to pickup object âœ…
 **Requirement:** Pickup object must have latitude/longitude from geocoding
 
 **Current State:**
@@ -48,13 +54,13 @@ const normalized = buildSelectedLocation({
   source: "manual",
   label,
   address: geocoded.formattedAddress || address,
-  coords: { latitude, longitude },  // ✅ Coords attached
+  coords: { latitude, longitude },  // âœ… Coords attached
   countryCode: geocoded.countryCode || manualDraft.countryCode || null,
 });
 ```
 
 **Issues Found:**
-- Coordinates ARE attached to candidate ✅
+- Coordinates ARE attached to candidate âœ…
 - BUT: No validation that coordinates are finite before attachment
 - BUT: No validation that coordinates are in valid ranges (-90 to 90 lat, -180 to 180 lng)
 
@@ -62,14 +68,14 @@ const normalized = buildSelectedLocation({
 
 ---
 
-### 3. Verify text-only discovery is prevented ✅
+### 3. Verify text-only discovery is prevented âœ…
 **Requirement:** Provider discovery should reject text-only locations
 
 **Current State:**
 ```javascript
 // hooks/map/exploreFlow/useMapLocation.js
 const handleSearchLocation = useCallback((nextLocation) => {
-  if (!nextLocation?.location) return;  // ❌ Only checks existence, not coordinates
+  if (!nextLocation?.location) return;  // âŒ Only checks existence, not coordinates
   // ... no coordinate validation ...
   setManualLocation({
     ...nextLocation,
@@ -93,19 +99,19 @@ const handleSearchLocation = useCallback((nextLocation) => {
 ### Path 1: Manual Entry with Geocoding (Safe)
 ```
 User enters address in LocationSheet
-    ↓
+    â†“
 useManualEntryHandlers.handleManualConfirm()
-    ↓
-addressAssistService.resolveManualDraft() ✅ Geocoding
-    ↓
-buildSelectedLocation({ coords: { lat, lng } }) ✅ Coords attached
-    ↓
+    â†“
+addressAssistService.resolveManualDraft() âœ… Geocoding
+    â†“
+buildSelectedLocation({ coords: { lat, lng } }) âœ… Coords attached
+    â†“
 setActiveCandidate(normalized)
-    ↓
+    â†“
 commitLocation()
-    ↓
-handleSearchLocation() ❌ No coordinate validation
-    ↓
+    â†“
+handleSearchLocation() âŒ No coordinate validation
+    â†“
 setManualLocation()
 ```
 
@@ -116,15 +122,15 @@ setManualLocation()
 ### Path 2: Search Selection (Safe)
 ```
 User selects from search results
-    ↓
+    â†“
 useCandidateHandlers.handleSearchResultSelect()
-    ↓
-buildSelectedLocation({ coords: { lat, lng } }) ✅ Coords attached from search
-    ↓
+    â†“
+buildSelectedLocation({ coords: { lat, lng } }) âœ… Coords attached from search
+    â†“
 commitLocation()
-    ↓
-handleSearchLocation() ❌ No coordinate validation
-    ↓
+    â†“
+handleSearchLocation() âŒ No coordinate validation
+    â†“
 setManualLocation()
 ```
 
@@ -135,15 +141,15 @@ setManualLocation()
 ### Path 3: Current Location (Safe)
 ```
 User taps "Use current location"
-    ↓
+    â†“
 useCandidateHandlers.handleUseCurrentLocationCandidate()
-    ↓
-buildSelectedLocation({ coords: currentLocation }) ✅ Coords attached
-    ↓
+    â†“
+buildSelectedLocation({ coords: currentLocation }) âœ… Coords attached
+    â†“
 commitLocation()
-    ↓
-handleSearchLocation() ❌ No coordinate validation
-    ↓
+    â†“
+handleSearchLocation() âŒ No coordinate validation
+    â†“
 setManualLocation()
 ```
 
@@ -154,15 +160,15 @@ setManualLocation()
 ### Path 4: Saved Location (Safe)
 ```
 User selects saved location
-    ↓
+    â†“
 useCandidateHandlers.handleUseSavedLocation()
-    ↓
-mapStoredLocationToCandidate() ✅ Coords attached from saved
-    ↓
+    â†“
+mapStoredLocationToCandidate() âœ… Coords attached from saved
+    â†“
 commitLocation()
-    ↓
-handleSearchLocation() ❌ No coordinate validation
-    ↓
+    â†“
+handleSearchLocation() âŒ No coordinate validation
+    â†“
 setManualLocation()
 ```
 
@@ -173,10 +179,10 @@ setManualLocation()
 ### Path 5: Direct setManualLocation (UNSAFE)
 ```
 setManualLocation({ location: { latitude: null, longitude: null } })
-    ↓
-No validation ❌
-    ↓
-Provider discovery with invalid coords ❌
+    â†“
+No validation âŒ
+    â†“
+Provider discovery with invalid coords âŒ
 ```
 
 **Risk:** HIGH - Direct assignment bypasses all validation
@@ -189,11 +195,11 @@ Provider discovery with invalid coords ❌
 
 | Location | Validation | Status |
 |----------|------------|--------|
-| `addressAssistService.resolveManualDraft()` | `Number.isFinite(lat) && Number.isFinite(lng)` | ✅ Present |
-| `normalizeAddressCandidate()` | `Number.isFinite(lat) && Number.isFinite(lng)` | ✅ Present |
-| `handleSearchLocation()` | `if (!nextLocation?.location) return` | ❌ Insufficient |
-| `setManualLocation()` | None | ❌ Missing |
-| `mapExploreFlow.store` reducer | None | ❌ Missing |
+| `addressAssistService.resolveManualDraft()` | `Number.isFinite(lat) && Number.isFinite(lng)` | âœ… Present |
+| `normalizeAddressCandidate()` | `Number.isFinite(lat) && Number.isFinite(lng)` | âœ… Present |
+| `handleSearchLocation()` | `if (!nextLocation?.location) return` | âŒ Insufficient |
+| `setManualLocation()` | None | âŒ Missing |
+| `mapExploreFlow.store` reducer | None | âŒ Missing |
 
 ### Missing Validations
 
@@ -217,9 +223,9 @@ Provider discovery with invalid coords ❌
      source: "session_manual"
    })
    ```
-   → Passes through `handleSearchLocation` (only checks existence)
-   → Reaches `useHospitals` with invalid coordinates
-   → Provider discovery fails or uses wrong location
+   â†’ Passes through `handleSearchLocation` (only checks existence)
+   â†’ Reaches `useHospitals` with invalid coordinates
+   â†’ Provider discovery fails or uses wrong location
 
 2. **Malformed geocode result:**
    ```javascript
@@ -228,17 +234,17 @@ Provider discovery with invalid coords ❌
    // normalizeAddressCandidate accepts it (finite check passes NaN as false)
    // But if it returns { latitude: 0, longitude: 0 } (valid but wrong)
    ```
-   → Passes validation
-   → Reaches provider discovery with wrong coordinates
+   â†’ Passes validation
+   â†’ Reaches provider discovery with wrong coordinates
 
 3. **Saved location without coords:**
    ```javascript
    // If saved location has { latitude: null, longitude: null }
    mapStoredLocationToCandidate(location)
-   // Returns null if no coords ✅
+   // Returns null if no coords âœ…
    // But caller might not check null
    ```
-   → Null check exists ✅
+   â†’ Null check exists âœ…
 
 ---
 

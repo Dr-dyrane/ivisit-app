@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-15
+---
+
 # Location Hardening Passes
 
 **Owner:** `/map` location architecture  
@@ -9,23 +15,23 @@
 
 | Order | Pass | File | Status | Risk | Dependencies | Priority |
 |-------|------|------|--------|------|--------------|----------|
-| 0 | Architecture Review | [LOC-0_ARCHITECTURE_REVIEW.md](./LOC-0_ARCHITECTURE_REVIEW.md) | ✅ Complete | — | — | Reference |
-| ~~1~~ | ~~Places Rendering~~ | ~~[LOC-5_PLACES_RENDERING.md](./LOC-5_PLACES_RENDERING.md)~~ | ⚪ **SKIPPED** | — | — | Already implemented via `hospitalPriorityScore()` |
-| 1 | Cache Determinism | [LOC-4_CACHE_DETERMINISM.md](./LOC-4_CACHE_DETERMINISM.md) | ✅ Complete | 🔴 High | None | **HIGH** - Real cache collision risk |
-| 2 | Manual Address | [LOC-2_MANUAL_ADDRESS.md](./LOC-2_MANUAL_ADDRESS.md) | ✅ Complete | 🔴 High | None | **MEDIUM** - Gap before truth layer |
-| 3 | Pickup Sources | [LOC-1_PICKUP_SOURCES.md](./LOC-1_PICKUP_SOURCES.md) | ✅ Complete | 🔴 High | None | **MEDIUM** - Enum mismatch exists |
-| 4 | Location Recovery | [LOC-3_LOCATION_RECOVERY.md](./LOC-3_LOCATION_RECOVERY.md) | ✅ Complete | 🟡 Medium | LOC-1 | **LOW** - Generic errors work |
-| 5 | Runtime Validation | [LOC-6_RUNTIME_VALIDATION.md](./LOC-6_RUNTIME_VALIDATION.md) | ✅ Complete | 🟡 Medium | LOC-1, LOC-2 | **LOW** - Nice to have |
+| 0 | Architecture Review | [LOC-0_ARCHITECTURE_REVIEW.md](./LOC-0_ARCHITECTURE_REVIEW.md) | âœ… Complete | â€” | â€” | Reference |
+| ~~1~~ | ~~Places Rendering~~ | ~~[LOC-5_PLACES_RENDERING.md](./LOC-5_PLACES_RENDERING.md)~~ | âšª **SKIPPED** | â€” | â€” | Already implemented via `hospitalPriorityScore()` |
+| 1 | Cache Determinism | [LOC-4_CACHE_DETERMINISM.md](./LOC-4_CACHE_DETERMINISM.md) | âœ… Complete | ðŸ”´ High | None | **HIGH** - Real cache collision risk |
+| 2 | Manual Address | [LOC-2_MANUAL_ADDRESS.md](./LOC-2_MANUAL_ADDRESS.md) | âœ… Complete | ðŸ”´ High | None | **MEDIUM** - Gap before truth layer |
+| 3 | Pickup Sources | [LOC-1_PICKUP_SOURCES.md](./LOC-1_PICKUP_SOURCES.md) | âœ… Complete | ðŸ”´ High | None | **MEDIUM** - Enum mismatch exists |
+| 4 | Location Recovery | [LOC-3_LOCATION_RECOVERY.md](./LOC-3_LOCATION_RECOVERY.md) | âœ… Complete | ðŸŸ¡ Medium | LOC-1 | **LOW** - Generic errors work |
+| 5 | Runtime Validation | [LOC-6_RUNTIME_VALIDATION.md](./LOC-6_RUNTIME_VALIDATION.md) | âœ… Complete | ðŸŸ¡ Medium | LOC-1, LOC-2 | **LOW** - Nice to have |
 
 **Status Legend:**
-- ✅ Complete — Done, verified
-- 🟢 Ready — Ready to start
-- 🔵 In Progress — Currently being implemented
-- 🟡 Pending — Waiting for dependencies
-- ⚪ Draft / Skipped — Not needed or deferred
-- 🔴 Rolled Back — Reverted due to issues
+- âœ… Complete â€” Done, verified
+- ðŸŸ¢ Ready â€” Ready to start
+- ðŸ”µ In Progress â€” Currently being implemented
+- ðŸŸ¡ Pending â€” Waiting for dependencies
+- âšª Draft / Skipped â€” Not needed or deferred
+- ðŸ”´ Rolled Back â€” Reverted due to issues
 
-**Live Code Audit:** [LIVE_CODE_AUDIT.md](../LIVE_CODE_AUDIT.md) — Verified actual implementation status
+**Live Code Audit:** [LIVE_CODE_AUDIT.md](../LIVE_CODE_AUDIT.md) â€” Verified actual implementation status
 
 ---
 
@@ -78,7 +84,7 @@ cp passes/PASS_TEMPLATE.md passes/PASS_LOC{N}_{SHORT_NAME}.md
 
 ```bash
 # Commit with structured message
-git commit -m "refactor(location): LOC-N — Description
+git commit -m "refactor(location): LOC-N â€” Description
 
 - Change 1
 - Change 2
@@ -129,11 +135,11 @@ git reset --hard <baseline-hash>
 ## Update Rule
 
 Before starting a pass:
-- Mark its status as `🔵 In Progress` in this README
+- Mark its status as `ðŸ”µ In Progress` in this README
 - Record baseline hash in `passes/LOC-{N}-BASELINE.txt`
 
 After finishing a pass:
-- Update status to `✅ Complete` or `🔴 Rolled Back`
+- Update status to `âœ… Complete` or `ðŸ”´ Rolled Back`
 - Add changed files, decisions, verification results
 - Add rollback notes if issues discovered
 - Update [DOSSIER_LOCATION_HARDENING_V1.md](../DOSSIER_LOCATION_HARDENING_V1.md) pass table

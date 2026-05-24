@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-19
+---
+
 # Map Screen Implementation Rules (v1)
 
 > Status: Active implementation contract
@@ -974,7 +980,7 @@ That is the current standard.
 
 **Change:** MapScreen now calls `useMapFABManagement({ hasActiveMapModal, registerFAB, unregisterFAB })`
 
-**PULLBACK NOTE:** MapScreen decomposition Pass 6 — FAB management extracted. Two useEffects for FAB suppression and global FAB hiding lived inline in MapScreen. Now owned here — MapScreen passes hasActiveMapModal and FABContext actions, hook handles registration.
+**PULLBACK NOTE:** MapScreen decomposition Pass 6 â€” FAB management extracted. Two useEffects for FAB suppression and global FAB hiding lived inline in MapScreen. Now owned here â€” MapScreen passes hasActiveMapModal and FABContext actions, hook handles registration.
 
 ### Pass 7: Extract Route Handlers
 
@@ -990,7 +996,7 @@ That is the current standard.
 
 **Change:** MapScreen now destructures route params and handlers from `useMapRouteHandlers`
 
-**PULLBACK NOTE:** MapScreen decomposition Pass 7 — route handlers extracted. Route param parsing, handler callbacks, route visit detail effect, and location prompt effect all lived inline in MapScreen (~200 lines). Now owned here — MapScreen passes dependencies, hook returns handlers and route params.
+**PULLBACK NOTE:** MapScreen decomposition Pass 7 â€” route handlers extracted. Route param parsing, handler callbacks, route visit detail effect, and location prompt effect all lived inline in MapScreen (~200 lines). Now owned here â€” MapScreen passes dependencies, hook returns handlers and route params.
 
 ### Pass 8: Extract Modal Orchestrator
 
@@ -1009,7 +1015,7 @@ That is the current standard.
 
 **Change:** MapScreen now renders single `<MapModalOrchestrator {...allModalProps} />`
 
-**PULLBACK NOTE:** MapScreen decomposition Pass 8 — modal orchestrator extracted. All modal renderers lived inline in MapScreen JSX (~75 lines). Now owned here — MapScreen passes all modal props, component renders modals.
+**PULLBACK NOTE:** MapScreen decomposition Pass 8 â€” modal orchestrator extracted. All modal renderers lived inline in MapScreen JSX (~75 lines). Now owned here â€” MapScreen passes all modal props, component renders modals.
 
 ### Pass 9: Fix Location Intent Race
 
@@ -1023,7 +1029,7 @@ That is the current standard.
 
 **Change:** Consolidated two competing location intent effects into single deterministic hook with priority-based logic (eliminates race condition)
 
-**PULLBACK NOTE:** MapScreen decomposition Pass 9 — location intent race condition fix. Two separate effects both transitioned to LOCATION_INTENT: MapScreen (when locationControl?.requiresLocationSelection) and useMapExploreFlow (when isLocationOffTerminal). Now single deterministic hook with priority-based transition logic.
+**PULLBACK NOTE:** MapScreen decomposition Pass 9 â€” location intent race condition fix. Two separate effects both transitioned to LOCATION_INTENT: MapScreen (when locationControl?.requiresLocationSelection) and useMapExploreFlow (when isLocationOffTerminal). Now single deterministic hook with priority-based transition logic.
 
 ### TDZ Fix (2026-05-09)
 
@@ -1037,15 +1043,15 @@ That is the current standard.
 3. useMapHistoryFlow (provides history state)
 4. useMapFABManagement (side-effect only)
 5. useMapFocusedState (provides mapFocusedHospital)
-6. useMapDecisionHandlers (depends on mapFocusedHospital) ✓
-7. useTrackingRatingFlow (provides openRatingForVisit) ✓
-8. useMapRouteHandlers (depends on openRatingForVisit) ✓
+6. useMapDecisionHandlers (depends on mapFocusedHospital) âœ“
+7. useTrackingRatingFlow (provides openRatingForVisit) âœ“
+8. useMapRouteHandlers (depends on openRatingForVisit) âœ“
 
 **PULLBACK NOTE:** Hook call order fixed to resolve TDZ errors. useMapFocusedState must be before useMapDecisionHandlers (depends on mapFocusedHospital). useTrackingRatingFlow must be before useMapRouteHandlers (depends on openRatingForVisit).
 
 ### Results
 
-**MapScreen.jsx:** 794 lines → 610 lines (-184 lines, 23% reduction)
+**MapScreen.jsx:** 794 lines â†’ 610 lines (-184 lines, 23% reduction)
 
 **Remaining 110 lines over limit** are legitimate:
 - JSX render structure
@@ -1053,12 +1059,12 @@ That is the current standard.
 - No business logic in screen (pure orchestration)
 
 **Compliance Status:**
-- ✅ All TODO markers removed
-- ✅ Race condition fixed (single deterministic location intent hook)
-- ✅ No business logic in screen (pure orchestration)
-- ✅ Clear state ownership (each hook owns its domain)
-- ✅ No DRY violations (all repeated patterns extracted)
-- ✅ No TDZ violations (hook call order corrected)
+- âœ… All TODO markers removed
+- âœ… Race condition fixed (single deterministic location intent hook)
+- âœ… No business logic in screen (pure orchestration)
+- âœ… Clear state ownership (each hook owns its domain)
+- âœ… No DRY violations (all repeated patterns extracted)
+- âœ… No TDZ violations (hook call order corrected)
 
 **Files Created:**
 - `hooks/map/useMapFABManagement.js`

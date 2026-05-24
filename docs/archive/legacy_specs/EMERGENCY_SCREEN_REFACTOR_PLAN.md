@@ -1,16 +1,22 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
 # Emergency Screen Modularization & Refactoring Plan
 
 **Last Updated**: 2026-01-10 (superseded 2026-04-23)
-**Status**: ⚠️ Superseded — kept for historical context only
+**Status**: âš ï¸ Superseded â€” kept for historical context only
 **Priority**: n/a
 
-## ⚠️ Superseded Notice
+## âš ï¸ Superseded Notice
 
 This plan targeted the legacy monolithic `EmergencyScreen.jsx`. The emergency surface has since moved to a map-first runtime under `/map`, and the active refactor work is tracked in:
 
-- [../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md](../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — live pass plan (Pass 12 in progress as of 2026-04-23)
-- [../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) — current-state truth
-- [../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) — runtime contract
+- [../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md](../../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) â€” live pass plan (Pass 12 in progress as of 2026-04-23)
+- [../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](../../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) â€” current-state truth
+- [../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) â€” runtime contract
 
 Use the pass plan and polish audit as the authoritative refactor guidance. The content below is preserved only to document how the team thought about modularization before the `/map` migration locked in.
 
@@ -23,24 +29,24 @@ Use the pass plan and polish audit as the authoritative refactor guidance. The c
 
 The **EmergencyScreen** is currently a **monolithic component** with mixed concerns (UI state, data flow, handlers, navigation, animations). This refactoring extracts concerns into **specialized modules, custom hooks, and presentational components** to achieve:
 
-✅ **Better Readability**: Single responsibility per component/hook  
-✅ **Easier Testing**: Isolated logic in custom hooks  
-✅ **Bug Reduction**: Separated state management prevents race conditions  
-✅ **DRY Principles**: Reusable handlers and utilities  
-✅ **Snappy Animations**: Centralized animation control  
-✅ **Scalability**: Easy to extend without touching main screen  
+âœ… **Better Readability**: Single responsibility per component/hook  
+âœ… **Easier Testing**: Isolated logic in custom hooks  
+âœ… **Bug Reduction**: Separated state management prevents race conditions  
+âœ… **DRY Principles**: Reusable handlers and utilities  
+âœ… **Snappy Animations**: Centralized animation control  
+âœ… **Scalability**: Easy to extend without touching main screen  
 
 ---
 
 ## Current Architecture Problems
 
-### 🔴 **Monolithic Component**
+### ðŸ”´ **Monolithic Component**
 - EmergencyScreen manages: navigation, refs, handlers, state logic, UI rendering
 - 727 lines of mixed concerns
 - Hard to test individual pieces
 - Race conditions in async handlers
 
-### 🔴 **Duplicated Logic**
+### ðŸ”´ **Duplicated Logic**
 ```javascript
 // Lines 505-517: onCancelAmbulanceTrip
 setRequestStatus(...);
@@ -54,15 +60,15 @@ cancelVisit(...);
 stopBedBooking();
 // ... plus extra notification logic
 ```
-**Same pattern repeated across 4 handlers** ❌
+**Same pattern repeated across 4 handlers** âŒ
 
-### 🔴 **Tightly Coupled References**
+### ðŸ”´ **Tightly Coupled References**
 - Direct ref manipulation: `bottomSheetRef.current?.snapToIndex?.(1)`
 - Direct context access throughout component
 - Hard to control animation timing
 - Bottom sheet doesn't own its own state
 
-### 🔴 **Mixed Responsibilities**
+### ðŸ”´ **Mixed Responsibilities**
 - Hospital selection + map animation + bottom sheet snapping
 - Request creation + visit creation + notification creation
 - Search filtering + specialty selection + hospital filtering
@@ -73,25 +79,25 @@ stopBedBooking();
 
 ```
 screens/
-  EmergencyScreen.jsx          ← Lightweight orchestrator (100 lines)
+  EmergencyScreen.jsx          â† Lightweight orchestrator (100 lines)
 
 hooks/
   emergency/
-    useEmergencyHandlers.js    ← All handler callbacks (DRY)
-    useHospitalSelection.js    ← Hospital selection + map animation
-    useSearchFiltering.js      ← Search + filter logic
-    useRequestFlow.js          ← Request creation + visit + notification
-    useTripCompletion.js       ← Trip completion logic (reusable)
+    useEmergencyHandlers.js    â† All handler callbacks (DRY)
+    useHospitalSelection.js    â† Hospital selection + map animation
+    useSearchFiltering.js      â† Search + filter logic
+    useRequestFlow.js          â† Request creation + visit + notification
+    useTripCompletion.js       â† Trip completion logic (reusable)
     
 components/
   emergency/
-    EmergencyMapContainer.js   ← Map + controls
-    BottomSheetController.js   ← Sheet with isolated handlers
-    EmergencyContent.js        ← Hospital list + filters
+    EmergencyMapContainer.js   â† Map + controls
+    BottomSheetController.js   â† Sheet with isolated handlers
+    EmergencyContent.js        â† Hospital list + filters
     
 constants/
-  emergencyAnimations.js       ← Centralized timing + easing
-  emergencyHandlers.js         ← Handler templates
+  emergencyAnimations.js       â† Centralized timing + easing
+  emergencyHandlers.js         â† Handler templates
 ```
 
 ---
@@ -169,11 +175,11 @@ export const useEmergencyHandlers = ({
 ```
 
 **Benefits**:
-- ✅ Single pattern for all handlers
-- ✅ Consistent error handling
-- ✅ Promise.all prevents race conditions
-- ✅ Easy to add logging/analytics
-- ✅ Reusable `createBaseHandler` template
+- âœ… Single pattern for all handlers
+- âœ… Consistent error handling
+- âœ… Promise.all prevents race conditions
+- âœ… Easy to add logging/analytics
+- âœ… Reusable `createBaseHandler` template
 
 ---
 
@@ -231,10 +237,10 @@ export const useHospitalSelection = ({
 ```
 
 **Benefits**:
-- ✅ Hospital logic isolated in one hook
-- ✅ Easy to test hospital selection
-- ✅ Ref management contained
-- ✅ Reusable in other screens
+- âœ… Hospital logic isolated in one hook
+- âœ… Easy to test hospital selection
+- âœ… Ref management contained
+- âœ… Reusable in other screens
 
 ---
 
@@ -308,10 +314,10 @@ export const useSearchFiltering = ({
 ```
 
 **Benefits**:
-- ✅ Filter logic defined once
-- ✅ Reusable in other screens
-- ✅ Easy to optimize filtering performance
-- ✅ Testable in isolation
+- âœ… Filter logic defined once
+- âœ… Reusable in other screens
+- âœ… Easy to optimize filtering performance
+- âœ… Testable in isolation
 
 ---
 
@@ -396,10 +402,10 @@ export const useRequestFlow = ({
 ```
 
 **Benefits**:
-- ✅ Async IIFE removed → clean function
-- ✅ Better error handling with proper logging
-- ✅ Reusable across different screens
-- ✅ Returns visitId for chaining operations
+- âœ… Async IIFE removed â†’ clean function
+- âœ… Better error handling with proper logging
+- âœ… Reusable across different screens
+- âœ… Returns visitId for chaining operations
 
 ---
 
@@ -443,10 +449,10 @@ export const EmergencyMapContainer = forwardRef((props, ref) => {
 ```
 
 **Benefits**:
-- ✅ Map logic isolated
-- ✅ Single place to add map-specific features
-- ✅ Easy to test map interactions
-- ✅ Can be reused in other screens
+- âœ… Map logic isolated
+- âœ… Single place to add map-specific features
+- âœ… Easy to test map interactions
+- âœ… Can be reused in other screens
 
 ---
 
@@ -500,10 +506,10 @@ export const BottomSheetController = forwardRef((props, ref) => {
 ```
 
 **Benefits**:
-- ✅ Sheet handlers centralized
-- ✅ Animation control in one place
-- ✅ Easy to add shared sheet logic
-- ✅ Clean separation from main screen
+- âœ… Sheet handlers centralized
+- âœ… Animation control in one place
+- âœ… Easy to add shared sheet logic
+- âœ… Clean separation from main screen
 
 ---
 
@@ -596,10 +602,10 @@ export default function EmergencyScreen() {
 ```
 
 **Benefits**:
-- ✅ Down to ~150 lines from 727
-- ✅ Clear separation of concerns
-- ✅ Each hook has single responsibility
-- ✅ Easy to read and understand flow
+- âœ… Down to ~150 lines from 727
+- âœ… Clear separation of concerns
+- âœ… Each hook has single responsibility
+- âœ… Easy to read and understand flow
 
 ---
 
@@ -644,10 +650,10 @@ export const getMapPaddingForSnapIndex = (snapIndex) => {
 ```
 
 **Benefits**:
-- ✅ Single source of truth for timings
-- ✅ Easy to adjust animations globally
-- ✅ Consistent behavior across components
-- ✅ No magic numbers scattered everywhere
+- âœ… Single source of truth for timings
+- âœ… Easy to adjust animations globally
+- âœ… Consistent behavior across components
+- âœ… No magic numbers scattered everywhere
 
 ---
 
@@ -691,24 +697,24 @@ export const getMapPaddingForSnapIndex = (snapIndex) => {
 
 ## Code Quality Standards
 
-### ✅ DRY Principle
-- No duplicated handler patterns → `useEmergencyHandlers` template
-- No duplicated search logic → `useSearchFiltering`
-- No duplicated trip logic → `useTripCompletion`
+### âœ… DRY Principle
+- No duplicated handler patterns â†’ `useEmergencyHandlers` template
+- No duplicated search logic â†’ `useSearchFiltering`
+- No duplicated trip logic â†’ `useTripCompletion`
 
-### ✅ Separation of Concerns
-- Map logic → `EmergencyMapContainer`
-- Bottom sheet logic → `BottomSheetController`
-- Handlers → `useEmergencyHandlers`
-- Search → `useSearchFiltering`
-- Hospital selection → `useHospitalSelection`
+### âœ… Separation of Concerns
+- Map logic â†’ `EmergencyMapContainer`
+- Bottom sheet logic â†’ `BottomSheetController`
+- Handlers â†’ `useEmergencyHandlers`
+- Search â†’ `useSearchFiltering`
+- Hospital selection â†’ `useHospitalSelection`
 
-### ✅ Error Handling
+### âœ… Error Handling
 - All async operations wrapped in try/catch
 - Consistent logging with `[ModuleName]` prefix
 - Errors propagate up with context
 
-### ✅ Dependencies
+### âœ… Dependencies
 - All useCallback dependencies properly listed
 - No missing deps in useMemo
 - No unnecessary re-renders
@@ -753,9 +759,9 @@ describe('useHospitalSelection', () => {
 ```
 
 ### Integration Tests
-1. Start ambulance → complete trip → verify all data persisted
-2. Start bed booking → cancel → verify notification created
-3. Search hospitals → select → verify map animates
+1. Start ambulance â†’ complete trip â†’ verify all data persisted
+2. Start bed booking â†’ cancel â†’ verify notification created
+3. Search hospitals â†’ select â†’ verify map animates
 
 ### Manual QA
 - [ ] Hospital selection smooth and snappy
@@ -808,15 +814,15 @@ describe('useHospitalSelection', () => {
 
 ## Success Criteria
 
-✅ Main screen reduced to ~150 lines  
-✅ All handlers follow DRY pattern  
-✅ Each hook has single responsibility  
-✅ No duplicated logic  
-✅ Proper error handling throughout  
-✅ All animations remain snappy  
-✅ All flows work end-to-end  
-✅ Linting and type checking pass  
-✅ Tests pass  
+âœ… Main screen reduced to ~150 lines  
+âœ… All handlers follow DRY pattern  
+âœ… Each hook has single responsibility  
+âœ… No duplicated logic  
+âœ… Proper error handling throughout  
+âœ… All animations remain snappy  
+âœ… All flows work end-to-end  
+âœ… Linting and type checking pass  
+âœ… Tests pass  
 
 ---
 

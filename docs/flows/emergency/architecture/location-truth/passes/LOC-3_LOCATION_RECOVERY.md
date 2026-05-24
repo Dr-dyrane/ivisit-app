@@ -1,15 +1,21 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
 # LOC-3 Location Recovery
 
-**Status:** ✅ COMPLETE  
+**Status:** âœ… COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand), L5 (Jotai)  
 **Date:** 2026-05-15  
 **Depends on:** None  
-**Risk Level:** 🔴 High
+**Risk Level:** ðŸ”´ High
 **Baseline:** `TBD`  
 **Commit:** `TBD`
 
@@ -109,5 +115,5 @@ git revert <commit-hash> --no-edit
 ## Notes
 
 - PULLBACK NOTE: `// PULLBACK NOTE: LOC-3 // OLD: string error // NEW: errorType + CTA`
-- Fallback hierarchy: GPS → Demo Bootstrap → Manual
+- Fallback hierarchy: GPS â†’ Demo Bootstrap â†’ Manual
 - Provides foundation for LOC-6 GPS quality warnings

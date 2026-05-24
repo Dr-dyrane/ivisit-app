@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-17
+---
+
 # Explore Care Architecture
 
 This folder owns the implementation dossier for the Explore Nearby Care feature.

@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -65,7 +71,7 @@ Doc alignment for modal-to-sheet swap.
 
 Target:
 
-- remove contradictory “search/hospitals remain modals” language
+- remove contradictory â€œsearch/hospitals remain modalsâ€ language
 - lock collapsed-state rules per sheet phase
 - define one explicit pre-dispatch sheet-phase model
 

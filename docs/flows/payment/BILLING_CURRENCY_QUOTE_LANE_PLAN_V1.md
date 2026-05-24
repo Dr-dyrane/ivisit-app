@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-07
+---
+
 # Billing Currency Quote Lane Plan V1
 
 ## Goal

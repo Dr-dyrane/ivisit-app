@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-01-11
+---
+
 # Deprecated Items & Patterns
 
 This document tracks items that have been removed or deprecated from the codebase to maintain a clean architecture.
@@ -15,9 +21,9 @@ This document tracks items that have been removed or deprecated from the codebas
 ## 2. Deprecated Patterns
 | Pattern | Status | Reason | New Pattern |
 |---------|--------|--------|-------------|
-| **UI calling Services directly** | ⛔ FORBIDDEN | Breaks separation of concerns; harder to test/mock state. | **UI -> Custom Hook -> Service**. UI should only see data/loading/error/functions. |
-| **`api.get(...)` wrappers** | ⛔ FORBIDDEN | Unnecessary abstraction over Supabase client. | Services call `supabase` client directly. |
-| **Mock Data in Components** | ⚠️ AVOID | Hard to maintain. | Move mock logic to Services or use real DB calls. |
+| **UI calling Services directly** | â›” FORBIDDEN | Breaks separation of concerns; harder to test/mock state. | **UI -> Custom Hook -> Service**. UI should only see data/loading/error/functions. |
+| **`api.get(...)` wrappers** | â›” FORBIDDEN | Unnecessary abstraction over Supabase client. | Services call `supabase` client directly. |
+| **Mock Data in Components** | âš ï¸ AVOID | Hard to maintain. | Move mock logic to Services or use real DB calls. |
 
 ## 3. Architecture Evolution
 - **Pre-2026**: Mixed architecture with `api/` wrappers and direct service calls.

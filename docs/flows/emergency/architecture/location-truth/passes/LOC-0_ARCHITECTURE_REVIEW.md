@@ -1,10 +1,16 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
 # LOC-0 Architecture Review
 
-**Status:** ✅ COMPLETE  
+**Status:** âœ… COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** Documentation only  
 **Date:** 2026-05-15
@@ -30,23 +36,23 @@ Establish canonical pickup truth hierarchy and identify all location architectur
 ## Questions To Resolve
 
 - Where does canonical pickup truth live? (answer: `mapPickupLocationTruth.js`)
-- Is manual location persisted? (answer: No — ephemeral in `mapExploreFlow.store`)
-- Are source enum values consistent? (answer: No — enum uses `"saved_manual_fallback"`, code uses `"manual_fallback"`)
-- Is provider discovery deterministic? (answer: No — cache key lacks source)
-- Are location failures classified? (answer: No — generic error strings)
-- Are Places separated from verified hospitals? (answer: No — merged in single list)
+- Is manual location persisted? (answer: No â€” ephemeral in `mapExploreFlow.store`)
+- Are source enum values consistent? (answer: No â€” enum uses `"saved_manual_fallback"`, code uses `"manual_fallback"`)
+- Is provider discovery deterministic? (answer: No â€” cache key lacks source)
+- Are location failures classified? (answer: No â€” generic error strings)
+- Are Places separated from verified hospitals? (answer: No â€” merged in single list)
 
 ---
 
 ## Audit Tasks
 
-- [x] Inspect `mapPickupLocationTruth.js` — canonical truth resolution
-- [x] Inspect `useMapLocation.js` — location handoff to map flow
-- [x] Inspect `mapExploreFlow.store.js` — manual location state
-- [x] Inspect `locationStore.js` — persisted location
-- [x] Inspect `GlobalLocationContext.jsx` — global location state
-- [x] Inspect `useHospitals.js` — cache key determinism
-- [x] Inspect `FullScreenEmergencyMap.jsx` — error UI
+- [x] Inspect `mapPickupLocationTruth.js` â€” canonical truth resolution
+- [x] Inspect `useMapLocation.js` â€” location handoff to map flow
+- [x] Inspect `mapExploreFlow.store.js` â€” manual location state
+- [x] Inspect `locationStore.js` â€” persisted location
+- [x] Inspect `GlobalLocationContext.jsx` â€” global location state
+- [x] Inspect `useHospitals.js` â€” cache key determinism
+- [x] Inspect `FullScreenEmergencyMap.jsx` â€” error UI
 - [x] Verify no duplicate location state architectures exist
 
 ---
@@ -54,7 +60,7 @@ Establish canonical pickup truth hierarchy and identify all location architectur
 ## Acceptance
 
 - [x] Six location hardening passes defined (LOC-1 through LOC-6)
-- [x] Implementation order determined (LOC-5 → LOC-1 → LOC-2 → LOC-6 → LOC-3 → LOC-4)
+- [x] Implementation order determined (LOC-5 â†’ LOC-1 â†’ LOC-2 â†’ LOC-6 â†’ LOC-3 â†’ LOC-4)
 - [x] All passes have safe implementation paths documented
 - [x] No duplicate truth resolution introduced
 - [x] Rollback strategy defined for each pass
@@ -63,7 +69,7 @@ Establish canonical pickup truth hierarchy and identify all location architectur
 
 ## Decisions
 
-1. **Pickup truth ownership:** `mapPickupLocationTruth.js` owns canonical hierarchy (SESSION_MANUAL → DEVICE → SAVED_*_FALLBACK → MISSING)
+1. **Pickup truth ownership:** `mapPickupLocationTruth.js` owns canonical hierarchy (SESSION_MANUAL â†’ DEVICE â†’ SAVED_*_FALLBACK â†’ MISSING)
 
 2. **Source enum fix:** Add `normalizePickupSource()` mapper rather than changing enum values (backward compatible)
 
@@ -94,6 +100,6 @@ Establish canonical pickup truth hierarchy and identify all location architectur
 
 ## Rollback Notes
 
-- This pass is documentation only — no rollback needed
+- This pass is documentation only â€” no rollback needed
 - Baseline commit recorded: `feat/grand-refactor` HEAD
 - Backup branch: `backup/loc-0-architecture-review-2026-05-15`

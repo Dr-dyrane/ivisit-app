@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-01-12
+---
+
 # Global FAB Implementation Plan
 
 > **Date**: 2026-01-12  

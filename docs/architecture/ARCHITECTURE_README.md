@@ -1,10 +1,16 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Architecture Documentation
 
 Index for cross-cutting architectural decisions, refactor bibles, roadmaps, and per-domain design notes in `ivisit-app`.
 
 Start here for the entry-point system overview:
 
-> [`overview/ARCHITECTURE.md`](./overview/ARCHITECTURE.md) — v2.0, the five-layer Gold Standard
+> [`overview/ARCHITECTURE.md`](./overview/ARCHITECTURE.md) â€” v2.0, the five-layer Gold Standard
 
 For code standards and the `useEffect` decision tree, see [`../REFACTORING_GUARDRAILS.md`](../REFACTORING_GUARDRAILS.md).
 
@@ -31,7 +37,7 @@ For code standards and the `useEffect` decision tree, see [`../REFACTORING_GUARD
 | Doc | Role |
 |---|---|
 | [`overview/ARCHITECTURE.md`](./overview/ARCHITECTURE.md) | System overview (v2.0, 5-layer) |
-| [`state/GOLD_STANDARD_STATE_ROADMAP.md`](./state/GOLD_STANDARD_STATE_ROADMAP.md) | Migration phases 1–7, completion record |
+| [`state/GOLD_STANDARD_STATE_ROADMAP.md`](./state/GOLD_STANDARD_STATE_ROADMAP.md) | Migration phases 1â€“7, completion record |
 | [`stores/STORES_README.md`](./stores/STORES_README.md) | Layer 3 inventory (22 stores) |
 | [`refactoring/REFACTORING_BIBLE.md`](./refactoring/REFACTORING_BIBLE.md) | Refactoring patterns and guidelines |
 | [`refactoring/TRACKING_SHEET_LEARNINGS.md`](./refactoring/TRACKING_SHEET_LEARNINGS.md) | Defect classes, heuristics, recurring pitfalls |
@@ -43,10 +49,10 @@ For code standards and the `useEffect` decision tree, see [`../REFACTORING_GUARD
 
 ## Topics covered
 
-- Five-layer state architecture (Supabase → TanStack Query → Zustand → XState → Jotai)
-- Component composition (Orchestrator → StageBase → Screen Model → leaves)
+- Five-layer state architecture (Supabase â†’ TanStack Query â†’ Zustand â†’ XState â†’ Jotai)
+- Component composition (Orchestrator â†’ StageBase â†’ Screen Model â†’ leaves)
 - Service layer design
-- Realtime data flow (L1 → L2 invalidation pattern)
+- Realtime data flow (L1 â†’ L2 invalidation pattern)
 - Store / hook / context separation
 - Map and emergency surface architecture
 - Location truth + address management

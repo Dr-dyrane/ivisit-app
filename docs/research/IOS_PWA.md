@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-04-12
+---
+
 # iOS PWA / Safari Viewport Notes
 
 > Status: Active reference

@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -6,28 +12,28 @@
 
 **Date:** 2026-05-16
 **Updated:** 2026-05-17
-**Status:** ✅ SHIPPED — DB layer committed, UI through provider list phase committed
+**Status:** âœ… SHIPPED â€” DB layer committed, UI through provider list phase committed
 **Focus:** Provider data enrichment for explore care flow
 
 ---
 
-## UI Implementation Checkpoint — 2026-05-17 ✅
+## UI Implementation Checkpoint â€” 2026-05-17 âœ…
 
-### 1. Entry ✅ COMPLETE
+### 1. Entry âœ… COMPLETE
 - `MapSheetOrchestrator` correctly routes `PROVIDER_LIST` phase to `MapProviderListOrchestrator`
-- `exploreProviderCategory` prop bypasses stale `sheetPayload` batching — category arrives immediately
+- `exploreProviderCategory` prop bypasses stale `sheetPayload` batching â€” category arrives immediately
 - `MapProviderListStageBase` applies full mode-aware padding: `topSlotContainerStyle` (sheet/modal/sidebar/wide), `bodyScrollContentPanel` zeroes sidebar outer padding, `styles.bodyScrollContent` re-applies `paddingHorizontal: 14`
 
-### 2. Data ✅ COMPLETE
-- `useNearbyProviders` receives correct `providerCategory` + `location` — no stale state
+### 2. Data âœ… COMPLETE
+- `useNearbyProviders` receives correct `providerCategory` + `location` â€” no stale state
 - `isFetching` + `isLoading` guard prevents premature empty-state flash
 - `EXPLORE_CATEGORY_META` drives `tintColor`, `iconName`, `titleLabel` per category
-- `buildProviderSubtitle` chains city → street → address (mirrors hospital pattern)
+- `buildProviderSubtitle` chains city â†’ street â†’ address (mirrors hospital pattern)
 - Service tag filter built data-driven from actual `serviceTypes`/`specialties` arrays
 
-### 3. List ✅ COMPLETE
+### 3. List âœ… COMPLETE
 Card DOM structure mirrors hospital list exactly:
-- `rowTop` → `rowHeading` (icon + `titleBlock`) + `cardActions` (ETA + ring)
+- `rowTop` â†’ `rowHeading` (icon + `titleBlock`) + `cardActions` (ETA + ring)
 - `cardMeta` chips below `rowTop` (distance, time, rating, price)
 - `squircle(20)`, `paddingVertical: 13`, `minHeight: 72`, `borderWidth: 0`
 - Icon color: neutral `#FFFFFF` dark / category `tintColor` light (matches hospital pattern)
@@ -36,21 +42,21 @@ Card DOM structure mirrors hospital list exactly:
 - Filter rail: `squircle(18)` pills, `paddingVertical: 8`, `gap: 8`, `fontSize: 13`, `fontWeight: 700`
 - Sort pills (Nearest / Featured / Sponsored) + data-driven service tag pills with counts
 - Section headers: `fontSize: 12 / 11`, `letterSpacing: 0`, time-bucket labels
-- Empty state: `squircle(28)`, `fontSize: 18`, `fontWeight: 700` — matches hospital `emptyCard`
+- Empty state: `squircle(28)`, `fontSize: 18`, `fontWeight: 700` â€” matches hospital `emptyCard`
 
-### Dead Code Audit ✅ CLEAN
+### Dead Code Audit âœ… CLEAN
 Active files (all wired, all needed):
-- `components/map/views/providerList/MapProviderListSheet.jsx` — content
-- `components/map/views/providerList/MapProviderListStageBase.jsx` — shell + layout
-- `components/map/views/providerList/MapProviderListStageParts.jsx` — top slot + body parts
-- `components/map/views/providerList/MapProviderListOrchestrator.jsx` — thin pass-through
-- `components/map/views/providerList/mapProviderListStage.styles.js` — stage styles
-- `components/map/ProviderMarkers.jsx` — map markers
+- `components/map/views/providerList/MapProviderListSheet.jsx` â€” content
+- `components/map/views/providerList/MapProviderListStageBase.jsx` â€” shell + layout
+- `components/map/views/providerList/MapProviderListStageParts.jsx` â€” top slot + body parts
+- `components/map/views/providerList/MapProviderListOrchestrator.jsx` â€” thin pass-through
+- `components/map/views/providerList/mapProviderListStage.styles.js` â€” stage styles
+- `components/map/ProviderMarkers.jsx` â€” map markers
 
 No orphaned or duplicate files found. No dead attempts to clean up.
 
-### Next: Markers Design ⬇
-See Section below — provider marker vs hospital marker audit.
+### Next: Markers Design â¬‡
+See Section below â€” provider marker vs hospital marker audit.
 
 ---
 
@@ -61,7 +67,7 @@ See Section below — provider marker vs hospital marker audit.
 This audit consolidates findings from the explore care data flow, provider data richness, Mapbox category limitations, minimal field requirements, and migration strategy. The goal is to ensure sufficient data for provider list and details views to match hospital quality.
 
 **Key Findings:**
-1. **Fallback Images:** Expanded from 4 to 12 hospital images + category-specific libraries (8 images each) for all provider types. ✅ **IMPLEMENTED**
+1. **Fallback Images:** Expanded from 4 to 12 hospital images + category-specific libraries (8 images each) for all provider types. âœ… **IMPLEMENTED**
 2. **Provider Data Richness:** Providers reuse `hospitals` table schema with hospital-specific fields that are irrelevant for non-hospital providers.
 3. **Mapbox Discovery:** Only hospital and pharmacy have specific Mapbox categories; others use keyword search (acceptable).
 4. **Minimal Fields:** Identified essential fields per provider type for rich list/details views.
@@ -71,7 +77,7 @@ This audit consolidates findings from the explore care data flow, provider data 
 
 ---
 
-## 1. Fallback Image Library ✅ IMPLEMENTED
+## 1. Fallback Image Library âœ… IMPLEMENTED
 
 ### Changes Made
 
@@ -91,7 +97,7 @@ This audit consolidates findings from the explore care data flow, provider data 
 
 **PULLBACK NOTE:**
 ```typescript
-// PULLBACK NOTE: EXPLORE-CARE-DATA-1 — Expanded fallback image library
+// PULLBACK NOTE: EXPLORE-CARE-DATA-1 â€” Expanded fallback image library
 // OLD: 4 hospital-specific images used for all provider types
 // NEW: 12 hospital images + category-specific fallback arrays for richer UI
 const DEFAULT_HOSPITAL_IMAGES = [/* 12 images */];
@@ -154,15 +160,15 @@ Providers use the **same `hospitals` table schema**, which includes hospital-spe
 **Category Mapping:**
 ```typescript
 const CATEGORY_TO_MAPBOX_CATEGORY: Record<string, string | null> = {
-  hospital: "hospital",        // ✅ Specific category endpoint
-  pharmacy: "pharmacy",        // ✅ Specific category endpoint
-  lab: null,                  // ❌ No specific category — keyword fallback
-  radiology: null,            // ❌ No specific category — keyword fallback
-  urgent_care: null,          // ❌ No specific category — keyword fallback
-  clinic: null,               // ❌ No specific category — keyword fallback
-  mental_health: null,        // ❌ No specific category — keyword fallback
-  womens_care: null,          // ❌ No specific category — keyword fallback
-  pediatrics: null,           // ❌ No specific category — keyword fallback
+  hospital: "hospital",        // âœ… Specific category endpoint
+  pharmacy: "pharmacy",        // âœ… Specific category endpoint
+  lab: null,                  // âŒ No specific category â€” keyword fallback
+  radiology: null,            // âŒ No specific category â€” keyword fallback
+  urgent_care: null,          // âŒ No specific category â€” keyword fallback
+  clinic: null,               // âŒ No specific category â€” keyword fallback
+  mental_health: null,        // âŒ No specific category â€” keyword fallback
+  womens_care: null,          // âŒ No specific category â€” keyword fallback
+  pediatrics: null,           // âŒ No specific category â€” keyword fallback
 };
 ```
 
@@ -190,7 +196,7 @@ const EXPLORE_CATEGORY_META_KEYWORDS: Record<string, string> = {
 ### Provider List View
 
 **Required for All Provider Types:**
-- Image (category-specific fallback) ✅
+- Image (category-specific fallback) âœ…
 - Name
 - Rating + reviews count
 - Distance
@@ -212,7 +218,7 @@ const EXPLORE_CATEGORY_META_KEYWORDS: Record<string, string> = {
 ### Provider Details View
 
 **Required for All Provider Types:**
-- Hero image (category-specific fallback) ✅
+- Hero image (category-specific fallback) âœ…
 - Name + verification badge
 - Distance + ETA
 - Phone, website, directions
@@ -290,12 +296,12 @@ const EXPLORE_CATEGORY_META_KEYWORDS: Record<string, string> = {
 
 ---
 
-## 6. Schema Solution — SHIPPED (2026-05-17)
+## 6. Schema Solution â€” SHIPPED (2026-05-17)
 
-**Status:** ✅ COMPLETE — `providers` table live in `20260219000200_org_structure.sql`
+**Status:** âœ… COMPLETE â€” `providers` table live in `20260219000200_org_structure.sql`
 
 Separate `providers` table created with:
-- `hospital_id` FK → `hospitals.id` (CASCADE)
+- `hospital_id` FK â†’ `hospitals.id` (CASCADE)
 - `provider_type` discriminator with 9-value CHECK constraint
 - `provider_services`, `provider_specialties` JSONB
 - `insurance_accepted TEXT[]`, `structured_hours JSONB`
@@ -309,7 +315,7 @@ Pillar file: `supabase/migrations/20260219000200_org_structure.sql` (commit `2bd
 
 ## 7. Implementation Status
 
-### Completed ✅
+### Completed âœ…
 - Fallback image library expansion (12 hospital + 8 per category)
 - Edge function deployment
 - Data flow audit
@@ -318,26 +324,26 @@ Pillar file: `supabase/migrations/20260219000200_org_structure.sql` (commit `2bd
 - Minimal field requirements identification
 - Migration strategy planning
 
-### Shipped (2026-05-17) ✅
+### Shipped (2026-05-17) âœ…
 - `providers` table created with RLS, indexes, triggers (commit `2bd6879`)
-- `nearby_hospitals` RPC updated — filters `provider_type='hospital' AND emergency_eligible=true`
+- `nearby_hospitals` RPC updated â€” filters `provider_type='hospital' AND emergency_eligible=true`
 - `discover-hospitals` edge function: full provider taxonomy, category fallback images, `discoverNearbyProviders`
 - Provider list UI (EXP-6): `MapProviderListSheet`, `MapProviderListStageBase`, markers, sheet phases
 - Map focus: `useMapFocusedState` provider phase awareness, `suppressHospitalMarkers`, `focusedCoordinate`
 
 ### Not in Scope (This Audit)
 - Provider detail CTA / book-ride flow (EXP-9)
-- Provider detail sheet polish (EXP-8) — wired but not reviewed
+- Provider detail sheet polish (EXP-8) â€” wired but not reviewed
 - Data enrichment from external APIs
 
 ---
 
 ## 8. Next Steps
 
-1. **Provider detail sheet review** — EXP-8 wired, pending runtime validation
-2. **Book-ride CTA** — EXP-9: provider selected → ride booking flow
-3. **Data enrichment** — populate `providers` table with real service/hours/insurance data
-4. **Test provider list → detail → close flow** — validate phase transitions and map state
+1. **Provider detail sheet review** â€” EXP-8 wired, pending runtime validation
+2. **Book-ride CTA** â€” EXP-9: provider selected â†’ ride booking flow
+3. **Data enrichment** â€” populate `providers` table with real service/hours/insurance data
+4. **Test provider list â†’ detail â†’ close flow** â€” validate phase transitions and map state
 
 ---
 

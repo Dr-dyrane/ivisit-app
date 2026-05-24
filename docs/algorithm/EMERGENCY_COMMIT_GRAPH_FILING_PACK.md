@@ -1,3 +1,9 @@
+---
+status: living
+owner: patent
+last_updated: 2026-05-24
+---
+
 # iVisit Emergency Commit Graph Filing Pack
 
 Working status: counsel-review draft, not legal advice.

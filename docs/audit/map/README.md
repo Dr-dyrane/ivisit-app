@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -16,12 +22,12 @@ Unified search sheet, saved locations, and location-search integration audits.
 - `search/SEARCH_SHEET_APPLE_ALIGNMENT_MANIFEST_2026-05-07.json` - Machine-readable implementation manifest with 3-phase plan (Foundation/Enhance/Future), deliverables, and user flow scenarios.
 - `search/SEARCH_SHEET_APPLE_ALIGNMENT_VALIDATION_2026-05-08.md` - Validation report confirming audit soundness against REFACTORING_GUARDRAILS.md, docs authority hierarchy, and historical audit patterns. Grade: A+ (9.9/10).
 - `search/SAVED_LOCATIONS_DB_AUDIT_2026-05-08.md` - Database vs Zustand analysis for saved locations. Recommends `locationStore` extension over DB migration.
-- `search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture audit. Maps GPS → Search → Pickup flow.
-- `search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Complete search state flow from context → model → UI. Recommends mode chip removal.
+- `search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture audit. Maps GPS â†’ Search â†’ Pickup flow.
+- `search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Complete search state flow from context â†’ model â†’ UI. Recommends mode chip removal.
 
 ### Explore Care (2026-05-16)
 
-- `EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md` - Full wiring checkpoint for EXPLORE-CARE-01 (EXP-1–EXP-10 + DB + Nearby UI + MapScreen wiring). Records all passes, atom additions, `extraMarkers` prop, TanStack Query cache sharing, migration hygiene, and edge function deploy fix.
+- `EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md` - Full wiring checkpoint for EXPLORE-CARE-01 (EXP-1â€“EXP-10 + DB + Nearby UI + MapScreen wiring). Records all passes, atom additions, `extraMarkers` prop, TanStack Query cache sharing, migration hygiene, and edge function deploy fix.
 
 ### Service Sheet Simplification (2026-05-19)
 

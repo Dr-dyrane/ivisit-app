@@ -1,8 +1,14 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# Welcome Screen Apple HIG Audit — Post-Pass Record
+# Welcome Screen Apple HIG Audit â€” Post-Pass Record
 
 **Date**: 2026-05-03  
 **Status**: COMPLETE  
@@ -13,22 +19,22 @@
 
 ## Four-Track Review (per Subsequent Pass Rule)
 
-### Track 1 — State Management
+### Track 1 â€” State Management
 - `screenOpacity` (`Animated.Value`) was placed inline in `screens/WelcomeScreen.jsx` as a `useRef`. This is animation/ephemeral UI state: it belongs in a hook, not a screen.
 - **Corrected**: extracted to `hooks/ui/useWelcomeExitTransition.js`. Screen is wiring-only again.
-- `isOpeningEmergency` remains a Jotai atom (L5) — correct layer, unchanged.
+- `isOpeningEmergency` remains a Jotai atom (L5) â€” correct layer, unchanged.
 - The 5s recovery timeout is now owned by `useWelcomeExitTransition` alongside the animation it guards. Single responsibility maintained.
 
-### Track 2 — UI Quality
+### Track 2 â€” UI Quality
 All HIG violations addressed. See pass log below.
 
-### Track 3 — DRY / Modular Code Shape
-- `WelcomeScreen.jsx`: 82 lines (was briefly ~81 lines with inline animation, would have grown). Wiring only ✅
-- `useWelcomeExitTransition.js`: 52 lines. Single responsibility ✅
-- `WelcomeStageBase.jsx` / `WelcomeWideWebView.jsx`: animation logic kept inside their own component animation `useEffect` — correct location for component-owned motion.
+### Track 3 â€” DRY / Modular Code Shape
+- `WelcomeScreen.jsx`: 82 lines (was briefly ~81 lines with inline animation, would have grown). Wiring only âœ…
+- `useWelcomeExitTransition.js`: 52 lines. Single responsibility âœ…
+- `WelcomeStageBase.jsx` / `WelcomeWideWebView.jsx`: animation logic kept inside their own component animation `useEffect` â€” correct location for component-owned motion.
 - No new repeated structures introduced.
 
-### Track 4 — Documentation
+### Track 4 â€” Documentation
 - Pre-pass audit: `WELCOME_SCREEN_HIG_AUDIT_2026-05-02.md` (existed prior, identified all defects).
 - This document is the post-pass record.
 - **Gap acknowledged**: documentation was not written before implementation started in the session; this post-pass doc closes that gap retroactively.
@@ -37,47 +43,47 @@ All HIG violations addressed. See pass log below.
 
 ## Pass Log
 
-### Pass A — Interaction Quality
+### Pass A â€” Interaction Quality
 
-#### A1 — Haptic feedback on primary `onPressIn`
+#### A1 â€” Haptic feedback on primary `onPressIn`
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Added `handlePressIn` wrapper; calls `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)` when `isPrimary && !disabled && !loading`.  
 **Defect closed**: #2.1
 
-#### A2 — `hitSlop={12}` on `Pressable`
+#### A2 â€” `hitSlop={12}` on `Pressable`
 **File**: `components/entry/EntryActionButton.jsx`  
-**Change**: Added `hitSlop={12}` to `Pressable`. Ensures ≥44pt effective target.  
+**Change**: Added `hitSlop={12}` to `Pressable`. Ensures â‰¥44pt effective target.  
 **Defect closed**: #2.3
 
-#### A3 — `isOpeningEmergency` 5s timeout recovery
+#### A3 â€” `isOpeningEmergency` 5s timeout recovery
 **File**: `hooks/ui/useWelcomeExitTransition.js` (extracted from `screens/WelcomeScreen.jsx`)  
-**Change**: `startExitTransition` accepts `{ onRecovery }` callback. Schedules a `setTimeout(onRecovery, 5000)` cleared on successful navigation. Prevents infinite "Opening…" state.  
+**Change**: `startExitTransition` accepts `{ onRecovery }` callback. Schedules a `setTimeout(onRecovery, 5000)` cleared on successful navigation. Prevents infinite "Openingâ€¦" state.  
 **Defect closed**: #2.2
 
 ---
 
-### Pass B — Motion Discipline
+### Pass B â€” Motion Discipline
 
-#### B1 — Gate ambient loops behind `reduceMotion`
+#### B1 â€” Gate ambient loops behind `reduceMotion`
 **Files**: `WelcomeStageBase.jsx`, `WelcomeWideWebView.jsx`  
 **Change**: Added `reduceMotion` state via `AccessibilityInfo.isReduceMotionEnabled()` + `addEventListener("reduceMotionChanged")`. `driftLoop` and `pulseLoop` only start if `!reduceMotion`. If `reduceMotion` is true, all animated values snap to final state immediately via `setValue`.  
 **Defect closed**: #2.4
 
-#### B2 — Stagger entrance animation into 4 phases
+#### B2 â€” Stagger entrance animation into 4 phases
 **Files**: `WelcomeStageBase.jsx`, `WelcomeWideWebView.jsx`  
-**Change**: Replaced single `entranceOpacity` block with four dedicated `Animated.Value`s (`brandOpacity`, `headlineOpacity`, `helperOpacity`, `actionsOpacity`) driven by `Animated.stagger(60, [...])`. Phases: brand (0ms) → headline (60ms) → helper (120ms) → actions (180ms). Each wired to its corresponding `Animated.View` wrapper.  
+**Change**: Replaced single `entranceOpacity` block with four dedicated `Animated.Value`s (`brandOpacity`, `headlineOpacity`, `helperOpacity`, `actionsOpacity`) driven by `Animated.stagger(60, [...])`. Phases: brand (0ms) â†’ headline (60ms) â†’ helper (120ms) â†’ actions (180ms). Each wired to its corresponding `Animated.View` wrapper.  
 **Defect closed**: #2.5
 
-#### B3 — Deepen press spring physics
+#### B3 â€” Deepen press spring physics
 **File**: `components/entry/EntryActionButton.jsx`  
-**Change**: Press scale `0.985 → 0.96` (primary) / `0.975` (secondary). `translateY 1 → 2`. Opacity `0.98 → 0.97`. Gives confident tactile spring feel within Pressable's native animation.  
+**Change**: Press scale `0.985 â†’ 0.96` (primary) / `0.975` (secondary). `translateY 1 â†’ 2`. Opacity `0.98 â†’ 0.97`. Gives confident tactile spring feel within Pressable's native animation.  
 **Defect closed**: #2.6
 
 ---
 
-### Pass C — Transitions
+### Pass C â€” Transitions
 
-#### C1 — 150ms exit fade before `router.replace`
+#### C1 â€” 150ms exit fade before `router.replace`
 **File**: `hooks/ui/useWelcomeExitTransition.js` (new)  
 **Change**: `startExitTransition(onComplete, { onRecovery })` runs `Animated.timing(screenOpacity, { toValue: 0, duration: 150 })` then calls `onComplete` in the `.start()` callback. `WelcomeScreen` wraps the orchestrator in `<Animated.View style={{ flex: 1, opacity: screenOpacity }}>`.  
 `resetOpacity()` is called inside `useFocusEffect` so opacity snaps back to 1 on screen refocus (back navigation, recovery).  
@@ -85,14 +91,14 @@ All HIG violations addressed. See pass log below.
 
 ---
 
-### Pass D — Accessibility
+### Pass D â€” Accessibility
 
-#### D1 — `accessibilityLiveRegion` on action container
+#### D1 â€” `accessibilityLiveRegion` on action container
 **File**: `components/welcome/shared/WelcomeStageBase.jsx`  
-**Change**: Added `accessibilityLiveRegion="polite"` to the actions `View` inside `actionBlock`. VoiceOver/TalkBack will announce when the button label changes from "Get Help Now" to "Opening…".  
+**Change**: Added `accessibilityLiveRegion="polite"` to the actions `View` inside `actionBlock`. VoiceOver/TalkBack will announce when the button label changes from "Get Help Now" to "Openingâ€¦".  
 **Defect closed**: #2.10
 
-#### D2 — `accessibilityLabel` on `ActivityIndicator`
+#### D2 â€” `accessibilityLabel` on `ActivityIndicator`
 **File**: `components/entry/EntryActionButton.jsx`  
 **Change**: Added `accessibilityLabel="Loading"` to the `ActivityIndicator` in the loading state branch.  
 **Defect closed**: #2.11
@@ -103,13 +109,13 @@ All HIG violations addressed. See pass log below.
 
 | Invariant | Status |
 |---|---|
-| `WelcomeScreen.jsx` is wiring-only (no animation logic) | ✅ Confirmed — 82 lines, hooks + routing only |
-| `screenOpacity` and exit animation owned by `useWelcomeExitTransition` | ✅ Confirmed |
-| `isOpeningEmergency` is a Jotai atom reset on focus | ✅ Confirmed |
-| 5s recovery timeout is co-located with animation that guards it | ✅ Confirmed |
-| `reduceMotion` gates both `driftLoop` and `pulseLoop` in both stage components | ✅ Confirmed |
-| `resetOpacity()` called in `useFocusEffect` (handles back-navigation + recovery) | ✅ Confirmed |
-| No logic added to screen files | ✅ Confirmed |
+| `WelcomeScreen.jsx` is wiring-only (no animation logic) | âœ… Confirmed â€” 82 lines, hooks + routing only |
+| `screenOpacity` and exit animation owned by `useWelcomeExitTransition` | âœ… Confirmed |
+| `isOpeningEmergency` is a Jotai atom reset on focus | âœ… Confirmed |
+| 5s recovery timeout is co-located with animation that guards it | âœ… Confirmed |
+| `reduceMotion` gates both `driftLoop` and `pulseLoop` in both stage components | âœ… Confirmed |
+| `resetOpacity()` called in `useFocusEffect` (handles back-navigation + recovery) | âœ… Confirmed |
+| No logic added to screen files | âœ… Confirmed |
 
 ---
 
@@ -118,7 +124,7 @@ All HIG violations addressed. See pass log below.
 | Item | Reason |
 |---|---|
 | #2.8 CTA prewarm readiness signal | Requires hospital query readiness signal from TanStack Query layer. Separate sprint item. |
-| #2.9 "Opening…" step context/subtitle | No evidence transition is long enough to warrant step dots. Deferred pending user testing. |
+| #2.9 "Openingâ€¦" step context/subtitle | No evidence transition is long enough to warrant step dots. Deferred pending user testing. |
 | #2.12 iOS/tvOS focus ring extension | Low-impact on primary usage. Deferred to tvOS pass if required. |
 
 ---
@@ -127,11 +133,11 @@ All HIG violations addressed. See pass log below.
 
 | File | Change |
 |---|---|
-| `hooks/ui/useWelcomeExitTransition.js` | **Created** — 52 lines |
-| `screens/WelcomeScreen.jsx` | Edited — animation logic extracted to hook; `resetOpacity` added to `useFocusEffect` |
-| `components/entry/EntryActionButton.jsx` | Edited — haptic, hitSlop, press scale, accessibilityLabel |
-| `components/welcome/shared/WelcomeStageBase.jsx` | Edited — reduceMotion gate, 4-phase stagger, accessibilityLiveRegion |
-| `components/welcome/views/WelcomeWideWebView.jsx` | Edited — reduceMotion gate, 4-phase stagger |
+| `hooks/ui/useWelcomeExitTransition.js` | **Created** â€” 52 lines |
+| `screens/WelcomeScreen.jsx` | Edited â€” animation logic extracted to hook; `resetOpacity` added to `useFocusEffect` |
+| `components/entry/EntryActionButton.jsx` | Edited â€” haptic, hitSlop, press scale, accessibilityLabel |
+| `components/welcome/shared/WelcomeStageBase.jsx` | Edited â€” reduceMotion gate, 4-phase stagger, accessibilityLiveRegion |
+| `components/welcome/views/WelcomeWideWebView.jsx` | Edited â€” reduceMotion gate, 4-phase stagger |
 
 ---
 

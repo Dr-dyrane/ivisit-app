@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-29
+---
+
 # Stack Surface Standardization V1
 
 Status: Active

@@ -1,8 +1,14 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # iVisit Phase 0 To Phase 7 Product UX Simplification Plan
 
-> **Reconciliation Note — 2026-05-24:** Active execution contract. Phase 8 (architecture consolidation) follows in [`EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md`](./EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md). Sprint-specific progress against this plan is tracked in [`../../SPONSOR_SPRINT.md`](../../SPONSOR_SPRINT.md). Per-phase completion status should be updated in-place here as phases close.
+> **Reconciliation Note â€” 2026-05-24:** Active execution contract. Phase 8 (architecture consolidation) follows in [`EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md`](./EDGE_FUNCTION_PHASE_8_ARCHITECTURE_CONSOLIDATION_PLAN_2026-05-19.md). Sprint-specific progress against this plan is tracked in [`../../SPONSOR_SPRINT.md`](../../SPONSOR_SPRINT.md). Per-phase completion status should be updated in-place here as phases close.
 
-Date: 2026-05-19 — Reconciled: 2026-05-24
+Date: 2026-05-19 â€” Reconciled: 2026-05-24
 Status: Planning / execution contract (active)
 Scope: Welcome, map-sheet service UX, Choose Care, emergency flows, location, profile/auth, Explore Care, commit flow, Book Visit
 

@@ -1,6 +1,12 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
 # EMERGENCY_SCREEN_DOSSIER - ARCHIVAL NOTICE
 
-## ⚠️ **ARCHIVED DOCUMENT - LEGACY SCREEN SPECIFICATION**
+## âš ï¸ **ARCHIVED DOCUMENT - LEGACY SCREEN SPECIFICATION**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Feature-scoped drift - Document reflects legacy Tab-based navigation patterns that conflict with active Map-First orchestration system
@@ -30,19 +36,19 @@ This document was created when the iVisit app used a **Tab-based navigation syst
 ### **Where to Find Current Information**
 
 #### **Emergency Lifecycle Domain**
-📖 **New Location**: `/docs/domains/EMERGENCY_LIFECYCLE.md`
+ðŸ“– **New Location**: `/docs/domains/EMERGENCY_LIFECYCLE.md`
 - **Content**: 15-phase state machine documentation
 - **Implementation**: MapSheetOrchestrator.jsx patterns
 - **Real-time**: Supabase subscription architecture
 
 #### **System Architecture**
-📖 **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
+ðŸ“– **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
 - **Content**: Tripartite system boundaries
 - **Data Flow**: Cross-repository communication
 - **Service Layer**: 36 domain services mapping
 
 #### **Data Model**
-📖 **New Location**: `/docs/system/DATA_MODEL_DOCTRINE.md`
+ðŸ“– **New Location**: `/docs/system/DATA_MODEL_DOCTRINE.md`
 - **Content**: Supabase schema with shadow table pattern
 - **Real-time**: Subscription architecture
 - **Geospatial**: PostGIS integration patterns

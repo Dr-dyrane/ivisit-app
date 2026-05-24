@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-23
+---
+
 # Map Theme System (iOS + Android)
 
 ## Goal

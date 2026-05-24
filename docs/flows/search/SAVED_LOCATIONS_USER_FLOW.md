@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-08
+---
+
 # Saved Locations User Flow
 
 ## Overview
@@ -8,26 +14,26 @@ Saved locations allow users to quickly select frequently used addresses (Home, W
 ## User Flow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  SEARCH SHEET (Explore Intent)                                  │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  LOCATION HERO BLADE                                    │   │
-│  │                                                         │   │
-│  │  [📍] Current location                                  │   │
-│  │      Using device location                              │   │
-│  │                                                         │   │
-│  │  ─────────────────────────────────────────────────────  │   │
-│  │                                                         │   │
-│  │  [🏠] Home                                              │   │
-│  │      2235 Corinto Ct, Henderson NV                      │   │
-│  │                                                         │   │
-│  │  [💼] Work                                              │   │
-│  │      4500 E Sunset Rd, Las Vegas NV                      │   │
-│  │                                                         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  SEARCH SHEET (Explore Intent)                                  â”‚
+â”‚                                                                 â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
+â”‚  â”‚  LOCATION HERO BLADE                                    â”‚   â”‚
+â”‚  â”‚                                                         â”‚   â”‚
+â”‚  â”‚  [ðŸ“] Current location                                  â”‚   â”‚
+â”‚  â”‚      Using device location                              â”‚   â”‚
+â”‚  â”‚                                                         â”‚   â”‚
+â”‚  â”‚  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  â”‚   â”‚
+â”‚  â”‚                                                         â”‚   â”‚
+â”‚  â”‚  [ðŸ ] Home                                              â”‚   â”‚
+â”‚  â”‚      2235 Corinto Ct, Henderson NV                      â”‚   â”‚
+â”‚  â”‚                                                         â”‚   â”‚
+â”‚  â”‚  [ðŸ’¼] Work                                              â”‚   â”‚
+â”‚  â”‚      4500 E Sunset Rd, Las Vegas NV                      â”‚   â”‚
+â”‚  â”‚                                                         â”‚   â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
+â”‚                                                                 â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -40,21 +46,21 @@ Saved locations allow users to quickly select frequently used addresses (Home, W
 
 | Check | Description | Penalty |
 |-------|-------------|---------|
-| Minimum length | Address must be ≥8 characters | -30 pts |
-| Word count | Must have street number + name (≥2 words) | -25 pts |
+| Minimum length | Address must be â‰¥8 characters | -30 pts |
+| Word count | Must have street number + name (â‰¥2 words) | -25 pts |
 | Character repetition | No "oooo" or "aaaa" patterns | -40 pts |
 | Street type | Must contain St, Ave, Rd, etc. | -20 pts |
 | Street number | Must start with valid number | -15 pts |
 
 **Scoring:**
-- Score ≥60: Address accepted
+- Score â‰¥60: Address accepted
 - Score <60: Address rejected with warning
 
 **Example rejections:**
 ```
-❌ "corintoo ct corito ct" → Rejected (repetition pattern, low quality)
-❌ "main street" → Rejected (missing street number)
-✅ "2235 Corinto Ct, Henderson NV 89074" → Accepted
+âŒ "corintoo ct corito ct" â†’ Rejected (repetition pattern, low quality)
+âŒ "main street" â†’ Rejected (missing street number)
+âœ… "2235 Corinto Ct, Henderson NV 89074" â†’ Accepted
 ```
 
 **Implementation:**
@@ -78,7 +84,7 @@ addSavedLocation: (location) => {
 
 **When GPS coordinates are accurate but address text is wrong:**
 
-**User Action:** Long-press on saved location → "Refresh Address"
+**User Action:** Long-press on saved location â†’ "Refresh Address"
 
 **What happens:**
 1. Uses saved GPS coordinates (lat/lng)
@@ -121,18 +127,18 @@ store.clearSavedLocations();
 ## Data Flow
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   User       │────▶│  Validation  │────▶│   Zustand    │
-│   Input      │     │   (60+ pts)  │     │   Store      │
-└──────────────┘     └──────────────┘     └──────┬───────┘
-                                                  │
-                         ┌────────────────────────┘
-                         ▼
-                  ┌──────────────┐
-                  │   Supabase   │
-                  │preferences   │
-                  │view_prefs    │
-                  └──────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚   User       â”‚â”€â”€â”€â”€â–¶â”‚  Validation  â”‚â”€â”€â”€â”€â–¶â”‚   Zustand    â”‚
+â”‚   Input      â”‚     â”‚   (60+ pts)  â”‚     â”‚   Store      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                                                  â”‚
+                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                         â–¼
+                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                  â”‚   Supabase   â”‚
+                  â”‚preferences   â”‚
+                  â”‚view_prefs    â”‚
+                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -141,26 +147,26 @@ store.clearSavedLocations();
 
 ### Address Rejected
 ```
-┌─────────────────────────────────────┐
-│  ⚠️ Could Not Save Location         │
-│                                     │
-│  The address appears to be invalid  │
-│  or corrupted.                      │
-│                                     │
-│  [Try Again]  [Search Instead]      │
-└─────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  âš ï¸ Could Not Save Location         â”‚
+â”‚                                     â”‚
+â”‚  The address appears to be invalid  â”‚
+â”‚  or corrupted.                      â”‚
+â”‚                                     â”‚
+â”‚  [Try Again]  [Search Instead]      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### Refresh Failed
 ```
-┌─────────────────────────────────────┐
-│  ⚠️ Refresh Failed                  │
-│                                     │
-│  Could not resolve address from     │
-│  GPS coordinates.                   │
-│                                     │
-│  [Dismiss]                          │
-└─────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  âš ï¸ Refresh Failed                  â”‚
+â”‚                                     â”‚
+â”‚  Could not resolve address from     â”‚
+â”‚  GPS coordinates.                   â”‚
+â”‚                                     â”‚
+â”‚  [Dismiss]                          â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -204,11 +210,11 @@ function useSavedLocationRefresh(): {
 
 ## Testing Checklist
 
-- [ ] Try saving gibberish address → Should be rejected
-- [ ] Try saving "123 Main St" → Should be accepted
-- [ ] Long-press saved location → Should show "Refresh Address" option
-- [ ] Refresh with no internet → Should show error
-- [ ] Clear all locations → All should be removed
+- [ ] Try saving gibberish address â†’ Should be rejected
+- [ ] Try saving "123 Main St" â†’ Should be accepted
+- [ ] Long-press saved location â†’ Should show "Refresh Address" option
+- [ ] Refresh with no internet â†’ Should show error
+- [ ] Clear all locations â†’ All should be removed
 
 ---
 

@@ -1,4 +1,10 @@
-> **ARCHIVAL NOTICE — 2026-05-19**
+---
+status: historical
+owner: -
+last_updated: 2026-05-19
+---
+
+> **ARCHIVAL NOTICE â€” 2026-05-19**
 > This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
 > It is the original sheet/map UI spec from 2026-04-21. Sheet phase contracts and tracking UI rules are now maintained in the tracking audit and implementation rules.
 > **Current replacements:**
@@ -1348,7 +1354,7 @@ Rules:
 For web mobile breakpoints:
 
 - `sm` (< 640px): same canonical mobile order in a narrow single-column lane
-- `md` (640px–1023px): same order and same components in a slightly wider centered lane
+- `md` (640pxâ€“1023px): same order and same components in a slightly wider centered lane
 - do not fork the emergency IA just because the browser width changes
 
 For wide web:
@@ -1787,11 +1793,11 @@ Product implication:
 
 Recommended ownership split:
 
-- `MapScreen.jsx` — owns the map shell, selected hospital, selected care, and top-level sheet mode
-- `MapSheetOrchestrator.jsx` — owns the visible sheet state machine and transitions between ambulance phases
-- `EmergencyContext.jsx` — owns nearby hospitals, coverage mode, active emergency truth, and realtime tracking state
-- `useRequestFlow.js` / `services/emergencyRequestsService.js` — own commit-time request creation and mutation
-- Supabase RPC layer — owns the irreversible operational commit and lifecycle validity
+- `MapScreen.jsx` â€” owns the map shell, selected hospital, selected care, and top-level sheet mode
+- `MapSheetOrchestrator.jsx` â€” owns the visible sheet state machine and transitions between ambulance phases
+- `EmergencyContext.jsx` â€” owns nearby hospitals, coverage mode, active emergency truth, and realtime tracking state
+- `useRequestFlow.js` / `services/emergencyRequestsService.js` â€” own commit-time request creation and mutation
+- Supabase RPC layer â€” owns the irreversible operational commit and lifecycle validity
 
 ### 8.9 Implementation rule for MVP
 

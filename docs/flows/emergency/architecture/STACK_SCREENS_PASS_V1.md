@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -12,7 +18,7 @@
 
 ## Relationship to Map Runtime Pass Plan
 
-The Map Runtime Pass Plan owns the `/map` composition and Pass 14 addresses platform inclusiveness and viewport propagation **inside the `/map` runtime**. This document is its **sibling** — it owns the work needed to bring stack-owned legacy screens to the same quality bar without conflating scopes.
+The Map Runtime Pass Plan owns the `/map` composition and Pass 14 addresses platform inclusiveness and viewport propagation **inside the `/map` runtime**. This document is its **sibling** â€” it owns the work needed to bring stack-owned legacy screens to the same quality bar without conflating scopes.
 
 - **Map Runtime Pass Plan:** sheet-over-map surfaces, `/map` runtime behavior, map-scoped modals
 - **Stack Screens Pass Plan (this doc):** full-canvas stack routes, their composition roots, orchestrators, stage bases, variants, and shared token layers
@@ -22,7 +28,7 @@ Both plans share the same doctrine (see Section 2), the same reference implement
 ## 1. Sprint Recap That Triggered This Plan
 
 - Introduced the **MiniProfile link** as a windowed transition between `/map` and the stack architecture, unifying MiniProfile / Profile / Settings into one coherent entry point, replacing the legacy "More" screen
-- Refactored **Payment** to the full modular anatomy (composition root → hook → orchestrator → stage base → variants → parts/content/theme tokens), added platform-aware glass tokens, 4-layer liquid glass stack on cards and modals, flattened typography to Apple HIG calm, nested detail-modal fix for reliable stacking
+- Refactored **Payment** to the full modular anatomy (composition root â†’ hook â†’ orchestrator â†’ stage base â†’ variants â†’ parts/content/theme tokens), added platform-aware glass tokens, 4-layer liquid glass stack on cards and modals, flattened typography to Apple HIG calm, nested detail-modal fix for reliable stacking
 - Refactored **Emergency Contact** to match the same architectural direction
 
 These two screens are the reference implementations for this pass plan.
@@ -33,18 +39,18 @@ These two screens are the reference implementations for this pass plan.
 
 Every screen ships iOS, Android, and Web parity from day one. Platform branching is allowed only for native affordances (blur, shadow, haptics), never for functionality or information hierarchy.
 
-### 2.2 Layout Behavior — Fourteen-Variant Matrix
+### 2.2 Layout Behavior â€” Fourteen-Variant Matrix
 
-The app does not think in three canvases. It thinks in **fourteen named viewport variants**, defined identically across Welcome Screen and Map. This is the canonical taxonomy. Any new screen must consume it — never reinvent it.
+The app does not think in three canvases. It thinks in **fourteen named viewport variants**, defined identically across Welcome Screen and Map. This is the canonical taxonomy. Any new screen must consume it â€” never reinvent it.
 
 **Canonical breakpoint source of truth:** `constants/breakpoints.js`
 
-- `BREAKPOINTS` — `sm 640`, `md 768`, `lg 1024`, `xl 1280`, `2xl 1536`, `3xl 1920`, `ultraWide 2560`
-- `DEVICE_BREAKPOINTS` — `compactPhone 360`, `largePhone 390`, `androidFold 600`, `androidTablet 840`, `nativeDesktop 1180`, `largeMonitor 1600`
-- `WELCOME_WEB_BREAKPOINTS` — derived from `BREAKPOINTS`, used for web variant selection
-- `VIEWPORT_BREAKPOINTS` — coarse tablet/desktop split used by `useAuthViewport`
+- `BREAKPOINTS` â€” `sm 640`, `md 768`, `lg 1024`, `xl 1280`, `2xl 1536`, `3xl 1920`, `ultraWide 2560`
+- `DEVICE_BREAKPOINTS` â€” `compactPhone 360`, `largePhone 390`, `androidFold 600`, `androidTablet 840`, `nativeDesktop 1180`, `largeMonitor 1600`
+- `WELCOME_WEB_BREAKPOINTS` â€” derived from `BREAKPOINTS`, used for web variant selection
+- `VIEWPORT_BREAKPOINTS` â€” coarse tablet/desktop split used by `useAuthViewport`
 
-**The 14 variants (platform × size):**
+**The 14 variants (platform Ã— size):**
 
 | Platform | Variants                                                                                              |
 | -------- | ----------------------------------------------------------------------------------------------------- |
@@ -58,7 +64,7 @@ The app does not think in three canvases. It thinks in **fourteen named viewport
 
 There are exactly two approved ways to consume the 14-variant matrix. Every screen picks one.
 
-**Pattern A — Per-variant views (Welcome Screen — gold standard)**
+**Pattern A â€” Per-variant views (Welcome Screen â€” gold standard)**
 
 - Orchestrator switches on variant and renders a dedicated view component per variant
 - Each view owns its own layout, spacing, and hero composition for that device class
@@ -66,7 +72,7 @@ There are exactly two approved ways to consume the 14-variant matrix. Every scre
 - Benefits: pixel-level control per device; no conditional spaghetti inside any one view
 - Reference: `components/welcome/WelcomeScreenOrchestrator.jsx` + `components/welcome/views/Welcome<Variant>View.jsx`
 
-**Pattern B — Config-driven composition (Map — partial, still maturing)**
+**Pattern B â€” Config-driven composition (Map â€” partial, still maturing)**
 
 - Orchestrator resolves variant, then reads a per-variant surface config (`getMapViewportSurfaceConfig(variant)`) that returns numeric/enum layout primitives: sidebar width, modal presentation mode, corner radii, map control insets, overlay header placement
 - A single composition consumes the config and branches on primitives (`isSidebarMapVariant`, `presentationMode`, `shellWidth`, etc.)
@@ -98,108 +104,108 @@ Every screen must declare, per surface, which row of this matrix it occupies and
 
 - Stable callbacks (`useCallback` with correct deps)
 - Memoized refs for mutable state that should not trigger renders
-- Controlled effects — never depend on object identity that refreshes per render
+- Controlled effects â€” never depend on object identity that refreshes per render
 - No race conditions between async loads
 - No UI desync across sheet / modal / map layers
 - Hooks own domain state; orchestrators only select variants; stage bases only own motion
 
-### 2.6 Modular Implementation Style — Two Real Shapes
+### 2.6 Modular Implementation Style â€” Two Real Shapes
 
 The anatomy differs by integration pattern. Both shapes share the same invariants (thin route, composition root, hook, orchestrator, shared tokens, separated content/theme), but the layout surface differs:
 
-**Shape A — Welcome Screen (gold standard for Pattern A)**
+**Shape A â€” Welcome Screen (gold standard for Pattern A)**
 
 ```
 app/(auth)/welcome.js                               # thin route wrapper
 screens/WelcomeScreen.jsx                           # composition root
 hooks/ui/useAuthViewport.js                         # shared viewport hook (width, insets, tokens)
 components/welcome/
-├── WelcomeScreenOrchestrator.jsx                   # getWelcomeVariant + 14-way switch
-├── welcomeContent.js                               # copy
-├── buildWideWebWelcomeTheme.js                     # desktop theme builder
-├── hooks/useWelcomeWebSurfaceChrome.js             # web-specific chrome hook
-├── shared/
-│   ├── WelcomeStageBase.jsx                        # shared stage primitive
-│   └── WelcomeAmbientGlows.jsx                     # shared decoration
-├── views/
-│   ├── WelcomeIOSMobileView.jsx
-│   ├── WelcomeIOSPadView.jsx
-│   ├── WelcomeAndroidMobileView.jsx
-│   ├── WelcomeAndroidFoldView.jsx
-│   ├── WelcomeAndroidTabletView.jsx
-│   ├── WelcomeAndroidChromebookView.jsx
-│   ├── WelcomeWebMobileView.jsx
-│   ├── WelcomeWebSmWideView.jsx
-│   ├── WelcomeWebMdView.jsx
-│   ├── WelcomeMacbookView.jsx
-│   ├── WelcomeWebLgView.jsx
-│   ├── WelcomeWebXlView.jsx
-│   ├── WelcomeWeb2Xl3XlView.jsx
-│   └── WelcomeWebUltraWideView.jsx                 # one view per variant (14 total)
-├── welcomeMobile.styles.js
-├── welcomePad.styles.js
-├── welcomeAndroidMobile.styles.js
-├── welcomeAndroidFold.styles.js
-├── welcomeAndroidTablet.styles.js
-├── welcomeAndroidChromebook.styles.js
-├── welcomeMacbook.styles.js
-├── welcomeWebMobile.styles.js
-├── welcomeWebSmWide.styles.js
-├── welcomeWebMd.styles.js
-├── welcomeWebLg.styles.js
-├── welcomeWebXl.styles.js
-├── welcomeWeb2Xl3Xl.styles.js
-└── welcomeWebUltraWide.styles.js                   # one styles file per variant
+â”œâ”€â”€ WelcomeScreenOrchestrator.jsx                   # getWelcomeVariant + 14-way switch
+â”œâ”€â”€ welcomeContent.js                               # copy
+â”œâ”€â”€ buildWideWebWelcomeTheme.js                     # desktop theme builder
+â”œâ”€â”€ hooks/useWelcomeWebSurfaceChrome.js             # web-specific chrome hook
+â”œâ”€â”€ shared/
+â”‚   â”œâ”€â”€ WelcomeStageBase.jsx                        # shared stage primitive
+â”‚   â””â”€â”€ WelcomeAmbientGlows.jsx                     # shared decoration
+â”œâ”€â”€ views/
+â”‚   â”œâ”€â”€ WelcomeIOSMobileView.jsx
+â”‚   â”œâ”€â”€ WelcomeIOSPadView.jsx
+â”‚   â”œâ”€â”€ WelcomeAndroidMobileView.jsx
+â”‚   â”œâ”€â”€ WelcomeAndroidFoldView.jsx
+â”‚   â”œâ”€â”€ WelcomeAndroidTabletView.jsx
+â”‚   â”œâ”€â”€ WelcomeAndroidChromebookView.jsx
+â”‚   â”œâ”€â”€ WelcomeWebMobileView.jsx
+â”‚   â”œâ”€â”€ WelcomeWebSmWideView.jsx
+â”‚   â”œâ”€â”€ WelcomeWebMdView.jsx
+â”‚   â”œâ”€â”€ WelcomeMacbookView.jsx
+â”‚   â”œâ”€â”€ WelcomeWebLgView.jsx
+â”‚   â”œâ”€â”€ WelcomeWebXlView.jsx
+â”‚   â”œâ”€â”€ WelcomeWeb2Xl3XlView.jsx
+â”‚   â””â”€â”€ WelcomeWebUltraWideView.jsx                 # one view per variant (14 total)
+â”œâ”€â”€ welcomeMobile.styles.js
+â”œâ”€â”€ welcomePad.styles.js
+â”œâ”€â”€ welcomeAndroidMobile.styles.js
+â”œâ”€â”€ welcomeAndroidFold.styles.js
+â”œâ”€â”€ welcomeAndroidTablet.styles.js
+â”œâ”€â”€ welcomeAndroidChromebook.styles.js
+â”œâ”€â”€ welcomeMacbook.styles.js
+â”œâ”€â”€ welcomeWebMobile.styles.js
+â”œâ”€â”€ welcomeWebSmWide.styles.js
+â”œâ”€â”€ welcomeWebMd.styles.js
+â”œâ”€â”€ welcomeWebLg.styles.js
+â”œâ”€â”€ welcomeWebXl.styles.js
+â”œâ”€â”€ welcomeWeb2Xl3Xl.styles.js
+â””â”€â”€ welcomeWebUltraWide.styles.js                   # one styles file per variant
 ```
 
 Key principles:
 
-- One view per variant, one styles file per variant — no conditional layout branching inside any view
+- One view per variant, one styles file per variant â€” no conditional layout branching inside any view
 - Shared primitives live in `shared/`
 - Variant-invariant logic (theme, content, hooks) lives at the top level
 - Orchestrator is a pure variant switch with no layout knowledge
 
-**Shape B — Map Sheets (gold standard for Pattern B, deeper domain)**
+**Shape B â€” Map Sheets (gold standard for Pattern B, deeper domain)**
 
 ```
 app/(user)/map.js                                   # thin route wrapper
 screens/MapScreen.jsx                               # composition root, consumes viewport + flow
 hooks/useMapExploreFlow.js                          # domain hook (state + side effects)
 components/map/
-├── MapSheetOrchestrator.jsx                        # re-export shim
-├── core/
-│   ├── MapSheetOrchestrator.jsx                    # real orchestrator (phase + variant)
-│   ├── mapViewportConfig.js                        # 14-variant resolver + per-variant surface config
-│   ├── mapFlowContracts.js                         # state machine contracts
-│   ├── mapActiveRequestModel.js                    # domain model
-│   ├── mapActiveSessionPresentation.js             # presentation adapter
-│   ├── mapMetricPresentation.js
-│   ├── mapOverlayHeaderLayout.js
-│   ├── mapRequestPresentation.js
-│   ├── mapSheet.constants.js                       # snap states, heights
-│   ├── mapSheetFlowPayloads.js
-│   └── useMapSheetDetents.js                       # snap / detent logic
-├── tokens/
-│   ├── mapGlassTokens.js                           # 4-layer glass token factory
-│   ├── mapMotionTokens.js                          # per-platform spring / easing tokens
-│   ├── mapRenderTokens.js
-│   ├── mapSheetTokens.js
-│   └── mapUI.tokens.js
-├── shared/
-│   └── (shared primitives)
-├── surfaces/                                       # sheet + modal surface primitives
-│   ├── MapModalShell.jsx
-│   ├── MapExploreLoadingOverlay.jsx
-│   └── ...                                         # 28 surface files
-├── views/                                          # deeply decomposed feature views (112 files)
-│   └── <feature>/<feature>View.jsx
-├── chrome/                                         # headers, map controls
-├── history/                                        # history modal + parts
-├── MapSheetShell.jsx                               # stage base (sheet shell)
-├── useMapSheetShell.js                             # stage base hook
-├── mapSheetShell.gestures.js                       # pan gestures
-├── mapSheetShell.helpers.js
-└── mapSheetShell.styles.js
+â”œâ”€â”€ MapSheetOrchestrator.jsx                        # re-export shim
+â”œâ”€â”€ core/
+â”‚   â”œâ”€â”€ MapSheetOrchestrator.jsx                    # real orchestrator (phase + variant)
+â”‚   â”œâ”€â”€ mapViewportConfig.js                        # 14-variant resolver + per-variant surface config
+â”‚   â”œâ”€â”€ mapFlowContracts.js                         # state machine contracts
+â”‚   â”œâ”€â”€ mapActiveRequestModel.js                    # domain model
+â”‚   â”œâ”€â”€ mapActiveSessionPresentation.js             # presentation adapter
+â”‚   â”œâ”€â”€ mapMetricPresentation.js
+â”‚   â”œâ”€â”€ mapOverlayHeaderLayout.js
+â”‚   â”œâ”€â”€ mapRequestPresentation.js
+â”‚   â”œâ”€â”€ mapSheet.constants.js                       # snap states, heights
+â”‚   â”œâ”€â”€ mapSheetFlowPayloads.js
+â”‚   â””â”€â”€ useMapSheetDetents.js                       # snap / detent logic
+â”œâ”€â”€ tokens/
+â”‚   â”œâ”€â”€ mapGlassTokens.js                           # 4-layer glass token factory
+â”‚   â”œâ”€â”€ mapMotionTokens.js                          # per-platform spring / easing tokens
+â”‚   â”œâ”€â”€ mapRenderTokens.js
+â”‚   â”œâ”€â”€ mapSheetTokens.js
+â”‚   â””â”€â”€ mapUI.tokens.js
+â”œâ”€â”€ shared/
+â”‚   â””â”€â”€ (shared primitives)
+â”œâ”€â”€ surfaces/                                       # sheet + modal surface primitives
+â”‚   â”œâ”€â”€ MapModalShell.jsx
+â”‚   â”œâ”€â”€ MapExploreLoadingOverlay.jsx
+â”‚   â””â”€â”€ ...                                         # 28 surface files
+â”œâ”€â”€ views/                                          # deeply decomposed feature views (112 files)
+â”‚   â””â”€â”€ <feature>/<feature>View.jsx
+â”œâ”€â”€ chrome/                                         # headers, map controls
+â”œâ”€â”€ history/                                        # history modal + parts
+â”œâ”€â”€ MapSheetShell.jsx                               # stage base (sheet shell)
+â”œâ”€â”€ useMapSheetShell.js                             # stage base hook
+â”œâ”€â”€ mapSheetShell.gestures.js                       # pan gestures
+â”œâ”€â”€ mapSheetShell.helpers.js
+â””â”€â”€ mapSheetShell.styles.js
 ```
 
 Key principles:
@@ -207,7 +213,7 @@ Key principles:
 - `core/` owns flow contracts, domain models, presentations, and the viewport resolver
 - `tokens/` owns every visual / motion primitive
 - `surfaces/` owns sheet and modal shells
-- `views/` is deeply nested by feature — one subtree per domain area (explore, tracking, auth, etc.)
+- `views/` is deeply nested by feature â€” one subtree per domain area (explore, tracking, auth, etc.)
 - `chrome/` and `history/` are feature-scoped siblings
 - One composition reads per-variant config; variants differ in dimensions, not in view identity
 
@@ -219,7 +225,7 @@ Key principles:
 | Domain is deep (state machines, multiple flows) and layout is mostly config-driven | **Shape B**                                                                            |
 | Mix of deep domain + variant-specific layout                                       | Hybrid: Shape B skeleton with `views/<variant>/` subtrees for variant-specific renders |
 
-**Shape selection is per-screen, decided at that screen's wave kickoff.** No blanket default is applied here — premature commitment would either force-fit Shape A onto screens with identical content across variants (wasting 14 nearly-duplicate view files) or force-fit Shape B onto screens whose layouts genuinely diverge per device (collapsing meaningful differences into config primitives). Each wave starts with a brief shape audit that answers three questions:
+**Shape selection is per-screen, decided at that screen's wave kickoff.** No blanket default is applied here â€” premature commitment would either force-fit Shape A onto screens with identical content across variants (wasting 14 nearly-duplicate view files) or force-fit Shape B onto screens whose layouts genuinely diverge per device (collapsing meaningful differences into config primitives). Each wave starts with a brief shape audit that answers three questions:
 
 1. Does content composition change per variant, or only density / presentation mode?
 2. Does the screen already have phase/state variants (like Payment's management vs checkout) that would multiply against device variants?
@@ -231,18 +237,18 @@ Deviations from these shapes, once a shape is chosen, require explicit doctrine 
 
 ## 3. Scope
 
-### 3.1 Current Pass — Four Stack Screens
+### 3.1 Current Pass â€” Four Stack Screens
 
 Target screens, in execution order for this pass:
 
-1. **Profile** — stack route, smallest architectural delta
+1. **Profile** â€” stack route, smallest architectural delta
    Implemented in code on 2026-04-29. Follow-up checkpoint: [PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../../../audit/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
    Detailed pass record: [PROFILE_STACK_PASS_PLAN_V1.md](./PROFILE_STACK_PASS_PLAN_V1.md)
-2. **Settings** — stack route, sectioned list patterns
-3. **Emergency Contact** — re-audit for full doctrine compliance
-4. **Payment** — re-audit for the responsive layer (viewport config + metrics)
+2. **Settings** â€” stack route, sectioned list patterns
+3. **Emergency Contact** â€” re-audit for full doctrine compliance
+4. **Payment** â€” re-audit for the responsive layer (viewport config + metrics)
 
-### 3.2 Eventual Scope — Every Screen In The App
+### 3.2 Eventual Scope â€” Every Screen In The App
 
 These four screens are the **first wave**, not the final list. The doctrine in Section 2 applies to **every screen in the app**, and every screen will be brought into compliance over subsequent passes.
 
@@ -268,13 +274,13 @@ Reason:
 - password management is no longer surfaced from the live stack UI
 - these routes are fallback-only legacy auth surfaces, not active stack products
 
-No screen is permanently exempt. Any screen that ships after this pass must conform on day one (see Section 7). Existing screens outside this pass remain in their current form until their own wave begins, but no new feature work may land on them in a non-conforming way — all new work uses the doctrine.
+No screen is permanently exempt. Any screen that ships after this pass must conform on day one (see Section 7). Existing screens outside this pass remain in their current form until their own wave begins, but no new feature work may land on them in a non-conforming way â€” all new work uses the doctrine.
 
 **Migration principle:** no screen is rewritten until its wave. No screen escapes the doctrine once its wave lands. No doctrine drift between waves.
 
 ### 3.3 Shared Infrastructure Built During This Pass
 
-Infrastructure introduced here is app-wide, not screen-specific — it outlives this pass and serves every future wave:
+Infrastructure introduced here is app-wide, not screen-specific â€” it outlives this pass and serves every future wave:
 
 - `components/<domain>/tokens/<screen>GlassTokens.js` per screen (mirror `mapGlassTokens.js`)
 - A shared `stackViewportConfig.js` that mirrors `mapViewportConfig.js` for full-canvas stack screens (14-variant resolver + per-variant surface config)
@@ -287,10 +293,10 @@ Infrastructure introduced here is app-wide, not screen-specific — it outlives 
 
 Every subsequent stack-screen pass must address these four tracks explicitly:
 
-- **State management** — the pass must audit the feature's state ownership and either improve it or document the exact remaining gap against the five-layer doctrine
-- **UI quality** — the pass must bring the screen closer to the current stack language (mobile clarity, wide-screen behavior, calmer copy, typography discipline, modal discipline)
-- **DRY / modular code** — the pass must reduce repetition and move the screen toward the shared anatomy instead of adding more route-owned one-offs
-- **Documentation** — the pass must land pre-pass intent and post-pass checkpoint updates in the same wave
+- **State management** â€” the pass must audit the feature's state ownership and either improve it or document the exact remaining gap against the five-layer doctrine
+- **UI quality** â€” the pass must bring the screen closer to the current stack language (mobile clarity, wide-screen behavior, calmer copy, typography discipline, modal discipline)
+- **DRY / modular code** â€” the pass must reduce repetition and move the screen toward the shared anatomy instead of adding more route-owned one-offs
+- **Documentation** â€” the pass must land pre-pass intent and post-pass checkpoint updates in the same wave
 
 No future stack pass should be treated as a styling-only pass unless the docs explicitly justify why state and modularity are intentionally unchanged.
 Under UI quality, loading-state doctrine is explicit: favor skeletons for route, list, card, and form-shell loading states; reserve activity indicators for compact inline pending feedback only.
@@ -304,7 +310,7 @@ Under UI quality, loading-state doctrine is explicit: favor skeletons for route,
 
 ### 4.2 Interaction & Side-Effect Pass
 
-- Every sheet ↔ modal ↔ side-sheet transition deterministic
+- Every sheet â†” modal â†” side-sheet transition deterministic
 - Landscape modal escalation documented per surface
 - No untracked side effects in `useFocusEffect`, `useEffect`, or listeners
 - No unmounted map/sheet conflicts during navigation
@@ -313,7 +319,7 @@ Under UI quality, loading-state doctrine is explicit: favor skeletons for route,
 
 - All card styles, color tokens, spacing, typography, and motion curves consumed from shared token files
 - No inline magic numbers, no one-off styles
-- 4-layer liquid glass stack on blurred surfaces (host → underlay (Android) → blur (iOS) → backdrop → overlay)
+- 4-layer liquid glass stack on blurred surfaces (host â†’ underlay (Android) â†’ blur (iOS) â†’ backdrop â†’ overlay)
 - Squircle discipline: `borderCurve: "continuous"` alongside every `borderRadius`
 - Icon wrapper orbs: `borderRadius = size / 2`, `iconSize = size * 0.43`
 - Loading surfaces preview structure with skeletons wherever the user is waiting on a route-sized or layout-bearing surface
@@ -337,10 +343,10 @@ A screen is done when all of the following are true:
 
 | Doc               | Update                                                                                              |
 | ----------------- | --------------------------------------------------------------------------------------------------- |
-| `docs/DESIGN.md`  | Doctrine sections 2.1 – 2.5, layout & modal/sheet decision matrices, modular implementation anatomy |
+| `docs/DESIGN.md`  | Doctrine sections 2.1 â€“ 2.5, layout & modal/sheet decision matrices, modular implementation anatomy |
 | `docs/SYSTEMS.md` | Side-effect stabilization playbook, screen lifecycle contract, modular architecture diagram         |
 | `README.md`       | Architecture overview pointing to seven-file anatomy and reference screens                          |
-| `CONTRIBUTING.md` | Rules for creating new screens — require the full anatomy before merge                              |
+| `CONTRIBUTING.md` | Rules for creating new screens â€” require the full anatomy before merge                              |
 
 Updates must land atomically at the end of the pass, not as a trailing follow-up.
 
@@ -348,7 +354,7 @@ Updates must land atomically at the end of the pass, not as a trailing follow-up
 
 Any new stack-owned screen added after this pass must:
 
-1. Ship as thin route wrapper → composition root
+1. Ship as thin route wrapper â†’ composition root
 2. Own state in a dedicated hook/controller
 3. Use an orchestrator to choose variant (phase or device)
 4. Use a stage base that owns shell / snap / motion / slots
@@ -358,23 +364,23 @@ Any new stack-owned screen added after this pass must:
 8. Consume the 14-variant viewport matrix via its own `get<Screen>ViewportVariant` resolver, or a shared resolver, sourced from `constants/breakpoints.js`
 9. Pick and declare one of the two integration patterns (per-variant views, or config-driven composition) with reasoning
 10. Declare a Modal & Sheet Decision Matrix cell per surface, mapped to variant groups (compact / tablet / desktop)
-11. Pass the full visual regression matrix before merge — at minimum one device per variant group, plus both gold-standard references (Welcome Screen compositions and Map sidebar vs sheet transitions)
+11. Pass the full visual regression matrix before merge â€” at minimum one device per variant group, plus both gold-standard references (Welcome Screen compositions and Map sidebar vs sheet transitions)
 
 ## 8. Reference Implementations
 
-- **Welcome Screen — gold standard for responsive layout.** Per-variant view components for all 14 viewport variants, clean orchestrator switch, shared parts via props. This is the canonical reference for Pattern A (per-variant views).
-- **Map Sheets — gold standard for shell / snap / motion and 4-layer liquid glass stack.** Canonical reference for stage base, sheet gesture, glass tokens, and squircle discipline. **Partial** as a responsive reference: uses the same 14-variant taxonomy and produces per-variant surface configs, but some compact variants (`android_fold`, `web_sm_wide`) still fall through to mobile composition. Canonical for Pattern B (config-driven composition).
-- **Payment Screen (this sprint) — canonical full modular anatomy.** Orchestrator + stage base + variants + tokens + typography discipline + nested-modal stacking. **Does not yet consume the 14-variant matrix** — the responsive layer is scheduled for this pass plan.
+- **Welcome Screen â€” gold standard for responsive layout.** Per-variant view components for all 14 viewport variants, clean orchestrator switch, shared parts via props. This is the canonical reference for Pattern A (per-variant views).
+- **Map Sheets â€” gold standard for shell / snap / motion and 4-layer liquid glass stack.** Canonical reference for stage base, sheet gesture, glass tokens, and squircle discipline. **Partial** as a responsive reference: uses the same 14-variant taxonomy and produces per-variant surface configs, but some compact variants (`android_fold`, `web_sm_wide`) still fall through to mobile composition. Canonical for Pattern B (config-driven composition).
+- **Payment Screen (this sprint) â€” canonical full modular anatomy.** Orchestrator + stage base + variants + tokens + typography discipline + nested-modal stacking. **Does not yet consume the 14-variant matrix** â€” the responsive layer is scheduled for this pass plan.
 
 Any deviation from these three requires explicit doctrine exception in review.
 
 ## 9. Execution Order
 
 1. Lock doctrine in docs (DESIGN.md, SYSTEMS.md, README.md, CONTRIBUTING.md) so the contract is fixed before code moves
-2. Profile — smallest delta, validates orchestrator extraction end-to-end
-3. Settings — medium delta, validates variant pattern for sectioned lists
-4. Emergency Contact — re-audit for full doctrine compliance
-5. Payment — re-audit for the responsive layer (viewport config + metrics)
+2. Profile â€” smallest delta, validates orchestrator extraction end-to-end
+3. Settings â€” medium delta, validates variant pattern for sectioned lists
+4. Emergency Contact â€” re-audit for full doctrine compliance
+5. Payment â€” re-audit for the responsive layer (viewport config + metrics)
 6. Shared infrastructure hardening (`stackViewportConfig.js`, responsive metrics)
 7. Visual regression pass across all seven device widths for all four screens
 
@@ -398,7 +404,7 @@ Apply these directly to the remaining stack-owned pages before inventing anythin
 
 - **Bootstrap once, consume everywhere.** If a feature needs hydration, migration, or realtime startup, mount that work at the runtime shell. Screens and controllers should read selectors, not call a data hook only for side effects.
 - **Five-layer ownership must stay explicit.** Server truth, query cache, persisted store, lifecycle legality, and ephemeral UI state each need a named home. Do not collapse back into `hook + service + local useState`.
-- **Phone-valid and route-valid selectors beat ad hoc filtering.** Cross-surface consumers should read canonical selectors for concepts like “reachable,” “primary,” “active,” or “ready,” not re-derive them inside screens.
+- **Phone-valid and route-valid selectors beat ad hoc filtering.** Cross-surface consumers should read canonical selectors for concepts like â€œreachable,â€ â€œprimary,â€ â€œactive,â€ or â€œready,â€ not re-derive them inside screens.
 - **Wide-screen dead space becomes context, not a wider form.** Keep editing modals centered and bounded; when XL layouts expose extra canvas, fill it with a right context island or action panel instead of stretching the modal.
 - **Utility stack copy stays short and actionable.** One clear task title, one useful hint only when necessary, and no repeated explanatory paragraphs across header, body, and footer.
 - **Hierarchy comes from size and spacing before weight.** Patient-app utility surfaces should cap visible type at `700`, avoid all-caps headers, and reserve identity-style caps for logo-mark labels only.

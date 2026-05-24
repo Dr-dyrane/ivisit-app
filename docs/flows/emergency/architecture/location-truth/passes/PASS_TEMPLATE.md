@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-15
+---
+
 # PASS_LOC{N}_{SHORT_NAME}.md
 
 **Date Started:** YYYY-MM-DD  
@@ -12,7 +18,7 @@
 ## Pass Summary
 
 **Goal:** One-sentence description of what this pass achieves  
-**Risk Level:** 🔴 High / 🟡 Medium / 🟢 Low  
+**Risk Level:** ðŸ”´ High / ðŸŸ¡ Medium / ðŸŸ¢ Low  
 **Dependencies:** LOC-X, LOC-Y (must be completed first)  
 **Blocks:** LOC-Z (cannot start until this is done)
 
@@ -85,8 +91,8 @@ Before declaring this pass complete, verify:
 ### Test Scenarios
 | Scenario | Steps | Expected | Actual | Pass |
 |----------|-------|----------|--------|------|
-| Valid input | Enter valid address → Submit | Success | | |
-| Invalid input | Enter invalid address → Submit | Rejected with warning | | |
+| Valid input | Enter valid address â†’ Submit | Success | | |
+| Invalid input | Enter invalid address â†’ Submit | Rejected with warning | | |
 | Flag toggle | Switch flag mid-session | Behavior changes immediately | | |
 
 ### Known Issues
@@ -146,33 +152,33 @@ git revert <hash> --no-edit
 
 | Layer | Owner | Use For | DON'T Use For |
 |-------|-------|---------|---------------|
-| **L1** | Supabase Realtime | Live emergency rows, responder updates | — |
+| **L1** | Supabase Realtime | Live emergency rows, responder updates | â€” |
 | **L2** | TanStack Query | Server cache, refetch control (active trip query, hospitals) | Client-only state |
 | **L3** | Zustand + persist | Persistent client state (trips, auth, location) | Ephemeral UI state |
 | **L4** | XState | Lifecycle + legal transitions (trip state machine) | Raw status strings |
 | **L5** | Jotai atoms | Ephemeral UI state (sheet phase, modals, selection) | Cross-component sync |
 
 **THIS PASS CHECKLIST:**
-- [ ] New server data → TanStack Query (not useState + useEffect)
-- [ ] New persistent state → Zustand (not localStorage directly)
-- [ ] New machine-like state → XState or Jotai atom
-- [ ] New ephemeral UI → Jotai atom (not useState for cross-component)
+- [ ] New server data â†’ TanStack Query (not useState + useEffect)
+- [ ] New persistent state â†’ Zustand (not localStorage directly)
+- [ ] New machine-like state â†’ XState or Jotai atom
+- [ ] New ephemeral UI â†’ Jotai atom (not useState for cross-component)
 
 ### 2. useEffect Decision Tree (MUST WALK BEFORE ADDING)
 
 ```
 "When X changes, I need Y"
-         │
-         ▼
-Is Y derived from X? → YES → useMemo / inline const (no useEffect!)
+         â”‚
+         â–¼
+Is Y derived from X? â†’ YES â†’ useMemo / inline const (no useEffect!)
 
-Is Y a ref mirroring X? → YES → Assign inline during render
+Is Y a ref mirroring X? â†’ YES â†’ Assign inline during render
          
-Is Y machine state (IDLE, WAITING, FAILED)? → YES → Jotai atom (L5) or XState (L4)
+Is Y machine state (IDLE, WAITING, FAILED)? â†’ YES â†’ Jotai atom (L5) or XState (L4)
 
-Is Y server data triggered by X? → YES → TanStack Query with X in queryKey
+Is Y server data triggered by X? â†’ YES â†’ TanStack Query with X in queryKey
 
-Is Y real side-effect (subscription, timer, cleanup)? → YES → useEffect correct here
+Is Y real side-effect (subscription, timer, cleanup)? â†’ YES â†’ useEffect correct here
 ```
 
 **RULE:** If not managing subscription/timer/cleanup, `useEffect` is wrong.  
@@ -180,42 +186,42 @@ Is Y real side-effect (subscription, timer, cleanup)? → YES → useEffect corr
 
 ### 3. Tracking Sheet Lessons (MUST AVOID)
 
-#### ❌ Lesson 1: Modal Renderer Gated on Transient Parent
+#### âŒ Lesson 1: Modal Renderer Gated on Transient Parent
 **Mistake:** Modal inside component that mounts/unmounts with screen state  
 **Symptoms:** "Modal sometimes doesn't show", "Toast disappears on navigate"  
 **THIS PASS CHECK:**
 - [ ] Any new modal rendered at screen root level, not transient subtree
 - [ ] Modal state in Jotai atom (survives remount), not local useState
 
-#### ❌ Lesson 2: Imperative Auto-Open Relying on Data Race
+#### âŒ Lesson 2: Imperative Auto-Open Relying on Data Race
 **Mistake:** `openTracking()` assumes state is ready (race condition)  
 **Symptoms:** "Sometimes tracking doesn't open after payment"  
 **THIS PASS CHECK:**
 - [ ] No imperative auto-open without derived effect on canonical flag
 - [ ] Use "double-run" pattern: imperative call + effect on XState flag
 
-#### ❌ Lesson 3: Raw Status String Comparisons
+#### âŒ Lesson 3: Raw Status String Comparisons
 **Mistake:** `if (trip?.status === "in_progress")` scattered across codebase  
 **Symptoms:** Behavior drifts, 75+ files need editing for new status  
 **THIS PASS CHECK:**
 - [ ] Use `useTripLifecycle()` flags: `isIdle`, `isActive`, `hasActiveTrip`
 - [ ] Never re-derive from raw status strings
 
-#### ❌ Lesson 4: Raw AsyncStorage Instead of `database` Abstraction
+#### âŒ Lesson 4: Raw AsyncStorage Instead of `database` Abstraction
 **Mistake:** Direct `AsyncStorage` import in feature files  
 **Symptoms:** Namespace collisions, inconsistent prefixing  
 **THIS PASS CHECK:**
 - [ ] Use `database.read()` / `database.write()` through `StorageKeys`
 - [ ] Add key to `StorageKeys` registry, use `SingletonKeys` or `CollectionKeys`
 
-#### ❌ Lesson 5: Bundling Related State into Separate Atoms
-**Mistake:** 4 atoms each persisting individually → storage thrash  
+#### âŒ Lesson 5: Bundling Related State into Separate Atoms
+**Mistake:** 4 atoms each persisting individually â†’ storage thrash  
 **Symptoms:** 4 storage writes per update, hydration race  
 **THIS PASS CHECK:**
 - [ ] Cluster related state under one storage key
 - [ ] Use bundled atom pattern (see `mapScreenAtoms.js:19-73`)
 
-#### ❌ Lesson 6: Visualization Wrappers Without Checking Existing Parts
+#### âŒ Lesson 6: Visualization Wrappers Without Checking Existing Parts
 **Mistake:** New feature adds animation/gradient without checking target component  
 **Symptoms:** Double underlays, padding stacked twice, fighting animations  
 **THIS PASS CHECK:**
@@ -248,7 +254,7 @@ Every significant change must include:
 // OLD: [What was there before]
 // NEW: [What replaced it]
 // REASON: [Why this change was made]
-// LAYER: [L1/L2/L3/L4/L5 — which state layer was touched]
+// LAYER: [L1/L2/L3/L4/L5 â€” which state layer was touched]
 // RISK: [None/Low/Medium/High]
 ```
 

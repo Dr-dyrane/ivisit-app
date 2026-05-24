@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# EXP-4 Service Adapter — Emergency Strict Filter
+# EXP-4 Service Adapter â€” Emergency Strict Filter
 
 Status: Complete
 Owner: App Data
@@ -32,9 +38,9 @@ Add `discoverNearbyProviders` to `hospitalsService.js` for explore mode, and con
 
 New export on `hospitalsService`:
 - `discoverNearbyProviders(lat, lng, providerCategory, radius, options)`
-  - `options.limit` — default 15
-  - `options.includeGooglePlaces` — default false
-  - `options.includeMapboxPlaces` — default true
+  - `options.limit` â€” default 15
+  - `options.includeGooglePlaces` â€” default false
+  - `options.includeMapboxPlaces` â€” default true
 
 ## Checklist
 
@@ -58,7 +64,7 @@ New export on `hospitalsService`:
 
 - `discoverNearbyProviders` added and returns normalized array.
 - Existing emergency service methods unchanged.
-- Empty/null response guarded — returns `[]`.
+- Empty/null response guarded â€” returns `[]`.
 - Input validation: finite lat/lng, non-empty `providerCategory`.
 
 ## Rollback Notes

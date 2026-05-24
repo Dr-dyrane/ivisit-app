@@ -1,3 +1,9 @@
+---
+status: living
+owner: platform
+last_updated: 2026-04-04
+---
+
 # Vercel Web Deployment
 
 ## Goal

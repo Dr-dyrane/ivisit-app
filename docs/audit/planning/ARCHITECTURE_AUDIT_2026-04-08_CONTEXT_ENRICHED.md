@@ -1,8 +1,14 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# Context-Enriched Architecture Audit — 2026-04-08
+# Context-Enriched Architecture Audit â€” 2026-04-08
 
 > Scope: `ivisit-app` + `ivisit-console` + `ivisit` + `iVisit-docs` + Supabase migrations/RPCs
 > Mode: read-only audit for grounding and implementation safety
@@ -22,7 +28,7 @@ It already has a substantial end-to-end system for:
 - doctor assignment
 - visit sync after emergency completion
 
-The current product risk is mainly in **orchestration, deterministic loading, and route handoff** — not missing infrastructure.
+The current product risk is mainly in **orchestration, deterministic loading, and route handoff** â€” not missing infrastructure.
 
 ---
 
@@ -33,7 +39,7 @@ The current product risk is mainly in **orchestration, deterministic loading, an
 | First-time panicked user | `screens/WelcomeScreen.jsx` | `WelcomeScreenOrchestrator`, `RequestAmbulanceScreen.jsx` | `Continue` still routes to `/(auth)/request-help` | not yet true map-first activation |
 | Returning signed-in user | `AuthContext.jsx` + `EmergencyContext.jsx` | session restore, active trip / booking state | viable recovery path exists | stale trip sync if state resumes late |
 | Sparse-coverage user | `useHospitals.js` + `coverageModeService.js` + `demoEcosystemService.js` | hybrid/demo fallback | bootstrap exists | fetch/bootstrap race can cause instability |
-| Book ambulance | `RequestAmbulanceScreen.jsx` + `EmergencyRequestModal.jsx` | triage → dispatch confirmation → payment/tracking | core flow exists | still fragmented by intake glue |
+| Book ambulance | `RequestAmbulanceScreen.jsx` + `EmergencyRequestModal.jsx` | triage â†’ dispatch confirmation â†’ payment/tracking | core flow exists | still fragmented by intake glue |
 | Reserve bed | `BookBedRequestScreen.jsx` + `EmergencyContext.jsx` | bed request + booking state | backend support exists | user-facing path is less clearly unified |
 | Operator dispatch / complete | `ivisit-console/frontend/src/components/pages/EmergencyRequestsPage.jsx` | `emergencyService.js`, `emergencyResponseService.js` | console can see and act on emergencies | cross-surface sync clarity still needs polish |
 
@@ -44,7 +50,7 @@ The current product risk is mainly in **orchestration, deterministic loading, an
 ### Primary route and screen ownership
 
 - **Welcome / activation:** `screens/WelcomeScreen.jsx`
-- **Auth-side urgent handoff:** `app/(auth)/request-help` → `screens/RequestAmbulanceScreen.jsx`
+- **Auth-side urgent handoff:** `app/(auth)/request-help` â†’ `screens/RequestAmbulanceScreen.jsx`
 - **Authenticated emergency hub:** `screens/EmergencyScreen.jsx`
 - **Bed flow surface:** `screens/BookBedRequestScreen.jsx`
 - **Map shell:** `components/map/FullScreenEmergencyMap.jsx`
@@ -53,10 +59,10 @@ The current product risk is mainly in **orchestration, deterministic loading, an
 
 ### State ownership
 
-- **`AuthContext.jsx`** — token/user/session restoration
-- **`EmergencyContext.jsx`** — active ambulance trip, active bed booking, hospital data, coverage mode, realtime subscriptions
-- **`GlobalLocationContext.jsx`** — coordinates and location readiness
-- **`GlobalMapContext.jsx`** — shared map instance ownership
+- **`AuthContext.jsx`** â€” token/user/session restoration
+- **`EmergencyContext.jsx`** â€” active ambulance trip, active bed booking, hospital data, coverage mode, realtime subscriptions
+- **`GlobalLocationContext.jsx`** â€” coordinates and location readiness
+- **`GlobalMapContext.jsx`** â€” shared map instance ownership
 
 ### Current flow reality
 
@@ -97,7 +103,7 @@ The current system is vulnerable to **overlapping fetch/bootstrap cycles** when 
 
 ---
 
-## Backend Map — Verified Database Surface
+## Backend Map â€” Verified Database Surface
 
 ### Table inventory fetched from migrations
 
@@ -255,7 +261,7 @@ The **schema and RPC inventory is mirrored** between `ivisit-app` and `ivisit-co
    - Coordinates are globalized; the normalized human-readable place label is not yet a single shared truth.
 
 4. **Bed-flow parity**
-   - Backend support exists, but the app’s user-facing bed journey is not as unified or obvious as ambulance.
+   - Backend support exists, but the appâ€™s user-facing bed journey is not as unified or obvious as ambulance.
 
 5. **Realtime trust and session recovery**
    - Realtime subscriptions exist, but cold-start and recovery behavior still deserve careful verification under background/restore cases.
@@ -285,7 +291,7 @@ To avoid losing track, keep these facts locked:
    - `GlobalLocationContext.jsx`
    - `BottomSheetController.jsx`
    - `HospitalMarkers.jsx`
-   - welcome → emergency handoff routing
+   - welcome â†’ emergency handoff routing
 
 ---
 

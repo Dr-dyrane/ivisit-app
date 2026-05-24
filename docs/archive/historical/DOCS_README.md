@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-02
+---
+
 # iVisit Documentation
 
 > Portal for the `ivisit-app` patient product and its supporting surfaces.

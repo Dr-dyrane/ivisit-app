@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -55,6 +61,6 @@ The next pass should:
 
 ## Non-Goals
 
-- No separate five-layer feature migration. Notification Details should consume the notifications feature’s existing data lane.
+- No separate five-layer feature migration. Notification Details should consume the notifications featureâ€™s existing data lane.
 - No new notification backend model.
 - No second copy system separate from the notifications surface family.

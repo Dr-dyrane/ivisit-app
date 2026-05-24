@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-03-04
+---
+
 # Hardening Closure Plan (2026-03-04)
 
 ## Scope

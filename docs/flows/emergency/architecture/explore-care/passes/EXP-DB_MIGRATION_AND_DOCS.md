@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -32,9 +38,9 @@ Ensure all taxonomy schema changes and the `nearby_providers` RPC are applied to
 - Apply `nearby_providers` RPC SQL to live DB via dashboard.
 - Delete any redundant standalone taxonomy migration file.
 - Repair remote migration history: `npx supabase migration repair --status reverted <version>`.
-- Update `MODULE_SCHEMA_BIBLE.md` — add taxonomy columns to `hospitals` section.
-- Update `MODULE_SCHEMA_BIBLE.md` — add `nearby_providers` to RPC section.
-- Update `SCHEMA_SNAPSHOT.md` — add column entries.
+- Update `MODULE_SCHEMA_BIBLE.md` â€” add taxonomy columns to `hospitals` section.
+- Update `MODULE_SCHEMA_BIBLE.md` â€” add `nearby_providers` to RPC section.
+- Update `SCHEMA_SNAPSHOT.md` â€” add column entries.
 - Run `node supabase/scripts/sync_to_console.js`.
 
 ## Acceptance
@@ -69,4 +75,4 @@ Because `20260219000200_org_structure.sql` and `20260219010000_core_rpcs.sql` ar
 
 - Drop `provider_type` and `emergency_eligible` columns via dashboard.
 - Drop `nearby_providers` RPC via dashboard.
-- Emergency path is unaffected — `nearby_hospitals` RPC filter is independent.
+- Emergency path is unaffected â€” `nearby_hospitals` RPC filter is independent.

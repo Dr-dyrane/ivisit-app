@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-07
+---
+
 # Payment Audits
 
 Point-in-time evidence, implementation checkpoints, and machine-readable manifests for billing, wallet, and pricing display behavior.

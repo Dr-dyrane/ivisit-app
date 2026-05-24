@@ -1,6 +1,12 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
 # EMERGENCY INTEGRATION AUDIT - ARCHIVAL NOTICE
 
-## ⚠️ **ARCHIVED DOCUMENT - LEGACY INTEGRATION ANALYSIS**
+## âš ï¸ **ARCHIVED DOCUMENT - LEGACY INTEGRATION ANALYSIS**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Document reflects legacy auth-first emergency access patterns that conflict with current intent-first, Map-first orchestration
@@ -30,19 +36,19 @@ This audit was conducted when the iVisit app used an **auth-first emergency acce
 ### **Where to Find Current Information**
 
 #### **Emergency Lifecycle Domain**
-📖 **New Location**: `/docs/domains/EMERGENCY_LIFECYCLE.md`
+ðŸ“– **New Location**: `/docs/domains/EMERGENCY_LIFECYCLE.md`
 - **Content**: 15-phase state machine with intent-first access
 - **Implementation**: MapSheetOrchestrator patterns
 - **Real-time**: Supabase subscription architecture
 
 #### **Identity and Auth Domain**
-📖 **New Location**: `/docs/domains/IDENTITY_AND_AUTH.md`
+ðŸ“– **New Location**: `/docs/domains/IDENTITY_AND_AUTH.md`
 - **Content**: Intent-first authentication with emergency override
 - **Implementation**: Emergency access without full authentication
 - **Security**: Temporary session management for emergencies
 
 #### **System Architecture**
-📖 **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
+ðŸ“– **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
 - **Content**: Tripartite system with cross-repository communication
 - **Data Flow**: Real-time Supabase integration
 - **Service Layer**: 36 domain services architecture
@@ -51,19 +57,19 @@ This audit was conducted when the iVisit app used an **auth-first emergency acce
 
 ## **Legacy Integration Issues Resolved**
 
-### **Auth-First Emergency Access** ❌ **RESOLVED**
+### **Auth-First Emergency Access** âŒ **RESOLVED**
 **Legacy Problem**: Users had to authenticate before accessing emergency services
 **Current Solution**: Intent-first access with authentication only when required
 
-### **Separate Emergency Surface** ❌ **RESOLVED**
+### **Separate Emergency Surface** âŒ **RESOLVED**
 **Legacy Problem**: EmergencyScreen.jsx as separate component from map
 **Current Solution**: Unified MapSheetOrchestrator with emergency phases
 
-### **Manual State Management** ❌ **RESOLVED**
+### **Manual State Management** âŒ **RESOLVED**
 **Legacy Problem**: Manual state synchronization between components
 **Current Solution**: Real-time Supabase subscriptions with automatic sync
 
-### **Tab-Based Navigation** ❌ **RESOLVED**
+### **Tab-Based Navigation** âŒ **RESOLVED**
 **Legacy Problem**: Emergency tab as primary navigation entry point
 **Current Solution**: Map-first orchestration with phase-based navigation
 
@@ -106,7 +112,7 @@ const subscribeToEmergencyRequest = (requestId) => {
 ### **Cross-Repository Communication**
 ```javascript
 // Current implementation uses shadow table pattern
-// emergency_requests (provider-facing) ↔ visits (patient app)
+// emergency_requests (provider-facing) â†” visits (patient app)
 const createEmergencyRequest = async (requestData) => {
   // Create provider-facing request
   const emergencyRequest = await supabase

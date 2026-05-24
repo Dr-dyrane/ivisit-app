@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-17
+---
+
 # Explore Care Passes
 
 This folder breaks Explore Care into small implementation passes that can be updated independently.

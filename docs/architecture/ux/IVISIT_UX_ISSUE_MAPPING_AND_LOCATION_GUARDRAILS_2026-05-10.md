@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-11
+---
+
 # iVisit UX Issue Mapping And Location Guardrails
 
 **Date:** 2026-05-10

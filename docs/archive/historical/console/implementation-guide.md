@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - Cross-repo material.
 > This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
 > For current iVisit Console docs, see the `ivisit-console` repository directly.
@@ -7,7 +13,7 @@
 
 # iVisit Console Implementation Guide
 
-## 🚀 Quick Start for Console Developer
+## ðŸš€ Quick Start for Console Developer
 
 ### Prerequisites
 - Node.js 18+
@@ -47,48 +53,48 @@ MAPBOX_ACCESS_TOKEN=your_mapbox_token
 ### Step 3: Project Structure
 ```
 src/
-├── app/
-│   ├── (auth)/
-│   │   ├── login/
-│   │   └── register/
-│   ├── (dashboard)/
-│   │   ├── admin/
-│   │   ├── sponsor/
-│   │   ├── hospital/
-│   │   └── provider/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── ui/                    # Shadcn/ui components
-│   ├── auth/                  # Authentication components
-│   ├── dashboard/             # Dashboard components
-│   ├── tables/                # Data tables
-│   ├── forms/                 # Form components
-│   └── maps/                  # Map components
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts
-│   │   ├── server.ts
-│   │   └── middleware.ts
-│   ├── permissions.ts         # RBAC helpers
-│   ├── utils.ts
-│   └── validations.ts         # Zod schemas
-├── hooks/
-│   ├── use-auth.ts
-│   ├── use-permissions.ts
-│   └── use-realtime.ts
-├── types/
-│   ├── auth.ts
-│   ├── database.ts
-│   └── permissions.ts
-└── constants/
-    ├── roles.ts
-    ├── colors.ts
-    └── routes.ts
+â”œâ”€â”€ app/
+â”‚   â”œâ”€â”€ (auth)/
+â”‚   â”‚   â”œâ”€â”€ login/
+â”‚   â”‚   â””â”€â”€ register/
+â”‚   â”œâ”€â”€ (dashboard)/
+â”‚   â”‚   â”œâ”€â”€ admin/
+â”‚   â”‚   â”œâ”€â”€ sponsor/
+â”‚   â”‚   â”œâ”€â”€ hospital/
+â”‚   â”‚   â””â”€â”€ provider/
+â”‚   â”œâ”€â”€ globals.css
+â”‚   â”œâ”€â”€ layout.tsx
+â”‚   â””â”€â”€ page.tsx
+â”œâ”€â”€ components/
+â”‚   â”œâ”€â”€ ui/                    # Shadcn/ui components
+â”‚   â”œâ”€â”€ auth/                  # Authentication components
+â”‚   â”œâ”€â”€ dashboard/             # Dashboard components
+â”‚   â”œâ”€â”€ tables/                # Data tables
+â”‚   â”œâ”€â”€ forms/                 # Form components
+â”‚   â””â”€â”€ maps/                  # Map components
+â”œâ”€â”€ lib/
+â”‚   â”œâ”€â”€ supabase/
+â”‚   â”‚   â”œâ”€â”€ client.ts
+â”‚   â”‚   â”œâ”€â”€ server.ts
+â”‚   â”‚   â””â”€â”€ middleware.ts
+â”‚   â”œâ”€â”€ permissions.ts         # RBAC helpers
+â”‚   â”œâ”€â”€ utils.ts
+â”‚   â””â”€â”€ validations.ts         # Zod schemas
+â”œâ”€â”€ hooks/
+â”‚   â”œâ”€â”€ use-auth.ts
+â”‚   â”œâ”€â”€ use-permissions.ts
+â”‚   â””â”€â”€ use-realtime.ts
+â”œâ”€â”€ types/
+â”‚   â”œâ”€â”€ auth.ts
+â”‚   â”œâ”€â”€ database.ts
+â”‚   â””â”€â”€ permissions.ts
+â””â”€â”€ constants/
+    â”œâ”€â”€ roles.ts
+    â”œâ”€â”€ colors.ts
+    â””â”€â”€ routes.ts
 ```
 
-## 🔐 Authentication Setup
+## ðŸ” Authentication Setup
 
 ### Supabase Client Configuration
 ```typescript
@@ -238,7 +244,7 @@ export const config = {
 }
 ```
 
-## 🎨 UI Component Setup
+## ðŸŽ¨ UI Component Setup
 
 ### Tailwind Configuration
 ```typescript
@@ -346,7 +352,7 @@ Button.displayName = 'Button'
 export { Button, buttonVariants }
 ```
 
-## 🔑 RBAC Implementation
+## ðŸ”‘ RBAC Implementation
 
 ### Permission System
 ```typescript
@@ -450,7 +456,7 @@ async function checkSponsorRelationship(sponsorId: string, resource: string, ent
 }
 ```
 
-## 📊 Data Tables Implementation
+## ðŸ“Š Data Tables Implementation
 
 ### Generic Table Component
 ```typescript
@@ -593,7 +599,7 @@ export function DataTable<TData, TValue>({
 }
 ```
 
-## 🗺️ Map Implementation
+## ðŸ—ºï¸ Map Implementation
 
 ### Emergency Map Component
 ```typescript
@@ -651,7 +657,7 @@ export function EmergencyMap({ emergencyRequests, ambulances, onMarkerClick }: E
           >
             <div className="bg-white rounded-full p-1 shadow-lg">
               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">🚑</span>
+                <span className="text-white text-xs">ðŸš‘</span>
               </div>
             </div>
           </Marker>
@@ -662,7 +668,7 @@ export function EmergencyMap({ emergencyRequests, ambulances, onMarkerClick }: E
 }
 ```
 
-## 🔄 Real-time Integration
+## ðŸ”„ Real-time Integration
 
 ### Real-time Hook
 ```typescript
@@ -741,7 +747,7 @@ export function useRealtime<T>(
 }
 ```
 
-## 📱 Dashboard Layout
+## ðŸ“± Dashboard Layout
 
 ### Main Layout Component
 ```typescript
@@ -778,13 +784,13 @@ import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
-  { name: 'Users', href: '/dashboard/users', icon: '👥', roles: ['admin'] },
-  { name: 'Hospitals', href: '/dashboard/hospitals', icon: '🏥', roles: ['admin', 'sponsor'] },
-  { name: 'Ambulances', href: '/dashboard/ambulances', icon: '🚑', roles: ['admin', 'sponsor', 'provider'] },
-  { name: 'Emergency', href: '/dashboard/emergency', icon: '🚨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
-  { name: 'Visits', href: '/dashboard/visits', icon: '📋', roles: ['admin', 'sponsor', 'hospital'] },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: '📈', roles: ['admin', 'sponsor'] },
+  { name: 'Dashboard', href: '/dashboard', icon: 'ðŸ“Š', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
+  { name: 'Users', href: '/dashboard/users', icon: 'ðŸ‘¥', roles: ['admin'] },
+  { name: 'Hospitals', href: '/dashboard/hospitals', icon: 'ðŸ¥', roles: ['admin', 'sponsor'] },
+  { name: 'Ambulances', href: '/dashboard/ambulances', icon: 'ðŸš‘', roles: ['admin', 'sponsor', 'provider'] },
+  { name: 'Emergency', href: '/dashboard/emergency', icon: 'ðŸš¨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
+  { name: 'Visits', href: '/dashboard/visits', icon: 'ðŸ“‹', roles: ['admin', 'sponsor', 'hospital'] },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: 'ðŸ“ˆ', roles: ['admin', 'sponsor'] },
 ]
 
 export function Sidebar() {
@@ -827,7 +833,7 @@ export function Sidebar() {
 }
 ```
 
-## 🧪 Testing Setup
+## ðŸ§ª Testing Setup
 
 ### Test Configuration
 ```typescript
@@ -885,7 +891,7 @@ describe('Sidebar', () => {
 })
 ```
 
-## 🚀 Deployment
+## ðŸš€ Deployment
 
 ### Docker Configuration
 ```dockerfile

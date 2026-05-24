@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# EXP-5 Choose Care Modal — Explore Section
+# EXP-5 Choose Care Modal â€” Explore Section
 
 Status: Complete
 Owner: UI / UX
@@ -18,13 +24,13 @@ Add an "Explore Nearby Care" section with category chips to `MapCareHistoryModal
 
 ## Reference Files
 
-- `constants/providerTypes.js` — `EXPLORE_CATEGORIES`, `EXPLORE_CATEGORY_META`
+- `constants/providerTypes.js` â€” `EXPLORE_CATEGORIES`, `EXPLORE_CATEGORY_META`
 - `components/map/surfaces/MapModalShell.jsx`
 
 ## Guardrails
 
 - Emergency blade section must not change appearance or behavior.
-- Category chips call `onExploreCare(providerType)` — no state ownership inside this component.
+- Category chips call `onExploreCare(providerType)` â€” no state ownership inside this component.
 - Do not add query hooks or data fetching here.
 - `paddingBottom` on content: 32px minimum.
 
@@ -49,7 +55,7 @@ MapModalShell
 
 ## Props
 
-- `onExploreCare(providerType)` — called when a chip is tapped
+- `onExploreCare(providerType)` â€” called when a chip is tapped
 
 ## Acceptance
 

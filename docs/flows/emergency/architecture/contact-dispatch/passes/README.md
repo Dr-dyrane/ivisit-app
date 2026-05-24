@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-14
+---
+
 # Contact Dispatch Passes
 
 This folder breaks Contact Dispatch into small implementation passes that can be updated independently.

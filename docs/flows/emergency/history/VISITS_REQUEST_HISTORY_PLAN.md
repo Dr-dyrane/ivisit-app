@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-30
+---
+
 # Visits / Request History Plan
 
 > Status: Active supporting contract for Pass 12

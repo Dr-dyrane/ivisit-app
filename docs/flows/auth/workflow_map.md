@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-29
+---
+
 # Auth Workflow Map
 
 This map shows the runtime path for login, OTP, registration, and the deprecated profile-setup fallback route.

@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-23
+---
+
 # Map Mini Profile Handoff (v1)
 
 > Status: Locked design handoff for next implementation pass

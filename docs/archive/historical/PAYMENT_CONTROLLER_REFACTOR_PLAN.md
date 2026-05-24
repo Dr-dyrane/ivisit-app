@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-28
+---
+
 # Payment Controller Refactor Plan
 
 **Target:** `useMapCommitPaymentController.js` (867 lines -> <400 lines)

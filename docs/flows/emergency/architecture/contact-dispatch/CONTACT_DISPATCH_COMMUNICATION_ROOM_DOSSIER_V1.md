@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-15
+---
+
 # Contact Dispatch Communication Room Dossier V1
 
 Status: Implemented, final runtime verification pending

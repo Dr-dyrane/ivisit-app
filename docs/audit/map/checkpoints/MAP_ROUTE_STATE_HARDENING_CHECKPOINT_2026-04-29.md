@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -80,7 +86,7 @@ After this pass:
 - repeated same-route mounts can reuse one canonical snapshot
 - simultaneous same-route fetches can dedupe on one query key
 - fallback routes are cached briefly instead of immediately re-fanning into repeat retries
-- route state is now much closer to the project’s five-layer direction than the previous hook-local model
+- route state is now much closer to the projectâ€™s five-layer direction than the previous hook-local model
 
 ## Verification Performed
 

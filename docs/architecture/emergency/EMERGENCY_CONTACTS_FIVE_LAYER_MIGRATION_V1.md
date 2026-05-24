@@ -1,6 +1,12 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Emergency Contacts Five-Layer Migration V1
 
-> **Reconciliation Note — 2026-05-24:** All five layers are present in code and verified:
+> **Reconciliation Note â€” 2026-05-24:** All five layers are present in code and verified:
 >
 > - **L1 Supabase:** `public.emergency_contacts` table + RPCs (see `supabase/`)
 > - **L2 TanStack Query:** keyed by `["emergencyContacts", userId]` (see `hooks/emergency/`)
@@ -8,10 +14,10 @@
 > - **L4 XState:** `machines/emergencyContactsMachine.js`
 > - **L5 Jotai:** `atoms/emergencyContactsAtoms.js`
 >
-> This is the canonical **five-layer reference implementation** for future domain migrations. The phone-first canonical model is enforced; no `email` field exists. Active contract — keep current.
+> This is the canonical **five-layer reference implementation** for future domain migrations. The phone-first canonical model is enforced; no `email` field exists. Active contract â€” keep current.
 
 Status: Active implementation contract (verified 2026-05-24)
-Documented: 2026-04-29 — Reconciled: 2026-05-24
+Documented: 2026-04-29 â€” Reconciled: 2026-05-24
 Scope: `EmergencyContacts` domain in `ivisit-app`
 
 ## Purpose

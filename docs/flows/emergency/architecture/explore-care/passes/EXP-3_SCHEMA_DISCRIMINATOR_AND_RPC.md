@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# EXP-3 Schema — Discriminator Columns + nearby_providers RPC
+# EXP-3 Schema â€” Discriminator Columns + nearby_providers RPC
 
 Status: Complete
 Owner: Backend
@@ -14,8 +20,8 @@ Add `provider_type` and `emergency_eligible` discriminator columns to the `hospi
 
 ## Files
 
-- `supabase/migrations/20260219000200_org_structure.sql` — discriminator columns
-- `supabase/migrations/20260219010000_core_rpcs.sql` — `nearby_providers` RPC
+- `supabase/migrations/20260219000200_org_structure.sql` â€” discriminator columns
+- `supabase/migrations/20260219010000_core_rpcs.sql` â€” `nearby_providers` RPC
 - `supabase/docs/MODULE_SCHEMA_BIBLE.md`
 - `supabase/docs/SCHEMA_SNAPSHOT.md`
 
@@ -79,4 +85,4 @@ Returns providers within radius matching `provider_type`, ordered by distance. N
 
 - Remove `provider_type` and `emergency_eligible` columns.
 - Remove `nearby_providers` RPC.
-- Emergency path is unaffected — `nearby_hospitals` filter is independent.
+- Emergency path is unaffected â€” `nearby_hospitals` filter is independent.

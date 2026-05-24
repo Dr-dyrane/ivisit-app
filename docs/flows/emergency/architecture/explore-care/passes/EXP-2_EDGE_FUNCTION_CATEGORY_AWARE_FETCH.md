@@ -1,8 +1,14 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# EXP-2 Edge Function — Category-Aware Places Fetch
+# EXP-2 Edge Function â€” Category-Aware Places Fetch
 
 Status: Complete
 Owner: Backend
@@ -18,8 +24,8 @@ Extend the `discover-hospitals` edge function to support category-scoped provide
 
 ## Reference Files
 
-- `services/hospitalsService.js` — client adapter that calls this function
-- `constants/providerTypes.js` — `PROVIDER_TYPES` values sent as `providerType`
+- `services/hospitalsService.js` â€” client adapter that calls this function
+- `constants/providerTypes.js` â€” `PROVIDER_TYPES` values sent as `providerType`
 
 ## Guardrails
 

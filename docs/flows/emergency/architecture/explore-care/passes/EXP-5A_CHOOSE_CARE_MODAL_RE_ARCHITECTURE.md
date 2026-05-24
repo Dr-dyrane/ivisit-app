@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -6,7 +12,7 @@
 
 Status: Complete
 Owner: UI / UX
-Layer impact: presentation only — no state, no query, no schema changes
+Layer impact: presentation only â€” no state, no query, no schema changes
 
 ---
 
@@ -14,11 +20,11 @@ Layer impact: presentation only — no state, no query, no schema changes
 
 Per standing rule: scan for duplication before writing any code.
 
-### Tokens — what already exists, what to reuse
+### Tokens â€” what already exists, what to reuse
 
 | Token | Source | Value |
 |-------|--------|-------|
-| `tokens.strongCardSurface` | `getMapUITokens` → `getMapSheetTokens` | dark: `rgba(255,255,255,0.08)` / light: `rgba(255,255,255,0.72)` |
+| `tokens.strongCardSurface` | `getMapUITokens` â†’ `getMapSheetTokens` | dark: `rgba(255,255,255,0.08)` / light: `rgba(255,255,255,0.72)` |
 | `tokens.mutedCardSurface` | `getMapUITokens` | dark: `rgba(255,255,255,0.06)` / light: `rgba(15,23,42,0.05)` |
 | `tokens.titleColor` | `getMapUITokens` | dark: `#F8FAFC` / light: `#0F172A` |
 | `tokens.mutedText` | `getMapUITokens` | dark: `#94A3B8` / light: `#64748B` |
@@ -30,19 +36,19 @@ Per standing rule: scan for duplication before writing any code.
 
 Rule: **all colors and surfaces must come from `getMapSheetTokens`**. No hardcoded hex surfaces that aren't already in `EXPLORE_CATEGORY_META.markerTint`.
 
-### EXPLORE_CATEGORY_META — already exists
+### EXPLORE_CATEGORY_META â€” already exists
 
 Every category chip needs: `label`, `iconName`, `markerTint`.
 All of this already lives in `constants/providerTypes.js` (`EXPLORE_CATEGORY_META`).
 
 Reuse:
-- `meta.label` → card label
-- `meta.iconName` → MaterialCommunityIcons name
-- `meta.markerTint` → icon tint + card accent tint (at `18` opacity hex / `0.10` alpha)
+- `meta.label` â†’ card label
+- `meta.iconName` â†’ MaterialCommunityIcons name
+- `meta.markerTint` â†’ icon tint + card accent tint (at `18` opacity hex / `0.10` alpha)
 
 **Do not redeclare any color or icon name for categories in the modal file.**
 
-### MapExploreIntentHospitalRail — horizontal rail pattern
+### MapExploreIntentHospitalRail â€” horizontal rail pattern
 
 `MapExploreIntentHospitalRail.jsx` already implements:
 - horizontal `ScrollView` with `decelerationRate="fast"` + `snapToAlignment="start"` + `snapToInterval`
@@ -51,36 +57,36 @@ Reuse:
 
 **Adopt this exact pattern** for `ExploreCategoryCard`. Do not invent a new rail.
 
-### MapExploreIntentHospitalSummaryCard — card anatomy
+### MapExploreIntentHospitalSummaryCard â€” card anatomy
 
 Already defines the canonical card anatomy:
-- `borderRadius: tokens.cardRadius` + `borderCurve: "continuous"` — **mandatory on all cards**
+- `borderRadius: tokens.cardRadius` + `borderCurve: "continuous"` â€” **mandatory on all cards**
 - `SummaryIconTile` with tinted icon
-- eyebrow (11px, 700, 0.8 letterSpacing, uppercase) → `tokens.mutedText`
-- title (bold) → `tokens.titleColor`
-- meta (regular) → `tokens.bodyText`
+- eyebrow (11px, 700, 0.8 letterSpacing, uppercase) â†’ `tokens.mutedText`
+- title (bold) â†’ `tokens.titleColor`
+- meta (regular) â†’ `tokens.bodyText`
 - trailing CTA pill with `tokens.mutedCardSurface`
 - pressed state: `opacity: 0.96, scale: 0.996`
 
 **All explore category cards must follow this exact anatomy.** No alien card patterns.
 
-### Current MapCareHistoryModal — what exists
+### Current MapCareHistoryModal â€” what exists
 
 The current file (`components/map/MapCareHistoryModal.jsx`) already has:
-- `MapModalShell` as shell — correct, keep
-- `CareBlade` component for emergency actions — correct, keep
-- `ExploreCategoryChip` — the current chip (small, inline, wrapped grid)
-- `EXPLORE_CATEGORIES` array (duplicate of `EXPLORE_PROVIDER_TYPES` in `providerTypes.js` — can be removed, use the constant)
-- Section labels using eyebrow pattern — correct, keep
-- Token variables inline (`isDarkMode ? "#F8FAFC" : "#0F172A"`) — **replace with `tokens.*` from `getMapSheetTokens`**
-- `bladeSurface` hardcoded — **replace with `tokens.strongCardSurface`**
-- `viewportMetrics` from `useResponsiveSurfaceMetrics` — correct, keep
+- `MapModalShell` as shell â€” correct, keep
+- `CareBlade` component for emergency actions â€” correct, keep
+- `ExploreCategoryChip` â€” the current chip (small, inline, wrapped grid)
+- `EXPLORE_CATEGORIES` array (duplicate of `EXPLORE_PROVIDER_TYPES` in `providerTypes.js` â€” can be removed, use the constant)
+- Section labels using eyebrow pattern â€” correct, keep
+- Token variables inline (`isDarkMode ? "#F8FAFC" : "#0F172A"`) â€” **replace with `tokens.*` from `getMapSheetTokens`**
+- `bladeSurface` hardcoded â€” **replace with `tokens.strongCardSurface`**
+- `viewportMetrics` from `useResponsiveSurfaceMetrics` â€” correct, keep
 
 ### What needs to change
 
 | Current | Target |
 |---------|--------|
-| `ExploreCategoryChip` — small wrapped grid chip | `ExploreCategoryCard` — tall rail card with eyebrow + title + count + tint accent |
+| `ExploreCategoryChip` â€” small wrapped grid chip | `ExploreCategoryCard` â€” tall rail card with eyebrow + title + count + tint accent |
 | `exploreGrid` flexWrap row | Horizontal `ScrollView` rail (pattern from `MapExploreIntentHospitalRail`) |
 | Inline `isDarkMode ? "#..." : "#..."` color values | `tokens.titleColor`, `tokens.mutedText`, `tokens.bodyText` |
 | `bladeSurface` hardcoded inline | `tokens.strongCardSurface` |
@@ -90,7 +96,7 @@ The current file (`components/map/MapCareHistoryModal.jsx`) already has:
 
 ## Goal
 
-Re-architect the "Explore Nearby Care" section of `MapCareHistoryModal` from a small chip grid into a horizontal premium category card rail — while keeping `MapModalShell`, `CareBlade`, section eyebrows, and all existing token infrastructure.
+Re-architect the "Explore Nearby Care" section of `MapCareHistoryModal` from a small chip grid into a horizontal premium category card rail â€” while keeping `MapModalShell`, `CareBlade`, section eyebrows, and all existing token infrastructure.
 
 **Emergency section does not change.**
 
@@ -104,11 +110,11 @@ Re-architect the "Explore Nearby Care" section of `MapCareHistoryModal` from a s
 - `tokens.strongCardSurface` for card backgrounds
 - `tokens.mutedCardSurface` for secondary surfaces / CTA pills
 - `tokens.titleColor`, `tokens.mutedText`, `tokens.bodyText` for text
-- `meta.markerTint` for icon and accent tint only — no markerTint as a card background
+- `meta.markerTint` for icon and accent tint only â€” no markerTint as a card background
 - Card accent = `markerTint + "18"` (hex alpha) or `markerTint` at `0.10` opacity for icon tile background
 - No gradients on category cards in v1 (LinearGradient reserved for emergency blades which already use it)
-- Pressed state: `opacity: 0.96, transform: scale(0.996)` — same as existing `hospitalCardPressed`
-- `decelerationRate="fast"` + `snapToAlignment="start"` — same as `MapExploreIntentHospitalRail`
+- Pressed state: `opacity: 0.96, transform: scale(0.996)` â€” same as existing `hospitalCardPressed`
+- `decelerationRate="fast"` + `snapToAlignment="start"` â€” same as `MapExploreIntentHospitalRail`
 
 ---
 
@@ -118,15 +124,15 @@ Re-architect the "Explore Nearby Care" section of `MapCareHistoryModal` from a s
 
 Card layout:
 ```
-[icon tile — markerTint tinted circle]
-[eyebrow — category label, mutedText]
-[title — "Nearby" or nearby count if available, titleColor]
-[action pill — "Explore nearby", mutedCardSurface]
+[icon tile â€” markerTint tinted circle]
+[eyebrow â€” category label, mutedText]
+[title â€” "Nearby" or nearby count if available, titleColor]
+[action pill â€” "Explore nearby", mutedCardSurface]
 ```
 
 Dimensions:
-- Width: ~140–160px (fixed, rail-snapped)
-- Height: ~160–180px (aspect ratio ~1.1:1)
+- Width: ~140â€“160px (fixed, rail-snapped)
+- Height: ~160â€“180px (aspect ratio ~1.1:1)
 - Matches the feel of `FeaturedHospitalCard` but without imagery (category icon instead)
 
 ### `ExploreCategoryRail` (inline sub-component)
@@ -148,23 +154,23 @@ Dimensions:
 
 ## Files to Change
 
-- `components/map/MapCareHistoryModal.jsx` — replace `ExploreCategoryChip` + `exploreGrid` with `ExploreCategoryCard` + `ExploreCategoryRail`
+- `components/map/MapCareHistoryModal.jsx` â€” replace `ExploreCategoryChip` + `exploreGrid` with `ExploreCategoryCard` + `ExploreCategoryRail`
 
 ## Files NOT to change
 
-- `constants/providerTypes.js` — already correct
-- `components/map/tokens/mapSheetTokens.js` — already correct
-- `components/map/surfaces/MapModalShell.jsx` — no change
-- `components/map/MapModalOrchestrator.jsx` — no change
-- `screens/MapScreen.jsx` — no change
-- Any query hook, atom, or service — no change
+- `constants/providerTypes.js` â€” already correct
+- `components/map/tokens/mapSheetTokens.js` â€” already correct
+- `components/map/surfaces/MapModalShell.jsx` â€” no change
+- `components/map/MapModalOrchestrator.jsx` â€” no change
+- `screens/MapScreen.jsx` â€” no change
+- Any query hook, atom, or service â€” no change
 
 ---
 
 ## Acceptance
 
-- Category cards use `tokens.strongCardSurface` — no alien colors
-- `markerTint` used only for icon tint + icon tile background alpha — not as card fill
+- Category cards use `tokens.strongCardSurface` â€” no alien colors
+- `markerTint` used only for icon tint + icon tile background alpha â€” not as card fill
 - `borderRadius: tokens.cardRadius` + `borderCurve: "continuous"` on every card
 - Emergency section (CareBlade) visually unchanged
 - Section eyebrow labels unchanged
@@ -181,17 +187,17 @@ Dimensions:
 
 ## Verification
 
-- `getMapSheetTokens` imported; `tokens` derived in component body — no hardcoded hex surface colors.
+- `getMapSheetTokens` imported; `tokens` derived in component body â€” no hardcoded hex surface colors.
 - `tokens.titleColor`, `tokens.mutedText`, `tokens.mutedCardSurface`, `tokens.strongCardSurface` used exclusively.
-- `EXPLORE_PROVIDER_TYPES` from `constants/providerTypes` is the single source of categories — local `EXPLORE_CATEGORIES` array removed.
-- `PROVIDER_TYPES.HOSPITAL` filtered out of rail categories — hospital surfaces in emergency section.
-- `ExploreCategoryCard` uses `tokens.cardRadius` (30) + `borderCurve: "continuous"` — matches existing anatomy.
-- `markerTint` used only for icon tile background at `"18"` hex alpha — not as card fill.
-- `ExploreCategoryRail` uses `decelerationRate="fast"` + `snapToAlignment="start"` + `snapToInterval` — matches `MapExploreIntentHospitalRail`.
+- `EXPLORE_PROVIDER_TYPES` from `constants/providerTypes` is the single source of categories â€” local `EXPLORE_CATEGORIES` array removed.
+- `PROVIDER_TYPES.HOSPITAL` filtered out of rail categories â€” hospital surfaces in emergency section.
+- `ExploreCategoryCard` uses `tokens.cardRadius` (30) + `borderCurve: "continuous"` â€” matches existing anatomy.
+- `markerTint` used only for icon tile background at `"18"` hex alpha â€” not as card fill.
+- `ExploreCategoryRail` uses `decelerationRate="fast"` + `snapToAlignment="start"` + `snapToInterval` â€” matches `MapExploreIntentHospitalRail`.
 - Emergency `CareBlade` section visually unchanged.
-- `bladeSurface` background replaced with `tokens.strongCardSurface` — no alien color.
-- Pressed state: `opacity: 0.96, scale: 0.996` — matches `hospitalCardPressed`.
-- `LinearGradient` import kept (used by `CareBlade` — emergency blades).
+- `bladeSurface` background replaced with `tokens.strongCardSurface` â€” no alien color.
+- Pressed state: `opacity: 0.96, scale: 0.996` â€” matches `hospitalCardPressed`.
+- `LinearGradient` import kept (used by `CareBlade` â€” emergency blades).
 - No state, query, schema, or navigation changes.
 
 ## Rollback Notes

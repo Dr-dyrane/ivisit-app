@@ -1,3 +1,9 @@
+---
+status: living
+owner: patent
+last_updated: 2026-05-24
+---
+
 # Emergency Commit Graph Algorithm Dossier
 
 > Status: invention documentation draft

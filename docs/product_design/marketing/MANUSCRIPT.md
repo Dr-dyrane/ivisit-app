@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-03-20
+---
+
 # Ad Manuscript: "The 5-Minute Frequency"
 
 **Duration**: 60 Seconds

@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-04-18
+---
+
 # Screen Consistency Guide for (stacks) Routes
 
 ## Overview
@@ -178,15 +184,15 @@ const handleScroll = useCallback(
 
 ---
 
-## Screens Already Standardized ✅
+## Screens Already Standardized âœ…
 
 | Screen | Animations | Padding | Cards | Typography |
 |--------|-----------|---------|-------|-----------|
-| SettingsScreen | ✅ | ✅ | ✅ | ✅ |
-| HelpSupportScreen | ✅ | ✅ | ✅ | ✅ |
-| InsuranceScreen | ✅ | ✅ | ✅ | ✅ |
-| MoreScreen | ✅ | ✅ | ✅ | ✅ |
-| ProfileScreen | ✅ | ✅ | ✅ | ✅ |
+| SettingsScreen | âœ… | âœ… | âœ… | âœ… |
+| HelpSupportScreen | âœ… | âœ… | âœ… | âœ… |
+| InsuranceScreen | âœ… | âœ… | âœ… | âœ… |
+| MoreScreen | âœ… | âœ… | âœ… | âœ… |
+| ProfileScreen | âœ… | âœ… | âœ… | âœ… |
 
 ---
 

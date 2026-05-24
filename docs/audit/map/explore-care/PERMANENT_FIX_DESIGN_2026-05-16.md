@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -6,8 +12,8 @@
 
 **Date:** 2026-05-16
 **Updated:** 2026-05-17
-**Status:** ✅ SHIPPED — `providers` table committed (commit `2bd6879`)
-**Goal:** Permanent solution for provider data richness — Option 2 (separate providers table) selected and implemented
+**Status:** âœ… SHIPPED â€” `providers` table committed (commit `2bd6879`)
+**Goal:** Permanent solution for provider data richness â€” Option 2 (separate providers table) selected and implemented
 
 ---
 
@@ -43,7 +49,7 @@
 - `bed_availability JSONB`, `ambulance_availability JSONB`
 
 ### UI Notes
-- Hospital-specific fields (`available_beds`, `ambulances_count`, `emergency_level`) remain in `hospitals` table — UI must conditionally hide these for non-hospital provider types
+- Hospital-specific fields (`available_beds`, `ambulances_count`, `emergency_level`) remain in `hospitals` table â€” UI must conditionally hide these for non-hospital provider types
 - Mapbox only has specific category endpoints for `hospital` and `pharmacy`; others use keyword search (acceptable)
 
 ---

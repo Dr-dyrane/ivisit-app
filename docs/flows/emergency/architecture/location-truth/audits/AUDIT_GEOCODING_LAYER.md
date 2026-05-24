@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -5,14 +11,14 @@
 # Audit Round 2: Manual Address Geocoding Flow
 
 **Date:** 2026-05-15  
-**Scope:** Trace from text input → geocode → coordinates → pickup  
+**Scope:** Trace from text input â†’ geocode â†’ coordinates â†’ pickup  
 **Status:** COMPLETE
 
 ---
 
 ## Executive Summary
 
-The manual address geocoding flow has a robust fallback mechanism (Mapbox → OpenStreetMap) and relevance scoring. However, the geocoded coordinates are NOT validated before becoming pickup, and there's no explicit "isGeocoded" flag on the pickup object.
+The manual address geocoding flow has a robust fallback mechanism (Mapbox â†’ OpenStreetMap) and relevance scoring. However, the geocoded coordinates are NOT validated before becoming pickup, and there's no explicit "isGeocoded" flag on the pickup object.
 
 **Critical Issue:** Text-only manual locations can bypass geocoding in some code paths, leading to provider discovery with invalid coordinates.
 
@@ -20,51 +26,51 @@ The manual address geocoding flow has a robust fallback mechanism (Mapbox → Op
 
 ## Code Path Analysis
 
-### Path: Manual Address Entry → Geocode → Candidate → Pickup
+### Path: Manual Address Entry â†’ Geocode â†’ Candidate â†’ Pickup
 
 ```
 User enters address in LocationSheet
-    ↓
+    â†“
 useManualEntryHandlers.handleManualConfirm()
-    ↓
+    â†“
 addressAssistService.resolveManualDraft(address, { proximity, countryCode })
-    ↓
+    â†“
 mapboxService.geocodeAddress(address, { proximity, countryCode })
-    ↓
+    â†“
 If Mapbox fails: mapboxService.geocodeAddressWithOpenStreetMap(address)
-    ↓
+    â†“
 Returns: { latitude, longitude, formattedAddress, relevance, countryCode, source }
-    ↓
+    â†“
 If relevance < 0.4: weak result
-    ↓
+    â†“
 If geocode fails: try fallback address (city + adminArea + country)
-    ↓
+    â†“
 If still fails: show error "We couldn't place the pin yet"
-    ↓
+    â†“
 If succeeds: buildSelectedLocation({ source: "manual", coords, ... })
-    ↓
+    â†“
 useAddressCandidateController.buildCandidate()
-    ↓
+    â†“
 normalizeAddressCandidate({ ... })
-    ↓
+    â†“
 setActiveCandidate(normalized) - sets in Jotai atom (locationCandidateAtom)
-    ↓
+    â†“
 User confirms selection
-    ↓
+    â†“
 commitLocation(selectedLocation)
-    ↓
+    â†“
 mapCandidateToPickupPayload(selectedLocation)
-    ↓
+    â†“
 onSelectLocation(pickupPayload) - passed through MapSheetOrchestrator
-    ↓
+    â†“
 handleSearchLocation(nextLocation) in useMapLocation.js
-    ↓
+    â†“
 setManualLocation({ location, source: "session_manual" })
-    ↓
+    â†“
 mapExploreFlow store (reducer action SET_MANUAL_LOCATION)
-    ↓
+    â†“
 resolveMapPickupLocationTruth({ manualLocation })
-    ↓
+    â†“
 Returns: { activeLocation, source: "session_manual", ... }
 ```
 

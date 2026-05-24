@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-04-23
+---
+
 # Post-booking UI/UX Checklist (Ambulance + Bed Booking)
 
 ## Context
@@ -6,20 +12,20 @@ This document tracks issues and desired behavior for the post-booking experience
 Primary goals:
 - Bottom sheet snap states must produce distinct, intentional UI.
 - Map must remain stable during the entire post-booking lifecycle.
-- The post-booking experience should match the rest of iVisit’s high-polish UI.
+- The post-booking experience should match the rest of iVisitâ€™s high-polish UI.
 
 ## Core UX requirements
 
 ### Bottom sheet snapping (must be consistent)
 - **Collapsed (snap index 0)**
   - Show the best minimal summary for the active state.
-  - Ambulance: “Waiting / En route” + ETA + key identifier.
-  - Bed booking: “Reserved / Waiting” + ETA + key identifier.
+  - Ambulance: â€œWaiting / En routeâ€ + ETA + key identifier.
+  - Bed booking: â€œReserved / Waitingâ€ + ETA + key identifier.
   - Should feel like an Uber-style mini card.
   - Must not hide critical trip status.
 
-- **Half (snap index 1) — default**
-  - Should show a clean summary that’s immediately useful.
+- **Half (snap index 1) â€” default**
+  - Should show a clean summary thatâ€™s immediately useful.
   - This is the default state after completing the request.
   - Must be visually aligned with the rest of the app.
 
@@ -44,7 +50,7 @@ Primary goals:
 ## Current issues observed
 
 ### Visual quality / UI polish
-- **Post-booking UI looks “ugly” compared to the rest of the app UI**
+- **Post-booking UI looks â€œuglyâ€ compared to the rest of the app UI**
   - Summary cards feel visually inconsistent with iVisit theme.
 
 - **Trip card full state not using full screen**
@@ -68,10 +74,10 @@ Primary goals:
 
 ---
 
-## ✅ SOLVED: Snap Index Out of Range Error
+## âœ… SOLVED: Snap Index Out of Range Error
 
 **Date Solved:** 2026-02-01
-**Status:** FIXED ✅
+**Status:** FIXED âœ…
 
 ### The Problem
 
@@ -173,10 +179,10 @@ const derivedIndex = useMemo(() => {
 
 ### Testing Verification
 
-- ✅ Selecting a hospital (standard → detail mode) no longer crashes
-- ✅ Pressing Call 911 and transitioning modes works correctly
-- ✅ Completing/canceling trips returns to appropriate snap state
-- ✅ Rapid mode switching does not cause index errors
+- âœ… Selecting a hospital (standard â†’ detail mode) no longer crashes
+- âœ… Pressing Call 911 and transitioning modes works correctly
+- âœ… Completing/canceling trips returns to appropriate snap state
+- âœ… Rapid mode switching does not cause index errors
 
 ## Desired high-level flow
 
@@ -204,14 +210,14 @@ const derivedIndex = useMemo(() => {
 
 ## Notes / constraints
 - Live app connected to Supabase.
-- Hospitals originate from Supabase, and there is logic to "localize"/shift hospital coordinates near the user for a “5 nearby hospitals” effect.
+- Hospitals originate from Supabase, and there is logic to "localize"/shift hospital coordinates near the user for a â€œ5 nearby hospitalsâ€ effect.
 - iOS on Expo is the primary platform for this work.
 
 ---
 
 ## Competitive Latency UX Targets
 
-- Camera actions should settle within 300–450ms with no visible jitter.
+- Camera actions should settle within 300â€“450ms with no visible jitter.
 - Sheet snap transitions must not trigger more than one camera re-fit per user action.
 - Route/ETA updates coalesced; avoid re-rendering polyline for minor coordinate jitter.
 - Marker animation runs smoothly at 60fps; clamp updates under unstable network.
@@ -236,7 +242,7 @@ const derivedIndex = useMemo(() => {
 
 ## Expanded QA Checklist
 
-- Rapid snap changes (collapsed ↔ half ↔ full) under active route should not cause multiple camera jumps.
+- Rapid snap changes (collapsed â†” half â†” full) under active route should not cause multiple camera jumps.
 - User pans during scheduled camera action should cancel or defer programmatic moves.
 - Switching modes with an active visit preserves route unless capacity changes.
 - Realtime responder updates do not stutter marker; frame pacing remains stable.

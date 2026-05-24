@@ -1,8 +1,14 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
+> **HISTORICAL NOTICE â€” 2026-05-19**
 > This is a completed audit from 2026-04-24. The issues it identified have been addressed in subsequent passes.
 > Retained for historical context only.
 > **Current reference:** [`docs/audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md`](../map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md)
@@ -216,34 +222,34 @@ useEffect(() => {
 
 ```
 Zustand Store (emergencyTripStore.js)
-├── activeAmbulanceTrip     -> mutated by sync, start/stop
-├── activeBedBooking        -> mutated by sync, start/stop
-├── pendingApproval         -> mutated by sync
-├── commitFlow              -> mutated by commit flow
-├── eventGates              -> mutated by realtime events
-├── isSyncing               -> sync status
-├── lastSyncAt              -> sync timestamp
-└── hydrated                -> storage hydration status (Pass 6)
+â”œâ”€â”€ activeAmbulanceTrip     -> mutated by sync, start/stop
+â”œâ”€â”€ activeBedBooking        -> mutated by sync, start/stop
+â”œâ”€â”€ pendingApproval         -> mutated by sync
+â”œâ”€â”€ commitFlow              -> mutated by commit flow
+â”œâ”€â”€ eventGates              -> mutated by realtime events
+â”œâ”€â”€ isSyncing               -> sync status
+â”œâ”€â”€ lastSyncAt              -> sync timestamp
+â””â”€â”€ hydrated                -> storage hydration status (Pass 6)
 
 EmergencyContextAdapter
-├── Reads from store via useEmergencyTripRuntime()
-├── Adds: syncActiveTripsFromServer (from useEmergencySyncEngine)
-├── Adds: lifecycle handlers (from useEmergencyLifecycle)
-├── Adds: provider proxies (from useEmergencyProviders)
-└── Exposes all via EmergencyContext
+â”œâ”€â”€ Reads from store via useEmergencyTripRuntime()
+â”œâ”€â”€ Adds: syncActiveTripsFromServer (from useEmergencySyncEngine)
+â”œâ”€â”€ Adds: lifecycle handlers (from useEmergencyLifecycle)
+â”œâ”€â”€ Adds: provider proxies (from useEmergencyProviders)
+â””â”€â”€ Exposes all via EmergencyContext
 
 useMapExploreFlow (MapScreen)
-├── Reads activeAmbulanceTrip from EmergencyContext
-├── Computes: activeMapRequest (via buildActiveMapRequestModel)
-├── Derives: trackingRequestKey = activeMapRequest.requestId
-├── Effect: watches trackingRequestKey -> opens tracking sheet
-└── Manages: sheetPhase, sheetView, snapPoints
+â”œâ”€â”€ Reads activeAmbulanceTrip from EmergencyContext
+â”œâ”€â”€ Computes: activeMapRequest (via buildActiveMapRequestModel)
+â”œâ”€â”€ Derives: trackingRequestKey = activeMapRequest.requestId
+â”œâ”€â”€ Effect: watches trackingRequestKey -> opens tracking sheet
+â””â”€â”€ Manages: sheetPhase, sheetView, snapPoints
 
 EmergencyScreen
-├── Reads activeAmbulanceTrip from EmergencyContext
-├── Calls: onCompleteAmbulanceTrip() from useEmergencyHandlers
-├── Manages: ratingState (local useState)
-└── Shows: RatingModal when ratingState.visible
+â”œâ”€â”€ Reads activeAmbulanceTrip from EmergencyContext
+â”œâ”€â”€ Calls: onCompleteAmbulanceTrip() from useEmergencyHandlers
+â”œâ”€â”€ Manages: ratingState (local useState)
+â””â”€â”€ Shows: RatingModal when ratingState.visible
 ```
 
 ---

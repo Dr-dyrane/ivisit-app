@@ -1,9 +1,15 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
-> This refactor is **complete**. 42 files changed, -6,990 lines net. MapScreen reduced 1,153 → 535 lines.
+> **HISTORICAL NOTICE â€” 2026-05-19**
+> This refactor is **complete**. 42 files changed, -6,990 lines net. MapScreen reduced 1,153 â†’ 535 lines.
 > Retained for historical context. See checkpoint for final state.
 > **Completion record:** [`docs/audit/checkpoints/FINAL_MIGRATION_SUMMARY.md`](../checkpoints/FINAL_MIGRATION_SUMMARY.md)
 

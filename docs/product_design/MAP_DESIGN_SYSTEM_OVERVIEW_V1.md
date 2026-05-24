@@ -1,3 +1,9 @@
+---
+status: living
+owner: design
+last_updated: 2026-05-24
+---
+
 # Map Design System Overview (v1)
 
 > Status: Active contributor reference
@@ -47,7 +53,7 @@ Use this reading order before changing `/map` UI, sheet behavior, or the active 
 
 ## Recommended modularization target for `MapSheetShell`
 
-Yes — `MapSheetShell` can and should be modularized into a reusable surface family.
+Yes â€” `MapSheetShell` can and should be modularized into a reusable surface family.
 
 Recommended split:
 

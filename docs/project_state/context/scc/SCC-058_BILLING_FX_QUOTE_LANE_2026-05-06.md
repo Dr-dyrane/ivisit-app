@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -92,4 +98,4 @@ The app consumes quote snapshots; it does not perform ad hoc conversion math acr
 - `shipped` (updated 2026-05-24 reconciliation)
 - All cited owners verified in code: `services/billingQuoteService.js`, `services/preferencesService.js`, `stores/billingQuoteStore.js`, `machines/billingQuoteMachine.js`, `supabase/migrations/20260219000400_finance.sql`, edge functions `billing-quote/` + `refresh-exchange-rates/`
 - Runtime adoption verified per `docs/audit/payment/BILLING_CURRENCY_AND_FX_AUDIT_2026-05-06.md` runtime checkpoint
-- See `docs/audit/VERIFICATION_LOG_2026-05-24.md` § SCC for evidence
+- See `docs/audit/VERIFICATION_LOG_2026-05-24.md` Â§ SCC for evidence

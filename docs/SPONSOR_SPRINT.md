@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Sponsor Sprint
 
 > Status: Active

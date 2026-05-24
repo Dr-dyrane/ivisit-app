@@ -1,6 +1,12 @@
+---
+status: living
+owner: design
+last_updated: 2026-01-13
+---
+
 # iVisit UI / UX Design System (The Bible)
 
-**Version 1.3 — The Unity Release**
+**Version 1.3 â€” The Unity Release**
 
 ---
 
@@ -56,7 +62,7 @@ Depth is **suggested**, not asserted.
 
 Colors are **semantic**, not decorative.
 
-### 3.1 Primary Color — Authority & Action
+### 3.1 Primary Color â€” Authority & Action
 
 `primary.DEFAULT = #86100E`
 
@@ -74,7 +80,7 @@ Used only for:
 
 Primary = *decision*.
 
-### 3.2 Backgrounds — Emotional Neutrality
+### 3.2 Backgrounds â€” Emotional Neutrality
 
 * Light: `#fafafa`
 * Dark: `#0D121D`
@@ -100,14 +106,14 @@ Applies globally: buttons, tabs, toggles, sliders.
 
 ### 4.1 Font
 
-* Inter (Variable) — clarity, neutrality, medical familiarity
+* Inter (Variable) â€” clarity, neutrality, medical familiarity
 
 ### 4.2 Typographic Roles
 
 **Action Text (Buttons, CTAs)**
 
 * Font weight: **900**
-* Letter spacing: 1.5–2
+* Letter spacing: 1.5â€“2
 * Purpose: Confidence & finality
 
 Only actions speak loudly.
@@ -137,7 +143,7 @@ If motion cannot be explained in one sentence, it should not exist.
 
 ### 5.2 Timing & Easing
 
-* Standard duration: 400–500ms
+* Standard duration: 400â€“500ms
 * Easing: `cubic-bezier(0.16, 1, 0.3, 1)`
 * Springs: soft, low tension
 
@@ -307,7 +313,7 @@ To build a "delicate" flow that feels more like a **Digital Medical Vault** than
 
 Instead of a list, treat sensitive data (Insurance, ID, Cards) like physical objects in a high-end wallet.
 
-*   **Touch to Reveal:** Sensitive numbers are masked by default (e.g., `•••• 1234`). Only reveal the full number on a deliberate interaction.
+*   **Touch to Reveal:** Sensitive numbers are masked by default (e.g., `â€¢â€¢â€¢â€¢ 1234`). Only reveal the full number on a deliberate interaction.
 *   **The Glow:** Use a bioluminescent shadow (`shadowColor: COLORS.brandPrimary`) specifically when a card is interacted with or "active".
 *   **Monospace Stability:** When unmasking numbers, use a Monospace font (Courier/Menlo) to prevent layout shifts/jitter.
 
@@ -376,8 +382,8 @@ Specifics: The selection checkmark must be positioned at `bottom: -4, right: -4`
 ### Technical Secrets for "Smoothness":
 
 *   **Letter Spacing:** `letterSpacing: -0.5` on titles. High-end UI (like Apple's) always tightens the kerning on large titles to make them look more "editorial."
-*   **Scale Feedback:** Every Pressable uses `transform: [{ scale: 0.98 }]`. This micro-interaction makes the glass card feel like it’s physically being pressed into the screen.
-*   **Pill Contrast:** The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depth—layers within layers.
+*   **Scale Feedback:** Every Pressable uses `transform: [{ scale: 0.98 }]`. This micro-interaction makes the glass card feel like itâ€™s physically being pressed into the screen.
+*   **Pill Contrast:** The metadata "Pills" use a slightly different background than the card itself (usually a solid white or a slightly darker slate). This creates internal depthâ€”layers within layers.
 *   **Shadow Coloring:** Notice that for the selected state, I used `shadowColor: COLORS.brandPrimary`. Most designers use black shadows for everything. Using a colored shadow makes the card look like it is glowing/emitting light, which is a hallmark of premium "Glass" design.
 
 ---

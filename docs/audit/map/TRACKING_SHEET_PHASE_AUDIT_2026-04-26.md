@@ -1,12 +1,18 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-# Tracking Sheet Phase Audit — 2026-04-26
+# Tracking Sheet Phase Audit â€” 2026-04-26
 
 **Scope**: Tracking sheet UI/UX + ongoing-request flow + rating display + visit-details resume
-**Status**: AUDIT — no code changes proposed yet
-**Architecture**: 5-layer state (Realtime → Query → Zustand → XState → Jotai)
+**Status**: AUDIT â€” no code changes proposed yet
+**Architecture**: 5-layer state (Realtime â†’ Query â†’ Zustand â†’ XState â†’ Jotai)
 
 ---
 
@@ -15,20 +21,20 @@
 ### 5 Layers In Place
 | Layer | File | Owns | Status |
 |---|---|---|---|
-| Realtime | Supabase subscriptions | Server truth | ✅ |
-| Query cache | TanStack Query (`useActiveTripQuery`) | Server sync, refetch | ✅ |
-| Persistent state | Zustand `emergencyTripStore` | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval` | ✅ persists |
-| Trip lifecycle | XState `tripLifecycleMachine` + `useTripLifecycle` | `isIdle`, `isPendingApproval`, `isActive`, `isArrived`, `isCompleting`, `isCompleted`, `isRatingPending`, `hasActiveTrip` | ✅ exists |
-| UI state | Jotai atoms (`mapScreenAtoms`) | sheet phase, snap state, rating modal, visualization | ✅ exists, partially wired |
+| Realtime | Supabase subscriptions | Server truth | âœ… |
+| Query cache | TanStack Query (`useActiveTripQuery`) | Server sync, refetch | âœ… |
+| Persistent state | Zustand `emergencyTripStore` | `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval` | âœ… persists |
+| Trip lifecycle | XState `tripLifecycleMachine` + `useTripLifecycle` | `isIdle`, `isPendingApproval`, `isActive`, `isArrived`, `isCompleting`, `isCompleted`, `isRatingPending`, `hasActiveTrip` | âœ… exists |
+| UI state | Jotai atoms (`mapScreenAtoms`) | sheet phase, snap state, rating modal, visualization | âœ… exists, partially wired |
 
 ### Key files
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\map\exploreFlow\useMapTracking.js:1-138` — auto-open effect, `openTracking`/`closeTracking`
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\map\exploreFlow\useMapExploreFlow.js:270-353` — composes tracking + commit flow
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\emergency\useTripLifecycle.js:1-165` — XState adapter
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\machines\tripLifecycleMachine.js:1-349` — lifecycle states
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\components\map\views\tracking\MapTrackingStageBase.jsx:33-592` — sheet body
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\components\map\views\tracking\useMapTrackingController.js:1-548` — actions + rating
-- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\screens\MapScreen.jsx:365-405` — visit-details resume, sheet phase consumers
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\map\exploreFlow\useMapTracking.js:1-138` â€” auto-open effect, `openTracking`/`closeTracking`
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\map\exploreFlow\useMapExploreFlow.js:270-353` â€” composes tracking + commit flow
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\emergency\useTripLifecycle.js:1-165` â€” XState adapter
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\machines\tripLifecycleMachine.js:1-349` â€” lifecycle states
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\components\map\views\tracking\MapTrackingStageBase.jsx:33-592` â€” sheet body
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\components\map\views\tracking\useMapTrackingController.js:1-548` â€” actions + rating
+- `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\screens\MapScreen.jsx:365-405` â€” visit-details resume, sheet phase consumers
 
 ---
 
@@ -36,56 +42,56 @@
 
 ### 2.1 Explore-intent does not auto-render tracking on mount with ongoing request
 
-**Symptom**: User has active trip → app cold start lands on `MAP_SHEET_PHASES.EXPLORE_INTENT` → tracking sheet never opens until user takes action.
+**Symptom**: User has active trip â†’ app cold start lands on `MAP_SHEET_PHASES.EXPLORE_INTENT` â†’ tracking sheet never opens until user takes action.
 
 **Root cause** (`useMapTracking.js:93-130`):
 1. Effect depends on `trackingRequestKey` + `sheetPhase`
-2. `trackingRequestKey` is `activeMapRequest.requestId` — derived from Zustand store
+2. `trackingRequestKey` is `activeMapRequest.requestId` â€” derived from Zustand store
 3. Zustand hydration is async (via `database.read` in `RootRuntimeGate`)
-4. On first paint: `trackingRequestKey === null` → effect runs but skips
-5. On hydration complete: store updates → re-render → effect fires
-6. **BUT**: `trackingDismissedRef.current` is `false` AND `sheetPhase === EXPLORE_INTENT` → should open
+4. On first paint: `trackingRequestKey === null` â†’ effect runs but skips
+5. On hydration complete: store updates â†’ re-render â†’ effect fires
+6. **BUT**: `trackingDismissedRef.current` is `false` AND `sheetPhase === EXPLORE_INTENT` â†’ should open
 
 **Likely actual cause**: `prevSheetPhaseRef.current === EXPLORE_INTENT` is initial value, but after hydration the sheet may have transitioned through other phases. Need to verify with logs.
 
 **Secondary issue**: No XState `hasActiveTrip` listener at MapScreen level. If we were to use the lifecycle flag instead of `trackingRequestKey`, the gate would be cleaner: `if (hasActiveTrip && sheetPhase === EXPLORE_INTENT && !dismissed) openTracking()`.
 
-### 2.2 Payment → tracking transition relies on single signal
+### 2.2 Payment â†’ tracking transition relies on single signal
 
 **Symptom**: After payment success, sometimes tracking does not open.
 
 **Root cause**: `useMapCommitFlow.finishCommitPayment` calls `openTracking()` directly. If Zustand store hasn't yet absorbed the trip data (TanStack invalidate may not have completed), the `openTracking` resolves the wrong hospital or no-ops in downstream guards.
 
-**User's proposed fix** (correct): "double-run" — call `openTracking` after payment, AND also have a sheet-phase listener that opens tracking whenever `hasActiveTrip` becomes true and we are on EXPLORE_INTENT.
+**User's proposed fix** (correct): "double-run" â€” call `openTracking` after payment, AND also have a sheet-phase listener that opens tracking whenever `hasActiveTrip` becomes true and we are on EXPLORE_INTENT.
 
 ### 2.3 Visit-details resume tracking broken
 
 **Symptom**: `handleHistoryItemSelect` (`MapScreen.jsx:365-395`) calls `openTracking?.()` for live items, but tracking does not open.
 
-**Root cause**: `openTracking` in `useMapTracking.js:56-86` reads from `activeMapRequest.hospital`/`hospitalId`. If the user is selecting a historical item that does not match the currently-active trip in the store (e.g. the user opened visit details for an old trip), `activeMapRequest.requestId` is null → `setSheetView(buildTrackingSheetView(...))` runs, but `useMapTracking`'s effect at `:93-130` sees `!trackingRequestKey` and immediately reverts to EXPLORE_INTENT (`:101-105`).
+**Root cause**: `openTracking` in `useMapTracking.js:56-86` reads from `activeMapRequest.hospital`/`hospitalId`. If the user is selecting a historical item that does not match the currently-active trip in the store (e.g. the user opened visit details for an old trip), `activeMapRequest.requestId` is null â†’ `setSheetView(buildTrackingSheetView(...))` runs, but `useMapTracking`'s effect at `:93-130` sees `!trackingRequestKey` and immediately reverts to EXPLORE_INTENT (`:101-105`).
 
 **Fix path**: separate "resume from history" intent from "auto-open from active trip". History resume should hydrate the active trip into Zustand first (if it matches a live request), then trigger `openTracking`. If the visit is no longer live, history resume should open the visit detail sheet, not tracking.
 
 ### 2.4 Rating display fails outside tracking phase
 
-**Symptom**: Trip completes → rating modal not shown.
+**Symptom**: Trip completes â†’ rating modal not shown.
 
 **Root cause**: `<ServiceRatingModal />` is rendered inside `MapTrackingStageBase` (`MapTrackingStageBase.jsx:577-589`). `MapTrackingStageBase` only mounts when `sheetPhase === TRACKING`. When completion happens:
-- If sheetPhase transitions away from TRACKING before the rating modal opens → modal unmounts immediately
-- If user is not on the map at all (e.g. navigated to history) → modal never mounts
+- If sheetPhase transitions away from TRACKING before the rating modal opens â†’ modal unmounts immediately
+- If user is not on the map at all (e.g. navigated to history) â†’ modal never mounts
 
 **Current partial fix attempt**: I made `trackingRatingStateAtom` persist (Phase 8). State survives, but the modal **renderer** is still gated on TRACKING phase.
 
-**Real fix**: Lift the rating modal renderer to a level that survives sheet phase transitions — either `MapScreen` root, or even higher (a global rating overlay). Keep the state in Jotai (already done), drive visibility from `isRatingPending` (XState) + `trackingRatingStateAtom`.
+**Real fix**: Lift the rating modal renderer to a level that survives sheet phase transitions â€” either `MapScreen` root, or even higher (a global rating overlay). Keep the state in Jotai (already done), drive visibility from `isRatingPending` (XState) + `trackingRatingStateAtom`.
 
 ### 2.X Hero card progress vs ambulance marker animation drift (noted, low priority)
 
-**Symptom**: Hero card progress fill and the ambulance marker on the map are not pixel-coherent — they may show slightly different positions for the same instant.
+**Symptom**: Hero card progress fill and the ambulance marker on the map are not pixel-coherent â€” they may show slightly different positions for the same instant.
 
 **Root cause**:
 - Hero card consumes `ambulanceTripProgress` (computed by `useTripProgress`) as a declarative width.
 - Ambulance marker uses `useAmbulanceAnimation` which runs its own internal interpolation timer driven by `ambulanceTripEtaSeconds` + route coordinates.
-- Both derive from the same upstream ETA + route, but compute progress independently → small drift accumulates.
+- Both derive from the same upstream ETA + route, but compute progress independently â†’ small drift accumulates.
 
 **Defer to Pass G** (HIG polish). Not a correctness defect; only a visual coherence concern.
 
@@ -96,9 +102,9 @@
 ### 2.5 Five-layer state not consistently applied to tracking
 
 **Observation**: Tracking sheet today reads:
-- Trip data: `activeMapRequest.raw.*` (props from `useMapExploreFlow`) — Zustand-backed ✅
-- Lifecycle flags: `useEmergency().isArrived` — XState-backed ✅
-- UI state: local `useState` + animated refs — partially Jotai ⚠️
+- Trip data: `activeMapRequest.raw.*` (props from `useMapExploreFlow`) â€” Zustand-backed âœ…
+- Lifecycle flags: `useEmergency().isArrived` â€” XState-backed âœ…
+- UI state: local `useState` + animated refs â€” partially Jotai âš ï¸
 
 The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rely on `trackingRequestKey` (raw Zustand). This works most of the time but bypasses the lifecycle machine, defeating the point of having it.
 
@@ -108,7 +114,7 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 > **Rule**: Complete + verify each pass before starting next. No batching.
 
-### Pass A — Diagnostic logging (read-only, lowest risk)
+### Pass A â€” Diagnostic logging (read-only, lowest risk)
 **Goal**: Confirm hypothesised root causes before changing logic.
 
 **Actions**:
@@ -124,20 +130,20 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 ---
 
-### Pass B — Lift rating modal out of tracking sheet
+### Pass B â€” Lift rating modal out of tracking sheet
 **Goal**: Rating display works regardless of sheet phase.
 
 **Actions**:
 1. Move `<ServiceRatingModal />` from `MapTrackingStageBase` to `MapScreen` (or `MapSheetOrchestrator`).
 2. Drive visibility from `trackingRatingStateAtom.visible` (already persisted).
-3. `useMapTrackingController` keeps owning `closeRating`/`skipRating`/`submitRating` — but these are imported into `MapScreen` via a thin hook `useTrackingRatingModal()`.
+3. `useMapTrackingController` keeps owning `closeRating`/`skipRating`/`submitRating` â€” but these are imported into `MapScreen` via a thin hook `useTrackingRatingModal()`.
 4. Reset rating state to defaults inside `submitRating`/`skipRating` (already done in controller).
 
-**Acceptance**: Trip completes → rating modal shows even if user navigated away from tracking sheet.
+**Acceptance**: Trip completes â†’ rating modal shows even if user navigated away from tracking sheet.
 
 ---
 
-### Pass C — Use XState `hasActiveTrip` to gate auto-open
+### Pass C â€” Use XState `hasActiveTrip` to gate auto-open
 **Goal**: Replace ad-hoc `trackingRequestKey` truthy check with lifecycle flag.
 
 **Actions**:
@@ -153,19 +159,19 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 ---
 
-### Pass D — Sheet-phase listener as fallback for payment → tracking
+### Pass D â€” Sheet-phase listener as fallback for payment â†’ tracking
 **Goal**: "Double-run" so payment success never leaves user stranded.
 
 **Actions**:
 1. After payment, `finishCommitPayment` continues to call `openTracking()` directly (existing).
 2. Pass C's effect now serves as the second runner: if payment-triggered openTracking fails (timing), the next render with `hasActiveTrip === true` re-triggers it.
-3. No new effect needed — Pass C already provides it. Verify by deliberately delaying Zustand commit and confirming auto-recovery.
+3. No new effect needed â€” Pass C already provides it. Verify by deliberately delaying Zustand commit and confirming auto-recovery.
 
-**Acceptance**: Payment success → tracking always opens within 1-2 render cycles.
+**Acceptance**: Payment success â†’ tracking always opens within 1-2 render cycles.
 
 ---
 
-### Pass E — Fix visit-details resume tracking
+### Pass E â€” Fix visit-details resume tracking
 **Goal**: History "Resume tracking" CTA works for the active live request, navigates to visit detail otherwise.
 
 **Actions**:
@@ -178,13 +184,13 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
    ```
 2. If not the active request, route to `openVisitDetail(historyItem)` instead of `openTracking`.
 3. The "Resume" CTA in history should only render when `historyItem.requestId === activeMapRequest.requestId` (gate at history-item level).
-4. Drop the immediate revert in `useMapTracking.js:101-105` — that effect should not force-close tracking if `trackingRequestKey` becomes null mid-frame; let Zustand settle.
+4. Drop the immediate revert in `useMapTracking.js:101-105` â€” that effect should not force-close tracking if `trackingRequestKey` becomes null mid-frame; let Zustand settle.
 
 **Acceptance**: Resume-from-history opens tracking if and only if history item matches active trip; otherwise opens visit detail.
 
 ---
 
-### Pass F — Sheet phase audit and document the canonical flow
+### Pass F â€” Sheet phase audit and document the canonical flow
 **Goal**: Single source of truth for "what should happen when".
 
 **Actions**:
@@ -199,12 +205,12 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 ## 4. Out of Scope (Tracked Separately)
 
-- Hero card visualization (gradient underlay, status pill, CTA muting) — **DONE** in Phase 8 polish
-- Sheet title animation — **DONE**
-- AM/PM removal — **DONE**
-- Persistent tracking visualization storage — **DONE** (uses `database` abstraction + `StorageKeys.TRACKING_VISUALIZATION`)
-- MapScreen 1,434-line decomposition — separate roadmap track
-- `EmergencyContext` retirement Phase 6f+ — separate roadmap track
+- Hero card visualization (gradient underlay, status pill, CTA muting) â€” **DONE** in Phase 8 polish
+- Sheet title animation â€” **DONE**
+- AM/PM removal â€” **DONE**
+- Persistent tracking visualization storage â€” **DONE** (uses `database` abstraction + `StorageKeys.TRACKING_VISUALIZATION`)
+- MapScreen 1,434-line decomposition â€” separate roadmap track
+- `EmergencyContext` retirement Phase 6f+ â€” separate roadmap track
 
 ---
 
@@ -232,31 +238,31 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 > Evaluated against: Apple Human Interface Guidelines (Maps, Find My, Wallet, Health, CarPlay tracking patterns).
 > Reference touchstones: Apple Maps turn-by-turn sheet, Find My device tracking, Uber-style driver-en-route cards (which themselves model on HIG).
 
-### 7.1 Visual Hierarchy — Current State
+### 7.1 Visual Hierarchy â€” Current State
 
 | Element | Apple Pattern | Current State | Verdict |
 |---|---|---|---|
-| Sheet handle | Single grabber, 36×5pt, system gray | Custom handle | ✓ Verify token alignment |
-| Top slot title | Single weight, primary text color, breathing room | Animated status color | ⚠️ Color-as-status is loud; HIG prefers icon + neutral text |
-| Subtitle | `.subheadline` muted | OK | ✓ |
-| Status communication | SF Symbol + label OR pill in trailing | Hero gradient underlay + animated title color | ⚠️ Two parallel status channels (redundant) |
-| Primary CTA | Filled, large, accent color | Bottom action button — green on completion | ✓ |
-| Secondary CTAs | Tinted, grouped, neutral until contextually relevant | Mid-action group, muted on arrival | ✓ Matches HIG "calm by default, light up on context" |
-| Sheet detents | Medium + Large, with smooth interpolation | Three snap states (collapsed/medium/expanded) | ✓ |
-| Header chevron | System chevron, subtle | Now uses original token color | ✓ Fixed in last pass |
+| Sheet handle | Single grabber, 36Ã—5pt, system gray | Custom handle | âœ“ Verify token alignment |
+| Top slot title | Single weight, primary text color, breathing room | Animated status color | âš ï¸ Color-as-status is loud; HIG prefers icon + neutral text |
+| Subtitle | `.subheadline` muted | OK | âœ“ |
+| Status communication | SF Symbol + label OR pill in trailing | Hero gradient underlay + animated title color | âš ï¸ Two parallel status channels (redundant) |
+| Primary CTA | Filled, large, accent color | Bottom action button â€” green on completion | âœ“ |
+| Secondary CTAs | Tinted, grouped, neutral until contextually relevant | Mid-action group, muted on arrival | âœ“ Matches HIG "calm by default, light up on context" |
+| Sheet detents | Medium + Large, with smooth interpolation | Three snap states (collapsed/medium/expanded) | âœ“ |
+| Header chevron | System chevron, subtle | Now uses original token color | âœ“ Fixed in last pass |
 
-### 7.2 Motion Discipline — Current State
+### 7.2 Motion Discipline â€” Current State
 
 | Animation | HIG Principle | Current State | Verdict |
 |---|---|---|---|
-| Sheet open/close | Spring, 0.35s, damping ~28 | Native sheet animation | ✓ |
-| Title color shift | Run **once** per status change, hold | Animates once via `hasSheetTitleAnimatedAtom` | ✓ Correct |
-| Hero progress fill | Linear or eased, never bouncy on data | `TrackingTeamHeroCard` progress fill | ✓ |
-| Triage ring breathing | Subtle pulse, ≤3% scale, ≤2s loop | 1.018× scale, 1.6s in/out | ✓ Within HIG envelope |
-| Snap state transitions | Continuous, gesture-driven | Native | ✓ |
-| Avoid | "Disco" effects, multiple simultaneous color shifts | Currently no violation | ✓ |
+| Sheet open/close | Spring, 0.35s, damping ~28 | Native sheet animation | âœ“ |
+| Title color shift | Run **once** per status change, hold | Animates once via `hasSheetTitleAnimatedAtom` | âœ“ Correct |
+| Hero progress fill | Linear or eased, never bouncy on data | `TrackingTeamHeroCard` progress fill | âœ“ |
+| Triage ring breathing | Subtle pulse, â‰¤3% scale, â‰¤2s loop | 1.018Ã— scale, 1.6s in/out | âœ“ Within HIG envelope |
+| Snap state transitions | Continuous, gesture-driven | Native | âœ“ |
+| Avoid | "Disco" effects, multiple simultaneous color shifts | Currently no violation | âœ“ |
 
-### 7.3 Cognitive Load — Apple Underpaid-App Test
+### 7.3 Cognitive Load â€” Apple Underpaid-App Test
 
 **Question**: If a user glances at the sheet for 0.5s, do they know:
 1. Are we tracking? (yes/no)
@@ -264,37 +270,37 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 3. What's the next action? (single primary CTA)
 
 **Current state**:
-- (1) ✓ — sheet itself communicates tracking
-- (2) ⚠️ — status communicated via title color + hero progress + (now removed) status pill. Three channels saying the same thing was overload. After our cleanup: title color + hero. Still 2 channels.
-- (3) ✓ — bottom CTA is unambiguous
+- (1) âœ“ â€” sheet itself communicates tracking
+- (2) âš ï¸ â€” status communicated via title color + hero progress + (now removed) status pill. Three channels saying the same thing was overload. After our cleanup: title color + hero. Still 2 channels.
+- (3) âœ“ â€” bottom CTA is unambiguous
 
 **HIG verdict**: After the status pill removal, we are within tolerance. **Recommendation**: pick ONE primary status channel. Apple Maps uses the hero card progress + a single SF Symbol; the title stays neutral. Consider neutralizing title color and letting the hero progress carry the status.
 
-### 7.4 Emotional Calm — Premium Restraint
+### 7.4 Emotional Calm â€” Premium Restraint
 
 **Apple test**: Does the surface feel like a first-party Apple service or a startup demo?
 
 **Areas of concern**:
-- ✓ No decorative gradients on text
-- ✓ No glowing borders
-- ✓ No emoji in status
-- ✓ Bottom action gradient is subtle (matches Apple Wallet pay button)
-- ⚠️ Animated title color shift between phases — when red appears for "approaching", it feels alarming. HIG: red is reserved for destructive/critical alerts (cancel, emergency). For routine status progress, use accent color or neutral.
-- ⚠️ Hero gradient could be a single tinted band rather than 3-stop red-yellow-green (which screams "traffic light")
+- âœ“ No decorative gradients on text
+- âœ“ No glowing borders
+- âœ“ No emoji in status
+- âœ“ Bottom action gradient is subtle (matches Apple Wallet pay button)
+- âš ï¸ Animated title color shift between phases â€” when red appears for "approaching", it feels alarming. HIG: red is reserved for destructive/critical alerts (cancel, emergency). For routine status progress, use accent color or neutral.
+- âš ï¸ Hero gradient could be a single tinted band rather than 3-stop red-yellow-green (which screams "traffic light")
 
 **Recommendation**: Reduce status palette to 2 shades (en-route accent + arrived green). Remove red entirely from non-emergency phases. Map "critical" red only to telemetry-lost / true emergency.
 
-### 7.5 Accessibility — HIG Mandatory
+### 7.5 Accessibility â€” HIG Mandatory
 
 | Requirement | Current State |
 |---|---|
-| Tap targets ≥ 44×44 pt | Toggle/triage ring buttons 38pt — **below minimum** ⚠️ |
-| Dynamic Type support | Sheet title fixed at 22pt — no scaling ⚠️ |
-| VoiceOver labels | `toggleAccessibilityLabel` present | ✓ |
-| Color contrast (WCAG AA) | Verify on dark mode + animated colors ⚠️ |
-| Reduced motion | No `useReducedMotion()` hook in tracking parts ⚠️ |
+| Tap targets â‰¥ 44Ã—44 pt | Toggle/triage ring buttons 38pt â€” **below minimum** âš ï¸ |
+| Dynamic Type support | Sheet title fixed at 22pt â€” no scaling âš ï¸ |
+| VoiceOver labels | `toggleAccessibilityLabel` present | âœ“ |
+| Color contrast (WCAG AA) | Verify on dark mode + animated colors âš ï¸ |
+| Reduced motion | No `useReducedMotion()` hook in tracking parts âš ï¸ |
 
-### 7.6 Pass G — Apple HIG Polish
+### 7.6 Pass G â€” Apple HIG Polish
 
 **Goal**: Bring tracking sheet to first-party Apple-app quality.
 
@@ -312,7 +318,7 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 - Acceptance: red never appears during normal trip progress.
 
 #### G-3: Tap target compliance
-- Increase toggle button + triage ring tappable area to ≥44×44pt (visual size can stay 38pt; expand `hitSlop`).
+- Increase toggle button + triage ring tappable area to â‰¥44Ã—44pt (visual size can stay 38pt; expand `hitSlop`).
 - Acceptance: HIG-compliant tap targets without visual change.
 
 #### G-4: Dynamic Type support
@@ -342,62 +348,62 @@ The XState `hasActiveTrip` flag is **not used** to drive sheet auto-open. We rel
 
 | Pass | Type | Risk | Depends On | Status |
 |---|---|---|---|---|
-| A | Logging | None | — | ✅ Complete |
-| B | Rating modal lift | Medium | A | ✅ Complete |
-| C | XState gate | Medium | A | ✅ Complete |
-| D | Auto-recovery | Low | C | ✅ Complete (verified — Pass C effect serves as second runner) |
-| E | History resume routing | Low | A | ✅ Complete (call-site gating in `handleSelectHistoryItem`) |
-| F | Documentation | None | B–E | ✅ Complete (canonical decision diagram in `GOLD_STANDARD_STATE_ROADMAP.md`) |
-| G | Apple HIG polish | Low | B–E (UX after correctness) | ✅ Complete |
+| A | Logging | None | â€” | âœ… Complete |
+| B | Rating modal lift | Medium | A | âœ… Complete |
+| C | XState gate | Medium | A | âœ… Complete |
+| D | Auto-recovery | Low | C | âœ… Complete (verified â€” Pass C effect serves as second runner) |
+| E | History resume routing | Low | A | âœ… Complete (call-site gating in `handleSelectHistoryItem`) |
+| F | Documentation | None | Bâ€“E | âœ… Complete (canonical decision diagram in `GOLD_STANDARD_STATE_ROADMAP.md`) |
+| G | Apple HIG polish | Low | Bâ€“E (UX after correctness) | âœ… Complete |
 
-**Rule**: Correctness passes (B–E) before polish (G). A broken sheet that looks good is still broken.
+**Rule**: Correctness passes (Bâ€“E) before polish (G). A broken sheet that looks good is still broken.
 
 ---
 
 ## Pass Completion Summary (2026-04-27)
 
-- **Pass B** — `ServiceRatingModal` lifted from `MapTrackingStageBase` to `MapScreen` root via
+- **Pass B** â€” `ServiceRatingModal` lifted from `MapTrackingStageBase` to `MapScreen` root via
   `useTrackingRatingFlow`. Visibility driven by persisted `trackingRatingStateAtom`. Modal
   now survives sheet phase transitions and Metro reloads.
-- **Pass C** — Auto-open effect in `useMapTracking.js` now gated on
+- **Pass C** â€” Auto-open effect in `useMapTracking.js` now gated on
   `Boolean(trackingRequestKey) && hasActiveTrip` (Zustand identity + XState lifecycle).
   `useMapExploreFlow` threads `hasActiveTrip` from `useTripLifecycle`.
-- **Pass D** — Auto-recovery verified: the Pass C effect re-fires on the next render whenever
+- **Pass D** â€” Auto-recovery verified: the Pass C effect re-fires on the next render whenever
   `hasActiveTrip` becomes true while on `EXPLORE_INTENT`, providing a deterministic second
-  runner for payment-success → tracking transitions.
-- **Pass E** — `handleSelectHistoryItem` in `MapScreen.jsx` gates `openTracking` on
+  runner for payment-success â†’ tracking transitions.
+- **Pass E** â€” `handleSelectHistoryItem` in `MapScreen.jsx` gates `openTracking` on
   `matchesActiveEmergencyRequest`; falls back to `openVisitDetail` for non-active items.
   Pass C's XState gate also removes the stale-request revert race in `useMapTracking`.
-- **Pass F** — Canonical sheet phase decision diagram added to
-  `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` ("Tracking Sheet Phase — Canonical
+- **Pass F** â€” Canonical sheet phase decision diagram added to
+  `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` ("Tracking Sheet Phase â€” Canonical
   Decision Diagram" section). Inputs, rules, cross-cutting renderers, and history routing
   documented.
-- **Pass G — Apple HIG polish.** All seven sub-passes complete:
-  - **G-1** — `sheetTitleColorAtom` returns `null`; title falls back to neutral
+- **Pass G â€” Apple HIG polish.** All seven sub-passes complete:
+  - **G-1** â€” `sheetTitleColorAtom` returns `null`; title falls back to neutral
     `themeTokens.titleColor`. Single-channel status discipline restored.
-  - **G-2** — `heroUnderlayGradientAtom` and `trackingCtaThemeAtom` rebuilt around
+  - **G-2** â€” `heroUnderlayGradientAtom` and `trackingCtaThemeAtom` rebuilt around
     `accent` (sky) + `success` (emerald). `mapTracking.theme.js` `teamHeroProgressColor`
     for ambulance switched from iVisit-red tint to accent tint. Red reserved for
     `critical`/`warning` telemetry tones.
-  - **G-3** — Verified: `MapHeaderIconButton` defaults `hitSlop=10` around 38pt visual
-    button → effective 58×58pt tap area. HIG ≥44pt satisfied.
-  - **G-4** — `MapTrackingTopSlot` title + subtitle gain `adjustsFontSizeToFit`,
+  - **G-3** â€” Verified: `MapHeaderIconButton` defaults `hitSlop=10` around 38pt visual
+    button â†’ effective 58Ã—58pt tap area. HIG â‰¥44pt satisfied.
+  - **G-4** â€” `MapTrackingTopSlot` title + subtitle gain `adjustsFontSizeToFit`,
     `minimumFontScale`, `allowFontScaling`, `maxFontSizeMultiplier` for graceful Dynamic
     Type scaling without truncation.
-  - **G-5** — `useReducedMotion` from `react-native-reanimated` wired into both the
+  - **G-5** â€” `useReducedMotion` from `react-native-reanimated` wired into both the
     title fade-in (`MapTrackingStageBase.jsx`) and the triage ring breathing loop +
     progress-fill timing (`MapTrackingParts.jsx`). Reduce-Motion users see static surfaces.
-  - **G-6** — Contrast spot-check passed AA across all new accent/success/pill pairs in
+  - **G-6** â€” Contrast spot-check passed AA across all new accent/success/pill pairs in
     light + dark modes; red (telemetry-critical) pairs already AA-verified via
     `getToneColors` in `mapTracking.presentation.js`.
-  - **G-7** — Verified: medium detent renders title + subtitle + hero (with ETA in
-    `rightMeta`) + mid-action group + bottom action — full primary task without
+  - **G-7** â€” Verified: medium detent renders title + subtitle + hero (with ETA in
+    `rightMeta`) + mid-action group + bottom action â€” full primary task without
     scrolling. Large detent additionally reveals route + details cards (progressive
     disclosure parity with Apple Maps directions sheet).
 
 ## Next Action
 
-Tracking sheet phase audit complete. All correctness (B–F) and polish (G) passes shipped.
+Tracking sheet phase audit complete. All correctness (Bâ€“F) and polish (G) passes shipped.
 Future regressions in this surface should be tracked in
-`docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` (defect classes 2.1–2.12) which now
+`docs/./architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` (defect classes 2.1â€“2.12) which now
 serves as the canonical playbook.

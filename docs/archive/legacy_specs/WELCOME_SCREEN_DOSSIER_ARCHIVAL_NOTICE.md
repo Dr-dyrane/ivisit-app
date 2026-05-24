@@ -1,6 +1,12 @@
+---
+status: historical
+owner: -
+last_updated: 2026-04-23
+---
+
 # WELCOME_SCREEN_DOSSIER - ARCHIVAL NOTICE
 
-## ⚠️ **ARCHIVED DOCUMENT - SCREEN-SPECIFIC DOCUMENTATION**
+## âš ï¸ **ARCHIVED DOCUMENT - SCREEN-SPECIFIC DOCUMENTATION**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Screen-scoped drift - Document reflects screen-specific documentation patterns that conflict with domain-driven architecture
@@ -30,19 +36,19 @@ This document was created when the iVisit app used a **screen-centric documentat
 ### **Where to Find Current Information**
 
 #### **Identity & Auth Domain**
-📖 **New Location**: `/docs/domains/IDENTITY_AND_AUTH.md`
+ðŸ“– **New Location**: `/docs/domains/IDENTITY_AND_AUTH.md`
 - **Content**: Intent-first authentication with emergency override
 - **Implementation**: AuthContext and authService patterns
 - **Welcome Flow**: WelcomeScreen.jsx intent orchestration
 
 #### **System Architecture**
-📖 **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
+ðŸ“– **New Location**: `/docs/system/ARCHITECTURE_OVERVIEW.md`
 - **Content**: Tripartite system boundaries
 - **Data Flow**: Cross-repository communication
 - **Welcome Integration**: Auth flow and user onboarding
 
 #### **Engineering Standards**
-📖 **New Location**: `/docs/standards/CONTEXT_MANAGEMENT.md`
+ðŸ“– **New Location**: `/docs/standards/CONTEXT_MANAGEMENT.md`
 - **Content**: React Context patterns for state management
 - **Implementation**: AuthContext and GlobalLocationContext
 - **Best Practices**: Context composition and optimization

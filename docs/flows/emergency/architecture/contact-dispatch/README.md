@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-14
+---
+
 # Contact Dispatch Architecture
 
 This folder owns the implementation dossier for the active-emergency communication room feature.

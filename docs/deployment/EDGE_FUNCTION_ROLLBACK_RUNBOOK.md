@@ -1,3 +1,9 @@
+---
+status: living
+owner: platform
+last_updated: 2026-05-19
+---
+
 # Edge Function Rollback Runbook
 
 Last updated: 2026-05-19

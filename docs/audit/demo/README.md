@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 # Demo Bootstrap Duplicate Hospital Bug - Pass Audit Index
 
 **Subsystem:** `bootstrap-demo-ecosystem` Edge Function + client coverage gate

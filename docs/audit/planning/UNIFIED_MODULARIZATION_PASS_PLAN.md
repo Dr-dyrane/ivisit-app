@@ -1,8 +1,14 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
 
-> **HISTORICAL NOTICE — 2026-05-19**
+> **HISTORICAL NOTICE â€” 2026-05-19**
 > This pass plan is **complete**. MapScreen modularization passes (Pass 0 through Pass 2) are done.
 > Retained for historical context only.
 > **Completion record:** [`docs/audit/checkpoints/FINAL_MIGRATION_SUMMARY.md`](../checkpoints/FINAL_MIGRATION_SUMMARY.md)
@@ -267,7 +273,7 @@ export default function MapScreen() {
 
 ---
 
-## PASS 7: Payment Controller Atoms │ CRITICAL
+## PASS 7: Payment Controller Atoms â”‚ CRITICAL
 
 **Target:** `components/map/views/commitPayment/useMapCommitPaymentController.js` (860 lines)
 

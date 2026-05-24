@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - This document has been superseded.
 > Current reference: [docs/README.md](../../README.md), [docs/INDEX.md](../../INDEX.md), and [docs/architecture/overview/ARCHITECTURE.md](../../architecture/overview/ARCHITECTURE.md)
 > Moved here during the 2026-05-24 docs reconciliation sweep. Retained for historical context only. Do not use for implementation decisions.
@@ -119,11 +125,11 @@ expo start --android  # or --ios
 ```
 
 **Check:**
-- ✅ Header appears on screen
-- ✅ Scroll down → header hides smoothly
-- ✅ Scroll up → header appears smoothly
-- ✅ Tab bar also hides/shows together
-- ✅ At top of screen, header always visible
+- âœ… Header appears on screen
+- âœ… Scroll down â†’ header hides smoothly
+- âœ… Scroll up â†’ header appears smoothly
+- âœ… Tab bar also hides/shows together
+- âœ… At top of screen, header always visible
 
 ---
 
@@ -213,15 +219,15 @@ return (
 
 ---
 
-## **Done! ✅**
+## **Done! âœ…**
 
 You now have:
 
-1. ✅ Scroll-aware headers on all screens
-2. ✅ Matching Apple UX pattern
-3. ✅ Tab bar + header animate together
-4. ✅ Content visible behind header when scrolling
-5. ✅ Foundation for API services
+1. âœ… Scroll-aware headers on all screens
+2. âœ… Matching Apple UX pattern
+3. âœ… Tab bar + header animate together
+4. âœ… Content visible behind header when scrolling
+5. âœ… Foundation for API services
 
 Next: Start migrating data fetching to `services/*` and custom hooks when ready.
 
@@ -234,8 +240,8 @@ Next: Start migrating data fetching to `services/*` and custom hooks when ready.
 Check:
 ```javascript
 <ScrollView
-  scrollEventThrottle={16}   // ← Must be 16 or less
-  onScroll={handleScroll}     // ← Passing correct handler
+  scrollEventThrottle={16}   // â† Must be 16 or less
+  onScroll={handleScroll}     // â† Passing correct handler
 >
 ```
 
@@ -254,8 +260,8 @@ if (currentScrollY < 50) {  // Only hide after 50px scroll
 Check:
 ```javascript
 Animated.timing(headerOpacity, {
-  useNativeDriver: true,  // ← Must be true!
-  duration: 250,           // ← Apple standard
+  useNativeDriver: true,  // â† Must be true!
+  duration: 250,           // â† Apple standard
 })
 ```
 

@@ -1,6 +1,12 @@
-# iVisit Technical Documentation — Welcome & Onboarding Flow
+---
+status: living
+owner: design
+last_updated: 2026-05-24
+---
 
-**Version 1.0 — Living Document**
+# iVisit Technical Documentation â€” Welcome & Onboarding Flow
+
+**Version 1.0 â€” Living Document**
 
 ---
 
@@ -28,7 +34,7 @@
 
 ## 1. Overview & Goals
 
-The Welcome → Onboarding sequence guides a **new user** from app entry to initial understanding of iVisit’s value.
+The Welcome â†’ Onboarding sequence guides a **new user** from app entry to initial understanding of iVisitâ€™s value.
 
 **Primary Goals:**
 
@@ -45,13 +51,13 @@ The Welcome → Onboarding sequence guides a **new user** from app entry to init
 
 * **First impression matters**: calming gradient, clear branding, legible type
 * **Hero imagery**: communicates speed, accessibility, and urgency of care
-* **CTA-focused layout**: primary action is “FIND CARE NOW”
-* Secondary text provides **contextual reassurance** (“Right when you need it”)
+* **CTA-focused layout**: primary action is â€œFIND CARE NOWâ€
+* Secondary text provides **contextual reassurance** (â€œRight when you need itâ€)
 
 ### 2.2 Layout & Visual Structure
 
 * **Logo Block:** top-centered, small size to maintain minimal visual weight
-* **Hero Image:** center stage, draws the eye but doesn’t overwhelm
+* **Hero Image:** center stage, draws the eye but doesnâ€™t overwhelm
 * **Feature Text:** large headline + colored emphasis (PRIMARY_RED)
 * **CTA Button:** full-width SlideButton, primary red icon reinforces action
 * **Login Prompt:** subtle, secondary interaction
@@ -100,8 +106,8 @@ The Welcome → Onboarding sequence guides a **new user** from app entry to init
 
 ### 3.5 Progress Indicators
 
-* Width: interpolates 8 → 32 px
-* Opacity: interpolates 0.3 → 1
+* Width: interpolates 8 â†’ 32 px
+* Opacity: interpolates 0.3 â†’ 1
 * Active dot = PRIMARY_RED
 * Inactive = gray (#D1D1D1 light, #333 dark)
 
@@ -136,6 +142,6 @@ The Welcome → Onboarding sequence guides a **new user** from app entry to init
 
 ## 6. Versioning & Change Log
 
-* **v1.0** — Initial Welcome + Onboarding implementation
-* **v1.1** — Integrated motion lessons, haptics hierarchy, layered dot micro-interactions
+* **v1.0** â€” Initial Welcome + Onboarding implementation
+* **v1.1** â€” Integrated motion lessons, haptics hierarchy, layered dot micro-interactions
 * **Future:** document **component rules** (SlideButton variants, progress dot variants, swipe feedback variations)

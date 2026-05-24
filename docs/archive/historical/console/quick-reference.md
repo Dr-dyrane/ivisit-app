@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - Cross-repo material.
 > This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
 > For current iVisit Console docs, see the `ivisit-console` repository directly.
@@ -7,7 +13,7 @@
 
 # iVisit Console Quick Reference
 
-## 🚀 One-Page Setup Guide
+## ðŸš€ One-Page Setup Guide
 
 ### 1. Environment Setup
 ```bash
@@ -40,7 +46,7 @@ NEXTAUTH_SECRET=your_nextauth_secret
 - `src/app/layout.tsx` - Root layout with providers
 - `tailwind.config.ts` - iVisit theme configuration
 
-## 🔐 Authentication Flow
+## ðŸ” Authentication Flow
 
 ### Login Component
 ```typescript
@@ -109,7 +115,7 @@ export default async function DashboardLayout({
 }
 ```
 
-## 📊 Data Table Example
+## ðŸ“Š Data Table Example
 
 ### Users Table
 ```typescript
@@ -177,7 +183,7 @@ export function UsersTable() {
 }
 ```
 
-## 🗺️ Map Component
+## ðŸ—ºï¸ Map Component
 
 ### Emergency Map
 ```typescript
@@ -225,7 +231,7 @@ export function EmergencyMap() {
             latitude={ambulance.location?.coordinates[1] || 0}
           >
             <div className="bg-blue-500 rounded-full p-2">
-              🚑
+              ðŸš‘
             </div>
           </Marker>
         ))}
@@ -235,7 +241,7 @@ export function EmergencyMap() {
 }
 ```
 
-## 🔑 Permission Checking
+## ðŸ”‘ Permission Checking
 
 ### Component with Permissions
 ```typescript
@@ -270,7 +276,7 @@ export function UserManagement() {
 }
 ```
 
-## 📈 Analytics Dashboard
+## ðŸ“ˆ Analytics Dashboard
 
 ### KPI Cards
 ```typescript
@@ -290,7 +296,7 @@ export function KPICards() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-          👥
+          ðŸ‘¥
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{users?.length || 0}</div>
@@ -300,7 +306,7 @@ export function KPICards() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Hospitals</CardTitle>
-          🏥
+          ðŸ¥
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{hospitals?.length || 0}</div>
@@ -310,7 +316,7 @@ export function KPICards() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
-          🚨
+          ðŸš¨
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -322,7 +328,7 @@ export function KPICards() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Available Beds</CardTitle>
-          🛏️
+          ðŸ›ï¸
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -335,7 +341,7 @@ export function KPICards() {
 }
 ```
 
-## 🔄 Real-time Updates
+## ðŸ”„ Real-time Updates
 
 ### Notification System
 ```typescript
@@ -367,7 +373,7 @@ export function ToastProvider() {
 }
 ```
 
-## 🎨 UI Components
+## ðŸŽ¨ UI Components
 
 ### Dashboard Layout
 ```typescript
@@ -407,10 +413,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
-  { name: 'Users', href: '/dashboard/users', icon: '👥', roles: ['admin'] },
-  { name: 'Hospitals', href: '/dashboard/hospitals', icon: '🏥', roles: ['admin', 'sponsor'] },
-  { name: 'Emergency', href: '/dashboard/emergency', icon: '🚨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
+  { name: 'Dashboard', href: '/dashboard', icon: 'ðŸ“Š', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
+  { name: 'Users', href: '/dashboard/users', icon: 'ðŸ‘¥', roles: ['admin'] },
+  { name: 'Hospitals', href: '/dashboard/hospitals', icon: 'ðŸ¥', roles: ['admin', 'sponsor'] },
+  { name: 'Emergency', href: '/dashboard/emergency', icon: 'ðŸš¨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
 ]
 
 export function Sidebar() {
@@ -453,7 +459,7 @@ export function Sidebar() {
 }
 ```
 
-## 📋 Common Tasks
+## ðŸ“‹ Common Tasks
 
 ### Create New User
 ```typescript
@@ -577,7 +583,7 @@ export function HospitalStatusForm({ hospitalId }: { hospitalId: string }) {
 }
 ```
 
-## 🚨 Common Issues & Solutions
+## ðŸš¨ Common Issues & Solutions
 
 ### Real-time Not Working
 ```typescript
@@ -603,7 +609,7 @@ FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 import 'mapbox-gl/dist/mapbox-gl.css'
 ```
 
-## 📱 Mobile Responsiveness
+## ðŸ“± Mobile Responsiveness
 
 ### Responsive Table
 ```typescript

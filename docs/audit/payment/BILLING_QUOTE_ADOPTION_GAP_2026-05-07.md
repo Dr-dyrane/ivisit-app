@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -9,7 +15,7 @@ Scope: billing display after SCC-058 quote lane
 
 ## Summary
 
-✅ **IMPLEMENTED 2026-05-07**: Billing quote adoption now complete in active map decision surfaces.
+âœ… **IMPLEMENTED 2026-05-07**: Billing quote adoption now complete in active map decision surfaces.
 
 The billing quote lane is live and fully adopted across runtime pricing surfaces for ambulance and bed service selection.
 
@@ -17,9 +23,9 @@ The billing quote lane is live and fully adopted across runtime pricing surfaces
 
 | Surface | Status | Implementation |
 |---------|--------|----------------|
-| Ambulance decision | ✅ Complete | `useMapAmbulanceDecisionModel` + `mapAmbulanceDecision.helpers` |
-| Bed decision | ✅ Complete | `useMapBedDecisionModel` + `mapBedDecision.helpers` |
-| Payment/commit | ✅ Complete | Already using `useBillingQuoteQuery` |
+| Ambulance decision | âœ… Complete | `useMapAmbulanceDecisionModel` + `mapAmbulanceDecision.helpers` |
+| Bed decision | âœ… Complete | `useMapBedDecisionModel` + `mapBedDecision.helpers` |
+| Payment/commit | âœ… Complete | Already using `useBillingQuoteQuery` |
 
 ## Implementation Details
 

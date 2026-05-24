@@ -1,3 +1,9 @@
+---
+status: historical
+owner: -
+last_updated: 2026-05-24
+---
+
 > [WARN] ARCHIVAL NOTICE - Cross-repo material.
 > This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
 > For current iVisit Console docs, see the `ivisit-console` repository directly.
@@ -7,11 +13,11 @@
 
 # iVisit Console Starter Template
 
-## 📁 Complete File Structure Template
+## ðŸ“ Complete File Structure Template
 
 This section provides the exact file contents your console developer can copy-paste to get started immediately.
 
-## 🎯 Quick Start Commands
+## ðŸŽ¯ Quick Start Commands
 
 ```bash
 # 1. Create the project
@@ -30,7 +36,7 @@ npm install @supabase/supabase-js @supabase/ssr @tanstack/react-query @tanstack/
 npm run dev
 ```
 
-## 📁 File-by-File Template
+## ðŸ“ File-by-File Template
 
 ### Environment Files
 

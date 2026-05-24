@@ -1,3 +1,9 @@
+---
+status: living
+owner: product
+last_updated: 2026-05-19
+---
+
 # Emergency Flow Live Tracker
 
 Last updated: 2026-05-19

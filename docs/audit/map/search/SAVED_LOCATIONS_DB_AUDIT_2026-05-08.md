@@ -1,3 +1,9 @@
+---
+status: historical
+owner: architecture
+last_updated: 2026-05-24
+---
+
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
 
 ---
@@ -33,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     image_uri TEXT,
     avatar_url TEXT,
-    address TEXT,  -- ← SINGLE ADDRESS FIELD
+    address TEXT,  -- â† SINGLE ADDRESS FIELD
     gender TEXT,
     date_of_birth TEXT,
     role TEXT DEFAULT 'patient',
@@ -63,7 +69,7 @@ WITH CHECK (auth.uid() = id);
 
 ## 2. Option Analysis: Saved Locations Storage
 
-### Option Z: Extend `locationStore` (Zustand) — **RECOMMENDED FOR NOW**
+### Option Z: Extend `locationStore` (Zustand) â€” **RECOMMENDED FOR NOW**
 
 **Current State:** `stores/locationStore.js` already persists to local database:
 ```javascript
@@ -91,18 +97,18 @@ updateSavedLocation: (id, patch) => { ... },
 
 **Persistence:** Automatically saved to `StorageKeys.LOCATION_CACHE` via existing subscription.
 
-**RLS Impact:** ✅ **NONE** — Local storage only, no Supabase RLS needed.
+**RLS Impact:** âœ… **NONE** â€” Local storage only, no Supabase RLS needed.
 
-**Migration:** ✅ **NONE** — No DB changes required.
+**Migration:** âœ… **NONE** â€” No DB changes required.
 
-**Per CONTRIBUTING.md:** N/A — Zustand store change, not DB migration.
+**Per CONTRIBUTING.md:** N/A â€” Zustand store change, not DB migration.
 
-**Scalability:** ✅ **UNLIMITED ADDRESSES**
+**Scalability:** âœ… **UNLIMITED ADDRESSES**
 - Users can have home, work, gym, parents, etc.
 - Local storage is cheap
 - Can sync to DB later if needed
 
-**Offline Support:** ✅ **WORKS WITHOUT INTERNET**
+**Offline Support:** âœ… **WORKS WITHOUT INTERNET**
 - Saved locations available offline
 - No network dependency
 - Fast access
@@ -122,16 +128,16 @@ ADD COLUMN work_latitude DOUBLE PRECISION,
 ADD COLUMN work_longitude DOUBLE PRECISION;
 ```
 
-**RLS Impact:** ✅ **NO CHANGE REQUIRED**
+**RLS Impact:** âœ… **NO CHANGE REQUIRED**
 - Existing policies cover all columns
 - Owner can read/update their own profile
 - No new policies needed
 
 **Per CONTRIBUTING.md:**
-- ✅ Edit `0001_identity.sql` directly (pillar file)
-- ✅ Follows "edit pillar, not fix migration" rule
-- ⚠️ Requires `db push` or Dashboard SQL run
-- ⚠️ Must sync to console after change
+- âœ… Edit `0001_identity.sql` directly (pillar file)
+- âœ… Follows "edit pillar, not fix migration" rule
+- âš ï¸ Requires `db push` or Dashboard SQL run
+- âš ï¸ Must sync to console after change
 
 **Scalability Issue:**
 - Limited to 2 addresses forever
@@ -165,7 +171,7 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 ```
 
-**RLS Impact:** ✅ **NEW POLICY REQUIRED**
+**RLS Impact:** âœ… **NEW POLICY REQUIRED**
 - Simple owner-based policy
 - No admin override needed
 
@@ -176,24 +182,24 @@ WITH CHECK (auth.uid() = user_id);
 ### Pass 1: Unified Search (NOW - No DB Changes)
 
 **Actions:**
-1. ✅ **Remove mode chips** — Auto-detect search intent
-2. ✅ **Extend `locationStore` with `savedLocations`** — Zustand + local persistence
-3. ✅ **Convert recent queries to rows** — UI improvement
-4. ✅ **Hide "Nearby now" by default** — Reduce clutter
+1. âœ… **Remove mode chips** â€” Auto-detect search intent
+2. âœ… **Extend `locationStore` with `savedLocations`** â€” Zustand + local persistence
+3. âœ… **Convert recent queries to rows** â€” UI improvement
+4. âœ… **Hide "Nearby now" by default** â€” Reduce clutter
 
 ### Pass 2: Profile-Search Link (NOW - No DB)
 
 **Actions:**
 1. Add location picker to profile
 2. Save to `locationStore.savedLocations` (label: 'home')
-3. Show in search sheet as "🏠 Home"
+3. Show in search sheet as "ðŸ  Home"
 4. Sync profile address to saved locations
 
 ### Pass 3: Cloud Sync (LATER - Optional DB Change)
 
 **Actions (only if needed):**
 1. Create `saved_addresses` table in Supabase
-2. Add sync: Zustand ↔ Supabase on login/logout
+2. Add sync: Zustand â†” Supabase on login/logout
 3. Enable cross-device saved locations
 
 ---

@@ -1,3 +1,9 @@
+---
+status: living
+owner: architecture
+last_updated: 2026-05-11
+---
+
 # Manual Address Entry - Apple-Standard Progressive Address Resolution Redesign
 
 **Date:** 2026-05-10
