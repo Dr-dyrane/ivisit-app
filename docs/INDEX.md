@@ -19,7 +19,8 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 | [`REFACTORING_GUARDRAILS.md`](./REFACTORING_GUARDRAILS.md) | Code standards, five-layer architecture, useEffect rules |
 | [`README.md`](./README.md) | Docs portal — folder roles, routing rules |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Anti-litter rules — folder decision tree, naming, archival protocol |
-| [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) | Five-layer gold standard — phases 1–7, completion record, post-mortems |
+| [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md) | Five-layer gold standard — phases 1–7, completion record |
+| [`audit/postmortems/`](./audit/postmortems/) | Incident postmortems (blameless, append-only) — Phase 6d iOS map loading + future incidents |
 | [`architecture/overview/ARCHITECTURE.md`](./architecture/overview/ARCHITECTURE.md) | System overview |
 | [`architecture/stores/STORES_README.md`](./architecture/stores/STORES_README.md) | Stores inventory |
 

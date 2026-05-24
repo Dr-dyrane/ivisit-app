@@ -293,18 +293,29 @@ All archive docs already carry archival notices. No reconciliation needed. The 2
 
 ## X. Carryforward / Open Items
 
-These items appear partially open across multiple reconciliation entries above. Consolidated list for sprint follow-up:
+These items appear partially open across multiple reconciliation entries above. Each row carries an explicit **re-evaluation trigger** — the concrete condition under which the item should be picked up. Without a trigger, deferred work tends to drift permanently.
 
-| Item | Source | Owner | Target |
-|---|---|---|---|
-| **PT-1 carryforward** — `usePaymentCostCalculation.ts` extraction (cost calculation still in `useMapCommitPaymentController.js`; `usePaymentMethodsQuery.ts` IS extracted) | `audit/map/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md` PT-1 | TBD | Next payment sprint |
-| LS-9 — Manual address entry redesign | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | TBD | Next location sprint |
-| LS-10/11 — Places & Recents Hub | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | TBD | Next location sprint |
-| UX-E — LocationSheet + Mini Profile | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | Deferred | Future |
-| `IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md` | Active execution | Per sprint | Per-phase close in-place |
-| `EDGE_FUNCTION_PHASE_8_*` | Active execution | Per sprint | 8.0 → 8.N close in-place |
-| Tracking-state tightening | `audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md` | Active | Ongoing |
-| Service sheet simplification | `audit/map/IVISIT_SERVICE_SHEET_SIMPLIFICATION_AUDIT_2026-05-19.md` | Per Phase 0-7 plan |
+| Item | Source | Owner | Target | Re-evaluation Trigger |
+|---|---|---|---|---|
+| **PT-1 carryforward** — `usePaymentCostCalculation.ts` extraction (cost calc still in `useMapCommitPaymentController.js`; `usePaymentMethodsQuery.ts` IS extracted) | `audit/map/PRE_TRACKING_PHASE_AUDIT_2026-04-27_FINAL.md` PT-1 | TBD | Next payment sprint | When `useMapCommitPaymentController.js` is next touched (or when a payment-cost bug is reported) — extract before further modification |
+| **LS-9** — Manual address entry redesign | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | TBD | Next location sprint | When the next location bug surfaces in `LocationSheet`, OR when "manual address entry" is in a sprint goal |
+| **LS-10/11** — Places & Recents Hub | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | TBD | Next location sprint | After LS-9 lands (sequential dependency) AND user-reported confusion about saved/recent locations exceeds a single report |
+| **UX-E** — LocationSheet + Mini Profile | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | Deferred | Future | When LocationSheet Pass 4 (All Pickup Locations Redirect) ships AND lands stable on `main` for one sprint |
+| **`IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md`** | Active execution | Per sprint | Per-phase close in-place | Each phase has its own gate; track inside the plan doc itself, not here |
+| **`EDGE_FUNCTION_PHASE_8_*`** | Active execution | Per sprint | 8.0 → 8.N close in-place | Per-phase gates inside the plan doc; do not reopen here |
+| **Tracking-state tightening** | `audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md` | Active | Ongoing | Each defect class closes inside the pass doc; surface here only if a class re-emerges after closure |
+| **Service sheet simplification** | `audit/map/IVISIT_SERVICE_SHEET_SIMPLIFICATION_AUDIT_2026-05-19.md` | Per Phase 0-7 plan | Inside Phase 0-7 plan | Tracked via parent plan; close here when parent plan closes Phase 7 |
+| **Demo bootstrap server passes (1, 2, 3, 5-SQL)** | `audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md` (Pass 4 client gate shipped) | Backend team | When server cleanup window opens | When the next bootstrap-related duplicate-org bug is reported, OR when an SCC opens for `bootstrap-demo-ecosystem` edge function |
+| **A7 Nearest Hospital provider-visibility policy** | `audit/map/A7_NEAREST_HOSPITAL_PROVIDER_VISIBILITY_AUDIT_*.md` | TBD | Discovery sprint | When provider-side visibility settings ship in `ivisit-console` |
+| **Search unification (SearchContext debounce path)** | `audit/map/search/SEARCH_SHEET_APPLE_ALIGNMENT_VALIDATION_2026-05-08.md` | TBD | Next search polish sprint | When search performance degrades in production, OR when the next search-UX pass is scoped |
+
+### Re-evaluation cadence
+
+This carryforward register is reviewed:
+
+- **At every sprint planning** — to see which triggers have fired
+- **After every full-docs sweep** (next one: 2026-Q3) — to retire closed items
+- **When a related bug is reported** — the bug report should reference any open carryforward item that could be a contributing cause
 
 ---
 
