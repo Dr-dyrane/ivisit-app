@@ -36,11 +36,11 @@ location-truth/
     ├── README.md                      ← Pass status tracker
     ├── PASS_TEMPLATE.md               ← Template
     ├── LOC-0_ARCHITECTURE_REVIEW.md  ← ✅ Complete
-    ├── LOC-1_PICKUP_SOURCES.md       ← 🟡 Pending
-    ├── LOC-2_MANUAL_ADDRESS.md       ← 🟡 Pending
-    ├── LOC-3_LOCATION_RECOVERY.md     ← 🟡 Pending
-    ├── LOC-4_CACHE_DETERMINISM.md   ← 🟡 Pending
-    └── LOC-6_RUNTIME_VALIDATION.md   ← 🟡 Pending
+    ├── LOC-1_PICKUP_SOURCES.md       ← ✅ Complete
+    ├── LOC-2_MANUAL_ADDRESS.md       ← ✅ Complete
+    ├── LOC-3_LOCATION_RECOVERY.md     ← ✅ Complete
+    ├── LOC-4_CACHE_DETERMINISM.md   ← ✅ Complete
+    └── LOC-6_RUNTIME_VALIDATION.md   ← ✅ Complete
 ```
 
 ---
@@ -49,12 +49,14 @@ location-truth/
 
 | Pass | Name | Status | Risk | Priority |
 |------|------|--------|------|----------|
-| LOC-4 | Cache Determinism | 🟡 Ready | 🔴 High | **First** — Real cache collision risk |
-| LOC-2 | Manual Address | 🟡 Ready | 🔴 High | Entry validation gap |
-| LOC-1 | Pickup Sources | 🟡 Ready | � High | Enum mismatch |
-| LOC-3 | Location Recovery | 🟡 Ready | � Medium | Generic errors work |
+| LOC-4 | Cache Determinism | ✅ Complete | 🔴 High | **First** — Real cache collision risk |
+| LOC-2 | Manual Address | ✅ Complete | 🔴 High | Entry validation gap |
+| LOC-1 | Pickup Sources | ✅ Complete | 🔴 High | Enum mismatch |
+| LOC-3 | Location Recovery | ✅ Complete | 🟡 Medium | Generic errors work |
 | ~~LOC-5~~ | ~~Places Rendering~~ | ⚪ **SKIPPED** | — | Already implemented |
-| LOC-6 | Runtime Validation | 🟡 Ready | 🟡 Medium | Nice to have |
+| LOC-6 | Runtime Validation | ✅ Complete | 🟡 Medium | Nice to have |
+
+> **Reconciliation 2026-05-24:** Status synced with `passes/README.md` (the authoritative tracker). Verified during full sweep — see `docs/audit/VERIFICATION_LOG_2026-05-24.md` § F8.
 
 See [DOSSIER_LOCATION_HARDENING_V1.md](./DOSSIER_LOCATION_HARDENING_V1.md) for details.
 

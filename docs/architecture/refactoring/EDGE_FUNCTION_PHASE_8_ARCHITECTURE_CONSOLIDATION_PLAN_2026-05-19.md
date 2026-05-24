@@ -1,7 +1,9 @@
 # Edge Function Phase 8 Architecture Consolidation Plan
 
-Date: 2026-05-19
-Status: Phase 8.0 baseline and freeze in progress
+> **Reconciliation Note — 2026-05-24:** Active execution contract. Predecessor plan is [`IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md`](./IVISIT_PHASE_0_TO_7_PRODUCT_UX_SIMPLIFICATION_PLAN_2026-05-19.md). Per-step status should be updated in-place here as Phase 8.0 → 8.N close. Cross-reference Supabase work in `supabase/docs/CONTRIBUTING.md` and edge-function rollback runbook in [`../../deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md`](../../deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md).
+
+Date: 2026-05-19 — Reconciled: 2026-05-24
+Status: Phase 8.0 baseline and freeze in progress (active)
 Scope: Supabase Edge Functions, shared helpers, verification scripts, rollback traceability
 
 ## Purpose

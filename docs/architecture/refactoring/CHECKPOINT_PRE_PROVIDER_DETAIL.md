@@ -1,7 +1,10 @@
 # Checkpoint: Pre-Provider Detail Phase
+
+> **Reconciliation Note — 2026-05-24:** Provider Detail sheet phase has shipped. `PROVIDER_LIST` and `PROVIDER_DETAIL` phases referenced below are now live in `mapSheet.constants.js`, `mapFlowContracts.js`, `useMapSheetPhaseReducer.js`, and `MapSheetOrchestrator.jsx`. This checkpoint is historical evidence of pre-ship cleanliness. For current map sheet doctrine see [`../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) and [`../map/MAP_EXPLORE_FLOW_MODULARIZATION.md`](../map/MAP_EXPLORE_FLOW_MODULARIZATION.md).
+
 **Date:** 2026-05-17  
 **Branch:** main (uncommitted working tree)  
-**Status:** ✅ CLEAN — no regressions found in 47-file audit
+**Status:** ✅ CLEAN — no regressions found in 47-file audit (reconciled 2026-05-24: provider-detail phase shipped)
 
 ---
 

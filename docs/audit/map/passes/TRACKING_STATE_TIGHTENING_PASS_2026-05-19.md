@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Tracking State Tightening Pass
 
 Date: 2026-05-19
@@ -540,7 +544,7 @@ Implementation note:
 - Final finishing slice keeps the sprite renderer untouched, adds only tracking text resilience plus pure-model assertions, and updates this pass record.
 - Rollback preference is to revert the latest tracking-model/UI commits in reverse order while preserving any independently verified emergency dispatch/payment fixes.
 
-### APK Review Follow-up â€” ETA/Arrival/CTA Consistency
+### APK Review Follow-up — ETA/Arrival/CTA Consistency
 
 Status: In Progress
 Risk: Medium

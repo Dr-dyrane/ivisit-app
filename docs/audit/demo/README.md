@@ -2,7 +2,7 @@
 
 **Subsystem:** `bootstrap-demo-ecosystem` Edge Function + client coverage gate
 **Bug confirmed:** 2026-05-10
-**Full root-cause audit:** [../DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](../DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
+**Full root-cause audit:** [./DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
 **Upstream bloat checkpoint:** [../map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md](../map/DEMO_BOOTSTRAP_BLOAT_REMEDIATION_CHECKPOINT_2026-05-01.md)
 **Coverage flow source of truth:** [../../flows/emergency/DEMO_MODE_COVERAGE_FLOW.md](../../flows/emergency/DEMO_MODE_COVERAGE_FLOW.md)
 

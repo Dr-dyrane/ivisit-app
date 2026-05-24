@@ -1,8 +1,10 @@
 # iVisit Gold Standard State Architecture — Migration Roadmap
 
-**Status**: Phase 6 COMPLETE — EmergencyContext retired  
-**Documented**: 2026-04-26  
-**Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).  
+> **Reconciliation Note — 2026-05-24:** Phases 1–7 complete. `EmergencyContext.jsx` was **not deleted** — it remains as a thin compatibility/orchestration shell (~228 lines) over `hooks/emergency/*`, exposing a stable consumer surface during the long-tail migration of remaining screens. New domain state must go to the correct five-layer owner (L1–L5) and **not** back into `EmergencyContext`. See [`../overview/ARCHITECTURE.md`](../overview/ARCHITECTURE.md) §9 (Compatibility Layer — Contexts) and [`AGENTS.md`](../../../AGENTS.md) §Migration Awareness.
+
+**Status**: Phase 6 COMPLETE — EmergencyContext retired as state owner (kept as thin orchestrator)
+**Documented**: 2026-04-26 (last reconciled 2026-05-24)
+**Context**: iVisit is a global emergency medical app ($10M valuation, $15M post-revamp).
 Gold standard is non-negotiable. One hospital onboarding via ivisit-console triggers store launch.
 
 ---

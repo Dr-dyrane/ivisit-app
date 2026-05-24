@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Stack Screens Pass Plan (v1)
 
 > Status: Active execution plan
@@ -283,10 +287,10 @@ Infrastructure introduced here is app-wide, not screen-specific — it outlives 
 
 Every subsequent stack-screen pass must address these four tracks explicitly:
 
-- **State management** â€” the pass must audit the feature's state ownership and either improve it or document the exact remaining gap against the five-layer doctrine
-- **UI quality** â€” the pass must bring the screen closer to the current stack language (mobile clarity, wide-screen behavior, calmer copy, typography discipline, modal discipline)
-- **DRY / modular code** â€” the pass must reduce repetition and move the screen toward the shared anatomy instead of adding more route-owned one-offs
-- **Documentation** â€” the pass must land pre-pass intent and post-pass checkpoint updates in the same wave
+- **State management** — the pass must audit the feature's state ownership and either improve it or document the exact remaining gap against the five-layer doctrine
+- **UI quality** — the pass must bring the screen closer to the current stack language (mobile clarity, wide-screen behavior, calmer copy, typography discipline, modal discipline)
+- **DRY / modular code** — the pass must reduce repetition and move the screen toward the shared anatomy instead of adding more route-owned one-offs
+- **Documentation** — the pass must land pre-pass intent and post-pass checkpoint updates in the same wave
 
 No future stack pass should be treated as a styling-only pass unless the docs explicitly justify why state and modularity are intentionally unchanged.
 Under UI quality, loading-state doctrine is explicit: favor skeletons for route, list, card, and form-shell loading states; reserve activity indicators for compact inline pending feedback only.

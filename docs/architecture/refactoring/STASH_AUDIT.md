@@ -1,8 +1,11 @@
 # Stash Audit — `stash@{0}`
+
+> **Reconciliation Note — 2026-05-24:** Historical record of the 224-file stash review. The stash itself has long since been resolved (selectively pulled, manually re-implemented, or rejected). Per-file status below remains as captured. No carryforward for new work — current architectural truth lives in [`../overview/ARCHITECTURE.md`](../overview/ARCHITECTURE.md) and [`../state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md).
+
 **Stash message**: "UNIFIED: Complete refactor checkpoint - Phase 2 orchestrator + new hooks, atoms, stores, docs (224 files total)"  
 **Stash base**: `68a5e2b` (docs: correct consumer map, tighten Phase 6 gate)  
 **Total files**: 224  
-**Audit started**: 2026-04-26
+**Audit started**: 2026-04-26 — Reconciled: 2026-05-24
 
 ## Legend
 | Status | Meaning |

@@ -1,7 +1,17 @@
 # Refactoring Bible: The "Apple Way" Architecture
 
-**Status**: Active / In Progress
-**Date**: 2026-02-10 — Last Updated: 2026-04-26
+> **Reconciliation Note — 2026-05-24:** All four "Critical Severity (Legacy)" rows in §2 are now **resolved**. Current file sizes verified against `HEAD`:
+>
+> - `screens/ProfileScreen.jsx` — **477 bytes** (thin shell — ✅ resolved, was "In Progress")
+> - `screens/SearchScreen.jsx` — **486 bytes** (thin shell — ✅ already marked resolved)
+> - `screens/EmergencyContactsScreen.jsx` — **602 bytes** (thin shell — ✅ already marked resolved)
+> - `services/authService.js` — 27 KB; reorg complete per the original note (✅ already marked resolved)
+>
+> The View–Hook–Service doctrine in §3 remains current and authoritative.
+> For new code standards, prefer [`../../REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) (the five-layer-aware successor).
+
+**Status**: Doctrine current; legacy audit table reconciled 2026-05-24
+**Date**: 2026-02-10 — Last Updated: 2026-04-26 — Reconciled: 2026-05-24
 **Goal**: Create a codebase that is readable, scalable, modular, and principled. We aim for "The Apple Way": clean user experience, efficient memory usage, and structured complexity that feels simple to the user.
 
 ---

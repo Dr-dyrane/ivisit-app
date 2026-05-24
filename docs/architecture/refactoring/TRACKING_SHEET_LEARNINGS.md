@@ -1,7 +1,15 @@
 # Tracking Sheet Phase — Cross-Cutting Learnings
 
+> **Reconciliation Note — 2026-05-24:** Living reference. The defect classes, heuristics, and the `useEffect` decision tree below have been integrated into:
+>
+> - [`../../REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) §1 (canonical version of the decision tree)
+> - [`AGENTS.md`](../../../AGENTS.md) §Common Pitfalls (TDZ, hook API, layer disguise, ref sync, object truthiness, store semantics, fallback timers, auth/cache continuity)
+> - [`AGENTS.md`](../../../AGENTS.md) §Debugging Doctrine (map-the-flow, fix-at-source, one-variable-at-a-time, minimal upstream fixes)
+>
+> This file remains the long-form rationale and source case studies. Treat as evergreen.
+
 **Source**: Tracking sheet audit + stash review (`stash@{0}` from `recovery/clean-2026-04-25`)
-**Date**: 2026-04-26 (updated 2026-04-28)
+**Date**: 2026-04-26 (updated 2026-04-28, reconciled 2026-05-24)
 **Audience**: Future passes across MapScreen, EmergencyContext, Commit flow, Visit history, Payment.
 **Mandate**: These learnings apply codebase-wide. Treat as global rules for the same defect classes.
 
