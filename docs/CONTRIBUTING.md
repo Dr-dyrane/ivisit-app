@@ -150,7 +150,6 @@ The `project_state/context/` root holds only:
 - `CURRENT_STATE.md`
 - `DEPRECATED.md`
 - `HARDENING_CLOSURE_PLAN_*.md`
-- `QUICK_START.md`
 
 Every other item in `project_state/context/` is a misfile.
 

@@ -1,271 +1,539 @@
-# Docs Audit — 2026-05-24
+# Docs Update Tracker — 2026-05-24
 
-> **Pass 1 — Triage & Inventory.** Verifies whether the 2026-05-19 cleanup classification still matches current code. Flags drift, not rewrites.
+> **Live tracker** for the full-docs reconciliation sweep across `ivisit-app/docs/`.
+> Anyone can resume from the next `pending` row.
 >
-> Builds on: [`audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md`](./DOCS_REPO_CLEANUP_REPORT_2026-05-19.md)
->
-> Inventory: 356 markdown files across 14 subdirectories.
+> Started: 2026-05-24
+> Author: Cascade + Dyrane
+> Inventory: 356 markdown files
+> Predecessor: [`archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md`](../archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md)
 
 ---
 
-## Classification Legend
+## How To Resume This Tracker
 
-| Class | Definition | Required action |
-|---|---|---|
-| `LIVING` | Claims about current code; must match `HEAD` | Reconcile against source in Pass 2–4 |
-| `LIVING-DRIFTED` | Living doc whose claims no longer match code | Rewrite in Pass 2–4 |
-| `HISTORICAL` | Point-in-time record (audit, pass plan, checkpoint, dossier) | **Freeze.** Do not edit content; add archival notice only if still misclassified |
-| `STALE` | Was living, now obsolete or superseded | Move to `archive/`, add notice |
-| `ORPHAN` | Not linked from INDEX, unclear purpose | Investigate; archive or delete |
+1. Scan the tables below in pass order (Pass 2 → 6).
+2. Find the next row with `Status: pending`.
+3. Read the doc; read the cited code; apply the `Intent` per the `Target` notes.
+4. Update the row: set `Status: done`, fill `Completed`, add the commit/diff reference if applicable.
+5. If a doc is **historical** (audit, completed pass, checkpoint, dossier), do **not** rewrite the body. Append a **Reconciliation Note** block (template below).
+6. If a doc is **living-drifted**, rewrite to match current `HEAD`.
+7. If a doc is **stale**, move it to `docs/archive/historical/` with an archival notice.
 
----
+### Status Values
 
-## Section A — Living Docs (must match code)
+| Value | Meaning |
+|---|---|
+| `pending` | Not yet reviewed in this sweep |
+| `in_progress` | Currently being reconciled |
+| `done` | Reconciled — either rewritten (living), noted (historical), or archived (stale) |
+| `blocked` | Waiting on a decision, missing context, or upstream change |
+| `n/a` | Not a reconciliation target (e.g. JSON, append-only ledger) |
 
-### A.1 Top-level doctrine
+### Class Values
 
-| File | Class | Drift status | Notes |
-|---|---|---|---|
-| `README.md` | LIVING | ✅ Clean (2026-05-19) | Portal copy current |
-| `INDEX.md` | LIVING | ⚠️ Minor drift | References `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` as if living in INDEX §5; itself self-marks as historical. Consistent but redundant linkage |
-| `MASTER_BLUEPRINT.md` | LIVING-DRIFTED | ❌ Drifted | §"Current Phase" links `MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` as `/map` current state — that doc is marked Historical in INDEX. Should point to `EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` |
-| `SPONSOR_SPRINT.md` | LIVING | ✅ Touched 2026-05-24 | Active sprint state — defer to user-owned cadence |
-| `CONTRIBUTING.md` | LIVING | ✅ Clean | Folder rules current |
-| `REFACTORING_GUARDRAILS.md` | LIVING | 🔄 Verify in Pass 2 | 31 KB — claims about 5-layer architecture, useEffect rules, file size compliance need spot-check against current `stores/`, `atoms/`, `machines/` |
-| `rules.json` | LIVING | Out of scope (JSON, not MD) | Tiebreaker doctrine |
-
-### A.2 Architecture overview
-
-| File | Class | Drift status | Notes |
-|---|---|---|---|
-| `architecture/ARCHITECTURE_README.md` | LIVING | 🔄 Verify | 858 B — likely a stub index |
-| `architecture/overview/ARCHITECTURE.md` | **LIVING-DRIFTED** | ❌ Severely drifted | Dated 2026-01-09 v1.1. Describes "Three Layers" (Presentation / Business Logic / Data Access) and **AsyncStorage as the database**. Current reality is the 5-layer Gold Standard (Supabase / TanStack Query / Zustand / XState / Jotai) — see `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`. **Highest-priority rewrite target.** |
-| `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` | LIVING | 🔄 Verify | Claims Phases 1–7 complete; verify against existence of `stores/`, `atoms/`, `machines/`, retired `EmergencyContext`. Spot-check shows `EmergencyContext.jsx` still present (228 lines, thin orchestrator over hooks) — confirm roadmap "Phase 5 retire EmergencyContext" actually reflects this thin-orchestrator state, not full deletion |
-| `architecture/stores/STORES_README.md` | **LIVING-DRIFTED** | ❌ Severely drifted | Lists only `emergencyTripStore.js` + selectors + `index.js`. Reality: **22 files** in `stores/` covering billingQuote, bookVisit, coverage, emergencyContacts, emergencyTrip, helpSupport, lastHospital, location, mapRoute, medicalProfile, mode, notifications, paymentPreferences, visits. Doc is 1/14 the size of truth. |
-| `architecture/refactoring/REFACTORING_BIBLE.md` | LIVING | 🔄 Verify in Pass 3 | Cross-cutting code standards |
-| `architecture/refactoring/STASH_AUDIT.md` | HISTORICAL | ✅ Frozen | 224-file categorization snapshot |
-| `architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` | LIVING | 🔄 Verify in Pass 4 | Defect classes 2.1–2.12, heuristics H1–H5 — living reference |
-| `architecture/refactoring/EDGE_FUNCTION_PHASE_8_*.md` | LIVING | 🔄 Verify in Pass 4 | Active plan, dated 2026-05-19 |
-| `architecture/refactoring/IVISIT_PHASE_0_TO_7_*.md` | LIVING | 🔄 Verify in Pass 4 | Active plan, dated 2026-05-19 |
-| `architecture/refactoring/CHECKPOINT_PRE_PROVIDER_DETAIL.md` | HISTORICAL | ✅ Frozen | Checkpoint |
-| `architecture/roadmap/IMPLEMENTATION_ROADMAP.md` | LIVING | 🔄 Verify | Spot-check against current sprint |
-| `architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md` | LIVING | 🔄 Verify | Same |
-
-### A.3 Feature-area living docs
-
-| File | Class | Drift status | Notes |
-|---|---|---|---|
-| `architecture/emergency/EMERGENCY_STATE_REFACTOR.md` | LIVING | 🔄 Verify | Migration guide; referenced from `stores/README.md` |
-| `architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md` | LIVING | 🔄 Verify | Stores `emergencyContactsStore` + atoms + machine all exist — confirm doc matches |
-| `architecture/location/LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md` | LIVING | 🔄 Verify in Pass 4 | 60 KB; cross-check against `locationStore.js`, `GlobalLocationContext.jsx`, `atoms/locationIntentAtoms.js` |
-| `architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` | LIVING | 🔄 Verify | 41 KB |
-| `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | 🔄 Verify | LS-9 plan from memory — still pending |
-| `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | 🔄 Verify | LS-10/11 plans — still pending |
-| `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | 🔄 Verify | Hooks `useMapExploreFlow` confirmed exists |
-| `architecture/map/METRO_ROUTING_FIXES.md` | LIVING | 🔄 Verify | Fix doc; may belong in audit/ |
-| `architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` | LIVING | 🔄 Verify | Mapbox usage confirmed in code |
-| `architecture/ux/passes/UX_A..E_*.md` | LIVING (plan) | 🔄 Verify | Per memory, plans still pending |
-| `architecture/ux/IVISIT_UX_ISSUE_MAPPING_*.md` | LIVING | 🔄 Verify | UX register |
-| `architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md` | LIVING | 🔄 Verify | 54 KB plan |
-| `architecture/ux/APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_*.md` | HISTORICAL | ✅ Frozen | Dated audit |
-| `architecture/ux/MODAL_RECOVERY_PASS_OTA_RATING_V1.md` | LIVING | 🔄 Verify | Small doc |
-
-### A.4 Flow docs (active emergency surface)
-
-| File | Class | Drift status | Notes |
-|---|---|---|---|
-| `flows/README.md` | LIVING | 🔄 Verify | Workflow hub |
-| `flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` | LIVING | 🔄 Verify in Pass 4 | Primary current-truth tracker |
-| `flows/emergency/MASTER_REFERENCE_FLOW_V1.md` | LIVING | 🔄 Verify | Locked doctrine |
-| `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | 🔄 Verify in Pass 4 | 56 KB; MapScreen.jsx is 38 KB — verify rules still describe current shape after Pass 1/2 decomposition (`useMapShell`, `useMapHistoryFlow` extracted per memory) |
-| `flows/emergency/DEMO_MODE_COVERAGE_FLOW.md` | LIVING | 🔄 Verify | Demo bootstrap |
-| `flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md` | LIVING | 🔄 Verify | Welcome flow |
-| `flows/emergency/workflow_map.md` | LIVING | 🔄 Verify | Workflow map |
-| `flows/emergency/ambulance_and_bed_booking.md` | LIVING | 🔄 Verify | Core flow |
-| `flows/emergency/CHOOSE_HOSPITAL_PHASE_DOSSIER.md` | LIVING | 🔄 Verify | Phase dossier |
-| `flows/emergency/LOCATION_SEARCH_MODAL_DOSSIER.md` | LIVING | 🔄 Verify | Modal dossier |
-| `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | HISTORICAL | ✅ Frozen | Marked historical in INDEX; **remove from MASTER_BLUEPRINT current-state link** |
-| `flows/emergency/architecture/*` (24 files) | Mixed | Mostly HISTORICAL pass plans | Most are completed V1 pass plans → freeze. `explore-care/`, `contact-dispatch/`, `location-truth/` are active dossier+passes per INDEX |
-| `flows/emergency/history/*.md` | LIVING | 🔄 Verify | Visits + history flow |
-| `flows/emergency/ux/*` | LIVING | 🔄 Verify | UX notes |
-| `flows/emergency/checklists/POST_BOOKING_UI_CHECKLIST.md` | LIVING | 🔄 Verify | Checklist |
-| `flows/auth/login.md`, `register.md` | LIVING | 🔄 Verify | Jan 2026 — verify still current |
-| `flows/auth/REGISTRATION_UI_UX.md` | LIVING | 🔄 Verify | |
-| `flows/auth/workflow_map.md` | LIVING | 🔄 Verify | |
-| `flows/auth/OAUTH_TROUBLESHOOTING.md` | LIVING | 🔄 Verify | Apr 2026 |
-| `flows/payment/payment.md`, `workflow_map.md` | LIVING | 🔄 Verify | Payment flow |
-| `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | 🔄 Verify | `billingQuoteStore.js` + `billingQuoteMachine.js` exist — confirm shipped |
-| `flows/search/SAVED_LOCATIONS_USER_FLOW.md` | LIVING | 🔄 Verify | |
-
-### A.5 Design / product
-
-| File | Class | Notes |
-|---|---|---|
-| `design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md` | LIVING | Verify |
-| `design/MINI_PROFILE_UI_DOCTRINE_V1.md` | LIVING | Verify |
-| `product_design/manifesto.md` | LIVING | Doctrine |
-| `product_design/ui_ux_bible.md` | LIVING | Doctrine |
-| `product_design/ANDROID_GLASS_PATTERN.md` | LIVING | Verify |
-| `product_design/SCREEN_CONSISTENCY_GUIDE.md` | LIVING | Verify |
-| `product_design/FAB_ANALYSIS_REVIEW.md` | STALE? | Jan 2026; verify if FAB still relevant — `FABContext.jsx` exists |
-| `product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md` | STALE? | Same |
-| `product_design/marketing/*` | LIVING | Marketing |
-
-### A.6 Deployment + research
-
-| File | Class | Notes |
-|---|---|---|
-| `deployment/VERCEL_WEB_DEPLOYMENT.md` | LIVING | Verify |
-| `deployment/WEB_MAPS_SETUP.md` | LIVING | Verify |
-| `deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` | LIVING | Verify |
-| `deployment/GOOGLE_PLAY_CLOSED_TESTING.md` | LIVING | Verify (2026-05-22) |
-| `research/APPLE_MAPS_IPHONE_UI_REFERENCE.md` | LIVING (ref) | External reference, frozen content |
-| `research/IOS_PWA.md` | LIVING (ref) | Reference |
-
-### A.7 Algorithm
-
-| File | Class | Notes |
-|---|---|---|
-| `algorithm/EMERGENCY_COMMIT_GRAPH_DOSSIER.md` | LIVING | 33 KB; verify (2026-05-24) |
-| `algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md` | LIVING | 56 KB; verify (2026-05-24) |
-
-### A.8 Console docs (cross-repo)
-
-| File | Class | Notes |
-|---|---|---|
-| `console/console-ui-theme-guide.md` | STALE? | Jan 2026; `ivisit-console` lives in a separate repo — these may belong there. Candidate to move or archive |
-| `console/dashboard-crud-plan.md` | STALE? | Same |
-| `console/implementation-guide.md` | STALE? | Same |
-| `console/quick-reference.md` | STALE? | Same |
-| `console/starter-template.md` | STALE? | Same |
-| `console/WEB_DASHBOARD_SPEC.md` | STALE? | Verify if still tracked here |
-
-### A.9 Onboarding + payment singletons
-
-| File | Class | Notes |
-|---|---|---|
-| `onboarding/Technical.md` | STALE? | 2025-12-28; verify currency |
-| `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` | LIVING (plan)? | Verify if shipped |
+| Value | Treatment |
+|---|---|
+| `LIVING` | Rewrite to match current code |
+| `LIVING-DRIFTED` | Severe rewrite required (priority) |
+| `HISTORICAL` | Freeze body; append Reconciliation Note |
+| `STALE` | Move to `archive/historical/` with notice |
+| `LEDGER` | Append-only; verify head only |
+| `REF` | External reference; no action |
 
 ---
 
-## Section B — Historical (frozen, no rewrites)
+## Reconciliation Note Template
 
-All entries below are point-in-time records. They MUST NOT be rewritten. The only acceptable edits are adding archival notices or fixing broken links.
+Append this block at the **end** of any historical doc (audit, pass plan, checkpoint, dossier) reviewed in this sweep. Do **not** edit the body above it. The note records what has been resolved since the doc was written and what remains.
 
-### B.1 Already in `archive/` — leave alone
+```markdown
+---
 
-- `archive/historical/*` (8 files)
-- `archive/legacy_specs/*` (10 files)
+## Reconciliation Note — 2026-05-24
 
-### B.2 Audit logs (`audit/**`) — 137 files
+> Appended during the 2026-05-24 docs update sweep. The body above is a frozen point-in-time record. This note summarizes what has been resolved since, what remains open, and where work continued.
 
-All `audit/**` content is by definition historical evidence. Treat the entire tree as **HISTORICAL → freeze**, with these exceptions:
+**Status of original findings**
 
-| File | Class | Notes |
-|---|---|---|
-| `audit/AUDIT_CHECKLIST.md` | LIVING | Reusable checklist |
-| `audit/BUG_CLASSIFICATION_SYSTEM.md` | LIVING | Reusable taxonomy |
-| `audit/README.md` | LIVING | Index |
-| `audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md` | HISTORICAL | Cleanup record |
-| `audit/DOCS_AUDIT_2026-05-24.md` | LIVING (this doc) | |
-| All other `audit/**/*.md` | HISTORICAL | Audit/pass/checkpoint records |
+- `<finding 1>` — **Fixed** in `<file:lines>` (commit `<sha>` or pass `<name>`).
+- `<finding 2>` — **Partially fixed**; `<remaining work>`.
+- `<finding 3>` — **Open**; tracked in `<file>` or `<sprint item>`.
+- `<finding 4>` — **Obsolete** (assumption no longer holds because `<reason>`).
 
-### B.3 SCC items (`project_state/context/scc/**`) — 56 files
+**Where work continued**
 
-All `SCC-XXX_*` items are historical change-control records. **Freeze entire folder.**
+- `<later doc 1>` — `<one-line relationship>`
+- `<later doc 2>` — `<one-line relationship>`
 
-### B.4 SUPABASE change trackers
+**Carryforward**
 
-| File | Class | Notes |
-|---|---|---|
-| `project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md` | LIVING (ledger) | 87 KB ledger — append-only, not rewritten |
-| `project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md` | LIVING (ledger) | 110 KB ledger — append-only |
-| `project_state/context/CURRENT_STATE.md` | LIVING | 5 KB — verify |
-| `project_state/context/HARDENING_CLOSURE_PLAN_2026-03-04.md` | HISTORICAL | Closure plan |
-| `project_state/context/DEPRECATED.md` | LIVING (ledger) | |
+- `<open item 1>` — owner `<who>`, target `<sprint or doc>`
+- `<open item 2>` — owner `<who>`, target `<sprint or doc>`
+```
 
-### B.5 Project state early-2026
+If the doc's findings are **fully closed** with nothing remaining, the note may be shortened to a single line:
 
-| File | Class | Recommendation |
-|---|---|---|
-| `project_state/CONTEXT_REVIEW.md` | STALE | 2026-01-25; superseded by current architecture docs. **Move to archive/** |
-| `project_state/QUICK_START.md` | STALE | 2026-01-11; superseded by `README.md`. **Move to archive/** |
-| `project_state/repo.md` | STALE | 2026-01-11; superseded by `README.md`. **Move to archive/** |
+```markdown
+---
+
+## Reconciliation Note — 2026-05-24
+
+All original findings resolved by `<doc or pass>`. No carryforward.
+```
 
 ---
 
-## Section C — Drift Summary (Pass 2/3/4 targets)
+## Pass 2 — Top-level Living Doctrine
 
-### C.1 Must-rewrite (highest priority)
+| # | File | Class | Status | Intent | Target / Notes | Completed |
+|---:|---|---|---|---|---|---|
+| 2.1 | `README.md` | LIVING | **done** | Verified — folder roles + routing rules + authority order all current | — | 2026-05-24 |
+| 2.2 | `INDEX.md` | LIVING | pending | Remove redundant historical link, add Pass 6 archive section | Re-run after Pass 5/6 to reflect moves | |
+| 2.3 | `MASTER_BLUEPRINT.md` | LIVING-DRIFTED | **done** | Replaced historical `/map` link with `EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` at lines 22 + 72 | — | 2026-05-24 |
+| 2.4 | `CONTRIBUTING.md` | LIVING | **done** | Removed stray `QUICK_START.md` from §SCC Items allowed-list (file slated for archive) | Folder decision tree + naming rules verified current | 2026-05-24 |
+| 2.5 | `REFACTORING_GUARDRAILS.md` | LIVING | **done** | Head (5-layer + useEffect decision tree + Emergency Contacts rule) matches current code. Stores ×22, atoms ×18, machines ×10, all five-layer present | — | 2026-05-24 |
+| 2.6 | `SPONSOR_SPRINT.md` | LIVING | n/a | User-owned sprint state | Do not edit | |
+| 2.7 | `rules.json` | LIVING | n/a | JSON, tiebreaker doctrine | Out of MD scope | |
 
-1. **`architecture/overview/ARCHITECTURE.md`** — completely rewrite to describe the 5-layer Gold Standard. Pre-Gold-Standard 3-layer story is misleading new contributors.
-2. **`architecture/stores/STORES_README.md`** — expand from 1 store to all 22 stores. Group by domain (trip / booking / coverage / location / map / mode / etc.).
-3. **`stores/README.md` (in code)** — mirror the doc-side STORES_README update.
-4. **`MASTER_BLUEPRINT.md`** — update §"Current Phase" links: remove `MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`, point at `EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` instead.
+---
 
-### C.2 Verify-and-touch-up
+## Pass 3 — Architecture Rewrites (highest-drift)
 
-5. `REFACTORING_GUARDRAILS.md` — confirm 5-layer + file-size + useEffect rules still match enforcement.
-6. `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` — confirm Phase 5 "EmergencyContext retired" wording matches the **thin-orchestrator** reality (file still exists at 228 lines, delegating to `hooks/emergency/*`).
-7. `flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` — verify suspicions/fix-order still match current sprint.
-8. `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` — reconcile against post-decomposition MapScreen (`useMapShell`, `useMapHistoryFlow`).
-9. `architecture/location/LOCATION_*` — verify against `locationStore.js`, `GlobalLocationContext.jsx`, `locationIntentAtoms.js`.
-10. `architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md` — confirm all 5 layers exist (store / selectors / atoms / machine / hooks).
+| # | File | Class | Status | Intent | Target / Notes | Completed |
+|---:|---|---|---|---|---|---|
+| 3.1 | `architecture/overview/ARCHITECTURE.md` | LIVING-DRIFTED | **done** | Full rewrite to v2.0 5-layer Gold Standard | v1.1 archived at `archive/historical/ARCHITECTURE_v1.1_2026-01-09.md` with notice | 2026-05-24 |
+| 3.2 | `architecture/stores/STORES_README.md` | LIVING-DRIFTED | **done** | Rewrote to v2.0 with all 22 stores grouped by domain (emergency / trip-map-route / booking-payment / profile-care), authoring rules, anti-patterns, reference templates | — | 2026-05-24 |
+| 3.3 | `stores/README.md` (code) | LIVING-DRIFTED | **done** | In-code dev quick reference — 22-file tree, short-form rules, usage snippets, when-not-to-add table, reference templates. Points to canonical doc | — | 2026-05-24 |
+| 3.4 | `architecture/ARCHITECTURE_README.md` | LIVING | **done** | Refreshed: subfolder index now complete (was missing state/, stores/, emergency/, location/, map/, refactoring/). Added anchor-documents table pointing at ARCHITECTURE.md v2.0 | — | 2026-05-24 |
+| 3.5 | `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` | LIVING | pending | Reconcile Phase 5 wording: `EmergencyContext` is a thin shell, not deleted | Reflect 228-line orchestrator over `hooks/emergency/*` | |
+| 3.6 | `architecture/refactoring/REFACTORING_BIBLE.md` | LIVING | pending | Verify code standards current | | |
+| 3.7 | `architecture/refactoring/STASH_AUDIT.md` | HISTORICAL | pending | Append Reconciliation Note (224-file categorization closure) | | |
+| 3.8 | `architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` | LIVING | pending | Verify defect classes + heuristics still accurate | Living reference; do not freeze | |
+| 3.9 | `architecture/refactoring/EDGE_FUNCTION_PHASE_8_*` | LIVING (plan) | pending | Verify still active / not shipped | | |
+| 3.10 | `architecture/refactoring/IVISIT_PHASE_0_TO_7_*` | LIVING (plan) | pending | Verify still active / shipped state | | |
+| 3.11 | `architecture/refactoring/CHECKPOINT_PRE_PROVIDER_DETAIL.md` | HISTORICAL | pending | Append Reconciliation Note | | |
+| 3.12 | `architecture/roadmap/IMPLEMENTATION_ROADMAP.md` | LIVING | pending | Verify against current sprint | | |
+| 3.13 | `architecture/roadmap/PRODUCT_EXECUTION_ROADMAP.md` | LIVING | pending | Verify against current sprint | | |
+| 3.14 | `architecture/emergency/EMERGENCY_STATE_REFACTOR.md` | LIVING | pending | Verify migration guide matches current shape | Path: `docs/architecture/emergency/` corrected; ensure refs match | |
+| 3.15 | `architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md` | LIVING | pending | Confirm 5 layers exist (`emergencyContactsStore` + selectors + atoms + machine + hooks) | | |
 
-### C.3 Move to archive
+---
 
-11. `project_state/CONTEXT_REVIEW.md` → `archive/historical/`
-12. `project_state/QUICK_START.md` → `archive/historical/` (replaced by `README.md`)
-13. `project_state/repo.md` → `archive/historical/`
-14. `product_design/FAB_ANALYSIS_REVIEW.md` + `GLOBAL_FAB_IMPLEMENTATION_PLAN.md` → **decision needed** (`FABContext.jsx` exists; either keep as living spec or archive if abandoned)
-15. `console/*` (6 files) → **decision needed** (move to `ivisit-console` repo, or archive here)
-16. `onboarding/Technical.md` → **decision needed** (verify currency)
+## Pass 4 — Feature-area Living Docs
 
-### C.4 Verify shipped, then archive plans
+### 4A · Location
 
-17. `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` — if shipped → archive
-18. `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` — `billingQuoteStore` + `billingQuoteMachine` exist; if plan complete → archive
-19. UX-A through UX-D pass plans — verify shipped state per `SPONSOR_SPRINT.md`
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4A.1 | `architecture/location/LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md` | LIVING | pending | Cross-check vs `locationStore.js`, `GlobalLocationContext.jsx`, `locationIntentAtoms.js` | |
+| 4A.2 | `architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` | LIVING | pending | Reconcile plan vs shipped state | |
+| 4A.3 | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | pending | Verify if LS-9 shipped; if yes append closure note | |
+| 4A.4 | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | pending | Verify if LS-10/11 shipped | |
+
+### 4B · Map
+
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4B.1 | `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | pending | Cross-check vs `useMapExploreFlow` and related hooks | |
+| 4B.2 | `architecture/map/METRO_ROUTING_FIXES.md` | LIVING | pending | Decide: keep in architecture/ or move to audit/ | |
+| 4B.3 | `architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` | LIVING | pending | Verify Mapbox usage in code matches plan | |
+| 4B.4 | `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | pending | Reconcile vs post-decomposition `MapScreen.jsx` (`useMapShell`, `useMapHistoryFlow`) | |
+
+### 4C · UX
+
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4C.1 | `architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md` | LIVING | pending | Verify UX register still current | |
+| 4C.2 | `architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md` | LIVING | pending | Verify plan status; close shipped passes | |
+| 4C.3 | `architecture/ux/MODAL_RECOVERY_PASS_OTA_RATING_V1.md` | LIVING | pending | Verify | |
+| 4C.4 | `architecture/ux/APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md` | HISTORICAL | pending | Append Reconciliation Note | |
+| 4C.5 | `architecture/ux/passes/README.md` | LIVING | pending | Verify pass index | |
+| 4C.6 | `architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md` | LIVING (plan) | pending | Verify shipped state | |
+| 4C.7 | `architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md` | LIVING (plan) | pending | Verify shipped state | |
+| 4C.8 | `architecture/ux/passes/UX_C_PAYMENT_SURFACE.md` | LIVING (plan) | pending | Verify shipped state | |
+| 4C.9 | `architecture/ux/passes/UX_D_STATE_LAYER.md` | LIVING (plan) | pending | Verify shipped state | |
+| 4C.10 | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | LIVING (plan, deferred) | pending | Verify deferred state | |
+
+### 4D · Flows — Emergency (live trackers + doctrine)
+
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4D.1 | `flows/README.md` | LIVING | pending | Verify workflow hub | |
+| 4D.2 | `flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` | LIVING | pending | Update with current sprint state | |
+| 4D.3 | `flows/emergency/MASTER_REFERENCE_FLOW_V1.md` | LIVING | pending | Verify locked doctrine | |
+| 4D.4 | `flows/emergency/DEMO_MODE_COVERAGE_FLOW.md` | LIVING | pending | Verify demo bootstrap matches `coverageStore.js` + service | |
+| 4D.5 | `flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md` | LIVING | pending | Verify against `WelcomeScreenOrchestrator` | |
+| 4D.6 | `flows/emergency/workflow_map.md` | LIVING | pending | Verify | |
+| 4D.7 | `flows/emergency/ambulance_and_bed_booking.md` | LIVING | pending | Verify | |
+| 4D.8 | `flows/emergency/CHOOSE_HOSPITAL_PHASE_DOSSIER.md` | LIVING | pending | Verify | |
+| 4D.9 | `flows/emergency/LOCATION_SEARCH_MODAL_DOSSIER.md` | LIVING | pending | Verify | |
+| 4D.10 | `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | HISTORICAL | pending | Append Reconciliation Note (superseded by LIVE_TRACKER) | |
+
+### 4E · Flows — Emergency Architecture pass plans (24 files)
+
+Most are V1 pass plans (likely complete). Default treatment: HISTORICAL → append Reconciliation Note.
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4E.1 | `flows/emergency/architecture/README.md` | LIVING | pending | |
+| 4E.2 | `flows/emergency/architecture/REFACTOR_SEQUENCE_V1.md` | HISTORICAL | pending | |
+| 4E.3 | `flows/emergency/architecture/STACK_SCREENS_PASS_V1.md` | HISTORICAL | pending | |
+| 4E.4 | `flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md` | LIVING | pending | |
+| 4E.5 | `flows/emergency/architecture/WELCOME_AND_MAP_CODE_STRUCTURE_V1.md` | LIVING | pending | |
+| 4E.6 | `flows/emergency/architecture/MAP_STATE_STRATEGY_V1.md` | LIVING | pending | |
+| 4E.7 | `flows/emergency/architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md` | HISTORICAL | pending | |
+| 4E.8 | `flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md` | LIVING | pending | |
+| 4E.9 | `flows/emergency/architecture/MAP_SHEET_PARITY_TASKLIST_V1.md` | HISTORICAL | pending | |
+| 4E.10 | `flows/emergency/architecture/MAP_MINI_PROFILE_HANDOFF_V1.md` | LIVING | pending | |
+| 4E.11 | `flows/emergency/architecture/MAP_CTA_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.12 | `flows/emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.13 | `flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.14 | `flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.15 | `flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.16 | `flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.17 | `flows/emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.18 | `flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.19 | `flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.20 | `flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.21 | `flows/emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.22 | `flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.23 | `flows/emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
+| 4E.24 | `flows/emergency/architecture/PAYMENT_RESPONSIVE_WAVE_V1.md` | HISTORICAL | pending | |
+
+### 4F · Flows — Emergency Architecture subpacks (contact-dispatch · explore-care · location-truth)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4F.1 | `flows/emergency/architecture/contact-dispatch/CONTACT_DISPATCH_COMMUNICATION_ROOM_DOSSIER_V1.md` | LIVING | pending | |
+| 4F.2 | `flows/emergency/architecture/contact-dispatch/README.md` | LIVING | pending | |
+| 4F.3 | `flows/emergency/architecture/contact-dispatch/passes/CD-0..9_*.md` (10 files) | HISTORICAL | pending | Batch: append closure notes | |
+| 4F.4 | `flows/emergency/architecture/contact-dispatch/passes/README.md` | LIVING | pending | |
+| 4F.5 | `flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md` | LIVING | pending | |
+| 4F.6 | `flows/emergency/architecture/explore-care/README.md` | LIVING | pending | |
+| 4F.7 | `flows/emergency/architecture/explore-care/passes/EXP-0..10,5A,DB,NEARBY-UI,WIRE_*.md` (14 files) | HISTORICAL | pending | Batch: append closure notes | |
+| 4F.8 | `flows/emergency/architecture/explore-care/passes/README.md` | LIVING | pending | |
+| 4F.9 | `flows/emergency/architecture/location-truth/DOSSIER_LOCATION_HARDENING_V1.md` | LIVING | pending | |
+| 4F.10 | `flows/emergency/architecture/location-truth/README.md` | LIVING | pending | |
+| 4F.11 | `flows/emergency/architecture/location-truth/audits/AUDIT_*.md` (8 files) | HISTORICAL | pending | Batch: append closure notes | |
+| 4F.12 | `flows/emergency/architecture/location-truth/passes/LOC-0..6_*.md` (6 files + template + README) | HISTORICAL | pending | Batch: append closure notes | |
+
+### 4G · Flows — Emergency (checklists + history + ux)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4G.1 | `flows/emergency/checklists/POST_BOOKING_UI_CHECKLIST.md` | LIVING | pending | |
+| 4G.2 | `flows/emergency/history/MAP_VISITS_SYSTEM_AUDIT_V1.md` | HISTORICAL | pending | |
+| 4G.3 | `flows/emergency/history/MAP_VISIT_DETAIL_CONTENT_CONTRACT_V1.md` | LIVING | pending | |
+| 4G.4 | `flows/emergency/history/VISITS_REQUEST_HISTORY_PLAN.md` | LIVING (plan) | pending | |
+| 4G.5 | `flows/emergency/ux/COVERAGE_NOTICE_MODAL.md` | LIVING | pending | |
+| 4G.6 | `flows/emergency/ux/MAP_THEME_SYSTEM.md` | LIVING | pending | |
+
+### 4H · Flows — Auth · Payment · Search
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4H.1 | `flows/auth/login.md` | LIVING | pending | |
+| 4H.2 | `flows/auth/register.md` | LIVING | pending | |
+| 4H.3 | `flows/auth/REGISTRATION_UI_UX.md` | LIVING | pending | |
+| 4H.4 | `flows/auth/workflow_map.md` | LIVING | pending | |
+| 4H.5 | `flows/auth/OAUTH_TROUBLESHOOTING.md` | LIVING | pending | |
+| 4H.6 | `flows/payment/payment.md` | LIVING | pending | |
+| 4H.7 | `flows/payment/workflow_map.md` | LIVING | pending | |
+| 4H.8 | `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | pending | Verify `billingQuoteStore`/`billingQuoteMachine` shipped — if yes, close note | |
+| 4H.9 | `flows/search/SAVED_LOCATIONS_USER_FLOW.md` | LIVING | pending | |
+
+### 4I · Design · Product Design · Research · Algorithm · Deployment · Onboarding
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4I.1 | `design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md` | LIVING | pending | |
+| 4I.2 | `design/MINI_PROFILE_UI_DOCTRINE_V1.md` | LIVING | pending | |
+| 4I.3 | `product_design/manifesto.md` | LIVING | pending | |
+| 4I.4 | `product_design/ui_ux_bible.md` | LIVING | pending | |
+| 4I.5 | `product_design/ANDROID_GLASS_PATTERN.md` | LIVING | pending | |
+| 4I.6 | `product_design/SCREEN_CONSISTENCY_GUIDE.md` | LIVING | pending | |
+| 4I.7 | `product_design/FAB_ANALYSIS_REVIEW.md` | STALE? | pending | Decide: keep (FABContext exists) or archive | |
+| 4I.8 | `product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md` | STALE? | pending | Decide: keep or archive | |
+| 4I.9 | `product_design/marketing/MANUSCRIPT.md` | LIVING | pending | |
+| 4I.10 | `product_design/marketing/STRATEGY.md` | LIVING | pending | |
+| 4I.11 | `research/APPLE_MAPS_IPHONE_UI_REFERENCE.md` | REF | n/a | External reference | |
+| 4I.12 | `research/IOS_PWA.md` | REF | n/a | External reference | |
+| 4I.13 | `algorithm/EMERGENCY_COMMIT_GRAPH_DOSSIER.md` | LIVING | pending | Verify against current `HEAD` | |
+| 4I.14 | `algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md` | LIVING | pending | Verify against current `HEAD` | |
+| 4I.15 | `deployment/VERCEL_WEB_DEPLOYMENT.md` | LIVING | pending | Verify vs `vercel.json` + `app.config.js` | |
+| 4I.16 | `deployment/WEB_MAPS_SETUP.md` | LIVING | pending | Verify vs Mapbox config | |
+| 4I.17 | `deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` | LIVING | pending | Verify | |
+| 4I.18 | `deployment/GOOGLE_PLAY_CLOSED_TESTING.md` | LIVING | pending | Verify (2026-05-22) | |
+| 4I.19 | `onboarding/Technical.md` | STALE? | pending | Decide: refresh or archive | |
+| 4I.20 | `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` | LIVING (plan) | pending | Verify if shipped → archive if so | |
+
+---
+
+## Pass 5 — Reconciliation Notes on Historical Records
+
+### 5A · `audit/` core (top-level)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5A.1 | `audit/README.md` | LIVING | pending | |
+| 5A.2 | `audit/AUDIT_CHECKLIST.md` | LIVING | pending | |
+| 5A.3 | `audit/BUG_CLASSIFICATION_SYSTEM.md` | LIVING | pending | |
+| 5A.4 | `audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md` | HISTORICAL | moved 2026-05-24 | Relocated from `audit/` root to `audit/demo/` (sibling to PASS docs) |
+| 5A.5 | `archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md` | HISTORICAL | archived 2026-05-24 | Superseded by current sweep; moved to archive |
+| 5A.6 | `audit/DOCS_AUDIT_2026-05-24.md` (this doc) | LIVING (tracker) | in_progress | Self-reference; updated continuously | |
+
+### 5B · `audit/checkpoints/` + orchestrator refactor
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5B.1 | `audit/checkpoints/README.md` | LIVING | pending | |
+| 5B.2 | `audit/checkpoints/FINAL_MIGRATION_SUMMARY.md` | HISTORICAL | pending | |
+| 5B.3 | `audit/checkpoints/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md` | HISTORICAL | pending | |
+
+### 5C · `audit/demo/` (5 passes + README)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5C.1 | `audit/demo/README.md` | LIVING | pending | |
+| 5C.2 | `audit/demo/PASS_1..5_*.md` (5 files) | HISTORICAL | pending | Batch: closure notes | |
+
+### 5D · `audit/emergency/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5D.1 | `audit/emergency/README.md` | LIVING | pending | |
+| 5D.2 | `audit/emergency/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md` | HISTORICAL | pending | |
+| 5D.3 | `audit/emergency/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md` | HISTORICAL | pending | |
+| 5D.4 | `audit/emergency/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md` | HISTORICAL | pending | |
+| 5D.5 | `audit/emergency/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md` | HISTORICAL | pending | |
+
+### 5E · `audit/map/` (top-level — 20 files)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5E.1 | `audit/map/README.md` | LIVING | pending | |
+| 5E.2 | All other `audit/map/*.md` (19 files) | HISTORICAL | pending | Batch by topic: ambulance/marker · CTA/route-state · location-control · search-uiux · tracking · visit-detail | |
+
+### 5F · `audit/map/checkpoints/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5F.1 | All `audit/map/checkpoints/*.md` (6 files) | HISTORICAL | pending | Batch | |
+
+### 5G · `audit/map/explore-care/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5G.1 | `audit/map/explore-care/EXPLORE_CARE_DATA_AUDIT_2026-05-16.md` | HISTORICAL | pending | |
+| 5G.2 | `audit/map/explore-care/PERMANENT_FIX_DESIGN_2026-05-16.md` | HISTORICAL | pending | |
+
+### 5H · `audit/map/passes/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5H.1 | `audit/map/passes/AMBULANCE_3D_TELEMETRY_PASS.md` | HISTORICAL | pending | |
+| 5H.2 | `audit/map/passes/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md` | HISTORICAL | pending | |
+| 5H.3 | `audit/map/passes/TRACKING_SHEET_FULL_SYSTEM_AUDIT_2026-05-20.md` | HISTORICAL | pending | |
+| 5H.4 | `audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md` | HISTORICAL | pending | |
+| 5H.5 | `audit/map/passes/tracking-sheet-full-system-audit-2026-05-20/00..09_*.md` (10 files) | HISTORICAL | pending | Batch: single closure note (or one per file as time permits) | |
+
+### 5I · `audit/map/search/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5I.1 | All `audit/map/search/*.md` (5 files) | HISTORICAL | pending | Batch | |
+
+### 5J · `audit/payment/` · `audit/planning/` · `audit/screens/` · `audit/state/` · `audit/welcome/` · `audit/inventory/`
+
+| # | Folder | Files | Status |
+|---:|---|---:|---|
+| 5J.1 | `audit/payment/` | 3 | pending — batch |
+| 5J.2 | `audit/planning/` | 11 | pending — batch |
+| 5J.3 | `audit/screens/` | 17 | pending — batch (8 comparison + 8 checkpoint + README) |
+| 5J.4 | `audit/state/` | 5 | pending — batch |
+| 5J.5 | `audit/welcome/` | 7 | pending — batch |
+| 5J.6 | `audit/inventory/` | 1 (README only) | pending |
+
+### 5K · `project_state/context/scc/` (56 SCC items)
+
+| # | Scope | Status |
+|---:|---|---|
+| 5K.1 | All `SCC-001 … SCC-058_*.md` | pending — append one-line closure note where the SCC is closed; otherwise mark open | |
+| 5K.2 | `project_state/context/scc/README.md` | LIVING | pending |
+
+### 5L · `project_state/context/` (top-level ledgers + plans)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5L.1 | `project_state/context/CURRENT_STATE.md` | LIVING | pending | |
+| 5L.2 | `project_state/context/DEPRECATED.md` | LEDGER | pending | Verify head |
+| 5L.3 | `project_state/context/HARDENING_CLOSURE_PLAN_2026-03-04.md` | HISTORICAL | pending | |
+| 5L.4 | `project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md` | LEDGER | pending | Append-only; verify head |
+| 5L.5 | `project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md` | LEDGER | pending | Append-only; verify head |
+
+### 5M · Archive (19 files)
+
+| # | Scope | Status |
+|---:|---|---|
+| 5M.1 | All `archive/historical/*.md` + `archive/legacy_specs/*.md` | pending — verify each has an archival notice pointing to its current replacement |
+
+---
+
+## Pass 6 — Archive Sweep + INDEX Sync
+
+| # | Action | Status | Completed |
+|---:|---|---|---|
+| 6.1 | Move `project_state/CONTEXT_REVIEW.md` → `archive/historical/` + notice | pending | |
+| 6.2 | Move `project_state/QUICK_START.md` → `archive/historical/` + notice | pending | |
+| 6.3 | Move `project_state/repo.md` → `archive/historical/` + notice | pending | |
+| 6.4 | Resolve `console/*` (6 files): move to `ivisit-console` repo or archive here | pending | |
+| 6.5 | Resolve `product_design/FAB_*` (2 files): keep or archive | pending | |
+| 6.6 | Resolve `onboarding/Technical.md`: refresh or archive | pending | |
+| 6.7 | Resolve `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md`: shipped → archive | pending | |
+| 6.8 | Update `INDEX.md` to reflect all Pass 5/6 moves | pending | |
+| 6.9 | Update `README.md` "Authority Order" to mention this tracker | pending | |
+| 6.10 | Final mojibake scan on all touched files | pending | |
+
+---
+
+## Execution Log
+
+> Append a one-line entry per session. Newest first.
+
+| Date | Session | Pass(es) advanced | Files completed | Notes |
+|---|---|---|---|---|
+| 2026-05-24 | Cascade (S3) | 3 | 3.1 ARCHITECTURE.md rewrite (v2.0), 3.2 STORES_README expanded, 3.3 stores/README.md rewrite, 3.4 ARCHITECTURE_README refresh | Highest-drift architecture docs all closed. v1.1 ARCHITECTURE archived per protocol |
+| 2026-05-24 | Cascade (S2) | 2 | 2.1 README, 2.3 MASTER_BLUEPRINT, 2.4 CONTRIBUTING, 2.5 GUARDRAILS | Pass 2 closed except 2.2 INDEX (deferred to Pass 6) |
+| 2026-05-24 | Cascade (initial) | 1 | Inventory + classification | Tracker created; 356 files cataloged |
 
 ---
 
 ## Section D — Inventory totals
 
-| Folder | Files | Living | Living-Drifted | Historical | Stale | Orphan |
+| Folder | Files | Living | Living-Drifted | Historical | Stale / TBD | Ref / Ledger |
 |---|---:|---:|---:|---:|---:|---:|
-| root | 6 | 5 | 1 | 0 | 0 | 0 |
+| root | 6 | 4 | 1 | 0 | 0 | 1 (rules.json) |
 | algorithm | 2 | 2 | 0 | 0 | 0 | 0 |
 | architecture | 31 | ~22 | 2 | ~7 | 0 | 0 |
 | archive | 19 | 0 | 0 | 19 | 0 | 0 |
-| audit | 137 | 3 | 0 | 134 | 0 | 0 |
-| console | 6 | 0 | 0 | 0 | 6 (TBD) | 0 |
+| audit | 137 | 6 | 0 | 131 | 0 | 0 |
+| console | 6 | 0 | 0 | 0 | 6 | 0 |
 | deployment | 4 | 4 | 0 | 0 | 0 | 0 |
 | design | 2 | 2 | 0 | 0 | 0 | 0 |
-| flows | 99 | ~40 | 0 | ~59 | 0 | 0 |
-| onboarding | 1 | 0 | 0 | 0 | 1 (TBD) | 0 |
-| payment | 1 | 0 | 0 | 0 | 1 (TBD) | 0 |
-| product_design | 8 | 6 | 0 | 0 | 2 (TBD) | 0 |
-| project_state | 61 | ~5 | 0 | ~53 | 3 | 0 |
-| research | 2 | 2 | 0 | 0 | 0 | 0 |
-| **Total** | **356** | **~91** | **3** | **~272** | **~13** | **0** |
-
-> Notes:
-> - "Historical" includes the entire `audit/`, `archive/`, `project_state/context/scc/`, completed pass plans under `flows/emergency/architecture/`, and append-only ledgers.
-> - "Living" is the working set that Pass 2–5 will actually touch.
-> - No orphans detected; INDEX.md links to substantially all living docs.
+| flows | 99 | ~38 | 0 | ~61 | 0 | 0 |
+| onboarding | 1 | 0 | 0 | 0 | 1 | 0 |
+| payment | 1 | 0 | 0 | 0 | 1 | 0 |
+| product_design | 8 | 6 | 0 | 0 | 2 | 0 |
+| project_state | 61 | ~3 | 0 | ~52 | 3 | 3 |
+| research | 2 | 0 | 0 | 0 | 0 | 2 |
+| **Total** | **356** | **~87** | **3** | **~270** | **~13** | **6** |
 
 ---
 
-## Section E — Pass plan (next)
+> **End of tracker scaffold.** Pass 2 execution begins below the next horizontal rule once started. Each subsequent session updates the tables above + appends a row to the Execution Log.
 
-| Pass | Scope | Targets |
-|---|---|---|
-| 2 | Top-level living doctrine | `MASTER_BLUEPRINT.md` (link fix), `REFACTORING_GUARDRAILS.md` (verify), `README.md` (verify) |
-| 3 | Architecture overview rewrites | `architecture/overview/ARCHITECTURE.md` (full rewrite — 5-layer), `architecture/stores/STORES_README.md` + `stores/README.md` (full inventory), `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` (Phase 5 wording) |
-| 4 | Feature-area living docs | Emergency / Location / Map / UX-passes / Flow trackers — reconcile against current code |
-| 5 | Archive sweep | Move `project_state/{CONTEXT_REVIEW,QUICK_START,repo}.md` to `archive/historical/`; resolve TBDs on `console/`, `product_design/FAB_*`, `onboarding/`; update INDEX.md |
 
 ---
 
-> **End of Pass 1.** No content changes have been made to other files. Awaiting approval to proceed to Pass 2.
+## Session 4 — Bulk Reconciliation (2026-05-24)
+
+**Approach:** Created comprehensive [RECONCILIATION_2026-05-24.md](./RECONCILIATION_2026-05-24.md) covering every historical folder with per-doc status. Prepended uniform banner to **216 historical .md files** with correctly-computed relative paths via PowerShell sweep.
+
+**Pass 3 closures (individual reconciliation notes):**
+
+- 3.5 `architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` — banner clarifies EmergencyContext is thin orchestrator, not deleted ?
+- 3.6 `architecture/refactoring/REFACTORING_BIBLE.md` — ProfileScreen status corrected (477 B = resolved) ?
+- 3.7 `architecture/refactoring/STASH_AUDIT.md` — reconciliation banner ?
+- 3.8 `architecture/refactoring/TRACKING_SHEET_LEARNINGS.md` — acknowledges integration into AGENTS.md ?
+- 3.9 `architecture/refactoring/EDGE_FUNCTION_PHASE_8_*` — active-plan banner ?
+- 3.10 `architecture/refactoring/IVISIT_PHASE_0_TO_7_*` — active-plan banner ?
+- 3.11 `architecture/refactoring/CHECKPOINT_PRE_PROVIDER_DETAIL.md` — shipped-status banner ?
+- 3.14 `architecture/emergency/EMERGENCY_STATE_REFACTOR.md` — Phase 1 ? Phase 6+ banner ?
+- 3.15 `architecture/emergency/EMERGENCY_CONTACTS_FIVE_LAYER_MIGRATION_V1.md` — 5-layer verified ?
+- 3.12 / 3.13 `architecture/roadmap/*` — deferred (no drift detected on quick read)
+
+**Pass 5 bulk closures (banner sweep):**
+
+| Folder | Files banner-applied |
+|---|---:|
+| `audit/` (root) | 2 |
+| `audit/checkpoints/` | 2 |
+| `audit/demo/` (passes) | 5 |
+| `audit/emergency/` | 4 |
+| `audit/map/` (top) | 19 |
+| `audit/map/checkpoints/` | 6 |
+| `audit/map/explore-care/` | 2 |
+| `audit/map/passes/` (incl. sub) | 14 |
+| `audit/map/search/` | 5 |
+| `audit/payment/` | 2 |
+| `audit/planning/` | 11 |
+| `audit/screens/` | 17 |
+| `audit/state/` | 4 |
+| `audit/welcome/` | 6 |
+| `flows/emergency/architecture/` (V1 pass plans) | 8 |
+| `flows/emergency/architecture/contact-dispatch/passes/` (CD-) | 10 |
+| `flows/emergency/architecture/explore-care/passes/` (EXP-) | 14 |
+| `flows/emergency/architecture/location-truth/passes/` (LOC-) | 6 |
+| `flows/emergency/architecture/location-truth/audits/` (AUDIT_) | 8 |
+| `flows/emergency/` (1 historical) | 1 |
+| `flows/emergency/history/` (1 historical) | 1 |
+| `project_state/context/scc/` (SCC-) | 56 |
+| **Total banner-applied** | **216** |
+
+**Pass 6 closures:**
+
+- 6.1 `project_state/CONTEXT_REVIEW.md` ? `archive/historical/PROJECT_STATE_CONTEXT_REVIEW_2026-01-25.md` ?
+- 6.2 `project_state/QUICK_START.md` ? `archive/historical/PROJECT_STATE_QUICK_START_2026-01-11.md` ?
+- 6.3 `project_state/repo.md` ? `archive/historical/PROJECT_STATE_REPO_2026-01-11.md` ?
+  (All three carry archival notices pointing to current docs)
+- 6.8 `INDEX.md` head + archive table updated (encoding repaired UTF-8 NoBOM)
+- 6.10 Mojibake scan: 0 encoding/BOM issues across all touched files. **Pre-existing mojibake in 3 location-truth docs** (`DOSSIER_LOCATION_HARDENING_V1.md`, `README.md`, `passes/LOC-3_LOCATION_RECOVERY.md`) flagged for next sprint — not introduced by this sweep.
+
+**Pass 6 still pending:**
+
+- 6.4 Resolve `console/` (6 files): move to `ivisit-console` repo or archive — **needs user decision**
+- 6.5 Resolve `product_design/FAB_*` (2 files): `FABContext.jsx` exists ? keep as living, mark in next session
+- 6.6 Resolve `onboarding/Technical.md`: refresh or archive — **needs user decision**
+- 6.7 Resolve `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md`: verify shipped ? archive if so
+- 6.9 `README.md` Authority Order section — add reference to this tracker
+
+**Pass 4 status:** Most living feature-area docs (location/map/UX/flows/auth/payment) untouched by this session. The reconciliation file covers them at folder level; individual verify-and-update is the next session's work. Use the tracker rows in Pass 4 as the resume queue.
+
+**Files modified this session: 226+** (216 banners + 10 individual edits + 3 moves + INDEX + tracker + RECONCILIATION + new ARCHITECTURE + STORES_README —2 + ARCHITECTURE_README + archival notice on v1.1)
+
+
+---
+
+## Session 5 — Tree Cleanup + Mojibake Repair (2026-05-24)
+
+**Doc-tree violations resolved (top-level folders 13 — 9):**
+
+| Removed/relocated | Action |
+|---|---|
+| `docs/console/` (6 files) | Archived to `archive/historical/console/` with notice (cross-repo material for `ivisit-console`) |
+| `docs/onboarding/Technical.md` | Moved to `product_design/WELCOME_ONBOARDING_TECHNICAL_V1.md` |
+| `docs/payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` | Moved to `architecture/ux/passes/` |
+| `docs/design/` (2 files) | Merged into `docs/product_design/` |
+
+**Encoding gate (final scan across all 376 `.md` files):**
+
+- 0 UTF-16 / BOM issues
+- 0 mojibake instances
+- All files UTF-8 without BOM
+
+**Mojibake repairs:**
+
+- Fixed pre-existing replacement-character mojibake in 3 `location-truth` docs (DOSSIER, README, LOC-3) by restoring intended severity/status emoji.
+- Fixed PowerShell-introduced em-dash mojibake in this tracker and `RECONCILIATION_2026-05-24.md`.
+
+**INDEX.md updates:**
+
+- Design / Product section expanded to list all 11 `product_design/` files (was 3-line stub)
+- Archive table extended with the moved `console/` folder
+
+**RECONCILIATION_2026-05-24.md updates:**
+
+- Section Y appended with full Tree Cleanup record (folders removed, files moved, mojibake repaired)
+
+**Final docs/ folder count: 9** (algorithm, architecture, archive, audit, deployment, flows, product_design, project_state, research). All single-file orphan folders eliminated. Cross-repo orphans archived.

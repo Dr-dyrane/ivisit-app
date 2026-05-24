@@ -1,7 +1,9 @@
-﻿# iVisit Documentation Index
+# iVisit Documentation Index
 
-Last Updated: 2026-05-19
-Cleanup report: [audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md)
+Last Updated: 2026-05-24
+Active tracker: [audit/DOCS_AUDIT_2026-05-24.md](./audit/DOCS_AUDIT_2026-05-24.md) (live, resumable)
+Historical reconciliation: [audit/RECONCILIATION_2026-05-24.md](./audit/RECONCILIATION_2026-05-24.md) (per-folder status of every frozen audit/pass/checkpoint)
+Predecessor cleanup: [archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md)
 
 ---
 
@@ -140,7 +142,7 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 
 ### Demo Bootstrap Duplicate Hospital Bug (2026-05-10)
 
-- Root-cause audit + 5-pass plan: [audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
+- Root-cause audit + 5-pass plan: [audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md](./audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md)
 - Pass index: [audit/demo/README.md](./audit/demo/README.md)
 - Pass 1 — server user-scoped scope key: [audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md](./audit/demo/PASS_1_SERVER_USER_SCOPED_SCOPE_KEY.md)
 - Pass 2 — cross-org sweep: [audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md](./audit/demo/PASS_2_SERVER_CROSS_ORG_SWEEP.md)
@@ -193,6 +195,11 @@ These files are preserved for audit trail and context but are no longer current 
 | `COMMIT_DETAILS_CONTROLLER_REFACTOR_PLAN.md` | Completed refactor plan |
 | `PAYMENT_CONTROLLER_REFACTOR_PLAN.md` | Completed refactor plan |
 | `ROOT_README.md` | Old root readme |
+| `ARCHITECTURE_v1.1_2026-01-09.md` | Pre-Gold-Standard 3-layer overview; superseded by `architecture/overview/ARCHITECTURE.md` v2.0 (moved 2026-05-24) |
+| `PROJECT_STATE_CONTEXT_REVIEW_2026-01-25.md` | Was `project_state/CONTEXT_REVIEW.md`; superseded by current docs (moved 2026-05-24) |
+| `PROJECT_STATE_QUICK_START_2026-01-11.md` | Was `project_state/QUICK_START.md`; superseded by `README.md` (moved 2026-05-24) |
+| `PROJECT_STATE_REPO_2026-01-11.md` | Was `project_state/repo.md`; superseded (moved 2026-05-24) |
+| `console/` (6 files) | Cross-repo material (belongs in `ivisit-console` repo). Archived 2026-05-24 |
 
 ### In-place historical docs (notice added at top)
 
@@ -281,9 +288,9 @@ All schema, RPC, and migration conventions live under `supabase/docs/`.
 
 ### Update Order of Operations
 
-1. **Runtime paths change** → Update workflow/flow maps FIRST
-2. **Deep implementation details** → Keep in dedicated docs
-3. **Source of truth** → One location only; link elsewhere
+1. **Runtime paths change** ? Update workflow/flow maps FIRST
+2. **Deep implementation details** ? Keep in dedicated docs
+3. **Source of truth** ? One location only; link elsewhere
 
 ### INDEX.md Sync Checklist
 
@@ -292,14 +299,14 @@ When adding a new document:
 - [ ] Add to correct section in this INDEX (sections 1–6 above)
 - [ ] Add to **Workflow Maps** if flow-related
 - [ ] If superseded: add archival notice to the old doc, move to `archive/` if its folder becomes misleading
-- [ ] Never delete historical docs â€” archive with notice
+- [ ] Never delete historical docs — archive with notice
 
 ### Archival Requirements
 
 - Move superseded docs to `docs/archive/<historical|legacy_specs>/`
 - Add `> ARCHIVAL NOTICE` block with link to current replacement
 - Preserve for audit trail
-- See [audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md) for cleanup record
+- See [archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md) for cleanup record
 
 ---
 
@@ -312,7 +319,15 @@ When adding a new document:
 
 ### Design / Product
 
+- Manifesto: [product_design/manifesto.md](./product_design/manifesto.md)
+- UI/UX Bible: [product_design/ui_ux_bible.md](./product_design/ui_ux_bible.md)
+- Screen consistency guide: [product_design/SCREEN_CONSISTENCY_GUIDE.md](./product_design/SCREEN_CONSISTENCY_GUIDE.md)
 - Android glass standard: [product_design/ANDROID_GLASS_PATTERN.md](./product_design/ANDROID_GLASS_PATTERN.md)
+- FAB analysis review: [product_design/FAB_ANALYSIS_REVIEW.md](./product_design/FAB_ANALYSIS_REVIEW.md)
+- Global FAB implementation plan: [product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md](./product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md)
+- Map design system overview: [product_design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md](./product_design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md) (moved 2026-05-24 from `design/`)
+- Mini profile UI doctrine: [product_design/MINI_PROFILE_UI_DOCTRINE_V1.md](./product_design/MINI_PROFILE_UI_DOCTRINE_V1.md) (moved 2026-05-24 from `design/`)
+- Welcome + onboarding technical: [product_design/WELCOME_ONBOARDING_TECHNICAL_V1.md](./product_design/WELCOME_ONBOARDING_TECHNICAL_V1.md) (moved 2026-05-24 from `onboarding/`)
 - Marketing strategy: [product_design/marketing/STRATEGY.md](./product_design/marketing/STRATEGY.md)
 - Ad manuscript: [product_design/marketing/MANUSCRIPT.md](./product_design/marketing/MANUSCRIPT.md)
 

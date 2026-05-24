@@ -19,7 +19,7 @@ This file must stay aligned with [rules.json](./rules.json). If the two conflict
 Active screen references (current):
 
 - Welcome + intake: [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
-- `/map` current state: [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
+- `/map` current state: [flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md](./flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md)
 - Emergency flow doctrine: [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 - Runtime contract: [flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](./flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
 
@@ -69,7 +69,7 @@ Current live-facing checkpoint:
 - `app.ivisit.ng` is the live product-facing web PWA
 - preview hospitals remain allowed until live provider coverage expands
 - the detailed welcome + intake target is tracked in [flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md](./flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md)
-- the emergency action target is tracked in [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) and [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
+- the emergency action target is tracked in [flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md](./flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md) and [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md)
 
 Current working model:
 

@@ -1,537 +1,316 @@
-# iVisit App Architecture - Checkpoint Refactor
+# iVisit App Architecture
 
-**Version**: 1.1  
-**Date**: 2026-01-09  
-**Status**: Implementation Phase (Hybrid: Supabase + local persistence)  
-**Goal**: Ship a complete iVisit MVP with clean service boundaries and local persistence via the `database/` layer, with Supabase already integrated for auth/storage.
+> **Version:** 2.0
+> **Date:** 2026-05-24
+> **Status:** Source of truth for the current `ivisit-app` codebase
+> **Predecessor:** [`docs/archive/historical/ARCHITECTURE_v1.1_2026-01-09.md`](../../archive/historical/ARCHITECTURE_v1.1_2026-01-09.md) (pre–Gold-Standard 3-layer)
 
----
-
-## **1. Core Philosophy**
-
-### **Three Layers**
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ PRESENTATION LAYER (Screens, Components, Animations)            │
-│ - Expo Router (file-based navigation)                            │
-│ - React Native components                                        │
-│ - Animated API (60fps scroll, transitions)                       │
-│ - Context Providers (UI state)                                   │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ BUSINESS LOGIC LAYER (Hooks, Context, Services)                 │
-│ - Custom hooks (useLogin, useProfile, etc.)                      │
-│ - Context providers (Auth, Theme, UI state)                      │
-│ - Query/mutation wrappers                                        │
-│ - Error handling & toast notifications                           │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ DATA ACCESS LAYER (AsyncStorage DB, API Services)               │
-│ - `database.js` - Low-level AsyncStorage abstraction             │
-│ - `services/` - Collection-specific CRUD logic                   │
-│ - Error classes for typed exceptions                             │
-│ - (Future) HTTP client for real backend API                      │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### **Why This Structure**
-
-- ✅ **Separation of concerns** - Each layer has one responsibility
-- ✅ **Testability** - Easy to mock services and test logic independently
-- ✅ **Scalability** - Replace AsyncStorage with HTTP client without touching UI
-- ✅ **Maintainability** - Clear data flow, predictable patterns
-- ✅ **Backend-ready** - Services are already the right abstraction for API endpoints
-- ✅ **Local-first product velocity** - We can ship flows before backend integration
+This document is the entry-point architectural overview for `ivisit-app`. It describes the **what** and **where** of the running system. For the **why and how to refactor**, see [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md). For the **migration history**, see [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md).
 
 ---
 
-## **2. Data Layer (AsyncStorage as Database)**
+## 1. Product Posture
 
-### **Current Structure (in this repo)**
+`ivisit-app` is the canonical patient product across iOS, Android, and web PWA. It is led by two actions: **Request Ambulance** and **Find Hospital Bed**. Everything else supports those actions: share location, track response, coordinate handoff, continue into follow-up care.
+
+Surface model:
+
+- One persistent map canvas (`MapScreen.jsx`)
+- One persistent sheet shell with changing phases
+- A small number of stack routes layered above the map (profile, settings, payment, etc.)
+- A welcome + intake flow that runs before the map mounts
+
+For the full product doctrine, see [`MASTER_BLUEPRINT.md`](../../MASTER_BLUEPRINT.md) and [`rules.json`](../../rules.json).
+
+---
+
+## 2. Top-Level Repository Map
 
 ```
-database/
-├── db.js                 ← Low-level AsyncStorage wrapper + CRUD helpers
-├── keys.js               ← StorageKeys whitelist (single source of truth)
-└── index.js              ← Main export: database, StorageKeys, errors
-
-services/
-├── authService.js        ← Auth business logic (Supabase + local persistence)
-├── profileCompletionService.js
-└── ... (next: preferences, visits, contacts, medical)
-
-api/                      ← Migration artifact (present but currently empty/unused)
-```
-
-### **How It Works**
-
-#### **1. database (Generic Layer)**
-
-```javascript
-import { database, StorageKeys } from "../database";
-
-// Low-level operations
-await database.write(StorageKeys.USERS, users);
-await database.read(StorageKeys.USERS, []);
-const user = await database.findOne(StorageKeys.USERS, (u) => u.id === "123");
-const users = await database.query(StorageKeys.USERS, (u) => u.status === "active");
-```
-
-**Features:**
-- Generic CRUD: `read`, `write`, `delete`
-- Querying: `findOne`, `query`
-- Collections: `createOne`, `updateOne`, `deleteOne`
-- Error handling with `DatabaseError` (typed exceptions)
-- Timeout protection (5s default)
-- Validation (key whitelist)
-
-#### **2. services (Domain Layer)**
-
-```javascript
-import { authService } from "../services/authService";
-
-// Business logic operations
-const result = await authService.register({ email, username, password });
-const user = result.data.user;
-```
-
-**Each service:**
-- Wraps database operations
-- Adds validation & business rules
-- Provides domain-specific methods
-- Returns typed errors
-
-#### **3. UI Contract Layer (Hooks/Contexts)**
-
-Screens/components should call **hooks** and/or **context methods** that delegate to `services/*`, not the database directly.
-
-```javascript
-import { authService } from "../services/authService";
-
-await authService.updateUser({ fullName, username });
+ivisit-app/
+├── app/                 Expo Router file-based routes
+│   ├── (auth)/          Auth-gated routes (welcome, login, signup, map)
+│   ├── (user)/          Stack routes (profile, settings, visits, payment, …)
+│   ├── auth/            Auth callback handlers
+│   └── _layout.js       Root composition
+├── runtime/             Runtime gate, providers, navigator, bootstrap effects
+├── providers/           AppProviders (native + .web variants)
+├── screens/             Screen components mounted by route files
+├── components/          Presentational surfaces (StageBase, views, sheets, leafs)
+├── hooks/               Behavior, controllers, query lifecycles, runtime coord
+├── services/            API adapters (Supabase, payment, route, notification…)
+├── stores/              Zustand persisted client state (Layer 3)
+├── atoms/               Jotai ephemeral UI state (Layer 5)
+├── machines/            XState lifecycle/legal transitions (Layer 4)
+├── contexts/            React contexts (compatibility shells + UI scaffolding)
+├── database/            Local persistence boundary (AsyncStorage + StorageKeys)
+├── constants/           Tokens, enums, shared constants
+├── utils/               Pure helpers
+├── data/                Static data + OTA update manifests
+├── supabase/            Schema, RPCs, RLS, migrations, edge functions
+└── docs/                This documentation tree
 ```
 
 ---
 
-## **3. Scroll-Aware Components (UI Pattern)**
+## 3. The Five-Layer State Architecture
 
-### **Pattern: Apple-Style Navigation**
-
-Two parallel contexts handle scroll-aware UI:
+Client state is owned by exactly one of five layers. Each layer has a specific responsibility and a specific implementation. New domain state must land in the right layer — never in a new ad-hoc context or in `useState` that leaks across boundaries.
 
 ```
-┌─────────────────────────────────────┐
-│ TabBarVisibilityContext (Existing)   │
-├─────────────────────────────────────┤
-│ • trackScroll(event)                 │
-│ • showTabBar() / hideTabBar()        │
-│ • Animated.Value for translateY      │
-│ • 250ms animation duration           │
-│ • 5px debounce threshold             │
-│ • Always show near top (< 50px)      │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│ ScrollAwareHeaderContext (NEW)       │
-├─────────────────────────────────────┤
-│ • Parallel to TabBarVisibility       │
-│ • Controls header opacity + translateY │
-│ • Title fades in/out with scroll     │
-│ • Same thresholds & timing           │
-│ • Blur effect for content visibility │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ L1 · SERVER TRUTH                          Supabase + Realtime       │
+│      Authoritative rows, RPC responses, realtime events              │
+│      → supabase/                                                     │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ L2 · SERVER CACHE                          TanStack Query            │
+│      Cache, refetch, invalidation, optimistic mutation               │
+│      → hooks/**/use*Query.js, providers/QueryProvider.jsx            │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ L3 · PERSISTED CLIENT SNAPSHOT             Zustand                   │
+│      Active trips, contacts, coverage mode, location, visits, …     │
+│      → stores/ (22 files)                                            │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ L4 · LIFECYCLE LEGALITY                    XState                    │
+│      Trip lifecycle, billing quote, contacts, machine-like states    │
+│      → machines/ (10 files)                                          │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ L5 · EPHEMERAL UI STATE                    Jotai                     │
+│      Modals, drafts, selected rows, sheet phase, wizards             │
+│      → atoms/ (18 files)                                             │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-### **Usage in Screen**
+### Layer ownership cheatsheet
 
-```javascript
-// EmergencyScreen.jsx (Example)
-import { useTabBarVisibility } from '@/contexts/TabBarVisibilityContext';
-import { useScrollAwareHeader } from '@/contexts/ScrollAwareHeaderContext';
-import ScrollAwareHeader from '@/components/headers/ScrollAwareHeader';
+| Question | Answer |
+|---|---|
+| Did the server tell us this? | L1 → L2 |
+| Should it survive an app reload? | L3 |
+| Is it a named lifecycle state (`IDLE/WAITING/DISPATCHED`)? | L4 |
+| Is it a modal flag, draft field, or "selected row" pointer? | L5 |
+| Is it derived from any of the above? | **None** — compute via `useMemo`/selector |
 
-export default function EmergencyScreen() {
-  const { handleScroll: handleTabBarScroll } = useTabBarVisibility();
-  const { handleScroll: handleHeaderScroll } = useScrollAwareHeader();
-
-  const handleScroll = (event) => {
-    handleTabBarScroll(event);
-    handleHeaderScroll(event);  // Both triggered by same scroll event
-  };
-
-  return (
-    <>
-      <ScrollAwareHeader
-        title="Ambulance Call"
-        subtitle="EMERGENCY"
-        icon={<Icon />}
-      />
-      <ScrollView onScroll={handleScroll} scrollEventThrottle={16}>
-        {/* Content */}
-      </ScrollView>
-    </>
-  );
-}
-```
-
-### **Key Props for ScrollAwareHeader**
-
-```javascript
-<ScrollAwareHeader
-  title="Screen Title"           // Main heading
-  subtitle="CATEGORY"            // Uppercase label
-  icon={<IconComponent />}       // Badge icon
-  backgroundColor="#86100E"      // Icon bg color
-  badge={count}                  // Optional badge number
-  onBadgePress={callback}        // Badge tap handler
-/>
-```
+For the full decision tree and anti-patterns, see [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) §1.
 
 ---
 
-## **4. Hook Pattern (Business Logic)**
+## 4. Layer 1 — Supabase (server truth)
 
-### **Query Hooks (Data Fetching)**
+Authoritative data lives in Postgres. See `supabase/docs/REFERENCE.md` for pillar ownership, the UUID-native identity model, RPC catalogue, and RLS posture. Key surfaces:
 
-```javascript
-// hooks/user/useMedicalProfile.js (Example)
-export function useMedicalProfile() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+- **Schema:** `supabase/migrations/**`
+- **RPCs:** `supabase/functions/**` (edge) + Postgres functions in migrations
+- **RLS:** role/org-scoped, non-recursive, `SECURITY DEFINER` helpers where required
+- **Realtime:** scoped channel subscriptions, declarative config (see §6 below)
+- **Append-only:** `wallet_ledger` and audit tables
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const profile = await medicalProfileService.get();
-        setData(profile);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, []);
-
-  return { data, loading, error };
-}
-```
-
-### **Mutation Hooks (Data Modification)**
-
-```javascript
-// hooks/auth/useLogin.js (Example)
-export function useLogin() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { showToast } = useToast();
-
-  const mutate = async (email, password) => {
-    setLoading(true);
-    try {
-      const result = await authService.loginWithPassword({ email, password });
-      showToast('Logged in!', 'success');
-      return result.data;
-    } catch (err) {
-      setError(err);
-      showToast(err.message, 'error');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { mutate, loading, error };
-}
-```
+Cross-repo contract: `supabase/` is **shared** with `ivisit-console`. Treat schema/RPC/RLS changes as ecosystem infrastructure.
 
 ---
 
-## **5. Context Providers (State Management)**
+## 5. Layer 2 — TanStack Query (server cache)
 
-### **Existing Contexts (Keep These)**
+Provider mounted at app root in `providers/QueryProvider.jsx`. Per-feature hooks live under `hooks/**` and follow the naming pattern `use<Domain><Resource>Query` / `…Mutation`.
 
-| Context | Purpose | State |
-|---------|---------|-------|
-| `AuthContext` | User auth & login | user, token, loading |
-| `ThemeContext` | Dark/light mode | isDarkMode |
-| `EmergencyContext` | Hospital selection | selectedHospital, mode, viewMode |
-| `ToastContext` | Notifications | toastMessages |
-| `TabBarVisibilityContext` | Bottom nav scroll | translateY, handleScroll |
+Rules:
 
-### **Contexts We Add Only When Needed**
-
-| Context | Purpose | State |
-|---------|---------|-------|
-| `ScrollAwareHeaderContext` | Header scroll-aware | headerOpacity, titleOpacity, headerTranslateY |
-| `VisitsContext` | Visits state (already present) | visits, selectedVisit, filters |
+- Server data only enters the client through TanStack Query, never through `useState` + async `useEffect`.
+- Use scalar `queryKey` IDs, not unstable objects.
+- Gate queries with `enabled: Boolean(<resource id>)` instead of `if` guards inside hooks.
+- Realtime (L1) invalidates queries here; it does not push data directly into L3/L5.
 
 ---
 
-## **6. Current Milestones**
+## 6. Layer 3 — Zustand (persisted client snapshot)
 
-### **Phase 3 (Complete) — Profile completion gate**
-- Enforces required profile fields before accessing tabs.
-- Persists completion draft so user can resume after restart.
-- Uses service/API wrappers (no direct storage calls from UI).
+Twenty-two stores under `stores/`. Each store owns one cross-surface, persist-able client snapshot. Selectors are colocated where derived reads are non-trivial.
 
-### **Phase 4 (Next) — Local-first feature completion**
-- Implement full CRUD + persistence for:
-  - Preferences (Theme, notifications, privacy) via `StorageKeys.PREFERENCES` / `StorageKeys.THEME`
-  - Emergency contacts via `StorageKeys.EMERGENCY_CONTACTS`
-  - Medical profile/history (new storage key + service)
-  - Visits end-to-end via `StorageKeys.VISITS`
-- Standardize all screens to the same patterns:
-  - Scroll-aware header + tab bar behavior
-  - Loading/empty/error states
-  - Predictable navigation and no redirect loops
+| Store | Selectors / Machine | Domain |
+|---|---|---|
+| `emergencyTripStore` | `emergencyTripSelectors`, `tripLifecycleMachine` | Active ambulance trips, bed bookings, pending approvals |
+| `emergencyContactsStore` | `emergencyContactsSelectors`, `emergencyContactsMachine` | Patient emergency contacts (five-layer reference impl) |
+| `bookVisitStore` | — , `bookVisitMachine` | Multi-step book-visit flow |
+| `coverageStore` | — | Live/demo coverage mode + nearby counts |
+| `locationStore` | — | Pickup truth, manual address, recents |
+| `lastHospitalStore` | — | Most-recent selected hospital |
+| `mapRouteStore` | — , `mapRouteMachine` | Active route payload + ETA seed |
+| `mode​Store` | — | Service mode (ambulance / bed / paired) |
+| `notificationsStore` | `notificationsSelectors`, `notificationsMachine` | In-app notifications |
+| `medicalProfileStore` | `medicalProfileSelectors`, `medicalProfileMachine` | Medical profile |
+| `visitsStore` | `visitsSelectors`, `visitsMachine` | Visit history |
+| `helpSupportStore` | `helpSupportSelectors`, `helpSupportMachine` | Help / support tickets |
+| `billingQuoteStore` | — , `billingQuoteMachine` | FX-aware billing quotes |
+| `paymentPreferencesStore` (TS) | — | Persisted payment preferences |
 
-### **After Phase 4 — Emergency patient POV completion**
-- Ensure the SOS journey is complete from patient POV:
-  - Request → confirm → live status → add to visit history
-  - Uses persisted emergency contacts + medical profile where applicable
+Rules:
 
-**Rule**: Prefer hooks for screen-level data fetching; contexts may call services for shared flows (e.g. auth/session).
+- Stores must preserve `null` vs populated-object meaning — do not coerce null to `{}`.
+- Do not access stores from broad UI components — go through a hook or selector.
+- Cross-store coordination happens in hooks/controllers, not inside store actions.
 
----
-
-## **6. Refactor Roadmap**
-
-### **Phase 1: Core Modularization (Days 1-2)**
-
-```
-✅ Create database.js (generic layer)
-✅ Create services (authService, medicalProfileService)
-✅ Create ScrollAwareHeaderContext
-✅ Create ScrollAwareHeader component
-📋 Create query hooks (useMedicalProfile, useVisits)
-📋 Create mutation hooks (useLogin, useUpdateProfile)
-```
-
-### **Phase 2: Screen Migration (Days 3-5)**
-
-```
-📋 EmergencyScreen - Add ScrollAwareHeader + header hook
-📋 ProfileScreen - Add ScrollAwareHeader + query/mutation hooks
-📋 VisitsScreen - Add ScrollAwareHeader + visits hook
-📋 MoreScreen - Add ScrollAwareHeader
-📋 NotificationsScreen - Add ScrollAwareHeader
-```
-
-### **Phase 3: Auth Refactor (Days 6-7)**
-
-```
-📋 Replace legacy auth/store calls with `authService`
-📋 Update AuthContext + auth hooks to consistently use `authService`
-📋 Verify login/signup flows are fully on `hooks/auth/*`
-```
-
-### **Phase 4: Backend Integration (Days 8+)**
-
-```
-📋 Create http-client.js (axios wrapper)
-📋 Create env-specific API endpoints
-📋 Update services to call backend instead of AsyncStorage
-📋 No UI changes needed (services abstract data source)
-```
+See [`architecture/stores/STORES_README.md`](../stores/STORES_README.md) for the full per-store contract.
 
 ---
 
-## **7. File Structure (Target State)**
+## 7. Layer 4 — XState (lifecycle legality)
 
-```
-app/
-├── (auth)/
-├── (user)/
-│   └── (tabs)/
-└── _layout.js
+Ten machines under `machines/`. Use a machine when the state space has named values with legal transitions (`IDLE → WAITING → DISPATCHED → ARRIVED → COMPLETED`), not when you just want a flag.
 
-database/
-├── db.js                      ← AsyncStorage abstraction
-├── keys.js                    ← StorageKeys
-└── index.js
-
-services/
-├── authService.js
-├── medicalProfileService.js
-└── ... (preferences, visits, emergency, notifications)
-
-api/                           ← Migration artifact (present but currently empty/unused)
-
-contexts/
-├── AuthContext.jsx
-├── ThemeContext.jsx
-├── TabBarVisibilityContext.jsx
-├── ScrollAwareHeaderContext.jsx ← NEW
-├── EmergencyContext.jsx
-├── ToastContext.jsx
-├── VisitsContext.jsx
-└── ... (others)
-
-hooks/
-├── auth/
-├── user/
-├── emergency/
-├── visits/
-└── validators/
-
-components/
-├── headers/
-│   ├── ScrollAwareHeader.jsx    ← NEW
-│   └── useScrollAwareHeader.js
-├── ... (existing)
-└── ...
-
-screens/
-├── EmergencyScreen.jsx
-├── ProfileScreen.jsx
-├── VisitsScreen.jsx
-├── MoreScreen.jsx
-├── NotificationsScreen.jsx
-└── ... (existing)
-
-docs/
-├── architecture/overview/ARCHITECTURE.md
-├── project_state/CONTEXT_REVIEW.md
-└── project_state/QUICK_START.md
-```
+| Machine | Purpose |
+|---|---|
+| `tripLifecycleMachine` | Canonical trip lifecycle (request → dispatch → arrival → completion) |
+| `billingQuoteMachine` | FX quote lifecycle |
+| `bookVisitMachine` | Multi-step booking |
+| `emergencyChatRoomMachine` | Communication room state |
+| `emergencyContactsMachine` | Contacts five-layer ref |
+| `helpSupportMachine` | Ticket lifecycle |
+| `mapRouteMachine` | Route preview + active |
+| `medicalProfileMachine` | Medical profile loading/saving |
+| `notificationsMachine` | Notifications lifecycle |
+| `visitsMachine` | Visits loading/saving |
 
 ---
 
-## **8. Migration Examples**
+## 8. Layer 5 — Jotai (ephemeral UI state)
 
-### **Before (monolithic UI logic)**
+Eighteen atom files under `atoms/`. Use atoms for modal flags, drafts, selected-row pointers, wizard steps, sheet phases, and any cross-component UI sync that does not need to survive a reload.
 
-```javascript
-// screens/ProfileScreen.jsx
-useEffect(() => {
-  const fetch = async () => {
-    try {
-      const { data } = await authService.getCurrentUser();
-      setFullName(data.fullName);
-      setEmail(data.email);
-      // ... 10 more setStates
-    } catch (e) {
-      showToast(e.message);
-    }
-  };
-  fetch();
-}, []);
-```
+Representative atoms:
 
-### **After (Service + Hook)**
+- `mapScreenAtoms` — sheet phase, sheet view, scroll state, sheet height
+- `mapFlowAtoms` — explore-intent state, modal flags
+- `emergencyAtoms`, `emergencyChatAtoms` — emergency-surface UI flags
+- `paymentAtoms` (TS) — payment-screen drafts and selection
+- `searchAtoms` (TS) — search-screen drafts
+- `commitAtoms` (TS) — commit-flow drafts
+- `locationIntentAtoms` — pending location intent
 
-```javascript
-// hooks/user/useMedicalProfile.js
-export function useMedicalProfile() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    medicalProfileService.getMedicalProfile()
-      .then(setData)
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  return { data, loading };
-}
-
-// screens/ProfileScreen.jsx
-const { data, loading } = useMedicalProfile();
-
-if (loading) return <LoadingSpinner />;
-
-return (
-  <Input value={data.fullName} />
-  // ...
-);
-```
+Rule: derived UI values belong in inline `const` / `useMemo`, not in atoms.
 
 ---
 
-## **9. Error Handling Pattern**
+## 9. Compatibility Layer — Contexts
 
-### **Typed Errors**
+`contexts/**` still exists. After the Gold Standard migration, contexts fall into three classes:
 
-```javascript
-import { DatabaseError } from '../database';
+1. **Thin orchestration shells over hooks** — `EmergencyContext`, `EmergencyUIContext`, `GlobalLocationContext`, `SearchContext`. These compose feature hooks and expose a stable consumer surface, but do not own state. Treat as thin compatibility — do **not** add new domain state here.
+2. **UI scaffolding** — `ThemeContext`, `ToastContext`, `FABContext`, `TabBarVisibilityContext`, `HeaderStateContext`, `ScrollAwareHeaderContext`, `UnifiedScrollContext`. Layout/visual coordination only.
+3. **Auth / session boundary** — `AuthContext`, `LoginContext`, `RegistrationContext`, `OTAUpdatesContext`, `PreferencesContext`, `NotificationsContext`, `VisitsContext`, `HelpSupportContext`, `GlobalMapContext`. Boundary or facade roles; verify against the five-layer rule when touching.
 
-try {
-  await authService.register({ email, password });
-} catch (error) {
-  if (error.code === 'USER_EXISTS') {
-    showToast('Email already registered');
-  } else if (error.code === 'VALIDATION_ERROR') {
-    showToast('Check your inputs');
-  } else {
-    showToast('Unexpected error');
-  }
-}
-```
+If you need new domain state, do **not** add a new context. Choose the correct layer (L1–L5) instead. See [`AGENTS.md`](../../../AGENTS.md) §Migration Awareness.
 
 ---
 
-## **10. Backend Integration Checklist**
+## 10. Runtime + Providers
 
-When connecting to real API:
+```
+app/_layout.js
+  └── RootProviders (providers/AppProviders.{jsx, web.jsx})
+       ├── QueryProvider          ← L2 root
+       ├── ThemeProvider
+       ├── AuthProvider
+       ├── ToastProvider
+       └── RootRuntimeGate        ← gates first-paint on readiness
+            ├── RootBootstrapEffects
+            ├── RootNavigator
+            └── OTAModalLayer
+```
 
-- [ ] Create `api/http-client.js` (axios wrapper with auth interceptors)
-- [ ] Create `.env.example` with `API_URL`
-- [ ] Update `services/*` to call HTTP endpoints
-- [ ] Add error mapping (HTTP status codes → DatabaseError codes)
-- [ ] Test auth flow end-to-end
-- [ ] Add request/response logging
-- [ ] Test offline error handling
-- [ ] Update error messages for production
+`runtime/useRootRuntimeReady.js` decides when the app is ready to render its first interactive screen. Bootstrap effects (auth hydration, OTA check, preferences load) run before paint.
 
 ---
 
-## **11. Testing Strategy**
+## 11. Screen Anatomy
 
-### **Unit Tests**
+Stack routes follow a layered pattern:
 
-```javascript
-// __tests__/services/authService.test.js
-describe('authService', () => {
-  it('should register user', async () => {
-    const result = await authService.register({
-      email: 'test@example.com',
-      password: 'pass123',
-    });
-    expect(result).toBeDefined();
-  });
-});
+```
+app/(user)/<route>.jsx              ← thin route file (≤100 lines target)
+  └── screens/<Screen>.jsx          ← screen orchestrator (≤500 lines)
+       └── <Screen>Orchestrator    ← domain wiring, header, FAB, route coord
+            └── <Screen>StageBase   ← shell, motion, responsive composition
+                 └── <Screen>Model  ← business composition
+                      └── leaf components (presentational only)
 ```
 
-### **Integration Tests**
-
-```javascript
-// Test full auth flow
-describe('Auth Flow', () => {
-  it('should signup, login, and logout', async () => {
-    const signup = await authService.register({ ... });
-    const login = await authService.loginWithPassword({ ... });
-    expect(login).toBeDefined();
-  });
-});
-```
+Reference variant for new surfaces is typically iOS mobile; shared behavior is then lifted into orchestrators, StageBase components, themes, and formatters before web/tablet/Android variants compose differently. See [`flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md`](../../flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md).
 
 ---
 
-## **Summary**
+## 12. Emergency / Map Surface (special)
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Data access | Scattered in screens | Centralized services |
-| Error handling | Strings only | Typed errors |
-| Testability | Hard | Easy |
-| Backend migration | Would break everything | 1 file change |
-| Scroll UI | Static headers | Apple-style |
-| Code reuse | Low | High |
+The emergency experience is **not** a stack of routes. It is one persistent map canvas with a persistent sheet shell whose phases change. Rules:
 
-This architecture scales from local AsyncStorage → backend HTTP seamlessly.
+- `MapScreen.jsx` stays thin; new decision logic goes into the map flow/controller layer (`hooks/map/**`) first.
+- Persistent map stays mounted while sheet phases change.
+- Full-screen wrappers above the map use `pointerEvents="box-none"`.
+- Tracking-ready requires a complete contract: request id + active status + hospital/service context + route or ETA seed + responder identity (or explicit hydrating state).
+- Fallback ETAs/routes must be marked and bounded; never fabricate confident arrival times.
+- Realtime recovery must converge to backend truth after reconnect.
+
+For the full implementation contract see [`flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md). For the live working tracker see [`flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md`](../../flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md).
+
+---
+
+## 13. Local Persistence — `database/`
+
+`database/` is the app-owned `AsyncStorage` boundary. It is **not** the canonical client-state model anymore (that role belongs to Zustand stores). `database/` is used for:
+
+- Migration compatibility (legacy keys + one-time migrations)
+- Tiny app-scoped flags that don't need realtime, query, or machine semantics
+- Optional persistence helpers used inside Zustand `persist` middleware
+
+Rules:
+
+- Use `database` + `StorageKeys` boundaries where they exist.
+- Avoid scattered direct `AsyncStorage` calls for feature persistence.
+- Do **not** move Supabase auth storage behind app-owned helpers — the Supabase client owns that adapter contract.
+
+---
+
+## 14. Web vs Native
+
+Same product, posture-aware composition. The split happens at the provider and component levels:
+
+- `providers/AppProviders.web.jsx` overrides where the web posture differs (e.g. specific provider order, web-only OTA layer).
+- Components use `.web.jsx` siblings when web rendering must differ materially.
+- `app.config.js` + `vercel.json` + `public/` carry web-specific runtime assets.
+- The web map surface is a true web surface with explicit spacing/rendering decisions, not a stretched native card.
+
+For deployment specifics: [`deployment/VERCEL_WEB_DEPLOYMENT.md`](../../deployment/VERCEL_WEB_DEPLOYMENT.md), [`deployment/WEB_MAPS_SETUP.md`](../../deployment/WEB_MAPS_SETUP.md).
+
+---
+
+## 15. Where to Look Next
+
+| If you need to… | Read |
+|---|---|
+| Understand current sprint and priorities | [`SPONSOR_SPRINT.md`](../../SPONSOR_SPRINT.md) |
+| Apply code-standard refactoring rules | [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) |
+| See the migration history that produced today's shape | [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md) |
+| Understand a specific Zustand store | [`architecture/stores/STORES_README.md`](../stores/STORES_README.md) |
+| Work on the emergency map surface | [`flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) + [`flows/emergency/MASTER_REFERENCE_FLOW_V1.md`](../../flows/emergency/MASTER_REFERENCE_FLOW_V1.md) |
+| Touch Supabase schema/RPC/RLS | `supabase/docs/REFERENCE.md` + `supabase/docs/CONTRIBUTING.md` |
+| Onboard as a new engineer | [`../../../AGENTS.md`](../../../AGENTS.md) (root) — required reading map |
+
+---
+
+## 16. Change Log
+
+| Version | Date | Change |
+|---|---|---|
+| 2.0 | 2026-05-24 | Full rewrite to 5-layer Gold Standard. Predecessor v1.1 archived. |
+| 1.1 | 2026-01-09 | Three-layer (Presentation / Business Logic / `database/`+`services/`). Archived. |

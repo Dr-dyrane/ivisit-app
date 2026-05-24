@@ -8,7 +8,7 @@ Last updated: 2026-05-19
 
 - [INDEX.md](./INDEX.md) is the canonical docs index.
 - [CONTRIBUTING.md](./CONTRIBUTING.md) defines the anti-litter rules, folder decision tree, naming rules, and archival protocol.
-- [audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./audit/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md) records the 2026-05-19 cleanup and move map.
+- [archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md](./archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md) records the 2026-05-19 cleanup and move map (archived after 2026-05-24 sweep).
 
 ## Authority Order
 
