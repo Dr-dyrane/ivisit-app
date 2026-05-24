@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # SCC-015 Automation Visit-Sync Contract Hardening (2026-03-05)
 
 ## Objective

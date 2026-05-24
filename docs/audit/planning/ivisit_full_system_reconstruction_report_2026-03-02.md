@@ -1,4 +1,8 @@
-﻿# iVisit Full System Autonomous Reconstruction Report
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
+# iVisit Full System Autonomous Reconstruction Report
 Date: 2026-03-02
 Scope: ivisit-app + ivisit-console + linked Supabase project (public schema)
 

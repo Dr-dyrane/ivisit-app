@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Map & Tracking Audits
 
 Audits for map screen, tracking sheet, visit detail, routing, and related flows.

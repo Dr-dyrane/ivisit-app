@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # SCC-001 Emergency Requests Contract Audit (2026-03-05)
 
 ## Scope

@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # CD-9 Runtime Verification
 
 Status: Static Sweep Complete, Runtime QA Pending - Tracking Regression Added

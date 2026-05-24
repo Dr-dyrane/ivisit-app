@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](./RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Demo Bootstrap — Duplicate Hospital Bug: Fix Plan
 **Date:** 2026-05-10
 **Status:** Root cause confirmed. Pass plan aligned to architecture. Ready to implement.

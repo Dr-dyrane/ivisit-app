@@ -268,8 +268,8 @@ const hasPreciseDeviceLocation = Boolean(
 
 | Order | Pass | Status | Risk | Rationale |
 |-------|------|--------|------|-----------|
-| 1 | LOC-4 (Cache) | � Pending | 🔴 High | Real collision risk — do first |
-| 2 | LOC-2 (Manual) | � Pending | � High | Entry validation gap |
+| 1 | LOC-4 (Cache) | 🟡 Pending | 🔴 High | Real collision risk — do first |
+| 2 | LOC-2 (Manual) | 🟡 Pending | 🔴 High | Entry validation gap |
 | 3 | LOC-1 (Sources) | 🟡 Pending | 🔴 High | Enum mismatch |
 | 4 | LOC-3 (Recovery) | 🟡 Pending | 🟡 Medium | Generic errors work |
 | 5 | LOC-6 (Runtime) | 🟡 Pending | 🟡 Medium | Nice to have |

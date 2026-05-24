@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Map Pass 18 Worktree Checkpoint 2026-05-07
 
 Date: `2026-05-07`

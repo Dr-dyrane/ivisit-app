@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Risk Status Tracker — 2026-04-23
 
 > Scope: resolution status of risks R1–R10 from [`ivisit_full_system_reconstruction_report_2026-03-02.md`](./ivisit_full_system_reconstruction_report_2026-03-02.md)

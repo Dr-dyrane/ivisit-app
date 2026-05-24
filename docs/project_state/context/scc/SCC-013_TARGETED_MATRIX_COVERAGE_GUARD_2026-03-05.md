@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # SCC-013 Targeted Emergency/Payments/Wallet Matrix Coverage Guard (2026-03-05)
 
 ## Objective

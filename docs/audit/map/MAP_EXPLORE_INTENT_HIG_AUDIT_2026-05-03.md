@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Map Explore Intent — Apple HIG Audit — 2026-05-03
 
 **Scope**: `/map` explore intent phase — interaction, motion, progression feedback, accessibility

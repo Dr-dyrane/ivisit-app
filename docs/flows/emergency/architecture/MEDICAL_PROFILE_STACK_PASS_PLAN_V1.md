@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Medical Profile Stack Pass Plan (v1)
 
 Status: Implemented on 2026-04-29; retained as pre-pass reference

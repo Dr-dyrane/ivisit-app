@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Medical Profile State Architecture Audit (2026-04-29)
 
 Status: Baseline captured after stack-screen modernization and before five-layer state migration

@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../../../../../audit/RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # LOC-3 Location Recovery
 
 **Status:** ✅ COMPLETE  
@@ -5,7 +9,7 @@
 **Layer Impact:** L3 (Zustand), L5 (Jotai)  
 **Date:** 2026-05-15  
 **Depends on:** None  
-**Risk Level:** � HIGH
+**Risk Level:** 🔴 High
 **Baseline:** `TBD`  
 **Commit:** `TBD`
 

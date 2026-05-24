@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 > **HISTORICAL NOTICE — 2026-05-19**
 > This is a completed audit from 2026-04-24. The issues it identified have been addressed in subsequent passes.
 > Retained for historical context only.

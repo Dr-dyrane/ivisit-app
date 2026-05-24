@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Location, Search, UX, And Demo Hospital Fixes - Last 24h Deep Audit Plan
 
 **Date:** 2026-05-11  

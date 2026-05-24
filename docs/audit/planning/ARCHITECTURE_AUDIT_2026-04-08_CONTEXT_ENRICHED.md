@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Context-Enriched Architecture Audit — 2026-04-08
 
 > Scope: `ivisit-app` + `ivisit-console` + `ivisit` + `iVisit-docs` + Supabase migrations/RPCs

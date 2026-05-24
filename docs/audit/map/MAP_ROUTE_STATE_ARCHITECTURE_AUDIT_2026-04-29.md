@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 # Map Route State Architecture Audit (2026-04-29)
 
 Status: Baseline captured after the shared route dedupe hardening pass and before full five-layer completion

@@ -1,3 +1,7 @@
+> **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+---
+
 > **HISTORICAL NOTICE — 2026-05-19**
 > This pass plan is **complete**. MapScreen modularization passes (Pass 0 through Pass 2) are done.
 > Retained for historical context only.
