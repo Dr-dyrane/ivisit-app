@@ -1,3 +1,10 @@
+> [WARN] ARCHIVAL NOTICE - Cross-repo material.
+> This document is for **iVisit Console** (the provider/admin web app), which lives in the separate `ivisit-console` repo. It was orphaned here in `ivisit-app/docs/console/` and has been archived on 2026-05-24.
+> For current iVisit Console docs, see the `ivisit-console` repository directly.
+> Retained for historical context only.
+
+---
+
 # iVisit Console Quick Reference
 
 ## 🚀 One-Page Setup Guide

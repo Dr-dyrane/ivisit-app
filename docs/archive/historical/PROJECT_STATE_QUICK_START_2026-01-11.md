@@ -1,3 +1,9 @@
+> [WARN] ARCHIVAL NOTICE - This document has been superseded.
+> Current reference: [docs/README.md](../../README.md), [docs/INDEX.md](../../INDEX.md), and [docs/architecture/overview/ARCHITECTURE.md](../../architecture/overview/ARCHITECTURE.md)
+> Moved here during the 2026-05-24 docs reconciliation sweep. Retained for historical context only. Do not use for implementation decisions.
+
+---
+
 # Quick Start: Scroll-Aware Headers + API Services
 
 **Goal:** Get your first scroll-aware header working in 30 minutes

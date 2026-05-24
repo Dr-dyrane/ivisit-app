@@ -1,3 +1,12 @@
+> **ARCHIVAL NOTICE — 2026-05-24:** This 2026-05-19 cleanup report is superseded by the current 2026-05-24 full-docs sweep:
+> - Live tracker: [`docs/audit/DOCS_AUDIT_2026-05-24.md`](../../audit/DOCS_AUDIT_2026-05-24.md)
+> - Reconciliation: [`docs/audit/RECONCILIATION_2026-05-24.md`](../../audit/RECONCILIATION_2026-05-24.md)
+> - Verification log: [`docs/audit/VERIFICATION_LOG_2026-05-24.md`](../../audit/VERIFICATION_LOG_2026-05-24.md)
+>
+> This file is preserved for audit trail. The 2026-05-19 cleanup actions described below remain valid history; the 2026-05-24 sweep extended the cleanup further (console/, onboarding/, payment/, design/ folders archived/consolidated; DEMO_BOOTSTRAP audit relocated to `audit/demo/`).
+
+---
+
 # Docs Repo Cleanup Report
 
 **Date:** 2026-05-19
