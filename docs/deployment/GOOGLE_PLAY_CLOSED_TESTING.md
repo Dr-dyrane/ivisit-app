@@ -1,5 +1,33 @@
 # Google Play Closed Testing
 
+## Current Closed Test Status (1.0.6)
+
+Last updated: 2026-05-22.
+
+Google Play production access is still gated by closed-test history. The latest review requested that the app continue closed testing with at least 12 opted-in testers for 14 more days from the review time. Keep tester count above the minimum; target 20-30 opted-in testers so silent churn does not drop the test below 12.
+
+Current Android closed-test build:
+
+- Version: `1.0.6`
+- Runtime version: `1.0.6`
+- EAS profile: `staging`
+- Version code: `26`
+- Build ID: `559f947f-d3a8-4e57-837b-7118a1ef3977`
+- Play Store listing: `https://play.google.com/store/apps/details?id=com.dyrane.ivisit`
+- Closed test opt-in: `https://play.google.com/apps/testing/com.dyrane.ivisit`
+- AAB artifact: `https://expo.dev/artifacts/eas/bzf313CdnZP3HykMrrdF6a.aab`
+- Local artifact: `dist/ivisit-1.0.6-staging.aab`
+
+Closed-test expectations for 1.0.6:
+
+1. Testers should install or update to the latest build.
+2. Testers should keep the app installed through the test window.
+3. Testers should open the app across multiple days.
+4. Testers should exercise hospital search, location permission, ambulance request simulation, tracking/status, and rating/feedback.
+5. Testers should rate the Play Store listing and send short feedback.
+
+The 1.0.6 subscriber reminder campaign was sent from `ivisit-console/frontend` on 2026-05-22 to 16 exported subscribers. It asked testers to update/install, test the emergency flows, rate on Play Store, and reply with feedback.
+
 ## Reviewer Access
 
 Use this only for Google Play closed testing / app review.
@@ -107,6 +135,20 @@ eas update --channel staging --message "OTA vX.Y.Z — clean runtime for staging
 Then update `appLinks.ts` with the new group ID (same as OTA-only step 4–5 above).
 
 ---
+
+## 1.0.6 Closed-Test Build Record (2026-05-22)
+
+What changed:
+
+- Bumped `package.json`, `package-lock.json`, `app.config.js`, `version.js`, `screens/MoreScreen.jsx`, and `data/update.json` to `1.0.6`.
+- Built Android staging AAB through EAS.
+- Downloaded the finished artifact to `dist/ivisit-1.0.6-staging.aab`.
+- Sent a subscriber reminder from the console repo asking testers to update/install, test real flows, rate on Play Store, and send feedback.
+
+Verification:
+
+- `npx expo config --type public` reported `version: '1.0.6'`, package `com.dyrane.ivisit`, and `runtimeVersion.policy: 'appVersion'`.
+- `npx eas build:list --platform android --limit 3 --non-interactive` showed build `559f947f-d3a8-4e57-837b-7118a1ef3977` as `finished`.
 
 ## Post-Mortem: OTA Runtime Mismatch (2026-04-27)
 

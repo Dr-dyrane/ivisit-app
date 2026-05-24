@@ -1,8 +1,8 @@
 # Sponsor Sprint
 
 > Status: Active
-> Scope: `ivisit-app`
-> Type: Working dossier for live-facing product hardening
+> Scope: `ivisit-app` plus ecosystem valuation context from `ivisit`, `ivisit-console`, and `iVisit-docs`
+> Type: Working dossier for live-facing product hardening and sponsor valuation mapping
 
 ## Purpose
 
@@ -27,6 +27,10 @@ Primary doctrine still lives in:
 - [flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md](./flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md)
 - Historical context: [archive/legacy_specs/](./archive/legacy_specs/) + [archive/historical/](./archive/historical/)
 
+Related ecosystem valuation artifact:
+
+- [algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md](./algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md)
+
 ## Current Goal
 
 Carry the product from first paint into the first live emergency action surface so it is production-credible across:
@@ -48,12 +52,19 @@ The current job is:
 - build the first live-action emergency surface intentionally
 - make the handoff from welcome into ambulance request feel seamless
 - make the first emergency states strong enough to stand up to sponsor review
+- map the whole iVisit ecosystem into a defensible sponsor/investor valuation story
 
 Immediate next milestone:
 
 - turn the first successful match into a real iVisit state
 - make ETA the primary visual anchor
 - let route and responder details support trust without turning the screen into a dashboard
+
+Business-context milestone:
+
+- present iVisit as a four-surface ecosystem: public website, patient app, provider/sponsor console, and NDA-gated data room
+- keep the current internal `~$9M` pre-seed positioning, but explain it as a risk-adjusted ecosystem value rather than an idea value
+- use the sponsor ask bands already documented in the business repo: `$25,000 to $50,000` for strategic pilot sponsorship and `$100,000 to $150,000` for early investment
 
 ## Sprint Principle
 
@@ -134,6 +145,7 @@ Current emergency intake checkpoint:
 - Corinto (`2235 Corinto Court`) has been used as a live proof point: the guest/no-auth intake now returns `clean_cycle_ready: true`, `dispatch_ready: true`, and an available ambulance for responder matching
 - Pass 12 (visits + history migration) is now complete: canonical history lives in `MapRecentVisitsModal` + `MapVisitDetailsModal`; booking lives in the new map-owned `MapVisitBookingFlow`; legacy `VisitsScreen` and `VisitDetailsScreen` are thin compatibility bridges; status tones are centralized in `components/map/history/history.theme.js`; `VisitsContext` now holds only canonical collection + CRUD. All Pass 12 Done-criteria are met. See [flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md](./flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) Pass 12 section.
 - Explore Care refactor (EXPLORE-CARE-01, EXP-1 through EXP-10 + DB + Nearby UI + Wiring) is now complete: provider taxonomy constants, DB discriminator columns, edge function category-aware Places fetch, emergency strict filter on `nearby_hospitals` RPC, `nearby_providers` RPC for explore mode, `MapCareHistoryModal` redesigned with Emergency + Explore sections, `MapProviderListSheet` with time-bucket sections + filter strip + skeleton, `ProviderMarkers` with tintColor per category, `MapScreen` fully wired (`exploreProviderCategoryAtom`, `exploreProviderIdAtom`, `handleExploreCare`, `useNearbyProviders` shared cache). All 11 edge functions deployed. See [audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md](./audit/map/EXPLORE_CARE_IMPLEMENTATION_CHECKPOINT_2026-05-16.md).
+- Ecosystem valuation pass is now underway: the filing pack has been expanded to include the `ivisit` public website/acquisition layer, `ivisit-console` role-gated operations, dispatch/payment/admin surfaces, realtime console evidence, the `iVisit-docs` NDA-gated data room, sponsor/investor document workflows, and a mapped valuation model supporting a risk-adjusted `~$9M` pre-seed position.
 
 ## Why This Sprint Matters
 
@@ -158,14 +170,17 @@ In scope now:
 - request-started, location-confirm, finding-help, matched, and tracking states
 - emergency copy discipline and state hierarchy
 - reuse and simplification of the existing request / trip / tracking modules
+- ecosystem valuation mapping for sponsor/investor discussion
+- console and data-room evidence only as business-value proof, not as a console redesign sprint
 
 Not in scope right now:
 
 - redesigning the whole visual system
-- provider console
+- provider console redesign
 - telemedicine or revisits
 - broad navigation cleanup unrelated to emergency flow
 - marketing redesign beyond emergency-flow parity
+- binding valuation, tax, securities, or patent advice
 
 ## Device Classes
 
@@ -195,10 +210,47 @@ The emergency build is being grounded through:
 - runtime audit of [EmergencyScreen.jsx](../screens/EmergencyScreen.jsx)
 - shared emergency state copy in [emergencyFlowContent.js](../components/emergency/emergencyFlowContent.js)
 - explicit constraints documented in [flows/emergency/MASTER_REFERENCE_FLOW_V1.md](./flows/emergency/MASTER_REFERENCE_FLOW_V1.md) (historical context: [archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md))
+- ecosystem valuation evidence documented in [algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md](./algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md)
 
 Pipeline rule:
 
 - build the narrow emergency request surface first, not the broad map shell
+- when discussing valuation, show the whole ecosystem before showing the number
+
+## Ecosystem Valuation Frame
+
+iVisit should be presented as more than a patient app:
+
+- `ivisit`: public website, SEO, early access, legal pages, app handoff, sponsor-facing market surface
+- `ivisit-app`: patient intent, route/ETA fallback, payment, emergency commit, tracking, recovery
+- `ivisit-console`: provider/admin/sponsor operations, dispatch, cash approval, analytics, wallets, pricing, insurance, verification
+- `iVisit-docs`: NDA-gated data room, document invites, admin access approvals/revocations, sponsor/IP/funding documents
+
+The public website repo also contains an older `doc/REVISED_ENTERPRISE_VALUATION.md` with a `$1.5M to $3M` position. Treat that as historical/conservative and do not send it beside the current sponsor pack unless it is updated or clearly marked superseded.
+
+Working valuation posture:
+
+- conservative case: `$5M to $7M`
+- current defensible target: `$7M to $10M`
+- working center: `~$9M`
+- stretch case after pilot/IP/staging proof: `$10M to $12M`
+
+Why `~$9M` is defendable now:
+
+- the platform has multiple working surfaces, not just a concept
+- the public website supports acquisition, SEO, legal pages, early access, and app handoff
+- emergency commit graph and fallback proof create IP optionality
+- console operations make the product deployable with providers
+- data-room workflows make sponsor diligence controllable
+- funding ask is modest relative to the platform already assembled
+
+What still discounts the valuation:
+
+- no audited revenue
+- no signed provider or hospital pilot yet
+- no attorney-filed patent/provisional yet
+- staging proof logs for all five emergency traces still need to be captured
+- regulatory and operating scope must stay tightly defined for pilot launch
 
 ## Acceptance Criteria
 
@@ -256,6 +308,33 @@ When reviewed during this sprint, the correct framing is:
 - the team is intentionally reusing existing trip logic instead of rebuilding fiction
 - the goal is seamless ambulance request, not decorative redesign
 - web, iOS, and Android are being treated as one patient product surface
+- the console and data-room surfaces show that iVisit is already being shaped as a company ecosystem
+- the public website shows that iVisit has a market-facing acquisition and trust layer
+- the current valuation discussion is a risk-adjusted pre-seed map, not a claim of revenue value
+
+## Sponsor Ask Framing
+
+Use three lanes:
+
+1. Strategic pilot sponsor: `$25,000 to $50,000`
+2. Early investor sponsor: `$100,000 to $150,000`
+3. Hybrid sponsor: commercial sponsorship and investment documented separately
+
+Do not offer:
+
+- source-code transfer
+- IP ownership transfer
+- broad exclusivity
+- sponsor veto over product/company direction
+- unrestricted access to confidential documents
+
+Sponsor should receive:
+
+- curated data-room access under NDA
+- defined pilot scope and reporting
+- sponsor-safe product demo
+- monthly progress update
+- optional investment rights only through counsel-approved documents
 
 ## Exit Condition
 

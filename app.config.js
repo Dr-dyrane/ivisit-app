@@ -40,7 +40,7 @@ module.exports = ({ config }) => {
     name: "iVisit",
     slug: "ivisit",
     scheme: "ivisit",
-    version: "1.0.5",
+    version: "1.0.6",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",

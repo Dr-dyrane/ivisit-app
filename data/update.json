@@ -1,26 +1,26 @@
 {
   "_lastCommitHash": "65d29942",
   "_lastCommitDate": "2026-05-19T20:28:46-07:00",
-  "version": "1.0.5",
-  "date": "2026-05-20",
-  "title": "Payment to Tracking Stabilization",
-  "summary": "Stabilized the emergency payment-to-tracking handoff, ETA rehydration, demo provider seeding, and rating modal behavior for staging.",
+  "version": "1.0.6",
+  "date": "2026-05-22",
+  "title": "Closed Test Stability Update",
+  "summary": "Improved emergency tracking stability, location permission clarity, provider detail polish, and rating follow-up interactions for closed testing.",
   "changes": [
     {
       "type": "bugfix",
-      "message": "Preserved canonical request identity and ETA state across payment approval, realtime updates, hydration, and Contact Dispatch."
+      "message": "Improved emergency tracking continuity across payment approval, realtime updates, hydration, and dispatch contact handoff."
     },
     {
       "type": "bugfix",
-      "message": "Prevented duplicate rating modal flashes by resolving recovered and in-flow rating through a single modal surface."
+      "message": "Refined rating prompts so testers can give clearer feedback after completed emergency and visit flows."
     },
     {
       "type": "bugfix",
-      "message": "Hardened demo hospital bootstrap against duplicate location conflicts and non-hospital provider seeds."
+      "message": "Clarified location and provider detail states for closed-test hospital discovery scenarios."
     },
     {
       "type": "quality",
-      "message": "Documented the verified no-reload cash approval tracking flow and remaining data cleanup notes."
+      "message": "Polished staging reliability notes for the next Google Play production access review window."
     }
   ]
 }

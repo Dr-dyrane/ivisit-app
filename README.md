@@ -118,7 +118,7 @@ eas submit --platform android --profile staging
 #### **Production Release (Manual Version)**
 ```bash
 # On main branch - manual version control
-# Step 1: Update version in app.json (1.0.5 → 1.0.6)
+# Step 1: Update version in app.config.js (1.0.6 → 1.0.7)
 # Step 2: Build production AAB
 eas build --platform android --profile production
 # Step 3: Submit to production track
@@ -269,6 +269,7 @@ Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
 **Examples:**
 - `1.0.4` → `1*10000 + 0*100 + 4` → `10004`
 - `1.0.5` → `1*10000 + 0*100 + 5` → `10005`
+- `1.0.6` → `1*10000 + 0*100 + 6` → `10006`
 - `1.1.0` → `1*10000 + 1*100 + 0` → `10100`
 - `2.0.0` → `2*10000 + 0*100 + 0` → `20000`
 
@@ -282,7 +283,15 @@ Version Code = MAJOR * 10000 + MINOR * 100 + PATCH
 - `production` profile uses manual version control
 - **Note**: EAS manages version codes remotely when `appVersionSource: "remote"`
 
-**Current**: Version `1.0.5` → EAS-managed version code
+**Current**: Version `1.0.6` → EAS-managed version code. Latest closed-test staging build is version code `26`, build `559f947f-d3a8-4e57-837b-7118a1ef3977`, with local artifact `dist/ivisit-1.0.6-staging.aab`.
+
+### **Current Google Play Closed Test Links**
+
+- Play Store listing: `https://play.google.com/store/apps/details?id=com.dyrane.ivisit`
+- Closed test opt-in: `https://play.google.com/apps/testing/com.dyrane.ivisit`
+- Latest 1.0.6 AAB: `https://expo.dev/artifacts/eas/bzf313CdnZP3HykMrrdF6a.aab`
+
+For production-access readiness, keep at least 12 opted-in testers enrolled continuously, target 20-30 testers, collect real repeated usage across emergency flows, and push meaningful closed-test updates before reapplying.
 
 ---
 
