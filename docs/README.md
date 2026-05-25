@@ -23,9 +23,10 @@ If docs disagree, resolve in this order:
 1. [rules.json](./rules.json)
 2. [MASTER_BLUEPRINT.md](./MASTER_BLUEPRINT.md)
 3. [SPONSOR_SPRINT.md](./SPONSOR_SPRINT.md)
-4. Current flow trackers and implementation rules in `docs/flows/`
-5. Audit records in `docs/audit/`
-6. Archived historical docs in `docs/archive/`
+4. [audit/DOCS_AUDIT_2026-05-24.md](./audit/DOCS_AUDIT_2026-05-24.md) (live docs audit tracker)
+5. Current flow trackers and implementation rules in `docs/flows/`
+6. Audit records in `docs/audit/`
+7. Archived historical docs in `docs/archive/`
 
 ## Current Emergency Flow
 

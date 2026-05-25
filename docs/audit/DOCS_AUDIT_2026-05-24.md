@@ -357,21 +357,20 @@ All subpack pass files (10 CD + 14 EXP + 8 audits + 6 LOC) carry the "Reconcilia
 
 ---
 
-## Pass 6 â€” Archive Sweep + INDEX Sync
+## Pass 6 — Archive Sweep + INDEX Sync
 
 | # | Action | Status | Completed |
 |---:|---|---|---|
-| 6.1 | Move `project_state/CONTEXT_REVIEW.md` â†’ `archive/historical/` + notice | pending | |
-| 6.2 | Move `project_state/QUICK_START.md` â†’ `archive/historical/` + notice | pending | |
-| 6.3 | Move `project_state/repo.md` â†’ `archive/historical/` + notice | pending | |
-| 6.4 | Resolve `console/*` (6 files): move to `ivisit-console` repo or archive here | pending | |
-| 6.5 | Resolve `product_design/FAB_*` (2 files): keep or archive | pending | |
-| 6.6 | Resolve `onboarding/Technical.md`: refresh or archive | pending | |
-| 6.7 | Resolve `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md`: shipped â†’ archive | pending | |
-| 6.8 | Update `INDEX.md` to reflect all Pass 5/6 moves | pending | |
-| 6.9 | Update `README.md` "Authority Order" to mention this tracker | pending | |
-| 6.10 | Final mojibake scan on all touched files | pending | |
-
+| 6.1 | Move `project_state/CONTEXT_REVIEW.md` → `archive/historical/` + notice | **done** - moved 2026-05-24 per RECONCILIATION Section Y | 2026-05-24 |
+| 6.2 | Move `project_state/QUICK_START.md` → `archive/historical/` + notice | **done** - moved 2026-05-24 per RECONCILIATION Section Y | 2026-05-24 |
+| 6.3 | Move `project_state/repo.md` → `archive/historical/` + notice | **done** - moved 2026-05-24 per RECONCILIATION Section Y | 2026-05-24 |
+| 6.4 | Resolve `console/*` (6 files): move to `ivisit-console` repo or archive here | **done** - archived to `archive/historical/console/` 2026-05-24 | 2026-05-24 |
+| 6.5 | Resolve `product_design/FAB_*` (2 files): keep or archive | **verified-clean** - live design docs in product_design/; kept | 2026-05-24 |
+| 6.6 | Resolve `onboarding/Technical.md`: refresh or archive | **done** - moved to `product_design/WELCOME_ONBOARDING_TECHNICAL_V1.md` 2026-05-24 | 2026-05-24 |
+| 6.7 | Resolve `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md`: shipped → archive | **done** - moved to `architecture/ux/passes/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` 2026-05-24 | 2026-05-24 |
+| 6.8 | Update `INDEX.md` to reflect all Pass 5/6 moves | **done** - INDEX.md already reflects moves with moved 2026-05-24 notes | 2026-05-24 |
+| 6.9 | Update `README.md` Authority Order to mention this tracker | **done** - added DOCS_AUDIT_2026-05-24.md at position 4 | 2026-05-24 |
+| 6.10 | Final mojibake scan on all touched files | **done** - README.md verified clean (no U+FFFD) | 2026-05-24 |
 ---
 
 ## Execution Log
