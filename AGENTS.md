@@ -154,7 +154,10 @@ Glass and surfaces:
 
 - Prefer glass, translucency, depth, soft shadows, large radii, and restrained contrast over bordered card stacks.
 - Map sheets are Apple Maps-style islands, not generic modals. Use the existing map sheet tokens for island margin, 44px sheet radius, 30px card radius, handle width, glass surface, blur, and shadow behavior.
-- Use borders only when depth, spacing, blur, or contrast cannot carry the separation or state.
+- Borderlessness is a product quality rule. Default to no visible borders; use breathing room, surface depth, translucency, shadows, grouped spacing, and typography to create separation.
+- Use borders only when depth, spacing, blur, or contrast cannot carry the separation or state. A border must have a job: row grouping, scannability in dense lists, a11y contrast, input affordance, or critical state.
+- Hairline borders are acceptable only as Apple-style dividers inside dense grouped lists, payment breakdowns, detail rows, manual address/search results, history rows, tracking metric separators, or migration/review panes where repeated data needs fast scanning. They should usually be `StyleSheet.hairlineWidth`, inset past leading icons/orbs, and visually quieter than the content.
+- Do not wrap cards in full rectangular outlines just to make layout visible. If a whole card needs separation, first try elevation, glass contrast, radius, or spacing.
 - Android, iOS, and web glass treatments intentionally differ. Do not force one platform's blur/shadow implementation onto every platform.
 
 Layout and density:
@@ -164,6 +167,8 @@ Layout and density:
 - iVisit density is compact and calm: small padding can be correct when hierarchy is clear. Do not inflate emergency surfaces into marketing-page spacing.
 - Stack screens use shared compact/tablet/desktop metrics. Respect the existing 44px compact controls and 48px tablet/desktop controls unless a surface-specific token says otherwise.
 - Full-canvas flows such as welcome, map, and wide payment layouts may escape inherited stack chrome when chrome would make the experience feel boxed.
+- iVisit's implementation separates logic, tokens, models, styles, and platform views so surfaces are portable across React Native and React. Preserve that separation: when porting, view primitives and text containers should be the main swap, while product logic, copy models, tokens, and derived data remain shared or mirrored.
+- Do not mix CSS/styling decisions into logic hooks. Do not mix product branching into view-only components. This separation is what lets the app escape generic React Native or dashboard design without becoming unmaintainable.
 
 Responsive variants:
 
@@ -433,6 +438,9 @@ Required checks:
 - Do not commit mojibake signatures, replacement characters, or corrupted punctuation, arrows, checkmarks, emoji, or section symbols.
 - If a generated audit, filing pack, report, migration, or exported doc contains smart punctuation, emoji, arrows, or checkmarks, reopen it in plain text and verify the rendered characters are intentional.
 - If mojibake is found, fix the source encoding or regenerate the file before final response, commit, or push.
+- Use `scripts/fix-mojibake.ps1` for repo-wide cleanup when corruption may affect docs or source. It scans the whole repo for text-like files while excluding generated/build/dependency folders.
+- Run `powershell -ExecutionPolicy Bypass -File scripts/fix-mojibake.ps1 -CheckOnly` as a non-mutating check, or run without `-CheckOnly` to apply known safe replacements.
+- The script is not a substitute for review. After it changes files, inspect representative diffs to ensure punctuation, arrows, emoji, math symbols, and box drawing characters became intentional UTF-8 text.
 - Mention the check in final verification when the task touches docs, generated files, migrations, exports, or public-facing copy.
 
 Useful checks:
