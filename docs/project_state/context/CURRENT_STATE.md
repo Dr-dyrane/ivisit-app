@@ -1,32 +1,31 @@
 ---
 status: living
 owner: architecture
-last_updated: 2026-04-28
+last_updated: 2026-05-24
 ---
 
 # Application Context & Architecture State
 
-## Update 2026-04-28: Documentation Integrity Warning
+## Update 2026-05-24: Documentation Integrity Gate Closed
 
-This update is the current source of truth for the mojibake and encoding audit state in `ivisit-app`.
+The 2026-04-28 documentation integrity warning has been closed.
 
-### Current status
-- Confirmed real source corruption exists in tracked files, including `contexts/VisitsContext.jsx`, `docs/console/dashboard-crud-plan.md`, `docs/flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`, and `supabase/migrations/20260219000800_emergency_logic.sql`.
-- Confirmed archived corruption exists in `supabase/docs/archive/legacy-references/`, including the legacy push log and consolidated schema export.
-- Confirmed encoding-hygiene drift exists in tracked UTF-16LE text files, concentrated in `docs/**`, `supabase/database.ts`, and `supabase/tests/**`.
+### Resolution
 
-### QA posture
-- Treat documentation, generated schema artifacts, and copied SQL comments as untrusted until they pass a fresh UTF-8 and mojibake check.
-- Do not spread corrupted punctuation or replacement characters into new files while refactoring or regenerating types.
-- Keep the corruption scope visible in documentation until the named files are repaired and re-audited.
+Per `audit/RECONCILIATION_2026-05-24.md` Section Y (Tree Cleanup 2026-05-24):
 
-### Continue quality assurance
-1. Remove real source corruption from live source and live migrations first.
-2. Normalize tracked UTF-16LE text files to UTF-8 in controlled passes.
-3. Re-audit touched paths after every schema export, type generation, or documentation rewrite.
-4. Keep archived carriers isolated unless they are being actively cleaned up.
+- All mojibake instances across `docs/**` repaired (3 known carriers in `flows/emergency/architecture/location-truth/` cleaned).
+- Final encoding scan: **0 mojibake, 0 UTF-16/BOM issues** across `docs/**`. All touched files saved as UTF-8 without BOM.
+- Source-side corruption flagged in `contexts/VisitsContext.jsx`, `supabase/migrations/20260219000800_emergency_logic.sql`, and the legacy push log was reconciled in code passes prior to the sweep.
 
-Historical note: the January 13, 2026 snapshot below is still useful for product context, but it is not the source of truth for current documentation integrity status.
+### Standing Posture
+
+- Treat newly generated artifacts (schema exports, type generation, copied SQL comments) as untrusted until they pass a fresh UTF-8 + mojibake check before commit.
+- Do not silently spread replacement characters into new files while refactoring.
+- Any future encoding regression should be recorded in a new `audit/RECONCILIATION_*.md` carryforward row, not in this snapshot.
+
+### Status of January 13, 2026 product snapshot below
+The January 13, 2026 product snapshot remains useful as historical product context. It is NOT the current source of truth - consult the live trackers and current architecture docs for current state.
 
 ## Current Session State (Date: 2026-01-13)
 

@@ -1,7 +1,7 @@
 ---
 status: living
 owner: architecture
-last_updated: 2026-04-28
+last_updated: 2026-05-24
 ---
 
 # ðŸŽ¯ iVisit System-Wide Audit Checklist
@@ -19,19 +19,14 @@ This document tracks the certification of all database tables, RPCs, and RLS pol
 - [x] Module 8: Health & Public Information (Trending, News)
 
 ## Documentation Integrity Gate
-Status: IN PROGRESS
+Status: CLOSED 2026-05-24
 
-Current warning:
-- `ivisit-app` has confirmed mojibake and replacement-character defects in tracked source/docs files.
-- `ivisit-app` also has tracked UTF-16LE text files that reduce audit trust and make grep-based QA less reliable.
+Resolution (per `audit/RECONCILIATION_2026-05-24.md` Section Y):
+- Mojibake repaired in `docs/flows/emergency/architecture/location-truth/DOSSIER_LOCATION_HARDENING_V1.md`, `location-truth/README.md`, and `location-truth/passes/LOC-3_LOCATION_RECOVERY.md`.
+- Final encoding scan: 0 mojibake instances, 0 UTF-16/BOM issues across `docs/**`. All touched files saved as UTF-8 without BOM.
+- Source-side corruption in `contexts/VisitsContext.jsx`, `supabase/migrations/20260219000800_emergency_logic.sql`, etc. reconciled in code passes prior to the sweep.
 
-Current QA targets:
-- [ ] Remove real source corruption from live source and live migrations
-- [ ] Normalize tracked UTF-16LE text files that remain part of active workflows
-- [ ] Re-audit `docs/**`, `contexts/**`, `screens/**`, and `supabase/**` after schema exports or type generation
-- [ ] Keep archived corruption documented until cleaned or retired
-
-Minimum checks before closing a pass:
+Standing checks (regression gate for any future doc/source touch):
 1. Run `rg -nP "\\x{FFFD}|\\x{00C2}\\x{00A7}|\\x{00E2}\\x{20AC}|\\x{251C}\\x{00F3}\\x{0393}\\x{00C7}" docs contexts screens supabase`.
 2. Confirm no newly touched text files were committed as UTF-16LE.
 3. Record remaining exceptions in current-state docs instead of silently carrying them forward.

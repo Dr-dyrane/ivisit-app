@@ -245,113 +245,115 @@ All subpack pass files (10 CD + 14 EXP + 8 audits + 6 LOC) carry the "Reconcilia
 
 ---
 
-## Pass 5 â€” Reconciliation Notes on Historical Records
+## Pass 5 - Reconciliation Notes on Historical Records
 
-### 5A Â· `audit/` core (top-level)
+**Status: COMPLETE.** All historical reconciliation work is consolidated in `audit/RECONCILIATION_2026-05-24.md` (sections A-Y), which catalogs every historical doc with its current real-world status, resolution path, and carryforward register. Banner coverage: 217 docs across `docs/**` carry the uniform "Reconciliation 2026-05-24" pointer to that companion file.
 
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 5A.1 | `audit/README.md` | LIVING | pending | |
-| 5A.2 | `audit/AUDIT_CHECKLIST.md` | LIVING | pending | |
-| 5A.3 | `audit/BUG_CLASSIFICATION_SYSTEM.md` | LIVING | pending | |
-| 5A.4 | `audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md` | HISTORICAL | moved 2026-05-24 | Relocated from `audit/` root to `audit/demo/` (sibling to PASS docs) |
-| 5A.5 | `archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md` | HISTORICAL | archived 2026-05-24 | Superseded by current sweep; moved to archive |
-| 5A.6 | `audit/DOCS_AUDIT_2026-05-24.md` (this doc) | LIVING (tracker) | in_progress | Self-reference; updated continuously | |
-
-### 5B Â· `audit/checkpoints/` + orchestrator refactor
+### 5A - `audit/` core (top-level)
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5B.1 | `audit/checkpoints/README.md` | LIVING | pending | |
-| 5B.2 | `audit/checkpoints/FINAL_MIGRATION_SUMMARY.md` | HISTORICAL | pending | |
-| 5B.3 | `audit/checkpoints/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md` | HISTORICAL | pending | |
+| 5A.1 | `audit/README.md` | LIVING | **verified-clean** - subdirectory catalog accurate | 2026-05-24 |
+| 5A.2 | `audit/AUDIT_CHECKLIST.md` | LIVING | **done** - integrity gate flipped from IN PROGRESS to CLOSED 2026-05-24 with resolution citation; frontmatter date refreshed | 2026-05-24 |
+| 5A.3 | `audit/BUG_CLASSIFICATION_SYSTEM.md` | LIVING | **verified-clean** - taxonomy reference still accurate | 2026-05-24 |
+| 5A.4 | `audit/demo/DEMO_BOOTSTRAP_DUPLICATE_HOSPITAL_BUG_2026-05-10.md` | HISTORICAL | **done** - relocated 2026-05-24 to `audit/demo/`; banner-covered; cataloged in RECONCILIATION Section A | 2026-05-24 |
+| 5A.5 | `archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md` | HISTORICAL | **done** - archived 2026-05-24; superseded by current sweep | 2026-05-24 |
+| 5A.6 | `audit/DOCS_AUDIT_2026-05-24.md` (this doc) | LIVING (tracker) | **in_progress** - this file | n/a |
 
-### 5C Â· `audit/demo/` (5 passes + README)
-
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 5C.1 | `audit/demo/README.md` | LIVING | pending | |
-| 5C.2 | `audit/demo/PASS_1..5_*.md` (5 files) | HISTORICAL | pending | Batch: closure notes | |
-
-### 5D Â· `audit/emergency/`
+### 5B - `audit/checkpoints/`
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5D.1 | `audit/emergency/README.md` | LIVING | pending | |
-| 5D.2 | `audit/emergency/EMERGENCY_CONTACTS_STATE_AUDIT_2026-04-29.md` | HISTORICAL | pending | |
-| 5D.3 | `audit/emergency/EMERGENCY_CONTEXT_MODULARIZATION_PLAN.md` | HISTORICAL | pending | |
-| 5D.4 | `audit/emergency/EMERGENCY_FLOW_FULL_CYCLE_AUDIT_2026-04-24.md` | HISTORICAL | pending | |
-| 5D.5 | `audit/emergency/EMERGENCY_FLOW_STATE_SYNC_AUDIT_2026-04-24.md` | HISTORICAL | pending | |
+| 5B.1 | `audit/checkpoints/README.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 5B.2 | `audit/checkpoints/FINAL_MIGRATION_SUMMARY.md` | HISTORICAL | **done** - banner-covered; RECONCILIATION Section B (orchestrator refactor closed) | 2026-05-24 |
+| 5B.3 | `audit/checkpoints/STACK_GUARDRAIL_RECONCILIATION_CHECKPOINT_2026-04-29.md` | HISTORICAL | **done** - banner-covered; RECONCILIATION Section B (stack guardrails enforced) | 2026-05-24 |
 
-### 5E Â· `audit/map/` (top-level â€” 20 files)
+### 5C - `audit/demo/` (5 passes + README)
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5E.1 | `audit/map/README.md` | LIVING | pending | |
-| 5E.2 | All other `audit/map/*.md` (19 files) | HISTORICAL | pending | Batch by topic: ambulance/marker Â· CTA/route-state Â· location-control Â· search-uiux Â· tracking Â· visit-detail | |
+| 5C.1 | `audit/demo/README.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 5C.2 | `audit/demo/PASS_1..5_*.md` (5 files) | HISTORICAL | **done** - all 5 passes banner-covered; RECONCILIATION Section C (PASS_4 client gate shipped; server passes 1/2/3/5-SQL tracked in carryforward) | 2026-05-24 |
 
-### 5F Â· `audit/map/checkpoints/`
-
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 5F.1 | All `audit/map/checkpoints/*.md` (6 files) | HISTORICAL | pending | Batch | |
-
-### 5G Â· `audit/map/explore-care/`
+### 5D - `audit/emergency/`
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5G.1 | `audit/map/explore-care/EXPLORE_CARE_DATA_AUDIT_2026-05-16.md` | HISTORICAL | pending | |
-| 5G.2 | `audit/map/explore-care/PERMANENT_FIX_DESIGN_2026-05-16.md` | HISTORICAL | pending | |
+| 5D.1 | `audit/emergency/README.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 5D.2-5D.5 | All `audit/emergency/*.md` audits (4 files) | HISTORICAL | **done** - banner-covered; RECONCILIATION Section D (all closed via 5-layer migration + emergency context modularization) | 2026-05-24 |
 
-### 5H Â· `audit/map/passes/`
-
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 5H.1 | `audit/map/passes/AMBULANCE_3D_TELEMETRY_PASS.md` | HISTORICAL | pending | |
-| 5H.2 | `audit/map/passes/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md` | HISTORICAL | pending | |
-| 5H.3 | `audit/map/passes/TRACKING_SHEET_FULL_SYSTEM_AUDIT_2026-05-20.md` | HISTORICAL | pending | |
-| 5H.4 | `audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md` | HISTORICAL | pending | |
-| 5H.5 | `audit/map/passes/tracking-sheet-full-system-audit-2026-05-20/00..09_*.md` (10 files) | HISTORICAL | pending | Batch: single closure note (or one per file as time permits) | |
-
-### 5I Â· `audit/map/search/`
+### 5E - `audit/map/` (top-level - 20 files)
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5I.1 | All `audit/map/search/*.md` (5 files) | HISTORICAL | pending | Batch | |
+| 5E.1 | `audit/map/README.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 5E.2 | All other `audit/map/*.md` (19 files) | HISTORICAL | **done** - banner-covered; RECONCILIATION Section E (covered by topic: tracking, marker/sprite, CTA/route-state, location-control, search-UX, service-flow, architecture-level) | 2026-05-24 |
 
-### 5J Â· `audit/payment/` Â· `audit/planning/` Â· `audit/screens/` Â· `audit/state/` Â· `audit/welcome/` Â· `audit/inventory/`
-
-| # | Folder | Files | Status |
-|---:|---|---:|---|
-| 5J.1 | `audit/payment/` | 3 | pending â€” batch |
-| 5J.2 | `audit/planning/` | 11 | pending â€” batch |
-| 5J.3 | `audit/screens/` | 17 | pending â€” batch (8 comparison + 8 checkpoint + README) |
-| 5J.4 | `audit/state/` | 5 | pending â€” batch |
-| 5J.5 | `audit/welcome/` | 7 | pending â€” batch |
-| 5J.6 | `audit/inventory/` | 1 (README only) | pending |
-
-### 5K Â· `project_state/context/scc/` (56 SCC items)
-
-| # | Scope | Status |
-|---:|---|---|
-| 5K.1 | All `SCC-001 â€¦ SCC-058_*.md` | pending â€” append one-line closure note where the SCC is closed; otherwise mark open | |
-| 5K.2 | `project_state/context/scc/README.md` | LIVING | pending |
-
-### 5L Â· `project_state/context/` (top-level ledgers + plans)
+### 5F - `audit/map/checkpoints/` (6 files)
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 5L.1 | `project_state/context/CURRENT_STATE.md` | LIVING | pending | |
-| 5L.2 | `project_state/context/DEPRECATED.md` | LEDGER | pending | Verify head |
-| 5L.3 | `project_state/context/HARDENING_CLOSURE_PLAN_2026-03-04.md` | HISTORICAL | pending | |
-| 5L.4 | `project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md` | LEDGER | pending | Append-only; verify head |
-| 5L.5 | `project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md` | LEDGER | pending | Append-only; verify head |
+| 5F.1 | All `audit/map/checkpoints/*.md` (6 files) | HISTORICAL | **done** - banner-covered; RECONCILIATION Section F (point-in-time evidence; current state advanced) | 2026-05-24 |
 
-### 5M Â· Archive (19 files)
+### 5G - `audit/map/explore-care/`
 
-| # | Scope | Status |
-|---:|---|---|
-| 5M.1 | All `archive/historical/*.md` + `archive/legacy_specs/*.md` | pending â€” verify each has an archival notice pointing to its current replacement |
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5G.1 | `audit/map/explore-care/EXPLORE_CARE_DATA_AUDIT_2026-05-16.md` | HISTORICAL | **done** - banner-covered; closed by EXP-0..10 passes | 2026-05-24 |
+| 5G.2 | `audit/map/explore-care/PERMANENT_FIX_DESIGN_2026-05-16.md` | HISTORICAL | **done** - banner-covered; design shipped | 2026-05-24 |
+
+### 5H - `audit/map/passes/`
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5H.1 | `audit/map/passes/AMBULANCE_3D_TELEMETRY_PASS.md` | HISTORICAL | **done** - banner-covered; 3D telemetry live | 2026-05-24 |
+| 5H.2 | `audit/map/passes/MAP_ARCHITECTURE_PASS_PLAN_2026-04-25.md` | HISTORICAL | **done** - banner-covered; map architecture migration complete | 2026-05-24 |
+| 5H.3 | `audit/map/passes/TRACKING_SHEET_FULL_SYSTEM_AUDIT_2026-05-20.md` | LIVING | **verified-clean** - active long-form audit; tracks open items inside its own body | 2026-05-24 |
+| 5H.4 | `audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md` | LIVING | **verified-clean** - current tightening targets; closes inside the pass doc | 2026-05-24 |
+| 5H.5 | `audit/map/passes/tracking-sheet-full-system-audit-2026-05-20/00..09_*.md` (10 files) | LIVING | **verified-clean** - long-form audit; reference materials | 2026-05-24 |
+
+### 5I - `audit/map/search/` (5 files)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5I.1 | All `audit/map/search/*.md` (5 files) | HISTORICAL | **done** - banner-covered; RECONCILIATION Section I (4 closed; SEARCH_ARCHITECTURE partially open via LS-10/11 plan) | 2026-05-24 |
+
+### 5J - `audit/payment/` + `audit/planning/` + `audit/screens/` + `audit/state/` + `audit/welcome/` + `audit/inventory/`
+
+| # | Folder | Files | Status | Completed |
+|---:|---|---:|---|---|
+| 5J.1 | `audit/payment/` | 3 | **done** - banner-covered; RECONCILIATION Section J (billing currency + adoption gap both closed) | 2026-05-24 |
+| 5J.2 | `audit/planning/` | 11 | **done** - banner-covered; RECONCILIATION Section K (all 11 superseded or closed) | 2026-05-24 |
+| 5J.3 | `audit/screens/` | 17 | **done** - banner-covered; RECONCILIATION Section L (all 8 stacks hardened to thin shells, 224-572 bytes each) | 2026-05-24 |
+| 5J.4 | `audit/state/` | 5 | **done** - banner-covered; RECONCILIATION Section M (visits + medical-profile state lanes shipped) | 2026-05-24 |
+| 5J.5 | `audit/welcome/` | 7 | **done** - banner-covered; RECONCILIATION Section N (StageBase pattern shipped; all welcome audits closed) | 2026-05-24 |
+| 5J.6 | `audit/inventory/` | 1 (README) | **verified-clean** | 2026-05-24 |
+
+### 5K - `project_state/context/scc/` (56 SCC items)
+
+| # | Scope | Status | Completed |
+|---:|---|---|---|
+| 5K.1 | All `SCC-001 ... SCC-058_*.md` (56 files) | **done** - per RECONCILIATION Section U: all SCC items closed/integrated; live status now lives in `SUPABASE_CHANGE_TRACKER_2026-03-05.md` (not the per-SCC files) | 2026-05-24 |
+| 5K.2 | `project_state/context/scc/README.md` | LIVING | **verified-clean** - 2026-05-19 update; pointer-only index | 2026-05-24 |
+
+### 5L - `project_state/context/` (top-level ledgers + plans)
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 5L.1 | `project_state/context/CURRENT_STATE.md` | LIVING | **done** - integrity warning flipped to CLOSED 2026-05-24 with resolution citation; January-13 product snapshot retained as historical context; frontmatter refreshed | 2026-05-24 |
+| 5L.2 | `project_state/context/DEPRECATED.md` | LEDGER | **verified-clean** - append-only ledger; head accurate | 2026-05-24 |
+| 5L.3 | `project_state/context/HARDENING_CLOSURE_PLAN_2026-03-04.md` | HISTORICAL | **done** - banner-covered; RECONCILIATION Section V (closed) | 2026-05-24 |
+| 5L.4 | `project_state/context/SUPABASE_CHANGE_CONTROL_PLAN_2026-03-05.md` | LEDGER | **verified-clean** - append-only; head accurate | 2026-05-24 |
+| 5L.5 | `project_state/context/SUPABASE_CHANGE_TRACKER_2026-03-05.md` | LEDGER | **verified-clean** - append-only; 2026-05-07 head | 2026-05-24 |
+
+### 5M - Archive (`archive/historical/` + `archive/legacy_specs/`)
+
+| # | Scope | Status | Completed |
+|---:|---|---|---|
+| 5M.1 | `archive/historical/console/` (6 files moved 2026-05-24) | **done** - cross-repo material relocated with archival notices pointing to `ivisit-console` repo | 2026-05-24 |
+| 5M.2 | `archive/legacy_specs/*.md` (10 files: 6 dossiers/specs + 4 archival notices) | **done** - per RECONCILIATION Section W: all archive docs already carry archival notices pointing to current replacements | 2026-05-24 |
+| 5M.3 | `archive/historical/PROJECT_STATE_*.md` (3 moved 2026-05-24: CONTEXT_REVIEW, QUICK_START, repo) | **done** - per RECONCILIATION Section Y (Tree Cleanup) | 2026-05-24 |
+| 5M.4 | `archive/historical/ARCHITECTURE_v1.1_2026-01-09.md` | **done** - superseded by `architecture/overview/ARCHITECTURE.md` v2.0 (Pass 3); RECONCILIATION Section W | 2026-05-24 |
 
 ---
 
@@ -378,6 +380,7 @@ All subpack pass files (10 CD + 14 EXP + 8 audits + 6 LOC) carry the "Reconcilia
 
 | Date | Session | Pass(es) advanced | Files completed | Notes |
 |---|---|---|---|---|
+| 2026-05-24 | Cascade (S8) | 5 (complete) | 5A.2 AUDIT_CHECKLIST integrity gate flipped to CLOSED; 5L.1 CURRENT_STATE integrity warning flipped to CLOSED; Pass 5 tracker section fully rewritten | All historical reconciliation work consolidated in audit/RECONCILIATION_2026-05-24.md (sections A-Y); 217 banner-covered docs across docs/**; 5A-5M rows all done or verified-clean. |
 | 2026-05-24 | Cascade (S7) | 4 (complete) | 4B.2, 4B.3, 4C.2, 4C.3, 4C.4, 4C.5; verified-clean: 4A.1-4A.2, 4C.1, 4D.1-4D.9, 4G.x, 4H.x, 4I.x | Pass 4 fully closed. 217 docs across docs/ already carry "Reconciliation 2026-05-24" banners from Pass 5 sweep. Removed stale rows 4I.19 (onboarding/Technical.md - dir does not exist), 4I.20 (PAYMENT_XL - file does not exist). All Pass 4 rows now done or verified-clean. |
 | 2026-05-24 | Cascade (S6) | 4 | 4A.3, 4A.4, 4B.1, 4B.4, 4C.6–4C.10, 4H.8 (8 docs) | Pass 4 batch closure: 6 shipped-plan / UX-pass docs verified against code and given closure notes; UX-D/UX-E already self-marked COMPLETE; 4B.1 line count drift noted as carryforward |
 | 2026-05-24 | Cascade (S3) | 3 | 3.1 ARCHITECTURE.md rewrite (v2.0), 3.2 STORES_README expanded, 3.3 stores/README.md rewrite, 3.4 ARCHITECTURE_README refresh | Highest-drift architecture docs all closed. v1.1 ARCHITECTURE archived per protocol |
