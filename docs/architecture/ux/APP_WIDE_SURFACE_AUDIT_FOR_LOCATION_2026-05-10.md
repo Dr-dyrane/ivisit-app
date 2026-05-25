@@ -278,3 +278,18 @@ Reason:
 6. Add save category/details with mini-profile orb language.
 7. Add manual assistance using the same candidate output.
 8. Add mini profile address entry after the LocationSheet owner is stable.
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - historical reconciliation).
+
+This is a 2026-05-10 design + implementation audit. It informed the LocationSheet + LS-9/LS-10/LS-11 passes, all of which have shipped:
+
+- LocationSheet remains the sole owner of address entry surfaces; no alien modals were introduced.
+- Manual address redesign shipped per `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` reconciliation note.
+- Places + Recents hubs shipped per `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` reconciliation note.
+- Mini profile entry point (Issue 11) shipped per UX-E reconciliation in `architecture/ux/passes/UX_E_LOCATION_SHEET.md`.
+
+**Status** - retain as a useful design-audit reference; treat the body as historical context, not an open work item.

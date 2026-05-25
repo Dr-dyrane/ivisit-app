@@ -89,3 +89,18 @@ To roll this pass back:
 2. Restore `components/emergency/ServiceRatingModal.jsx`.
 3. Restore `components/emergency/serviceRatingModal.styles.js`.
 4. Keep this document as the rollback note or move it to archived UX notes after the pass is accepted.
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - living-verify batch).
+
+**Status: SHIPPED.** The OTA + rating modal recovery pass has landed:
+
+- `runtime/OTAModalLayer.jsx` owns the OTA modal lifecycle and the explicit close affordance.
+- `hooks/map/exploreFlow/useTrackingRatingFlow.js` drives the rating recovery flow.
+- `components/map/views/tracking/mapTracking.rating.js` + `useMapTrackingController.js` host the rating modal contract with progressive disclosure (note/tip collapsed by default).
+- `atoms/mapScreenAtoms.js#trackingRatingStateAtom` persists the rating recovery state across cold start as designed.
+
+**Carryforward** - none. Body retained as the design-rules reference for any future modal work.

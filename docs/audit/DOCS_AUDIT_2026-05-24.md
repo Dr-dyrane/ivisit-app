@@ -126,153 +126,122 @@ All original findings resolved by `<doc or pass>`. No carryforward.
 
 ---
 
-## Pass 4 â€” Feature-area Living Docs
+## Pass 4 - Feature-area Living Docs
 
-### 4A Â· Location
-
-| # | File | Class | Status | Intent | Completed |
-|---:|---|---|---|---|---|
-| 4A.1 | `architecture/location/LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md` | LIVING | pending | Cross-check vs `locationStore.js`, `GlobalLocationContext.jsx`, `locationIntentAtoms.js` | |
-| 4A.2 | `architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` | LIVING | pending | Reconcile plan vs shipped state | |
-| 4A.3 | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | **done** | LS-9 SHIPPED — closure note appended citing `ManualStep*` components, `useManualEntryHandlers`, `useManualDropController`, `addressAssistService` | 2026-05-24 |
-| 4A.4 | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | **done** | LS-10/11 SHIPPED — closure note appended citing `MapLocationIntentPlacesHubPanel.jsx`, `MapLocationIntentRecentsHubPanel.jsx` | 2026-05-24 |
-
-### 4B Â· Map
+### 4A - Location
 
 | # | File | Class | Status | Intent | Completed |
 |---:|---|---|---|---|---|
-| 4B.1 | `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | **done** | Closure note appended — historical record accurate; line count drift noted (557 → ~744) as carryforward | 2026-05-24 |
-| 4B.2 | `architecture/map/METRO_ROUTING_FIXES.md` | LIVING | pending | Decide: keep in architecture/ or move to audit/ | |
-| 4B.3 | `architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` | LIVING | pending | Verify Mapbox usage in code matches plan | |
-| 4B.4 | `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | **done** | Closure note appended documenting 8-pass MapScreen decomposition (Pass 1–8 all shipped: `useMapShell`, `useMapHistoryFlow`, `useMapDecisionHandlers`, `useMapTrackingSync`, `useMapFocusedState`, `useMapFABManagement`, `useMapRouteHandlers`, `MapModalOrchestrator`) | 2026-05-24 |
+| 4A.1 | `architecture/location/LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md` | LIVING | **verified-clean** | Doc body matches current `locationStore.js` / `GlobalLocationContext.jsx` / `locationIntentAtoms.js`; 2026-05-13 update is fresh | 2026-05-24 |
+| 4A.2 | `architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` | LIVING | **verified-clean** | Header self-marks "Pass 1, 2 & 3 COMPLETE - Baseline uplift COMPLETE - Full management pass: A/B/C/D/E COMPLETE"; LS-9/10/11 closures live in companion docs | 2026-05-24 |
+| 4A.3 | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | **done** | LS-9 SHIPPED - closure note appended | 2026-05-24 |
+| 4A.4 | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | **done** | LS-10/11 SHIPPED - closure note appended | 2026-05-24 |
 
-### 4C Â· UX
-
-| # | File | Class | Status | Intent | Completed |
-|---:|---|---|---|---|---|
-| 4C.1 | `architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md` | LIVING | pending | Verify UX register still current | |
-| 4C.2 | `architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md` | LIVING | pending | Verify plan status; close shipped passes | |
-| 4C.3 | `architecture/ux/MODAL_RECOVERY_PASS_OTA_RATING_V1.md` | LIVING | pending | Verify | |
-| 4C.4 | `architecture/ux/APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md` | HISTORICAL | pending | Append Reconciliation Note | |
-| 4C.5 | `architecture/ux/passes/README.md` | LIVING | pending | Verify pass index | |
-| 4C.6 | `architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md` | LIVING (plan) | **done** | UX-A SHIPPED — closure note appended (`isFreshSession`, `MapBedDecisionTransportStatusStrip`, `isDecisionPhase`) | 2026-05-24 |
-| 4C.7 | `architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md` | LIVING (plan) | **done** | UX-B SHIPPED — closure note appended (`MapPhaseTransitionView` composed 31×, badge reorder, OTP state machine) | 2026-05-24 |
-| 4C.8 | `architecture/ux/passes/UX_C_PAYMENT_SURFACE.md` | LIVING (plan) | **done** | UX-C SHIPPED — closure note appended (`FINALIZING_DISPATCH` UI, null-ETA, server displayId, wallet disabled caption) | 2026-05-24 |
-| 4C.9 | `architecture/ux/passes/UX_D_STATE_LAYER.md` | LIVING (plan) | **done** | UX-D self-marked COMPLETE in doc header; verified `isSubmitting` now derives via `isSubmittingPaymentAtom` (Jotai). No closure note needed | 2026-05-24 |
-| 4C.10 | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | LIVING (plan) | **done** | UX-E self-marked COMPLETE in doc header (Issue 11 shipped via `MiniProfileModal.jsx`). No closure note needed | 2026-05-24 |
-
-### 4D Â· Flows â€” Emergency (live trackers + doctrine)
+### 4B - Map
 
 | # | File | Class | Status | Intent | Completed |
 |---:|---|---|---|---|---|
-| 4D.1 | `flows/README.md` | LIVING | pending | Verify workflow hub | |
-| 4D.2 | `flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` | LIVING | pending | Update with current sprint state | |
-| 4D.3 | `flows/emergency/MASTER_REFERENCE_FLOW_V1.md` | LIVING | pending | Verify locked doctrine | |
-| 4D.4 | `flows/emergency/DEMO_MODE_COVERAGE_FLOW.md` | LIVING | pending | Verify demo bootstrap matches `coverageStore.js` + service | |
-| 4D.5 | `flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md` | LIVING | pending | Verify against `WelcomeScreenOrchestrator` | |
-| 4D.6 | `flows/emergency/workflow_map.md` | LIVING | pending | Verify | |
-| 4D.7 | `flows/emergency/ambulance_and_bed_booking.md` | LIVING | pending | Verify | |
-| 4D.8 | `flows/emergency/CHOOSE_HOSPITAL_PHASE_DOSSIER.md` | LIVING | pending | Verify | |
-| 4D.9 | `flows/emergency/LOCATION_SEARCH_MODAL_DOSSIER.md` | LIVING | pending | Verify | |
-| 4D.10 | `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | HISTORICAL | pending | Append Reconciliation Note (superseded by LIVE_TRACKER) | |
+| 4B.1 | `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | **done** | Closure note appended; line count drift (557 -> ~744) noted as carryforward | 2026-05-24 |
+| 4B.2 | `architecture/map/METRO_ROUTING_FIXES.md` | LIVING | **done** | Closure note appended - fixes shipped (`immer` installed, Metro reload routing live) | 2026-05-24 |
+| 4B.3 | `architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` | LIVING | **done** | Closure note appended - `services/mapboxService.js` + adopters confirm migration SHIPPED | 2026-05-24 |
+| 4B.4 | `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | **done** | Closure note appended documenting 8-pass MapScreen decomposition | 2026-05-24 |
 
-### 4E Â· Flows â€” Emergency Architecture pass plans (24 files)
+### 4C - UX
 
-Most are V1 pass plans (likely complete). Default treatment: HISTORICAL â†’ append Reconciliation Note.
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4C.1 | `architecture/ux/IVISIT_UX_ISSUE_MAPPING_AND_LOCATION_GUARDRAILS_2026-05-10.md` | LIVING | **verified-clean** | UX architecture notes, not an implementation pass; 2026-05-11 update still accurate | 2026-05-24 |
+| 4C.2 | `architecture/ux/UX_ISSUES_SUBPASS_PLAN_2026-05-10.md` | LIVING | **done** | Closure note appended - UX-A/B/C/D/E all shipped per individual pass docs | 2026-05-24 |
+| 4C.3 | `architecture/ux/MODAL_RECOVERY_PASS_OTA_RATING_V1.md` | LIVING | **done** | Closure note appended - shipped via `OTAModalLayer.jsx`, `useTrackingRatingFlow.js`, `trackingRatingStateAtom` | 2026-05-24 |
+| 4C.4 | `architecture/ux/APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md` | HISTORICAL | **done** | Reconciliation note appended - downstream LS-9/10/11 + UX-E all shipped | 2026-05-24 |
+| 4C.5 | `architecture/ux/passes/README.md` | LIVING | **done** | Status table updated inline - all five passes flipped from PLANNED/DEFERRED to **SHIPPED 2026-05** | 2026-05-24 |
+| 4C.6 | `architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md` | LIVING (plan) | **done** | UX-A SHIPPED - closure note appended | 2026-05-24 |
+| 4C.7 | `architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md` | LIVING (plan) | **done** | UX-B SHIPPED - closure note appended | 2026-05-24 |
+| 4C.8 | `architecture/ux/passes/UX_C_PAYMENT_SURFACE.md` | LIVING (plan) | **done** | UX-C SHIPPED - closure note appended | 2026-05-24 |
+| 4C.9 | `architecture/ux/passes/UX_D_STATE_LAYER.md` | LIVING (plan) | **done** | UX-D self-marked COMPLETE; verified `isSubmitting` derives via `isSubmittingPaymentAtom` (Jotai) | 2026-05-24 |
+| 4C.10 | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | LIVING (plan) | **done** | UX-E self-marked COMPLETE; Issue 11 shipped via `MiniProfileModal.jsx` | 2026-05-24 |
 
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 4E.1 | `flows/emergency/architecture/README.md` | LIVING | pending | |
-| 4E.2 | `flows/emergency/architecture/REFACTOR_SEQUENCE_V1.md` | HISTORICAL | pending | |
-| 4E.3 | `flows/emergency/architecture/STACK_SCREENS_PASS_V1.md` | HISTORICAL | pending | |
-| 4E.4 | `flows/emergency/architecture/STACK_SURFACE_STANDARDIZATION_V1.md` | LIVING | pending | |
-| 4E.5 | `flows/emergency/architecture/WELCOME_AND_MAP_CODE_STRUCTURE_V1.md` | LIVING | pending | |
-| 4E.6 | `flows/emergency/architecture/MAP_STATE_STRATEGY_V1.md` | LIVING | pending | |
-| 4E.7 | `flows/emergency/architecture/MAP_FLOW_SURGICAL_AUDIT_V1.md` | HISTORICAL | pending | |
-| 4E.8 | `flows/emergency/architecture/MAP_SHEET_IMPLEMENTATION_NOTES_V1.md` | LIVING | pending | |
-| 4E.9 | `flows/emergency/architecture/MAP_SHEET_PARITY_TASKLIST_V1.md` | HISTORICAL | pending | |
-| 4E.10 | `flows/emergency/architecture/MAP_MINI_PROFILE_HANDOFF_V1.md` | LIVING | pending | |
-| 4E.11 | `flows/emergency/architecture/MAP_CTA_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.12 | `flows/emergency/architecture/MAP_ROUTE_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.13 | `flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.14 | `flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.15 | `flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.16 | `flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.17 | `flows/emergency/architecture/NOTIFICATIONS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.18 | `flows/emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.19 | `flows/emergency/architecture/MEDICAL_PROFILE_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.20 | `flows/emergency/architecture/MEDICAL_PROFILE_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.21 | `flows/emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.22 | `flows/emergency/architecture/SEARCH_STACK_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.23 | `flows/emergency/architecture/VISITS_STATE_PASS_PLAN_V1.md` | HISTORICAL | pending | |
-| 4E.24 | `flows/emergency/architecture/PAYMENT_RESPONSIVE_WAVE_V1.md` | HISTORICAL | pending | |
+### 4D - Flows - Emergency (live trackers + doctrine)
 
-### 4F Â· Flows â€” Emergency Architecture subpacks (contact-dispatch Â· explore-care Â· location-truth)
+| # | File | Class | Status | Intent | Completed |
+|---:|---|---|---|---|---|
+| 4D.1 | `flows/README.md` | LIVING | **verified-clean** | Workflow hub catalog; cross-references all checked, no broken links | 2026-05-24 |
+| 4D.2 | `flows/emergency/EMERGENCY_FLOW_LIVE_TRACKER_2026-05-19.md` | LIVING | **verified-clean** | Sprint tracker; 2026-05-19 update is current operational truth | 2026-05-24 |
+| 4D.3 | `flows/emergency/MASTER_REFERENCE_FLOW_V1.md` | LIVING | **verified-clean** | Locked doctrine; matches current map-first/state-driven model | 2026-05-24 |
+| 4D.4 | `flows/emergency/DEMO_MODE_COVERAGE_FLOW.md` | LIVING | **verified-clean** | 2026-05-10; matches `coverageStore.js` + `bootstrap-demo-ecosystem` edge function | 2026-05-24 |
+| 4D.5 | `flows/emergency/WELCOME_AND_INTAKE_FLOW_MAP.md` | LIVING | **verified-clean** | Active; matches `WelcomeScreenOrchestrator` and current routes | 2026-05-24 |
+| 4D.6 | `flows/emergency/workflow_map.md` | LIVING | **verified-clean** | Product-facing state spine still accurate | 2026-05-24 |
+| 4D.7 | `flows/emergency/ambulance_and_bed_booking.md` | LIVING | **verified-clean** | 2026-04-07 audit; product model statement still applies | 2026-05-24 |
+| 4D.8 | `flows/emergency/CHOOSE_HOSPITAL_PHASE_DOSSIER.md` | LIVING | **verified-clean** | Phase dossier; cross-checked references intact | 2026-05-24 |
+| 4D.9 | `flows/emergency/LOCATION_SEARCH_MODAL_DOSSIER.md` | LIVING | **verified-clean** | Dossier referenced from LS passes; matches shipped state | 2026-05-24 |
+| 4D.10 | `flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md` | HISTORICAL | **done** | "Reconciliation 2026-05-24" banner already present from Pass 5 sweep | 2026-05-24 |
+
+### 4E - Flows - Emergency Architecture pass plans (24 files)
+
+All 24 files in `docs/flows/emergency/architecture/*.md` already carry the "Reconciliation 2026-05-24" banner pointing to `audit/RECONCILIATION_2026-05-24.md`, applied during the Pass 5 historical banner sweep.
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 4F.1 | `flows/emergency/architecture/contact-dispatch/CONTACT_DISPATCH_COMMUNICATION_ROOM_DOSSIER_V1.md` | LIVING | pending | |
-| 4F.2 | `flows/emergency/architecture/contact-dispatch/README.md` | LIVING | pending | |
-| 4F.3 | `flows/emergency/architecture/contact-dispatch/passes/CD-0..9_*.md` (10 files) | HISTORICAL | pending | Batch: append closure notes | |
-| 4F.4 | `flows/emergency/architecture/contact-dispatch/passes/README.md` | LIVING | pending | |
-| 4F.5 | `flows/emergency/architecture/explore-care/EXPLORE_CARE_DOSSIER_V1.md` | LIVING | pending | |
-| 4F.6 | `flows/emergency/architecture/explore-care/README.md` | LIVING | pending | |
-| 4F.7 | `flows/emergency/architecture/explore-care/passes/EXP-0..10,5A,DB,NEARBY-UI,WIRE_*.md` (14 files) | HISTORICAL | pending | Batch: append closure notes | |
-| 4F.8 | `flows/emergency/architecture/explore-care/passes/README.md` | LIVING | pending | |
-| 4F.9 | `flows/emergency/architecture/location-truth/DOSSIER_LOCATION_HARDENING_V1.md` | LIVING | pending | |
-| 4F.10 | `flows/emergency/architecture/location-truth/README.md` | LIVING | pending | |
-| 4F.11 | `flows/emergency/architecture/location-truth/audits/AUDIT_*.md` (8 files) | HISTORICAL | pending | Batch: append closure notes | |
-| 4F.12 | `flows/emergency/architecture/location-truth/passes/LOC-0..6_*.md` (6 files + template + README) | HISTORICAL | pending | Batch: append closure notes | |
+| 4E.1 | `flows/emergency/architecture/README.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4E.2-4E.24 | All other `flows/emergency/architecture/*.md` (23 files) | HISTORICAL | **done** | Banner-covered; bulk verified | 2026-05-24 |
 
-### 4G Â· Flows â€” Emergency (checklists + history + ux)
+### 4F - Flows - Emergency Architecture subpacks (contact-dispatch + explore-care + location-truth)
+
+All subpack pass files (10 CD + 14 EXP + 8 audits + 6 LOC) carry the "Reconciliation 2026-05-24" banner from the Pass 5 sweep. README files are current living docs.
+
+| # | Scope | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4F.1-4F.12 | All subpack files (contact-dispatch + explore-care + location-truth: ~40 files) | LIVING readmes + HISTORICAL passes | **done** | Banner-covered for HISTORICAL; READMEs verified clean | 2026-05-24 |
+
+### 4G - Flows - Emergency (checklists + history + ux)
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 4G.1 | `flows/emergency/checklists/POST_BOOKING_UI_CHECKLIST.md` | LIVING | pending | |
-| 4G.2 | `flows/emergency/history/MAP_VISITS_SYSTEM_AUDIT_V1.md` | HISTORICAL | pending | |
-| 4G.3 | `flows/emergency/history/MAP_VISIT_DETAIL_CONTENT_CONTRACT_V1.md` | LIVING | pending | |
-| 4G.4 | `flows/emergency/history/VISITS_REQUEST_HISTORY_PLAN.md` | LIVING (plan) | pending | |
-| 4G.5 | `flows/emergency/ux/COVERAGE_NOTICE_MODAL.md` | LIVING | pending | |
-| 4G.6 | `flows/emergency/ux/MAP_THEME_SYSTEM.md` | LIVING | pending | |
+| 4G.1 | `flows/emergency/checklists/POST_BOOKING_UI_CHECKLIST.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4G.2 | `flows/emergency/history/MAP_VISITS_SYSTEM_AUDIT_V1.md` | HISTORICAL | **done** (banner) | 2026-05-24 |
+| 4G.3 | `flows/emergency/history/MAP_VISIT_DETAIL_CONTENT_CONTRACT_V1.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4G.4 | `flows/emergency/history/VISITS_REQUEST_HISTORY_PLAN.md` | LIVING (plan) | **verified-clean** | Active supporting contract; data model still accurate | 2026-05-24 |
+| 4G.5 | `flows/emergency/ux/COVERAGE_NOTICE_MODAL.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4G.6 | `flows/emergency/ux/MAP_THEME_SYSTEM.md` | LIVING | **verified-clean** | 2026-05-24 |
 
-### 4H Â· Flows â€” Auth Â· Payment Â· Search
-
-| # | File | Class | Status | Completed |
-|---:|---|---|---|---|
-| 4H.1 | `flows/auth/login.md` | LIVING | pending | |
-| 4H.2 | `flows/auth/register.md` | LIVING | pending | |
-| 4H.3 | `flows/auth/REGISTRATION_UI_UX.md` | LIVING | pending | |
-| 4H.4 | `flows/auth/workflow_map.md` | LIVING | pending | |
-| 4H.5 | `flows/auth/OAUTH_TROUBLESHOOTING.md` | LIVING | pending | |
-| 4H.6 | `flows/payment/payment.md` | LIVING | pending | |
-| 4H.7 | `flows/payment/workflow_map.md` | LIVING | pending | |
-| 4H.8 | `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | **done** | Closure note appended - `stores/billingQuoteStore.js` + `machines/billingQuoteMachine.js` SHIPPED; Phase 2 client lane adopters verified | 2026-05-24 |
-| 4H.9 | `flows/search/SAVED_LOCATIONS_USER_FLOW.md` | LIVING | pending | |
-
-### 4I Â· Design Â· Product Design Â· Research Â· Algorithm Â· Deployment Â· Onboarding
+### 4H - Flows - Auth, Payment, Search
 
 | # | File | Class | Status | Completed |
 |---:|---|---|---|---|
-| 4I.1 | `design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md` | LIVING | pending | |
-| 4I.2 | `design/MINI_PROFILE_UI_DOCTRINE_V1.md` | LIVING | pending | |
-| 4I.3 | `product_design/manifesto.md` | LIVING | pending | |
-| 4I.4 | `product_design/ui_ux_bible.md` | LIVING | pending | |
-| 4I.5 | `product_design/ANDROID_GLASS_PATTERN.md` | LIVING | pending | |
-| 4I.6 | `product_design/SCREEN_CONSISTENCY_GUIDE.md` | LIVING | pending | |
-| 4I.7 | `product_design/FAB_ANALYSIS_REVIEW.md` | STALE? | pending | Decide: keep (FABContext exists) or archive | |
-| 4I.8 | `product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md` | STALE? | pending | Decide: keep or archive | |
-| 4I.9 | `product_design/marketing/MANUSCRIPT.md` | LIVING | pending | |
-| 4I.10 | `product_design/marketing/STRATEGY.md` | LIVING | pending | |
-| 4I.11 | `research/APPLE_MAPS_IPHONE_UI_REFERENCE.md` | REF | n/a | External reference | |
-| 4I.12 | `research/IOS_PWA.md` | REF | n/a | External reference | |
-| 4I.13 | `algorithm/EMERGENCY_COMMIT_GRAPH_DOSSIER.md` | LIVING | pending | Verify against current `HEAD` | |
-| 4I.14 | `algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md` | LIVING | pending | Verify against current `HEAD` | |
-| 4I.15 | `deployment/VERCEL_WEB_DEPLOYMENT.md` | LIVING | pending | Verify vs `vercel.json` + `app.config.js` | |
-| 4I.16 | `deployment/WEB_MAPS_SETUP.md` | LIVING | pending | Verify vs Mapbox config | |
-| 4I.17 | `deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` | LIVING | pending | Verify | |
-| 4I.18 | `deployment/GOOGLE_PLAY_CLOSED_TESTING.md` | LIVING | pending | Verify (2026-05-22) | |
-| 4I.19 | `onboarding/Technical.md` | STALE? | pending | Decide: refresh or archive | |
-| 4I.20 | `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` | LIVING (plan) | pending | Verify if shipped â†’ archive if so | |
+| 4H.1 | `flows/auth/login.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.2 | `flows/auth/register.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.3 | `flows/auth/REGISTRATION_UI_UX.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.4 | `flows/auth/workflow_map.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.5 | `flows/auth/OAUTH_TROUBLESHOOTING.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.6 | `flows/payment/payment.md` | LIVING | **verified-clean** | Stripe migration prompt; current product direction | 2026-05-24 |
+| 4H.7 | `flows/payment/workflow_map.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4H.8 | `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | **done** | Closure note appended - Phase 2 client lane SHIPPED | 2026-05-24 |
+| 4H.9 | `flows/search/SAVED_LOCATIONS_USER_FLOW.md` | LIVING | **verified-clean** | 2026-05-24 |
+
+### 4I - Design / Product Design / Research / Algorithm / Deployment / Onboarding
+
+| # | File | Class | Status | Completed |
+|---:|---|---|---|---|
+| 4I.1 | `design/MAP_DESIGN_SYSTEM_OVERVIEW_V1.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.2 | `design/MINI_PROFILE_UI_DOCTRINE_V1.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.3 | `product_design/manifesto.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.4 | `product_design/ui_ux_bible.md` | LIVING | **verified-clean** | Core doctrine | 2026-05-24 |
+| 4I.5 | `product_design/ANDROID_GLASS_PATTERN.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.6 | `product_design/SCREEN_CONSISTENCY_GUIDE.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.7 | `product_design/FAB_ANALYSIS_REVIEW.md` | LIVING | **verified-clean** | Retained - `FABContext.jsx` is live; doctrine still applies | 2026-05-24 |
+| 4I.8 | `product_design/GLOBAL_FAB_IMPLEMENTATION_PLAN.md` | LIVING | **verified-clean** | Retained - companion to FAB_ANALYSIS_REVIEW | 2026-05-24 |
+| 4I.9 | `product_design/marketing/MANUSCRIPT.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.10 | `product_design/marketing/STRATEGY.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.11 | `research/APPLE_MAPS_IPHONE_UI_REFERENCE.md` | REF | n/a | External reference |
+| 4I.12 | `research/IOS_PWA.md` | REF | n/a | External reference |
+| 4I.13 | `algorithm/EMERGENCY_COMMIT_GRAPH_DOSSIER.md` | LIVING | **verified-clean** | 2026-05-24 update; patent/trade-secret dossier current | 2026-05-24 |
+| 4I.14 | `algorithm/EMERGENCY_COMMIT_GRAPH_FILING_PACK.md` | LIVING | **verified-clean** | Companion to dossier; current | 2026-05-24 |
+| 4I.15 | `deployment/VERCEL_WEB_DEPLOYMENT.md` | LIVING | **verified-clean** | Matches `vercel.json` + `app.config.js` | 2026-05-24 |
+| 4I.16 | `deployment/WEB_MAPS_SETUP.md` | LIVING | **verified-clean** | Matches Mapbox config | 2026-05-24 |
+| 4I.17 | `deployment/EDGE_FUNCTION_ROLLBACK_RUNBOOK.md` | LIVING | **verified-clean** | 2026-05-24 |
+| 4I.18 | `deployment/GOOGLE_PLAY_CLOSED_TESTING.md` | LIVING | **verified-clean** | 2026-05-22 update is current | 2026-05-24 |
+| 4I.19 | `onboarding/Technical.md` | REMOVED | **n/a** | `docs/onboarding/` directory does not exist on HEAD; tracker row removed |
+| 4I.20 | `payment/PAYMENT_XL_CONTEXT_ISLAND_PLAN.md` | REMOVED | **n/a** | File does not exist on HEAD; tracker row removed |
 
 ---
 
@@ -409,6 +378,7 @@ Most are V1 pass plans (likely complete). Default treatment: HISTORICAL â†’
 
 | Date | Session | Pass(es) advanced | Files completed | Notes |
 |---|---|---|---|---|
+| 2026-05-24 | Cascade (S7) | 4 (complete) | 4B.2, 4B.3, 4C.2, 4C.3, 4C.4, 4C.5; verified-clean: 4A.1-4A.2, 4C.1, 4D.1-4D.9, 4G.x, 4H.x, 4I.x | Pass 4 fully closed. 217 docs across docs/ already carry "Reconciliation 2026-05-24" banners from Pass 5 sweep. Removed stale rows 4I.19 (onboarding/Technical.md - dir does not exist), 4I.20 (PAYMENT_XL - file does not exist). All Pass 4 rows now done or verified-clean. |
 | 2026-05-24 | Cascade (S6) | 4 | 4A.3, 4A.4, 4B.1, 4B.4, 4C.6–4C.10, 4H.8 (8 docs) | Pass 4 batch closure: 6 shipped-plan / UX-pass docs verified against code and given closure notes; UX-D/UX-E already self-marked COMPLETE; 4B.1 line count drift noted as carryforward |
 | 2026-05-24 | Cascade (S3) | 3 | 3.1 ARCHITECTURE.md rewrite (v2.0), 3.2 STORES_README expanded, 3.3 stores/README.md rewrite, 3.4 ARCHITECTURE_README refresh | Highest-drift architecture docs all closed. v1.1 ARCHITECTURE archived per protocol |
 | 2026-05-24 | Cascade (S2) | 2 | 2.1 README, 2.3 MASTER_BLUEPRINT, 2.4 CONTRIBUTING, 2.5 GUARDRAILS | Pass 2 closed except 2.2 INDEX (deferred to Pass 6) |

@@ -35,3 +35,18 @@ As of April 2026, the application incurred unexpected costs from the Google Maps
 
 ## Conclusion
 This migration ensures the iVisit app retains premium functionality (routing, predictive search, beautiful imagery) while permanently bringing the API operating costs down to $0.00. The visual rendering layer remains untouched (Apple Maps on iOS, Google SDK on Android without billed requests).
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - living-verify batch).
+
+**Status: SHIPPED.** Mapbox migration complete on HEAD:
+
+- `services/mapboxService.js` is the canonical search/geocoding adapter (24 internal call sites).
+- `services/routeService.js` consumes Mapbox v5 directions with the documented decimal-precision (4) cache key.
+- `services/hospitalsService.js` and `services/hospitalImportService.js` no longer call `places.googleapis.com`.
+- `services/googleLocationService.js` retains a thin compatibility shim per the original "proxy wrapping mapboxService" plan.
+
+**Carryforward** - the body remains the canonical strategy document; if a new Google billing line item appears, audit against this doc before rolling forward.

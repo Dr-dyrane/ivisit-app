@@ -22,11 +22,11 @@ The map surface is persistent, the sheet changes mode, chrome floats above both.
 
 | Pass | Track | Title | Issues | Priority | Status |
 |------|-------|-------|--------|----------|--------|
-| [UX-A](./UX_A_DECISION_SURFACE_LAYOUT.md) | Frontend / Layout | Decision Surface Layout | 1, 2, 3, 6, 7, Â§1.5 | **HIGH** | PLANNED |
-| [UX-B](./UX_B_VISUAL_HIERARCHY.md) | Frontend / Quality | Visual Hierarchy + Transition Discipline | 4, 5, 10, 12 | MEDIUM | PLANNED |
-| [UX-C](./UX_C_PAYMENT_SURFACE.md) | Frontend / Payment | Payment Surface HIG Polish | 8, C-5, C-6/PT-7, C-6/PT-11, C-6/UX-5, C-6/UX-6 | **HIGH** | PLANNED |
-| [UX-D](./UX_D_STATE_LAYER.md) | State / Architecture | State Layer Completion | 9, C-1, C-2, C-3, C-4 | MEDIUM | PLANNED |
-| [UX-E](./UX_E_LOCATION_SHEET.md) | Frontend / Location | LocationSheet + Mini Profile | 11 | LOW | DEFERRED |
+| [UX-A](./UX_A_DECISION_SURFACE_LAYOUT.md) | Frontend / Layout | Decision Surface Layout | 1, 2, 3, 6, 7, Â§1.5 | **HIGH** | **SHIPPED 2026-05** |
+| [UX-B](./UX_B_VISUAL_HIERARCHY.md) | Frontend / Quality | Visual Hierarchy + Transition Discipline | 4, 5, 10, 12 | MEDIUM | **SHIPPED 2026-05** |
+| [UX-C](./UX_C_PAYMENT_SURFACE.md) | Frontend / Payment | Payment Surface HIG Polish | 8, C-5, C-6/PT-7, C-6/PT-11, C-6/UX-5, C-6/UX-6 | **HIGH** | **SHIPPED 2026-05** |
+| [UX-D](./UX_D_STATE_LAYER.md) | State / Architecture | State Layer Completion | 9, C-1, C-2, C-3, C-4 | MEDIUM | **SHIPPED 2026-05** |
+| [UX-E](./UX_E_LOCATION_SHEET.md) | Frontend / Location | LocationSheet + Mini Profile | 11 | LOW | **SHIPPED 2026-05** |
 
 ---
 

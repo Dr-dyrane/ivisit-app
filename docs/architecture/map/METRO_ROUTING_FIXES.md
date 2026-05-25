@@ -154,3 +154,16 @@ if (hasActiveTrip) {
 2. **Effect Isolation**: Initial route hydration should run once, not re-run on auth changes
 3. **Fresh State Reads**: Use `store.getState()` at execution time to avoid stale closures
 4. **Platform Awareness**: Handle Expo Go's specific URL patterns (`:8081`, `/--/`, ngrok)
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - living-verify batch).
+
+This is a 2026-05-02 fixes log; the fixes have shipped:
+
+- `immer@10.1.1` installed in `package.json` and consumed by Zustand `immer` middleware (`stores/*.js`).
+- Metro reload routing fix lives in the runtime navigation layer (`runtime/navigation/useInitialRoute.js`, `runtime/RootNavigator.jsx`).
+
+**Status** - retained as a useful platform-fixes log. Treat as historical reference; do not edit the body.

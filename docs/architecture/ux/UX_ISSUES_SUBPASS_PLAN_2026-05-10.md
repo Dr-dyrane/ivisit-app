@@ -829,3 +829,21 @@ Remaining audit:
 - `EmergencyLocationSearchSheet` still has list `maxHeight` constraints that should be reviewed in a later sheet-scroll pass.
 - The legacy emergency/request modal cluster has more fixed visual dimensions; only the active ambulance card surface was hardened in this pass.
 - Continue checking saved-place/list-row variants outside the Location Sheet before marking the app-wide Dynamic Type audit closed.
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - UX subpass plan reconciliation).
+
+**Master plan status: SHIPPED.** All five sub-passes referenced in this plan have closed against current HEAD:
+
+| Pass | Status | Closure evidence |
+|---|---|---|
+| UX-A Decision Surface Layout | SHIPPED | See `passes/UX_A_DECISION_SURFACE_LAYOUT.md` reconciliation note |
+| UX-B Visual Hierarchy + Transitions | SHIPPED | See `passes/UX_B_VISUAL_HIERARCHY.md` reconciliation note |
+| UX-C Payment Surface HIG Polish | SHIPPED | See `passes/UX_C_PAYMENT_SURFACE.md` reconciliation note |
+| UX-D State Layer Completion | SHIPPED | Self-marked complete; `isSubmitting` removed in favor of `isSubmittingPaymentAtom` (Jotai) |
+| UX-E LocationSheet + Mini Profile | SHIPPED | Self-marked complete; Issue 11 implemented via `components/emergency/MiniProfileModal.jsx` |
+
+**Carryforward** - none. The plan body above remains useful as a four-track framing reference for future UX passes; do not edit it.
