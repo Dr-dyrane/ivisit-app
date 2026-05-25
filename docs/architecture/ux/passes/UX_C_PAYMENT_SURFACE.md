@@ -256,3 +256,24 @@ This catalogue is the blast-radius input for UX-D's `isSubmitting` removal. Reco
 
 â† [UX-B: Visual Hierarchy and Transition Discipline](./UX_B_VISUAL_HIERARCHY.md)
 â†’ [UX-D: State Layer Completion](./UX_D_STATE_LAYER.md)
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - UX passes batch). The pass plan body above documents the intended changes. The header "Status: PLANNED" is outdated.
+
+**Status: SHIPPED** - all six planned items verified in code.
+
+**Shipped evidence**
+
+- **Issue 8 (Sticky footer CTA)** - `EntryActionButton` now rendered in `MapCommitPaymentStageBase.jsx` footer slot, outside the scrollable card body. Prop threading matches plan.
+- **C-5 / EC-2 (FINALIZING_DISPATCH UI surface)** - State constant + surface live in `mapCommitPayment.transaction.js`, `mapCommitPayment.presentation.js`, `useMapCommitPaymentController.js`, and `MapCommitPaymentStageParts.jsx`. Rendered at StageBase level per defect class 2.1 invariant.
+- **C-6 / PT-7 (Stable display ID)** - Display ID now sourced from server (`result.displayId` / `request.display_id`) first via `mapCommitPayment.helpers.js`; no `Math.random()` used for display IDs (remaining `Math.random` calls are for internal `AMB-` / `BED-` request key generation, not user-visible display IDs).
+- **C-6 / PT-11 (Fabricated ETA removed)** - Confirmed in `mapCommitPayment.helpers.js`: `estimatedArrival: result?.estimatedArrival || hospital?.eta || null` with PULLBACK NOTE retiring the `"8 mins"` fallback. The only remaining `"8 mins"` text is inside the PULLBACK comment.
+- **C-6 / UX-5 (Wallet disabled caption)** - Wallet method now rendered with `disabled` + caption state instead of being hidden; eligibility filter preserved as the `disabled` guard.
+- **C-6 / UX-6 (CTA Dynamic Type)** - Task-language labels audited in `mapCommitPayment.content.js`.
+
+**isSubmitting consumer catalogue** - was the gating deliverable for UX-D and is now satisfied: `isSubmitting` is derived via `isSubmittingPaymentAtom` (Jotai) - see UX-D Reconciliation.
+
+**Carryforward** - none.

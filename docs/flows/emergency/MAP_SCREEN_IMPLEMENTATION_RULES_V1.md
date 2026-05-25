@@ -1151,3 +1151,36 @@ The Explore Intent `Choose care` row is the first calm care-selection surface.
 Rules:
 
 - Emergency transport actions stay available to all users.
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - shipped-plans batch). The implementation contract above remains current doctrine. This note records the MapScreen decomposition state against current HEAD.
+
+**MapScreen decomposition status (`screens/MapScreen.jsx`, ~900 lines)**
+
+The monolithic MapScreen has been progressively decomposed through eight passes. All extracted hooks/components are live in HEAD:
+
+- **Pass 1 - `useMapShell`** - viewport / layout / `hasActiveMapModal` (`hooks/map/shell/useMapShell.js`).
+- **Pass 2 - `useMapHistoryFlow`** - history handlers + rating recovery (`hooks/map/history/useMapHistoryFlow.js`). Atoms in `atoms/mapScreenAtoms.js`.
+- **Pass 3 - `useMapDecisionHandlers`** - confirm / decision callbacks (`hooks/map/decision/useMapDecisionHandlers.js`).
+- **Pass 4 - `useMapTrackingSync`** - route reconciliation effect (`hooks/map/tracking/useMapTrackingSync.js`).
+- **Pass 5 - `useMapFocusedState`** - map focus + service-marker derivations (`hooks/map/shell/useMapFocusedState.js`).
+- **Pass 6 - `useMapFABManagement`** - FAB lifecycle (`hooks/map/useMapFABManagement.js`).
+- **Pass 7 - `useMapRouteHandlers`** - route handlers (`hooks/map/useMapRouteHandlers.js`).
+- **Pass 8 - `MapModalOrchestrator`** - modal orchestration extracted (`components/map/MapModalOrchestrator.jsx`).
+
+**Architectural rules to apply at every touch**
+
+- MapScreen.jsx remains the composition shell - imports orchestrator hooks, threads them through `MapSheetOrchestrator` + `MapModalOrchestrator`. No new business logic at the screen layer.
+- Sheet phase transitions go through named navigation callbacks from `useMapExploreFlow` (`openProviderList`, `openHospitalDetail`, etc.) - never raw `setSheetView`.
+- Tracking auto-open is gated on `Boolean(trackingRequestKey) && hasActiveTrip` (Zustand identity + XState lifecycle) - do not regress this guard.
+- In-flow rating modal lives at MapScreen root via `useTrackingRatingFlow`, driven by persisted `trackingRatingStateAtom`.
+
+**Open / carryforward**
+
+- Continued reduction toward a pure ~150-line shell - current line count ~900 indicates more domain extractions are possible (FAB-driven service launching, route-handler internals, modal-prop assembly).
+- Any further decomposition pass MUST follow the same pattern: extract to a hook in `hooks/map/<domain>/`, add a `PULLBACK NOTE`, keep behavior parity.
+
+**Status** - the original implementation contract is unchanged; only the screen-internal composition has been modularised.

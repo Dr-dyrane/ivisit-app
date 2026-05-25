@@ -134,17 +134,17 @@ All original findings resolved by `<doc or pass>`. No carryforward.
 |---:|---|---|---|---|---|
 | 4A.1 | `architecture/location/LOCATION_ADDRESS_MANAGEMENT_ARCHITECTURE.md` | LIVING | pending | Cross-check vs `locationStore.js`, `GlobalLocationContext.jsx`, `locationIntentAtoms.js` | |
 | 4A.2 | `architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` | LIVING | pending | Reconcile plan vs shipped state | |
-| 4A.3 | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | pending | Verify if LS-9 shipped; if yes append closure note | |
-| 4A.4 | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | pending | Verify if LS-10/11 shipped | |
+| 4A.3 | `architecture/location/MANUAL_ADDRESS_ENTRY_REDESIGN_2026-05-10.md` | LIVING (plan) | **done** | LS-9 SHIPPED — closure note appended citing `ManualStep*` components, `useManualEntryHandlers`, `useManualDropController`, `addressAssistService` | 2026-05-24 |
+| 4A.4 | `architecture/location/PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` | LIVING (plan) | **done** | LS-10/11 SHIPPED — closure note appended citing `MapLocationIntentPlacesHubPanel.jsx`, `MapLocationIntentRecentsHubPanel.jsx` | 2026-05-24 |
 
 ### 4B Â· Map
 
 | # | File | Class | Status | Intent | Completed |
 |---:|---|---|---|---|---|
-| 4B.1 | `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | pending | Cross-check vs `useMapExploreFlow` and related hooks | |
+| 4B.1 | `architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` | LIVING | **done** | Closure note appended — historical record accurate; line count drift noted (557 → ~744) as carryforward | 2026-05-24 |
 | 4B.2 | `architecture/map/METRO_ROUTING_FIXES.md` | LIVING | pending | Decide: keep in architecture/ or move to audit/ | |
 | 4B.3 | `architecture/map/ZERO_COST_MAPBOX_MIGRATION.md` | LIVING | pending | Verify Mapbox usage in code matches plan | |
-| 4B.4 | `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | pending | Reconcile vs post-decomposition `MapScreen.jsx` (`useMapShell`, `useMapHistoryFlow`) | |
+| 4B.4 | `flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md` | LIVING | **done** | Closure note appended documenting 8-pass MapScreen decomposition (Pass 1–8 all shipped: `useMapShell`, `useMapHistoryFlow`, `useMapDecisionHandlers`, `useMapTrackingSync`, `useMapFocusedState`, `useMapFABManagement`, `useMapRouteHandlers`, `MapModalOrchestrator`) | 2026-05-24 |
 
 ### 4C Â· UX
 
@@ -155,11 +155,11 @@ All original findings resolved by `<doc or pass>`. No carryforward.
 | 4C.3 | `architecture/ux/MODAL_RECOVERY_PASS_OTA_RATING_V1.md` | LIVING | pending | Verify | |
 | 4C.4 | `architecture/ux/APP_WIDE_SURFACE_AUDIT_FOR_LOCATION_2026-05-10.md` | HISTORICAL | pending | Append Reconciliation Note | |
 | 4C.5 | `architecture/ux/passes/README.md` | LIVING | pending | Verify pass index | |
-| 4C.6 | `architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md` | LIVING (plan) | pending | Verify shipped state | |
-| 4C.7 | `architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md` | LIVING (plan) | pending | Verify shipped state | |
-| 4C.8 | `architecture/ux/passes/UX_C_PAYMENT_SURFACE.md` | LIVING (plan) | pending | Verify shipped state | |
-| 4C.9 | `architecture/ux/passes/UX_D_STATE_LAYER.md` | LIVING (plan) | pending | Verify shipped state | |
-| 4C.10 | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | LIVING (plan, deferred) | pending | Verify deferred state | |
+| 4C.6 | `architecture/ux/passes/UX_A_DECISION_SURFACE_LAYOUT.md` | LIVING (plan) | **done** | UX-A SHIPPED — closure note appended (`isFreshSession`, `MapBedDecisionTransportStatusStrip`, `isDecisionPhase`) | 2026-05-24 |
+| 4C.7 | `architecture/ux/passes/UX_B_VISUAL_HIERARCHY.md` | LIVING (plan) | **done** | UX-B SHIPPED — closure note appended (`MapPhaseTransitionView` composed 31×, badge reorder, OTP state machine) | 2026-05-24 |
+| 4C.8 | `architecture/ux/passes/UX_C_PAYMENT_SURFACE.md` | LIVING (plan) | **done** | UX-C SHIPPED — closure note appended (`FINALIZING_DISPATCH` UI, null-ETA, server displayId, wallet disabled caption) | 2026-05-24 |
+| 4C.9 | `architecture/ux/passes/UX_D_STATE_LAYER.md` | LIVING (plan) | **done** | UX-D self-marked COMPLETE in doc header; verified `isSubmitting` now derives via `isSubmittingPaymentAtom` (Jotai). No closure note needed | 2026-05-24 |
+| 4C.10 | `architecture/ux/passes/UX_E_LOCATION_SHEET.md` | LIVING (plan) | **done** | UX-E self-marked COMPLETE in doc header (Issue 11 shipped via `MiniProfileModal.jsx`). No closure note needed | 2026-05-24 |
 
 ### 4D Â· Flows â€” Emergency (live trackers + doctrine)
 
@@ -246,7 +246,7 @@ Most are V1 pass plans (likely complete). Default treatment: HISTORICAL â†’
 | 4H.5 | `flows/auth/OAUTH_TROUBLESHOOTING.md` | LIVING | pending | |
 | 4H.6 | `flows/payment/payment.md` | LIVING | pending | |
 | 4H.7 | `flows/payment/workflow_map.md` | LIVING | pending | |
-| 4H.8 | `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | pending | Verify `billingQuoteStore`/`billingQuoteMachine` shipped â€” if yes, close note | |
+| 4H.8 | `flows/payment/BILLING_CURRENCY_QUOTE_LANE_PLAN_V1.md` | LIVING (plan) | **done** | Closure note appended - `stores/billingQuoteStore.js` + `machines/billingQuoteMachine.js` SHIPPED; Phase 2 client lane adopters verified | 2026-05-24 |
 | 4H.9 | `flows/search/SAVED_LOCATIONS_USER_FLOW.md` | LIVING | pending | |
 
 ### 4I Â· Design Â· Product Design Â· Research Â· Algorithm Â· Deployment Â· Onboarding
@@ -409,6 +409,7 @@ Most are V1 pass plans (likely complete). Default treatment: HISTORICAL â†’
 
 | Date | Session | Pass(es) advanced | Files completed | Notes |
 |---|---|---|---|---|
+| 2026-05-24 | Cascade (S6) | 4 | 4A.3, 4A.4, 4B.1, 4B.4, 4C.6–4C.10, 4H.8 (8 docs) | Pass 4 batch closure: 6 shipped-plan / UX-pass docs verified against code and given closure notes; UX-D/UX-E already self-marked COMPLETE; 4B.1 line count drift noted as carryforward |
 | 2026-05-24 | Cascade (S3) | 3 | 3.1 ARCHITECTURE.md rewrite (v2.0), 3.2 STORES_README expanded, 3.3 stores/README.md rewrite, 3.4 ARCHITECTURE_README refresh | Highest-drift architecture docs all closed. v1.1 ARCHITECTURE archived per protocol |
 | 2026-05-24 | Cascade (S2) | 2 | 2.1 README, 2.3 MASTER_BLUEPRINT, 2.4 CONTRIBUTING, 2.5 GUARDRAILS | Pass 2 closed except 2.2 INDEX (deferred to Pass 6) |
 | 2026-05-24 | Cascade (initial) | 1 | Inventory + classification | Tracker created; 356 files cataloged |

@@ -363,3 +363,24 @@ LS-11 can be implemented in parallel if needed â€” no shared new state.
 - Should Places Hub show a search bar at the top (filter saved places inline)? Low priority â€” only relevant if the user has >6 saved places.
 - Should Recents Hub expose a "Clear recents" destructive action? Defer to LS-11 implementation â€” add if product decision is made.
 - Should both hubs get dedicated section headers in DEFAULT even on HALF snap (not just EXPANDED)? Current: Recents is expanded-only. Places header is always visible. Review in LS-10 implementation.
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - shipped-plans batch). The plan body above is the LS-10 / LS-11 design. Both hubs have shipped against current HEAD.
+
+**Status of original plan**
+
+- **LS-10 Places Hub** - **Shipped** as `components/map/views/locationIntent/MapLocationIntentPlacesHubPanel.jsx`. Mode entry, `openPlacesHub`, and pinned + saved row pattern all match the plan.
+- **LS-11 Recents Hub** - **Shipped** as `components/map/views/locationIntent/MapLocationIntentRecentsHubPanel.jsx`. Section split (Recent Pickups / Recent Visits) and tap -> `CANDIDATE_DECISION` handoff match the plan.
+- **Navigation glue (`openPlacesHub`, `openRecentsHub`)** - **Shipped** in `useLocationSheetNavigation.js`.
+- **Mode constants (`PLACES_HUB`, `RECENTS_HUB`)** - **Shipped** in `mapLocationIntent.model.js`.
+- **Shared row primitives reused (no new state)** - **Verified** - both panels self-guard with `mode !== TARGET -> null` per plan rule #1.
+
+**Open questions revisit**
+
+- Inline place-name search in Places Hub - still optional; defer until user count of saved places justifies it.
+- "Clear recents" destructive action - not in current implementation; track as a low-priority follow-up if product asks.
+
+**Carryforward** - none required. Plan is fully shipped.

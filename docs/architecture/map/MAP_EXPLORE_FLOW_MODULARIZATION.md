@@ -281,3 +281,21 @@ hooks/map/exploreFlow/
 components/map/surfaces/visitDetail/
 â””â”€â”€ useMapVisitDetailModel.js     (TDZ fix â€” hoisted canResume/canRate declarations)
 ```
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - living-verify batch).
+
+**Doc body status** - the architecture record above (18-hook extraction map, pass-by-pass commit log) remains accurate as a historical modularization record.
+
+**Drift against current HEAD**
+
+- The "Final orchestrator line count: 557" figure is the 2026-04-26 post-extraction snapshot. `hooks/map/exploreFlow/useMapExploreFlow.js` currently measures ~744 lines on HEAD.
+- The growth is incremental glue added by later passes (additional sheet-navigation surfaces, decision-handler wiring, tracking-rating threading) rather than re-monolithization.
+
+**Carryforward**
+
+- If line count exceeds ~800, treat as a trigger to evaluate a follow-up extraction pass against the responsibility map above.
+- Do NOT edit the historical "Final orchestrator line count" figure in the body - it documents the post-modularization checkpoint, not the live state.

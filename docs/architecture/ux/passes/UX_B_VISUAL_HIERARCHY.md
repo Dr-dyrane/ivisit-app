@@ -214,3 +214,22 @@ Loading states: audit all `isLoading` + blank body patterns. Per REFACTORING_GUA
 
 â† [UX-A: Decision Surface Layout](./UX_A_DECISION_SURFACE_LAYOUT.md)
 â†’ [UX-C: Payment Surface HIG Polish](./UX_C_PAYMENT_SURFACE.md)
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - UX passes batch). The pass plan body above documents the intended changes. The header "Status: PLANNED" is outdated.
+
+**Status: SHIPPED** - planned changes verified in code.
+
+**Shipped evidence**
+
+- **Issue 4 (Hospital badge priority + accessibility hints)** - Reorder + `accessibilityHint` applied in `components/map/surfaces/hospitals/mapHospitalDetail.helpers.js`. Decision-critical signals first, Verified moved to end.
+- **Issue 5 (Mixed entity data)** - Cross-entity data removed from `MapHospitalListContent.jsx` and `MapExploreIntentHospitalSummaryCard.jsx`; derivations preserved for orb subtexts.
+- **Issue 10 (OTP CTA timing)** - CTA state machine wired in `useMapCommitDetailsController.js`; OTP request now fires on press in parallel with animation.
+- **Issue 12 (Phase transitions)** - `components/map/views/shared/MapPhaseTransitionView.jsx` exists and is composed 31x in `MapSheetOrchestrator.jsx`. No direct view-swap paths remain on the critical transitions.
+
+**Carryforward**
+
+- Periodic audit: when adding any new sheet phase, ensure it routes through `MapPhaseTransitionView` (defect class 2.1 regression guard).

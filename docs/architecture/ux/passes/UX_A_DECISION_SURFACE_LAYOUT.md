@@ -262,3 +262,20 @@ const showBack = !isSignedIn || isDecisionPhase;
 
 â† [README](./README.md)
 â†’ [UX-B: Visual Hierarchy and Transition Discipline](./UX_B_VISUAL_HIERARCHY.md)
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - UX passes batch). The pass plan body above documents the intended changes. This note records the shipped state against current HEAD; the header "Status: PLANNED" is now outdated.
+
+**Status: SHIPPED** - all planned changes verified in code.
+
+**Shipped evidence**
+
+- **Issue 1 (Triage pre-selected) - fresh-session guard** - Shipped in `components/map/views/commitTriage/useMapCommitTriageController.js` (`isFreshSession` references confirmed). Step progression / live save preserved.
+- **Issue 2 / 3 (Bed HALF snap + transport strip)** - `MapBedDecisionTransportStatusStrip` shipped as a named export in `MapBedDecisionStageParts.jsx` and consumed by `MapBedDecisionStageBase.jsx`. Full `MapBedDecisionSavedTransportCard` preserved for EXPANDED snap per plan invariant.
+- **Issues 6 / 7 (Transport hierarchy + truncation)** - Audit lives in `MapAmbulanceDecisionStageParts.jsx`; switch-pill / hero line caps applied. Sheet title constants live in `mapAmbulanceDecision.content.js` / `mapBedDecision.content.js`.
+- **Section 1.5 (MapTopLeftControl back-nav)** - `isDecisionPhase` derived in `screens/MapScreen.jsx` and threaded into `components/map/views/shared/MapTopLeftControl.jsx`. `COMMIT_PAYMENT` correctly excluded - PT-C lock preserved.
+
+**Carryforward** - none. If a UX regression surfaces, re-run the verification checklist in the body above.

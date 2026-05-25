@@ -602,3 +602,31 @@ The experience should instead communicate:
 Help us understand where you are.
 We'll work with you to locate you accurately.
 ```
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - shipped-plans batch). The body above is the original LS-9 plan. This note records what has shipped against current HEAD.
+
+**Status of original plan**
+
+- **Progressive step UI (country -> state -> city -> LGA -> street)** - **Shipped** in `components/map/views/locationIntent/ManualStepActiveField.jsx` and `ManualStepCompletedSummaries.jsx`. One active step expanded, prior steps collapse to summary rows as planned.
+- **Inline country search + region/state label overrides** - **Shipped** (per original `2026-05-11 Implementation Checkpoint` block).
+- **Manual entry handlers (Jotai-driven, no `useState` ownership)** - **Shipped** in `hooks/map/locationIntent/useManualEntryHandlers.js`.
+- **Manual drop / confirm-pin controller** - **Shipped** in `hooks/map/locationIntent/useManualDropController.js`.
+- **Address-assist service (Mapbox + Nominatim fallback)** - **Shipped** in `services/addressAssistService.js`.
+- **Sticky footer with confirm CTA** - **Shipped** in `components/map/views/locationIntent/ManualStepStickyFooter.jsx`.
+- **Draft never directly mutates pickup state** - **Verified** via `useManualEntryHandlers` -> candidate -> `useSavedAddressActions` flow.
+
+**Open / deferred**
+
+- **Auto-fill cascade on full-place selection** - Verify against current `useAddressSearchController.js` and `addressAssistService.js`; flag if missing.
+- **Nominatim weak-confidence fallback** - Verify against `addressAssistService.js` implementation.
+- **Confirm-pin step as final truth layer** - Verify ordering in `useManualDropController.js`.
+
+**Where work continued**
+
+- `PLACES_AND_RECENTS_HUB_PLAN_2026-05-10.md` - LS-10/11 followed and have also shipped.
+
+**Carryforward** - owner architecture, target: optional micro-audit pass to verify the three "open / deferred" items if any UX regression is reported.

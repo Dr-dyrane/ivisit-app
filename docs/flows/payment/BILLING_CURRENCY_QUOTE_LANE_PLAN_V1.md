@@ -95,3 +95,24 @@ Live provider checkpoint:
 3. payment edge functions
    - `billing-quote`
    - `refresh-exchange-rates`
+
+---
+
+## Reconciliation Note - 2026-05-24
+
+> Appended during the 2026-05-24 docs update sweep (Pass 4 - shipped-plans batch). The plan body above remains accurate doctrine. This note reconciles the five-layer client lane against current HEAD.
+
+**Status of client lane (Phase 2)**
+
+- **Store layer - `stores/billingQuoteStore.js`** - **Shipped** (canonical active billing quote snapshot, Zustand + persist).
+- **Machine layer - `machines/billingQuoteMachine.js`** - **Shipped** (`idle -> loading -> quoted -> stale -> error` per plan).
+- **Service + query layer adopters** - **Shipped** for the runtime owners listed in the plan body (`usePaymentScreenModel`, `PaymentCheckoutVariant`, `useMapCommitPaymentController`, `MapCommitPaymentStageBase`, `useBookVisitScreenModel`, `usePaymentHistoryEntryQuery`).
+- **Server-side (`exchange_rates`, `get_billing_quote`, `refresh-exchange-rates`)** - verified seeded `2026-05-07`; doc body remains the live truth.
+
+**Open / carryforward (unchanged from plan)**
+
+- Hospital browsing price cards - still pending quote-snapshot adoption.
+- Emergency legacy modal price summaries - still pending.
+- Non-query pure helpers that format backend USD without an upstream quote - sweep target.
+
+**Where to track next** - log adoption progress against the `Still pending` bullets in the plan body; close when all three carryforward items adopt a quote snapshot.
