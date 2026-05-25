@@ -91,6 +91,31 @@ Rules:
 - Full-canvas experiences such as welcome and map should not be boxed by inherited auth or stack wrappers.
 - Wide-screen dead space should become context panels or breathing room, not oversized forms or stretched modal cards.
 
+## Code-Reviewed Product Architecture Truths
+
+The live app has deeper architecture patterns that must be preserved when changing UI or logic.
+
+Map flow doctrine:
+
+- `/map` is a persistent canvas with changing sheet phases, not a stack of route-like screens.
+- `MapScreen.jsx` is a high-level wiring surface. It should compose hooks, orchestrators, and renderers; new product logic should land in the relevant map hook, controller, transition builder, runtime model, or StageBase.
+- `useMapExploreFlow` is intentionally decomposed into single-owner hooks. Preserve this ownership instead of adding broad state or callbacks back into `MapScreen.jsx`.
+- Sheet state changes should use transition builders from `hooks/map/exploreFlow/mapExploreFlow.transitions.js`, not ad hoc `{ phase, snapState, payload }` objects.
+- Back/close behavior depends on `sourcePhase`, `sourceSnapState`, `sourcePayload`, and sometimes source-surface metadata. Preserve source-return payloads when opening detail, search, service, visit, decision, commit, and tracking sheets.
+- `useMapSheetPhaseReducer` validates observed transitions in development. New sheet phases or jumps should update the valid-transition table from real call sites rather than bypassing it.
+- Tracking auto-open requires both request identity and lifecycle truth. Do not treat a truthy request id as tracking-ready unless XState/lifecycle and runtime readiness also agree.
+- Location truth is resolved through the map pickup-location layer. Manual session location, resolved place, device location, saved fallbacks, demo bootstrap, and unavailable states have different meanings and should not be collapsed into a generic location object.
+- Map loading must distinguish loading, background refresh, route calculation, and terminal no-location states. Location-off users should see interactive manual-pickup UI, not a blocking spinner.
+- Commit flow has a restorable lifecycle: details, triage, payment, and tracking handoff. Suppression refs and persisted commit snapshots prevent unintended restore loops; do not remove them without proving the lifecycle remains stable.
+- Rating recovery and visit-detail return behavior are session-sensitive. Preserve handled-id refs, cancellation sentinels, and return-target refs so recovered modals do not duplicate or return to the wrong surface.
+
+Runtime and state doctrine:
+
+- Runtime model builders and controller hooks are part of the UI contract. Tracking labels, ETA, telemetry warnings, responder identity, request labels, and route progress should come from runtime/model helpers, not from leaf presentation guesses.
+- Derived data hooks should remain pure memos where possible. Shared clocks such as tracking `nowMs` should be owned once and passed down, not recreated with per-component intervals.
+- UI atoms own ephemeral surface state, Zustand owns persistent client snapshots, XState owns lifecycle legality, TanStack Query owns server data, and Supabase/realtime owns backend truth. Do not migrate state between layers just to simplify a local component.
+- PULLBACK NOTE comments mark rollback-sensitive migrations, copied logic, and non-obvious runtime changes. Preserve existing notes and add new ones for risky architecture moves.
+
 ## Visual And Interaction Doctrine
 
 The interface should feel calm, direct, premium, borderless, low-noise, and trustworthy.
@@ -120,6 +145,45 @@ Copy rules:
 - Status text explains what is happening now.
 - Avoid technical, internal, hype-driven, or explainer-heavy copy.
 - Do not repeat the same word across headline, support line, CTA, and status unless repetition improves panic-time comprehension.
+
+## Specific UI Design Implementation Doctrine
+
+The codebase implements a concrete Apple-like visual system. Treat these as product rules, not incidental styling.
+
+Glass and surfaces:
+
+- Prefer glass, translucency, depth, soft shadows, large radii, and restrained contrast over bordered card stacks.
+- Map sheets are Apple Maps-style islands, not generic modals. Use the existing map sheet tokens for island margin, 44px sheet radius, 30px card radius, handle width, glass surface, blur, and shadow behavior.
+- Use borders only when depth, spacing, blur, or contrast cannot carry the separation or state.
+- Android, iOS, and web glass treatments intentionally differ. Do not force one platform's blur/shadow implementation onto every platform.
+
+Layout and density:
+
+- StageBase components own shell layout, motion, responsive spacing, safe-area treatment, and surface presentation. Leaf components should not invent local page chrome.
+- Leaf components should consume existing tokens, metrics, and screen configs before adding one-off spacing, type sizes, shadows, or radii.
+- iVisit density is compact and calm: small padding can be correct when hierarchy is clear. Do not inflate emergency surfaces into marketing-page spacing.
+- Stack screens use shared compact/tablet/desktop metrics. Respect the existing 44px compact controls and 48px tablet/desktop controls unless a surface-specific token says otherwise.
+- Full-canvas flows such as welcome, map, and wide payment layouts may escape inherited stack chrome when chrome would make the experience feel boxed.
+
+Responsive variants:
+
+- Major surfaces are variant-driven, not breakpoint-only. Preserve explicit iOS, Android, tablet, foldable, Chromebook, web mobile, desktop, and ultra-wide variants when posture changes materially.
+- Wide screens should become anchored sidebars, panels, context rails, or bounded compositions. Do not stretch phone cards across desktop width.
+- Web is a first-class surface. It needs explicit max widths, panel placement, hover/scroll behavior, and map occlusion decisions.
+
+Motion and gestures:
+
+- Motion must use existing motion tokens, tuned springs, and Apple-like easing unless there is a proven product reason to add a new token.
+- Non-essential animation must respect reduced-motion hooks.
+- Sheet detents, scroll detents, wheel behavior, drag thresholds, and expanded-collapse behavior are centrally choreographed. Do not add competing scroll views or gesture handlers inside map sheets without checking `useMapSheetDetents` and shared stage scroll primitives.
+- Motion should explain state change. Avoid decorative pulsing, parallax, or animated noise unless it communicates urgency, focus, progress, or availability.
+
+Visual truth:
+
+- UI hierarchy must follow backend/runtime truth. Do not make uncertain states look dispatched, paid, tracking-ready, arrived, completed, or reserved before the model supports it.
+- ETA, route, telemetry, responder, bed, payment, and approval surfaces must show bounded uncertainty when truth is incomplete.
+- The primary action should be the clearest visual object at each moment; secondary metrics and context should support confidence without becoming a dashboard.
+- Red remains reserved for emergency, danger, destructive, or telemetry-critical meaning. Use accent sky for in-progress and success emerald for completed states.
 
 ## Engineering Architecture
 

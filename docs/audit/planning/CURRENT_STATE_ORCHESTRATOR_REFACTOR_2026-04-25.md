@@ -8,8 +8,8 @@ last_updated: 2026-05-24
 
 ---
 
-> **HISTORICAL NOTICE â€” 2026-05-19**
-> This refactor is **complete**. 42 files changed, -6,990 lines net. MapScreen reduced 1,153 â†’ 535 lines.
+> **HISTORICAL NOTICE — 2026-05-19**
+> This refactor is **complete**. 42 files changed, -6,990 lines net. MapScreen reduced 1,153 → 535 lines.
 > Retained for historical context. See checkpoint for final state.
 > **Completion record:** [`docs/audit/checkpoints/FINAL_MIGRATION_SUMMARY.md`](../checkpoints/FINAL_MIGRATION_SUMMARY.md)
 

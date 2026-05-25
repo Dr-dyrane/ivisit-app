@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 ---
 
-> **HISTORICAL NOTICE â€” 2026-05-19**
+> **HISTORICAL NOTICE — 2026-05-19**
 > This file is retained in place for historical context. It describes the map flow state as of 2026-04-20.
 > It is **no longer the working truth**. Use the live tracker and implementation rules for current state.
 > **Current replacements:**

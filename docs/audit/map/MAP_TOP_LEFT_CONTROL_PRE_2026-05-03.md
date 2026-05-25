@@ -8,10 +8,10 @@ last_updated: 2026-05-24
 
 ---
 
-# MapTopLeftControl â€” Pre-Implementation Audit
+# MapTopLeftControl — Pre-Implementation Audit
 **Date:** 2026-05-03  
 **Author:** Cascade  
-**Status:** PRE â€” changes not yet committed  
+**Status:** PRE — changes not yet committed  
 **Post-doc:** `MAP_TOP_LEFT_CONTROL_POST_2026-05-03.md` (to be created after implementation)
 
 ---
@@ -35,8 +35,8 @@ Beyond dev utility, this surfaces a real UX gap: **the map's `EXPLORE_INTENT` ph
 
 | Phase | Top-left slot | Owner |
 |---|---|---|
-| `EXPLORE_INTENT` | **Empty** | â€” |
-| `TRACKING` | Medkit icon (triage) | `useMapTrackingHeader` â†’ `trackingHeaderLeftComponent` â†’ `setHeaderState` |
+| `EXPLORE_INTENT` | **Empty** | — |
+| `TRACKING` | Medkit icon (triage) | `useMapTrackingHeader` → `trackingHeaderLeftComponent` → `setHeaderState` |
 | `SEARCH`, `HOSPITAL_DETAIL`, `HOSPITAL_LIST`, `SERVICE_DETAIL`, `COMMIT_*` | Sheet-owned close/back buttons | Individual stage components |
 
 The header system (`ScrollAwareHeader`) is **hidden** during `EXPLORE_INTENT` (`setHeaderState({ hidden: true })`). The top-left slot is therefore a floating canvas position, not a header slot.
@@ -76,13 +76,13 @@ Visible only when `!hasFocusedSheetPhase && !mapLoadingState?.visible`.
 
 - Hidden during any sheet phase (sheet owns its own navigation)
 - Hidden while the map loading overlay is active (would overlap/confuse)
-- Revealed only in `EXPLORE_INTENT` â€” the browsing state
+- Revealed only in `EXPLORE_INTENT` — the browsing state
 
 ### Auth-split behaviour
 
 | State | Icon | Action |
 |---|---|---|
-| Unauthenticated | `chevron-back` on frosted circle | `router.replace("/(auth)/")`  â†’ Welcome |
+| Unauthenticated | `chevron-back` on frosted circle | `router.replace("/(auth)/")`  → Welcome |
 | Authenticated, has avatar | Profile image fills circle | `handleOpenProfile()` |
 | Authenticated, no avatar | `person` icon on frosted circle | `handleOpenProfile()` |
 
@@ -105,26 +105,26 @@ left: 16
 
 | File | Change |
 |---|---|
-| `components/map/views/shared/MapTopLeftControl.jsx` | **New** â€” floating circle component |
+| `components/map/views/shared/MapTopLeftControl.jsx` | **New** — floating circle component |
 | `screens/MapScreen.jsx` | Import + render `MapTopLeftControl` after last modal |
 
 ---
 
 ## 5. Invariants
 
-1. **Never rendered during any focused sheet phase** â€” `hasFocusedSheetPhase` guard is non-negotiable. Sheet surfaces own their own back/close affordances.
-2. **Never rendered while loading overlay is visible** â€” would create overlapping tap targets during an inert loading state.
-3. **Tracking phase must not be affected** â€” `TRACKING` sets `hasFocusedSheetPhase = false` ... wait: `TRACKING !== EXPLORE_INTENT` so `hasFocusedSheetPhase = true`. Control correctly hidden. âœ…
-4. **No new state introduced** â€” all inputs (`isSignedIn`, `profileImageSource`, `hasFocusedSheetPhase`, `browserInsetTop`) are already available in `MapScreen`.
-5. **`router.replace("/(auth)/")` not `router.back()`** â€” back() is unreliable when the map was the initial route (deep link, Android persistence). Replace is deterministic.
+1. **Never rendered during any focused sheet phase** — `hasFocusedSheetPhase` guard is non-negotiable. Sheet surfaces own their own back/close affordances.
+2. **Never rendered while loading overlay is visible** — would create overlapping tap targets during an inert loading state.
+3. **Tracking phase must not be affected** — `TRACKING` sets `hasFocusedSheetPhase = false` ... wait: `TRACKING !== EXPLORE_INTENT` so `hasFocusedSheetPhase = true`. Control correctly hidden. ✅
+4. **No new state introduced** — all inputs (`isSignedIn`, `profileImageSource`, `hasFocusedSheetPhase`, `browserInsetTop`) are already available in `MapScreen`.
+5. **`router.replace("/(auth)/")` not `router.back()`** — back() is unreliable when the map was the initial route (deep link, Android persistence). Replace is deterministic.
 
 ---
 
 ## 6. Out of Scope for This Pass
 
-- Animation (fade/scale in/out as `hasFocusedSheetPhase` toggles) â€” deferred
-- ~~Sidebar layout variant consideration~~ â€” **Resolved same day** in a follow-up pass. Web sidebar hides the control; native tablet sidebar shifts it clear of the panel. See post-doc #3.
-- Removing `MapTopLeftControl` once HIG work on Welcome is complete â€” this control has permanent value for authenticated users (profile avatar shortcut). Guest back-to-welcome behaviour may be removed once Welcome HIG work is done or kept permanently.
+- Animation (fade/scale in/out as `hasFocusedSheetPhase` toggles) — deferred
+- ~~Sidebar layout variant consideration~~ — **Resolved same day** in a follow-up pass. Web sidebar hides the control; native tablet sidebar shifts it clear of the panel. See post-doc #3.
+- Removing `MapTopLeftControl` once HIG work on Welcome is complete — this control has permanent value for authenticated users (profile avatar shortcut). Guest back-to-welcome behaviour may be removed once Welcome HIG work is done or kept permanently.
 
 ---
 
@@ -139,4 +139,4 @@ left: 16
 - [x] Tracking phase: control not visible
 - [x] Any focused sheet phase: control not visible
 - [x] Safe area respected via `useSafeAreaInsets().top` (not `browserInsetTop`)
-- [x] Sidebar layout: **resolved same day** â€” web sidebar hides control entirely; native tablet sidebar shifts `left` to `sidebarOcclusionWidth + 12`. See post-doc #3.
+- [x] Sidebar layout: **resolved same day** — web sidebar hides control entirely; native tablet sidebar shifts `left` to `sidebarOcclusionWidth + 12`. See post-doc #3.

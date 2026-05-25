@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 ---
 
-# EXP-2 Edge Function â€” Category-Aware Places Fetch
+# EXP-2 Edge Function — Category-Aware Places Fetch
 
 Status: Complete
 Owner: Backend
@@ -24,8 +24,8 @@ Extend the `discover-hospitals` edge function to support category-scoped provide
 
 ## Reference Files
 
-- `services/hospitalsService.js` â€” client adapter that calls this function
-- `constants/providerTypes.js` â€” `PROVIDER_TYPES` values sent as `providerType`
+- `services/hospitalsService.js` — client adapter that calls this function
+- `constants/providerTypes.js` — `PROVIDER_TYPES` values sent as `providerType`
 
 ## Guardrails
 

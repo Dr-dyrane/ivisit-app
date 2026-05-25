@@ -10,12 +10,12 @@ last_updated: 2026-05-24
 
 # LOC-2 Manual Address
 
-**Status:** âœ… COMPLETE  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L3 (Zustand reducer), L5 (Jotai)  
 **Date:** 2026-05-15  
 **Depends on:** None  
-**Risk Level:** ðŸ”´ HIGH
+**Risk Level:** 🔴 HIGH
 **Baseline:** `05425d4`  
 **Commit:** `TBD`
 
@@ -145,7 +145,7 @@ git revert <commit-hash> --no-edit
 // LOC-2: Geocode metadata for audit trail
 
 // mapExploreFlow.store.js
-// LOC-2: Defense-in-depth â€” reject non-geocoded locations without valid coordinates
+// LOC-2: Defense-in-depth — reject non-geocoded locations without valid coordinates
 ```
 
 **Backward Compatibility:**

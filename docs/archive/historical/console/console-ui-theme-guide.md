@@ -346,7 +346,7 @@ const TripSummaryCard = ({ status, eta, driverInfo, actions }) => {
         </View>
         <View style={styles.identityText}>
           <Text style={styles.nameText}>{driverName}</Text>
-          <Text style={styles.metaText}>{rating} â˜… â€¢ {vehicle}</Text>
+          <Text style={styles.metaText}>{rating} â˜… • {vehicle}</Text>
         </View>
       </View>
 

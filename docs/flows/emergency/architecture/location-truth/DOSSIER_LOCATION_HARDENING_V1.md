@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 **Date:** 2026-05-15  
 **Owner:** `/map` location architecture  
-**Status:** AUDIT COMPLETE â€” Safe Implementation Ready  
+**Status:** AUDIT COMPLETE — Safe Implementation Ready  
 **Scope:** LOC-1 through LOC-6 (Canonical Truth, Manual Address, Recovery, Cache, Places, Validation)  
 **Related:** [REFACTORING_GUARDRAILS.md](../../../REFACTORING_GUARDRAILS.md), [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md)
 
@@ -19,17 +19,17 @@ last_updated: 2026-05-24
 This dossier addresses critical gaps in location hardening for the refactored MapScreen architecture (Phase 5 complete). The work ensures manual addresses are always geocoded before provider discovery, establishes canonical pickup truth with explicit source hierarchy, and makes provider discovery deterministic based on canonical pickup.
 
 **Problem Statement:**
-- Manual pickup can be text-only (no coordinates) â†’ provider discovery fails or uses wrong location
-- Pickup source enum values don't match runtime strings â†’ hierarchy checks fail
-- Provider discovery uses non-canonical location â†’ cache collisions (manual vs GPS at same coords)
-- Cache key lacks source â†’ collisions at same coordinates
+- Manual pickup can be text-only (no coordinates) → provider discovery fails or uses wrong location
+- Pickup source enum values don't match runtime strings → hierarchy checks fail
+- Provider discovery uses non-canonical location → cache collisions (manual vs GPS at same coords)
+- Cache key lacks source → collisions at same coordinates
 
 **Solution Approach:**
 1. Fix source enum mismatch, add metadata flags (LOC-1)
 2. Ensure manual addresses always geocoded before pickup (LOC-2)
 3. Classify location failures with specific CTAs (LOC-3)
 4. Add coordinate/source to cache keys (LOC-4)
-5. ~~Define Places rendering lanes~~ â€” SKIPPED: Already implemented via priority scoring
+5. ~~Define Places rendering lanes~~ — SKIPPED: Already implemented via priority scoring
 6. Add GPS freshness/accuracy validation (LOC-6)
 
 ---
@@ -41,9 +41,9 @@ This dossier addresses critical gaps in location hardening for the refactored Ma
 |-------|---------------|------|
 | Entry | `MapScreen.jsx` | `screens/MapScreen.jsx` |
 | Orchestrator | `useMapExploreFlow()` | `hooks/map/exploreFlow/useMapExploreFlow.js` |
-| Location | `useMapLocation()` â†’ `resolveMapPickupLocationTruth()` | `hooks/map/exploreFlow/useMapLocation.js` |
+| Location | `useMapLocation()` → `resolveMapPickupLocationTruth()` | `hooks/map/exploreFlow/useMapLocation.js` |
 | State | Zustand reducer + Jotai atoms | `hooks/map/state/mapExploreFlow.store.js` |
-| Hospitals | `useEmergency()` â†’ `useHospitals()` | `hooks/emergency/useHospitals.js` |
+| Hospitals | `useEmergency()` → `useHospitals()` | `hooks/emergency/useHospitals.js` |
 
 ### Call Chain for Location
 ```
@@ -64,7 +64,7 @@ MapScreen.jsx
 
 ## Multi-Pass Plan
 
-### LOC-0: Final Architecture Review âœ… COMPLETE
+### LOC-0: Final Architecture Review ✅ COMPLETE
 
 **Audit Scope:**
 - [x] Current pickup truth files (`mapPickupLocationTruth.js`, `useMapLocation.js`)
@@ -75,15 +75,15 @@ MapScreen.jsx
 - [x] Current location failure UI (`FullScreenEmergencyMap.jsx`, `GlobalLocationContext.jsx`)
 
 **Granular Audit Documents:**
-- [x] [audits/AUDIT_PICKUP_SOURCES.md](./audits/AUDIT_PICKUP_SOURCES.md) â€” LOC-1 detailed findings
-- [x] [audits/AUDIT_MANUAL_ADDRESS.md](./audits/AUDIT_MANUAL_ADDRESS.md) â€” LOC-2 detailed findings
-- [x] [audits/AUDIT_LOCATION_RECOVERY.md](./audits/AUDIT_LOCATION_RECOVERY.md) â€” LOC-3 detailed findings
-- [x] [audits/AUDIT_CACHE_DETERMINISM.md](./audits/AUDIT_CACHE_DETERMINISM.md) â€” LOC-4 detailed findings
-- [x] [audits/AUDIT_PLACES_RENDERING.md](./audits/AUDIT_PLACES_RENDERING.md) â€” LOC-5 detailed findings
-- [x] [audits/AUDIT_RUNTIME_VALIDATION.md](./audits/AUDIT_RUNTIME_VALIDATION.md) â€” LOC-6 detailed findings
-- [x] [audits/AUDIT_LOCATION_TRUTH_LAYER.md](./audits/AUDIT_LOCATION_TRUTH_LAYER.md) â€” Layer analysis
-- [x] [audits/AUDIT_GEOCODING_LAYER.md](./audits/AUDIT_GEOCODING_LAYER.md) â€” Layer analysis
-- [x] [audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md](./audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md) â€” Layer analysis
+- [x] [audits/AUDIT_PICKUP_SOURCES.md](./audits/AUDIT_PICKUP_SOURCES.md) — LOC-1 detailed findings
+- [x] [audits/AUDIT_MANUAL_ADDRESS.md](./audits/AUDIT_MANUAL_ADDRESS.md) — LOC-2 detailed findings
+- [x] [audits/AUDIT_LOCATION_RECOVERY.md](./audits/AUDIT_LOCATION_RECOVERY.md) — LOC-3 detailed findings
+- [x] [audits/AUDIT_CACHE_DETERMINISM.md](./audits/AUDIT_CACHE_DETERMINISM.md) — LOC-4 detailed findings
+- [x] [audits/AUDIT_PLACES_RENDERING.md](./audits/AUDIT_PLACES_RENDERING.md) — LOC-5 detailed findings
+- [x] [audits/AUDIT_RUNTIME_VALIDATION.md](./audits/AUDIT_RUNTIME_VALIDATION.md) — LOC-6 detailed findings
+- [x] [audits/AUDIT_LOCATION_TRUTH_LAYER.md](./audits/AUDIT_LOCATION_TRUTH_LAYER.md) — Layer analysis
+- [x] [audits/AUDIT_GEOCODING_LAYER.md](./audits/AUDIT_GEOCODING_LAYER.md) — Layer analysis
+- [x] [audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md](./audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md) — Layer analysis
 
 ---
 
@@ -91,7 +91,7 @@ MapScreen.jsx
 
 **Goal:** Fix source enum mismatch, add metadata flags, normalize hierarchy
 
-**Status:** ðŸŸ¡ READY FOR IMPLEMENTATION
+**Status:** 🟡 READY FOR IMPLEMENTATION
 
 **Critical Finding:**
 ```javascript
@@ -113,9 +113,9 @@ SAVED_MANUAL_FALLBACK: "saved_manual_fallback"  // Enum
 - `hooks/map/exploreFlow/useMapLocation.js` (consume sourceMetadata)
 - `contexts/GlobalLocationContext.jsx` (use mapper when setting source)
 
-**Risk:** ðŸ”´ HIGH â€” affects all location resolution
+**Risk:** 🔴 HIGH — affects all location resolution
 
-**Backward Compatibility:** âœ… Maintained via mapper function
+**Backward Compatibility:** ✅ Maintained via mapper function
 
 ---
 
@@ -123,16 +123,16 @@ SAVED_MANUAL_FALLBACK: "saved_manual_fallback"  // Enum
 
 **Goal:** Ensure manual addresses always have geocoded coordinates before pickup
 
-**Status:** ðŸŸ¡ READY FOR IMPLEMENTATION
+**Status:** 🟡 READY FOR IMPLEMENTATION
 
 **Critical Finding:**
 ```javascript
 // useMapLocation.js:244 (handleSearchLocation)
-if (!nextLocation?.location) return;  // âŒ Only checks existence, not coordinates
+if (!nextLocation?.location) return;  // ❌ Only checks existence, not coordinates
 
 // mapExploreFlow.store.js:155 (reducer)
 SET_MANUAL_LOCATION: (state, action) => {
-  // âŒ No coordinate validation
+  // ❌ No coordinate validation
   return { ...state, location: { ...state.location, manualLocation: action.value } };
 }
 ```
@@ -147,9 +147,9 @@ SET_MANUAL_LOCATION: (state, action) => {
 - `hooks/map/locationIntent/useManualEntryHandlers.js:145-160` (isGeocoded flag)
 - `hooks/map/state/mapExploreFlow.store.js:155-162` (defense-in-depth)
 
-**Risk:** ðŸ”´ HIGH â€” entry point for all manual locations
+**Risk:** 🔴 HIGH — entry point for all manual locations
 
-**Backward Compatibility:** âœ… Existing valid flows unaffected
+**Backward Compatibility:** ✅ Existing valid flows unaffected
 
 ---
 
@@ -157,7 +157,7 @@ SET_MANUAL_LOCATION: (state, action) => {
 
 **Goal:** Classify location failures with specific CTAs
 
-**Status:** ðŸŸ¡ READY FOR IMPLEMENTATION
+**Status:** 🟡 READY FOR IMPLEMENTATION
 
 **Critical Finding:**
 ```javascript
@@ -166,7 +166,7 @@ const [locationError, setLocationError] = useState(null);  // String only
 
 // FullScreenEmergencyMap.jsx:702
 <Pressable onPress={requestLocationPermission}>
-  Retry  // âŒ Generic "Retry" for all errors
+  Retry  // ❌ Generic "Retry" for all errors
 </Pressable>
 ```
 
@@ -181,9 +181,9 @@ const [locationError, setLocationError] = useState(null);  // String only
 - `atoms/mapScreenAtoms.js` (add locationErrorDetailsAtom)
 - `components/map/FullScreenEmergencyMap.jsx` (consume errorDetails)
 
-**Risk:** ðŸŸ¡ MEDIUM â€” string backward compatible
+**Risk:** 🟡 MEDIUM — string backward compatible
 
-**Backward Compatibility:** âœ… locationError stays string
+**Backward Compatibility:** ✅ locationError stays string
 
 ---
 
@@ -191,7 +191,7 @@ const [locationError, setLocationError] = useState(null);  // String only
 
 **Goal:** Add coordinate + source to cache keys
 
-**Status:** ðŸŸ¡ READY FOR IMPLEMENTATION
+**Status:** 🟡 READY FOR IMPLEMENTATION
 
 **Critical Finding:**
 ```javascript
@@ -199,7 +199,7 @@ const [locationError, setLocationError] = useState(null);  // String only
 return [
   normalizedLocation.latitude.toFixed(LOCATION_BUCKET_PRECISION),
   normalizedLocation.longitude.toFixed(LOCATION_BUCKET_PRECISION),
-].join(":");  // â† Only coordinates, no source
+].join(":");  // ← Only coordinates, no source
 // Manual at 37.775,-122.419 shares cache with GPS at 37.775,-122.419
 ```
 
@@ -213,15 +213,15 @@ return [
 - `hooks/emergency/useHospitals.js` (add buildDeterministicCacheKey, dual-key lookup)
 - `hooks/emergency/useEmergencyHospitalSync.js` (pass canonical location + source)
 
-**Risk:** ðŸ”´ HIGH â€” cache changes affect performance
+**Risk:** 🔴 HIGH — cache changes affect performance
 
-**Backward Compatibility:** âœ… Dual-key migration preserves existing cache
+**Backward Compatibility:** ✅ Dual-key migration preserves existing cache
 
 ---
 
-### LOC-5: Places Rendering â€” SKIPPED
+### LOC-5: Places Rendering — SKIPPED
 
-**Status:** âšª **NOT NEEDED** â€” Current implementation sufficient
+**Status:** âšª **NOT NEEDED** — Current implementation sufficient
 
 **Live Code Finding:**
 ```javascript
@@ -243,30 +243,30 @@ const hospitalPriorityScore = (hospital) => {
 
 **Goal:** Add GPS freshness and accuracy validation
 
-**Status:** ðŸŸ¡ READY FOR IMPLEMENTATION
+**Status:** 🟡 READY FOR IMPLEMENTATION
 
 **Critical Finding:**
 ```javascript
 // GlobalLocationContext.jsx
 const hasPreciseDeviceLocation = Boolean(
   userLocation?.latitude && userLocation?.longitude && locationSource === "device"
-);  // âŒ No accuracy or freshness check
+);  // ❌ No accuracy or freshness check
 ```
 
 **Safe Implementation:**
-1. Add `assessGPSQuality(location)` â†’ returns `{ isValid, accuracy, age, warnings[], quality }`
-2. Show warnings in UI ("Low accuracy â€” move outdoors if possible")
+1. Add `assessGPSQuality(location)` → returns `{ isValid, accuracy, age, warnings[], quality }`
+2. Show warnings in UI ("Low accuracy — move outdoors if possible")
 3. Add retry logic for weak signals (one automatic retry)
-4. Never block user â€” only warn
+4. Never block user — only warn
 
 **Files:**
 - `contexts/GlobalLocationContext.jsx` (add assessGPSQuality)
 - `hooks/map/exploreFlow/useMapLocation.js` (show warnings in locationControl)
 - `components/map/surfaces/MapExploreLoadingOverlay.jsx` (render warnings)
 
-**Risk:** ðŸŸ¡ MEDIUM â€” adds UI complexity
+**Risk:** 🟡 MEDIUM — adds UI complexity
 
-**Backward Compatibility:** âœ… Warnings don't block existing flows
+**Backward Compatibility:** ✅ Warnings don't block existing flows
 
 ---
 
@@ -274,12 +274,12 @@ const hasPreciseDeviceLocation = Boolean(
 
 | Order | Pass | Status | Risk | Rationale |
 |-------|------|--------|------|-----------|
-| 1 | LOC-4 (Cache) | ðŸŸ¡ Pending | ðŸ”´ High | Real collision risk â€” do first |
-| 2 | LOC-2 (Manual) | ðŸŸ¡ Pending | ðŸ”´ High | Entry validation gap |
-| 3 | LOC-1 (Sources) | ðŸŸ¡ Pending | ðŸ”´ High | Enum mismatch |
-| 4 | LOC-3 (Recovery) | ðŸŸ¡ Pending | ðŸŸ¡ Medium | Generic errors work |
-| 5 | LOC-6 (Runtime) | ðŸŸ¡ Pending | ðŸŸ¡ Medium | Nice to have |
-| â€” | LOC-5 (Places) | âšª **SKIPPED** | â€” | Already implemented |
+| 1 | LOC-4 (Cache) | 🟡 Pending | 🔴 High | Real collision risk — do first |
+| 2 | LOC-2 (Manual) | 🟡 Pending | 🔴 High | Entry validation gap |
+| 3 | LOC-1 (Sources) | 🟡 Pending | 🔴 High | Enum mismatch |
+| 4 | LOC-3 (Recovery) | 🟡 Pending | 🟡 Medium | Generic errors work |
+| 5 | LOC-6 (Runtime) | 🟡 Pending | 🟡 Medium | Nice to have |
+| — | LOC-5 (Places) | âšª **SKIPPED** | — | Already implemented |
 
 ---
 
@@ -311,20 +311,20 @@ See [passes/PASS_TEMPLATE.md](./passes/PASS_TEMPLATE.md) for:
 ## Related Documentation
 
 ### Audits (Pre-Implementation Findings)
-- [audits/AUDIT_PICKUP_SOURCES.md](./audits/AUDIT_PICKUP_SOURCES.md) â€” LOC-1 granular audit
-- [audits/AUDIT_MANUAL_ADDRESS.md](./audits/AUDIT_MANUAL_ADDRESS.md) â€” LOC-2 granular audit
-- [audits/AUDIT_LOCATION_RECOVERY.md](./audits/AUDIT_LOCATION_RECOVERY.md) â€” LOC-3 granular audit
-- [audits/AUDIT_CACHE_DETERMINISM.md](./audits/AUDIT_CACHE_DETERMINISM.md) â€” LOC-4 granular audit
-- ~~[audits/AUDIT_PLACES_RENDERING.md](./audits/AUDIT_PLACES_RENDERING.md)~~ â€” Removed: LOC-5 skipped
-- [audits/AUDIT_RUNTIME_VALIDATION.md](./audits/AUDIT_RUNTIME_VALIDATION.md) â€” LOC-6 granular audit
-- [audits/AUDIT_LOCATION_TRUTH_LAYER.md](./audits/AUDIT_LOCATION_TRUTH_LAYER.md) â€” Layer analysis
-- [audits/AUDIT_GEOCODING_LAYER.md](./audits/AUDIT_GEOCODING_LAYER.md) â€” Layer analysis
-- [audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md](./audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md) â€” Layer analysis
+- [audits/AUDIT_PICKUP_SOURCES.md](./audits/AUDIT_PICKUP_SOURCES.md) — LOC-1 granular audit
+- [audits/AUDIT_MANUAL_ADDRESS.md](./audits/AUDIT_MANUAL_ADDRESS.md) — LOC-2 granular audit
+- [audits/AUDIT_LOCATION_RECOVERY.md](./audits/AUDIT_LOCATION_RECOVERY.md) — LOC-3 granular audit
+- [audits/AUDIT_CACHE_DETERMINISM.md](./audits/AUDIT_CACHE_DETERMINISM.md) — LOC-4 granular audit
+- ~~[audits/AUDIT_PLACES_RENDERING.md](./audits/AUDIT_PLACES_RENDERING.md)~~ — Removed: LOC-5 skipped
+- [audits/AUDIT_RUNTIME_VALIDATION.md](./audits/AUDIT_RUNTIME_VALIDATION.md) — LOC-6 granular audit
+- [audits/AUDIT_LOCATION_TRUTH_LAYER.md](./audits/AUDIT_LOCATION_TRUTH_LAYER.md) — Layer analysis
+- [audits/AUDIT_GEOCODING_LAYER.md](./audits/AUDIT_GEOCODING_LAYER.md) — Layer analysis
+- [audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md](./audits/AUDIT_PROVIDER_DISCOVERY_LAYER.md) — Layer analysis
 
 ### Passes (Implementation Records)
-- [passes/](./passes/) â€” Directory for pass implementation records (populated during work)
+- [passes/](./passes/) — Directory for pass implementation records (populated during work)
 
 ### Architecture
-- [REFACTORING_GUARDRAILS.md](../../../REFACTORING_GUARDRAILS.md) â€” Architecture rules
-- [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) â€” Map flow contract
-- [README.md](./README.md) â€” This directory's documentation guide
+- [REFACTORING_GUARDRAILS.md](../../../REFACTORING_GUARDRAILS.md) — Architecture rules
+- [MAP_SCREEN_IMPLEMENTATION_RULES_V1.md](../MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) — Map flow contract
+- [README.md](./README.md) — This directory's documentation guide

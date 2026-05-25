@@ -579,7 +579,7 @@ This separation lets local save succeed even if future cloud sync fails.
 
 ```txt
 addressSearch
-  â†“ user selects address
+  ↓ user selects address
 candidateDecision
   Address group
     selected label
@@ -604,7 +604,7 @@ Notes:
 
 ```txt
 candidateDecision
-  â†“ Add to saved places
+  ↓ Add to saved places
 saveCategory
   Solid category orbs
     Home
@@ -614,7 +614,7 @@ saveCategory
     Pharmacy
     Care
     Other
-  â†“ choose category
+  ↓ choose category
 saveDetails
   Address group
   Optional label / unit / responder note
@@ -665,7 +665,7 @@ Rules:
 
 ```txt
 default
-  â†“ tap saved orb / row
+  ↓ tap saved orb / row
 candidateDecision
   Address group
   CTA group
@@ -680,7 +680,7 @@ candidateDecision
 
 ```txt
 manualStep
-  â†“ geocode succeeds
+  ↓ geocode succeeds
 candidateDecision
   Address group
   CTA group
@@ -695,7 +695,7 @@ candidateDecision
 
 ```txt
 default/search
-  â†“ tap recent
+  ↓ tap recent
 candidateDecision
   Address group
   CTA group

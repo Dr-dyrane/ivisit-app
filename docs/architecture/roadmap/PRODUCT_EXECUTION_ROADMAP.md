@@ -9,25 +9,25 @@ last_updated: 2026-04-23
 **Goal:** Ship a cohesive iVisit MVP where Emergency, Visits, Auth, Profile, and More screens share consistent UX patterns and run fully local-first (AsyncStorage) with seeded domain data.
 
 **Principles**
-- Keep UI stable; swap backend underneath via the existing layers (UI â†’ Context â†’ Hook â†’ Service â†’ Database/API).
+- Keep UI stable; swap backend underneath via the existing layers (UI → Context → Hook → Service → Database/API).
 - Always make routes navigable first (stubs beat missing screens).
-- Enforce a single â€œprofile completenessâ€ gate so all downstream features have reliable user data.
+- Enforce a single "profile completeness" gate so all downstream features have reliable user data.
 - Migrate from local (AsyncStorage) to Supabase later by updating the API/service layer, not screen code.
 - Treat seed data as part of the product: hospitals, beds, ambulances, visits.
 
 **Current assets in repo**
-- Layered auth refactor plan and structure: `docs/architecture/AUTH_REFACTOR_PLAN.md` _(planned â€” not yet created)_
-- Supabase integration point placeholder: `api/client.js` _(planned â€” not yet created)_
+- Layered auth refactor plan and structure: `docs/architecture/AUTH_REFACTOR_PLAN.md` _(planned — not yet created)_
+- Supabase integration point placeholder: `api/client.js` _(planned — not yet created)_
 - Provider wiring and app structure summary: [project_state/repo.md](../../project_state/repo.md)
 
 ---
 
-## Phase 0 â€” Baseline & guardrails (0.5â€“1 day)
+## Phase 0 — Baseline & guardrails (0.5–1 day)
 
 **Outcome:** We can move fast without breaking flows.
 
 **Subplan**
-- Add/confirm a single â€œcommands we always runâ€ checklist (typecheck/lint/test) in a tracked doc.
+- Add/confirm a single "commands we always run" checklist (typecheck/lint/test) in a tracked doc.
 - Ensure navigation is predictable (all stack routes load, even if stub).
 - Define the canonical domain types (User/Profile, Visit, Hospital, Bed, Ambulance, Booking/Trip).
 
@@ -37,17 +37,17 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 1 â€” App skeleton catch-up (navigation + missing stack pages) (1â€“2 days)
+## Phase 1 — App skeleton catch-up (navigation + missing stack pages) (1–2 days)
 
-**Outcome:** The whole app feels â€œcompleteâ€ from a navigation standpoint.
+**Outcome:** The whole app feels "complete" from a navigation standpoint.
 
 **Subplan**
-- Inventory â€œMore screensâ€ and any mentioned stack pages in docs and code.
+- Inventory "More screens" and any mentioned stack pages in docs and code.
 - Implement the missing routes as minimal screens:
   - Title + short description + placeholder sections
   - Back button support
   - Scroll-aware header where the app uses it
-- Wire them into the existing â€œMoreâ€ list (or equivalent) so every screen is reachable.
+- Wire them into the existing "More" list (or equivalent) so every screen is reachable.
 - Ensure tab bar + header behavior is consistent across all main screens.
 
 **Acceptance**
@@ -56,7 +56,7 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 2 â€” Visits screen catch-up (UX parity) (1â€“2 days)
+## Phase 2 — Visits screen catch-up (UX parity) (1–2 days)
 
 **Outcome:** Visits experience matches the design quality of Emergency.
 
@@ -65,10 +65,10 @@ last_updated: 2026-04-23
   - Consistent cards (status, hospital, doctor/specialty, time)
   - Empty states (no visits), loading state, error state
   - Search/filter (optional first pass)
-- Decide what is â€œrealâ€ vs â€œdemoâ€:
+- Decide what is "real" vs "demo":
   - Keep existing mock visit data for now
   - Make the component structure mirror the future data shape
-- Add a â€œVisit detailsâ€ stack screen if not present (tap a visit â†’ details page).
+- Add a "Visit details" stack screen if not present (tap a visit → details page).
 
 **Acceptance**
 - Visits list works end-to-end with consistent UI states.
@@ -76,19 +76,19 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 3 â€” Post-register profile completion gate (1â€“2 days)
+## Phase 3 — Post-register profile completion gate (1–2 days)
 
 **Outcome:** Every authenticated user ends up with a complete, usable profile.
 
 **Subplan**
-- Define â€œrequired profile fieldsâ€ (minimum viable):
+- Define "required profile fields" (minimum viable):
   - Full name
   - Username (or handle)
   - Phone or email verified (depending on auth path)
   - Optional: emergency contact, medical history (can be step 2+)
 - Implement a single gate:
-  - If authenticated AND profile incomplete â†’ route to completion flow
-  - If complete â†’ allow access to main tabs
+  - If authenticated AND profile incomplete → route to completion flow
+  - If complete → allow access to main tabs
 - Make completion flow resilient:
   - Can resume if app restarts
   - Can skip optional steps but not required fields
@@ -100,24 +100,24 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 4 â€” Local-first feature completion (preferences + profile subpages + visits) (3â€“6 days)
+## Phase 4 — Local-first feature completion (preferences + profile subpages + visits) (3–6 days)
 
-**Outcome:** The app is â€œcompleteâ€ without a backend: every screen is functional using local data services.
+**Outcome:** The app is "complete" without a backend: every screen is functional using local data services.
 
-**Subplan A â€” Preferences**
+**Subplan A — Preferences**
 - Move all preferences behind a `preferencesService` and `api/preferences`.
 - Persist:
   - Theme mode using `StorageKeys.THEME`
   - App preferences using `StorageKeys.PREFERENCES`
 - Fill out Settings screen so it is not a stub.
 
-**Subplan B â€” Profile subpages**
+**Subplan B — Profile subpages**
 - Implement:
   - Emergency Contacts CRUD + persistence via `StorageKeys.EMERGENCY_CONTACTS`
   - Medical Profile CRUD + persistence (add a new StorageKeys entry + service)
-- Replace â€œcoming soonâ€ toasts with real navigation + functionality.
+- Replace "coming soon" toasts with real navigation + functionality.
 
-**Subplan C â€” Visits end-to-end**
+**Subplan C — Visits end-to-end**
 - Ensure the entire Visits journey is functional locally:
   - Create/book visit
   - Persist visits to `StorageKeys.VISITS`
@@ -131,13 +131,13 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 5 â€” Patient POV emergency flow completion (2â€“4 days)
+## Phase 5 — Patient POV emergency flow completion (2–4 days)
 
 **Outcome:** From a patient POV, the SOS experience feels complete and trustworthy.
 
 **Subplan**
 - Tighten Emergency flow states:
-  - Select hospital â†’ request ambulance/bed â†’ confirmation â†’ active trip/booking state
+  - Select hospital → request ambulance/bed → confirmation → active trip/booking state
   - Resume active state after restart (local persistence)
   - Clear/cancel states are consistent and user-controlled
 - Use patient profile data where relevant:
@@ -152,9 +152,9 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 6 â€” Data model + seed polishing (local-first) (1â€“2 days)
+## Phase 6 — Data model + seed polishing (local-first) (1–2 days)
 
-**Outcome:** Local data feels â€œrealâ€ and coherent across the app.
+**Outcome:** Local data feels "real" and coherent across the app.
 
 **Subplan**
 - Normalize mock domain data and persistence shapes:
@@ -168,35 +168,35 @@ last_updated: 2026-04-23
 
 ---
 
-## Phase 7 â€” Provider/clinic discovery + booking realism (local-first) (3â€“6 days)
+## Phase 7 — Provider/clinic discovery + booking realism (local-first) (3–6 days)
 
 **Outcome:** Finding care and booking feels realistic and useful (even on seed/local data).
 
 **Subplan**
-- Model â€œprovidersâ€ and â€œclinicsâ€ separately from hospitals:
+- Model "providers" and "clinics" separately from hospitals:
   - Provider profiles (name, specialty, credentials, languages, rating)
   - Clinic locations (address, geo, hours, contact)
   - Relationships (providerId â†” clinicId / hospitalId)
 - Improve discovery UX:
   - Specialty-first discovery and filtering
   - Nearby clinics/hospitals list with consistent distance/ETA formatting
-  - Clear â€œwhat can you book here?â€ (visit types, availability)
+  - Clear "what can you book here?" (visit types, availability)
 - Make booking realistic:
   - Appointment slot selection (seeded schedule)
   - Confirmation state + cancellation/reschedule flows
   - Booking writes to Visits with stable IDs and correct status
-- Tighten â€œdetailsâ€ views:
+- Tighten "details" views:
   - Clinic detail view (services, hours, location)
   - Provider detail view (bio, specialties, next slots)
 
 **Acceptance**
 - Search/discovery reliably finds clinics/providers by specialty and name.
 - Booking produces consistent Visits data and survives restart.
-- No duplicate/contradictory â€œavailableâ€ states across screens.
+- No duplicate/contradictory "available" states across screens.
 
 ---
 
-## Phase 8 â€” Supabase integration (when ready) (3â€“7 days)
+## Phase 8 — Supabase integration (when ready) (3–7 days)
 
 **Outcome:** Replace local persistence with Supabase using the same service interfaces.
 
@@ -217,13 +217,13 @@ last_updated: 2026-04-23
 - **Checkpoint A:** All routes exist and are reachable (Phase 1).
 - **Checkpoint B:** Visits UX parity and details page (Phase 2).
 - **Checkpoint C:** Profile completion gate enforced (Phase 3).
-- **Checkpoint D:** Local-first â€œall pages functionalâ€ milestone (Phase 4).
+- **Checkpoint D:** Local-first "all pages functional" milestone (Phase 4).
 - **Checkpoint E:** Patient POV Emergency flow complete (Phase 5).
 - **Checkpoint F:** Provider discovery + booking realism milestone (Phase 7).
 - **Checkpoint G:** Supabase integration milestone (Phase 8).
 - **Checkpoint H:** App Store Production Readiness (2026-01-13).
 
-## Progress tracking (how weâ€™ll work)
+## Progress tracking (how we'll work)
 
 - Start each phase with a short task list.
 - Land small commits frequently (screen stubs, then wiring, then polish).

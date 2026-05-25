@@ -4,13 +4,13 @@ owner: architecture
 last_updated: 2026-05-24
 ---
 
-# Tracking Sheet Phase â€” Cross-Cutting Learnings
+# Tracking Sheet Phase — Cross-Cutting Learnings
 
-> **Reconciliation Note â€” 2026-05-24:** Living reference. The defect classes, heuristics, and the `useEffect` decision tree below have been integrated into:
+> **Reconciliation Note — 2026-05-24:** Living reference. The defect classes, heuristics, and the `useEffect` decision tree below have been integrated into:
 >
-> - [`../../REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) Â§1 (canonical version of the decision tree)
-> - [`AGENTS.md`](../../../AGENTS.md) Â§Common Pitfalls (TDZ, hook API, layer disguise, ref sync, object truthiness, store semantics, fallback timers, auth/cache continuity)
-> - [`AGENTS.md`](../../../AGENTS.md) Â§Debugging Doctrine (map-the-flow, fix-at-source, one-variable-at-a-time, minimal upstream fixes)
+> - [`../../REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) §1 (canonical version of the decision tree)
+> - [`AGENTS.md`](../../../AGENTS.md) §Common Pitfalls (TDZ, hook API, layer disguise, ref sync, object truthiness, store semantics, fallback timers, auth/cache continuity)
+> - [`AGENTS.md`](../../../AGENTS.md) §Debugging Doctrine (map-the-flow, fix-at-source, one-variable-at-a-time, minimal upstream fixes)
 >
 > This file remains the long-form rationale and source case studies. Treat as evergreen.
 
@@ -21,37 +21,37 @@ last_updated: 2026-05-24
 
 ---
 
-## âš¡ Quick Reference â€” The `useEffect` Decision Tree
+## ⚡ Quick Reference — The `useEffect` Decision Tree
 
 > Before reaching for `useEffect`, walk this tree top to bottom.
-> `useEffect` only wins the **last** branch. In practice: no subscription, no timer â†’ it's wrong.
+> `useEffect` only wins the **last** branch. In practice: no subscription, no timer → it's wrong.
 
 ```
 "When X changes, I need Y"
          â”‚
-         â–¼
+         ▼
 Is Y a value derived from X?
-  â†’ YES â†’ useMemo / inline const â€” no hook needed
-           Example: ratingState + visits â†’ validatedRatingState (BUG-012 fix)
+  → YES → useMemo / inline const — no hook needed
+           Example: ratingState + visits → validatedRatingState (BUG-012 fix)
 
 Is Y a ref that mirrors X?
-  â†’ YES â†’ assign ref.current = X inline during render, no useEffect
+  → YES → assign ref.current = X inline during render, no useEffect
            Example: totalCostValueRef = totalCostValue (useMapCommitPaymentController)
 
-Is Y a machine state with named terminal values (IDLE, WAITING, FAILEDâ€¦)?
-  â†’ YES â†’ Jotai atom (L5) or XState (L4)
+Is Y a machine state with named terminal values (IDLE, WAITING, FAILED…)?
+  → YES → Jotai atom (L5) or XState (L4)
            Example: submissionState in useMapCommitPaymentController
 
 Is Y server data triggered by X?
-  â†’ YES â†’ TanStack Query with X in queryKey or enabled: Boolean(X)
+  → YES → TanStack Query with X in queryKey or enabled: Boolean(X)
            Example: estimatedCost query enabled on hospitalId
 
-Is Y a real side-effect â€” subscription, cleanup, timer, navigation?
-  â†’ YES â†’ useEffect is correct here
+Is Y a real side-effect — subscription, cleanup, timer, navigation?
+  → YES → useEffect is correct here
            Example: Supabase realtime channel setup/teardown
 ```
 
-**Rule of thumb**: if you are not managing a subscription, timer, or cleanup, `useEffect` is probably wrong. The violation only surfaces as a bug _later_ â€” stale closure, missed dep, extra render, race condition â€” never at the point of writing.
+**Rule of thumb**: if you are not managing a subscription, timer, or cleanup, `useEffect` is probably wrong. The violation only surfaces as a bug _later_ — stale closure, missed dep, extra render, race condition — never at the point of writing.
 
 ---
 
@@ -59,21 +59,21 @@ Is Y a real side-effect â€” subscription, cleanup, timer, navigation?
 
 The stash on `recovery/clean-2026-04-25` contained 224 files including a parallel attempt at the same problem area. Three files matter for this audit.
 
-### 1.1 `useTrackingRating.js` (270 lines, stash) â€” **SAME DEFECT AS CURRENT**
+### 1.1 `useTrackingRating.js` (270 lines, stash) — **SAME DEFECT AS CURRENT**
 
 - Extracted rating into its own hook.
-- Used local `useState(INITIAL_RATING_STATE)` â€” same pattern as today's `useMapTrackingController.js`.
+- Used local `useState(INITIAL_RATING_STATE)` — same pattern as today's `useMapTrackingController.js`.
 - **Failure mode**: rating modal still lived downstream of `MapTrackingStageBase`; sheet phase change still unmounted it.
 - **Lesson**: extracting into a hook is necessary but not sufficient. The renderer location is the actual defect.
 
-### 1.2 `useMapScreenTracking.js` (164 lines, stash) â€” **PARTIAL CORRECT INSIGHT**
+### 1.2 `useMapScreenTracking.js` (164 lines, stash) — **PARTIAL CORRECT INSIGHT**
 
 - Lifted **recovered** rating modal state to MapScreen level (`useState` for `recoveredRatingState`).
 - Did NOT lift the in-flow rating state (still in tracking subtree).
-- Used `useState` instead of Jotai â†’ did not survive Metro restart or sheet phase navigation.
+- Used `useState` instead of Jotai → did not survive Metro restart or sheet phase navigation.
 - **Lesson**: The stash author recognised the lifting requirement but only for half the problem (recovery). Apply it to BOTH in-flow and recovered rating, and back with persisted Jotai.
 
-### 1.3 `useMapSheetPhase.js` (215 lines, stash) â€” **GAIN: EXPLICIT TRANSITION TABLE**
+### 1.3 `useMapSheetPhase.js` (215 lines, stash) — **GAIN: EXPLICIT TRANSITION TABLE**
 
 - Defined a `validTransitions` map: `{ EXPLORE_INTENT: [HOSPITAL_DETAIL, ..., TRACKING], ... }`.
 - Had `transitionTo(targetPhase)` that warned on invalid transitions and blocked them.
@@ -110,7 +110,7 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 1. Lift the renderer to a level that survives the relevant transitions (often: screen root, sometimes: app root).
 2. Keep state in Jotai (or Zustand) so it survives reload.
 3. Drive `visible` from the persisted state, not from local props.
-4. If modal needs context-rich data, store the snapshot at the moment of trigger â€” do not rely on live derived data.
+4. If modal needs context-rich data, store the snapshot at the moment of trigger — do not rely on live derived data.
 
 **Other suspected sites in this codebase**:
 
@@ -142,10 +142,10 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 
 **Other suspected sites**:
 
-- Payment success â†’ tracking auto-open
-- Active trip on cold start â†’ tracking auto-open
-- Ambulance approval â†’ snap-to-medium sheet detent
-- Bed booking confirmed â†’ tracking sheet
+- Payment success → tracking auto-open
+- Active trip on cold start → tracking auto-open
+- Ambulance approval → snap-to-medium sheet detent
+- Bed booking confirmed → tracking sheet
 
 ---
 
@@ -178,9 +178,9 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 
 **Symptoms**:
 
-- Inconsistent prefixing â†’ namespace collisions across builds.
+- Inconsistent prefixing → namespace collisions across builds.
 - Skips timeout/error wrapping.
-- Storage not auditable â€” `getActiveKeys()`/`stats()` won't see the value.
+- Storage not auditable — `getActiveKeys()`/`stats()` won't see the value.
 
 **Diagnosis**: All persistence goes through `database` + `StorageKeys` (`@c:\Users\Dyrane\Documents\GitHub\ivisit-app\database\index.js`).
 
@@ -202,7 +202,7 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 **Symptoms**:
 
 - Storage thrash on hot updates (e.g. progress value changing every second).
-- Hydration race â€” atoms read at different times, see inconsistent state.
+- Hydration race — atoms read at different times, see inconsistent state.
 
 **Fix recipe**:
 
@@ -273,7 +273,7 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 
 ### 2.12 Defending immutable real-world moments at the store mutation layer
 
-**Pattern**: A piece of state represents an immutable real-world moment (trip start time, payment timestamp, booking creation time). Multiple independent writers (TanStack queries, realtime patches, optimistic local updates, hydration) all replace the parent object on every update â€” and one or more of them sometimes derive the moment from `Date.now()` because the upstream payload doesn't carry it. Even with a "preserve when next is null" guard, a writer producing a fresh `Date.now()` (a finite number) slips through and silently resets the moment, restarting any UI that derives elapsed time from it.
+**Pattern**: A piece of state represents an immutable real-world moment (trip start time, payment timestamp, booking creation time). Multiple independent writers (TanStack queries, realtime patches, optimistic local updates, hydration) all replace the parent object on every update — and one or more of them sometimes derive the moment from `Date.now()` because the upstream payload doesn't carry it. Even with a "preserve when next is null" guard, a writer producing a fresh `Date.now()` (a finite number) slips through and silently resets the moment, restarting any UI that derives elapsed time from it.
 
 **Symptoms**:
 
@@ -281,7 +281,7 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 - "Progress bar restarts on Metro reload even though the trip object survives hydration."
 - "After hydration the value is correct for a few writes, then jumps to a fresh `Date.now()`."
 
-**Diagnosis**: Defending only against `null`/non-finite is not enough. A real-world moment is **immutable per identity** â€” the only acceptable change is `null â†’ finite`, never `finite â†’ finite_different`.
+**Diagnosis**: Defending only against `null`/non-finite is not enough. A real-world moment is **immutable per identity** — the only acceptable change is `null → finite`, never `finite → finite_different`.
 
 **Fix recipe (store invariant)**:
 
@@ -289,19 +289,19 @@ These show up everywhere in the codebase. Document once, hunt them down systemat
 // One-time write semantics for immutable timestamps per identity.
 const preserveTripStartedAt = (prev, next) => {
   if (!next || !prev) return next;
-  if (!sameTripIdentity(prev, next)) return next; // different trip â†’ allow
-  if (!Number.isFinite(prev.startedAt)) return next; // prev had none â†’ allowtry i
-  if (prev.startedAt === next.startedAt) return next; // unchanged â†’ no-op
-  return { ...next, startedAt: prev.startedAt }; // any other case â†’ keep prev
+  if (!sameTripIdentity(prev, next)) return next; // different trip → allow
+  if (!Number.isFinite(prev.startedAt)) return next; // prev had none → allowtry i
+  if (prev.startedAt === next.startedAt) return next; // unchanged → no-op
+  return { ...next, startedAt: prev.startedAt }; // any other case → keep prev
 };
 ```
 
 - Apply the invariant inside every store mutation that can replace the parent object: full-replace setters, patch helpers, hydration helpers.
 - Identify "same identity" by stable IDs (`requestId`/`id`) using loose-string compare to absorb number/string drift across server payloads.
 
-**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\stores\emergencyTripStore.js` â€” added `sameTripIdentity` + `preserveTripStartedAt` helpers, applied them inside `setActiveAmbulanceTrip`, `setActiveBedBooking`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, and `hydrateFromServer`. After this, `startedAt` is locked to its first-finite value across the trip's entire lifetime regardless of which writer fires.
+**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\stores\emergencyTripStore.js` — added `sameTripIdentity` + `preserveTripStartedAt` helpers, applied them inside `setActiveAmbulanceTrip`, `setActiveBedBooking`, `patchActiveAmbulanceTrip`, `patchActiveBedBooking`, and `hydrateFromServer`. After this, `startedAt` is locked to its first-finite value across the trip's entire lifetime regardless of which writer fires.
 
-**Why this is the right layer**: enforcing immutability at the store boundary protects against ALL writers â€” including ones added in the future that might not know about the invariant. Pushing the rule down to a single defensive helper is more durable than auditing every writer.
+**Why this is the right layer**: enforcing immutability at the store boundary protects against ALL writers — including ones added in the future that might not know about the invariant. Pushing the rule down to a single defensive helper is more durable than auditing every writer.
 
 ---
 
@@ -311,20 +311,20 @@ const preserveTripStartedAt = (prev, next) => {
 
 **Symptoms**:
 
-- "State changes never persist." (Catastrophic â€” looks like nothing is being saved.)
+- "State changes never persist." (Catastrophic — looks like nothing is being saved.)
 - "Metro reload always shows fresh state, no matter how long the user was active."
 - "Hydration runs but always reads back nothing or stale defaults."
-- No errors, no warnings â€” silent contract failure.
+- No errors, no warnings — silent contract failure.
 
 **Diagnosis**: The persist callback never fires. The "selector" runs as the listener every state change, returns its slice object, and the return value is discarded.
 
 **Fix recipe**:
 
 1. Either compose `subscribeWithSelector` middleware in `create(...)`, or refactor to a single-arg `subscribe((state) => { ... })` listener that does its own change detection and write.
-2. The single-listener pattern is preferable when only one persistence consumer exists â€” it avoids the extra middleware cost and is explicit about the slice being watched.
+2. The single-listener pattern is preferable when only one persistence consumer exists — it avoids the extra middleware cost and is explicit about the slice being watched.
 3. Add manual identity-based change detection on the slice fields to suppress redundant writes on unrelated state changes.
 
-**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\stores\emergencyTripStore.js` â€” replaced `subscribe(selector, listener)` two-arg form with `subscribe(listener)` plus manual `lastPersistedSnapshot` identity check. This restored auto-persistence of `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `commitFlow`, and `eventGates`. Without this fix, **the trip object was never written to storage at all**, which is why every Metro reload restarted trip progress from zero.
+**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\stores\emergencyTripStore.js` — replaced `subscribe(selector, listener)` two-arg form with `subscribe(listener)` plus manual `lastPersistedSnapshot` identity check. This restored auto-persistence of `activeAmbulanceTrip`, `activeBedBooking`, `pendingApproval`, `commitFlow`, and `eventGates`. Without this fix, **the trip object was never written to storage at all**, which is why every Metro reload restarted trip progress from zero.
 
 **Other suspected sites**: every other Zustand store in `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\stores\` that uses two-arg `subscribe`. Sweep:
 
@@ -338,7 +338,7 @@ Each match needs to either gain `subscribeWithSelector` middleware or be refacto
 
 ### 2.10 Server-sync queryFn capturing pre-hydration React state
 
-**Pattern**: A TanStack Query reads the previous snapshot from a Zustand-backed React selector (`useStore((s) => s.x)`) and closes over it inside `queryFn`. On cold start, the `queryFn` is created/dispatched before persistent-store hydration completes â€” so the captured `previousX` is `null`. When the network response merges with `previousX`, it computes "fresh" defaults (e.g. `startedAt = Date.now()`) and writes them back, **clobbering the value that hydration restored a few ms later**.
+**Pattern**: A TanStack Query reads the previous snapshot from a Zustand-backed React selector (`useStore((s) => s.x)`) and closes over it inside `queryFn`. On cold start, the `queryFn` is created/dispatched before persistent-store hydration completes — so the captured `previousX` is `null`. When the network response merges with `previousX`, it computes "fresh" defaults (e.g. `startedAt = Date.now()`) and writes them back, **clobbering the value that hydration restored a few ms later**.
 
 **Symptoms**:
 
@@ -354,7 +354,7 @@ Each match needs to either gain `subscribeWithSelector` middleware or be refacto
 2. Gate the query on the store's `hydrated` flag (`enabled: hydrated`) so the network roundtrip cannot resolve before persistence has settled.
 3. Apply the same imperative-read pattern to any sibling field whose preservation depends on the previous snapshot (e.g. routes, ETAs, bookings).
 
-**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\emergency\useActiveTripQuery.js` â€” replaced `useEmergencyTripStore((s) => s.activeAmbulanceTrip)` closure capture with `useEmergencyTripStore.getState()` inside `queryFn`; added `enabled: hydrated` to the `useQuery` config. Same change applied to `activeBedBooking`.
+**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\hooks\emergency\useActiveTripQuery.js` — replaced `useEmergencyTripStore((s) => s.activeAmbulanceTrip)` closure capture with `useEmergencyTripStore.getState()` inside `queryFn`; added `enabled: hydrated` to the `useQuery` config. Same change applied to `activeBedBooking`.
 
 **Other suspected sites**: any `useQuery` whose queryFn merges with previous Zustand-backed snapshots. Sweep for queryFn bodies that reference closed-over `useStore((s) => ...)` values.
 
@@ -362,7 +362,7 @@ Each match needs to either gain `subscribeWithSelector` middleware or be refacto
 
 ### 2.9 Normalizers silently rewriting timestamps with `Date.now()`
 
-**Pattern**: A normalizer used in the persistence path coerces a timestamp to `Date.now()` whenever it is not the exact expected runtime type (e.g. accepts only finite ms, rejects ISO strings). Because the normalizer runs on every auto-persist, the persisted value is rewritten to "now" continuously. On Metro reload, hydration reads the most recent rewrite â€” losing the original.
+**Pattern**: A normalizer used in the persistence path coerces a timestamp to `Date.now()` whenever it is not the exact expected runtime type (e.g. accepts only finite ms, rejects ISO strings). Because the normalizer runs on every auto-persist, the persisted value is rewritten to "now" continuously. On Metro reload, hydration reads the most recent rewrite — losing the original.
 
 **Symptoms**:
 
@@ -378,7 +378,7 @@ Each match needs to either gain `subscribeWithSelector` middleware or be refacto
 2. In the normalizer, call the coercer and fall back to `Date.now()` only on `null`. Never on "wrong type."
 3. Audit every other "fallback to now" in normalizers for the same defect.
 
-**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\utils\domainNormalize.js` â€” `normalizeEmergencyState` for `activeAmbulanceTrip.startedAt` and `activeBedBooking.startedAt`. Server payloads send ISO strings â†’ normalizer rewrote to `Date.now()` on every auto-persist subscription â†’ Metro reload rehydrated with a near-current `startedAt` â†’ `useTripProgress.tripProgress` calculated `elapsed â‰ˆ 0` â†’ progress bar reset.
+**Concrete site fixed (2026-04-27)**: `@c:\Users\Dyrane\Documents\GitHub\ivisit-app\utils\domainNormalize.js` — `normalizeEmergencyState` for `activeAmbulanceTrip.startedAt` and `activeBedBooking.startedAt`. Server payloads send ISO strings → normalizer rewrote to `Date.now()` on every auto-persist subscription → Metro reload rehydrated with a near-current `startedAt` → `useTripProgress.tripProgress` calculated `elapsed ≈ 0` → progress bar reset.
 
 **Other suspected sites**: any other timestamp field in normalizers under `@utils/domainNormalize.js` (visit timestamps, lifecycle timestamps, eta caches). Sweep for `Number.isFinite(...) ? ... : Date.now()`.
 
@@ -392,11 +392,11 @@ These are not bug fixes; they are decisions to apply by default.
 
 For any new state, ask in order:
 
-1. Is this server truth? â†’ Realtime
-2. Is this server cache? â†’ TanStack Query
-3. Is this persistent client state? â†’ Zustand
-4. Is this lifecycle / transitions? â†’ XState
-5. Is this ephemeral UI? â†’ Jotai
+1. Is this server truth? → Realtime
+2. Is this server cache? → TanStack Query
+3. Is this persistent client state? → Zustand
+4. Is this lifecycle / transitions? → XState
+5. Is this ephemeral UI? → Jotai
 
 If two layers seem to fit, prefer the higher-level one. UI state is the cheapest to undo.
 
@@ -437,11 +437,11 @@ For any sheet/card/overlay:
 
 Before writing `useEffect`, walk the decision tree (see Quick Reference at top of file):
 
-1. **Is Y derived from X?** â†’ `useMemo` or inline `const`. No hook.
-2. **Is Y a ref mirroring X?** â†’ assign `ref.current = X` during render. No hook.
-3. **Is Y a machine state?** â†’ Jotai atom (L5) or XState (L4).
-4. **Is Y server data?** â†’ TanStack Query with `enabled: Boolean(X)` or X in `queryKey`.
-5. **Is Y a real side-effect?** â†’ `useEffect` is correct.
+1. **Is Y derived from X?** → `useMemo` or inline `const`. No hook.
+2. **Is Y a ref mirroring X?** → assign `ref.current = X` during render. No hook.
+3. **Is Y a machine state?** → Jotai atom (L5) or XState (L4).
+4. **Is Y server data?** → TanStack Query with `enabled: Boolean(X)` or X in `queryKey`.
+5. **Is Y a real side-effect?** → `useEffect` is correct.
 
 The cost of a misplaced `useEffect`: stale closure bugs, double-runs, missed deps, and race conditions that only appear in production. A misplaced `useMemo` is harmless by comparison.
 
@@ -471,7 +471,7 @@ The duplicate hero underlay happened because I edited around the existing `progr
 
 ### P5. Acknowledge contract violations
 
-When the user said "you're calling AsyncStorage directly, are you no longer bound by code conduct?" â€” that was a hard reset. The right response was to fix the contract, not defend the local optimum. Apply the same skepticism to my own code in every session.
+When the user said "you're calling AsyncStorage directly, are you no longer bound by code conduct?" — that was a hard reset. The right response was to fix the contract, not defend the local optimum. Apply the same skepticism to my own code in every session.
 
 ---
 
@@ -493,11 +493,11 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 
 ### 2.13 Cascading `useEffect` loading state churn
 
-**Pattern**: A loading flag (`isRefreshing`) is reset to `true` by multiple independent `useEffect` hooks whose dependencies overlap. Hook A depends on value X. Hook B sets X as a side effect. Hook A re-fires when B completes â€” not because the user did anything, but because B changed its input.
+**Pattern**: A loading flag (`isRefreshing`) is reset to `true` by multiple independent `useEffect` hooks whose dependencies overlap. Hook A depends on value X. Hook B sets X as a side effect. Hook A re-fires when B completes — not because the user did anything, but because B changed its input.
 
 **Symptoms**:
 
-- "The sheet loads 2â€“4 times before showing content."
+- "The sheet loads 2–4 times before showing content."
 - Loading skeleton re-appears after user has already seen data.
 - Perceived performance is worse than actual network time.
 
@@ -506,21 +506,21 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 **Fix recipe**:
 
 1. Assign each data concern its own TanStack Query. Queries are independently cached and do not re-fetch because another query completed.
-2. If two queries produce values that feed into each other, use `useQuery` with `enabled: Boolean(dep)` â€” the second waits for the first, but does not re-run the first.
+2. If two queries produce values that feed into each other, use `useQuery` with `enabled: Boolean(dep)` — the second waits for the first, but does not re-run the first.
 3. Never put a derived computed value in a `useEffect` dependency array if that value is also set by another `useEffect` in the same hook. Extract it to TanStack Query or a stable `useMemo`.
-4. Loading UI must gate on `isLoading && !data` (first load only). Once data is present, show it â€” even while a background refetch runs.
+4. Loading UI must gate on `isLoading && !data` (first load only). Once data is present, show it — even while a background refetch runs.
 
-**Concrete site**: `useMapCommitPaymentController.js` â€” `refreshPaymentMethodSnapshot` re-fires because `totalCostValue` (set by `loadCost` effect) is in its `useCallback` dep array. Fix: adopt `usePaymentMethodsQuery` + `usePaymentCostCalculation` from stash (â³ PENDING in STASH_AUDIT.md).
+**Concrete site**: `useMapCommitPaymentController.js` — `refreshPaymentMethodSnapshot` re-fires because `totalCostValue` (set by `loadCost` effect) is in its `useCallback` dep array. Fix: adopt `usePaymentMethodsQuery` + `usePaymentCostCalculation` from stash (â³ PENDING in STASH_AUDIT.md).
 
 ---
 
 ### 2.14 Terminal intermediate states must be visually locked and non-dismissible
 
-**Pattern**: A submission flow has a state (e.g. `WAITING_APPROVAL`, `FINALIZING_DISPATCH`) that is logically committed from the user's perspective but is still processing server-side. The UI does not visually distinguish this from a recoverable "try again" state â€” the CTA is re-tappable and the form looks idle.
+**Pattern**: A submission flow has a state (e.g. `WAITING_APPROVAL`, `FINALIZING_DISPATCH`) that is logically committed from the user's perspective but is still processing server-side. The UI does not visually distinguish this from a recoverable "try again" state — the CTA is re-tappable and the form looks idle.
 
 **Symptoms**:
 
-- User re-taps CTA during approval wait â†’ silently dismisses the sheet.
+- User re-taps CTA during approval wait → silently dismisses the sheet.
 - User sees an idle-looking form while a server action is pending.
 - Retry creates duplicate server records.
 - `finally` block resets `isSubmitting = false` at the moment of early `return`, making the CTA appear pressable while `submissionState.kind` is `WAITING_APPROVAL`.
@@ -531,16 +531,16 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 
 1. In `isCommitPaymentDismissibleState`, remove `WAITING_APPROVAL` from the dismissible list. It is a committed server action.
 2. Add `WAITING_APPROVAL` to the CTA disabled derivation: `isPaymentMethodSnapshotPending || submissionState.kind === WAITING_APPROVAL`.
-3. Remove the parallel `isSubmitting` boolean â€” use `submissionState.kind` as the **single source of truth** for all busy/disabled state. `isSubmitting` and `submissionState.kind` diverge during the window between line 492 (`setIsSubmitting(true)`) and the first `setTransactionState` call, causing a frame where `isIdleState = true` but `isSubmitting = true`.
-4. Keep `isSubmitting = true` for the entire approval wait window â€” set to `false` only on `DISPATCHED`, `FAILED`, or `PAYMENT_DECLINED`.
+3. Remove the parallel `isSubmitting` boolean — use `submissionState.kind` as the **single source of truth** for all busy/disabled state. `isSubmitting` and `submissionState.kind` diverge during the window between line 492 (`setIsSubmitting(true)`) and the first `setTransactionState` call, causing a frame where `isIdleState = true` but `isSubmitting = true`.
+4. Keep `isSubmitting = true` for the entire approval wait window — set to `false` only on `DISPATCHED`, `FAILED`, or `PAYMENT_DECLINED`.
 
-**Concrete site**: `useMapCommitPaymentController.js` â€” `WAITING_APPROVAL` listed as dismissible in `isCommitPaymentDismissibleState`. `finally` block resets `isSubmitting = false` at the moment of the `return` on the approval path. Fix: PT-C pass (pre-tracking audit).
+**Concrete site**: `useMapCommitPaymentController.js` — `WAITING_APPROVAL` listed as dismissible in `isCommitPaymentDismissibleState`. `finally` block resets `isSubmitting = false` at the moment of the `return` on the approval path. Fix: PT-C pass (pre-tracking audit).
 
 ---
 
-### 2.15 Atom wipe + signature-ref deadlock â†’ ETA display shows `"--"` on fresh trip open
+### 2.15 Atom wipe + signature-ref deadlock → ETA display shows `"--"` on fresh trip open
 
-**Pattern**: A Jotai atom holding live map route data (`durationSec`, `coordinates`) is reset to `null`/empty on a key-change event. The map component that populates the atom guards re-emission via a signature ref â€” it only fires `onRouteInfoChange` when the payload hash changes. If the reset happens while the route/hospital destination hasn't changed, the signature ref still matches and the map never re-emits. The atom stays empty until the next independent route event.
+**Pattern**: A Jotai atom holding live map route data (`durationSec`, `coordinates`) is reset to `null`/empty on a key-change event. The map component that populates the atom guards re-emission via a signature ref — it only fires `onRouteInfoChange` when the payload hash changes. If the reset happens while the route/hospital destination hasn't changed, the signature ref still matches and the map never re-emits. The atom stays empty until the next independent route event.
 
 **Symptoms**:
 
@@ -549,7 +549,7 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 - Ambulance animation is unaffected (it reads `etaSeconds` from a different path).
 - `km` / distance shows correctly; only the time countdown is blank.
 
-**Diagnosis**: Trace every place the atom is reset. Check whether the map component's signature ref was already set to the same payload before the reset. If yes â€” signature matches â†’ no re-emit â†’ atom stays null.
+**Diagnosis**: Trace every place the atom is reset. Check whether the map component's signature ref was already set to the same payload before the reset. If yes — signature matches → no re-emit → atom stays null.
 
 **Fix recipe**:
 
@@ -559,14 +559,14 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 
 **Concrete sites fixed (2026-05-03)**:
 
-- `@hooks/map/tracking/useMapTrackingSync.js` â€” all three reset branches now preserve `current?.durationSec`.
-- `@components/map/views/tracking/useMapTrackingRuntime.js` â€” subscribes directly to `trackingRouteInfoAtom`; builds `ambulanceTripForProgress` with `durationSec` fallback before passing to `useTripProgress`.
+- `@hooks/map/tracking/useMapTrackingSync.js` — all three reset branches now preserve `current?.durationSec`.
+- `@components/map/views/tracking/useMapTrackingRuntime.js` — subscribes directly to `trackingRouteInfoAtom`; builds `ambulanceTripForProgress` with `durationSec` fallback before passing to `useTripProgress`.
 
 **Rule**: Never wipe a live-data field to reset an identity field. Reset only what changed.
 
 ---
 
-### 2.16 Dual rating modal from MapScreen decomposition â€” in-flow fires while recovered also triggers
+### 2.16 Dual rating modal from MapScreen decomposition — in-flow fires while recovered also triggers
 
 **Pattern**: Two independent rating-modal triggers coexist after a modularization pass:
 
@@ -581,7 +581,7 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 - Only appeared after the MapScreen monolith was broken into `useMapHistoryFlow` + `useTrackingRatingFlow`.
 - Did not occur in the monolith because the recovered-rating effect only ran from MapScreen-level code that could directly reference the in-flow `ratingState` local variable.
 
-**Diagnosis**: `useMapHistoryFlow.recoveredRatingEffect` only checked `recoveredRatingState?.visible` â€” it had no reference to `trackingRatingStateAtom` and could not see whether the in-flow modal was already open.
+**Diagnosis**: `useMapHistoryFlow.recoveredRatingEffect` only checked `recoveredRatingState?.visible` — it had no reference to `trackingRatingStateAtom` and could not see whether the in-flow modal was already open.
 
 **Fix recipe**:
 
@@ -596,7 +596,7 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 - `useMapTrackingController.js` clears `recoveredRatingStateAtom` before setting the in-flow `trackingRatingStateAtom` for ambulance/bed completion.
 - `useTrackingRatingFlow.js.openRatingForVisit()` also clears `recoveredRatingStateAtom` before opening a history-rated visit in the same shared modal path.
 
-**Concrete site fixed (2026-05-03)**: `@hooks/map/history/useMapHistoryFlow.js` lines 449â€“462, `@screens/MapScreen.jsx` rating modal render logic, `@components/map/views/tracking/useMapTrackingController.js`, and `@hooks/map/exploreFlow/useTrackingRatingFlow.js`.
+**Concrete site fixed (2026-05-03)**: `@hooks/map/history/useMapHistoryFlow.js` lines 449–462, `@screens/MapScreen.jsx` rating modal render logic, `@components/map/views/tracking/useMapTrackingController.js`, and `@hooks/map/exploreFlow/useTrackingRatingFlow.js`.
 
 **General rule**: When two independent hooks can both open a modal of the same type, each must check the other's atom before opening, and shared modal ownership should be enforced both at render time and along the open path. Cross-hook modal coordination belongs at the atom layer (L5), not via prop drilling.
 
@@ -636,15 +636,15 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 
 - Provider API details (Mapbox types, proximity, countryCode) leak into JSX-level logic.
 - Debounce timer is re-created on every render that touches the ref.
-- Search results are not cached â€” same query fires again if the component remounts.
-- Provider swap (Mapbox â†’ OSM) requires editing the component, not the service.
+- Search results are not cached — same query fires again if the component remounts.
+- Provider swap (Mapbox → OSM) requires editing the component, not the service.
 
-**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 554â€“591 â€” `useEffect` + `manualDropTimerRef` calling `mapboxService.suggestAddresses` for manual step `search-drop` fields. This is the same anti-pattern as the old `SearchSheet` debounce loop the architecture plan explicitly called out.
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 554–591 — `useEffect` + `manualDropTimerRef` calling `mapboxService.suggestAddresses` for manual step `search-drop` fields. This is the same anti-pattern as the old `SearchSheet` debounce loop the architecture plan explicitly called out.
 
 **Fix recipe**:
 
 1. Create `services/addressAssistService.js` wrapping `mapboxService` with typed methods: `suggestRegions`, `suggestCities`, `suggestStreetsOrPlaces`, `resolveManualDraft`.
-2. Create `hooks/map/locationIntent/useManualDropController.js` â€” owns query state + uses `useLocationSearchQuery` (TanStack) pattern, not a raw `useEffect` timer.
+2. Create `hooks/map/locationIntent/useManualDropController.js` — owns query state + uses `useLocationSearchQuery` (TanStack) pattern, not a raw `useEffect` timer.
 3. Stage base receives `{ manualDropResults, isSearchingManualDrop, setManualDropQuery }` from the controller hook only.
 4. No component ever imports `mapboxService` directly for UI-driven suggestions.
 
@@ -663,14 +663,14 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 - Adding a new candidate source requires updating every branch.
 - The mode constant `PLACE_SELECTED` does not match what the screen is actually doing (deciding on a candidate, not selecting a place).
 
-**Diagnosis**: `MapLocationIntentStageBase.jsx` line 296 â€” `isCandidateDecisionMode = mode === PLACE_SELECTED || mode === CONFIRM || mode === PIN_ADJUST`. This is a symptom of deferring mode rename while adding behavior.
+**Diagnosis**: `MapLocationIntentStageBase.jsx` line 296 — `isCandidateDecisionMode = mode === PLACE_SELECTED || mode === CONFIRM || mode === PIN_ADJUST`. This is a symptom of deferring mode rename while adding behavior.
 
 **Fix recipe**:
 
 1. Add `CANDIDATE_DECISION: "candidateDecision"` to `LOCATION_INTENT_MODES`.
 2. Keep `PLACE_SELECTED` as a PULLBACK alias temporarily: `PLACE_SELECTED: "candidateDecision"`.
 3. Replace all `isCandidateDecisionMode` checks with `mode === LOCATION_INTENT_MODES.CANDIDATE_DECISION`.
-4. Update `useLocationSheetNavigation` â€” `openPlaceSelected` â†’ `openCandidateDecision`.
+4. Update `useLocationSheetNavigation` — `openPlaceSelected` → `openCandidateDecision`.
 5. Remove the alias once all callers are migrated.
 
 **Rule**: When the plan names a mode, add the mode. Never substitute a composed boolean that duplicates the same test in N places.
@@ -683,18 +683,18 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 
 **Symptoms**:
 
-- User starts to save a place (chooses category), collapses the sheet accidentally, re-expands â€” `pendingSaveCategory` is null, flow resets to default.
-- User fills in save details, swaps app, returns â€” `saveDetailsDraft` is empty.
+- User starts to save a place (chooses category), collapses the sheet accidentally, re-expands — `pendingSaveCategory` is null, flow resets to default.
+- User fills in save details, swaps app, returns — `saveDetailsDraft` is empty.
 - `savedPlaceFeedback` (confirmation copy) disappears on layout transition.
 
-**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 115â€“122 â€” `pendingPlaceLabel`, `savedPlaceFeedback`, `pendingSaveCategory`, `saveDetailsDraft` are all raw `useState`. Per the 5-layer rule: ephemeral UI state that must survive remount belongs in Jotai (L5).
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 115–122 — `pendingPlaceLabel`, `savedPlaceFeedback`, `pendingSaveCategory`, `saveDetailsDraft` are all raw `useState`. Per the 5-layer rule: ephemeral UI state that must survive remount belongs in Jotai (L5).
 
 **Fix recipe**:
 
 1. Create `store/atoms/locationIntentAtoms.js`.
 2. Bundle related fields: `locationCandidateAtom` (active candidate + source), `locationSaveFlowAtom` (pendingCategory, saveDetailsDraft, savedPlaceFeedback, isConfirmingRemove).
 3. Read via `useAtomValue`, write via `useSetAtom`.
-4. Reset atoms on `returnToDefault` / sheet close â€” do not rely on component unmount.
+4. Reset atoms on `returnToDefault` / sheet close — do not rely on component unmount.
 
 **Rule**: If state must survive snap collapse or Metro restart, it is Jotai (L5), not `useState`.
 
@@ -702,21 +702,21 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 
 ### 2.21 Store CRUD actions called directly from stage component (LocationSheet, 2026-05-10)
 
-**Pattern**: `addSavedLocation`, `updateSavedLocation`, `removeSavedLocation` are imported from a Zustand store and called directly inside a 1,100-line stage base component. No CRUD status machine exists â€” success/failure is tracked with ad-hoc `useState` strings (`savedPlaceFeedback`).
+**Pattern**: `addSavedLocation`, `updateSavedLocation`, `removeSavedLocation` are imported from a Zustand store and called directly inside a 1,100-line stage base component. No CRUD status machine exists — success/failure is tracked with ad-hoc `useState` strings (`savedPlaceFeedback`).
 
 **Symptoms**:
 
-- No Idle â†’ Saving â†’ Saved/Failed transitions. UI cannot show a pending save state.
+- No Idle → Saving → Saved/Failed transitions. UI cannot show a pending save state.
 - Error recovery from a failed save is impossible (no `failed` state to render from).
 - Home/Work update-in-place logic is spread across the component instead of owned by one hook.
 - Every new save action type requires editing the stage base.
 
-**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 124â€“126 â€” direct store action calls without a controller layer.
+**Diagnosis**: `MapLocationIntentStageBase.jsx` lines 124–126 — direct store action calls without a controller layer.
 
 **Fix recipe**:
 
 1. Create `hooks/map/locationIntent/useSavedAddressActions.js`.
-2. Hook owns: `save(candidate, options)`, `update(id, patch)`, `remove(id)`, `crudStatus` (Idle â†’ Draft â†’ Validating â†’ Saving â†’ Saved/Failed).
+2. Hook owns: `save(candidate, options)`, `update(id, patch)`, `remove(id)`, `crudStatus` (Idle → Draft → Validating → Saving → Saved/Failed).
 3. Home/Work singleton upsert logic lives in the hook, not JSX.
 4. Stage base receives `{ save, update, remove, crudStatus }` only.
 
@@ -724,14 +724,14 @@ After decomposition, both hooks live at MapScreen level. When a trip completes, 
 
 ---
 
-### 2.22 File size violation accepted as temporary â€” becomes permanent (LocationSheet, 2026-05-10)
+### 2.22 File size violation accepted as temporary — becomes permanent (LocationSheet, 2026-05-10)
 
 **Pattern**: A stage base grows beyond the 450-line guardrail during feature development. The plan defers extraction because "the hooks haven't landed yet." The hooks then land inside the same file as convenience additions rather than extractions, and the file ends at 1,100+ lines.
 
 **Symptoms**:
 
-- `MapLocationIntentStageBase.jsx` at 1,108 lines â€” mandatory refactor candidate per guardrails.
-- `MapLocationIntentStageParts.jsx` at 1,151 lines â€” exceeds 950-line extraction threshold.
+- `MapLocationIntentStageBase.jsx` at 1,108 lines — mandatory refactor candidate per guardrails.
+- `MapLocationIntentStageParts.jsx` at 1,151 lines — exceeds 950-line extraction threshold.
 - Every new feature pass adds to already-bloated files rather than creating dedicated files.
 
 **Fix recipe**:
@@ -751,14 +751,14 @@ These guardrails apply to every LocationSheet pass. Check before starting each p
 **Before writing any new `useEffect`:**
 
 - Walk the decision tree (Quick Reference at top of this file).
-- Manual drop search â†’ TanStack query via `useManualDropController`, not a timer ref.
-- Candidate map preview â†’ stable callback, not an effect triggered by `selectedLocation` object identity.
+- Manual drop search → TanStack query via `useManualDropController`, not a timer ref.
+- Candidate map preview → stable callback, not an effect triggered by `selectedLocation` object identity.
 
 **Before adding any `useState`:**
 
-- Ask: does this need to survive snap collapse? â†’ Jotai atom.
-- Ask: is this CRUD status? â†’ state machine in `useSavedAddressActions`, not ad-hoc string.
-- Ask: is this derived from existing state? â†’ `useMemo` or inline const.
+- Ask: does this need to survive snap collapse? → Jotai atom.
+- Ask: is this CRUD status? → state machine in `useSavedAddressActions`, not ad-hoc string.
+- Ask: is this derived from existing state? → `useMemo` or inline const.
 
 **Before calling a store action from a component:**
 
@@ -768,15 +768,15 @@ These guardrails apply to every LocationSheet pass. Check before starting each p
 
 **Before adding a new mode branch:**
 
-- Check `LOCATION_INTENT_MODES` â€” the mode should already exist or needs to be added canonically.
+- Check `LOCATION_INTENT_MODES` — the mode should already exist or needs to be added canonically.
 - Never compose 3 existing modes into a derived boolean as a substitute for naming the concept.
 
 **Before adding behavior to `MapLocationIntentStageBase.jsx`:**
 
 - Check current line count. If >450, the behavior belongs in a new hook or extracted part file.
-- A feature that touches candidate state â†’ `useAddressCandidateController`.
-- A feature that touches saved address CRUD â†’ `useSavedAddressActions`.
-- A feature that touches manual field assistance â†’ `useManualDropController`.
+- A feature that touches candidate state → `useAddressCandidateController`.
+- A feature that touches saved address CRUD → `useSavedAddressActions`.
+- A feature that touches manual field assistance → `useManualDropController`.
 
 **Before calling any provider API (`mapboxService`, `nominatimService`) from a component:**
 
@@ -787,35 +787,35 @@ These guardrails apply to every LocationSheet pass. Check before starting each p
 
 ### 2.23 Server-fetched data owned by `useState` + module-level cache instead of TanStack Query (L2 violation)
 
-**Pattern**: A hook that fetches server data manages its own `useState` array, a module-level SWR cache object, a fetch dedup `Map`, a `requestSequenceRef` race guard, and a `useEffect([serverData])` trigger â€” manually reimplementing everything TanStack Query provides natively.
+**Pattern**: A hook that fetches server data manages its own `useState` array, a module-level SWR cache object, a fetch dedup `Map`, a `requestSequenceRef` race guard, and a `useEffect([serverData])` trigger — manually reimplementing everything TanStack Query provides natively.
 
 **Symptoms**:
 
-- `useEffect([userLocation, performFetch])` fires a new network request every time location changes â€” this is the exact guardrails Â§1 decision-tree violation: "Is Y server data triggered by X? â†’ YES â†’ TanStack Query with X in queryKey."
+- `useEffect([userLocation, performFetch])` fires a new network request every time location changes — this is the exact guardrails §1 decision-tree violation: "Is Y server data triggered by X? → YES → TanStack Query with X in queryKey."
 - Module-level `globalHospitalCache` object is a manual reimplementation of `QueryClient` cache with hand-rolled TTL (`HOSPITAL_CACHE_TTL_MS`) instead of `staleTime`.
 - `globalFetchRegistry` dedup `Map` reimplements TanStack's native in-flight deduplication.
 - `requestSequenceRef` + `activeRequestId` guard reimplements TanStack's query cancellation on key change.
 - `hasFetchedRef`, `lastLocationRef`, `lastLocationKeyRef` are all workarounds for the absence of proper cache semantics.
-- The `demoBootstrapEnabled` side-effect was bundled inside the `queryFn` â€” a queryFn must be a pure fetch, not a side-effectful provisioning routine.
+- The `demoBootstrapEnabled` side-effect was bundled inside the `queryFn` — a queryFn must be a pure fetch, not a side-effectful provisioning routine.
 - A TypeScript `.ts` replacement (`useHospitalsQuery.ts`) was already written and marked complete in `GOLD_STANDARD_STATE_ROADMAP.md` (Phase 2, commit `8bdce65`), but `useEmergencyHospitalSync.js` was never updated to point at it. The old `.js` file survived as a zombie alongside the `.ts` replacement.
 
-**Diagnosis**: `hooks/emergency/useHospitals.js` â€” entire file. `hooks/emergency/useEmergencyHospitalSync.js` line 45 â€” still importing `useHospitals`.
+**Diagnosis**: `hooks/emergency/useHospitals.js` — entire file. `hooks/emergency/useEmergencyHospitalSync.js` line 45 — still importing `useHospitals`.
 
 **Fix recipe**:
 
-1. Add `useEmergencyHospitalsQuery` to the existing `hooks/emergency/useHospitalsQuery.ts` â€” full-featured variant with `allHospitals` split, 3dp bucket precision queryKey, `discoverNearby` (50km), `demoModeEnabled`, and `gcTime: 5min`.
-2. Demo bootstrap extracted to its own `useEffect` with `bootstrapKeyRef` dedup â€” a provisioning call IS a real side-effect and belongs in `useEffect`, not inside a `queryFn`.
+1. Add `useEmergencyHospitalsQuery` to the existing `hooks/emergency/useHospitalsQuery.ts` — full-featured variant with `allHospitals` split, 3dp bucket precision queryKey, `discoverNearby` (50km), `demoModeEnabled`, and `gcTime: 5min`.
+2. Demo bootstrap extracted to its own `useEffect` with `bootstrapKeyRef` dedup — a provisioning call IS a real side-effect and belongs in `useEffect`, not inside a `queryFn`.
 3. `useEmergencyHospitalSync.js` updated to import `useEmergencyHospitalsQuery` from `.ts`.
-4. `useHospitals.js` deleted â€” zero live importers confirmed before deletion.
+4. `useHospitals.js` deleted — zero live importers confirmed before deletion.
 5. The duplicate `useHospitalsQuery.js` created in error during this session was also deleted immediately after discovery.
 
-**General rule**: If a hook fetches data from a server and re-runs when a dependency changes, it belongs in TanStack Query with that dependency in the `queryKey`. The `useEffect([serverTrigger])` â†’ `setState` pattern is always a Layer 2 violation. Check for an existing `.ts` Query hook in the same directory before creating a new one.
+**General rule**: If a hook fetches data from a server and re-runs when a dependency changes, it belongs in TanStack Query with that dependency in the `queryKey`. The `useEffect([serverTrigger])` → `setState` pattern is always a Layer 2 violation. Check for an existing `.ts` Query hook in the same directory before creating a new one.
 
 **Concrete sites fixed (2026-05-17)**:
 
-- `@hooks/emergency/useHospitals.js` â€” deleted
-- `@hooks/emergency/useHospitalsQuery.ts` â€” `useEmergencyHospitalsQuery` added
-- `@hooks/emergency/useEmergencyHospitalSync.js` â€” import updated
+- `@hooks/emergency/useHospitals.js` — deleted
+- `@hooks/emergency/useHospitalsQuery.ts` — `useEmergencyHospitalsQuery` added
+- `@hooks/emergency/useEmergencyHospitalSync.js` — import updated
 
 ---
 

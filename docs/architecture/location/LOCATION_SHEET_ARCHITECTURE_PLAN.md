@@ -29,11 +29,11 @@ Replace inline location fallback in explore intent with a unified location sheet
 
 **Explore Intent Location Fallback** (`MapExploreIntentHospitalSummaryCard.jsx`):
 - When `requiresLocationSelection` = true, shows inline location setup card
-- Actions: "Use device location" â†’ `onUseCurrentLocation`, "Enter address manually" â†’ `onOpenLocationSearch`
+- Actions: "Use device location" → `onUseCurrentLocation`, "Enter address manually" → `onOpenLocationSearch`
 - This is the "location warning fallback" to be decongested
 
 **Location Truth** (`mapPickupLocationTruth.js`):
-- Priority: SESSION_MANUAL â†’ DEVICE â†’ SAVED_*_FALLBACK â†’ MISSING
+- Priority: SESSION_MANUAL → DEVICE → SAVED_*_FALLBACK → MISSING
 - Sets `requiresLocationSelection: true` when no trusted pickup exists
 
 **Location Control** (`useMapLocation.js`):
@@ -50,13 +50,13 @@ Replace inline location fallback in explore intent with a unified location sheet
 **Chrome Affordance:**
 - Icon + location text above mid-phase sheet
 - Left-aligned with left margins
-- Tap â†’ opens location sheet
+- Tap → opens location sheet
 - Minimalist copy (current location address or "Set location")
 
 **Explore Intent Decongestion:**
 - Remove inline location card
-- When location-off â†’ show location sheet instead of explore intent
-- When location-set â†’ chrome above sheet for change affordance
+- When location-off → show location sheet instead of explore intent
+- When location-set → chrome above sheet for change affordance
 
 ---
 
@@ -73,7 +73,7 @@ Replace inline location fallback in explore intent with a unified location sheet
 
 **Chrome Design (Option A):**
 ```
-[ðŸ“] San Francisco, CA
+[📍] San Francisco, CA
 ```
 
 **Spec:**
@@ -202,7 +202,7 @@ locationChromeText: {
 - Added orchestrator layer for consistency
 
 **Progressive Accuracy Phases (Future):**
-- Country â†’ State â†’ City â†’ Street â†’ Find nearest lat/long
+- Country → State → City → Street → Find nearest lat/long
 - Use free API for address if Mapbox is paid
 
 **Component Structure:**
@@ -517,7 +517,7 @@ const handleChangeLocation = useCallback(() => {
 ## Open Questions
 
 1. **Free API for address:** Which free API to use if Mapbox is paid?
-2. **Progressive accuracy phases:** When to implement country â†’ state â†’ city â†’ street flow?
+2. **Progressive accuracy phases:** When to implement country → state → city → street flow?
 3. **Choose on map:** Should this use map picker or drag pin on map?
 4. **Location sheet vs map sheet:** Should we reuse existing map sheet or create dedicated location sheet?
 
@@ -526,9 +526,9 @@ const handleChangeLocation = useCallback(() => {
 ## Platform Inclusiveness Note
 
 **Location Chrome Platform Status:**
-- âœ… **Mobile (iOS/Android)**: LocationChrome implemented and functional
-- âŒ **Web**: LocationChrome not yet implemented for web pages
-- âŒ **Tablet**: Not yet adapted for tablet layouts
+- ✅ **Mobile (iOS/Android)**: LocationChrome implemented and functional
+- ❌ **Web**: LocationChrome not yet implemented for web pages
+- ❌ **Tablet**: Not yet adapted for tablet layouts
 
 **Reasoning:** Location chrome is primarily a mobile affordance for quick location access while viewing the map. Web platforms typically have different interaction patterns (persistent sidebars, header controls) that don't require floating chrome elements.
 
@@ -546,11 +546,11 @@ const handleChangeLocation = useCallback(() => {
 - `docs/architecture/REFACTORING_GUARDRAILS.md` - State management layers, file size rules
 
 ### Search & Location Audits
-- `docs/audit/map/search/SEARCH_SHEET_APPLE_ALIGNMENT_AUDIT_2026-05-07.md` - Search sheet Apple HIG alignment (Grade D+ â†’ B+)
+- `docs/audit/map/search/SEARCH_SHEET_APPLE_ALIGNMENT_AUDIT_2026-05-07.md` - Search sheet Apple HIG alignment (Grade D+ → B+)
 - `docs/audit/map/search/SEARCH_SHEET_APPLE_ALIGNMENT_VALIDATION_2026-05-08.md` - Validation report (Grade: A+, 9.9/10)
-- `docs/audit/map/search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Search state flow from context â†’ model â†’ UI
+- `docs/audit/map/search/SEARCH_ARCHITECTURE_DEEP_AUDIT_2026-05-08.md` - Search state flow from context → model → UI
 - `docs/audit/map/LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` - Location-off honesty and manual pickup UX
-- `docs/audit/map/search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture (GPS â†’ Search â†’ Pickup)
+- `docs/audit/map/search/LOCATION_ARCHITECTURE_AUDIT_2026-05-08.md` - 5-layer location flow architecture (GPS → Search → Pickup)
 
 ### Implementation References
 - `docs/architecture/location/LOCATION_SHEET_ARCHITECTURE_PLAN.md` (this file)
@@ -576,7 +576,7 @@ screens/MapScreen.jsx                                        # Chrome + sheet wi
 
 ## Implementation Status
 
-### âœ… Pass 1: Chrome Affordance - COMPLETE
+### ✅ Pass 1: Chrome Affordance - COMPLETE
 
 **What was built:**
 - LocationChrome component as a progressive pickup chip with neutral compass-outline icon (24px)
@@ -601,7 +601,7 @@ Hemet, CA
 - Bottom-control layouts keep the affordance on the left for balance; wide/sidebar layouts attach it to the right edge of the left sidebar on the same vertical axis as the sidebar search/profile header, so it reads as contextual sheet chrome instead of a competing far-map control.
 - Dark/light mode support with proper tokens
 
-### âœ… Map Camera Control Toggle - COMPLETE
+### ✅ Map Camera Control Toggle - COMPLETE
 
 **What was built:**
 - The nearby-overview map control is a true toggle:
@@ -617,7 +617,7 @@ Hemet, CA
 - The canonical resting frame remains the route/user-hospital/polyline fit.
 - Nearby overview and user-centered mode stay independent, but either mode returns to the canonical route frame on second tap.
 
-### âœ… Pass 2: Location Sheet Phase - COMPLETE
+### ✅ Pass 2: Location Sheet Phase - COMPLETE
 
 **What was built:**
 - LOCATION_INTENT phase added to MAP_SHEET_PHASES
@@ -642,12 +642,12 @@ Hemet, CA
 - Body content now uses proper wrapper with minimal padding
 
 **Architecture compliance:**
-- âœ… 5-layer architecture (L1-L5)
-- âœ… Established orchestrator â†’ stage base â†’ MapSheetShell pattern
-- âœ… No layer violations
-- âœ… Proper state management
+- ✅ 5-layer architecture (L1-L5)
+- ✅ Established orchestrator → stage base → MapSheetShell pattern
+- ✅ No layer violations
+- ✅ Proper state management
 
-### âœ… Pass 3: Explore Intent Decongestion - COMPLETE
+### ✅ Pass 3: Explore Intent Decongestion - COMPLETE
 
 ### ðŸ”„ Pass 4: All Pickup Locations Redirect - PENDING
 
@@ -696,14 +696,14 @@ Refs: LOCATION_SHEET_ARCHITECTURE_PLAN.md
 ```
 
 **Files Changed:**
-- âœ… `components/map/chrome/LocationChrome.jsx` (new)
-- âœ… `components/emergency/intake/EmergencyLocationPreviewMap.jsx` (modified)
-- âœ… `components/map/core/mapSheet.constants.js` (modified)
-- âœ… `components/map/views/locationIntent/MapLocationIntentStageBase.jsx` (new)
-- âœ… `components/map/views/locationIntent/MapLocationIntentOrchestrator.jsx` (new)
-- âœ… `components/map/core/MapSheetOrchestrator.jsx` (modified)
-- âœ… `hooks/map/exploreFlow/useMapExploreFlow.js` (modified)
-- âœ… `screens/MapScreen.jsx` (modified)
+- ✅ `components/map/chrome/LocationChrome.jsx` (new)
+- ✅ `components/emergency/intake/EmergencyLocationPreviewMap.jsx` (modified)
+- ✅ `components/map/core/mapSheet.constants.js` (modified)
+- ✅ `components/map/views/locationIntent/MapLocationIntentStageBase.jsx` (new)
+- ✅ `components/map/views/locationIntent/MapLocationIntentOrchestrator.jsx` (new)
+- ✅ `components/map/core/MapSheetOrchestrator.jsx` (modified)
+- ✅ `hooks/map/exploreFlow/useMapExploreFlow.js` (modified)
+- ✅ `screens/MapScreen.jsx` (modified)
 
 **Rollback Strategy:**
 - Revert commit to remove location sheet infrastructure
@@ -736,7 +736,7 @@ LocationSheet
    - Recent hospital/location
 
 6. Manual fallback
-   - Canâ€™t find it?
+   - Can't find it?
    - Enter manually
 ```
 
@@ -1055,7 +1055,7 @@ Scope:
   - Save as another place.
 - Manual entries never commit fabricated coordinates.
 
-### âœ… Pass E - Recents - COMPLETE
+### ✅ Pass E - Recents - COMPLETE
 
 Scope:
 

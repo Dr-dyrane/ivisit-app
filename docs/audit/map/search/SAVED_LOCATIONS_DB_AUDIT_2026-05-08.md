@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     image_uri TEXT,
     avatar_url TEXT,
-    address TEXT,  -- â† SINGLE ADDRESS FIELD
+    address TEXT,  -- ← SINGLE ADDRESS FIELD
     gender TEXT,
     date_of_birth TEXT,
     role TEXT DEFAULT 'patient',
@@ -69,7 +69,7 @@ WITH CHECK (auth.uid() = id);
 
 ## 2. Option Analysis: Saved Locations Storage
 
-### Option Z: Extend `locationStore` (Zustand) â€” **RECOMMENDED FOR NOW**
+### Option Z: Extend `locationStore` (Zustand) — **RECOMMENDED FOR NOW**
 
 **Current State:** `stores/locationStore.js` already persists to local database:
 ```javascript
@@ -97,18 +97,18 @@ updateSavedLocation: (id, patch) => { ... },
 
 **Persistence:** Automatically saved to `StorageKeys.LOCATION_CACHE` via existing subscription.
 
-**RLS Impact:** âœ… **NONE** â€” Local storage only, no Supabase RLS needed.
+**RLS Impact:** ✅ **NONE** — Local storage only, no Supabase RLS needed.
 
-**Migration:** âœ… **NONE** â€” No DB changes required.
+**Migration:** ✅ **NONE** — No DB changes required.
 
-**Per CONTRIBUTING.md:** N/A â€” Zustand store change, not DB migration.
+**Per CONTRIBUTING.md:** N/A — Zustand store change, not DB migration.
 
-**Scalability:** âœ… **UNLIMITED ADDRESSES**
+**Scalability:** ✅ **UNLIMITED ADDRESSES**
 - Users can have home, work, gym, parents, etc.
 - Local storage is cheap
 - Can sync to DB later if needed
 
-**Offline Support:** âœ… **WORKS WITHOUT INTERNET**
+**Offline Support:** ✅ **WORKS WITHOUT INTERNET**
 - Saved locations available offline
 - No network dependency
 - Fast access
@@ -128,16 +128,16 @@ ADD COLUMN work_latitude DOUBLE PRECISION,
 ADD COLUMN work_longitude DOUBLE PRECISION;
 ```
 
-**RLS Impact:** âœ… **NO CHANGE REQUIRED**
+**RLS Impact:** ✅ **NO CHANGE REQUIRED**
 - Existing policies cover all columns
 - Owner can read/update their own profile
 - No new policies needed
 
 **Per CONTRIBUTING.md:**
-- âœ… Edit `0001_identity.sql` directly (pillar file)
-- âœ… Follows "edit pillar, not fix migration" rule
-- âš ï¸ Requires `db push` or Dashboard SQL run
-- âš ï¸ Must sync to console after change
+- ✅ Edit `0001_identity.sql` directly (pillar file)
+- ✅ Follows "edit pillar, not fix migration" rule
+- ⚠ï¸ Requires `db push` or Dashboard SQL run
+- ⚠ï¸ Must sync to console after change
 
 **Scalability Issue:**
 - Limited to 2 addresses forever
@@ -171,7 +171,7 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 ```
 
-**RLS Impact:** âœ… **NEW POLICY REQUIRED**
+**RLS Impact:** ✅ **NEW POLICY REQUIRED**
 - Simple owner-based policy
 - No admin override needed
 
@@ -182,10 +182,10 @@ WITH CHECK (auth.uid() = user_id);
 ### Pass 1: Unified Search (NOW - No DB Changes)
 
 **Actions:**
-1. âœ… **Remove mode chips** â€” Auto-detect search intent
-2. âœ… **Extend `locationStore` with `savedLocations`** â€” Zustand + local persistence
-3. âœ… **Convert recent queries to rows** â€” UI improvement
-4. âœ… **Hide "Nearby now" by default** â€” Reduce clutter
+1. ✅ **Remove mode chips** — Auto-detect search intent
+2. ✅ **Extend `locationStore` with `savedLocations`** — Zustand + local persistence
+3. ✅ **Convert recent queries to rows** — UI improvement
+4. ✅ **Hide "Nearby now" by default** — Reduce clutter
 
 ### Pass 2: Profile-Search Link (NOW - No DB)
 

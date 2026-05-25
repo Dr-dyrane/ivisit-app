@@ -4,7 +4,7 @@ owner: design
 last_updated: 2026-01-12
 ---
 
-ðŸ¥ iVisit 2026: Design Manifesto
+🏥 iVisit 2026: Design Manifesto
 Vision: Shift the user experience from a "Transactional List" to a "Digital Medical Vault." Every appointment, ambulance trip, and profile is treated as a Verifiable Identity Artifact.
 1. Geometric Signature: The Rule of Nested Squircles
 Standard rounding is forbidden. Every container follows a mathematical "squircle" progression to create a nested, organic depth.

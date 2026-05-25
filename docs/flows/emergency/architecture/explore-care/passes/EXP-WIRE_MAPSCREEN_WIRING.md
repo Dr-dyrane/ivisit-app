@@ -16,7 +16,7 @@ Layer impact: L2 query consumption, L5 Jotai, map integration
 
 ## Goal
 
-Wire all Explore Care components into `MapScreen` â€” atoms, handlers, shared `useNearbyProviders` cache, `extraMarkers` on the map, and conditional `MapProviderListSheet` mount.
+Wire all Explore Care components into `MapScreen` — atoms, handlers, shared `useNearbyProviders` cache, `extraMarkers` on the map, and conditional `MapProviderListSheet` mount.
 
 ## Files
 
@@ -27,24 +27,24 @@ Wire all Explore Care components into `MapScreen` â€” atoms, handlers, shar
 
 ## Guardrails
 
-- MapScreen stays thin â€” wiring only, no query logic inline beyond the shared cache call.
+- MapScreen stays thin — wiring only, no query logic inline beyond the shared cache call.
 - No Supabase calls in MapScreen.
 - Emergency flow must be completely unaffected.
 - `ProviderMarkers` only renders when `exploreProviderCategory` is active AND providers have loaded.
 - `MapProviderListSheet` only mounts when `exploreProviderCategory` is non-null.
-- Atoms reset on close â€” no explore state survives session restart.
+- Atoms reset on close — no explore state survives session restart.
 
 ## Atoms
 
 Added to `atoms/mapFlowAtoms.js`:
-- `exploreProviderCategoryAtom` â€” `atom(null)`
-- `exploreProviderIdAtom` â€” `atom(null)`
+- `exploreProviderCategoryAtom` — `atom(null)`
+- `exploreProviderIdAtom` — `atom(null)`
 
 ## Handlers in MapScreen
 
-- `handleExploreCare(providerType)` â†’ `setExploreProviderCategory(providerType)`
-- `handleCloseProviderList()` â†’ resets both atoms to null
-- `handleSelectExploreProvider(provider)` â†’ `setExploreProviderId(provider?.id ?? null)`
+- `handleExploreCare(providerType)` → `setExploreProviderCategory(providerType)`
+- `handleCloseProviderList()` → resets both atoms to null
+- `handleSelectExploreProvider(provider)` → `setExploreProviderId(provider?.id ?? null)`
 
 ## Shared Query
 
@@ -56,7 +56,7 @@ const { providers: exploreProviders } = useNearbyProviders({
 });
 ```
 
-Query key `["providers", providerCategory, lat, lng, 20000]` is identical to `MapProviderListSheet` â€” TanStack Query deduplicates, zero extra network requests.
+Query key `["providers", providerCategory, lat, lng, 20000]` is identical to `MapProviderListSheet` — TanStack Query deduplicates, zero extra network requests.
 
 ## extraMarkers Prop
 
@@ -90,7 +90,7 @@ extraMarkers={
 
 ## MapModalOrchestrator
 
-`handleExploreCare` prop added to `MapModalOrchestrator` passthrough â†’ forwarded to `MapCareHistoryModal` as `onExploreCare`.
+`handleExploreCare` prop added to `MapModalOrchestrator` passthrough → forwarded to `MapCareHistoryModal` as `onExploreCare`.
 
 ## EmergencyLocationPreviewMap
 
@@ -112,32 +112,32 @@ extraMarkers={
 
 ## Acceptance
 
-- Tapping category chip â†’ sheet opens, providers load, markers appear on map.
-- Tapping a pin â†’ highlights pin and matching card.
-- Tapping a card â†’ highlights pin via `exploreProviderIdAtom`.
-- Closing sheet â†’ atoms reset, sheet unmounts, markers disappear.
+- Tapping category chip → sheet opens, providers load, markers appear on map.
+- Tapping a pin → highlights pin and matching card.
+- Tapping a card → highlights pin via `exploreProviderIdAtom`.
+- Closing sheet → atoms reset, sheet unmounts, markers disappear.
 - Emergency flow unaffected in all phases.
 - No duplicate network requests.
 
 ## Changed Files
 
-- `atoms/mapFlowAtoms.js` (modified â€” atoms added)
-- `components/emergency/intake/EmergencyLocationPreviewMap.jsx` (modified â€” `extraMarkers` prop)
-- `screens/MapScreen.jsx` (modified â€” imports, atoms, handlers, query, extraMarkers, sheet mount, orchestrator prop)
-- `components/map/MapModalOrchestrator.jsx` (modified â€” `handleExploreCare` passthrough)
+- `atoms/mapFlowAtoms.js` (modified — atoms added)
+- `components/emergency/intake/EmergencyLocationPreviewMap.jsx` (modified — `extraMarkers` prop)
+- `screens/MapScreen.jsx` (modified — imports, atoms, handlers, query, extraMarkers, sheet mount, orchestrator prop)
+- `components/map/MapModalOrchestrator.jsx` (modified — `handleExploreCare` passthrough)
 
 ## Verification
 
 - `exploreProviderCategoryAtom` and `exploreProviderIdAtom` exported from `atoms/mapFlowAtoms.js`.
-- `useNearbyProviders` query key matches `MapProviderListSheet` exactly â€” confirmed by reading both call sites.
+- `useNearbyProviders` query key matches `MapProviderListSheet` exactly — confirmed by reading both call sites.
 - `extraMarkers` renders `ProviderMarkers` only when category is active and providers array is non-empty.
-- `MapProviderListSheet` receives `visible` prop (truthy) â€” `enabled` guard inside sheet resolves correctly.
+- `MapProviderListSheet` receives `visible` prop (truthy) — `enabled` guard inside sheet resolves correctly.
 - `handleExploreCare` received by `MapModalOrchestrator` and forwarded to `MapCareHistoryModal.onExploreCare`.
-- Emergency flow tested: hospital markers, user pin, routing, tracking â€” all unaffected.
+- Emergency flow tested: hospital markers, user pin, routing, tracking — all unaffected.
 
 ## Rollback Notes
 
 - Set `extraMarkers={null}` in `MapScreen` to remove markers.
 - Remove conditional `MapProviderListSheet` mount.
 - Remove `handleExploreCare` from `MapModalOrchestrator` props.
-- Atoms remain in `mapFlowAtoms.js` â€” inert without wiring.
+- Atoms remain in `mapFlowAtoms.js` — inert without wiring.

@@ -53,7 +53,7 @@ Use this reading order before changing `/map` UI, sheet behavior, or the active 
 
 ## Recommended modularization target for `MapSheetShell`
 
-Yes â€” `MapSheetShell` can and should be modularized into a reusable surface family.
+Yes — `MapSheetShell` can and should be modularized into a reusable surface family.
 
 Recommended split:
 

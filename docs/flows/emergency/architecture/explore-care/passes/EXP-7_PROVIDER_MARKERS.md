@@ -16,7 +16,7 @@ Layer impact: presentation, map rendering
 
 ## Goal
 
-Build `ProviderMarkers` â€” a map marker component that renders colored circular callout pins for non-emergency providers, with tintColor per category.
+Build `ProviderMarkers` — a map marker component that renders colored circular callout pins for non-emergency providers, with tintColor per category.
 
 ## Files
 
@@ -25,7 +25,7 @@ Build `ProviderMarkers` â€” a map marker component that renders colored cir
 ## Reference Files
 
 - `components/map/HospitalMarkers.jsx`
-- `constants/providerTypes.js` â€” `EXPLORE_CATEGORY_META[providerType].markerTint`
+- `constants/providerTypes.js` — `EXPLORE_CATEGORY_META[providerType].markerTint`
 
 ## Guardrails
 
@@ -37,9 +37,9 @@ Build `ProviderMarkers` â€” a map marker component that renders colored cir
 
 ## Props
 
-- `providers` â€” array of normalized provider objects
-- `selectedProviderId` â€” string | null; highlighted pin
-- `onProviderPress(provider)` â€” called when a pin is tapped
+- `providers` — array of normalized provider objects
+- `selectedProviderId` — string | null; highlighted pin
+- `onProviderPress(provider)` — called when a pin is tapped
 
 ## Marker Design
 
@@ -79,4 +79,4 @@ Build `ProviderMarkers` â€” a map marker component that renders colored cir
 ## Rollback Notes
 
 - Set `extraMarkers={null}` in `MapScreen` to hide markers.
-- Component can remain â€” it is inert without `providers`.
+- Component can remain — it is inert without `providers`.

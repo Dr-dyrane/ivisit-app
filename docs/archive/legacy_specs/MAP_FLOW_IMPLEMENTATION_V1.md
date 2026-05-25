@@ -4,7 +4,7 @@ owner: -
 last_updated: 2026-05-19
 ---
 
-> **ARCHIVAL NOTICE â€” 2026-05-19**
+> **ARCHIVAL NOTICE — 2026-05-19**
 > This file was moved from `docs/flows/emergency/` to `docs/archive/legacy_specs/` during the 2026-05-19 docs cleanup.
 > It contains partially stale content. The doc itself declares its stale sections and defers to the replacements below.
 > **Current replacements:**
@@ -16,10 +16,10 @@ last_updated: 2026-05-19
 
 # Map Flow Implementation (v1)
 
-> Status: Mixed â€” sections marked stale below are superseded
+> Status: Mixed — sections marked stale below are superseded
 > Scope: `/map` -> `explore_intent`, decision phases, commit, payment, tracking
 
-## âš ï¸ Authoritative Current-State Override
+## ⚠ï¸ Authoritative Current-State Override
 
 When this file and the live audit disagree, the audit wins:
 
@@ -610,7 +610,7 @@ Current parity note for `service_detail`:
 
 ## Hospital Data Consistency Fix
 
-The inconsistent â€œone hospital vs several hospitalsâ€ behavior had three causes:
+The inconsistent "one hospital vs several hospitals" behavior had three causes:
 
 1. `useHospitals` caches by location bucket, and the previous bucket precision was too coarse for map exploration.
 2. `useHospitals` exposes both a display subset and the full discovered set, but `EmergencyContext` was consuming the display subset.

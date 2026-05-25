@@ -45,14 +45,14 @@ For iVisit, that reinforces:
 
 ## Verified Apple guidance (official sources, checked 2026-04-10)
 
-The points below are grounded in Appleâ€™s own public documentation and should be treated as the factual baseline.
+The points below are grounded in Apple's own public documentation and should be treated as the factual baseline.
 
 ### 1. What Apple explicitly says about sheets on iPhone
 
 Source:
 
-- Apple HIG â€” Sheets: https://developer.apple.com/design/human-interface-guidelines/sheets
-- UIKit â€” `UISheetPresentationController`: https://developer.apple.com/documentation/uikit/uisheetpresentationcontroller
+- Apple HIG — Sheets: https://developer.apple.com/design/human-interface-guidelines/sheets
+- UIKit — `UISheetPresentationController`: https://developer.apple.com/documentation/uikit/uisheetpresentationcontroller
 
 Verified guidance:
 
@@ -69,12 +69,12 @@ Verified guidance:
 
 Source:
 
-- Apple HIG â€” Motion: https://developer.apple.com/design/human-interface-guidelines/motion
+- Apple HIG — Motion: https://developer.apple.com/design/human-interface-guidelines/motion
 
 Verified guidance:
 
 - Motion should be purposeful and should support the experience without overshadowing it.
-- Feedback motion should feel realistic and follow peopleâ€™s gestures and expectations.
+- Feedback motion should feel realistic and follow people's gestures and expectations.
 - Feedback animations should be brief and precise.
 - In apps, Apple generally advises avoiding heavy motion for frequent UI interactions.
 - People should be able to interrupt or cancel motion instead of waiting for it to finish.
@@ -83,8 +83,8 @@ Verified guidance:
 
 Source:
 
-- Apple HIG â€” Search fields: https://developer.apple.com/design/human-interface-guidelines/search-fields
-- Apple HIG â€” Layout: https://developer.apple.com/design/human-interface-guidelines/layout
+- Apple HIG — Search fields: https://developer.apple.com/design/human-interface-guidelines/search-fields
+- Apple HIG — Layout: https://developer.apple.com/design/human-interface-guidelines/layout
 
 Verified guidance:
 
@@ -128,20 +128,20 @@ This section covers the newer visual language so the app can feel current in add
 
 Primary sources:
 
-- Apple HIG â€” Materials: https://developer.apple.com/design/human-interface-guidelines/materials
-- Apple HIG â€” Color: https://developer.apple.com/design/human-interface-guidelines/color
-- Apple HIG â€” Buttons: https://developer.apple.com/design/human-interface-guidelines/buttons
-- Apple HIG â€” Toolbars: https://developer.apple.com/design/human-interface-guidelines/toolbars
-- Apple HIG â€” App icons: https://developer.apple.com/design/human-interface-guidelines/app-icons
-- Apple docs â€” Adopting Liquid Glass: https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass
-- WWDC25 â€” `Meet Liquid Glass` and `Get to know the new design system`
+- Apple HIG — Materials: https://developer.apple.com/design/human-interface-guidelines/materials
+- Apple HIG — Color: https://developer.apple.com/design/human-interface-guidelines/color
+- Apple HIG — Buttons: https://developer.apple.com/design/human-interface-guidelines/buttons
+- Apple HIG — Toolbars: https://developer.apple.com/design/human-interface-guidelines/toolbars
+- Apple HIG — App icons: https://developer.apple.com/design/human-interface-guidelines/app-icons
+- Apple docs — Adopting Liquid Glass: https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass
+- WWDC25 — `Meet Liquid Glass` and `Get to know the new design system`
 
 ### 1. Liquid Glass is the functional layer, not the content layer
 
 Verified guidance:
 
 - Apple says Liquid Glass forms a distinct functional layer for controls and navigation that floats above content.
-- Apple explicitly says **donâ€™t use Liquid Glass in the content layer**.
+- Apple explicitly says **don't use Liquid Glass in the content layer**.
 - Apple recommends using Liquid Glass effects sparingly and mostly for the most important functional elements.
 - Apple distinguishes `regular` glass for stronger legibility and `clear` glass for elements floating over rich media.
 - Apple notes that updated sheets adopt Liquid Glass, larger corner radii, inset half-sheet presentation, and a more opaque look when expanded to full height.
@@ -152,10 +152,10 @@ Verified guidance:
 
 - Apple says the shape of the hardware informs the curvature of controls.
 - Apple recommends aligning custom shapes with the rounded forms of surrounding containers and using concentric geometry.
-- Appleâ€™s official wording is about **rounded rectangles, concentric corners, and system-applied masking**.
+- Apple's official wording is about **rounded rectangles, concentric corners, and system-applied masking**.
 - For app icons on iOS, iPadOS, and macOS, Apple says you provide square layers and the system applies the rounded-rectangle mask.
 
-> Important note: Appleâ€™s current public HIG does **not** frame this as â€œdraw squircles everywhere.â€ The safer, source-backed takeaway is: use **continuous rounded geometry** that feels concentric with the device and surrounding chrome.
+> Important note: Apple's current public HIG does **not** frame this as "draw squircles everywhere." The safer, source-backed takeaway is: use **continuous rounded geometry** that feels concentric with the device and surrounding chrome.
 
 ### 3. Color is restrained, semantic, and usually reserved for emphasis
 
@@ -176,13 +176,13 @@ Verified guidance:
 - Apple recommends standard symbols for common actions and one prominent action on the trailing side when needed.
 - Apple recommends logical grouping of related controls and avoiding overcrowding.
 
-### 5. Up-to-date native UI is not only behavior â€” it is also visual hierarchy
+### 5. Up-to-date native UI is not only behavior — it is also visual hierarchy
 
 Safe translation for iVisit:
 
 - The map and sheet behavior should feel Apple-like, but the **visual hierarchy** also needs to match: quieter chrome, restrained accent use, rounder/concentric containers, and fewer custom backgrounds.
 - The app should feel like content is primary and controls float above it with just enough emphasis.
-- â€œModern nativeâ€ in 2025-2026 Apple language means **less heavy framing**, **more semantic material layering**, and **more disciplined emphasis**.
+- "Modern native" in 2025-2026 Apple language means **less heavy framing**, **more semantic material layering**, and **more disciplined emphasis**.
 
 ## Official source pack
 
@@ -334,15 +334,15 @@ iVisit translation:
 
 ## iVisit emergency map/sheet architecture checklist
 
-> This section is **product doctrine for iVisit**, informed by Appleâ€™s sheet behavior patterns. It is not a direct Apple quote.
+> This section is **product doctrine for iVisit**, informed by Apple's sheet behavior patterns. It is not a direct Apple quote.
 
 ### Core runtime model
 
 The new emergency runtime should be organized around **three live states only**:
 
-- `map state` â†’ spatial truth, camera, route emphasis, hospital focus, geographic context
-- `sheet state` â†’ current task phase (`explore`, selection, confirmation, intake, commit)
-- `header state` â†’ hidden by default; only becomes active-session chrome after dispatch has actually started
+- `map state` → spatial truth, camera, route emphasis, hospital focus, geographic context
+- `sheet state` → current task phase (`explore`, selection, confirmation, intake, commit)
+- `header state` → hidden by default; only becomes active-session chrome after dispatch has actually started
 
 ### Locked architectural direction
 
@@ -399,12 +399,12 @@ The interaction work still needs to stay focused on:
 
 Use one shared source of truth for:
 
-- `color tokens` â†’ semantic backgrounds, labels, separators, accent, critical/destructive states
-- `material tokens` â†’ glass/chrome surfaces vs content surfaces
-- `radius tokens` â†’ concentric corner sizes for chips, controls, cards, sheets, and full-width surfaces
-- `spacing tokens` â†’ safe-area-aware padding, toolbar spacing, grouped spacing, and detent content insets
-- `icon tokens` â†’ standard symbol sizing, weight, and optical alignment rules
-- `motion tokens` â†’ duration, easing, resistance, spring, and gesture thresholds
+- `color tokens` → semantic backgrounds, labels, separators, accent, critical/destructive states
+- `material tokens` → glass/chrome surfaces vs content surfaces
+- `radius tokens` → concentric corner sizes for chips, controls, cards, sheets, and full-width surfaces
+- `spacing tokens` → safe-area-aware padding, toolbar spacing, grouped spacing, and detent content insets
+- `icon tokens` → standard symbol sizing, weight, and optical alignment rules
+- `motion tokens` → duration, easing, resistance, spring, and gesture thresholds
 
 ### Recommended platform rollout
 

@@ -657,7 +657,7 @@ export function EmergencyMap({ emergencyRequests, ambulances, onMarkerClick }: E
           >
             <div className="bg-white rounded-full p-1 shadow-lg">
               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">ðŸš‘</span>
+                <span className="text-white text-xs">🚑</span>
               </div>
             </div>
           </Marker>
@@ -786,8 +786,8 @@ import { usePermissions } from '@/hooks/use-permissions'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'ðŸ“Š', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
   { name: 'Users', href: '/dashboard/users', icon: 'ðŸ‘¥', roles: ['admin'] },
-  { name: 'Hospitals', href: '/dashboard/hospitals', icon: 'ðŸ¥', roles: ['admin', 'sponsor'] },
-  { name: 'Ambulances', href: '/dashboard/ambulances', icon: 'ðŸš‘', roles: ['admin', 'sponsor', 'provider'] },
+  { name: 'Hospitals', href: '/dashboard/hospitals', icon: '🏥', roles: ['admin', 'sponsor'] },
+  { name: 'Ambulances', href: '/dashboard/ambulances', icon: '🚑', roles: ['admin', 'sponsor', 'provider'] },
   { name: 'Emergency', href: '/dashboard/emergency', icon: 'ðŸš¨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
   { name: 'Visits', href: '/dashboard/visits', icon: 'ðŸ“‹', roles: ['admin', 'sponsor', 'hospital'] },
   { name: 'Analytics', href: '/dashboard/analytics', icon: 'ðŸ“ˆ', roles: ['admin', 'sponsor'] },

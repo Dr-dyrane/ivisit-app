@@ -51,13 +51,13 @@ last_updated: 2026-04-28
 
 **Execution Directive:**
 
-> Provide the full TypeScript code for the Edge Functions and the React/React Native components. Use placeholders for all environment variables. Ensure the logic is "Lean Startup" readyâ€”efficient and scalable.
+> Provide the full TypeScript code for the Edge Functions and the React/React Native components. Use placeholders for all environment variables. Ensure the logic is "Lean Startup" ready—efficient and scalable.
 
 ---
 
 ### ðŸ›¡ï¸ Why this prompt works for your ecosystem:
 
-* **Payout Logic:** It explicitly mentions "Destination Charges." This is how Uber worksâ€”the passenger pays $100, Stripe automatically takes $2.50 for you (iVisit), and sends $97.50 to the Doctor's Stripe account.
+* **Payout Logic:** It explicitly mentions "Destination Charges." This is how Uber works—the passenger pays $100, Stripe automatically takes $2.50 for you (iVisit), and sends $97.50 to the Doctor's Stripe account.
 * **Infrastructure Synergy:** By using Supabase Edge Functions, you keep your `ivisit-app` and `ivisit-console` in sync. When a payment happens, the Edge Function updates your central Postgres DB instantly.
 * **No Redirection:** It forces the AI to use "Embedded Connect" components and "PaymentSheet," ensuring the user never leaves your "Liquid Glass" environment.
 
@@ -69,7 +69,7 @@ last_updated: 2026-04-28
 
 ### **ðŸ‘¥ User Flow (Patient)**
 ```
-Request Service â†’ Automatic Payment â†’ Complete Service
+Request Service → Automatic Payment → Complete Service
 ```
 1. **User requests** ambulance/bed reservation.
 2. **Cost estimation**: `serviceCostService` calculates total based on base, distance, and urgency.
@@ -80,9 +80,9 @@ Request Service â†’ Automatic Payment â†’ Complete Service
    - **Digital**: Processed automatically upon completion.
    - **Cash**: Provider manually confirms receipt in Console.
 
-### **ðŸ¥ Provider Flow (Hospital/Org Admin)**
+### **🏥 Provider Flow (Hospital/Org Admin)**
 ```
-Receive Service â†’ Wallet Credited â†’ Can Request Payout
+Receive Service → Wallet Credited → Can Request Payout
 ```
 1. **Hospital receives**: 97.5% of payment amount
 2. **Wallet balance**: Updated automatically
@@ -256,22 +256,22 @@ MAXIMUM_FEE_AMOUNT=100.00
 ## ðŸš€ **Implementation Steps**
 
 ### **Phase 1: Mobile App**
-1. âœ… Update paymentService.js with fee calculation
-2. âœ… Create database migrations for fee tracking
-3. ðŸ”„ Update InsuranceScreen â†’ PaymentScreen
+1. ✅ Update paymentService.js with fee calculation
+2. ✅ Create database migrations for fee tracking
+3. ðŸ”„ Update InsuranceScreen → PaymentScreen
 4. â³ Implement seamless payment flow
 5. â³ Add automatic charging after service
 
 ### **Phase 2: Database**
-1. âœ… Create fee tracking tables
-2. âœ… Implement per-organization fee configuration
-3. âœ… Add iVisit main wallet
+1. ✅ Create fee tracking tables
+2. ✅ Implement per-organization fee configuration
+3. ✅ Add iVisit main wallet
 4. â³ Create automatic fee distribution triggers
 5. â³ Add fee analytics views
 
 ### **Phase 3: Console**
-1. âœ… Create organization fee management
-2. âœ… Build wallet management interface
+1. ✅ Create organization fee management
+2. ✅ Build wallet management interface
 3. â³ Implement payout processing
 4. â³ Add fee analytics dashboard
 5. â³ Create admin fee configuration
@@ -279,22 +279,22 @@ MAXIMUM_FEE_AMOUNT=100.00
 ## ðŸŽ¯ **Success Criteria**
 
 ### **User Experience**
-- âœ… Seamless one-tap payments
-- âœ… No fee breakdown shown to users
-- âœ… Automatic charging after service
-- âœ… Multiple payment methods supported
+- ✅ Seamless one-tap payments
+- ✅ No fee breakdown shown to users
+- ✅ Automatic charging after service
+- ✅ Multiple payment methods supported
 
 ### **Provider Experience**
-- âœ… Automatic wallet credits
-- âœ… Free payout processing
-- âœ… Real-time balance updates
-- âœ… Per-organization fee configuration
+- ✅ Automatic wallet credits
+- ✅ Free payout processing
+- ✅ Real-time balance updates
+- ✅ Per-organization fee configuration
 
 ### **Admin Experience**
-- âœ… Complete fee tracking
-- âœ… Per-organization management
-- âœ… Revenue analytics
-- âœ… Wallet oversight
+- ✅ Complete fee tracking
+- ✅ Per-organization management
+- ✅ Revenue analytics
+- ✅ Wallet oversight
 
 ---
 
@@ -339,7 +339,7 @@ To match the **Dyrane UI** Canon:
 - Set the **Accent Color** to match your platform primary (e.g., `#000000` or `#121212`).
 - Set the **Border Radius** to **Standard** (matching our squircle-3xl preference).
 
-### **5. ðŸ’³ Payment Methods**
+### **5. 💳 Payment Methods**
 - Go to **Settings > Payment Methods**.
 - Ensure **Cards**, **Apple Pay**, and **Google Pay** are enabled to maintain the "Seamless like Uber" completion rule.
 

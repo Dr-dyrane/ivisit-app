@@ -8,10 +8,10 @@ last_updated: 2026-05-24
 
 ---
 
-# Welcome Screen Apple HIG Audit â€” 2026-05-02
+# Welcome Screen Apple HIG Audit — 2026-05-02
 
 **Scope**: Welcome screen interaction, motion, and progression feedback
-**Status**: AUDIT â€” implementation passes planned, not started
+**Status**: AUDIT — implementation passes planned, not started
 **Standard**: Apple Human Interface Guidelines (interaction, motion, accessibility)
 
 ---
@@ -39,7 +39,7 @@ last_updated: 2026-05-24
 
 ## 2. Identified Defects
 
-### ðŸ”´ Critical â€” Interaction Feedback
+### 🔴 Critical — Interaction Feedback
 
 #### 2.1 No haptic feedback on emergency CTA press
 **File**: `components/entry/EntryActionButton.jsx:46`
@@ -49,17 +49,17 @@ last_updated: 2026-05-24
 
 #### 2.2 Loading state has no timeout or error recovery
 **File**: `screens/WelcomeScreen.jsx:99-101`
-**Current**: `setIsOpeningEmergency(true)` â†’ `router.replace("/(auth)/map")`. If router hangs, button stays in "Openingâ€¦" forever.
+**Current**: `setIsOpeningEmergency(true)` → `router.replace("/(auth)/map")`. If router hangs, button stays in "Opening…" forever.
 **Fix**: Add 5s timeout that resets `isOpeningEmergency` and shows fallback retry state.
 
 #### 2.3 No `hitSlop` on primary button
 **File**: `components/entry/EntryActionButton.jsx:45-93`
 **Current**: `Pressable` has no `hitSlop`. Edge taps may miss despite visual size.
-**Fix**: Add `hitSlop={12}` (or greater) to ensure â‰¥44pt effective target per HIG.
+**Fix**: Add `hitSlop={12}` (or greater) to ensure ≥44pt effective target per HIG.
 
 ---
 
-### ðŸŸ¡ High â€” Motion & Animation
+### 🟡 High — Motion & Animation
 
 #### 2.4 Ambient loops ignore reduced-motion preference
 **File**: `components/welcome/shared/WelcomeStageBase.jsx:144-199`
@@ -89,28 +89,28 @@ last_updated: 2026-05-24
 
 ---
 
-### ðŸŸ¡ High â€” Progression & Loading
+### 🟡 High — Progression & Loading
 
 #### 2.8 Prewarm has no readiness signal on the CTA
 **File**: `screens/WelcomeScreen.jsx:60-96`, `components/entry/EntryActionButton.jsx`
 **Current**: `refreshHospitals()` runs silently. User may tap emergency before prewarm completes, hitting a cold map.
 **Fix**: Make the CTA button itself communicate readiness:
-- Prewarming â†’ `opacity: 0.92`, subtle ambient pulse ring
-- Ready â†’ Full opacity, ring disappears, haptic primed
+- Prewarming → `opacity: 0.92`, subtle ambient pulse ring
+- Ready → Full opacity, ring disappears, haptic primed
 - **No standalone skeleton or loading indicator on the welcome surface** (would add noise to a calm screen)
 
-#### 2.9 "Openingâ€¦" label lacks step context
+#### 2.9 "Opening…" label lacks step context
 **File**: `components/welcome/welcomeContent.js:6`
-**Current**: Plain "Openingâ€¦" with spinner. No sense of what stage is active.
+**Current**: Plain "Opening…" with spinner. No sense of what stage is active.
 **Fix**: Optional subtitle or step dots if the transition proves long enough to warrant it.
 
 ---
 
-### ðŸŸ¢ Medium â€” Accessibility
+### 🟢 Medium — Accessibility
 
 #### 2.10 No `accessibilityLiveRegion` on loading state change
 **File**: `screens/WelcomeScreen.jsx:100`, `components/entry/EntryActionButton.jsx`
-**Current**: Button text changes from "Continue" to "Openingâ€¦". VoiceOver may not announce the change.
+**Current**: Button text changes from "Continue" to "Opening…". VoiceOver may not announce the change.
 **Fix**: Wrap action container with `accessibilityLiveRegion="polite"`.
 
 #### 2.11 `ActivityIndicator` lacks accessibility label
@@ -125,39 +125,39 @@ last_updated: 2026-05-24
 
 ---
 
-## 3. What's Already Correct âœ…
+## 3. What's Already Correct ✅
 
 | Element | Evidence |
 |---|---|
-| Entrance spring | `WelcomeStageBase.jsx:151` â€” `Animated.spring` with tension/friction |
-| Press micro-interaction | `EntryActionButton.jsx:66` â€” scale + opacity + translateY |
-| Loading spinner | `EntryActionButton.jsx:131` â€” replaces content with `ActivityIndicator` |
+| Entrance spring | `WelcomeStageBase.jsx:151` — `Animated.spring` with tension/friction |
+| Press micro-interaction | `EntryActionButton.jsx:66` — scale + opacity + translateY |
+| Loading spinner | `EntryActionButton.jsx:131` — replaces content with `ActivityIndicator` |
 | Dark mode awareness | `isDarkMode` gates colors throughout |
 | Continuous corners | `borderCurve: "continuous"` on buttons |
 | `adjustsFontSizeToFit` | `EntryActionButton.jsx:179` |
 | Safe area insets | `useSafeAreaInsets` in stage base |
 | Accessibility role | `accessibilityRole="button"` |
-| Prewarm logic | `WelcomeScreen.jsx:84` â€” warms hospitals before map mount |
+| Prewarm logic | `WelcomeScreen.jsx:84` — warms hospitals before map mount |
 
 ---
 
 ## 4. Pass Plan
 
-### Pass A â€” Interaction (Highest Impact)
+### Pass A — Interaction (Highest Impact)
 1. Add haptic feedback to `EntryActionButton` primary variant
 2. Add `hitSlop` to `Pressable`
 3. Add `isOpeningEmergency` timeout + error recovery
 
-### Pass B â€” Motion Discipline
+### Pass B — Motion Discipline
 4. Gate ambient loops behind `useReducedMotion`
 5. Stagger entrance animation into 4 phases
 6. Replace static press scale with spring physics
 
-### Pass C â€” Progression & Transitions
-7. Add CTA readiness signal (prewarm â†’ ready state on button)
+### Pass C — Progression & Transitions
+7. Add CTA readiness signal (prewarm → ready state on button)
 8. Add 150ms exit fade before `router.replace`
 
-### Pass D â€” Accessibility Polish
+### Pass D — Accessibility Polish
 9. Add `accessibilityLiveRegion` on action container
 10. Add `accessibilityLabel` to `ActivityIndicator`
 11. Extend focus ring to iOS/tvOS
@@ -169,5 +169,5 @@ last_updated: 2026-05-24
 - Apple HIG: [Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)
 - Apple HIG: [Motion](https://developer.apple.com/design/human-interface-guidelines/motion)
 - Apple HIG: [Haptics](https://developer.apple.com/design/human-interface-guidelines/haptics)
-- Apple HIG: [Accessibility â€” Motion](https://developer.apple.com/design/human-interface-guidelines/accessibility)
-- Existing pattern: `MapTrackingStageBase.jsx:3` â€” `useReducedMotion` usage
+- Apple HIG: [Accessibility — Motion](https://developer.apple.com/design/human-interface-guidelines/accessibility)
+- Existing pattern: `MapTrackingStageBase.jsx:3` — `useReducedMotion` usage

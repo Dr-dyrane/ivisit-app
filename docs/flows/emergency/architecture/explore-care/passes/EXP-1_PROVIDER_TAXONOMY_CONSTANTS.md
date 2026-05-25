@@ -29,15 +29,15 @@ Define the canonical list of non-emergency provider categories, their display la
 
 ## Guardrails
 
-- Constants only â€” no logic, no hooks, no service calls.
+- Constants only — no logic, no hooks, no service calls.
 - `PROVIDER_TYPES` values must match what the edge function and `nearby_providers` RPC accept as `provider_type`.
 - `EXPLORE_CATEGORY_META` must include `label`, `iconName`, and `markerTint` for every entry in `EXPLORE_CATEGORIES`.
 
 ## Exports
 
-- `PROVIDER_TYPES` â€” object map of category keys to string values
-- `EXPLORE_CATEGORIES` â€” ordered array for chip rendering
-- `EXPLORE_CATEGORY_META` â€” keyed lookup by `PROVIDER_TYPES` value
+- `PROVIDER_TYPES` — object map of category keys to string values
+- `EXPLORE_CATEGORIES` — ordered array for chip rendering
+- `EXPLORE_CATEGORY_META` — keyed lookup by `PROVIDER_TYPES` value
 
 ## Checklist
 

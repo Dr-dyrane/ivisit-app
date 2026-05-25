@@ -137,7 +137,7 @@ Impact:
 - the provider lane can be skipped entirely,
 - even if the skipped provider lane contains closer local hospitals
 
-So â€œsufficient database coverageâ€ currently means:
+So "sufficient database coverage" currently means:
 
 - enough hospitals somewhere in the 50km lane
 
@@ -145,7 +145,7 @@ not:
 
 - enough hospitals very close to the user
 
-### 5. â€œNearbyâ€ labels are semantically false
+### 5. "Nearby" labels are semantically false
 
 Files:
 
@@ -171,7 +171,7 @@ This happens when one or more of these are true:
 1. the `2.2km` hospital is provider-shadow / secondary / pending and gets rejected by dispatchability rules
 2. provider discovery was skipped because the DB already had five dispatchable hospitals somewhere in the 50km band
 3. the summary nearest lane is taking the first raw canonical result instead of a tighter local display lane
-4. the list is broad enough that â€œgood enough coverageâ€ beats â€œclosest actual optionâ€
+4. the list is broad enough that "good enough coverage" beats "closest actual option"
 
 ## Distinction We Need
 
@@ -248,7 +248,7 @@ Still remaining:
 
 ## Conclusion
 
-The current Lagos behavior is happening because the app is not truly selecting â€œnearest hospital.â€
+The current Lagos behavior is happening because the app is not truly selecting "nearest hospital."
 
 It is selecting:
 

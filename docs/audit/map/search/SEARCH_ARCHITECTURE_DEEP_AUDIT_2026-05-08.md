@@ -11,7 +11,7 @@ last_updated: 2026-05-24
 # Search Architecture Deep Audit
 
 **Date:** 2026-05-08  
-**Scope:** Complete search flow from context â†’ model â†’ UI  
+**Scope:** Complete search flow from context → model → UI  
 **Finding:** Clean architecture but mode chips create friction.
 
 ---
@@ -24,7 +24,7 @@ last_updated: 2026-05-24
 
 - `query`, `recentQueries`, `trendingSearches`
 - Persisted to `StorageKeys.SEARCH_HISTORY`
-- âœ… Clean L3 (Zustand/database) pattern
+- ✅ Clean L3 (Zustand/database) pattern
 
 ### Layer 2: Sheet Model (useMapSearchSheetModel)
 
@@ -32,7 +32,7 @@ last_updated: 2026-05-24
 
 - Mode system: SEARCH vs LOCATION
 - Location suggestions from Mapbox
-- âš ï¸ Mode chips = friction point
+- ⚠ï¸ Mode chips = friction point
 
 ### Layer 3: UI (MapSearchSheetSections)
 
@@ -40,7 +40,7 @@ last_updated: 2026-05-24
 
 - ModeChip row at top
 - Sections: Current, Nearby, Recent, Popular
-- âš ï¸ Needs unification
+- ⚠ï¸ Needs unification
 
 ---
 

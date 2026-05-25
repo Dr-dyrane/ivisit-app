@@ -10,7 +10,7 @@ last_updated: 2026-05-24
 
 # EXP-8 Provider Detail Views
 
-Status: Wired â€” shell committed, runtime validation pending
+Status: Wired — shell committed, runtime validation pending
 Owner: UI / UX
 Layer impact: new screen, map flow integration
 
@@ -37,13 +37,13 @@ Build a shared provider detail shell with category-specific CTAs (directions, bo
 
 - Do not navigate away from `/map`. Prefer an in-map modal shell.
 - No Supabase calls directly in the component.
-- CTA actions are category-aware (pharmacy â†’ directions; lab â†’ call; clinic â†’ book visit).
+- CTA actions are category-aware (pharmacy → directions; lab → call; clinic → book visit).
 
 ## Implementation Note
 
 - Shell wired into `MapSheetOrchestrator` under `PROVIDER_DETAIL` phase.
 - `MapProviderDetailStageBase` mirrors `MapHospitalDetailStageBase` shell pattern.
-- Pending: runtime validation of phase transitions (list â†’ detail â†’ close â†’ back to list).
+- Pending: runtime validation of phase transitions (list → detail → close → back to list).
 
 ## Acceptance (when implemented)
 
@@ -58,11 +58,11 @@ Build a shared provider detail shell with category-specific CTAs (directions, bo
 - `components/map/views/providerDetail/MapProviderDetailStageBase.jsx` (created)
 - `components/map/surfaces/providerDetail/MapProviderDetailBody.jsx` (created)
 - `components/map/surfaces/providerDetail/MapProviderDetailModel.js` (created)
-- `components/map/core/MapSheetOrchestrator.jsx` â€” `PROVIDER_DETAIL` case wired
-- `hooks/map/exploreFlow/mapExploreFlow.transitions.js` â€” `buildProviderDetailSheetView` added
+- `components/map/core/MapSheetOrchestrator.jsx` — `PROVIDER_DETAIL` case wired
+- `hooks/map/exploreFlow/mapExploreFlow.transitions.js` — `buildProviderDetailSheetView` added
 
 ## Rollback Notes
 
 - Remove `PROVIDER_DETAIL` case from `MapSheetOrchestrator`.
 - Remove `buildProviderDetailSheetView` import from any caller.
-- Detail component dirs can remain â€” they are inert without phase routing.
+- Detail component dirs can remain — they are inert without phase routing.

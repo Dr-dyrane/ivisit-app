@@ -224,7 +224,7 @@ Per-phase implementation sequence:
 4. Web mobile / sm-wide / md / lg / xl / 2xl-3xl / ultra-wide
 5. sponsor-review cleanup pass across the whole phase
 
-## Choose Resource Phase â€” 12 Remaining Screens
+## Choose Resource Phase — 12 Remaining Screens
 
 Current locked baseline:
 
@@ -245,7 +245,7 @@ The next 12 screens to build for this same phase are:
 | 8 | `Web md` | Move to a true web composition with more stable map framing and a centered decision column. |
 | 9 | `Web lg` | Support a balanced map-plus-sheet layout where the map proves location and route while the sheet owns the choice. |
 | 10 | `Web xl` | Increase horizontal polish, calm spacing, and comparison clarity for multi-service hospitals while keeping the green pay CTA dominant. |
-| 11 | `Web 2xlâ€“3xl` | Prevent the phase from feeling sparse by constraining the decision surface and using the extra canvas only for trust-building route context. |
+| 11 | `Web 2xl–3xl` | Prevent the phase from feeling sparse by constraining the decision surface and using the extra canvas only for trust-building route context. |
 | 12 | `Web ultra-wide` | Keep the decision lane intentionally narrow and cinematic; the extra width supports reassurance, not more complexity. |
 
 Shared lock across all 12:
@@ -372,7 +372,7 @@ System correction note:
 
 The broader map shell may still exist, but it should support tracking and context after the request is live. It should not be the first emotional response to the CTA.
 
-## Bridge Contract â€” New Intake Into Legacy Runtime
+## Bridge Contract — New Intake Into Legacy Runtime
 
 This bridge is the current product-safe handshake between the new urgent flow and the older responder/tracking runtime.
 
@@ -422,11 +422,11 @@ This screen exists to do three jobs only:
 2. collect only what is still necessary
 3. show that the system is actively finding help
 
-### 2. State 1 â€” Request started
+### 2. State 1 — Request started
 
 Title:
 
-- `Requesting helpâ€¦`
+- `Requesting help…`
 
 Support line:
 
@@ -438,7 +438,7 @@ Rules:
 - visible progress cue
 - no dead waiting
 
-### 3. State 2 â€” Confirming location
+### 3. State 2 — Confirming location
 
 Title:
 
@@ -454,13 +454,13 @@ Rules:
 - ask only when confidence is low
 - keep one dominant action
 
-### 4. State 3 â€” Finding nearby help
+### 4. State 3 — Finding nearby help
 
 Preferred copy direction:
 
-- `Finding nearby respondersâ€¦`
-- `Checking the closest available helpâ€¦`
-- `Connecting to emergency care nearbyâ€¦`
+- `Finding nearby responders…`
+- `Checking the closest available help…`
+- `Connecting to emergency care nearby…`
 
 Rules:
 
@@ -468,7 +468,7 @@ Rules:
 - no empty state
 - progress must feel truthful
 
-### 5. State 4 â€” Responder matched
+### 5. State 4 — Responder matched
 
 Title:
 
@@ -535,7 +535,7 @@ State success criteria:
 - the map reinforces trust without becoming the main task
 - the state feels like a continuation of `finding_nearby_help`, not a restart
 
-### 6. State 5 â€” Tracking arrival
+### 6. State 5 — Tracking arrival
 
 Title:
 
@@ -631,7 +631,7 @@ This screen passes only if:
 3. no state feels empty
 4. `Request Help` clearly resolves to ambulance response
 5. the flow feels continuous from welcome to live response
-6. auth, if needed, does not erase the userâ€™s expressed intent
+6. auth, if needed, does not erase the user's expressed intent
 
 ## Immediate Next Implementation Decision
 

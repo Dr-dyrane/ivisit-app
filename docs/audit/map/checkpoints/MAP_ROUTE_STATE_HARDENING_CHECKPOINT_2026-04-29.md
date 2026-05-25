@@ -86,7 +86,7 @@ After this pass:
 - repeated same-route mounts can reuse one canonical snapshot
 - simultaneous same-route fetches can dedupe on one query key
 - fallback routes are cached briefly instead of immediately re-fanning into repeat retries
-- route state is now much closer to the projectâ€™s five-layer direction than the previous hook-local model
+- route state is now much closer to the project's five-layer direction than the previous hook-local model
 
 ## Verification Performed
 

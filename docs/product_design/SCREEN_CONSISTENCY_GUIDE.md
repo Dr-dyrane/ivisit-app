@@ -184,15 +184,15 @@ const handleScroll = useCallback(
 
 ---
 
-## Screens Already Standardized âœ…
+## Screens Already Standardized ✅
 
 | Screen | Animations | Padding | Cards | Typography |
 |--------|-----------|---------|-------|-----------|
-| SettingsScreen | âœ… | âœ… | âœ… | âœ… |
-| HelpSupportScreen | âœ… | âœ… | âœ… | âœ… |
-| InsuranceScreen | âœ… | âœ… | âœ… | âœ… |
-| MoreScreen | âœ… | âœ… | âœ… | âœ… |
-| ProfileScreen | âœ… | âœ… | âœ… | âœ… |
+| SettingsScreen | ✅ | ✅ | ✅ | ✅ |
+| HelpSupportScreen | ✅ | ✅ | ✅ | ✅ |
+| InsuranceScreen | ✅ | ✅ | ✅ | ✅ |
+| MoreScreen | ✅ | ✅ | ✅ | ✅ |
+| ProfileScreen | ✅ | ✅ | ✅ | ✅ |
 
 ---
 

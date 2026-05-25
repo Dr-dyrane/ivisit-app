@@ -43,7 +43,7 @@ This file remains the implementation audit, while the linked master reference is
 
 ### Secondary Entry: Deep-linking to SOS with a Mode
 Some parts of the app can jump into SOS and choose a mode:
-- Helper: `utils/navigationHelpers.js` â†’ `navigateToSOS({ mode })`
+- Helper: `utils/navigationHelpers.js` → `navigateToSOS({ mode })`
 - Example usage: `screens/SearchScreen.jsx` can open SOS in `"booking"` mode for bed reservation.
 
 ---
@@ -52,8 +52,8 @@ Some parts of the app can jump into SOS and choose a mode:
 
 ### Modes
 `EmergencyContext` exposes two modes:
-- `EmergencyMode.EMERGENCY` (`"emergency"`) â†’ ambulance request
-- `EmergencyMode.BOOKING` (`"booking"`) â†’ bed reservation
+- `EmergencyMode.EMERGENCY` (`"emergency"`) → ambulance request
+- `EmergencyMode.BOOKING` (`"booking"`) → bed reservation
 
 The mode changes:
 - Header title + subtitle (Ambulance Call / Reserve Bed)
@@ -68,7 +68,7 @@ Two different database concerns are written during a request:
 - Intended to be updated by dispatch/backoffice systems (status changes, responder info, etc.).
 
 2) `public.visits`
-- Represents the user-facing â€œVisitâ€ history row shown in the Visits UX.
+- Represents the user-facing "Visit" history row shown in the Visits UX.
 - Created when a request is submitted, and updated to `cancelled`/`completed`.
 
 ### Statuses
@@ -114,7 +114,7 @@ Both ambulance and bed flows live in the same screen:
 Core shared behavior:
 - Map + bottom sheet layout
 - Hospital selection/focus state
-- A â€œrequest flowâ€ overlay inside the bottom sheet
+- A "request flow" overlay inside the bottom sheet
 - Tab bar is hidden when `selectedHospital` is set OR any emergency visit is active.
 - The mode-toggle FAB is hidden only when:
   - `selectedHospital` is set, OR
@@ -131,17 +131,17 @@ Hospitals come from Supabase through:
 - normalized into `EmergencyContext` state (`hospitals`)
 
 In-session behavior:
-- If user location is present, the context may â€œlocalizeâ€ hospitals for demo purposes by adjusting their coordinates and computing a derived `eta`.
+- If user location is present, the context may "localize" hospitals for demo purposes by adjusting their coordinates and computing a derived `eta`.
 
 ### User Location
 The context attempts a silent location fetch:
-- `expo-location` â†’ last known position first, then fresh position if permission is already granted
+- `expo-location` → last known position first, then fresh position if permission is already granted
 
 The map component is still responsible for explicit permission UX; the context does not display alerts for failures.
 
 ---
 
-## Map â€œAs-Isâ€ Architecture (Whatâ€™s Mounted, Who Owns What)
+## Map "As-Is" Architecture (What's Mounted, Who Owns What)
 
 ### Map Mounting
 - Single `MapView` lives in: `components/map/FullScreenEmergencyMap.jsx`
@@ -165,7 +165,7 @@ If we split sheets or create separate map/sheet pairs, we must preserve:
 - accurate `sheetSnapIndex` for the visible sheet
 - correct `bottomPadding` per sheet phase, otherwise route fitting will hide content behind the sheet
 
-### 2) Route calculation is â€œavailability gatedâ€
+### 2) Route calculation is "availability gated"
 The map only shows a route if the selected/active hospital has capacity:
 - booking: `availableBeds > 0`
 - emergency: `ambulances > 0`
@@ -175,18 +175,18 @@ So: switching mode / active visit type must not accidentally flip these gates an
 ### 3) Route fitting avoids snap-index feedback loops
 When the route updates, it:
 - calls `onRouteCalculated(...)` only if route info changed (stored in `mapRef.current.lastRouteInfo`)
-- fits coordinates using a padding ref (so snap changes donâ€™t constantly re-fit)
+- fits coordinates using a padding ref (so snap changes don't constantly re-fit)
 - calls `scheduleCenterInVisibleArea(...)` to shift the route upward for the sheet
 
 If we re-architect, we must keep:
-- â€œcall parent only when changedâ€ behavior (prevents render loops)
-- â€œpadding refâ€ approach (prevents repeated camera jumps on sheet drag)
+- "call parent only when changed" behavior (prevents render loops)
+- "padding ref" approach (prevents repeated camera jumps on sheet drag)
 
 ### 4) Ambulance marker can be driven by two sources
-- â€œFake animationâ€ along polyline (`animateAmbulance = true`) via `hooks/emergency/useAmbulanceAnimation.js`
-- â€œRealtime responder trackingâ€ via DB updates (`responderLocation` / `responderHeading`) overrides the marker coordinate
+- "Fake animation" along polyline (`animateAmbulance = true`) via `hooks/emergency/useAmbulanceAnimation.js`
+- "Realtime responder tracking" via DB updates (`responderLocation` / `responderHeading`) overrides the marker coordinate
 
-If we accidentally mount two map layers at once, both could try to render/animate responder markers and youâ€™ll see flicker or doubled markers.
+If we accidentally mount two map layers at once, both could try to render/animate responder markers and you'll see flicker or doubled markers.
 
 ### 5) Simulation is a singleton and tied into lifecycle cleanup
 - Simulation writes responder updates + changes `emergency_requests.status` to accepted/arrived: `services/simulationService.js`
@@ -202,7 +202,7 @@ If we change DB payload shape (e.g., GeoJSON), map tracking breaks unless we upd
 - `animateToHospital()` and `fitToAllHospitals()` via ref: `components/map/FullScreenEmergencyMap.jsx`
 - These are used by selection/search hooks (camera moves are part of UX): `hooks/emergency/useHospitalSelection.js`, `hooks/emergency/useSearchFiltering.js`
 
-So: if we split into â€œidle map vs active mapâ€ we must keep the same ref surface (or refactor all callers).
+So: if we split into "idle map vs active map" we must keep the same ref surface (or refactor all callers).
 
 ---
 
@@ -216,13 +216,13 @@ So: if we split into â€œidle map vs active mapâ€ we must keep the same 
   - responder-location parsing
   - imperative ref methods
 
-Next: define a â€œMapState + Layersâ€ design that is 100% compatible with the current prop/ref contracts (so we can implement without breaking selection, routing, simulation, or sheet behavior).
+Next: define a "MapState + Layers" design that is 100% compatible with the current prop/ref contracts (so we can implement without breaking selection, routing, simulation, or sheet behavior).
 
 ---
 
 ## Target Map Architecture: MapState + Layered Rendering
 
-### MapState (single source of truth for what the map is â€œdoingâ€)
+### MapState (single source of truth for what the map is "doing")
 
 Instead of multiple maps, we keep **one** `MapView` and introduce a derived `mapState`:
 
@@ -239,8 +239,8 @@ type MapState =
 - otherwise `idle`.
 
 It does **not** care about:
-- `mode` alone (you can be in booking mode but still â€œidleâ€ if nothing is active).
-- sheet snap index (thatâ€™s pure UI).
+- `mode` alone (you can be in booking mode but still "idle" if nothing is active).
+- sheet snap index (that's pure UI).
 
 ### Layered Rendering (inside the same MapView)
 
@@ -249,7 +249,7 @@ It does **not** care about:
 - `IdleLayers` (when `mapState === "idle"`):
   - User location + pulse marker.
   - All available hospitals (filtered upstream).
-  - Optional â€œfocusâ€ ring for `selectedHospital`.
+  - Optional "focus" ring for `selectedHospital`.
   - No active trip route/ambulance.
 
 - `AmbulanceLayers` (when `mapState === "ambulance_active"`):
@@ -264,7 +264,7 @@ It does **not** care about:
   - Future-proof for bed-specific visuals:
     - Route polyline when relevant.
     - Hospital pin for the reserved facility.
-    - Optional â€œbed reservedâ€ marker or badge.
+    - Optional "bed reserved" marker or badge.
 
 The outer component:
 - Owns the `MapView`, camera, route fitting, padding, and imperative ref.
@@ -316,11 +316,11 @@ This keeps the refactor **low risk**:
 
 ---
 
-## Ambulance Request (Emergency Mode) â€” Start to Finish
+## Ambulance Request (Emergency Mode) — Start to Finish
 
 ### 1) User enters SOS in Emergency mode
 User sees:
-- Header: â€œAmbulance Callâ€
+- Header: "Ambulance Call"
 - Hospital markers/list (optionally filterable by service type)
 
 Filtering:
@@ -334,9 +334,9 @@ App state:
 - `selectedHospitalId` is set in `EmergencyContext`.
 - Bottom sheet shifts into a focused hospital state.
 
-### 3) User starts the request flow (â€œRequest Ambulanceâ€)
+### 3) User starts the request flow ("Request Ambulance")
 User action:
-- Tap the â€œcall/requestâ€ action for a hospital.
+- Tap the "call/request" action for a hospital.
 
 App state (EmergencyScreen local state):
 - `requestHospitalId` is set
@@ -354,12 +354,12 @@ What happens at initiation:
 
 ### 5) Reservation/Dispatch Confirmed (Request Confirmed)
 Callback chain:
-- `EmergencyRequestModal` â†’ `onRequestComplete(next)`
-- `EmergencyScreen` â†’ `useRequestFlow().handleRequestComplete(next)`
+- `EmergencyRequestModal` → `onRequestComplete(next)`
+- `EmergencyScreen` → `useRequestFlow().handleRequestComplete(next)`
 
 What changes at confirmation:
 1) `public.emergency_requests` is updated (`status = accepted`, and any request metadata like `estimated_arrival`)
-2) `public.visits.lifecycle_state` advances (`confirmed` â†’ `monitoring`)
+2) `public.visits.lifecycle_state` advances (`confirmed` → `monitoring`)
 3) Local state becomes active:
    - `EmergencyContext.startAmbulanceTrip(...)` (initially `status = accepted`)
    - If a map route exists, `route: currentRoute.coordinates` is saved into the trip state
@@ -382,9 +382,9 @@ App actions:
 - Update visit status (`cancelled` or `completed`)
 - Clear local active trip (`stopAmbulanceTrip`)
 
-### Arrival Gate (Mark Arrived â†’ Complete)
+### Arrival Gate (Mark Arrived → Complete)
 To maintain a closed-loop lifecycle:
-- When the ETA reaches â€œArrivedâ€, the UI requires **Mark Arrived** first
+- When the ETA reaches "Arrived", the UI requires **Mark Arrived** first
 - Mark Arrived sets:
   - `public.emergency_requests.status = arrived`
   - `public.visits.lifecycle_state = arrived`
@@ -392,23 +392,23 @@ To maintain a closed-loop lifecycle:
 
 ---
 
-## Bed Reservation (Booking Mode) â€” Start to Finish
+## Bed Reservation (Booking Mode) — Start to Finish
 
 ### 1) User enters booking mode
 User action:
 - Tap the FAB toggle inside SOS, OR navigate directly with `navigateToSOS({ mode: "booking" })`.
 
 User sees:
-- Header: â€œReserve Bedâ€
+- Header: "Reserve Bed"
 
 ### 2) Hospitals are filtered by availability + (optional) specialty
 Filtering behavior:
 - Only hospitals with `availableBeds > 0` appear.
 - If `selectedSpecialty` is set, only hospitals including that specialty appear.
 
-### 3) User starts the request flow (â€œReserve Bedâ€)
+### 3) User starts the request flow ("Reserve Bed")
 Same interaction pattern as ambulance:
-- Select hospital â†’ open request flow â†’ bottom sheet expands
+- Select hospital → open request flow → bottom sheet expands
 
 ### 4) User selects bed options and submits (Request Initiated)
 UI:
@@ -422,11 +422,11 @@ What happens at initiation:
 - App inserts `public.emergency_requests` (`status = in_progress`)
 - App inserts `public.visits` (`status = in_progress`, `lifecycle_state = initiated`)
 
-### 5) App persists request + creates visit + starts â€œactive bookingâ€
+### 5) App persists request + creates visit + starts "active booking"
 Callback chain is the same as ambulance, but the writes differ slightly:
 
 1) `public.emergency_requests` is updated (`status = accepted`, bed metadata, ETA/wait)
-2) `public.visits.lifecycle_state` advances (`confirmed` â†’ `monitoring`)
+2) `public.visits.lifecycle_state` advances (`confirmed` → `monitoring`)
 3) Local state becomes active:
    - `EmergencyContext.startBedBooking(...)` (initially `status = accepted`)
 
@@ -444,9 +444,9 @@ App actions:
 - Clear local booking (`stopBedBooking`)
 - Also creates an in-app notification for bed cancel/complete
 
-### Occupancy Gate (Mark Occupied â†’ Complete)
+### Occupancy Gate (Mark Occupied → Complete)
 To maintain a closed-loop lifecycle:
-- When the reservation becomes â€œReadyâ€, the UI requires **Mark Occupied** first
+- When the reservation becomes "Ready", the UI requires **Mark Occupied** first
 - Mark Occupied sets:
   - `public.emergency_requests.status = arrived` (shared arrival status)
   - `public.visits.lifecycle_state = occupied` (bed-specific)
@@ -512,7 +512,7 @@ sequenceDiagram
 
 ## Implementation Notes / Known Gaps
 
-- **Dispatch is mocked in the UI**: the â€œdispatchedâ€ response is currently generated client-side in `EmergencyRequestModal.jsx` using a timer; there is no real dispatch assignment step wired yet.
+- **Dispatch is mocked in the UI**: the "dispatched" response is currently generated client-side in `EmergencyRequestModal.jsx` using a timer; there is no real dispatch assignment step wired yet.
 - **Request insert failures do not block the UI**: `useRequestFlow` logs request insert failures but still starts the local trip/booking and writes the visit.
 - **Responder fields depend on DB schema**: `EmergencyContext` merges responder fields from realtime updates; ensure the database schema includes the responder columns if you expect them to populate.
 
@@ -527,7 +527,7 @@ sequenceDiagram
   - When a polyline exists, `fitToCoordinates` applies edgePadding to keep content above the sheet; a follow-up offset-center shifts focus upward for the visible area band.  
     Source: `components/map/FullScreenEmergencyMap.jsx`
 - Padding contract:
-  - `bottomPadding` derives from sheet snap and selection state; selection forces â€œhalf-heightâ€ padding to avoid over-zoom behind the sheet.  
+  - `bottomPadding` derives from sheet snap and selection state; selection forces "half-height" padding to avoid over-zoom behind the sheet.  
     Source: `screens/EmergencyScreen.jsx`, `constants/emergencyAnimations.js`
 - Baseline zoom:
   - A phased startup computes baseline deltas from user + nearest hospitals and applies once after map-ready; prevents over-zoom/jumps.  
@@ -537,7 +537,7 @@ sequenceDiagram
 - Stale padding during delayed offset-center causing misalignment when the sheet snap changes mid-animation.
 - Back-to-back animations (fit then offset) may stutter on lower-end devices.
 - User pan can conflict with scheduled camera moves; no hysteresis guard in offset-center.
-- Projection assumptions (lat span â†’ pixels) can misalign at extreme spans; needs clamping.
+- Projection assumptions (lat span → pixels) can misalign at extreme spans; needs clamping.
 
 ### Mitigations
 - Read padding from a ref at execution time; avoid capturing stale values.
@@ -550,13 +550,13 @@ sequenceDiagram
 ## Race Conditions & Stability
 
 - Camera scheduling:
-  - Pending timeouts are cleared when rescheduling, but thereâ€™s no monotonic â€œcamera action idâ€. Rapid selections can lead to intermediate regions.
+  - Pending timeouts are cleared when rescheduling, but there's no monotonic "camera action id". Rapid selections can lead to intermediate regions.
   - Mitigation: introduce `cameraActionId` and ignore outdated actions.
 - Marker view updates:
   - `tracksViewChanges` for selected pins + animated responder can increase GPU load, especially on iOS.
   - Mitigation: stop tracking changes after initial render; only track when animating.
 - Route gating:
-  - Availability gates (beds/ambulances count) suppress routing; ensure mode toggles donâ€™t clear a valid route mid-flow.
+  - Availability gates (beds/ambulances count) suppress routing; ensure mode toggles don't clear a valid route mid-flow.
 
 ---
 
@@ -570,7 +570,7 @@ sequenceDiagram
   - Camera and sheet animations must feel instantaneous; coalesce rapid snap changes into single camera actions.
   - Avoid map re-fit loops on small state changes; only re-fit on material route updates.
 - Visual polish:
-  - Consistent typography, spacing, elevation; eliminate â€œfloating small cardâ€ in full state.
+  - Consistent typography, spacing, elevation; eliminate "floating small card" in full state.
   - Distinct visuals for ambulance vs bed (icons, labels, progress).
 - Action gates:
   - Arrival/Occupied gates enforced before Complete; server-side constraints should reject invalid transitions.
@@ -602,17 +602,17 @@ sequenceDiagram
 
 ## Regression Safety Notes & Current Code Contracts
 
-- Mapâ€“Sheet padding contract:
-  - `bottomPadding={mapBottomPadding}` passed from `EmergencyScreen` â†’ `EmergencyMapContainer` â†’ `FullScreenEmergencyMap`  
-    Current: `getMapPaddingForSnapIndex(sheetSnapIndex, isHospitalFlowOpen)` computes padding; selection forces â€œselected/halfâ€ padding.
+- Map–Sheet padding contract:
+  - `bottomPadding={mapBottomPadding}` passed from `EmergencyScreen` → `EmergencyMapContainer` → `FullScreenEmergencyMap`  
+    Current: `getMapPaddingForSnapIndex(sheetSnapIndex, isHospitalFlowOpen)` computes padding; selection forces "selected/half" padding.
 - Camera methods:
   - `animateToHospital()` and `fitToAllHospitals()` are imperative ref methods used by selection/search flows; keep method signatures and behavior stable.
 - Route fit sequence:
-  - Current behavior: `fitToCoordinates` with edgePadding â†’ delayed `scheduleCenterInVisibleArea`.  
+  - Current behavior: `fitToCoordinates` with edgePadding → delayed `scheduleCenterInVisibleArea`.  
     If single-step animate fails or causes jitter, revert to the current two-step sequence.
 - User pan respect:
   - Current: `onPanDrag` updates `lastUserPanAtRef`; scheduled camera does not yet gate on this.  
-    If hysteresis introduces perceived â€œlagâ€, revert to current immediate scheduling.
+    If hysteresis introduces perceived "lag", revert to current immediate scheduling.
 - Availability gates:
   - Current: routing only shown when hospital capacity is available (beds/ambulances).  
     Maintain this to avoid user confusion; if gating changes break flows, revert to existing checks.

@@ -11,7 +11,7 @@ last_updated: 2026-05-24
 # Location Architecture Audit
 
 **Date:** 2026-05-08  
-**Scope:** Current location flow from GPS â†’ Search â†’ Pickup  
+**Scope:** Current location flow from GPS → Search → Pickup  
 **Finding:** App has sophisticated 5-layer location architecture. Saved locations fit naturally.
 
 ---
@@ -34,7 +34,7 @@ Auto-saves to `StorageKeys.LOCATION_CACHE`. Extending with `savedLocations` is n
 
 **File:** `hooks/map/exploreFlow/mapPickupLocationTruth.js`
 
-Priority order: SESSION_MANUAL â†’ DEVICE â†’ SAVED_*_FALLBACK â†’ MISSING
+Priority order: SESSION_MANUAL → DEVICE → SAVED_*_FALLBACK → MISSING
 
 ### Layer 4: Location Control (useMapLocation)
 
@@ -62,27 +62,27 @@ savedLocations: [
 
 **Persistence:** Automatic via existing subscription.
 
-**Integration:** Show at top of search sheet: Current Location â†’ Home â†’ Work â†’ Recent â†’ Popular
+**Integration:** Show at top of search sheet: Current Location → Home → Work → Recent → Popular
 
 ---
 
 ## 3. Unified Search (Remove Mode Chips)
 
-**Current:** Mode chips [Find care] [Set pickup] â€” User must decide
-**Proposed:** Unified interface â€” Smart detection
+**Current:** Mode chips [Find care] [Set pickup] — User must decide
+**Proposed:** Unified interface — Smart detection
 
 **Smart Detection:**
-- Query matches hospital name â†’ Show hospital results
-- Query matches address â†’ Show Mapbox locations  
-- Default â†’ Show mixed results
+- Query matches hospital name → Show hospital results
+- Query matches address → Show Mapbox locations  
+- Default → Show mixed results
 
 ---
 
 ## Summary
 
-âœ… **Architecture is solid** â€” 5 layers properly separated
-âœ… **Persistence ready** â€” `locationStore` auto-saves
-âœ… **No DB changes needed** â€” Zustand extension only
-âœ… **Offline support** â€” Local storage works without network
+✅ **Architecture is solid** — 5 layers properly separated
+✅ **Persistence ready** — `locationStore` auto-saves
+✅ **No DB changes needed** — Zustand extension only
+✅ **Offline support** — Local storage works without network
 
 **Ready to implement.**

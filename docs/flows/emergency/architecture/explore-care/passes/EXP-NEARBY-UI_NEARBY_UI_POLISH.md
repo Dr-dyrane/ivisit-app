@@ -16,7 +16,7 @@ Layer impact: presentation only
 
 ## Goal
 
-Polish the `MapProviderListSheet` UI â€” time-bucket section headers, skeleton rows, FilterStrip tab behavior, ProviderCard layout, and EmptyState design.
+Polish the `MapProviderListSheet` UI — time-bucket section headers, skeleton rows, FilterStrip tab behavior, ProviderCard layout, and EmptyState design.
 
 ## Files
 
@@ -24,12 +24,12 @@ Polish the `MapProviderListSheet` UI â€” time-bucket section headers, skele
 
 ## Reference Files
 
-- `components/map/history/MapRecentVisitsModal.jsx` â€” section header pattern reference
-- `constants/providerTypes.js` â€” `EXPLORE_CATEGORY_META`
+- `components/map/history/MapRecentVisitsModal.jsx` — section header pattern reference
+- `constants/providerTypes.js` — `EXPLORE_CATEGORY_META`
 
 ## Guardrails
 
-- No logic changes â€” this pass is presentation polish only.
+- No logic changes — this pass is presentation polish only.
 - Skeleton must match final card layout (no layout shift on load).
 - No decorative borders.
 - No card-in-card nesting.
@@ -40,12 +40,12 @@ Polish the `MapProviderListSheet` UI â€” time-bucket section headers, skele
 ### SkeletonList
 - 4 skeleton rows matching the height of `ProviderCard`.
 - Shimmer animation via opacity pulse.
-- Never shows blank â€” always skeleton or content.
+- Never shows blank — always skeleton or content.
 
 ### SectionHeader
 - Time bucket label (e.g. `< 5 min`).
 - Provider count badge.
-- Muted typography â€” does not compete with card content.
+- Muted typography — does not compete with card content.
 
 ### ProviderCard
 - Icon (category icon from `EXPLORE_CATEGORY_META`) in tinted circle.
@@ -53,7 +53,7 @@ Polish the `MapProviderListSheet` UI â€” time-bucket section headers, skele
 - `Featured` or `Sponsored` badge when applicable.
 - "Get there" chevron / ride CTA at trailing edge.
 - `borderRadius: 18` with `borderCurve: continuous`.
-- No borders â€” elevated surface via background color.
+- No borders — elevated surface via background color.
 
 ### FilterStrip
 - Three tabs: Nearest / Featured / Sponsored.
@@ -67,7 +67,7 @@ Polish the `MapProviderListSheet` UI â€” time-bucket section headers, skele
 - Body: `Try expanding your search or check back later.`
 
 ### FooterNote
-- `N [category label] within 20 km` â€” muted, centered, small.
+- `N [category label] within 20 km` — muted, centered, small.
 
 ## Acceptance
 

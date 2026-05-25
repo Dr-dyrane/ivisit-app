@@ -23,7 +23,7 @@ This document tracks items that have been removed or deprecated from the codebas
 |---------|--------|--------|-------------|
 | **UI calling Services directly** | â›” FORBIDDEN | Breaks separation of concerns; harder to test/mock state. | **UI -> Custom Hook -> Service**. UI should only see data/loading/error/functions. |
 | **`api.get(...)` wrappers** | â›” FORBIDDEN | Unnecessary abstraction over Supabase client. | Services call `supabase` client directly. |
-| **Mock Data in Components** | âš ï¸ AVOID | Hard to maintain. | Move mock logic to Services or use real DB calls. |
+| **Mock Data in Components** | ⚠ï¸ AVOID | Hard to maintain. | Move mock logic to Services or use real DB calls. |
 
 ## 3. Architecture Evolution
 - **Pre-2026**: Mixed architecture with `api/` wrappers and direct service calls.

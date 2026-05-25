@@ -42,7 +42,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 
 - `COVERAGE_POOR_THRESHOLD` is currently **3** verified nearby live hospitals.
 - `0` verified nearby live hospitals = `none` coverage.
-- `1â€“2` verified nearby live hospitals = `poor` coverage.
+- `1–2` verified nearby live hospitals = `poor` coverage.
 - Only `3+` verified nearby live hospitals should count as `good` coverage for the emergency UX.
 - Below that threshold, the app should keep `hybrid` / demo support eligible so the nearby-care UI does not feel under-filled or brittle.
 - Bootstrap/backfill should continue while the nearby verified experience is still below that cutoff.
@@ -84,7 +84,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
   - `nearby_hospitals` and app discovery choose the location-relevant subset
 - Two users in the same city may therefore share the same backing catalog while still seeing different nearby hospital sets if they are far enough apart.
 - Legacy per-bucket demo rows that are replaced by a metro catalog should be retired out of active coverage rather than left available beside the new catalog rows.
-- **Scope key identity (2026-05-10):** `resolveDemoSeedScopeKey` now returns `ctx.userSlug` â€” the deterministic user identifier â€” rather than a coordinate-derived key (`city_${catalog.key}` or `ctx.coverageKey`). This prevents duplicate `demo:` hospital rows from accumulating across slightly different GPS readings in the same metro. The `demo_scope:${ctx.coverageKey}` feature tag written by the server is intentionally unchanged; it is used only by cleanup scripts and as a passthrough guard, not for production query filtering.
+- **Scope key identity (2026-05-10):** `resolveDemoSeedScopeKey` now returns `ctx.userSlug` — the deterministic user identifier — rather than a coordinate-derived key (`city_${catalog.key}` or `ctx.coverageKey`). This prevents duplicate `demo:` hospital rows from accumulating across slightly different GPS readings in the same metro. The `demo_scope:${ctx.coverageKey}` feature tag written by the server is intentionally unchanged; it is used only by cleanup scripts and as a passthrough guard, not for production query filtering.
 
 ## Active Demo Pool Rule (2026-05-01, updated 2026-05-10)
 
@@ -93,7 +93,7 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Same-org demo hospitals that are no longer part of the selected active pack must be retired out of the active pool by setting `status = full`.
 - `ensureDemoStaff` and downstream maintenance must run only against the active selected pack returned by the current bootstrap cycle.
 - Historical demo hospitals may remain in `status = full` when they are still referenced by visits or emergency requests, but they must not generate new doctors, drivers, or ambulances.
-- **Cross-org geographic sweep (2026-05-10):** During `ensureDemoHospitals`, after same-org stale rows are retired, a secondary sweep retires `status = available` demo hospitals (`place_id LIKE 'demo:%'`) from **other** organizations that fall within a `Â±0.15Â°` bounding box (~16 km at the equator). This eliminates ghost packs left by earlier coordinate-scoped bootstrap sessions under different org identities. The sweep is non-fatal â€” a query or update failure logs a warning and does not block the user's bootstrap cycle. Retired cross-org rows are set to `status = full`; they are never deleted.
+- **Cross-org geographic sweep (2026-05-10):** During `ensureDemoHospitals`, after same-org stale rows are retired, a secondary sweep retires `status = available` demo hospitals (`place_id LIKE 'demo:%'`) from **other** organizations that fall within a `±0.15°` bounding box (~16 km at the equator). This eliminates ghost packs left by earlier coordinate-scoped bootstrap sessions under different org identities. The sweep is non-fatal — a query or update failure logs a warning and does not block the user's bootstrap cycle. Retired cross-org rows are set to `status = full`; they are never deleted.
 
 ## User-Scoped Bootstrap Rule (2026-05-10)
 
@@ -103,9 +103,9 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Moving cities does not create a new org or a new set of `place_id` values.
 - Slot-based fallback hospitals update coordinates in-place via upsert when the user moves to a new city.
 - Source-based hospitals are retired by the same-org stale sweep when no longer in range.
-- This rule applies worldwide â€” no per-city catalog entry is required to benefit from a stable scope.
+- This rule applies worldwide — no per-city catalog entry is required to benefit from a stable scope.
 - `CITY_DEMO_FALLBACK_CATALOGS` remain valid as seed data sources for hospital names and coordinates; they no longer override the scope key.
-- The duplicate-hospital acceptance check (check 21) is enforced by org stability: one user â†’ one org â†’ one upsert pass per bootstrap cycle.
+- The duplicate-hospital acceptance check (check 21) is enforced by org stability: one user → one org → one upsert pass per bootstrap cycle.
 - The client-side coverage gate (`getPersistedDemoCoverageForLocation`) filters by owner slug so another user's nearby demo pack cannot satisfy the current user's bootstrap threshold.
 
 ## Demo Cleanup Runbook (2026-05-01)

@@ -11,7 +11,7 @@ last_updated: 2026-05-24
 # Audit Round 1: Pickup Truth Resolution Flow
 
 **Date:** 2026-05-15  
-**Scope:** Trace all code paths from manual/device/saved â†’ canonical pickup  
+**Scope:** Trace all code paths from manual/device/saved → canonical pickup  
 **Status:** COMPLETE
 
 ---
@@ -33,21 +33,21 @@ The pickup truth resolution flow has THREE separate location stores that can get
 
 ```
 GPS Hardware
-    â†“
+    ↓
 GlobalLocationContext.requestLocationPermission()
-    â†“
+    ↓
 GlobalLocationContext.setUserLocation(location, "device")
-    â†“
+    ↓
 useEmergencyLocationSync (syncs to locationStore)
-    â†“
+    ↓
 locationStore.setUserLocation(location, "device")
-    â†“
+    ↓
 useMapExploreFlow (reads from GlobalLocationContext, NOT locationStore)
-    â†“
+    ↓
 useMapLocation (receives globalUserLocation as prop)
-    â†“
+    ↓
 resolveMapPickupLocationTruth({ globalUserLocation, globalLocationSource })
-    â†“
+    ↓
 Returns: { activeLocation, source: "device", ... }
 ```
 
@@ -71,27 +71,27 @@ Returns: { activeLocation, source: "device", ... }
 
 ```
 User enters address in LocationSheet
-    â†“
+    ↓
 useManualEntryHandlers.handleManualConfirm()
-    â†“
+    ↓
 addressAssistService.resolveManualDraft(address) - geocodes text
-    â†“
+    ↓
 buildSelectedLocation({ source: "manual", coords: { lat, lng }, ... })
-    â†“
+    ↓
 setActiveCandidate(normalized) - sets in locationIntentAtoms
-    â†“
+    ↓
 User confirms selection
-    â†“
+    ↓
 commitLocation(selectedLocation) - NEED TO TRACE THIS
-    â†“
+    ↓
 setManualLocation({ location, source: "session_manual" })
-    â†“
+    ↓
 mapExploreFlow store (reducer action SET_MANUAL_LOCATION)
-    â†“
+    ↓
 useMapLocation (reads manualLocation from store)
-    â†“
+    ↓
 resolveMapPickupLocationTruth({ manualLocation })
-    â†“
+    ↓
 Returns: { activeLocation, source: "session_manual", ... }
 ```
 
@@ -114,25 +114,25 @@ Returns: { activeLocation, source: "session_manual", ... }
 
 ```
 locationStore.savedLocations array
-    â†“
+    ↓
 getStoredLocationFallback({ allowDevice: false })
-    â†“
+    ↓
 Reads locationStore.userLocation
-    â†“
+    ↓
 If source === "manual": returns { location, source: "manual_fallback" }
-    â†“
+    ↓
 If source === "device" || "persisted": returns { location, source: "stored_fallback" }
-    â†“
+    ↓
 GlobalLocationContext.requestLocationPermission() (on GPS failure)
-    â†“
+    ↓
 applyResolvedLocation({ locationData: fallback, source: fallback.source })
-    â†“
+    ↓
 GlobalLocationContext.setUserLocation(fallback.location, fallback.source)
-    â†“
+    ↓
 useMapExploreFlow reads from GlobalLocationContext
-    â†“
+    ↓
 resolveMapPickupLocationTruth({ globalUserLocation, globalLocationSource })
-    â†“
+    ↓
 Returns: { activeLocation, source: "saved_manual_fallback" or "saved_device_fallback", ... }
 ```
 

@@ -25,30 +25,30 @@ iVisit is a **mobile-first healthcare application** built with **React Native (E
 
 ```
 app/
-  â”œâ”€ (auth)/          â† Login, signup, OTP, onboarding screens
-  â”œâ”€ (user)/          â† Main app screens post-authentication
-  â””â”€ _layout.js       â† Global layout, wraps providers (Auth, Theme, Emergency, Toast)
+  â”œâ”€ (auth)/          ← Login, signup, OTP, onboarding screens
+  â”œâ”€ (user)/          ← Main app screens post-authentication
+  â””â”€ _layout.js       ← Global layout, wraps providers (Auth, Theme, Emergency, Toast)
 
-components/           â† Reusable UI components
-  â”œâ”€ auth/            â† Authentication components
-  â”œâ”€ register/        â† Registration and onboarding cards
-  â”œâ”€ form/            â† Form inputs and fields
-  â”œâ”€ ui/              â† Common UI elements
-  â”œâ”€ visits/          â† Visit-related components
-  â”œâ”€ map/             â† Map and location components
-  â”œâ”€ notifications/   â† Notification components
-  â””â”€ layout/          â† Layout wrappers
+components/           ← Reusable UI components
+  â”œâ”€ auth/            ← Authentication components
+  â”œâ”€ register/        ← Registration and onboarding cards
+  â”œâ”€ form/            ← Form inputs and fields
+  â”œâ”€ ui/              ← Common UI elements
+  â”œâ”€ visits/          ← Visit-related components
+  â”œâ”€ map/             ← Map and location components
+  â”œâ”€ notifications/   ← Notification components
+  â””â”€ layout/          ← Layout wrappers
 
-contexts/             â† Global state (Auth, Theme, Emergency, Toast, Notifications)
-hooks/                â† Custom hooks (mutations, queries, validators)
-screens/              â† Screen components (SignupScreen, LoginScreen, ProfileScreen, etc.)
-services/              â† Domain services (Supabase + local storage via database layer)
-api/                   â† Migration artifact (currently empty / not used by app code)
-constants/            â† Colors, steps, login/registration constants
-data/                 â† Static data (countries, hospitals, services, visits)
-assets/               â† Images, icons, logos, adaptive icons for Android/iOS
-utils/                â† Helper utilities (phone formatter, navigation options, gesture hooks)
-docs/                 â† Documentation (registration, UI/UX Bible, technical specs)
+contexts/             ← Global state (Auth, Theme, Emergency, Toast, Notifications)
+hooks/                ← Custom hooks (mutations, queries, validators)
+screens/              ← Screen components (SignupScreen, LoginScreen, ProfileScreen, etc.)
+services/              ← Domain services (Supabase + local storage via database layer)
+api/                   ← Migration artifact (currently empty / not used by app code)
+constants/            ← Colors, steps, login/registration constants
+data/                 ← Static data (countries, hospitals, services, visits)
+assets/               ← Images, icons, logos, adaptive icons for Android/iOS
+utils/                ← Helper utilities (phone formatter, navigation options, gesture hooks)
+docs/                 ← Documentation (registration, UI/UX Bible, technical specs)
 ```
 
 ## Language & Runtime

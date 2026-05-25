@@ -6,18 +6,18 @@ last_updated: 2026-05-24
 
 # Refactoring Bible: The "Apple Way" Architecture
 
-> **Reconciliation Note â€” 2026-05-24:** All four "Critical Severity (Legacy)" rows in Â§2 are now **resolved**. Current file sizes verified against `HEAD`:
+> **Reconciliation Note — 2026-05-24:** All four "Critical Severity (Legacy)" rows in §2 are now **resolved**. Current file sizes verified against `HEAD`:
 >
-> - `screens/ProfileScreen.jsx` â€” **477 bytes** (thin shell â€” âœ… resolved, was "In Progress")
-> - `screens/SearchScreen.jsx` â€” **486 bytes** (thin shell â€” âœ… already marked resolved)
-> - `screens/EmergencyContactsScreen.jsx` â€” **602 bytes** (thin shell â€” âœ… already marked resolved)
-> - `services/authService.js` â€” 27 KB; reorg complete per the original note (âœ… already marked resolved)
+> - `screens/ProfileScreen.jsx` — **477 bytes** (thin shell — ✅ resolved, was "In Progress")
+> - `screens/SearchScreen.jsx` — **486 bytes** (thin shell — ✅ already marked resolved)
+> - `screens/EmergencyContactsScreen.jsx` — **602 bytes** (thin shell — ✅ already marked resolved)
+> - `services/authService.js` — 27 KB; reorg complete per the original note (✅ already marked resolved)
 >
-> The Viewâ€“Hookâ€“Service doctrine in Â§3 remains current and authoritative.
+> The View–Hook–Service doctrine in §3 remains current and authoritative.
 > For new code standards, prefer [`../../REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) (the five-layer-aware successor).
 
 **Status**: Doctrine current; legacy audit table reconciled 2026-05-24
-**Date**: 2026-02-10 â€” Last Updated: 2026-04-26 â€” Reconciled: 2026-05-24
+**Date**: 2026-02-10 — Last Updated: 2026-04-26 — Reconciled: 2026-05-24
 **Goal**: Create a codebase that is readable, scalable, modular, and principled. We aim for "The Apple Way": clean user experience, efficient memory usage, and structured complexity that feels simple to the user.
 
 ---
@@ -37,16 +37,16 @@ We prioritize:
 ### ðŸš¨ Critical Severity (Legacy)
 | File | Lines | Status | Notes |
 |------|-------|--------|-------|
-| `screens/ProfileScreen.jsx` | ~1048 | ðŸŸ¡ In Progress | Form logic partially extracted. Still needs UI decomposition. |
-| `screens/SearchScreen.jsx` | ~1043 | ðŸŸ¢ Resolved | Ranking logic moved to `hooks/useSearchRanking.js` & `utils/searchScoring.js`. |
-| `screens/EmergencyContactsScreen.jsx` | ~977 | ðŸŸ¢ Resolved | Decomposed into `ContactCard` and `useEmergencyContactsForm`. |
-| `services/authService.js` | ~935 | ðŸŸ¢ Resolved | Split into `authErrorUtils`, `userMapper`, `oauthService`. Main file now ~500 lines. |
+| `screens/ProfileScreen.jsx` | ~1048 | 🟡 In Progress | Form logic partially extracted. Still needs UI decomposition. |
+| `screens/SearchScreen.jsx` | ~1043 | 🟢 Resolved | Ranking logic moved to `hooks/useSearchRanking.js` & `utils/searchScoring.js`. |
+| `screens/EmergencyContactsScreen.jsx` | ~977 | 🟢 Resolved | Decomposed into `ContactCard` and `useEmergencyContactsForm`. |
+| `services/authService.js` | ~935 | 🟢 Resolved | Split into `authErrorUtils`, `userMapper`, `oauthService`. Main file now ~500 lines. |
 
 ---
 
 ## 3. The Architecture: View-Hook-Service
 
-### ðŸŸ¢ 1. View (The "Dummy" UI)
+### 🟢 1. View (The "Dummy" UI)
 *   **Role**: Purely renders data. "The dumb terminal."
 *   **Location**: `screens/`, `components/`
 *   **Rules**:
@@ -55,7 +55,7 @@ We prioritize:
     *   **No** inline sub-component definitions.
     *   **Inline Documentation**: Generous comments explaining *why* UI decisions were made (e.g., "Using `absolute` positioning here to avoid layout shift during animation").
 
-### ðŸŸ¡ 2. Controller (Custom Hooks)
+### 🟡 2. Controller (Custom Hooks)
 *   **Role**: Connects UI to Logic/State.
 *   **Location**: `hooks/`
 *   **Rules**:
@@ -72,7 +72,7 @@ We prioritize:
     *   **Circular Dependency Warning**: NEVER import a Hook that consumes a Context *into* that same Context.
     *   **Lightweight**: Contexts should store state. Heavy logic belongs in Services/Hooks.
 
-### ðŸ”´ 4. Service (Pure Logic)
+### 🔴 4. Service (Pure Logic)
 *   **Role**: The "Brain". Independent of React.
 *   **Location**: `services/`, `utils/`
 *   **Rules**:
@@ -120,10 +120,10 @@ We prioritize:
     *   Long stack pages should not become form walls.
     *   Move editing, advanced controls, and secondary management into sheets, modals, and panels.
 8.  **Every Pass Has a Git Checkpoint**:
-    *   Record the monolith baseline hash before the first pass â€” restore it at any time with `git show <hash>:<file>`.
+    *   Record the monolith baseline hash before the first pass — restore it at any time with `git show <hash>:<file>`.
     *   Commit after each complete pass (never mid-pass), with a structured message logging what changed and the line count delta.
-    *   Compare against any stash prior art before closing the pass â€” never drop logic silently.
-    *   Full protocol in `docs/REFACTORING_GUARDRAILS.md` section 13â€“14.
+    *   Compare against any stash prior art before closing the pass — never drop logic silently.
+    *   Full protocol in `docs/REFACTORING_GUARDRAILS.md` section 13–14.
 
 ---
 
@@ -143,10 +143,10 @@ We prioritize:
 - [x] Emergency Contacts decomposed.
 - [ ] ProfileScreen UI decomposition.
 
-### Phase 4: Map Explore Flow Hook Modularization (Complete â€” 2026-04-26)
-- [x] `useMapExploreFlow.js`: 1,638 lines â†’ 557 lines (âˆ’66%)
-- [x] 18 specialized hooks extracted (Passes 1â€“16)
-- [x] Monolith baseline hash: `754a4c6` â€” restorable at any time
+### Phase 4: Map Explore Flow Hook Modularization (Complete — 2026-04-26)
+- [x] `useMapExploreFlow.js`: 1,638 lines → 557 lines (âˆ’66%)
+- [x] 18 specialized hooks extracted (Passes 1–16)
+- [x] Monolith baseline hash: `754a4c6` — restorable at any time
 - [x] Barrel `index.js` created for all exploreFlow hooks
 - [x] Full record: `docs/./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md`
 

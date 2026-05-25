@@ -6,7 +6,7 @@ last_updated: 2026-05-24
 
 # Docs Contributing Rules
 
-> **TL;DR â€” Before you create a file, know its folder. If you can't name the folder, you shouldn't create the file yet.**
+> **TL;DR — Before you create a file, know its folder. If you can't name the folder, you shouldn't create the file yet.**
 
 ---
 
@@ -27,7 +27,7 @@ What is this document?
 â”‚
 â”œâ”€â”€ A locked product truth or active sprint state?
 â”‚     â””â”€â”€ docs/ root only  (rules.json, MASTER_BLUEPRINT.md, SPONSOR_SPRINT.md)
-â”‚         âš ï¸  Do NOT add new root files. Update existing ones instead.
+â”‚         ⚠ï¸  Do NOT add new root files. Update existing ones instead.
 â”‚
 â”œâ”€â”€ A runtime flow map, phase dossier, or domain contract?
 â”‚     â””â”€â”€ docs/flows/<domain>/
@@ -44,10 +44,10 @@ What is this document?
 â”‚     â””â”€â”€ docs/audit/<domain>/
 â”‚         subfolders: map/, screens/, state/, emergency/, planning/, payment/, welcome/, demo/, checkpoints/
 â”‚         map audits go in:
-â”‚           - audit/map/checkpoints/  â€” CHECKPOINT files
-â”‚           - audit/map/passes/       â€” PASS or TIGHTENING files
-â”‚           - audit/map/manifests/    â€” .json manifests
-â”‚           - audit/map/             â€” all other map audits
+â”‚           - audit/map/checkpoints/  — CHECKPOINT files
+â”‚           - audit/map/passes/       — PASS or TIGHTENING files
+â”‚           - audit/map/manifests/    — .json manifests
+â”‚           - audit/map/             — all other map audits
 â”‚
 â”œâ”€â”€ A Supabase Change Control item (SCC)?
 â”‚     â””â”€â”€ docs/project_state/context/scc/
@@ -72,9 +72,9 @@ What is this document?
 â”‚     â””â”€â”€ docs/product_design/
 â”‚
 â””â”€â”€ A superseded or archived document?
-      â””â”€â”€ docs/archive/historical/   â€” completed pass plans, old progress logs
-          docs/archive/legacy_specs/ â€” old specs replaced by V2+ docs
-          âš ï¸  Always add an ARCHIVAL NOTICE banner to the file before moving it.
+      â””â”€â”€ docs/archive/historical/   — completed pass plans, old progress logs
+          docs/archive/legacy_specs/ — old specs replaced by V2+ docs
+          ⚠ï¸  Always add an ARCHIVAL NOTICE banner to the file before moving it.
 ```
 
 ---
@@ -91,7 +91,7 @@ What is this document?
 | Config / data | lowercase with hyphens (e.g. `rules.json`) |
 
 Do **not** use dates as a substitute for a meaningful name.
-Do **not** use `DRAFT_`, `NEW_`, `TEMP_`, or `WIP_` prefixes â€” finish the doc or don't commit it.
+Do **not** use `DRAFT_`, `NEW_`, `TEMP_`, or `WIP_` prefixes — finish the doc or don't commit it.
 
 ---
 
@@ -101,7 +101,7 @@ Only these files live at `docs/` root:
 
 | File | Role |
 |---|---|
-| `rules.json` | Locked system rules â€” tiebreaker |
+| `rules.json` | Locked system rules — tiebreaker |
 | `MASTER_BLUEPRINT.md` | Locked product vision |
 | `SPONSOR_SPRINT.md` | Mutable active sprint state |
 | `REFACTORING_GUARDRAILS.md` | Code standards |
@@ -117,12 +117,12 @@ Only these files live at `docs/` root:
 
 Before committing any new doc:
 
-- [ ] **Correct folder** â€” matches the decision tree above
-- [ ] **Not a duplicate** â€” search `INDEX.md` first; if a similar doc exists, update it instead
-- [ ] **Meaningful name** â€” no `TEMP_`, `NEW_`, `DRAFT_`, date-only names
-- [ ] **INDEX.md updated** â€” new entry added to the correct section
-- [ ] **Links valid** â€” any links you added resolve to real files
-- [ ] **No root clutter** â€” not added to `docs/` root unless it's doctrine
+- [ ] **Correct folder** — matches the decision tree above
+- [ ] **Not a duplicate** — search `INDEX.md` first; if a similar doc exists, update it instead
+- [ ] **Meaningful name** — no `TEMP_`, `NEW_`, `DRAFT_`, date-only names
+- [ ] **INDEX.md updated** — new entry added to the correct section
+- [ ] **Links valid** — any links you added resolve to real files
+- [ ] **No root clutter** — not added to `docs/` root unless it's doctrine
 
 ---
 
@@ -132,13 +132,13 @@ When a document is superseded:
 
 1. Add this banner at the top of the old file:
    ```markdown
-   > âš ï¸ ARCHIVAL NOTICE â€” This document has been superseded.
+   > ⚠ï¸ ARCHIVAL NOTICE — This document has been superseded.
    > Current reference: [replacement doc](../path/to/replacement.md)
    > Retained for historical context only. Do not use for implementation decisions.
    ```
 2. Move the file to `docs/archive/historical/` or `docs/archive/legacy_specs/`
-3. Update `INDEX.md` â€” move the entry to Section 5 (Historical / Archive Docs)
-4. Do **not** delete files â€” history must be preserved
+3. Update `INDEX.md` — move the entry to Section 5 (Historical / Archive Docs)
+4. Do **not** delete files — history must be preserved
 
 ---
 

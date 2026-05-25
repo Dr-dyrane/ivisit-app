@@ -4,11 +4,11 @@ owner: product
 last_updated: 2026-01-11
 ---
 
-Absolutely. Let's build a **comprehensive documentation / README** for your login flow that aligns with your registration flow, incorporates toast notifications consistently, and clearly describes each part of the logic, including social login. Iâ€™ll break it down **section by section** so itâ€™s clear for developers, designers, or future maintainers.
+Absolutely. Let's build a **comprehensive documentation / README** for your login flow that aligns with your registration flow, incorporates toast notifications consistently, and clearly describes each part of the logic, including social login. I'll break it down **section by section** so it's clear for developers, designers, or future maintainers.
 
 ---
 
-# ðŸ“„ iVisit Login Flow â€” Documentation
+# ðŸ“„ iVisit Login Flow — Documentation
 
 ## Overview
 
@@ -29,20 +29,20 @@ This system ensures that both **email/phone login** and **social login** provide
 ```
 AuthProvider
 â”‚
-â”œâ”€ useAuth()          â†’ Custom hook to access auth context
+â”œâ”€ useAuth()          → Custom hook to access auth context
 â”‚
-â”œâ”€ login(userData)    â†’ Email/phone login logic
-â”œâ”€ logout()           â†’ Clear user data
-â”œâ”€ syncUserData()     â†’ Refreshes user info from API
-â””â”€ loading state      â†’ Displays spinner while checking auth
+â”œâ”€ login(userData)    → Email/phone login logic
+â”œâ”€ logout()           → Clear user data
+â”œâ”€ syncUserData()     → Refreshes user info from API
+â””â”€ loading state      → Displays spinner while checking auth
 
 Screens:
 SignupScreen
 â”‚
-â”œâ”€ SignUpMethodCard  â†’ Email/Phone login triggers modal
-â”œâ”€ SocialAuthRow     â†’ Layout for social auth buttons
-â”‚   â””â”€ SocialAuthButton â†’ Handles animation, toast, and dispatch
-â””â”€ AuthInputModal     â†’ Captures credentials for email/phone login
+â”œâ”€ SignUpMethodCard  → Email/Phone login triggers modal
+â”œâ”€ SocialAuthRow     → Layout for social auth buttons
+â”‚   â””â”€ SocialAuthButton → Handles animation, toast, and dispatch
+â””â”€ AuthInputModal     → Captures credentials for email/phone login
 ```
 
 ---
@@ -59,9 +59,9 @@ SignupScreen
 
 **Key Points:**
 
-* `user` â€” Stores authenticated user info
-* `token` â€” Stores authentication token
-* `loading` â€” Controls spinner during async operations
+* `user` — Stores authenticated user info
+* `token` — Stores authentication token
+* `loading` — Controls spinner during async operations
 
 **Example Use:**
 
@@ -185,8 +185,8 @@ const syncUserData = async () => {
 
 **Components:**
 
-* `SocialAuthRow` â€” Layout for all social login buttons
-* `SocialAuthButton` â€” Individual provider button with animations
+* `SocialAuthRow` — Layout for all social login buttons
+* `SocialAuthButton` — Individual provider button with animations
 
 **Behavior:**
 
@@ -250,9 +250,9 @@ const handlePress = async () => {
 * All login types (email/phone & social) **must trigger toast**
 * Types used:
 
-  * `success` â†’ Login/Registration success
-  * `error` â†’ Login failure or API error
-  * `info` â†’ Logout
+  * `success` → Login/Registration success
+  * `error` → Login failure or API error
+  * `info` → Logout
 
 ```jsx
 import Toast from "react-native-toast-message";

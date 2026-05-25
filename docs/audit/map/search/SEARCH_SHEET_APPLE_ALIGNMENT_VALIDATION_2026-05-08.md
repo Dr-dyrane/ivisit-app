@@ -18,52 +18,52 @@ last_updated: 2026-05-24
 
 ## 1. Documentation Tree Review
 
-### Authority Order Compliance âœ…
+### Authority Order Compliance ✅
 
 Per `docs/README.md` authority hierarchy, our audit correctly references:
 
 | Authority Level | Document | Referenced In Audit | Status |
 |----------------|----------|---------------------|--------|
-| 1 (Tiebreaker) | `rules.json` v2.0 | âœ… Cited throughout | Compliant |
-| 2 | `MASTER_BLUEPRINT.md` | âœ… Architecture alignment | Compliant |
-| 3 | `SPONSOR_SPRINT.md` | âš ï¸ Not directly referenced | N/A - not sprint-specific |
-| 4 | `flows/<domain>/` | âœ… Search flow documented | Compliant |
-| 5 | Older implementation notes | âœ… Historical context included | Compliant |
+| 1 (Tiebreaker) | `rules.json` v2.0 | ✅ Cited throughout | Compliant |
+| 2 | `MASTER_BLUEPRINT.md` | ✅ Architecture alignment | Compliant |
+| 3 | `SPONSOR_SPRINT.md` | ⚠ï¸ Not directly referenced | N/A - not sprint-specific |
+| 4 | `flows/<domain>/` | ✅ Search flow documented | Compliant |
+| 5 | Older implementation notes | ✅ Historical context included | Compliant |
 
-**External Authority:** `ivisit/ui-rules.json` v2.1 (marketing repo) - âœ… **Cited extensively**
+**External Authority:** `ivisit/ui-rules.json` v2.1 (marketing repo) - ✅ **Cited extensively**
 
-### Cross-Repo Alignment âœ…
+### Cross-Repo Alignment ✅
 
 Per `docs/rules.json` repo boundaries:
-- **ivisit-app** (canonical patient product) - âœ… Audit is for search sheet in this repo
-- **ivisit** (marketing) - âœ… References `ui-rules.json` without duplicating logic
-- **ivisit-console** (provider) - âœ… Not mixed into patient surface
+- **ivisit-app** (canonical patient product) - ✅ Audit is for search sheet in this repo
+- **ivisit** (marketing) - ✅ References `ui-rules.json` without duplicating logic
+- **ivisit-console** (provider) - ✅ Not mixed into patient surface
 
 ---
 
 ## 2. Guardrails Compliance Check
 
-### REFACTORING_GUARDRAILS.md Alignment âœ…
+### REFACTORING_GUARDRAILS.md Alignment ✅
 
 | Guardrail | Audit Compliance | Evidence |
 |-----------|------------------|----------|
-| **State Management Layers** | âœ… Respects L1-L5 architecture | Section 1: "Architecture is solid" - Model-View pattern validated |
-| **useEffect Decision Tree** | âœ… No new effects proposed | All changes are presentational |
-| **Loading State Rule** | âœ… Skeletons over spinners | Empty state improvements specified |
-| **File Organization** | âœ… Changes mapped to correct locations | Files listed per component type |
-| **Hook Design** | âœ… Single responsibility maintained | Model-View pattern preserved |
-| **Pass Documentation Rule** | âœ… Intent documented before implementation | Full audit precedes any code changes |
-| **Subsequent Pass Rule** | âœ… 4 tracks addressed | State, UI quality, DRY, Documentation all covered |
+| **State Management Layers** | ✅ Respects L1-L5 architecture | Section 1: "Architecture is solid" - Model-View pattern validated |
+| **useEffect Decision Tree** | ✅ No new effects proposed | All changes are presentational |
+| **Loading State Rule** | ✅ Skeletons over spinners | Empty state improvements specified |
+| **File Organization** | ✅ Changes mapped to correct locations | Files listed per component type |
+| **Hook Design** | ✅ Single responsibility maintained | Model-View pattern preserved |
+| **Pass Documentation Rule** | ✅ Intent documented before implementation | Full audit precedes any code changes |
+| **Subsequent Pass Rule** | ✅ 4 tracks addressed | State, UI quality, DRY, Documentation all covered |
 
-### File Size Guardrails âœ…
+### File Size Guardrails ✅
 
 Per `docs/README.md` architecture compliance:
 
 | File | Current | After Changes | Target | Max | Status |
 |------|---------|---------------|--------|-----|--------|
-| `MapSearchSheetSections.jsx` | ~641 lines | +50/-100 lines | 250-400 | 500 | âœ… Within bounds |
-| `mapSearchSheet.styles.js` | ~349 lines | +30/-50 lines | 80-250 | 350 | âš ï¸ Near limit |
-| `useMapSearchSheetModel.js` | ~305 lines | +20/-10 lines | 80-200 | 300 | âœ… Within bounds |
+| `MapSearchSheetSections.jsx` | ~641 lines | +50/-100 lines | 250-400 | 500 | ✅ Within bounds |
+| `mapSearchSheet.styles.js` | ~349 lines | +30/-50 lines | 80-250 | 350 | ⚠ï¸ Near limit |
+| `useMapSearchSheetModel.js` | ~305 lines | +20/-10 lines | 80-200 | 300 | ✅ Within bounds |
 
 **Mitigation:** If `mapSearchSheet.styles.js` exceeds 350 lines, extract responsive styles to separate file per guardrails.
 
@@ -71,80 +71,80 @@ Per `docs/README.md` architecture compliance:
 
 ## 3. Historical Audit Pattern Review
 
-### Comparison to Prior Audits âœ…
+### Comparison to Prior Audits ✅
 
 Reviewed against 5 recent map audits for consistency:
 
 | Audit | Pattern | Our Audit | Match |
 |-------|---------|-----------|-------|
-| `MAP_EXPLORE_INTENT_HIG_AUDIT_2026-05-03.md` | Defect IDs (E-2.1, E-2.2...), HIG citations | Severity levels (ðŸ”´ Critical, ðŸŸ¡ Medium) | âœ… Consistent |
-| `LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` | Root causes â†’ Implemented fixes structure | Root causes â†’ Recommended plan | âœ… Consistent |
-| `NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md` | Problem â†’ Root cause â†’ Fix | Problems â†’ Gaps â†’ Recommendations | âœ… Consistent |
-| `PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md` | Code paths documented | Code paths included | âœ… Consistent |
-| `MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md` | Pullback notes | Pullback notes referenced | âœ… Consistent |
+| `MAP_EXPLORE_INTENT_HIG_AUDIT_2026-05-03.md` | Defect IDs (E-2.1, E-2.2...), HIG citations | Severity levels (🔴 Critical, 🟡 Medium) | ✅ Consistent |
+| `LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` | Root causes → Implemented fixes structure | Root causes → Recommended plan | ✅ Consistent |
+| `NEAREST_HOSPITAL_SELECTION_AUDIT_2026-05-07.md` | Problem → Root cause → Fix | Problems → Gaps → Recommendations | ✅ Consistent |
+| `PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md` | Code paths documented | Code paths included | ✅ Consistent |
+| `MAP_LOCATION_NEARBY_AND_ROUTE_FAILURE_AUDIT_2026-05-07.md` | Pullback notes | Pullback notes referenced | ✅ Consistent |
 
-### Documentation Conventions âœ…
+### Documentation Conventions ✅
 
 | Convention | Standard | Our Audit | Status |
 |------------|----------|-----------|--------|
-| Date format | `YYYY-MM-DD` | `2026-05-07` | âœ… Correct |
-| File naming | `DOMAIN_DESCRIPTION_DATE.md` | `SEARCH_SHEET_APPLE_ALIGNMENT_2026-05-07.md` | âœ… Correct |
-| JSON manifest | Parallel `.json` file | `SEARCH_SHEET_APPLE_ALIGNMENT_MANIFEST_2026-05-07.json` | âœ… Correct |
-| Status flags | AUDIT COMPLETE / IN PROGRESS | Status section included | âœ… Correct |
-| Code paths | Line numbers for key files | Line numbers cited | âœ… Correct |
+| Date format | `YYYY-MM-DD` | `2026-05-07` | ✅ Correct |
+| File naming | `DOMAIN_DESCRIPTION_DATE.md` | `SEARCH_SHEET_APPLE_ALIGNMENT_2026-05-07.md` | ✅ Correct |
+| JSON manifest | Parallel `.json` file | `SEARCH_SHEET_APPLE_ALIGNMENT_MANIFEST_2026-05-07.json` | ✅ Correct |
+| Status flags | AUDIT COMPLETE / IN PROGRESS | Status section included | ✅ Correct |
+| Code paths | Line numbers for key files | Line numbers cited | ✅ Correct |
 
 ---
 
 ## 4. UI Rules v2.1 Validation
 
-### iVisit UI Rules from `ivisit/ui-rules.json` âœ…
+### iVisit UI Rules from `ivisit/ui-rules.json` ✅
 
 | Rule | Audit Section | Compliance |
 |------|---------------|------------|
-| "Reduce cognitive load" | Section 1: Philosophy Alignment | âœ… Major violations flagged |
-| "Prefer removal over addition" | Phase 1: Remove mode chips | âœ… Directly addresses |
-| "Show only what is needed" | Remove "Nearby now" from default | âœ… Directly addresses |
-| "Make next step unmistakable" | First-timer flow analysis | âœ… Single primary action proposed |
-| "Prioritize stressed users" | Underpaid App Test | âœ… Calm-confidence target |
-| "Use motion to support understanding" | Phase 3: Motion system | âœ… Purposed transitions planned |
-| "Typography systematic" | Typography reduction (18â†’13px) | âœ… Apple HIG spec cited |
-| "Single primary action per screen" | Section 2: Visual Hierarchy | âœ… 7â†’3 elements |
+| "Reduce cognitive load" | Section 1: Philosophy Alignment | ✅ Major violations flagged |
+| "Prefer removal over addition" | Phase 1: Remove mode chips | ✅ Directly addresses |
+| "Show only what is needed" | Remove "Nearby now" from default | ✅ Directly addresses |
+| "Make next step unmistakable" | First-timer flow analysis | ✅ Single primary action proposed |
+| "Prioritize stressed users" | Underpaid App Test | ✅ Calm-confidence target |
+| "Use motion to support understanding" | Phase 3: Motion system | ✅ Purposed transitions planned |
+| "Typography systematic" | Typography reduction (18→13px) | ✅ Apple HIG spec cited |
+| "Single primary action per screen" | Section 2: Visual Hierarchy | ✅ 7→3 elements |
 
-### Apple HIG from `docs/rules.json` âœ…
+### Apple HIG from `docs/rules.json` ✅
 
 | HIG Principle | Audit Reference | Evidence |
 |--------------|-----------------|----------|
-| Progressive disclosure | Section 7: Phase 1-3 | âœ… "Show only needed now" |
-| Single primary action | Section 5: First-timer | âœ… "ðŸ“ Current Location" hero |
-| Spatial continuity | Phase 3: Motion system | âœ… "No teleporting between states" |
-| Minimum 44px touch targets | Phase 1: Recent as rows | âœ… "44px minimum" specified |
-| Dynamic type support | Typography reduction | âœ… "Support accessibility sizing" |
+| Progressive disclosure | Section 7: Phase 1-3 | ✅ "Show only needed now" |
+| Single primary action | Section 5: First-timer | ✅ "📍 Current Location" hero |
+| Spatial continuity | Phase 3: Motion system | ✅ "No teleporting between states" |
+| Minimum 44px touch targets | Phase 1: Recent as rows | ✅ "44px minimum" specified |
+| Dynamic type support | Typography reduction | ✅ "Support accessibility sizing" |
 
 ---
 
 ## 5. Architecture Alignment
 
-### State Management Layers âœ…
+### State Management Layers ✅
 
 Our audit correctly identifies and preserves the 5-layer architecture:
 
 ```
 Server truth (Supabase/Realtime)
-    â†“
-Server cache (TanStack Query) â€” NOT TOUCHED
-    â†“
-Persistent client (Zustand) â€” NOT TOUCHED
-    â†“
-Lifecycle/XState â€” NOT TOUCHED
-    â†“
-Ephemeral UI (Jotai) â€” NOT TOUCHED
-    â†“
-Presentation (Search Sheet Sections) â€” âœ… CHANGES HERE ONLY
+    ↓
+Server cache (TanStack Query) — NOT TOUCHED
+    ↓
+Persistent client (Zustand) — NOT TOUCHED
+    ↓
+Lifecycle/XState — NOT TOUCHED
+    ↓
+Ephemeral UI (Jotai) — NOT TOUCHED
+    ↓
+Presentation (Search Sheet Sections) — ✅ CHANGES HERE ONLY
 ```
 
 **Validation:** All proposed changes are in the **presentation layer** only. No state management changes required.
 
-### Model-View Pattern âœ…
+### Model-View Pattern ✅
 
 Current pattern per `useMapSearchSheetModel`:
 - Model returns data objects
@@ -157,29 +157,29 @@ Current pattern per `useMapSearchSheetModel`:
 
 ## 6. Lessons Learned Integration
 
-### From Prior Map Passes âœ…
+### From Prior Map Passes ✅
 
 | Lesson Source | Lesson | Applied in Audit |
 |--------------|--------|------------------|
-| `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` | Deterministic commits in buckets | âœ… 3-phase implementation plan |
-| `LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` | Auto-open location when GPS off | âœ… Referenced, enhanced with onboarding |
-| `PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md` | Return-to-source contract | âœ… Source phase preservation |
-| `MAP_EXPLORE_INTENT_HIG_AUDIT_2026-05-03.md` | Haptic feedback missing | âœ… Noted for future pass |
+| `MAP_PASS18_WORKTREE_CHECKPOINT_2026-05-07.md` | Deterministic commits in buckets | ✅ 3-phase implementation plan |
+| `LOCATION_CONTROL_AND_MANUAL_PICKUP_AUDIT_2026-05-07.md` | Auto-open location when GPS off | ✅ Referenced, enhanced with onboarding |
+| `PICKUP_CONTROL_AND_QUOTE_ADOPTION_AUDIT_2026-05-07.md` | Return-to-source contract | ✅ Source phase preservation |
+| `MAP_EXPLORE_INTENT_HIG_AUDIT_2026-05-03.md` | Haptic feedback missing | ✅ Noted for future pass |
 
-### From REFACTORING_GUARDRAILS.md âœ…
+### From REFACTORING_GUARDRAILS.md ✅
 
 | Pattern | Source | Applied |
 |---------|--------|---------|
-| Safe modularization (No Silent Drop) | Section 11 | âœ… Contract verification planned |
-| Git checkpoint protocol | Section 13 | âœ… Phase commits specified |
-| Barrel exports | Phase 6 | âœ… Not needed (no new hooks) |
-| Stash comparison | Section 14 | âœ… N/A (new feature, not refactor) |
+| Safe modularization (No Silent Drop) | Section 11 | ✅ Contract verification planned |
+| Git checkpoint protocol | Section 13 | ✅ Phase commits specified |
+| Barrel exports | Phase 6 | ✅ Not needed (no new hooks) |
+| Stash comparison | Section 14 | ✅ N/A (new feature, not refactor) |
 
 ---
 
 ## 7. Risk Assessment
 
-### Documentation Risks âœ…
+### Documentation Risks ✅
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
@@ -188,7 +188,7 @@ Current pattern per `useMapSearchSheetModel`:
 | Typography too small for some users | Low | A/B test before full rollout |
 | User confusion without mode chips | Low | Auto-selection is simpler |
 
-### Technical Debt âœ…
+### Technical Debt ✅
 
 | Area | Current | After Implementation |
 |------|---------|----------------------|
@@ -200,23 +200,23 @@ Current pattern per `useMapSearchSheetModel`:
 
 ## 8. Implementation Readiness
 
-### Pre-Implementation Checklist âœ…
+### Pre-Implementation Checklist ✅
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Audit approved | âœ… | This validation confirms |
-| Manifest created | âœ… | JSON file parallel to audit |
-| Code paths documented | âœ… | Line numbers verified |
-| Acceptance criteria defined | âœ… | Per phase in manifest |
-| Success metrics established | âœ… | Quantitative + qualitative |
-| Risk assessment complete | âœ… | Section above |
-| Guardrails compliance verified | âœ… | This document |
+| Audit approved | ✅ | This validation confirms |
+| Manifest created | ✅ | JSON file parallel to audit |
+| Code paths documented | ✅ | Line numbers verified |
+| Acceptance criteria defined | ✅ | Per phase in manifest |
+| Success metrics established | ✅ | Quantitative + qualitative |
+| Risk assessment complete | ✅ | Section above |
+| Guardrails compliance verified | ✅ | This document |
 
-### Dependencies âœ…
+### Dependencies ✅
 
 | Dependency | Phase | Status |
 |------------|-------|--------|
-| Profile saved addresses | p1-1 | âš ï¸ Verify before starting |
+| Profile saved addresses | p1-1 | ⚠ï¸ Verify before starting |
 | Analytics pipeline | p3-2 (deferred) | Not blocking |
 | ML infrastructure | p3-2 (deferred) | Not blocking |
 
@@ -241,11 +241,11 @@ Current pattern per `useMapSearchSheetModel`:
 ### Grade: **A+ (Sound)**
 
 The audit is:
-- âœ… **Compliant** with all documentation authority
-- âœ… **Aligned** with refactoring guardrails
-- âœ… **Consistent** with historical audit patterns
-- âœ… **Respectful** of state management architecture
-- âœ… **Ready** for implementation (pending dependency check)
+- ✅ **Compliant** with all documentation authority
+- ✅ **Aligned** with refactoring guardrails
+- ✅ **Consistent** with historical audit patterns
+- ✅ **Respectful** of state management architecture
+- ✅ **Ready** for implementation (pending dependency check)
 
 ---
 
@@ -253,29 +253,29 @@ The audit is:
 
 ### Immediate (Before Implementation)
 
-1. **Verify profile saved addresses API** â€” Confirm Home/Work storage exists
-2. **Create feature branch** â€” `feature/search-sheet-apple-alignment`
-3. **Set up A/B test framework** â€” For typography changes
+1. **Verify profile saved addresses API** — Confirm Home/Work storage exists
+2. **Create feature branch** — `feature/search-sheet-apple-alignment`
+3. **Set up A/B test framework** — For typography changes
 
 ### Before Any Implementation
 
-1. **Discuss pass with user** â€” Review deliverables, scope, approach
-2. **Get explicit confirmation** â€” "Ready to start Pass X?"
-3. **Confirm no conflicts** â€” Check for uncommitted work or other priorities
+1. **Discuss pass with user** — Review deliverables, scope, approach
+2. **Get explicit confirmation** — "Ready to start Pass X?"
+3. **Confirm no conflicts** — Check for uncommitted work or other priorities
 4. **Only then proceed** with code changes
 
 ### During Implementation
 
-1. **Discuss as we go** â€” Check in on approach, show progress
-2. **No commits until user confirms** â€” Wait for explicit "yes, commit this"
-3. **Document each deliverable** â€” Update manifest with actual line counts
-4. **Test location-off scenarios** â€” Critical user flow
+1. **Discuss as we go** — Check in on approach, show progress
+2. **No commits until user confirms** — Wait for explicit "yes, commit this"
+3. **Document each deliverable** — Update manifest with actual line counts
+4. **Test location-off scenarios** — Critical user flow
 
 ### Post-Implementation
 
-1. **Update audit README** â€” Add to `docs/audit/map/README.md`
-2. **Archive if superseded** â€” If new patterns emerge
-3. **Measure success metrics** â€” Time to change location, cognitive load
+1. **Update audit README** — Add to `docs/audit/map/README.md`
+2. **Archive if superseded** — If new patterns emerge
+3. **Measure success metrics** — Time to change location, cognitive load
 
 ---
 
@@ -293,7 +293,7 @@ It correctly:
 
 **Validated by:** Cascade documentation review  
 **Date:** 2026-05-08  
-**Status:** âœ… **APPROVED FOR IMPLEMENTATION**
+**Status:** ✅ **APPROVED FOR IMPLEMENTATION**
 
 ---
 

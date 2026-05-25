@@ -135,14 +135,14 @@ Guardrail interpretation:
 
 | # | Issue | Status |
 |---|-------|--------|
-| 1 | **Location-off deadlock behind loading overlay** | âœ… **IMPLEMENTED 2026-05-07** â€” Converted to terminal state with auto-open location search |
+| 1 | **Location-off deadlock behind loading overlay** | ✅ **IMPLEMENTED 2026-05-07** — Converted to terminal state with auto-open location search |
 | 2 | Broad/far hospital discovery being presented as "nearby" | Client-side remediation in place (strict 5km nearby lane) |
-| 3 | **Route API invalid-input leakage** | âœ… **IMPLEMENTED 2026-05-07** â€” Strict coordinate validation added to routeService |
-| 4 | Billing quote not fully adopted in ambulance service selection | âœ… **IMPLEMENTED 2026-05-07** â€” Quoted prices now in ambulance/bed decision models |
+| 3 | **Route API invalid-input leakage** | ✅ **IMPLEMENTED 2026-05-07** — Strict coordinate validation added to routeService |
+| 4 | Billing quote not fully adopted in ambulance service selection | ✅ **IMPLEMENTED 2026-05-07** — Quoted prices now in ambulance/bed decision models |
 
 ## Recommended Fix Order
 
-### âœ… Completed
+### ✅ Completed
 1. ~~Convert `requiresLocationSelection` into a real non-loading terminal state for `/map`.~~ **DONE**
 5. ~~Thread billing-quote display projection into ambulance service-selection cards.~~ **DONE**
 
@@ -150,7 +150,7 @@ Guardrail interpretation:
 2. Split `discovered hospitals` from `nearby hospitals` in selectors. *(Client-side remediation in place)*
 4. Introduce a short-radius `local candidate` selection pass for the first hospital shown on explore intent. *(Policy decision)*
 
-### Implementation Details â€” Route Validation
+### Implementation Details — Route Validation
 
 **Files Modified:**
 - `services/routeService.js`
@@ -162,7 +162,7 @@ Guardrail interpretation:
 - Prevents HTTP 422 (Mapbox) and 400 (OSRM) errors from invalid input
 - Falls back to `buildFallbackRoute()` which creates straight-line estimate
 
-### Implementation Details â€” Location-Off Terminal State
+### Implementation Details — Location-Off Terminal State
 
 **Files Modified:**
 - `hooks/map/exploreFlow/useMapLoadingState.js`

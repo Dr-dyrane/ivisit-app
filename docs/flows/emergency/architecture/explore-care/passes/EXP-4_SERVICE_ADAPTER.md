@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 ---
 
-# EXP-4 Service Adapter â€” Emergency Strict Filter
+# EXP-4 Service Adapter — Emergency Strict Filter
 
 Status: Complete
 Owner: App Data
@@ -38,9 +38,9 @@ Add `discoverNearbyProviders` to `hospitalsService.js` for explore mode, and con
 
 New export on `hospitalsService`:
 - `discoverNearbyProviders(lat, lng, providerCategory, radius, options)`
-  - `options.limit` â€” default 15
-  - `options.includeGooglePlaces` â€” default false
-  - `options.includeMapboxPlaces` â€” default true
+  - `options.limit` — default 15
+  - `options.includeGooglePlaces` — default false
+  - `options.includeMapboxPlaces` — default true
 
 ## Checklist
 
@@ -64,7 +64,7 @@ New export on `hospitalsService`:
 
 - `discoverNearbyProviders` added and returns normalized array.
 - Existing emergency service methods unchanged.
-- Empty/null response guarded â€” returns `[]`.
+- Empty/null response guarded — returns `[]`.
 - Input validation: finite lat/lng, non-empty `providerCategory`.
 
 ## Rollback Notes

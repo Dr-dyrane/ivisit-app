@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 ---
 
-> **HISTORICAL NOTICE â€” 2026-05-19**
+> **HISTORICAL NOTICE — 2026-05-19**
 > This pass plan is **complete**. MapScreen modularization passes (Pass 0 through Pass 2) are done.
 > Retained for historical context only.
 > **Completion record:** [`docs/audit/checkpoints/FINAL_MIGRATION_SUMMARY.md`](../checkpoints/FINAL_MIGRATION_SUMMARY.md)

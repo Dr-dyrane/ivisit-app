@@ -16,7 +16,7 @@ Layer impact: L2 query consumption, L5 UI
 
 ## Goal
 
-Build `MapProviderListSheet` â€” a bucketed, filterable provider list sheet for the selected explore category.
+Build `MapProviderListSheet` — a bucketed, filterable provider list sheet for the selected explore category.
 
 **Data Gap Note:** Provider data uses `hospitals` table schema with hospital-specific fields that are null for non-hospital providers. See [Data Implementation Notes](../EXPLORE_CARE_DOSSIER_V1.md#data-implementation-notes) for structured conventions to encode provider-specific data in `specialties`, `service_types`, `features` arrays.
 
@@ -34,17 +34,17 @@ Build `MapProviderListSheet` â€” a bucketed, filterable provider list sheet
 
 - Use `MapModalShell` for the sheet surface.
 - No Supabase calls directly in this component.
-- Provider rows stay in TanStack Query â€” do not copy to state.
-- Skeleton loading only â€” no blank state, no spinner.
+- Provider rows stay in TanStack Query — do not copy to state.
+- Skeleton loading only — no blank state, no spinner.
 - `visible` prop must be passed `true` when conditionally mounted so `useNearbyProviders` `enabled` guard works.
 
 ## Props
 
-- `visible` â€” boolean; pass `true` when conditionally mounted
-- `providerCategory` â€” one of `PROVIDER_TYPES` values
-- `location` â€” `{ latitude, longitude }`
-- `onClose` â€” called when sheet is closed
-- `onSelectProvider(provider)` â€” called when a card is tapped
+- `visible` — boolean; pass `true` when conditionally mounted
+- `providerCategory` — one of `PROVIDER_TYPES` values
+- `location` — `{ latitude, longitude }`
+- `onClose` — called when sheet is closed
+- `onSelectProvider(provider)` — called when a card is tapped
 
 ## UI Structure
 
@@ -55,9 +55,9 @@ MapModalShell
     [bucket] < 5 min
       SectionHeader
       ProviderCard[]
-    [bucket] 5â€“10 min
+    [bucket] 5–10 min
       ...
-    [bucket] 10â€“20 min
+    [bucket] 10–20 min
       ...
     [bucket] 20+ min
       ...
@@ -99,8 +99,8 @@ const isHospital = provider.providerType === PROVIDER_TYPES.HOSPITAL;
 
 Travel-time buckets based on `provider.travelMinutes` (estimated from distance):
 - `< 5 min`
-- `5â€“10 min`
-- `10â€“20 min`
+- `5–10 min`
+- `10–20 min`
 - `20+ min`
 
 ## Deferred Reason
@@ -135,4 +135,4 @@ Travel-time buckets based on `provider.travelMinutes` (estimated from distance):
 ## Rollback Notes
 
 - Remove `MapProviderListSheet` import and conditional mount from `MapScreen`.
-- `exploreProviderCategoryAtom` becomes unused â€” leave atoms inert.
+- `exploreProviderCategoryAtom` becomes unused — leave atoms inert.

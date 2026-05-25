@@ -4,12 +4,12 @@ owner: product
 last_updated: 2026-04-23
 ---
 
-# iVisit â€” Registration UI/UX & Integration Guide
+# iVisit — Registration UI/UX & Integration Guide
 
 This document describes the registration flow UI/UX, components, contexts, helper hooks, constants, accessibility and testing guidance so a developer can quickly implement the login flow and add related sub-pages with consistent look & feel.
 
 **Overview**
-- Purpose: single, modular, animated, mobile-first registration flow that matches the Welcome â†’ Onboarding UI (brand red, rounded cards, slide/fade motion, haptics).
+- Purpose: single, modular, animated, mobile-first registration flow that matches the Welcome → Onboarding UI (brand red, rounded cards, slide/fade motion, haptics).
 - High-level steps:
   1. Method selection (email or phone)
   2. Input (phone or email)
@@ -24,15 +24,15 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 
 **Primary Files / Components**
 - Modal & orchestration:
-  - `components/register/AuthInputModal.jsx` â€” bottom-sheet style modal that renders one step at a time (phone/email input, OTP, profile, password). Uses `KeyboardAvoidingView` + `ScrollView` and `useSafeAreaInsets`.
+  - `components/register/AuthInputModal.jsx` — bottom-sheet style modal that renders one step at a time (phone/email input, OTP, profile, password). Uses `KeyboardAvoidingView` + `ScrollView` and `useSafeAreaInsets`.
 - Inputs & subcomponents:
-  - `components/register/PhoneInputField.jsx` â€” country-aware phone input, uses `libphonenumber-js`, `usePhoneValidation` and `useCountryDetection` hooks, opens `components/register/CountryPickerModal.jsx`.
-  - `components/register/EmailInputField.jsx` â€” single-field email input.
-  - `components/register/OTPInputCard.jsx` â€” OTP entry and verification UI (resend/edit UX should be added or extended here).
-  - `components/register/ProfileForm.jsx` â€” modular profile fields (split into single-purpose screens if needed); pre-fills from `registrationData.profile`.
-  - `components/register/PasswordInputField.jsx` â€” final password setup.
+  - `components/register/PhoneInputField.jsx` — country-aware phone input, uses `libphonenumber-js`, `usePhoneValidation` and `useCountryDetection` hooks, opens `components/register/CountryPickerModal.jsx`.
+  - `components/register/EmailInputField.jsx` — single-field email input.
+  - `components/register/OTPInputCard.jsx` — OTP entry and verification UI (resend/edit UX should be added or extended here).
+  - `components/register/ProfileForm.jsx` — modular profile fields (split into single-purpose screens if needed); pre-fills from `registrationData.profile`.
+  - `components/register/PasswordInputField.jsx` — final password setup.
 - Common UI:
-  - `components/ui/SlideButton.jsx` â€” branded CTA with sliding overlay animation.
+  - `components/ui/SlideButton.jsx` — branded CTA with sliding overlay animation.
 
 **Colors & Theme**
 - Centralized color constants file: `constants/colors.js` with `COLORS.brandPrimary`, `brandSecondary`, `bgDark`, `textMuted`, `success`, `error`, etc.
@@ -40,7 +40,7 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 - All components should import `COLORS` rather than hard-coded colors. (Several were refactored: `SlideButton`, `PhoneInputField`, `ToastContext`.)
 
 **State & Data Shape**
-- `registrationData` keys (in `RegistrationContext`) â€” recommended shape:
+- `registrationData` keys (in `RegistrationContext`) — recommended shape:
   - method: "phone" | "email"
   - countryCode
   - phoneNumber (E.164)
@@ -52,23 +52,23 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 - Persist only transient registration data in the context. Final user object and token are stored by `AuthContext`/AsyncStorage.
 
 **Hooks & Helper Utilities (important)**
-- `useRegistration()` â€” context hook.
-- `useAuth()` â€” `AuthContext` with `login(user)`, `logout()`, `syncUserData()`.
-- `usePhoneValidation(country)` â€” formatting and E.164 output (libphonenumber-js).
-- `useCountryDetection()` â€” best-effort region detection using `expo-location` or fallback to default country config.
+- `useRegistration()` — context hook.
+- `useAuth()` — `AuthContext` with `login(user)`, `logout()`, `syncUserData()`.
+- `usePhoneValidation(country)` — formatting and E.164 output (libphonenumber-js).
+- `useCountryDetection()` — best-effort region detection using `expo-location` or fallback to default country config.
 - UX helpers to standardize across components:
-  - showShakeAnimation(ref) â€” small horizontal shake for invalid inputs
-  - hapticImpact(type) â€” wrapper around `expo-haptics` to centralize feedback
-  - formatE164(raw, country) â€” wrapper around `libphonenumber-js`
-  - throttleResend(key, cooldownMs) â€” resend throttling helper
+  - showShakeAnimation(ref) — small horizontal shake for invalid inputs
+  - hapticImpact(type) — wrapper around `expo-haptics` to centralize feedback
+  - formatE164(raw, country) — wrapper around `libphonenumber-js`
+  - throttleResend(key, cooldownMs) — resend throttling helper
 
 **Animations & Micro-interactions**
 - Use spring/timing patterns consistent with Onboarding:
   - Entry: slide + fade (modal uses Animated.spring for translateY and Animated.timing for opacity)
   - Input focus: small scale (1.02)
   - Button: overlay slide on CTA (`SlideButton`) with 450ms overlay animation
-  - OTP errors: shake animation (8â€“10px horizontal)
-- Haptics: `expo-haptics` on primary interactions (CTA press, error) â€” use helper above.
+  - OTP errors: shake animation (8–10px horizontal)
+- Haptics: `expo-haptics` on primary interactions (CTA press, error) — use helper above.
 
 **Keyboard Handling & Safe Areas**
 - Use `react-native-safe-area-context`'s `useSafeAreaInsets()` inside the modal to compute `keyboardVerticalOffset` and add `paddingBottom` to the `ScrollView` so active fields remain visible.
@@ -77,7 +77,7 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 
 **OTP UX Recommendations**
 - Provide explicit actions: `Edit number` (navigates back to input step) and `Resend OTP` (shows cooldown, countdown timer, and disabled state). Implement `throttleResend` to prevent abuse.
-- Clarify contact: show masked representation (e.g., +234 â€¢â€¢â€¢ â€¢1234) and method (`SMS` vs `Email`).
+- Clarify contact: show masked representation (e.g., +234 ••• •1234) and method (`SMS` vs `Email`).
 - Auto-focus OTP input when entering step; expose `onVerified` callback to `AuthInputModal` to advance the flow.
 
 **Accessibility & Contrast**
@@ -85,14 +85,14 @@ This document describes the registration flow UI/UX, components, contexts, helpe
 - Use large, bold labels for CTAs and 44px+ tap targets for interactive items.
 
 **How to Add a Login Flow & Subpages (quick recipe)**
-1. Create `screens/LoginScreen.jsx` following the same single-field-per-screen pattern (email/phone â†’ password / OTP as needed).
+1. Create `screens/LoginScreen.jsx` following the same single-field-per-screen pattern (email/phone → password / OTP as needed).
 2. Reuse components: `EmailInputField`, `PhoneInputField`, `OTPInputCard` and `SlideButton` for CTAs.
 3. Reuse `AuthContext.login()` on success to persist token and user.
 4. Use `AuthProvider` in `app/_layout.js` so screens can call `useAuth()`.
 5. Add route under `app/(auth)/login.js` and link from WelcomeScreen or modal close handlers.
 
 **Testing Checklist**
-- Visual: confirm brand color used in Welcome â†’ Onboarding â†’ Registration (slide/overlay). Test dark & light modes.
+- Visual: confirm brand color used in Welcome → Onboarding → Registration (slide/overlay). Test dark & light modes.
 - Keyboard: test on iOS and Android devices for phone input, OTP, and profile screens. Tweak `keyboardVerticalOffset` if needed.
 - OTP: verify resend cooldown and edit number flows.
 - Persistence: sign-up should call `api/auth` wrapper and then `AuthContext.login()` which writes `token` and `user` keys to AsyncStorage.

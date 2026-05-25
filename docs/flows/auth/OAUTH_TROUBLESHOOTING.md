@@ -54,7 +54,7 @@ This document covers common OAuth authentication issues in the iVisit app across
 
 ### Required URLs in Supabase Dashboard
 
-Go to **Authentication â†’ URL Configuration â†’ Redirect URLs** and add:
+Go to **Authentication → URL Configuration → Redirect URLs** and add:
 
 ```
 # Production

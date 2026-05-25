@@ -97,7 +97,7 @@ Successfully completed the 10-pass modularization plan plus embedded view hook a
 â”‚  | useWalletBalanceQuery                â”‚
 â”‚  | Caching, invalidation, deduping      â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-            â†“
+            ↓
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚  LAYER 2: Zustand                       â”‚
 â”‚  (Persistent Client State)            â”‚
@@ -105,7 +105,7 @@ Successfully completed the 10-pass modularization plan plus embedded view hook a
 â”‚  | useEmergencyTripStore                â”‚
 â”‚  | AsyncStorage persistence             â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-            â†“
+            ↓
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚  LAYER 3: Jotai                         â”‚
 â”‚  (Ephemeral UI State)                   â”‚

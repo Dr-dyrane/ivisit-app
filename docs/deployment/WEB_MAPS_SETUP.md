@@ -21,7 +21,7 @@ The iVisit app now supports Google Maps on the web platform, replacing the previ
    - **Geocoding API** (for address resolution)
 
 4. Create credentials:
-   - Go to "Credentials" â†’ "Create Credentials" â†’ "API Key"
+   - Go to "Credentials" → "Create Credentials" → "API Key"
    - Restrict the API key to your domain for security
    - Enable HTTP referrers restriction (recommended)
 
@@ -41,18 +41,18 @@ The iVisit app now supports Google Maps on the web platform, replacing the previ
 
 Make sure these APIs are enabled in your Google Cloud Console:
 
-- âœ… **Maps JavaScript API** - Core map functionality
-- âœ… **Places API** - Hospital search and autocomplete
-- âœ… **Geocoding API** - Address to coordinates conversion
+- ✅ **Maps JavaScript API** - Core map functionality
+- ✅ **Places API** - Hospital search and autocomplete
+- ✅ **Geocoding API** - Address to coordinates conversion
 
 ### 4. Usage
 
 Once configured, the web version will display a fully functional Google Maps interface with:
 
 - ðŸ—ºï¸ Interactive map with zoom/pan
-- ðŸ¥ Hospital markers
+- 🏥 Hospital markers
 - ðŸš— Route polylines for ambulance trips
-- ðŸ“ User location (if permitted)
+- 📍 User location (if permitted)
 - ðŸŒ™ Dark/light theme support
 
 ### 5. Troubleshooting

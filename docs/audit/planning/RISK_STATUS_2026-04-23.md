@@ -8,31 +8,31 @@ last_updated: 2026-05-24
 
 ---
 
-# Risk Status Tracker â€” 2026-04-23
+# Risk Status Tracker — 2026-04-23
 
-> Scope: resolution status of risks R1â€“R10 from [`ivisit_full_system_reconstruction_report_2026-03-02.md`](./ivisit_full_system_reconstruction_report_2026-03-02.md)
+> Scope: resolution status of risks R1–R10 from [`ivisit_full_system_reconstruction_report_2026-03-02.md`](./ivisit_full_system_reconstruction_report_2026-03-02.md)
 > Basis: evidence from [`../flows/emergency/workflow_map.md`](../flows/emergency/workflow_map.md) (Verification Snapshot 2026-03-03+), migration files, and hardening guard scripts under `supabase/tests/scripts/`
 > Rule: each item is marked with the strongest evidence found. Items without a dated verification point are marked UNVERIFIED rather than assumed closed.
 
 ## Status Legend
 
-- âœ… Resolved â€” evidence confirms the original failure mode no longer applies
-- ðŸŸ¡ Partial â€” core issue addressed, adjacent work remains
-- âšª Unverified â€” no explicit resolution evidence in current docs or migrations; needs re-check
-- ðŸŸ  In Progress â€” tracked under an active execution plan
+- ✅ Resolved — evidence confirms the original failure mode no longer applies
+- 🟡 Partial — core issue addressed, adjacent work remains
+- âšª Unverified — no explicit resolution evidence in current docs or migrations; needs re-check
+- ðŸŸ  In Progress — tracked under an active execution plan
 
 ## Summary
 
 | ID | Area | Severity | Status | Evidence Anchor |
 |---|---|---|---|---|
-| R1 | Realtime publication | P0 | âœ… | `workflow_map.md` Verification Snapshot 2026-03-03 |
-| R2 | `discharge_patient` state | P0 | âœ… | `emergency_logic.sql:2060-2066` writes legal `status='completed'` |
-| R3 | `auto_assign_driver` race | P0 | âœ… | `automations.sql:466` has `FOR UPDATE SKIP LOCKED` |
-| R4 | Console direct writes | P0 | âœ… | `workflow_map.md` Verification Snapshot 2026-03-03 |
+| R1 | Realtime publication | P0 | ✅ | `workflow_map.md` Verification Snapshot 2026-03-03 |
+| R2 | `discharge_patient` state | P0 | ✅ | `emergency_logic.sql:2060-2066` writes legal `status='completed'` |
+| R3 | `auto_assign_driver` race | P0 | ✅ | `automations.sql:466` has `FOR UPDATE SKIP LOCKED` |
+| R4 | Console direct writes | P0 | ✅ | `workflow_map.md` Verification Snapshot 2026-03-03 |
 | R5 | Orphaned relations | P0 | âšª | `hospital_import_logs` still live; rest needs re-scan |
-| R6 | Duplicate stamp triggers | P1 | âœ… | pillar-file grep shows exactly one `stamp_*_display_id` trigger per table |
-| R7 | Broad grants / execute scope | P1 | ðŸŸ¡ | RPC execute scope tightened; table grant audit pending |
-| R8 | Missing secondary indexes | P1 | ðŸŸ¡ | active-request partial indexes added; hot-path indexes unverified |
+| R6 | Duplicate stamp triggers | P1 | ✅ | pillar-file grep shows exactly one `stamp_*_display_id` trigger per table |
+| R7 | Broad grants / execute scope | P1 | 🟡 | RPC execute scope tightened; table grant audit pending |
+| R8 | Missing secondary indexes | P1 | 🟡 | active-request partial indexes added; hot-path indexes unverified |
 | R9 | Type drift | P1 | âšª | `sync_to_console.js` exists; CI gate status unknown |
 | R10 | Mixed fallback / UX jitter | P2 | ðŸŸ  | tracked by `MAP_RUNTIME_PASS_PLAN_V1` |
 
@@ -40,9 +40,9 @@ last_updated: 2026-05-24
 
 ## Detail
 
-### R1 â€” Realtime publication excluded subscribed tables âœ…
+### R1 — Realtime publication excluded subscribed tables ✅
 
-**Original finding (2026-03-02):** Publication contained only `access_requests`; runtime listens on 17 tables â†’ silent non-delivery risk.
+**Original finding (2026-03-02):** Publication contained only `access_requests`; runtime listens on 17 tables → silent non-delivery risk.
 
 **Current evidence:**
 - [`workflow_map.md` #Verification Snapshot 2026-03-03](../flows/emergency/workflow_map.md): *"Realtime publication membership check: PASS for expected emergency-surface tables (`emergency_requests`, `payments`, `visits`, `ambulances`, `hospitals`, etc.)"*
@@ -51,7 +51,7 @@ last_updated: 2026-05-24
 
 ---
 
-### R2 â€” `discharge_patient` writes disallowed status âœ…
+### R2 — `discharge_patient` writes disallowed status ✅
 
 **Original finding (2026-03-02):** Function writes `status='discharged'`, but `emergency_requests.status` CHECK does not allow `discharged`.
 
@@ -64,7 +64,7 @@ last_updated: 2026-05-24
 
 ---
 
-### R3 â€” `auto_assign_driver` race exposure âœ…
+### R3 — `auto_assign_driver` race exposure ✅
 
 **Original finding (2026-03-02):** Selects first available ambulance without row-level locking.
 
@@ -77,7 +77,7 @@ last_updated: 2026-05-24
 
 ---
 
-### R4 â€” Console direct writes bypass RPC boundary âœ…
+### R4 — Console direct writes bypass RPC boundary ✅
 
 **Original finding (2026-03-02):** Console performs `.update()`/`.delete()` directly on `emergency_requests`, depending on caller role/RLS luck.
 
@@ -89,28 +89,28 @@ last_updated: 2026-05-24
 
 ---
 
-### R5 â€” Orphaned relation references in runtime âšª
+### R5 — Orphaned relation references in runtime âšª
 
 **Original finding (2026-03-02):** Runtime references `available_hospitals`, `hospital_import_logs`, `hospital_rooms`, `search_selections`, `trending_searches_view`, classification of `images` as relation.
 
 **Current evidence:**
-- `hospital_import_logs` is present in live schema ([`SCHEMA_SNAPSHOT.md`](../../supabase/docs/SCHEMA_SNAPSHOT.md)) â€” may be intentional.
-- `search_selections` still appears in `supabase/tests/scripts/assert_search_selections_surface_field_guard.js` â€” may have been promoted to a real table.
-- `available_hospitals`, `hospital_rooms`, `trending_searches_view`, `images` â€” not re-verified.
+- `hospital_import_logs` is present in live schema ([`SCHEMA_SNAPSHOT.md`](../../supabase/docs/SCHEMA_SNAPSHOT.md)) — may be intentional.
+- `search_selections` still appears in `supabase/tests/scripts/assert_search_selections_surface_field_guard.js` — may have been promoted to a real table.
+- `available_hospitals`, `hospital_rooms`, `trending_searches_view`, `images` — not re-verified.
 
 **Next action:** re-run the orphaned-logic inventory extraction; compare against current live schema; confirm which references are intentional vs stale.
 
 ---
 
-### R6 â€” Duplicate stamp triggers on finance / notification tables âœ…
+### R6 — Duplicate stamp triggers on finance / notification tables ✅
 
 **Original finding (2026-03-02):** Double stamp triggers on `notifications`, `organization_wallets`, `patient_wallets`, `payments`.
 
 **Current evidence:** static grep across pillar files shows exactly one `stamp_*_display_id` trigger per table:
-- `notifications` â†’ `stamp_ntf_display_id` in [`20260219000500_ops_content.sql:169`](../../supabase/migrations/20260219000500_ops_content.sql)
-- `payments` â†’ `stamp_pay_display_id` in [`20260219000400_finance.sql:729`](../../supabase/migrations/20260219000400_finance.sql)
-- `patient_wallets` â†’ `stamp_pat_wallet_display_id` in [`20260219000400_finance.sql:730`](../../supabase/migrations/20260219000400_finance.sql)
-- `organization_wallets` â†’ `stamp_org_wallet_display_id` in [`20260219000400_finance.sql:731`](../../supabase/migrations/20260219000400_finance.sql)
+- `notifications` → `stamp_ntf_display_id` in [`20260219000500_ops_content.sql:169`](../../supabase/migrations/20260219000500_ops_content.sql)
+- `payments` → `stamp_pay_display_id` in [`20260219000400_finance.sql:729`](../../supabase/migrations/20260219000400_finance.sql)
+- `patient_wallets` → `stamp_pat_wallet_display_id` in [`20260219000400_finance.sql:730`](../../supabase/migrations/20260219000400_finance.sql)
+- `organization_wallets` → `stamp_org_wallet_display_id` in [`20260219000400_finance.sql:731`](../../supabase/migrations/20260219000400_finance.sql)
 
 No duplicate triggers in the current pillar files.
 
@@ -118,7 +118,7 @@ No duplicate triggers in the current pillar files.
 
 ---
 
-### R7 â€” Broad grants / execute scope ðŸŸ¡
+### R7 — Broad grants / execute scope 🟡
 
 **Original finding (2026-03-02):** `anon`/`authenticated` write privileges across all 40 public tables; security definer routines broadly granted.
 
@@ -132,7 +132,7 @@ No duplicate triggers in the current pillar files.
 
 ---
 
-### R8 â€” Missing secondary indexes on hot predicates ðŸŸ¡
+### R8 — Missing secondary indexes on hot predicates 🟡
 
 **Original finding (2026-03-02):** `emergency_requests(hospital_id/status/created_at)`, `ambulances(hospital_id/status)`, `payments(emergency_request_id)`, `visits(request_id)` lack non-PK indexes.
 
@@ -145,7 +145,7 @@ No duplicate triggers in the current pillar files.
 
 ---
 
-### R9 â€” Type and schema drift between live DB and TS types âšª
+### R9 — Type and schema drift between live DB and TS types âšª
 
 **Original finding (2026-03-02):** Console types include removed tables; app types miss live columns.
 
@@ -158,15 +158,15 @@ No duplicate triggers in the current pillar files.
 
 ---
 
-### R10 â€” Mixed fallback / simulation logic in emergency UX ðŸŸ 
+### R10 — Mixed fallback / simulation logic in emergency UX ðŸŸ 
 
 **Original finding (2026-03-02):** Jitter and non-canonical UX from mixed fallback/simulation logic.
 
 **Current evidence:**
-- Active tracked work under [`../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) â€” Pass 12 in progress as of 2026-04-23.
+- Active tracked work under [`../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md`](../flows/emergency/architecture/MAP_RUNTIME_PASS_PLAN_V1.md) — Pass 12 in progress as of 2026-04-23.
 - [`../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md`](../flows/emergency/MAP_FLOW_FINAL_POLISH_AUDIT_2026-04-20.md) #"Reliability Hardening (ETA + Ambulance Motion)" documents the canonical single-source-of-truth direction for tracking timeline and responder coordinates.
 
-**Next action:** track via pass plan. Re-mark as ðŸŸ¡ when Pass 4B (ambulance completion/recovery signoff) closes, and as âœ… when Passes 5â€“8 complete.
+**Next action:** track via pass plan. Re-mark as 🟡 when Pass 4B (ambulance completion/recovery signoff) closes, and as ✅ when Passes 5–8 complete.
 
 ---
 
@@ -176,6 +176,6 @@ This tracker supersedes the "10 risks" section of the 2026-03-02 report only for
 
 Update this tracker:
 - when a âšª item is verified
-- when a ðŸŸ¡ item closes its gap
+- when a 🟡 item closes its gap
 - when a ðŸŸ  item advances through pass-plan milestones
-- never silently flip a âšª to âœ… without citing the evidence file/line
+- never silently flip a âšª to ✅ without citing the evidence file/line

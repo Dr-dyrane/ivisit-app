@@ -34,28 +34,28 @@ Standing checks (regression gate for any future doc/source touch):
 ---
 
 ## ðŸ” Module 1: Identity & Access
-Status: âœ… CERTIFIED
+Status: ✅ CERTIFIED
 - Verified: `profiles` (UUID check), `get_current_user_role` (Security Definer).
 - Fixed: 42P17 Recursion error killed.
 
 ---
 
-## ðŸš‘ Module 2: Core Operations
-Status: âœ… CERTIFIED
+## 🚑 Module 2: Core Operations
+Status: ✅ CERTIFIED
 - Verified: `emergency_requests`, `ambulances`, `visits`.
 - Fixed: `get_recent_activity` RPC unified. Multi-tenant scoping logic restored.
 
 ---
 
 ## ðŸ¨ Module 3: Entity Management
-Status: âœ… CERTIFIED
+Status: ✅ CERTIFIED
 - Verified: `organizations`, `hospitals`, `hospital_rooms`.
 - Fixed: Tenant-specific filtering for Org Admins.
 
 ---
 
-## ðŸ’³ Module 4: Financials & Subscriptions
-Status: âœ… CERTIFIED
+## 💳 Module 4: Financials & Subscriptions
+Status: ✅ CERTIFIED
 - Verified: `payments`, `patient_wallets`, `organization_wallets`, `service_pricing`.
 - Fixed: Explicit UUID casting in RLS (fixed `operator does not exist` error).
 

@@ -74,7 +74,7 @@ The FAB serves as a **consistent action trigger** throughout:
 
 ## Verdicts & Recommendations
 
-### Verdict 1: âœ… KEEP FAB - Critical UX Element
+### Verdict 1: ✅ KEEP FAB - Critical UX Element
 
 **Reasoning:**
 - Emergency scenarios require **immediate access** to critical functions
@@ -115,7 +115,7 @@ The FAB serves as a **consistent action trigger** throughout:
 #### Tasks:
 - [ ] Identify all inline FAB implementations across codebase
 - [ ] Document current FAB usage patterns and behaviors
-- [ ] Create migration priority matrix (critical â†’ nice-to-have)
+- [ ] Create migration priority matrix (critical → nice-to-have)
 
 #### Expected Findings:
 - Profile save FABs

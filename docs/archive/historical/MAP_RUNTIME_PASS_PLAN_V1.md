@@ -4,7 +4,7 @@ owner: -
 last_updated: 2026-05-19
 ---
 
-> **ARCHIVAL NOTICE â€” 2026-05-19**
+> **ARCHIVAL NOTICE — 2026-05-19**
 > This file was moved from `docs/flows/emergency/architecture/` to `docs/archive/historical/` during the 2026-05-19 docs cleanup.
 > It is the original 98-pass runtime execution plan. The passes it describes have been completed or superseded by the Gold Standard state roadmap and MapScreen decomposition passes.
 > **Current replacements:**
@@ -392,7 +392,7 @@ Every pass must end with:
 - doc updates
 - a short verification target
 
-No pass should end as â€œwe changed things and will remember later.â€
+No pass should end as "we changed things and will remember later."
 
 ### Rule 5
 
@@ -1218,7 +1218,7 @@ Pass 11 implemented & refined:
 - [`components/emergency/MiniProfileModal.jsx`](../../../../components/emergency/MiniProfileModal.jsx) now uses the locked window-style control-panel layout:
   - **Identity-First Anchoring**: `Profile` moved to the top group to anchor the surface around the user.
   - **Radical Noise Reduction**: Removed "Open", "Wallet", and "System" labels; badges reserved for dynamic data counts only.
-  - **Refined Grouping**: Account â†’ Activity â†’ Essentials â†’ System hierarchy.
+  - **Refined Grouping**: Account → Activity → Essentials → System hierarchy.
   - **Visual Rhythm**: Increased group spacing ("breathing room") and identity block prominence.
   - **Intentional Iconography**: Desaturated icons with softer accent tones for a calmer, premium feel.
   - **Destructive Secondary**: `Sign Out` demarcated with a divider and lower saturation to prevent accidental taps.
@@ -1323,19 +1323,19 @@ Pass 12 current output:
 - [`components/map/history/MapVisitBookingFlow.jsx`](../../../../components/map/history/MapVisitBookingFlow.jsx) is the canonical `/map` visit booking owner, composing the existing `components/visits/book-visit/*` step components inside `MapModalShell`
 - [`hooks/map/state/mapExploreFlow.store.js`](../../../../hooks/map/state/mapExploreFlow.store.js) now owns `bookingVisible` + `bookingInitialData` surface state and exposes `setBookingVisible` / `setBookingInitialData`; `hasActiveMapModal` now considers the booking surface
 - [`contexts/VisitsContext.jsx`](../../../../contexts/VisitsContext.jsx) is now only shared visit truth + CRUD side effects; list-screen-only UI state (`filter`, `filters`, `filteredVisits`, `visitCounts`, `selectedVisitId`, `selectVisit`, `setFilterType`) has been removed per VISITS_REQUEST_HISTORY_PLAN section 10
-- [`screens/VisitsScreen.jsx`](../../../../screens/VisitsScreen.jsx) and [`screens/VisitDetailsScreen.jsx`](../../../../screens/VisitDetailsScreen.jsx) are now thin compatibility bridges that redirect to `/(user)` â€” the legacy Alert-only cancel in visit details is moot because the canonical modal uses the real `cancelVisit` path through `useVisits`
+- [`screens/VisitsScreen.jsx`](../../../../screens/VisitsScreen.jsx) and [`screens/VisitDetailsScreen.jsx`](../../../../screens/VisitDetailsScreen.jsx) are now thin compatibility bridges that redirect to `/(user)` — the legacy Alert-only cancel in visit details is moot because the canonical modal uses the real `cancelVisit` path through `useVisits`
 - [`components/map/views/exploreIntent/MapExploreIntentRecentHistory.jsx`](../../../../components/map/views/exploreIntent/MapExploreIntentRecentHistory.jsx) adds a subordinate "Recent care history" entry inside `explore_intent` when history exists; tap opens the canonical grouped history modal
 - [`components/map/core/MapSheetOrchestrator.jsx`](../../../../components/map/core/MapSheetOrchestrator.jsx) + [`components/map/views/exploreIntent/MapExploreIntentStageBase.jsx`](../../../../components/map/views/exploreIntent/MapExploreIntentStageBase.jsx) now forward `onOpenRecentVisits` so the explore-intent history entry reaches the grouped history owner without divergent plumbing
 
 Pass 12 Done-criteria status:
 
-- users can open grouped history from `/map` â€” âœ…
-- tapping a visit opens canonical visit details on `/map` â€” âœ…
-- active emergency-derived history rows resume tracking instead of duplicating tracking UI â€” âœ…
-- contextual recent history surfaced inside `explore_intent` as a subordinate support surface â€” âœ…
-- visit side effects + lifecycle truth shared across legacy and `/map` owners â€” âœ… (all handlers resolve through `useVisits` / `visitsService` â€” verified)
-- standalone visit screens are no longer primary owners â€” âœ… (legacy screens demoted to compatibility bridges)
-- choose-care has a stable header contract and only includes `Book a Visit` with visit ownership locked â€” âœ… (booking is now map-owned)
+- users can open grouped history from `/map` — ✅
+- tapping a visit opens canonical visit details on `/map` — ✅
+- active emergency-derived history rows resume tracking instead of duplicating tracking UI — ✅
+- contextual recent history surfaced inside `explore_intent` as a subordinate support surface — ✅
+- visit side effects + lifecycle truth shared across legacy and `/map` owners — ✅ (all handlers resolve through `useVisits` / `visitsService` — verified)
+- standalone visit screens are no longer primary owners — ✅ (legacy screens demoted to compatibility bridges)
+- choose-care has a stable header contract and only includes `Book a Visit` with visit ownership locked — ✅ (booking is now map-owned)
 
 Choose-care modal requirements once `Book a Visit` is promoted:
 

@@ -14,16 +14,16 @@ last_updated: 2026-05-24
 **Date:** 2026-04-25
 **Final Line Count at checkpoint:** ~549 lines (was 1,153 lines)
 
-> **Reconciliation 2026-05-24 â€” drift caught during full sweep:**
+> **Reconciliation 2026-05-24 — drift caught during full sweep:**
 >
 > This was a snapshot of one interim refactor stage; the architecture continued evolving.
 > Current state (2026-05-24):
-> - `screens/MapScreen.jsx` is **869 lines** (Pass 2 reduction took it from 1485 â†’ 1109 â†’ 869; the 549 number was a transient low between extractions and re-additions).
+> - `screens/MapScreen.jsx` is **869 lines** (Pass 2 reduction took it from 1485 → 1109 → 869; the 549 number was a transient low between extractions and re-additions).
 > - The 8 `.ts` hooks listed below (`useMapTrackingActions.ts`, `useMapProfileActions.ts`, `useMapMarkerState.ts`, `useMapCommitHandlers.ts`, `useMapTrackingSync.ts`, `useMapHospitalResolution.ts`, `useMapDerivedState.ts`) **do not exist by those names**.
 > - Actual contents of `hooks/map/shell/`: `useMapShell.js` + `useMapFocusedState.js` only.
 > - Coverage was reorganized into `hooks/map/exploreFlow/` (28 files) + `decision/`, `history/`, `locationIntent/`, `state/`, `tracking/` subfolders.
 >
-> See `docs/audit/VERIFICATION_LOG_2026-05-24.md` Â§ A21 for verification evidence.
+> See `docs/audit/VERIFICATION_LOG_2026-05-24.md` § A21 for verification evidence.
 
 ---
 

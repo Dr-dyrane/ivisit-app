@@ -4,7 +4,7 @@ owner: product
 last_updated: 2026-04-23
 ---
 
-# iVisit â€” Master Reference Flow (v1)
+# iVisit — Master Reference Flow (v1)
 
 > Status: Active reference  
 > Last Updated: 2026-04-07  
@@ -80,10 +80,10 @@ Use truthful language such as:
 
 ```text
 IF active request exists
-â†’ Resume active state (tracking / reservation)
+→ Resume active state (tracking / reservation)
 
 ELSE
-â†’ Show idle map state
+→ Show idle map state
 ```
 
 ---
@@ -128,17 +128,17 @@ Session restore path after entry:
 
 ```text
 Open app
-â†’ Welcome
-â†’ Map
+→ Welcome
+→ Map
 
-â†’ Tap profile / header icon
-â†’ Activity sheet
+→ Tap profile / header icon
+→ Activity sheet
 
-â†’ Continue with phone
-â†’ OTP
-â†’ session restored
+→ Continue with phone
+→ OTP
+→ session restored
 
-â†’ visits / history appear
+→ visits / history appear
 ```
 
 ## 3.1 Cross-Platform Native Entry Rules (LOCK THIS)
@@ -232,7 +232,7 @@ Ready to help
 ### Searching
 
 ```text
-Finding nearby careâ€¦
+Finding nearby care…
 ```
 
 ### Active dispatch
@@ -310,8 +310,8 @@ Continue
 After that CTA, the next state reveals the two real care intents:
 
 ```text
-ðŸš‘ Ambulance
-ðŸ¥ Book bed
+🚑 Ambulance
+🏥 Book bed
 ```
 
 ---
@@ -326,14 +326,14 @@ searchHospitals({ location, intent })
 
 Difference:
 
-- **Ambulance** â†’ system recommends/selects the best default option
-- **Bed** â†’ user chooses from available hospitals
+- **Ambulance** → system recommends/selects the best default option
+- **Bed** → user chooses from available hospitals
 
 ---
 
 # 10. Ambulance Flow (System-Led)
 
-## Step 1 â€” Tap Ambulance
+## Step 1 — Tap Ambulance
 
 ### Map
 
@@ -343,12 +343,12 @@ Difference:
 ### Sheet
 
 ```text
-Finding fastest teamâ€¦
+Finding fastest team…
 ```
 
 ---
 
-## Step 2 â€” System recommends hospital
+## Step 2 — System recommends hospital
 
 ### Map
 
@@ -375,7 +375,7 @@ Rules:
 
 ---
 
-## Step 3 â€” Commit Phase begins
+## Step 3 — Commit Phase begins
 
 User taps `Continue`.
 
@@ -383,7 +383,7 @@ User taps `Continue`.
 
 # 11. Bed Flow (User-Led)
 
-## Step 1 â€” Tap Book bed
+## Step 1 — Tap Book bed
 
 ### Map
 
@@ -394,13 +394,13 @@ User taps `Continue`.
 ```text
 Nearby hospitals
 
-Hemet Valley â€” Beds available
-Riverside â€” Limited
+Hemet Valley — Beds available
+Riverside — Limited
 ```
 
 ---
 
-## Step 2 â€” Select hospital
+## Step 2 — Select hospital
 
 ### Map
 
@@ -420,7 +420,7 @@ Deposit: $50
 
 ---
 
-## Step 3 â€” Commit Phase begins
+## Step 3 — Commit Phase begins
 
 ---
 
@@ -542,12 +542,12 @@ Do not rewrite the emergency commit flow from scratch.
 # 15. Optional Triage (Ambulance)
 
 ```text
-Whatâ€™s happening?
+What's happening?
 
-â€¢ Chest pain
-â€¢ Breathing issue
-â€¢ Injury
-â€¢ Other
+• Chest pain
+• Breathing issue
+• Injury
+• Other
 ```
 
 Rules:
@@ -735,34 +735,34 @@ When tapped:
 
 ```text
 Welcome
-â†’ Idle map
-â†’ Ambulance
-â†’ System recommends hospital
-â†’ Show ETA + estimated cost
-â†’ Continue
-â†’ Optional What happened?
-â†’ Ambulance type (if needed)
-â†’ Add patient details
-â†’ Verify identity
-â†’ Pay & send ambulance
-â†’ Dispatch triggered
-â†’ Tracking
+→ Idle map
+→ Ambulance
+→ System recommends hospital
+→ Show ETA + estimated cost
+→ Continue
+→ Optional What happened?
+→ Ambulance type (if needed)
+→ Add patient details
+→ Verify identity
+→ Pay & send ambulance
+→ Dispatch triggered
+→ Tracking
 ```
 
 ## Bed
 
 ```text
 Welcome
-â†’ Idle map
-â†’ Book bed
-â†’ Show hospitals
-â†’ Select hospital
-â†’ Continue
-â†’ Optional transport
-â†’ Add patient details
-â†’ Verify identity
-â†’ Pay & reserve
-â†’ Reservation confirmed
+→ Idle map
+→ Book bed
+→ Show hospitals
+→ Select hospital
+→ Continue
+→ Optional transport
+→ Add patient details
+→ Verify identity
+→ Pay & reserve
+→ Reservation confirmed
 ```
 
 ---

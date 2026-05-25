@@ -61,6 +61,6 @@ The next pass should:
 
 ## Non-Goals
 
-- No separate five-layer feature migration. Notification Details should consume the notifications featureâ€™s existing data lane.
+- No separate five-layer feature migration. Notification Details should consume the notifications feature's existing data lane.
 - No new notification backend model.
 - No second copy system separate from the notifications surface family.

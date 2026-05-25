@@ -4,7 +4,7 @@ owner: architecture
 last_updated: 2026-05-14
 ---
 
-# Map Explore Flow â€” Modularization Record
+# Map Explore Flow — Modularization Record
 
 **Status**: Complete  
 **Completed**: 2026-04-26  
@@ -16,7 +16,7 @@ last_updated: 2026-05-14
 
 ## Context
 
-`useMapExploreFlow.js` was a monolithic orchestrator that owned all map screen logic inline â€”
+`useMapExploreFlow.js` was a monolithic orchestrator that owned all map screen logic inline —
 derived data, hospital selection, tracking lifecycle, sheet navigation, callbacks, effects,
 and loading state all mixed together. This was the result of a rush implementation.
 
@@ -25,52 +25,52 @@ dropping any behaviour. Every pass was verified before the next began.
 
 ---
 
-## Architecture â€” Hook Responsibility Map
+## Architecture — Hook Responsibility Map
 
 ```
-useMapExploreFlow (orchestrator â€” 557 lines)
+useMapExploreFlow (orchestrator — 557 lines)
 â”‚
-â”œâ”€â”€ Context reads (inline â€” correct, 1-liners)
-â”‚   â”œâ”€â”€ useTheme â†’ isDarkMode
-â”‚   â”œâ”€â”€ useAuth â†’ user
-â”‚   â”œâ”€â”€ useVisits â†’ visits
-â”‚   â”œâ”€â”€ useGlobalLocation â†’ location data
-â”‚   â”œâ”€â”€ useEmergency â†’ hospitals, trips, coverage
-â”‚   â””â”€â”€ useScrollAwareHeader / useHeaderState â†’ header controls
+â”œâ”€â”€ Context reads (inline — correct, 1-liners)
+â”‚   â”œâ”€â”€ useTheme → isDarkMode
+â”‚   â”œâ”€â”€ useAuth → user
+â”‚   â”œâ”€â”€ useVisits → visits
+â”‚   â”œâ”€â”€ useGlobalLocation → location data
+â”‚   â”œâ”€â”€ useEmergency → hospitals, trips, coverage
+â”‚   â””â”€â”€ useScrollAwareHeader / useHeaderState → header controls
 â”‚
 â”œâ”€â”€ Store
-â”‚   â””â”€â”€ useMapExploreFlowStore â†’ flowState + flowActions (Zustand)
+â”‚   â””â”€â”€ useMapExploreFlowStore → flowState + flowActions (Zustand)
 â”‚
 â”œâ”€â”€ Extracted hooks (in call order)
-â”‚   â”œâ”€â”€ useMapViewport          â†’ dimensions, sidebar, surfaceConfig
-â”‚   â”œâ”€â”€ useMapLocation          â†’ activeLocation, manual location, place label
-â”‚   â”œâ”€â”€ useMapUserData          â†’ isSignedIn, profileImageSource
-â”‚   â”œâ”€â”€ useMapExploreDemoBootstrap â†’ demo coverage bootstrapping
-â”‚   â”œâ”€â”€ useMapEffects           â†’ useFocusEffect: header hide/restore on nav
-â”‚   â”œâ”€â”€ useMapDerivedData       â†’ activeMapRequest, discoveredHospitals,
+â”‚   â”œâ”€â”€ useMapViewport          → dimensions, sidebar, surfaceConfig
+â”‚   â”œâ”€â”€ useMapLocation          → activeLocation, manual location, place label
+â”‚   â”œâ”€â”€ useMapUserData          → isSignedIn, profileImageSource
+â”‚   â”œâ”€â”€ useMapExploreDemoBootstrap → demo coverage bootstrapping
+â”‚   â”œâ”€â”€ useMapEffects           → useFocusEffect: header hide/restore on nav
+â”‚   â”œâ”€â”€ useMapDerivedData       → activeMapRequest, discoveredHospitals,
 â”‚   â”‚                             nearestHospital, featuredHospitals,
 â”‚   â”‚                             recentVisits, bed counts
-â”‚   â”œâ”€â”€ useMapHospitalSelection â†’ auto-select effect + 4 interaction callbacks
+â”‚   â”œâ”€â”€ useMapHospitalSelection → auto-select effect + 4 interaction callbacks
 â”‚   â”‚                             (props-driven: receives derived data from above)
-â”‚   â”œâ”€â”€ useMapTracking          â†’ openTracking, closeTracking, nowMs clock
-â”‚   â”‚   â””â”€â”€ useMapTrackingTimer â†’ shared broadcast interval (1 setInterval, N listeners)
-â”‚   â”œâ”€â”€ useMapSheetNavigation   â†’ all sheet open/close handlers
-â”‚   â”œâ”€â”€ useMapCommitFlow        â†’ commit details/triage/payment lifecycle
-â”‚   â”œâ”€â”€ useMapTrackingHeader    â†’ header visibility, occlusion height, nowMs consumer
-â”‚   â”œâ”€â”€ useMapServiceDetail     â†’ service detail sheet
-â”‚   â”œâ”€â”€ useMapCallbacks         â†’ handleChooseCare, handleOpenFeaturedHospital,
+â”‚   â”œâ”€â”€ useMapTracking          → openTracking, closeTracking, nowMs clock
+â”‚   â”‚   â””â”€â”€ useMapTrackingTimer → shared broadcast interval (1 setInterval, N listeners)
+â”‚   â”œâ”€â”€ useMapSheetNavigation   → all sheet open/close handlers
+â”‚   â”œâ”€â”€ useMapCommitFlow        → commit details/triage/payment lifecycle
+â”‚   â”œâ”€â”€ useMapTrackingHeader    → header visibility, occlusion height, nowMs consumer
+â”‚   â”œâ”€â”€ useMapServiceDetail     → service detail sheet
+â”‚   â”œâ”€â”€ useMapCallbacks         → handleChooseCare, handleOpenFeaturedHospital,
 â”‚   â”‚                             handleOpenProfile, handleMapReadinessChange
-â”‚   â”œâ”€â”€ useMapExploreGuestProfileFab â†’ guest profile FAB behaviour
-â”‚   â”œâ”€â”€ useMapComputedBooleans  â†’ hasActiveLocation, isMapFrameReady,
+â”‚   â”œâ”€â”€ useMapExploreGuestProfileFab → guest profile FAB behaviour
+â”‚   â”œâ”€â”€ useMapComputedBooleans  → hasActiveLocation, isMapFrameReady,
 â”‚   â”‚                             isBackgroundCoverageLoading, etc.
-â”‚   â””â”€â”€ useMapLoadingState      â†’ shouldShowMapLoadingOverlay, mapLoadingState
+â”‚   â””â”€â”€ useMapLoadingState      → shouldShowMapLoadingOverlay, mapLoadingState
 â”‚
-â””â”€â”€ Intentional inline (not extracted â€” correct)
+â””â”€â”€ Intentional inline (not extracted — correct)
     â”œâ”€â”€ needsCoverageExpansion / shouldBootstrapDemoCoverage  (pure fn calls)
     â”œâ”€â”€ defaultExploreSnapState                               (trivial ternary)
     â”œâ”€â”€ hasActiveMapModal                                     (local boolean OR)
     â”œâ”€â”€ trackingRequestKey = activeMapRequest.requestId       (single destructure)
-    â””â”€â”€ useEffect â†’ nowMsRef.current = nowMs                  (ref sync, unavoidable)
+    â””â”€â”€ useEffect → nowMsRef.current = nowMs                  (ref sync, unavoidable)
 ```
 
 ---
@@ -82,7 +82,7 @@ useMapExploreFlow (orchestrator â€” 557 lines)
 | 1 | `useMapViewport` | Viewport dimensions, sidebar |
 | 2 | `useMapLocation` | Location resolution, manual override |
 | 3 | `useMapHospitalSelection` | Hospital derived data + auto-select (original) |
-| 4 | `useMapTrackingHeader` | Tracking header + nowMs (original â€” had internal timer) |
+| 4 | `useMapTrackingHeader` | Tracking header + nowMs (original — had internal timer) |
 | 5 | `useMapCommitFlow` | Commit flow lifecycle |
 | 6 | `useMapSheetNavigation` | Sheet phase transitions |
 | 7 | `useMapServiceDetail` | Service detail sheet |
@@ -93,7 +93,7 @@ useMapExploreFlow (orchestrator â€” 557 lines)
 | 11 | `useMapTracking` | openTracking, closeTracking, auto-open effect, nowMs |
 | 12 | `useMapDerivedData` | activeMapRequest, all hospital memos, recentVisits |
 | 13 | `useMapComputedBooleans` | Boolean loading/readiness flags |
-| 14a | `useMapHospitalSelection` refactor | Stripped duplicate memos â€” now props-driven from useMapDerivedData |
+| 14a | `useMapHospitalSelection` refactor | Stripped duplicate memos — now props-driven from useMapDerivedData |
 | 14b | `useMapCallbacks` | 4 UI interaction callbacks |
 | 14c | `useMapUserData` | isSignedIn, profileImageSource |
 | 15 | `useMapEffects` | useFocusEffect header lifecycle |
@@ -106,13 +106,13 @@ useMapExploreFlow (orchestrator â€” 557 lines)
 
 ### Single source of truth for hospital data
 `useMapDerivedData` owns all hospital memo computation.  
-`useMapHospitalSelection` accepts them as props â€” no duplication.  
+`useMapHospitalSelection` accepts them as props — no duplication.  
 **Pass 14a fixed a double-computation bug** introduced when Pass 12 was added.
 
 ### Shared broadcast clock
 `useMapTrackingTimer` runs **one** `setInterval` for the whole screen.  
 Both `useMapTracking` and `useMapTrackingHeader` subscribe to it.  
-Old pattern had each hook running its own interval â€” redundant and drift-prone.
+Old pattern had each hook running its own interval — redundant and drift-prone.
 
 ### nowMs TDZ safety
 `activeMapRequest` needs `nowMs` to compute ETAs.  
@@ -120,14 +120,14 @@ But `nowMs` comes from `useMapTracking` which depends on `activeMapRequest`.
 Resolution: `nowMsRef` seeded to `Date.now()` before `useMapDerivedData` runs.  
 `useEffect` keeps the ref in sync after each clock tick. First render is stable.
 
-### PASS 19D â€” Hybrid Marker Selection + TDZ Fixes
+### PASS 19D — Hybrid Marker Selection + TDZ Fixes
 **Date:** 2026-05-14  
 **Objective:** Fix temporal dead zone errors and implement hybrid marker selection using map flow atoms
 
 **Changes:**
 1. **Added map flow atoms (L5 Jotai):**
-   - `mapSelectedHospitalIdAtom` â€” ephemeral UI state for hospital selection
-   - `mapFeaturedHospitalAtom` â€” ephemeral UI state for featured hospital
+   - `mapSelectedHospitalIdAtom` — ephemeral UI state for hospital selection
+   - `mapFeaturedHospitalAtom` — ephemeral UI state for featured hospital
    - These survive sheet collapse (unlike component state)
 
 2. **Created `selectHospitalForMap` function:**
@@ -160,21 +160,21 @@ Resolution: `nowMsRef` seeded to `Date.now()` before `useMapDerivedData` runs.
 - `components/map/FullScreenEmergencyMap.jsx` (+2)
 
 **Guardrails Compliance:**
-- âœ… State Management: Jotai atoms for ephemeral UI state (L5)
-- âœ… TDZ Prevention: All temporal dead zone errors fixed
-- âœ… Hook Design: Single responsibility, proper deps
-- âœ… File Organization: Hooks in correct location
-- âœ… Defensive Programming: Null safety, optional chaining
+- ✅ State Management: Jotai atoms for ephemeral UI state (L5)
+- ✅ TDZ Prevention: All temporal dead zone errors fixed
+- ✅ Hook Design: Single responsibility, proper deps
+- ✅ File Organization: Hooks in correct location
+- ✅ Defensive Programming: Null safety, optional chaining
 
 ### Hook call ordering (dependency order)
 ```
-useMapDerivedData          â† first: produces discoveredHospitals, activeMapRequest
-useMapHospitalSelection    â† second: consumes discoveredHospitals, nearestHospital
-useMapTracking             â† third: consumes trackingRequestKey from activeMapRequest
-useMapSheetNavigation      â† fourth: consumes discoveredHospitals, nearestHospital
-useMapCommitFlow           â† fifth: consumes openTracking from useMapTracking
-useMapTrackingHeader       â† sixth: consumes nowMs from useMapTracking
-useMapCallbacks            â† seventh: consumes handleOpenFeaturedHospitalBase from useMapHospitalSelection
+useMapDerivedData          ← first: produces discoveredHospitals, activeMapRequest
+useMapHospitalSelection    ← second: consumes discoveredHospitals, nearestHospital
+useMapTracking             ← third: consumes trackingRequestKey from activeMapRequest
+useMapSheetNavigation      ← fourth: consumes discoveredHospitals, nearestHospital
+useMapCommitFlow           ← fifth: consumes openTracking from useMapTracking
+useMapTrackingHeader       ← sixth: consumes nowMs from useMapTracking
+useMapCallbacks            ← seventh: consumes handleOpenFeaturedHospitalBase from useMapHospitalSelection
 ```
 
 ### PULLBACK NOTE convention
@@ -193,14 +193,14 @@ This makes every change fully reversible with clear context.
 
 ### Hospital marker intermittent visibility
 **Not introduced by these passes.**  
-Root cause: loading race â€” `nearestHospital` is null on first render before hospitals load.  
+Root cause: loading race — `nearestHospital` is null on first render before hospitals load.  
 `selectHospital` fires from `useMapHospitalSelection`'s auto-select effect, but `selectedHospital`
 hasn't propagated back through `EmergencyContext` yet when the map renders.  
-Fix: requires `useEmergency` timing audit â€” deferred to state migration sprint.
+Fix: requires `useEmergency` timing audit — deferred to state migration sprint.
 
 ---
 
-## Git Reference â€” Checkpoints
+## Git Reference — Checkpoints
 
 ### How to use these hashes
 
@@ -222,19 +222,19 @@ git show 754a4c6 --stat
 
 | Checkpoint | Hash | Description | Orchestrator lines |
 |-----------|------|-------------|-------------------|
-| **Monolith (baseline)** | `754a4c6` | Last commit before Pass 1 began â€” full 1638-line monolith | 1638 |
-| Pass 1â€“3 (viewport, location, hospital selection) | `e6f86ec` | First extraction commit | â€” |
-| Pass 4 (tracking header) | `87e37e5` | useMapTrackingHeader extracted | â€” |
-| Pass 5 (commit flow) | `059754c` | useMapCommitFlow extracted | â€” |
-| Pass 6 (sheet navigation) | `d74f923` | useMapSheetNavigation extracted | â€” |
-| Pass 7 (service detail) | `be51a59` | useMapServiceDetail extracted | â€” |
-| Pass 8 (loading state) | `fa29003` | useMapLoadingState extracted â€” last committed pass | ~585 |
-| **Passes 10â€“16 + docs** | uncommitted | useMapTracking, useMapTrackingTimer, useMapDerivedData, useMapComputedBooleans, useMapCallbacks, useMapUserData, useMapEffects, index.js, Pass 14a dedup, docs | **557** |
+| **Monolith (baseline)** | `754a4c6` | Last commit before Pass 1 began — full 1638-line monolith | 1638 |
+| Pass 1–3 (viewport, location, hospital selection) | `e6f86ec` | First extraction commit | — |
+| Pass 4 (tracking header) | `87e37e5` | useMapTrackingHeader extracted | — |
+| Pass 5 (commit flow) | `059754c` | useMapCommitFlow extracted | — |
+| Pass 6 (sheet navigation) | `d74f923` | useMapSheetNavigation extracted | — |
+| Pass 7 (service detail) | `be51a59` | useMapServiceDetail extracted | — |
+| Pass 8 (loading state) | `fa29003` | useMapLoadingState extracted — last committed pass | ~585 |
+| **Passes 10–16 + docs** | uncommitted | useMapTracking, useMapTrackingTimer, useMapDerivedData, useMapComputedBooleans, useMapCallbacks, useMapUserData, useMapEffects, index.js, Pass 14a dedup, docs | **557** |
 
 ### Branch
 All work on: `recovery/clean-2026-04-25`
 
-### Recommended: commit Passes 10â€“16 before next sprint
+### Recommended: commit Passes 10–16 before next sprint
 Uncommitted files as of 2026-04-26:
 - `hooks/map/exploreFlow/useMapTracking.js` (new)
 - `hooks/map/exploreFlow/useMapTrackingTimer.js` (new)
@@ -245,9 +245,9 @@ Uncommitted files as of 2026-04-26:
 - `hooks/map/exploreFlow/useMapEffects.js` (new)
 - `hooks/map/exploreFlow/index.js` (new)
 - `hooks/map/exploreFlow/useMapExploreFlow.js` (modified)
-- `hooks/map/exploreFlow/useMapHospitalSelection.js` (modified â€” Pass 14a dedup)
-- `hooks/map/exploreFlow/useMapTrackingHeader.js` (modified â€” nowMs lifted)
-- `components/map/surfaces/visitDetail/useMapVisitDetailModel.js` (modified â€” TDZ fix)
+- `hooks/map/exploreFlow/useMapHospitalSelection.js` (modified — Pass 14a dedup)
+- `hooks/map/exploreFlow/useMapTrackingHeader.js` (modified — nowMs lifted)
+- `components/map/surfaces/visitDetail/useMapVisitDetailModel.js` (modified — TDZ fix)
 - `docs/./architecture/map/MAP_EXPLORE_FLOW_MODULARIZATION.md` (new)
 - `docs/./architecture/state/GOLD_STANDARD_STATE_ROADMAP.md` (new)
 - `docs/INDEX.md` (modified)
@@ -258,7 +258,7 @@ Uncommitted files as of 2026-04-26:
 
 ```
 hooks/map/exploreFlow/
-â”œâ”€â”€ useMapExploreFlow.js          (orchestrator â€” 557 lines)
+â”œâ”€â”€ useMapExploreFlow.js          (orchestrator — 557 lines)
 â”œâ”€â”€ useMapViewport.js
 â”œâ”€â”€ useMapLocation.js
 â”œâ”€â”€ useMapHospitalSelection.js    (refactored Pass 14a)
@@ -276,10 +276,10 @@ hooks/map/exploreFlow/
 â”œâ”€â”€ useMapEffects.js              (new Pass 15)
 â”œâ”€â”€ useMapExploreDemoBootstrap.js
 â”œâ”€â”€ useMapExploreGuestProfileFab.js
-â””â”€â”€ index.js                      (new Pass 16 â€” barrel)
+â””â”€â”€ index.js                      (new Pass 16 — barrel)
 
 components/map/surfaces/visitDetail/
-â””â”€â”€ useMapVisitDetailModel.js     (TDZ fix â€” hoisted canResume/canRate declarations)
+â””â”€â”€ useMapVisitDetailModel.js     (TDZ fix — hoisted canResume/canRate declarations)
 ```
 
 ---

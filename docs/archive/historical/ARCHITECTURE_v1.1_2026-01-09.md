@@ -4,10 +4,10 @@ owner: -
 last_updated: 2026-05-24
 ---
 
-> âš ï¸ ARCHIVAL NOTICE â€” This document has been superseded.
+> ⚠ï¸ ARCHIVAL NOTICE — This document has been superseded.
 > Current reference: [`docs/architecture/overview/ARCHITECTURE.md`](../../architecture/overview/ARCHITECTURE.md) (v2.0, 2026-05-24)
 >
-> This v1.1 document describes the preâ€“Gold-Standard "three-layer" architecture (Presentation / Business Logic / `database/` + `services/`). The codebase has since migrated to the five-layer Gold Standard (Supabase â†’ TanStack Query â†’ Zustand â†’ XState â†’ Jotai). The implementation file (`database/`) still exists as a local persistence boundary, but it is no longer the canonical client-state model.
+> This v1.1 document describes the pre–Gold-Standard "three-layer" architecture (Presentation / Business Logic / `database/` + `services/`). The codebase has since migrated to the five-layer Gold Standard (Supabase → TanStack Query → Zustand → XState → Jotai). The implementation file (`database/`) still exists as a local persistence boundary, but it is no longer the canonical client-state model.
 >
 > Retained for historical context only. Do not use for implementation decisions.
 
@@ -34,7 +34,7 @@ last_updated: 2026-05-24
 â”‚ - Animated API (60fps scroll, transitions)                       â”‚
 â”‚ - Context Providers (UI state)                                   â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                              â†“
+                              ↓
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ BUSINESS LOGIC LAYER (Hooks, Context, Services)                 â”‚
 â”‚ - Custom hooks (useLogin, useProfile, etc.)                      â”‚
@@ -42,7 +42,7 @@ last_updated: 2026-05-24
 â”‚ - Query/mutation wrappers                                        â”‚
 â”‚ - Error handling & toast notifications                           â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                              â†“
+                              ↓
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ DATA ACCESS LAYER (AsyncStorage DB, API Services)               â”‚
 â”‚ - `database.js` - Low-level AsyncStorage abstraction             â”‚
@@ -54,12 +54,12 @@ last_updated: 2026-05-24
 
 ### **Why This Structure**
 
-- âœ… **Separation of concerns** - Each layer has one responsibility
-- âœ… **Testability** - Easy to mock services and test logic independently
-- âœ… **Scalability** - Replace AsyncStorage with HTTP client without touching UI
-- âœ… **Maintainability** - Clear data flow, predictable patterns
-- âœ… **Backend-ready** - Services are already the right abstraction for API endpoints
-- âœ… **Local-first product velocity** - We can ship flows before backend integration
+- ✅ **Separation of concerns** - Each layer has one responsibility
+- ✅ **Testability** - Easy to mock services and test logic independently
+- ✅ **Scalability** - Replace AsyncStorage with HTTP client without touching UI
+- ✅ **Maintainability** - Clear data flow, predictable patterns
+- ✅ **Backend-ready** - Services are already the right abstraction for API endpoints
+- ✅ **Local-first product velocity** - We can ship flows before backend integration
 
 ---
 
@@ -69,16 +69,16 @@ last_updated: 2026-05-24
 
 ```
 database/
-â”œâ”€â”€ db.js                 â† Low-level AsyncStorage wrapper + CRUD helpers
-â”œâ”€â”€ keys.js               â† StorageKeys whitelist (single source of truth)
-â””â”€â”€ index.js              â† Main export: database, StorageKeys, errors
+â”œâ”€â”€ db.js                 ← Low-level AsyncStorage wrapper + CRUD helpers
+â”œâ”€â”€ keys.js               ← StorageKeys whitelist (single source of truth)
+â””â”€â”€ index.js              ← Main export: database, StorageKeys, errors
 
 services/
-â”œâ”€â”€ authService.js        â† Auth business logic (Supabase + local persistence)
+â”œâ”€â”€ authService.js        ← Auth business logic (Supabase + local persistence)
 â”œâ”€â”€ profileCompletionService.js
 â””â”€â”€ ... (next: preferences, visits, contacts, medical)
 
-api/                      â† Migration artifact (present but currently empty/unused)
+api/                      ← Migration artifact (present but currently empty/unused)
 ```
 
 ### **How It Works**
@@ -141,22 +141,22 @@ Two parallel contexts handle scroll-aware UI:
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ TabBarVisibilityContext (Existing)   â”‚
 â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ â€¢ trackScroll(event)                 â”‚
-â”‚ â€¢ showTabBar() / hideTabBar()        â”‚
-â”‚ â€¢ Animated.Value for translateY      â”‚
-â”‚ â€¢ 250ms animation duration           â”‚
-â”‚ â€¢ 5px debounce threshold             â”‚
-â”‚ â€¢ Always show near top (< 50px)      â”‚
+â”‚ • trackScroll(event)                 â”‚
+â”‚ • showTabBar() / hideTabBar()        â”‚
+â”‚ • Animated.Value for translateY      â”‚
+â”‚ • 250ms animation duration           â”‚
+â”‚ • 5px debounce threshold             â”‚
+â”‚ • Always show near top (< 50px)      â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ ScrollAwareHeaderContext (NEW)       â”‚
 â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ â€¢ Parallel to TabBarVisibility       â”‚
-â”‚ â€¢ Controls header opacity + translateY â”‚
-â”‚ â€¢ Title fades in/out with scroll     â”‚
-â”‚ â€¢ Same thresholds & timing           â”‚
-â”‚ â€¢ Blur effect for content visibility â”‚
+â”‚ • Parallel to TabBarVisibility       â”‚
+â”‚ • Controls header opacity + translateY â”‚
+â”‚ • Title fades in/out with scroll     â”‚
+â”‚ • Same thresholds & timing           â”‚
+â”‚ • Blur effect for content visibility â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
@@ -289,12 +289,12 @@ export function useLogin() {
 
 ## **6. Current Milestones**
 
-### **Phase 3 (Complete) â€” Profile completion gate**
+### **Phase 3 (Complete) — Profile completion gate**
 - Enforces required profile fields before accessing tabs.
 - Persists completion draft so user can resume after restart.
 - Uses service/API wrappers (no direct storage calls from UI).
 
-### **Phase 4 (Next) â€” Local-first feature completion**
+### **Phase 4 (Next) — Local-first feature completion**
 - Implement full CRUD + persistence for:
   - Preferences (Theme, notifications, privacy) via `StorageKeys.PREFERENCES` / `StorageKeys.THEME`
   - Emergency contacts via `StorageKeys.EMERGENCY_CONTACTS`
@@ -305,9 +305,9 @@ export function useLogin() {
   - Loading/empty/error states
   - Predictable navigation and no redirect loops
 
-### **After Phase 4 â€” Emergency patient POV completion**
+### **After Phase 4 — Emergency patient POV completion**
 - Ensure the SOS journey is complete from patient POV:
-  - Request â†’ confirm â†’ live status â†’ add to visit history
+  - Request → confirm → live status → add to visit history
   - Uses persisted emergency contacts + medical profile where applicable
 
 **Rule**: Prefer hooks for screen-level data fetching; contexts may call services for shared flows (e.g. auth/session).
@@ -319,10 +319,10 @@ export function useLogin() {
 ### **Phase 1: Core Modularization (Days 1-2)**
 
 ```
-âœ… Create database.js (generic layer)
-âœ… Create services (authService, medicalProfileService)
-âœ… Create ScrollAwareHeaderContext
-âœ… Create ScrollAwareHeader component
+✅ Create database.js (generic layer)
+✅ Create services (authService, medicalProfileService)
+✅ Create ScrollAwareHeaderContext
+✅ Create ScrollAwareHeader component
 ðŸ“‹ Create query hooks (useMedicalProfile, useVisits)
 ðŸ“‹ Create mutation hooks (useLogin, useUpdateProfile)
 ```
@@ -366,8 +366,8 @@ app/
 â””â”€â”€ _layout.js
 
 database/
-â”œâ”€â”€ db.js                      â† AsyncStorage abstraction
-â”œâ”€â”€ keys.js                    â† StorageKeys
+â”œâ”€â”€ db.js                      ← AsyncStorage abstraction
+â”œâ”€â”€ keys.js                    ← StorageKeys
 â””â”€â”€ index.js
 
 services/
@@ -375,13 +375,13 @@ services/
 â”œâ”€â”€ medicalProfileService.js
 â””â”€â”€ ... (preferences, visits, emergency, notifications)
 
-api/                           â† Migration artifact (present but currently empty/unused)
+api/                           ← Migration artifact (present but currently empty/unused)
 
 contexts/
 â”œâ”€â”€ AuthContext.jsx
 â”œâ”€â”€ ThemeContext.jsx
 â”œâ”€â”€ TabBarVisibilityContext.jsx
-â”œâ”€â”€ ScrollAwareHeaderContext.jsx â† NEW
+â”œâ”€â”€ ScrollAwareHeaderContext.jsx ← NEW
 â”œâ”€â”€ EmergencyContext.jsx
 â”œâ”€â”€ ToastContext.jsx
 â”œâ”€â”€ VisitsContext.jsx
@@ -396,7 +396,7 @@ hooks/
 
 components/
 â”œâ”€â”€ headers/
-â”‚   â”œâ”€â”€ ScrollAwareHeader.jsx    â† NEW
+â”‚   â”œâ”€â”€ ScrollAwareHeader.jsx    ← NEW
 â”‚   â””â”€â”€ useScrollAwareHeader.js
 â”œâ”€â”€ ... (existing)
 â””â”€â”€ ...
@@ -498,7 +498,7 @@ When connecting to real API:
 - [ ] Create `api/http-client.js` (axios wrapper with auth interceptors)
 - [ ] Create `.env.example` with `API_URL`
 - [ ] Update `services/*` to call HTTP endpoints
-- [ ] Add error mapping (HTTP status codes â†’ DatabaseError codes)
+- [ ] Add error mapping (HTTP status codes → DatabaseError codes)
 - [ ] Test auth flow end-to-end
 - [ ] Add request/response logging
 - [ ] Test offline error handling
@@ -549,4 +549,4 @@ describe('Auth Flow', () => {
 | Scroll UI | Static headers | Apple-style |
 | Code reuse | Low | High |
 
-This architecture scales from local AsyncStorage â†’ backend HTTP seamlessly.
+This architecture scales from local AsyncStorage → backend HTTP seamlessly.

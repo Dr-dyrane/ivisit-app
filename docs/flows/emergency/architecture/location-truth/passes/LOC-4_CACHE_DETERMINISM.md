@@ -10,12 +10,12 @@ last_updated: 2026-05-24
 
 # LOC-4 Cache Determinism
 
-**Status:** âœ… COMPLETE  
+**Status:** ✅ COMPLETE  
 **Owner:** Map/Location Architecture  
 **Layer Impact:** L2 (TanStack Query), L3 (Zustand)  
 **Date:** 2026-05-15  
 **Depends on:** None  
-**Risk Level:** ðŸ”´ HIGH
+**Risk Level:** 🔴 HIGH
 **Baseline:** `751dc31`  
 **Commit:** `05425d4`
 
@@ -108,7 +108,7 @@ const ENABLE_LOC_HARDENING_LOC4 = false;
 - [x] Manual vs GPS at same coords: different cache keys
 - [x] Demo vs live at same coords: different cache keys
 - [x] Cache stores both keys for backward compatibility
-- [x] No feature flag â€” always active with dual-key design
+- [x] No feature flag — always active with dual-key design
 
 ## Implementation Summary
 
@@ -147,5 +147,5 @@ git revert <commit-hash> --no-edit
 
 - PULLBACK NOTE: `// PULLBACK NOTE: LOC-4 // OLD: coord-only key // NEW: coord+source+demo+places key`
 - Dual-key migration preserves existing cache during transition
-- Most disruptive pass â€” do last in sequence
+- Most disruptive pass — do last in sequence
 - Monitor cache hit rate after enabling

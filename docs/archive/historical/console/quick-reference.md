@@ -231,7 +231,7 @@ export function EmergencyMap() {
             latitude={ambulance.location?.coordinates[1] || 0}
           >
             <div className="bg-blue-500 rounded-full p-2">
-              ðŸš‘
+              🚑
             </div>
           </Marker>
         ))}
@@ -306,7 +306,7 @@ export function KPICards() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Hospitals</CardTitle>
-          ðŸ¥
+          🏥
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{hospitals?.length || 0}</div>
@@ -415,7 +415,7 @@ import { cn } from '@/lib/utils'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'ðŸ“Š', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
   { name: 'Users', href: '/dashboard/users', icon: 'ðŸ‘¥', roles: ['admin'] },
-  { name: 'Hospitals', href: '/dashboard/hospitals', icon: 'ðŸ¥', roles: ['admin', 'sponsor'] },
+  { name: 'Hospitals', href: '/dashboard/hospitals', icon: '🏥', roles: ['admin', 'sponsor'] },
   { name: 'Emergency', href: '/dashboard/emergency', icon: 'ðŸš¨', roles: ['admin', 'sponsor', 'hospital', 'provider'] },
 ]
 

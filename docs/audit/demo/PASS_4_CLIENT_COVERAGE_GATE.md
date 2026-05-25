@@ -8,14 +8,14 @@ last_updated: 2026-05-24
 
 ---
 
-# Pass 4 â€” Client: Coverage Gate Owner Scoping
+# Pass 4 — Client: Coverage Gate Owner Scoping
 
 **Track:** Frontend / Client Services
 **Date:** 2026-05-10
-**Status:** PLANNED â€” not yet implemented
+**Status:** PLANNED — not yet implemented
 **Depends on:** Pass 1 (client must check pass-1-scoped hospitals only)
 **Blocks:** nothing (standalone safety gate)
-**Priority:** Low â€” reduces incorrect "coverage available" reads; not blocking for Pass 1+2 deploy
+**Priority:** Low — reduces incorrect "coverage available" reads; not blocking for Pass 1+2 deploy
 
 ---
 
@@ -23,7 +23,7 @@ last_updated: 2026-05-24
 
 The client-side coverage gate `getPersistedDemoCoverageForLocation` checks whether nearby demo hospitals exist by filtering on coordinate proximity and `place_id LIKE 'demo:%'`. It does NOT filter to the current user's owner slug.
 
-After Pass 1+2, old coordinate-scoped hospitals are retired to `status = full`. However, until Pass 3 cleans them from the DB, the client could read another user's `available` hospitals within 15 km and incorrectly report coverage â€” preventing a new bootstrap that the user actually needs.
+After Pass 1+2, old coordinate-scoped hospitals are retired to `status = full`. However, until Pass 3 cleans them from the DB, the client could read another user's `available` hospitals within 15 km and incorrectly report coverage — preventing a new bootstrap that the user actually needs.
 
 Additionally, if two different users in the same city are both authenticated, User A could "see" User B's hospitals as sufficient and skip their own bootstrap.
 
@@ -74,7 +74,7 @@ const getPersistedDemoCoverageForLocation = async (latitude, longitude, currentU
 ```
 
 ### How to get `currentUserSlug`
-The call site for `getPersistedDemoCoverageForLocation` is `DemoModeContext` or the coverage hook. The `currentUserSlug` is already available via `toSafeUserSlug(supabase.auth.user()?.id)` â€” the same function used on the server. Import from the shared utility or re-derive inline.
+The call site for `getPersistedDemoCoverageForLocation` is `DemoModeContext` or the coverage hook. The `currentUserSlug` is already available via `toSafeUserSlug(supabase.auth.user()?.id)` — the same function used on the server. Import from the shared utility or re-derive inline.
 
 ---
 
@@ -85,12 +85,12 @@ From `services/hospitalIdentity.js`:
 ```js
 export const matchesDemoOwner = (hospital, ownerSlug) => {
   // Checks hospital.place_id contains the ownerSlug segment
-  // Returns true if place_id is `demo:<ownerSlug>:â€¦`
+  // Returns true if place_id is `demo:<ownerSlug>:…`
   // Returns false for coordinate-scoped place_ids that don't contain the slug
 };
 ```
 
-This function was designed for exactly this use case. After Pass 1, the server writes hospitals with `demo:<userSlug>:â€¦` place_ids. `matchesDemoOwner(h, userSlug)` returns `true` for those and `false` for old coordinate-scoped rows.
+This function was designed for exactly this use case. After Pass 1, the server writes hospitals with `demo:<userSlug>:…` place_ids. `matchesDemoOwner(h, userSlug)` returns `true` for those and `false` for old coordinate-scoped rows.
 
 ---
 
@@ -121,22 +121,22 @@ All call sites must pass `currentUserSlug`. If any call site does not have acces
 ## Edge Cases & Loop Holes
 
 ### EC-1: Guest user (no auth ID)
-`toSafeUserSlug(null)` returns `"guestdemo"`. Guest users' hospitals use `demo:guestdemo:â€¦` place_ids. `matchesDemoOwner(h, "guestdemo")` correctly matches those and only those.
+`toSafeUserSlug(null)` returns `"guestdemo"`. Guest users' hospitals use `demo:guestdemo:…` place_ids. `matchesDemoOwner(h, "guestdemo")` correctly matches those and only those.
 No regression for guest sessions.
 
 ### EC-2: User hasn't bootstrapped yet (no hospitals exist with their slug)
-`getPersistedDemoCoverageForLocation` returns `false` (zero owned hospitals found). This triggers a bootstrap run â€” the correct behavior. No regression.
+`getPersistedDemoCoverageForLocation` returns `false` (zero owned hospitals found). This triggers a bootstrap run — the correct behavior. No regression.
 
-### EC-3: Pass 3 not yet run â€” old coordinate-scoped rows still in DB
-`matchesDemoOwner(h, userSlug)` returns `false` for `demo:p4365_n7939:â€¦` rows. They are filtered out. The gate correctly sees zero owned hospitals for the user and triggers bootstrap. This is the exact scenario this pass addresses.
+### EC-3: Pass 3 not yet run — old coordinate-scoped rows still in DB
+`matchesDemoOwner(h, userSlug)` returns `false` for `demo:p4365_n7939:…` rows. They are filtered out. The gate correctly sees zero owned hospitals for the user and triggers bootstrap. This is the exact scenario this pass addresses.
 
 ### EC-4: Two users at same location, one has hospitals, one doesn't
-After Pass 1+2, User A's hospitals: `demo:userA:â€¦`. User B's hospitals: `demo:userB:â€¦`.
-User A's call: filters to `demo:userA:â€¦` only â†’ finds 5â€“6 hospitals â†’ coverage OK.
-User B's call (pre-bootstrap): filters to `demo:userB:â€¦` â†’ finds 0 â†’ triggers bootstrap.
+After Pass 1+2, User A's hospitals: `demo:userA:…`. User B's hospitals: `demo:userB:…`.
+User A's call: filters to `demo:userA:…` only → finds 5–6 hospitals → coverage OK.
+User B's call (pre-bootstrap): filters to `demo:userB:…` → finds 0 → triggers bootstrap.
 Correct. No cross-user contamination.
 
-### EC-5: `matchesDemoOwner` returns `true` for a partial slug match (e.g. `demo:abc123:â€¦` matches slug `abc`)
+### EC-5: `matchesDemoOwner` returns `true` for a partial slug match (e.g. `demo:abc123:…` matches slug `abc`)
 `matchesDemoOwner` should match the full slug segment between the first and second colon. If the implementation uses `includes(ownerSlug)` instead of exact segment match, it could false-positive.
 **Action:** Read the `matchesDemoOwner` implementation before closing this pass. If it uses `includes`, patch it to use a segment-exact match: `place_id.startsWith("demo:" + ownerSlug + ":")`.
 
@@ -144,7 +144,7 @@ Correct. No cross-user contamination.
 
 ## Verification Checklist
 
-- [ ] `matchesDemoOwner` implementation read â€” confirm segment-exact matching (not `includes`)
+- [ ] `matchesDemoOwner` implementation read — confirm segment-exact matching (not `includes`)
 - [ ] All call sites of `getPersistedDemoCoverageForLocation` surveyed
 - [ ] All call sites updated to pass `currentUserSlug`
 - [ ] Test: authenticated user sees only their own hospitals counted in coverage gate
@@ -160,12 +160,12 @@ Correct. No cross-user contamination.
 
 | File | Change |
 |---|---|
-| `services/demoEcosystemService.js` | `getPersistedDemoCoverageForLocation` â€” add `currentUserSlug` param and `matchesDemoOwner` guard |
+| `services/demoEcosystemService.js` | `getPersistedDemoCoverageForLocation` — add `currentUserSlug` param and `matchesDemoOwner` guard |
 | Any call sites of `getPersistedDemoCoverageForLocation` | Pass `currentUserSlug` |
 
 ---
 
 ## Navigation
 
-â† [Pass 3: DB Cleanup Migration](./PASS_3_DB_CLEANUP_MIGRATION.md)
-â†’ [Pass 5: Documentation + SQL Migration](./PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md)
+← [Pass 3: DB Cleanup Migration](./PASS_3_DB_CLEANUP_MIGRATION.md)
+→ [Pass 5: Documentation + SQL Migration](./PASS_5_DOC_UPDATE_AND_SQL_MIGRATION.md)

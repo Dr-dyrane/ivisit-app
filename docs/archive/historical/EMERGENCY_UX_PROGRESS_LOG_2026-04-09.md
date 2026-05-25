@@ -4,17 +4,17 @@ owner: -
 last_updated: 2026-04-23
 ---
 
-# Emergency UX Progress Log â€” 2026-04-09
+# Emergency UX Progress Log — 2026-04-09
 
 > Status: Active checkpoint log  
 > Scope: `ivisit-app` `/map` entry, modal focus, location labeling, and demo coverage hardening  
 > Purpose: preserve the exact decisions from today so the team can continue from the right source of truth.
 
-## Proper doc assignment for todayâ€™s fixes
+## Proper doc assignment for today's fixes
 
-- **User-visible emergency runtime changes** â†’ this file
-- **Coverage/bootstrap rule changes** â†’ [`DEMO_MODE_COVERAGE_FLOW.md`](../../flows/emergency/DEMO_MODE_COVERAGE_FLOW.md)
-- **Fast continuation memory for code work** â†’ repo memory under `/memories/repo/`
+- **User-visible emergency runtime changes** → this file
+- **Coverage/bootstrap rule changes** → [`DEMO_MODE_COVERAGE_FLOW.md`](../../flows/emergency/DEMO_MODE_COVERAGE_FLOW.md)
+- **Fast continuation memory for code work** → repo memory under `/memories/repo/`
 
 ---
 
@@ -106,7 +106,7 @@ last_updated: 2026-04-23
 
 #### Change made
 - the cutoff is now aligned around **3 verified nearby live hospitals**
-- `1â€“2 verified` hospitals are treated as **poor** coverage, not good coverage
+- `1–2 verified` hospitals are treated as **poor** coverage, not good coverage
 - hybrid/demo help remains eligible below that threshold
 - bootstrap/backfill now continues until the nearby experience is fuller
 
@@ -447,7 +447,7 @@ This should be treated as ongoing cleanup work, especially anywhere a map view f
 - Newly discovered provider hospitals can now render a real provider photo immediately through the proxy fallback, instead of waiting for a later manual backfill.
 
 ### Residual reality
-- Not every hospital can or should show a â€œrealâ€ photo.
+- Not every hospital can or should show a "real" photo.
 - Some rows still fall back deliberately because no trustworthy official/provider image was available.
 - The global hospital table still contains noisy/non-ideal facilities in some regions; this media pass does not certify facility quality, it only normalizes the image delivery path for whatever hospital rows are already considered visible/dispatchable by the runtime.
 

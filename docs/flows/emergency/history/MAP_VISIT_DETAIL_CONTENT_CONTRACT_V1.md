@@ -90,11 +90,11 @@ The top slot should stay quiet.
 Examples:
 
 - `Odyssey Hospice`
-  `Upcoming â€¢ Apr 23 / 10:40 AM`
+  `Upcoming • Apr 23 / 10:40 AM`
 - `Odyssey Hospice`
-  `Active â€¢ 6 min away`
+  `Active • 6 min away`
 - `Odyssey Hospice`
-  `Completed â€¢ Apr 18 / 3:20 PM`
+  `Completed • Apr 18 / 3:20 PM`
 
 The top slot is not the place for dense metadata.
 
@@ -115,17 +115,17 @@ Examples:
 
 - Scheduled visit:
   - title: `Telehealth follow-up`
-  - secondary: `Cardiology â€¢ Dr. A. Bello`
+  - secondary: `Cardiology • Dr. A. Bello`
   - pill: `Apr 23 / 10:40 AM`
 
 - Ambulance:
   - title: `Everyday care transport`
-  - secondary: `Demo Driver 2 â€¢ Type III`
+  - secondary: `Demo Driver 2 • Type III`
   - pill: `6 min away`
 
 - Bed:
   - title: `Private room reservation`
-  - secondary: `Private room â€¢ Bed 12`
+  - secondary: `Private room • Bed 12`
   - pill: `Waiting approval`
 
 ## Content by Request Type

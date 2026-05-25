@@ -44,4 +44,4 @@ iVisit is the infrastructure for on-demand medical security. We represent the sh
 | Technology | "AES-256 Encryption." | "Absolute Trust. Instant Connection." |
 
 ---
-*Created for iVisit Command â€¢ 2024*
+*Created for iVisit Command • 2024*

@@ -6,7 +6,7 @@ last_updated: 2026-04-23
 
 # EMERGENCY_UX_PROGRESS_LOG - ARCHIVAL NOTICE
 
-## âš ï¸ **ARCHIVED DOCUMENT - HISTORICAL PROGRESS LOGS**
+## ⚠ï¸ **ARCHIVED DOCUMENT - HISTORICAL PROGRESS LOGS**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Historical progress logs documenting UX fixes and improvements - preserved for reference but no longer active

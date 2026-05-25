@@ -27,9 +27,9 @@ Current ambulance sprites are 128Ã—128 (from `generate-ambulance-sprites.ps1`
 
 ### Proportional Sizing Applied
 
-Hospital markers use consistent webâ†’native ratio:
-- Normal: 28Ã—48 (web) â†’ 54Ã—91 (native) = ~1.93x width, 1.9x height
-- Selected: 38Ã—64 (web) â†’ 68Ã—114 (native) = ~1.79x width, 1.78x height
+Hospital markers use consistent web→native ratio:
+- Normal: 28Ã—48 (web) → 54Ã—91 (native) = ~1.93x width, 1.9x height
+- Selected: 38Ã—64 (web) → 68Ã—114 (native) = ~1.79x width, 1.78x height
 - **Average ratio: ~1.9x**
 
 Applied to ambulance sprite (46Ã—46 web):
@@ -38,7 +38,7 @@ Applied to ambulance sprite (46Ã—46 web):
 ### Implementation Strategy
 
 1. **Code changes** (immediate): Define 90Ã—90 native size in `imageSize`
-2. **Asset regeneration** (required for native): Resize PNGs from 128Ã—128 â†’ 90Ã—90
+2. **Asset regeneration** (required for native): Resize PNGs from 128Ã—128 → 90Ã—90
 
 ## Implementation
 
@@ -98,7 +98,7 @@ This will regenerate all 16 ambulance heading sprites (ambulance_00.png through 
 - [ ] Android native: Ambulance sprite renders at 90Ã—90 (after PNG regeneration)
 - [ ] iOS native: Ambulance sprite renders at 90Ã—90 (after PNG regeneration)
 - [ ] Sprite rotation (16 headings) works on all platforms
-- [ ] Size ratio matches hospital markers (~1.9x webâ†’native)
+- [ ] Size ratio matches hospital markers (~1.9x web→native)
 
 ## Related
 

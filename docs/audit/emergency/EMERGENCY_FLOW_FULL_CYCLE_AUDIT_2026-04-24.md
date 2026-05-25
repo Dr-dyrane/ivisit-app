@@ -8,7 +8,7 @@ last_updated: 2026-05-24
 
 ---
 
-> **HISTORICAL NOTICE â€” 2026-05-19**
+> **HISTORICAL NOTICE — 2026-05-19**
 > This is a completed audit from 2026-04-24. The issues it identified have been addressed in subsequent passes.
 > Retained for historical context only.
 > **Current reference:** [`docs/audit/map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md`](../map/passes/TRACKING_STATE_TIGHTENING_PASS_2026-05-19.md)

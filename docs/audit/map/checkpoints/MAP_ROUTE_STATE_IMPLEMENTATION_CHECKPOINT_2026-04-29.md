@@ -28,7 +28,7 @@ This checkpoint covers the missing lifecycle and UI layers.
 
 ## What Landed
 
-### Layer 1â€“3 follow-through stayed intact
+### Layer 1–3 follow-through stayed intact
 
 The existing route hardening remains the base:
 

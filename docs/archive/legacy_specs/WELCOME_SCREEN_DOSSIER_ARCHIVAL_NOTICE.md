@@ -6,7 +6,7 @@ last_updated: 2026-04-23
 
 # WELCOME_SCREEN_DOSSIER - ARCHIVAL NOTICE
 
-## âš ï¸ **ARCHIVED DOCUMENT - SCREEN-SPECIFIC DOCUMENTATION**
+## ⚠ï¸ **ARCHIVED DOCUMENT - SCREEN-SPECIFIC DOCUMENTATION**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Screen-scoped drift - Document reflects screen-specific documentation patterns that conflict with domain-driven architecture

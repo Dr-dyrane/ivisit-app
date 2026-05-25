@@ -31,9 +31,9 @@ Active screen references (current):
 
 Historical dossiers (archived, kept for context):
 
-- [archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md) â€” see [archival notice](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
-- [archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md) â€” see [archival notice](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
-- [archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md) â€” see [archival notice](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT_ARCHIVAL_NOTICE.md)
+- [archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER.md) — see [archival notice](./archive/legacy_specs/WELCOME_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
+- [archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER.md) — see [archival notice](./archive/legacy_specs/EMERGENCY_SCREEN_DOSSIER_ARCHIVAL_NOTICE.md)
+- [archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT.md) — see [archival notice](./archive/legacy_specs/EMERGENCY_INTEGRATION_AUDIT_ARCHIVAL_NOTICE.md)
 
 ## Product Truth
 

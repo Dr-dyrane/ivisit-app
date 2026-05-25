@@ -71,7 +71,7 @@ Doc alignment for modal-to-sheet swap.
 
 Target:
 
-- remove contradictory â€œsearch/hospitals remain modalsâ€ language
+- remove contradictory "search/hospitals remain modals" language
 - lock collapsed-state rules per sheet phase
 - define one explicit pre-dispatch sheet-phase model
 

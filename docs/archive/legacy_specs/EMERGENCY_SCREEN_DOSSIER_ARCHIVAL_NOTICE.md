@@ -6,7 +6,7 @@ last_updated: 2026-04-23
 
 # EMERGENCY_SCREEN_DOSSIER - ARCHIVAL NOTICE
 
-## âš ï¸ **ARCHIVED DOCUMENT - LEGACY SCREEN SPECIFICATION**
+## ⚠ï¸ **ARCHIVED DOCUMENT - LEGACY SCREEN SPECIFICATION**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Feature-scoped drift - Document reflects legacy Tab-based navigation patterns that conflict with active Map-First orchestration system

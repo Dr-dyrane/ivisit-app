@@ -18,7 +18,7 @@ last_updated: 2026-05-24
 
 ## Requirement Checklist
 
-### 1. Normalize pickup source hierarchy âœ…
+### 1. Normalize pickup source hierarchy ✅
 **Requirement:** Define canonical source enum with clear hierarchy
 
 **Current State:**
@@ -55,7 +55,7 @@ const GLOBAL_SAVED_FALLBACK_SOURCES = new Set([
 
 ---
 
-### 2. Ensure manual wins âœ…
+### 2. Ensure manual wins ✅
 **Requirement:** SESSION_MANUAL should have highest priority
 
 **Current State:**
@@ -80,7 +80,7 @@ if (hasValidPickupCoordinates(sessionManualLocation)) {
 
 ---
 
-### 3. Mark fallback/demo/missing explicitly âœ…
+### 3. Mark fallback/demo/missing explicitly ✅
 **Requirement:** Add metadata flags to distinguish fallback, demo, missing states
 
 **Current State:**

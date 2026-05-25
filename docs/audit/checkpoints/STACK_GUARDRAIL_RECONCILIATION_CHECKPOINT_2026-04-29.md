@@ -159,7 +159,7 @@ After this pass:
 - recent compatibility routing is declarative again
 - route params are no longer mirrored into atoms in the audited stack models
 - recent stack orchestrators no longer carry redundant derived-state header effects
-- `Book Visit` screen-model ownership is cleaner and closer to the projectâ€™s five-layer contract
+- `Book Visit` screen-model ownership is cleaner and closer to the project's five-layer contract
 
 ## Remaining Notes
 

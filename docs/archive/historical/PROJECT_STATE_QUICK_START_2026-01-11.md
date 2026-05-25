@@ -125,11 +125,11 @@ expo start --android  # or --ios
 ```
 
 **Check:**
-- âœ… Header appears on screen
-- âœ… Scroll down â†’ header hides smoothly
-- âœ… Scroll up â†’ header appears smoothly
-- âœ… Tab bar also hides/shows together
-- âœ… At top of screen, header always visible
+- ✅ Header appears on screen
+- ✅ Scroll down → header hides smoothly
+- ✅ Scroll up → header appears smoothly
+- ✅ Tab bar also hides/shows together
+- ✅ At top of screen, header always visible
 
 ---
 
@@ -219,15 +219,15 @@ return (
 
 ---
 
-## **Done! âœ…**
+## **Done! ✅**
 
 You now have:
 
-1. âœ… Scroll-aware headers on all screens
-2. âœ… Matching Apple UX pattern
-3. âœ… Tab bar + header animate together
-4. âœ… Content visible behind header when scrolling
-5. âœ… Foundation for API services
+1. ✅ Scroll-aware headers on all screens
+2. ✅ Matching Apple UX pattern
+3. ✅ Tab bar + header animate together
+4. ✅ Content visible behind header when scrolling
+5. ✅ Foundation for API services
 
 Next: Start migrating data fetching to `services/*` and custom hooks when ready.
 
@@ -240,8 +240,8 @@ Next: Start migrating data fetching to `services/*` and custom hooks when ready.
 Check:
 ```javascript
 <ScrollView
-  scrollEventThrottle={16}   // â† Must be 16 or less
-  onScroll={handleScroll}     // â† Passing correct handler
+  scrollEventThrottle={16}   // ← Must be 16 or less
+  onScroll={handleScroll}     // ← Passing correct handler
 >
 ```
 
@@ -260,8 +260,8 @@ if (currentScrollY < 50) {  // Only hide after 50px scroll
 Check:
 ```javascript
 Animated.timing(headerOpacity, {
-  useNativeDriver: true,  // â† Must be true!
-  duration: 250,           // â† Apple standard
+  useNativeDriver: true,  // ← Must be true!
+  duration: 250,           // ← Apple standard
 })
 ```
 

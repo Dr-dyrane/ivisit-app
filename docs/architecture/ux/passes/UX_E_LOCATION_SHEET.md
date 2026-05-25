@@ -4,11 +4,11 @@ owner: architecture
 last_updated: 2026-05-10
 ---
 
-# UX-E â€” LocationSheet + Mini Profile
+# UX-E — LocationSheet + Mini Profile
 
-**Priority:** LOW â€” blocked on LocationSheet stability
+**Priority:** LOW — blocked on LocationSheet stability
 **Date:** 2026-05-10
-**Status:** COMPLETE â€” 2026-05-10: Location passes Aâ€“E shipped; Issue 11 implemented
+**Status:** COMPLETE — 2026-05-10: Location passes A–E shipped; Issue 11 implemented
 **Depends on:** UX-D complete + Location passes shipped
 **Blocks:** nothing
 
@@ -24,7 +24,7 @@ last_updated: 2026-05-10
 
 ## Prerequisites (Must Be Met Before Starting This Pass)
 
-- [x] LocationSheet decision tree is stable and shipped: search â†’ candidate â†’ save category â†’ save details â†’ pickup commit
+- [x] LocationSheet decision tree is stable and shipped: search → candidate → save category → save details → pickup commit
 - [x] LocationSheet has a single owner (not multiple modals competing for control)
 - [x] All Location passes have shipped
 - [x] UX-A through UX-D are complete
@@ -36,18 +36,18 @@ last_updated: 2026-05-10
 
 ## Scope (When Unblocked)
 
-### Issue 11 â€” Mini Profile Needs Address Entry Point
+### Issue 11 — Mini Profile Needs Address Entry Point
 
 **Root cause:** Mini profile surface has no address or location management row. Users who want to update their pickup address must navigate away from the mini profile to find the setting.
 
 **Fix scope:**
 - Add `"Address & Location"` row to the mini profile action group
-- Row opens LocationSheet (the same owner â€” no new modal)
+- Row opens LocationSheet (the same owner — no new modal)
 - Pass `sourcePhase: "miniProfile"` metadata so LocationSheet knows where to return on close
-- LocationSheet close: when `sourcePhase === "miniProfile"` â†’ return to mini profile, not explore intent
+- LocationSheet close: when `sourcePhase === "miniProfile"` → return to mini profile, not explore intent
 
 **Why LocationSheet only:**
-- No new address management surface â€” LocationSheet is the sole owner per the Location passes guardrail
+- No new address management surface — LocationSheet is the sole owner per the Location passes guardrail
 - Mini profile is the entry point, not the owner
 - This pattern mirrors how the commit details phase opens LocationSheet with `sourcePhase: "commitDetails"` and restores correctly
 
@@ -57,7 +57,7 @@ last_updated: 2026-05-10
 
 | File | Change |
 |------|--------|
-| Mini profile surface file (TBD â€” identify before starting) | Add `"Address & Location"` action row |
+| Mini profile surface file (TBD — identify before starting) | Add `"Address & Location"` action row |
 | `hooks/useLocationSheet.js` (or equivalent) | Handle `sourcePhase: "miniProfile"` in close handler |
 | LocationSheet close handler | Route back to mini profile when `sourcePhase === "miniProfile"` |
 
@@ -72,9 +72,9 @@ grep -rn "miniProfile\|MiniProfile\|mini_profile" components/ screens/
 
 | Track | Scope |
 |-------|-------|
-| State management | `sourcePhase` metadata thread through LocationSheet â€” no new state atom if the existing phase system already supports metadata |
+| State management | `sourcePhase` metadata thread through LocationSheet — no new state atom if the existing phase system already supports metadata |
 | UI quality | One new action row in mini profile. No redesign. Matches existing row pattern in the group. |
-| DRY / modular | No new surface â€” LocationSheet is the owner. Mini profile adds only a row. |
+| DRY / modular | No new surface — LocationSheet is the owner. Mini profile adds only a row. |
 | Documentation | PULLBACK NOTE on close handler if it was previously hardwired to explore intent only. Pass log updated. |
 
 ---
@@ -83,33 +83,33 @@ grep -rn "miniProfile\|MiniProfile\|mini_profile" components/ screens/
 
 | Rule | How complied |
 |------|-------------|
-| LocationSheet single owner | This pass does not create a new address modal â€” only a navigation entry point |
+| LocationSheet single owner | This pass does not create a new address modal — only a navigation entry point |
 | No `useEffect` for navigation | `sourcePhase` is a prop/metadata passed at open time, not a reactive effect |
-| Mini profile stays thin | One row addition only â€” no business logic in the mini profile surface |
+| Mini profile stays thin | One row addition only — no business logic in the mini profile surface |
 
 ---
 
 ## Invariants (When Unblocked)
 
-- LocationSheet close â†’ explore intent path: must still work for all other source phases
-- Mini profile action group layout: no reordering of existing rows â€” new row appended to the location/address group
+- LocationSheet close → explore intent path: must still work for all other source phases
+- Mini profile action group layout: no reordering of existing rows — new row appended to the location/address group
 - No new address management modal created
 
 ---
 
 ## Verification Checklist (When Unblocked)
 
-- [x] Prerequisites confirmed â€” all Location passes shipped
+- [x] Prerequisites confirmed — all Location passes shipped
 - [x] Mini profile surface file identified (components/emergency/MiniProfileModal.jsx)
 - [x] `"Address & Location"` row visible in mini profile action group
 - [x] Tapping row opens LocationSheet (not a new modal)
-- [x] LocationSheet close with `sourcePhase === "miniProfile"` â†’ returns to mini profile
-- [x] LocationSheet close from all other source phases â†’ unaffected (regression guard)
+- [x] LocationSheet close with `sourcePhase === "miniProfile"` → returns to mini profile
+- [x] LocationSheet close from all other source phases → unaffected (regression guard)
 - [x] PULLBACK NOTE on close handler change
 
 ---
 
 ## Navigation
 
-â† [UX-D: State Layer Completion](./UX_D_STATE_LAYER.md)
-â† [README](./README.md)
+← [UX-D: State Layer Completion](./UX_D_STATE_LAYER.md)
+← [README](./README.md)

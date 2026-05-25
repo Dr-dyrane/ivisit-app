@@ -6,7 +6,7 @@ last_updated: 2026-04-23
 
 # EMERGENCY INTEGRATION AUDIT - ARCHIVAL NOTICE
 
-## âš ï¸ **ARCHIVED DOCUMENT - LEGACY INTEGRATION ANALYSIS**
+## ⚠ï¸ **ARCHIVED DOCUMENT - LEGACY INTEGRATION ANALYSIS**
 
 ### **Archival Date**: April 23, 2026  
 ### **Reason**: Document reflects legacy auth-first emergency access patterns that conflict with current intent-first, Map-first orchestration
@@ -57,19 +57,19 @@ This audit was conducted when the iVisit app used an **auth-first emergency acce
 
 ## **Legacy Integration Issues Resolved**
 
-### **Auth-First Emergency Access** âŒ **RESOLVED**
+### **Auth-First Emergency Access** ❌ **RESOLVED**
 **Legacy Problem**: Users had to authenticate before accessing emergency services
 **Current Solution**: Intent-first access with authentication only when required
 
-### **Separate Emergency Surface** âŒ **RESOLVED**
+### **Separate Emergency Surface** ❌ **RESOLVED**
 **Legacy Problem**: EmergencyScreen.jsx as separate component from map
 **Current Solution**: Unified MapSheetOrchestrator with emergency phases
 
-### **Manual State Management** âŒ **RESOLVED**
+### **Manual State Management** ❌ **RESOLVED**
 **Legacy Problem**: Manual state synchronization between components
 **Current Solution**: Real-time Supabase subscriptions with automatic sync
 
-### **Tab-Based Navigation** âŒ **RESOLVED**
+### **Tab-Based Navigation** ❌ **RESOLVED**
 **Legacy Problem**: Emergency tab as primary navigation entry point
 **Current Solution**: Map-first orchestration with phase-based navigation
 

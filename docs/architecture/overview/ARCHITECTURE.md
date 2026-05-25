@@ -9,7 +9,7 @@ last_updated: 2026-05-24
 > **Version:** 2.0
 > **Date:** 2026-05-24
 > **Status:** Source of truth for the current `ivisit-app` codebase
-> **Predecessor:** [`docs/archive/historical/ARCHITECTURE_v1.1_2026-01-09.md`](../../archive/historical/ARCHITECTURE_v1.1_2026-01-09.md) (preâ€“Gold-Standard 3-layer)
+> **Predecessor:** [`docs/archive/historical/ARCHITECTURE_v1.1_2026-01-09.md`](../../archive/historical/ARCHITECTURE_v1.1_2026-01-09.md) (pre–Gold-Standard 3-layer)
 
 This document is the entry-point architectural overview for `ivisit-app`. It describes the **what** and **where** of the running system. For the **why and how to refactor**, see [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md). For the **migration history**, see [`architecture/state/GOLD_STANDARD_STATE_ROADMAP.md`](../state/GOLD_STANDARD_STATE_ROADMAP.md).
 
@@ -36,7 +36,7 @@ For the full product doctrine, see [`MASTER_BLUEPRINT.md`](../../MASTER_BLUEPRIN
 ivisit-app/
 â”œâ”€â”€ app/                 Expo Router file-based routes
 â”‚   â”œâ”€â”€ (auth)/          Auth-gated routes (welcome, login, signup, map)
-â”‚   â”œâ”€â”€ (user)/          Stack routes (profile, settings, visits, payment, â€¦)
+â”‚   â”œâ”€â”€ (user)/          Stack routes (profile, settings, visits, payment, …)
 â”‚   â”œâ”€â”€ auth/            Auth callback handlers
 â”‚   â””â”€â”€ _layout.js       Root composition
 â”œâ”€â”€ runtime/             Runtime gate, providers, navigator, bootstrap effects
@@ -44,7 +44,7 @@ ivisit-app/
 â”œâ”€â”€ screens/             Screen components mounted by route files
 â”œâ”€â”€ components/          Presentational surfaces (StageBase, views, sheets, leafs)
 â”œâ”€â”€ hooks/               Behavior, controllers, query lifecycles, runtime coord
-â”œâ”€â”€ services/            API adapters (Supabase, payment, route, notificationâ€¦)
+â”œâ”€â”€ services/            API adapters (Supabase, payment, route, notification…)
 â”œâ”€â”€ stores/              Zustand persisted client state (Layer 3)
 â”œâ”€â”€ atoms/               Jotai ephemeral UI state (Layer 5)
 â”œâ”€â”€ machines/            XState lifecycle/legal transitions (Layer 4)
@@ -61,41 +61,41 @@ ivisit-app/
 
 ## 3. The Five-Layer State Architecture
 
-Client state is owned by exactly one of five layers. Each layer has a specific responsibility and a specific implementation. New domain state must land in the right layer â€” never in a new ad-hoc context or in `useState` that leaks across boundaries.
+Client state is owned by exactly one of five layers. Each layer has a specific responsibility and a specific implementation. New domain state must land in the right layer — never in a new ad-hoc context or in `useState` that leaks across boundaries.
 
 ```
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ L1 Â· SERVER TRUTH                          Supabase + Realtime       â”‚
 â”‚      Authoritative rows, RPC responses, realtime events              â”‚
-â”‚      â†’ supabase/                                                     â”‚
+â”‚      → supabase/                                                     â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
                                   â”‚
-                                  â–¼
+                                  ▼
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ L2 Â· SERVER CACHE                          TanStack Query            â”‚
 â”‚      Cache, refetch, invalidation, optimistic mutation               â”‚
-â”‚      â†’ hooks/**/use*Query.js, providers/QueryProvider.jsx            â”‚
+â”‚      → hooks/**/use*Query.js, providers/QueryProvider.jsx            â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
                                   â”‚
-                                  â–¼
+                                  ▼
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ L3 Â· PERSISTED CLIENT SNAPSHOT             Zustand                   â”‚
-â”‚      Active trips, contacts, coverage mode, location, visits, â€¦     â”‚
-â”‚      â†’ stores/ (22 files)                                            â”‚
+â”‚      Active trips, contacts, coverage mode, location, visits, …     â”‚
+â”‚      → stores/ (22 files)                                            â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
                                   â”‚
-                                  â–¼
+                                  ▼
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ L4 Â· LIFECYCLE LEGALITY                    XState                    â”‚
 â”‚      Trip lifecycle, billing quote, contacts, machine-like states    â”‚
-â”‚      â†’ machines/ (10 files)                                          â”‚
+â”‚      → machines/ (10 files)                                          â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
                                   â”‚
-                                  â–¼
+                                  ▼
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ L5 Â· EPHEMERAL UI STATE                    Jotai                     â”‚
 â”‚      Modals, drafts, selected rows, sheet phase, wizards             â”‚
-â”‚      â†’ atoms/ (18 files)                                             â”‚
+â”‚      → atoms/ (18 files)                                             â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
@@ -103,33 +103,33 @@ Client state is owned by exactly one of five layers. Each layer has a specific r
 
 | Question | Answer |
 |---|---|
-| Did the server tell us this? | L1 â†’ L2 |
+| Did the server tell us this? | L1 → L2 |
 | Should it survive an app reload? | L3 |
 | Is it a named lifecycle state (`IDLE/WAITING/DISPATCHED`)? | L4 |
 | Is it a modal flag, draft field, or "selected row" pointer? | L5 |
-| Is it derived from any of the above? | **None** â€” compute via `useMemo`/selector |
+| Is it derived from any of the above? | **None** — compute via `useMemo`/selector |
 
-For the full decision tree and anti-patterns, see [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) Â§1.
+For the full decision tree and anti-patterns, see [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) §1.
 
 ---
 
-## 4. Layer 1 â€” Supabase (server truth)
+## 4. Layer 1 — Supabase (server truth)
 
 Authoritative data lives in Postgres. See `supabase/docs/REFERENCE.md` for pillar ownership, the UUID-native identity model, RPC catalogue, and RLS posture. Key surfaces:
 
 - **Schema:** `supabase/migrations/**`
 - **RPCs:** `supabase/functions/**` (edge) + Postgres functions in migrations
 - **RLS:** role/org-scoped, non-recursive, `SECURITY DEFINER` helpers where required
-- **Realtime:** scoped channel subscriptions, declarative config (see Â§6 below)
+- **Realtime:** scoped channel subscriptions, declarative config (see §6 below)
 - **Append-only:** `wallet_ledger` and audit tables
 
 Cross-repo contract: `supabase/` is **shared** with `ivisit-console`. Treat schema/RPC/RLS changes as ecosystem infrastructure.
 
 ---
 
-## 5. Layer 2 â€” TanStack Query (server cache)
+## 5. Layer 2 — TanStack Query (server cache)
 
-Provider mounted at app root in `providers/QueryProvider.jsx`. Per-feature hooks live under `hooks/**` and follow the naming pattern `use<Domain><Resource>Query` / `â€¦Mutation`.
+Provider mounted at app root in `providers/QueryProvider.jsx`. Per-feature hooks live under `hooks/**` and follow the naming pattern `use<Domain><Resource>Query` / `…Mutation`.
 
 Rules:
 
@@ -140,7 +140,7 @@ Rules:
 
 ---
 
-## 6. Layer 3 â€” Zustand (persisted client snapshot)
+## 6. Layer 3 — Zustand (persisted client snapshot)
 
 Twenty-two stores under `stores/`. Each store owns one cross-surface, persist-able client snapshot. Selectors are colocated where derived reads are non-trivial.
 
@@ -148,36 +148,36 @@ Twenty-two stores under `stores/`. Each store owns one cross-surface, persist-ab
 |---|---|---|
 | `emergencyTripStore` | `emergencyTripSelectors`, `tripLifecycleMachine` | Active ambulance trips, bed bookings, pending approvals |
 | `emergencyContactsStore` | `emergencyContactsSelectors`, `emergencyContactsMachine` | Patient emergency contacts (five-layer reference impl) |
-| `bookVisitStore` | â€” , `bookVisitMachine` | Multi-step book-visit flow |
-| `coverageStore` | â€” | Live/demo coverage mode + nearby counts |
-| `locationStore` | â€” | Pickup truth, manual address, recents |
-| `lastHospitalStore` | â€” | Most-recent selected hospital |
-| `mapRouteStore` | â€” , `mapRouteMachine` | Active route payload + ETA seed |
-| `modeâ€‹Store` | â€” | Service mode (ambulance / bed / paired) |
+| `bookVisitStore` | — , `bookVisitMachine` | Multi-step book-visit flow |
+| `coverageStore` | — | Live/demo coverage mode + nearby counts |
+| `locationStore` | — | Pickup truth, manual address, recents |
+| `lastHospitalStore` | — | Most-recent selected hospital |
+| `mapRouteStore` | — , `mapRouteMachine` | Active route payload + ETA seed |
+| `modeâ€‹Store` | — | Service mode (ambulance / bed / paired) |
 | `notificationsStore` | `notificationsSelectors`, `notificationsMachine` | In-app notifications |
 | `medicalProfileStore` | `medicalProfileSelectors`, `medicalProfileMachine` | Medical profile |
 | `visitsStore` | `visitsSelectors`, `visitsMachine` | Visit history |
 | `helpSupportStore` | `helpSupportSelectors`, `helpSupportMachine` | Help / support tickets |
-| `billingQuoteStore` | â€” , `billingQuoteMachine` | FX-aware billing quotes |
-| `paymentPreferencesStore` (TS) | â€” | Persisted payment preferences |
+| `billingQuoteStore` | — , `billingQuoteMachine` | FX-aware billing quotes |
+| `paymentPreferencesStore` (TS) | — | Persisted payment preferences |
 
 Rules:
 
-- Stores must preserve `null` vs populated-object meaning â€” do not coerce null to `{}`.
-- Do not access stores from broad UI components â€” go through a hook or selector.
+- Stores must preserve `null` vs populated-object meaning — do not coerce null to `{}`.
+- Do not access stores from broad UI components — go through a hook or selector.
 - Cross-store coordination happens in hooks/controllers, not inside store actions.
 
 See [`architecture/stores/STORES_README.md`](../stores/STORES_README.md) for the full per-store contract.
 
 ---
 
-## 7. Layer 4 â€” XState (lifecycle legality)
+## 7. Layer 4 — XState (lifecycle legality)
 
-Ten machines under `machines/`. Use a machine when the state space has named values with legal transitions (`IDLE â†’ WAITING â†’ DISPATCHED â†’ ARRIVED â†’ COMPLETED`), not when you just want a flag.
+Ten machines under `machines/`. Use a machine when the state space has named values with legal transitions (`IDLE → WAITING → DISPATCHED → ARRIVED → COMPLETED`), not when you just want a flag.
 
 | Machine | Purpose |
 |---|---|
-| `tripLifecycleMachine` | Canonical trip lifecycle (request â†’ dispatch â†’ arrival â†’ completion) |
+| `tripLifecycleMachine` | Canonical trip lifecycle (request → dispatch → arrival → completion) |
 | `billingQuoteMachine` | FX quote lifecycle |
 | `bookVisitMachine` | Multi-step booking |
 | `emergencyChatRoomMachine` | Communication room state |
@@ -190,33 +190,33 @@ Ten machines under `machines/`. Use a machine when the state space has named val
 
 ---
 
-## 8. Layer 5 â€” Jotai (ephemeral UI state)
+## 8. Layer 5 — Jotai (ephemeral UI state)
 
 Eighteen atom files under `atoms/`. Use atoms for modal flags, drafts, selected-row pointers, wizard steps, sheet phases, and any cross-component UI sync that does not need to survive a reload.
 
 Representative atoms:
 
-- `mapScreenAtoms` â€” sheet phase, sheet view, scroll state, sheet height
-- `mapFlowAtoms` â€” explore-intent state, modal flags
-- `emergencyAtoms`, `emergencyChatAtoms` â€” emergency-surface UI flags
-- `paymentAtoms` (TS) â€” payment-screen drafts and selection
-- `searchAtoms` (TS) â€” search-screen drafts
-- `commitAtoms` (TS) â€” commit-flow drafts
-- `locationIntentAtoms` â€” pending location intent
+- `mapScreenAtoms` — sheet phase, sheet view, scroll state, sheet height
+- `mapFlowAtoms` — explore-intent state, modal flags
+- `emergencyAtoms`, `emergencyChatAtoms` — emergency-surface UI flags
+- `paymentAtoms` (TS) — payment-screen drafts and selection
+- `searchAtoms` (TS) — search-screen drafts
+- `commitAtoms` (TS) — commit-flow drafts
+- `locationIntentAtoms` — pending location intent
 
 Rule: derived UI values belong in inline `const` / `useMemo`, not in atoms.
 
 ---
 
-## 9. Compatibility Layer â€” Contexts
+## 9. Compatibility Layer — Contexts
 
 `contexts/**` still exists. After the Gold Standard migration, contexts fall into three classes:
 
-1. **Thin orchestration shells over hooks** â€” `EmergencyContext`, `EmergencyUIContext`, `GlobalLocationContext`, `SearchContext`. These compose feature hooks and expose a stable consumer surface, but do not own state. Treat as thin compatibility â€” do **not** add new domain state here.
-2. **UI scaffolding** â€” `ThemeContext`, `ToastContext`, `FABContext`, `TabBarVisibilityContext`, `HeaderStateContext`, `ScrollAwareHeaderContext`, `UnifiedScrollContext`. Layout/visual coordination only.
-3. **Auth / session boundary** â€” `AuthContext`, `LoginContext`, `RegistrationContext`, `OTAUpdatesContext`, `PreferencesContext`, `NotificationsContext`, `VisitsContext`, `HelpSupportContext`, `GlobalMapContext`. Boundary or facade roles; verify against the five-layer rule when touching.
+1. **Thin orchestration shells over hooks** — `EmergencyContext`, `EmergencyUIContext`, `GlobalLocationContext`, `SearchContext`. These compose feature hooks and expose a stable consumer surface, but do not own state. Treat as thin compatibility — do **not** add new domain state here.
+2. **UI scaffolding** — `ThemeContext`, `ToastContext`, `FABContext`, `TabBarVisibilityContext`, `HeaderStateContext`, `ScrollAwareHeaderContext`, `UnifiedScrollContext`. Layout/visual coordination only.
+3. **Auth / session boundary** — `AuthContext`, `LoginContext`, `RegistrationContext`, `OTAUpdatesContext`, `PreferencesContext`, `NotificationsContext`, `VisitsContext`, `HelpSupportContext`, `GlobalMapContext`. Boundary or facade roles; verify against the five-layer rule when touching.
 
-If you need new domain state, do **not** add a new context. Choose the correct layer (L1â€“L5) instead. See [`AGENTS.md`](../../../AGENTS.md) Â§Migration Awareness.
+If you need new domain state, do **not** add a new context. Choose the correct layer (L1–L5) instead. See [`AGENTS.md`](../../../AGENTS.md) §Migration Awareness.
 
 ---
 
@@ -225,11 +225,11 @@ If you need new domain state, do **not** add a new context. Choose the correct l
 ```
 app/_layout.js
   â””â”€â”€ RootProviders (providers/AppProviders.{jsx, web.jsx})
-       â”œâ”€â”€ QueryProvider          â† L2 root
+       â”œâ”€â”€ QueryProvider          ← L2 root
        â”œâ”€â”€ ThemeProvider
        â”œâ”€â”€ AuthProvider
        â”œâ”€â”€ ToastProvider
-       â””â”€â”€ RootRuntimeGate        â† gates first-paint on readiness
+       â””â”€â”€ RootRuntimeGate        ← gates first-paint on readiness
             â”œâ”€â”€ RootBootstrapEffects
             â”œâ”€â”€ RootNavigator
             â””â”€â”€ OTAModalLayer
@@ -244,11 +244,11 @@ app/_layout.js
 Stack routes follow a layered pattern:
 
 ```
-app/(user)/<route>.jsx              â† thin route file (â‰¤100 lines target)
-  â””â”€â”€ screens/<Screen>.jsx          â† screen orchestrator (â‰¤500 lines)
-       â””â”€â”€ <Screen>Orchestrator    â† domain wiring, header, FAB, route coord
-            â””â”€â”€ <Screen>StageBase   â† shell, motion, responsive composition
-                 â””â”€â”€ <Screen>Model  â† business composition
+app/(user)/<route>.jsx              ← thin route file (≤100 lines target)
+  â””â”€â”€ screens/<Screen>.jsx          ← screen orchestrator (≤500 lines)
+       â””â”€â”€ <Screen>Orchestrator    ← domain wiring, header, FAB, route coord
+            â””â”€â”€ <Screen>StageBase   ← shell, motion, responsive composition
+                 â””â”€â”€ <Screen>Model  ← business composition
                       â””â”€â”€ leaf components (presentational only)
 ```
 
@@ -271,7 +271,7 @@ For the full implementation contract see [`flows/emergency/MAP_SCREEN_IMPLEMENTA
 
 ---
 
-## 13. Local Persistence â€” `database/`
+## 13. Local Persistence — `database/`
 
 `database/` is the app-owned `AsyncStorage` boundary. It is **not** the canonical client-state model anymore (that role belongs to Zustand stores). `database/` is used for:
 
@@ -283,7 +283,7 @@ Rules:
 
 - Use `database` + `StorageKeys` boundaries where they exist.
 - Avoid scattered direct `AsyncStorage` calls for feature persistence.
-- Do **not** move Supabase auth storage behind app-owned helpers â€” the Supabase client owns that adapter contract.
+- Do **not** move Supabase auth storage behind app-owned helpers — the Supabase client owns that adapter contract.
 
 ---
 
@@ -302,7 +302,7 @@ For deployment specifics: [`deployment/VERCEL_WEB_DEPLOYMENT.md`](../../deployme
 
 ## 15. Where to Look Next
 
-| If you need toâ€¦ | Read |
+| If you need to… | Read |
 |---|---|
 | Understand current sprint and priorities | [`SPONSOR_SPRINT.md`](../../SPONSOR_SPRINT.md) |
 | Apply code-standard refactoring rules | [`REFACTORING_GUARDRAILS.md`](../../REFACTORING_GUARDRAILS.md) |
@@ -310,7 +310,7 @@ For deployment specifics: [`deployment/VERCEL_WEB_DEPLOYMENT.md`](../../deployme
 | Understand a specific Zustand store | [`architecture/stores/STORES_README.md`](../stores/STORES_README.md) |
 | Work on the emergency map surface | [`flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md`](../../flows/emergency/MAP_SCREEN_IMPLEMENTATION_RULES_V1.md) + [`flows/emergency/MASTER_REFERENCE_FLOW_V1.md`](../../flows/emergency/MASTER_REFERENCE_FLOW_V1.md) |
 | Touch Supabase schema/RPC/RLS | `supabase/docs/REFERENCE.md` + `supabase/docs/CONTRIBUTING.md` |
-| Onboard as a new engineer | [`../../../AGENTS.md`](../../../AGENTS.md) (root) â€” required reading map |
+| Onboard as a new engineer | [`../../../AGENTS.md`](../../../AGENTS.md) (root) — required reading map |
 
 ---
 

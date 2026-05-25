@@ -24,26 +24,26 @@ Expose a "Get there" CTA on provider cards that deep-links to Uber (or falls bac
 
 ## Reference Files
 
-- `components/map/views/providerList/MapProviderListSheet.jsx` â€” ProviderCard CTA
+- `components/map/views/providerList/MapProviderListSheet.jsx` — ProviderCard CTA
 - `constants/providerTypes.js`
 
 ## Guardrails
 
 - No Supabase calls.
-- Deep-link only â€” do not embed a ride booking flow inside the app.
+- Deep-link only — do not embed a ride booking flow inside the app.
 - Graceful fallback: if Uber is not installed, open Apple Maps / Google Maps.
-- Do not show the CTA for provider types where navigation is irrelevant (e.g., telemedicine â€” not in v1).
+- Do not show the CTA for provider types where navigation is irrelevant (e.g., telemedicine — not in v1).
 
 ## Exports
 
-- `openRideToProvider(provider)` â€” builds deep-link URL and calls `Linking.openURL`
+- `openRideToProvider(provider)` — builds deep-link URL and calls `Linking.openURL`
 
 ## Behavior
 
 1. Build Uber deep-link with provider `latitude` / `longitude` and `name` as destination.
 2. Attempt `Linking.canOpenURL('uber://')`.
-3. If Uber available â†’ open Uber deep-link.
-4. If not â†’ open platform Maps URL (`maps://` on iOS, `geo:` on Android, `https://maps.google.com` on web).
+3. If Uber available → open Uber deep-link.
+4. If not → open platform Maps URL (`maps://` on iOS, `geo:` on Android, `https://maps.google.com` on web).
 
 ## Checklist
 

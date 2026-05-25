@@ -18,7 +18,7 @@ last_updated: 2026-05-24
 
 ## Requirement Checklist
 
-### 1. Verify GPS scenario âœ…
+### 1. Verify GPS scenario ✅
 **Requirement:** GPS location should be used when available and valid
 
 **Current State:**
@@ -32,7 +32,7 @@ const hasPreciseDeviceLocation = Boolean(
 ```
 
 **Issues Found:**
-- GPS location checked âœ…
+- GPS location checked ✅
 - BUT: No validation that GPS location is fresh (age check)
 - BUT: No validation that GPS location has acceptable accuracy
 - BUT: No validation that GPS location is within valid ranges
@@ -42,7 +42,7 @@ const hasPreciseDeviceLocation = Boolean(
 
 ---
 
-### 2. Verify permission scenario âœ…
+### 2. Verify permission scenario ✅
 **Requirement:** Permission denied should trigger specific CTA (Open Settings)
 
 **Current State:**
@@ -67,7 +67,7 @@ if (locationError) {
 
 ---
 
-### 3. Verify manual pickup scenario âœ…
+### 3. Verify manual pickup scenario ✅
 **Requirement:** Manual pickup should be geocoded and validated before use
 
 **Current State:**
@@ -84,7 +84,7 @@ const handleManualConfirm = useCallback(async () => {
 ```
 
 **Issues Found:**
-- Geocoding called âœ…
+- Geocoding called ✅
 - BUT: No validation that geocoding succeeded (null check)
 - BUT: No validation that coordinates are finite
 - BUT: No validation that coordinates are in valid ranges
@@ -94,7 +94,7 @@ const handleManualConfirm = useCallback(async () => {
 
 ---
 
-### 4. Verify Places conversion scenario âœ…
+### 4. Verify Places conversion scenario ✅
 **Requirement:** Places results should be marked and rendered separately
 
 **Current State:**
@@ -105,7 +105,7 @@ const importedFromMapbox = h?.mapbox_only === true;
 ```
 
 **Issues Found:**
-- Flags exist âœ…
+- Flags exist ✅
 - BUT: No validation that Places have coordinates
 - BUT: No validation that Places are within search radius
 - BUT: No validation that Places are not duplicates of DB hospitals
@@ -132,9 +132,9 @@ const importedFromMapbox = h?.mapbox_only === true;
 - Hospitals sorted by distance from GPS
 
 **Current Behavior:**
-- GPS location used as pickup âœ…
-- Provider discovery uses GPS coordinates âœ…
-- Hospitals sorted by distance âœ…
+- GPS location used as pickup ✅
+- Provider discovery uses GPS coordinates ✅
+- Hospitals sorted by distance ✅
 - **GAP:** No GPS freshness check
 - **GAP:** No GPS accuracy check
 
@@ -163,10 +163,10 @@ const importedFromMapbox = h?.mapbox_only === true;
 - Allow manual address entry
 
 **Current Behavior:**
-- Shows "Retry" CTA âŒ
-- No "Enter Address Manually" CTA âŒ
-- Uses fallback location âŒ
-- Allows manual address entry âœ…
+- Shows "Retry" CTA ❌
+- No "Enter Address Manually" CTA ❌
+- Uses fallback location ❌
+- Allows manual address entry ✅
 
 **Test Case:**
 ```javascript
@@ -193,10 +193,10 @@ const importedFromMapbox = h?.mapbox_only === true;
 - Provider discovery uses manual coordinates
 
 **Current Behavior:**
-- Geocoding called âœ…
-- Coordinates not validated âŒ
-- Manual pickup set âœ…
-- Provider discovery uses manual coordinates âœ…
+- Geocoding called ✅
+- Coordinates not validated ❌
+- Manual pickup set ✅
+- Provider discovery uses manual coordinates ✅
 
 **Test Case:**
 ```javascript
@@ -223,10 +223,10 @@ const importedFromMapbox = h?.mapbox_only === true;
 - Places validated (coordinates, required fields)
 
 **Current Behavior:**
-- Places marked with source flags âœ…
-- Places mixed with DB hospitals âŒ
-- Duplicates not removed âŒ
-- Places not validated âŒ
+- Places marked with source flags ✅
+- Places mixed with DB hospitals ❌
+- Duplicates not removed ❌
+- Places not validated ❌
 
 **Test Case:**
 ```javascript
@@ -285,7 +285,7 @@ const importedFromMapbox = h?.mapbox_only === true;
 - Allows retry
 
 **Expected Behavior:**
-- âœ… Current behavior is correct
+- ✅ Current behavior is correct
 - Add specific error message (geocode failed vs network error)
 
 ---

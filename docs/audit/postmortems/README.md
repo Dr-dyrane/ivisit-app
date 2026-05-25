@@ -20,13 +20,13 @@ The date is the **incident date** (when the regression manifested or was discove
 
 Every postmortem must contain:
 
-1. **Severity & Date** â€” single line summary
-2. **Symptom Surface** â€” what users saw, what platforms/conditions
-3. **Debugging Journey** â€” including wrong turns (for learning value)
-4. **Root Causes** â€” explicit, isolated, multi-layered if applicable
-5. **Fixes Applied** â€” file-by-file, all minimal and upstream
-6. **Permanent Architectural Rules** â€” what we now require to prevent recurrence
-7. **Outstanding Tech Debt** â€” followups not yet shipped
+1. **Severity & Date** — single line summary
+2. **Symptom Surface** — what users saw, what platforms/conditions
+3. **Debugging Journey** — including wrong turns (for learning value)
+4. **Root Causes** — explicit, isolated, multi-layered if applicable
+5. **Fixes Applied** — file-by-file, all minimal and upstream
+6. **Permanent Architectural Rules** — what we now require to prevent recurrence
+7. **Outstanding Tech Debt** — followups not yet shipped
 
 ## Index
 

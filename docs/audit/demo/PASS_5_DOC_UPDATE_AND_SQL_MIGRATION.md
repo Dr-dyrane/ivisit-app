@@ -8,13 +8,13 @@ last_updated: 2026-05-24
 
 ---
 
-# Pass 5 â€” Documentation Update + Post-Deploy SQL Migration
+# Pass 5 — Documentation Update + Post-Deploy SQL Migration
 
 **Track:** Documentation / Post-Deploy
 **Date:** 2026-05-10
-**Status:** PLANNED â€” must ship in same commit as Pass 1 + 2
+**Status:** PLANNED — must ship in same commit as Pass 1 + 2
 **Depends on:** Pass 1 + Pass 2 (doc update must reflect the deployed behavior)
-**Blocks:** nothing â€” but must not be deferred; the bloat remediation checkpoint requires it
+**Blocks:** nothing — but must not be deferred; the bloat remediation checkpoint requires it
 
 ---
 
@@ -23,7 +23,7 @@ last_updated: 2026-05-24
 `docs/flows/emergency/DEMO_MODE_COVERAGE_FLOW.md` is the authoritative source of truth for demo mode rules, acceptance checks, and the cleanup runbook. It must stay current with the deployed bootstrap logic.
 
 After Pass 1+2, two rules change:
-1. **Scope key rule:** No longer coordinate-based for non-catalog cities â€” now always user-slug-based
+1. **Scope key rule:** No longer coordinate-based for non-catalog cities — now always user-slug-based
 2. **Retirement sweep rule:** Now covers all orgs within 16 km, not just the current org
 
 Additionally, acceptance checks 21 and 22 require updated criteria to reflect the new scoping behavior.
@@ -39,7 +39,7 @@ The bloat remediation checkpoint states: *"any bootstrap logic change must updat
 **Current text (approximate):**
 ```
 For cities not in CITY_DEMO_FALLBACK_CATALOGS, the scope key is derived from the
-user's GPS coordinates using toCoverageKey() â€” creating approximately 1.1 km buckets.
+user's GPS coordinates using toCoverageKey() — creating approximately 1.1 km buckets.
 ```
 
 **Replacement:**
@@ -58,20 +58,20 @@ across all sessions and all cities. GPS drift does not create new orgs or hospit
 Add the following invariant to the existing list:
 ```
 Invariant (added Pass 2, 2026-05-10): The retirement sweep covers all demo hospitals
-from all orgs within 0.15Â° (~16 km) of the current user's location, not just the
+from all orgs within 0.15° (~16 km) of the current user's location, not just the
 current user's org. This ensures stale coordinate-scoped hospitals from old bootstrap
 runs are retired on the next active user bootstrap.
 ```
 
 ### 3. Acceptance Checks 21 and 22
 
-**Acceptance Check 21 (pre-existing â€” coordinate proliferation):**
+**Acceptance Check 21 (pre-existing — coordinate proliferation):**
 
 | Before | After |
 |---|---|
-| "Two bootstrap runs from coords 200 m apart â†’ same hospital set" | "Two bootstrap runs from any distance, same user â†’ same org ID, same place_id set, no new hospitals created" |
+| "Two bootstrap runs from coords 200 m apart → same hospital set" | "Two bootstrap runs from any distance, same user → same org ID, same place_id set, no new hospitals created" |
 
-**Acceptance Check 22 (pre-existing â€” retirement sweep scope):**
+**Acceptance Check 22 (pre-existing — retirement sweep scope):**
 
 | Before | After |
 |---|---|
@@ -81,8 +81,8 @@ runs are retired on the next active user bootstrap.
 
 Add a row to the carry-forward table:
 ```
-| toCoverageKey() scope | DEPRECATED for identity â€” retained for display/logging only | Pass 1, 2026-05-10 |
-| Cross-org retirement sweep | Now global (0.15Â° bounding box) â€” not org-scoped | Pass 2, 2026-05-10 |
+| toCoverageKey() scope | DEPRECATED for identity — retained for display/logging only | Pass 1, 2026-05-10 |
+| Cross-org retirement sweep | Now global (0.15° bounding box) — not org-scoped | Pass 2, 2026-05-10 |
 ```
 
 ---
@@ -92,13 +92,13 @@ Add a row to the carry-forward table:
 This is a checklist for the production migration to be run in a maintenance window after Pass 1+2 are deployed and verified on staging.
 
 ### Prerequisites
-- [ ] Pass 1 + 2 deployed and smoke-tested on production (new bootstrap creates `demo:<userSlug>:â€¦` rows)
+- [ ] Pass 1 + 2 deployed and smoke-tested on production (new bootstrap creates `demo:<userSlug>:…` rows)
 - [ ] Staging Pass 3 migration completed and verified
 - [ ] DB backup confirmed
 
 ### Migration Steps
 
-**Step 1 â€” Confirm environment**
+**Step 1 — Confirm environment**
 ```sql
 -- Verify new-format rows exist (Pass 1+2 deployed)
 SELECT COUNT(*) FROM hospitals
@@ -108,7 +108,7 @@ WHERE place_id LIKE 'demo:%'
 -- Expected: > 0 if any users have bootstrapped after the deploy
 ```
 
-**Step 2 â€” Count stale coordinate-scoped rows (dry run)**
+**Step 2 — Count stale coordinate-scoped rows (dry run)**
 ```sql
 SELECT COUNT(*) FROM hospitals
 WHERE place_id ~ '^demo:[a-z][0-9]+_[a-z][0-9]+:'  -- old coordinate-scoped format
@@ -116,18 +116,18 @@ WHERE place_id ~ '^demo:[a-z][0-9]+_[a-z][0-9]+:'  -- old coordinate-scoped form
 -- Review this count before proceeding
 ```
 
-**Step 3 â€” Run dedupe script (staging-verified)**
+**Step 3 — Run dedupe script (staging-verified)**
 ```bash
 node supabase/scripts/dedupe_demo_hospitals.js --apply
 ```
 
-**Step 4 â€” Run coordinate-cluster SQL retirement (from Pass 3 doc)**
+**Step 4 — Run coordinate-cluster SQL retirement (from Pass 3 doc)**
 ```sql
 -- (Full SQL in PASS_3_DB_CLEANUP_MIGRATION.md)
 -- Run the WITH clustered AS (...) UPDATE block
 ```
 
-**Step 5 â€” Verify target posture**
+**Step 5 — Verify target posture**
 ```sql
 -- Should all be 0 or negligible
 SELECT
@@ -135,13 +135,13 @@ SELECT
   (SELECT COUNT(*) FROM hospitals WHERE place_id LIKE 'demo:%' AND status = 'available') AS total_active_demo;
 ```
 
-**Step 6 â€” Run orphan cleanup**
+**Step 6 — Run orphan cleanup**
 ```bash
 node supabase/scripts/cleanup_demo_orphans.js --apply
 ```
 
-**Step 7 â€” Post-migration acceptance check**
-- [ ] Active demo hospitals per authenticated user = 5â€“6
+**Step 7 — Post-migration acceptance check**
+- [ ] Active demo hospitals per authenticated user = 5–6
 - [ ] Stale coordinate-scoped `available` rows = 0
 - [ ] `cleanup_demo_orphans.js` dry run shows 0 orphan drift
 
@@ -180,5 +180,5 @@ Commit message should reference:
 
 ## Navigation
 
-â† [Pass 4: Client Coverage Gate Owner Scoping](./PASS_4_CLIENT_COVERAGE_GATE.md)
-â† [README](./README.md)
+← [Pass 4: Client Coverage Gate Owner Scoping](./PASS_4_CLIENT_COVERAGE_GATE.md)
+← [README](./README.md)
