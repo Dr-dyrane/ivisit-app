@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -39,6 +39,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string | null
+          document_id: string
+          id: string
+          nda_signed_at: string | null
+          signer_entity: string | null
+          signer_name: string | null
+          signer_title: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_id: string
+          id?: string
+          nda_signed_at?: string | null
+          signer_entity?: string | null
+          signer_name?: string | null
+          signer_title?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          nda_signed_at?: string | null
+          signer_entity?: string | null
+          signer_name?: string | null
+          signer_title?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_requests_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -287,44 +334,270 @@ export type Database = {
           },
         ]
       }
+      document_invites: {
+        Row: {
+          claimed: boolean | null
+          claimed_by: string | null
+          created_at: string | null
+          document_id: string
+          email: string
+          expires_at: string | null
+          id: string
+          token: string
+        }
+        Insert: {
+          claimed?: boolean | null
+          claimed_by?: string | null
+          created_at?: string | null
+          document_id: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          token?: string
+        }
+        Update: {
+          claimed?: boolean | null
+          claimed_by?: string | null
+          created_at?: string | null
+          document_id?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_invites_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: string | null
-          created_at: string
+          created_at: string | null
           description: string | null
-          file_path: string | null
+          file_path: string
+          icon: string | null
           id: string
           slug: string
           tier: string | null
           title: string
-          updated_at: string
+          updated_at: string | null
           visibility: string[] | null
         }
         Insert: {
           content?: string | null
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          file_path?: string | null
+          file_path: string
+          icon?: string | null
           id?: string
           slug: string
           tier?: string | null
           title: string
-          updated_at?: string
+          updated_at?: string | null
           visibility?: string[] | null
         }
         Update: {
           content?: string | null
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          file_path?: string | null
+          file_path?: string
+          icon?: string | null
           id?: string
           slug?: string
           tier?: string | null
           title?: string
-          updated_at?: string
+          updated_at?: string | null
           visibility?: string[] | null
         }
         Relationships: []
+      }
+      emergency_chat_messages: {
+        Row: {
+          body: string
+          client_message_id: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          id: string
+          kind: string
+          metadata: Json
+          room_id: string
+          sender_id: string | null
+          sender_role: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          client_message_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          room_id: string
+          sender_id?: string | null
+          sender_role: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          client_message_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          room_id?: string
+          sender_id?: string | null
+          sender_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_chat_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_chat_participants: {
+        Row: {
+          created_at: string
+          display_name_snapshot: string | null
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          last_read_message_id: string | null
+          left_at: string | null
+          role: string
+          room_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name_snapshot?: string | null
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          last_read_message_id?: string | null
+          left_at?: string | null
+          role: string
+          room_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name_snapshot?: string | null
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          last_read_message_id?: string | null
+          left_at?: string | null
+          role?: string
+          room_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_chat_participants_last_read_message_id_fkey"
+            columns: ["last_read_message_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_chat_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_chat_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_chat_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_chat_rooms: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          emergency_request_id: string
+          id: string
+          last_message_at: string | null
+          status: string
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          emergency_request_id: string
+          id?: string
+          last_message_at?: string | null
+          status?: string
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          emergency_request_id?: string
+          id?: string
+          last_message_at?: string | null
+          status?: string
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_chat_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_chat_rooms_emergency_request_id_fkey"
+            columns: ["emergency_request_id"]
+            isOneToOne: true
+            referencedRelation: "emergency_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_chat_rooms_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       emergency_contacts: {
         Row: {
@@ -426,18 +699,29 @@ export type Database = {
           ambulance_id: string | null
           ambulance_type: string | null
           assigned_doctor_id: string | null
+          base_cost: number | null
+          bed_count: string | null
           bed_number: string | null
+          bed_type: string | null
           cancelled_at: string | null
+          communication_room_id: string | null
           completed_at: string | null
+          confirmed_cost: number | null
+          cost_breakdown: Json | null
           created_at: string
           destination_location: unknown
           display_id: string | null
+          distance_surcharge: number | null
           doctor_assigned_at: string | null
+          estimated_arrival: string | null
           hospital_id: string | null
           hospital_name: string | null
           id: string
+          patient_heading: number | null
           patient_location: unknown
           patient_snapshot: Json | null
+          payment_id: string | null
+          payment_method_id: string | null
           payment_status: string | null
           pickup_location: unknown
           responder_heading: number | null
@@ -448,28 +732,41 @@ export type Database = {
           responder_vehicle_plate: string | null
           responder_vehicle_type: string | null
           service_type: string
+          shared_data_snapshot: Json | null
           specialty: string | null
           status: string
           total_cost: number | null
           updated_at: string
+          urgency_surcharge: number | null
           user_id: string | null
         }
         Insert: {
           ambulance_id?: string | null
           ambulance_type?: string | null
           assigned_doctor_id?: string | null
+          base_cost?: number | null
+          bed_count?: string | null
           bed_number?: string | null
+          bed_type?: string | null
           cancelled_at?: string | null
+          communication_room_id?: string | null
           completed_at?: string | null
+          confirmed_cost?: number | null
+          cost_breakdown?: Json | null
           created_at?: string
           destination_location?: unknown
           display_id?: string | null
+          distance_surcharge?: number | null
           doctor_assigned_at?: string | null
+          estimated_arrival?: string | null
           hospital_id?: string | null
           hospital_name?: string | null
           id?: string
+          patient_heading?: number | null
           patient_location?: unknown
           patient_snapshot?: Json | null
+          payment_id?: string | null
+          payment_method_id?: string | null
           payment_status?: string | null
           pickup_location?: unknown
           responder_heading?: number | null
@@ -480,28 +777,41 @@ export type Database = {
           responder_vehicle_plate?: string | null
           responder_vehicle_type?: string | null
           service_type: string
+          shared_data_snapshot?: Json | null
           specialty?: string | null
           status?: string
           total_cost?: number | null
           updated_at?: string
+          urgency_surcharge?: number | null
           user_id?: string | null
         }
         Update: {
           ambulance_id?: string | null
           ambulance_type?: string | null
           assigned_doctor_id?: string | null
+          base_cost?: number | null
+          bed_count?: string | null
           bed_number?: string | null
+          bed_type?: string | null
           cancelled_at?: string | null
+          communication_room_id?: string | null
           completed_at?: string | null
+          confirmed_cost?: number | null
+          cost_breakdown?: Json | null
           created_at?: string
           destination_location?: unknown
           display_id?: string | null
+          distance_surcharge?: number | null
           doctor_assigned_at?: string | null
+          estimated_arrival?: string | null
           hospital_id?: string | null
           hospital_name?: string | null
           id?: string
+          patient_heading?: number | null
           patient_location?: unknown
           patient_snapshot?: Json | null
+          payment_id?: string | null
+          payment_method_id?: string | null
           payment_status?: string | null
           pickup_location?: unknown
           responder_heading?: number | null
@@ -512,10 +822,12 @@ export type Database = {
           responder_vehicle_plate?: string | null
           responder_vehicle_type?: string | null
           service_type?: string
+          shared_data_snapshot?: Json | null
           specialty?: string | null
           status?: string
           total_cost?: number | null
           updated_at?: string
+          urgency_surcharge?: number | null
           user_id?: string | null
         }
         Relationships: [
@@ -531,6 +843,13 @@ export type Database = {
             columns: ["assigned_doctor_id"]
             isOneToOne: false
             referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_requests_communication_room_id_fkey"
+            columns: ["communication_room_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_chat_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -616,6 +935,45 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          fetched_at: string
+          id: string
+          metadata: Json | null
+          quote_currency: string
+          rate: number
+          source: string
+          stale_after: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          metadata?: Json | null
+          quote_currency: string
+          rate: number
+          source?: string
+          stale_after?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          metadata?: Json | null
+          quote_currency?: string
+          rate?: number
+          source?: string
+          stale_after?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       health_news: {
         Row: {
           category: string | null
@@ -649,6 +1007,136 @@ export type Database = {
         }
         Relationships: []
       }
+      hospital_import_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_count: number | null
+          errors: Json | null
+          id: string
+          import_type: string
+          imported_count: number | null
+          location_lat: number | null
+          location_lng: number | null
+          radius_km: number | null
+          search_query: string | null
+          skipped_count: number | null
+          status: string | null
+          total_found: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          import_type: string
+          imported_count?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
+          radius_km?: number | null
+          search_query?: string | null
+          skipped_count?: number | null
+          status?: string | null
+          total_found?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          import_type?: string
+          imported_count?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
+          radius_km?: number | null
+          search_query?: string | null
+          skipped_count?: number | null
+          status?: string | null
+          total_found?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hospital_import_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hospital_media: {
+        Row: {
+          attribution_html: string | null
+          attribution_required: boolean
+          attribution_text: string | null
+          confidence: number
+          created_at: string
+          hospital_id: string
+          id: string
+          is_primary: boolean
+          media_role: string
+          metadata: Json
+          provider_photo_ref: string | null
+          remote_url: string | null
+          source_provider: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          attribution_html?: string | null
+          attribution_required?: boolean
+          attribution_text?: string | null
+          confidence?: number
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_primary?: boolean
+          media_role?: string
+          metadata?: Json
+          provider_photo_ref?: string | null
+          remote_url?: string | null
+          source_provider?: string | null
+          source_type: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          attribution_html?: string | null
+          attribution_required?: boolean
+          attribution_text?: string | null
+          confidence?: number
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_primary?: boolean
+          media_role?: string
+          metadata?: Json
+          provider_photo_ref?: string | null
+          remote_url?: string | null
+          source_provider?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hospital_media_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospitals: {
         Row: {
           address: string
@@ -657,14 +1145,23 @@ export type Database = {
           available_beds: number | null
           base_price: number | null
           bed_availability: Json | null
+          booking_eligible: boolean
+          category_confidence: number | null
+          coordinates: unknown
           created_at: string
+          dispatch_eligible: boolean
           display_id: string | null
+          emergency_eligible: boolean
           emergency_level: string | null
           emergency_wait_time_minutes: number | null
           features: string[] | null
-          id: string
           icu_beds_available: number | null
+          id: string
           image: string | null
+          image_attribution_text: string | null
+          image_confidence: number | null
+          image_source: string | null
+          image_synced_at: string | null
           last_availability_update: string | null
           latitude: number | null
           longitude: number | null
@@ -674,6 +1171,8 @@ export type Database = {
           phone: string | null
           place_id: string | null
           price_range: string | null
+          provider_source: string | null
+          provider_type: string
           rating: number | null
           service_types: string[] | null
           specialties: string[] | null
@@ -692,14 +1191,23 @@ export type Database = {
           available_beds?: number | null
           base_price?: number | null
           bed_availability?: Json | null
+          booking_eligible?: boolean
+          category_confidence?: number | null
+          coordinates?: unknown
           created_at?: string
+          dispatch_eligible?: boolean
           display_id?: string | null
+          emergency_eligible?: boolean
           emergency_level?: string | null
           emergency_wait_time_minutes?: number | null
           features?: string[] | null
-          id?: string
           icu_beds_available?: number | null
+          id?: string
           image?: string | null
+          image_attribution_text?: string | null
+          image_confidence?: number | null
+          image_source?: string | null
+          image_synced_at?: string | null
           last_availability_update?: string | null
           latitude?: number | null
           longitude?: number | null
@@ -709,6 +1217,8 @@ export type Database = {
           phone?: string | null
           place_id?: string | null
           price_range?: string | null
+          provider_source?: string | null
+          provider_type?: string
           rating?: number | null
           service_types?: string[] | null
           specialties?: string[] | null
@@ -727,14 +1237,23 @@ export type Database = {
           available_beds?: number | null
           base_price?: number | null
           bed_availability?: Json | null
+          booking_eligible?: boolean
+          category_confidence?: number | null
+          coordinates?: unknown
           created_at?: string
+          dispatch_eligible?: boolean
           display_id?: string | null
+          emergency_eligible?: boolean
           emergency_level?: string | null
           emergency_wait_time_minutes?: number | null
           features?: string[] | null
-          id?: string
           icu_beds_available?: number | null
+          id?: string
           image?: string | null
+          image_attribution_text?: string | null
+          image_confidence?: number | null
+          image_source?: string | null
+          image_synced_at?: string | null
           last_availability_update?: string | null
           latitude?: number | null
           longitude?: number | null
@@ -744,6 +1263,8 @@ export type Database = {
           phone?: string | null
           place_id?: string | null
           price_range?: string | null
+          provider_source?: string | null
+          provider_type?: string
           rating?: number | null
           service_types?: string[] | null
           specialties?: string[] | null
@@ -881,15 +1402,19 @@ export type Database = {
       }
       insurance_policies: {
         Row: {
+          coverage_amount: number | null
           coverage_details: Json | null
           coverage_percentage: number | null
           created_at: string
           expires_at: string | null
           id: string
+          is_active: boolean | null
           is_default: boolean | null
           linked_payment_method: string | null
           plan_type: string | null
           policy_number: string | null
+          policy_type: string | null
+          provider: string | null
           provider_name: string
           starts_at: string | null
           status: string | null
@@ -898,15 +1423,19 @@ export type Database = {
           verified: boolean | null
         }
         Insert: {
+          coverage_amount?: number | null
           coverage_details?: Json | null
           coverage_percentage?: number | null
           created_at?: string
           expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_default?: boolean | null
           linked_payment_method?: string | null
           plan_type?: string | null
           policy_number?: string | null
+          policy_type?: string | null
+          provider?: string | null
           provider_name: string
           starts_at?: string | null
           status?: string | null
@@ -915,15 +1444,19 @@ export type Database = {
           verified?: boolean | null
         }
         Update: {
+          coverage_amount?: number | null
           coverage_details?: Json | null
           coverage_percentage?: number | null
           created_at?: string
           expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_default?: boolean | null
           linked_payment_method?: string | null
           plan_type?: string | null
           policy_number?: string | null
+          policy_type?: string | null
+          provider?: string | null
           provider_name?: string
           starts_at?: string | null
           status?: string | null
@@ -1089,45 +1622,6 @@ export type Database = {
           },
         ]
       }
-      exchange_rates: {
-        Row: {
-          base_currency: string
-          created_at: string
-          fetched_at: string
-          id: string
-          metadata: Json | null
-          quote_currency: string
-          rate: number
-          source: string
-          stale_after: string | null
-          updated_at: string
-        }
-        Insert: {
-          base_currency: string
-          created_at?: string
-          fetched_at?: string
-          id?: string
-          metadata?: Json | null
-          quote_currency: string
-          rate: number
-          source?: string
-          stale_after?: string | null
-          updated_at?: string
-        }
-        Update: {
-          base_currency?: string
-          created_at?: string
-          fetched_at?: string
-          id?: string
-          metadata?: Json | null
-          quote_currency?: string
-          rate?: number
-          source?: string
-          stale_after?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       organization_wallets: {
         Row: {
           balance: number | null
@@ -1250,14 +1744,14 @@ export type Database = {
           expiry_month: number | null
           expiry_year: number | null
           id: string
-          is_default: boolean | null
           is_active: boolean | null
+          is_default: boolean | null
           last4: string | null
           metadata: Json | null
           organization_id: string | null
           provider: string
           type: string
-          updated_at: string
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -1266,14 +1760,14 @@ export type Database = {
           expiry_month?: number | null
           expiry_year?: number | null
           id?: string
-          is_default?: boolean | null
           is_active?: boolean | null
+          is_default?: boolean | null
           last4?: string | null
           metadata?: Json | null
           organization_id?: string | null
           provider: string
           type: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1282,14 +1776,14 @@ export type Database = {
           expiry_month?: number | null
           expiry_year?: number | null
           id?: string
-          is_default?: boolean | null
           is_active?: boolean | null
+          is_default?: boolean | null
           last4?: string | null
           metadata?: Json | null
           organization_id?: string | null
           provider?: string
           type?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1545,6 +2039,62 @@ export type Database = {
           },
         ]
       }
+      providers: {
+        Row: {
+          age_range: string | null
+          appointment_required: boolean | null
+          created_at: string | null
+          crisis_line: string | null
+          hospital_id: string
+          id: string
+          insurance_accepted: string[] | null
+          provider_services: Json | null
+          provider_specialties: Json | null
+          provider_type: string
+          report_turnaround: string | null
+          structured_hours: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_range?: string | null
+          appointment_required?: boolean | null
+          created_at?: string | null
+          crisis_line?: string | null
+          hospital_id: string
+          id?: string
+          insurance_accepted?: string[] | null
+          provider_services?: Json | null
+          provider_specialties?: Json | null
+          provider_type: string
+          report_turnaround?: string | null
+          structured_hours?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_range?: string | null
+          appointment_required?: boolean | null
+          created_at?: string | null
+          crisis_line?: string | null
+          hospital_id?: string
+          id?: string
+          insurance_accepted?: string[] | null
+          provider_services?: Json | null
+          provider_specialties?: Json | null
+          provider_type?: string
+          report_turnaround?: string | null
+          structured_hours?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "providers_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_pricing: {
         Row: {
           created_at: string | null
@@ -1753,34 +2303,52 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          last_engagement_at: string | null
+          metadata: Json | null
           new_user: boolean | null
+          sale_id: string | null
+          source: string | null
           status: string | null
           subscription_date: string | null
           type: string | null
+          unsubscribed_at: string | null
           updated_at: string
           welcome_email_sent: boolean | null
+          welcome_email_sent_at: string | null
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
+          last_engagement_at?: string | null
+          metadata?: Json | null
           new_user?: boolean | null
+          sale_id?: string | null
+          source?: string | null
           status?: string | null
           subscription_date?: string | null
           type?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           welcome_email_sent?: boolean | null
+          welcome_email_sent_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
+          last_engagement_at?: string | null
+          metadata?: Json | null
           new_user?: boolean | null
+          sale_id?: string | null
+          source?: string | null
           status?: string | null
           subscription_date?: string | null
           type?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           welcome_email_sent?: boolean | null
+          welcome_email_sent_at?: string | null
         }
         Relationships: []
       }
@@ -2012,82 +2580,133 @@ export type Database = {
       }
       visits: {
         Row: {
+          address: string | null
           cost: string | null
           created_at: string
           date: string | null
           display_id: string | null
+          doctor: string | null
+          doctor_image: string | null
           doctor_name: string | null
+          estimated_duration: string | null
+          hospital: string | null
           hospital_id: string | null
+          hospital_image: string | null
           hospital_name: string | null
           id: string
+          image: string | null
+          insurance_covered: boolean | null
+          latitude: number | null
           lifecycle_state: string | null
           lifecycle_updated_at: string | null
+          longitude: number | null
+          meeting_link: string | null
+          next_visit: string | null
           notes: string | null
+          phone: string | null
+          preparation: string[] | null
+          prescriptions: string[] | null
           rated_at: string | null
           rating: number | null
           rating_comment: string | null
           request_id: string | null
+          room_number: string | null
           specialty: string | null
           status: string | null
+          summary: string | null
+          time: string | null
           tip_amount: number | null
           tip_currency: string | null
           tip_payment_id: string | null
           tipped_at: string | null
-          time: string | null
           type: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           cost?: string | null
           created_at?: string
           date?: string | null
           display_id?: string | null
+          doctor?: string | null
+          doctor_image?: string | null
           doctor_name?: string | null
+          estimated_duration?: string | null
+          hospital?: string | null
           hospital_id?: string | null
+          hospital_image?: string | null
           hospital_name?: string | null
           id?: string
+          image?: string | null
+          insurance_covered?: boolean | null
+          latitude?: number | null
           lifecycle_state?: string | null
           lifecycle_updated_at?: string | null
+          longitude?: number | null
+          meeting_link?: string | null
+          next_visit?: string | null
           notes?: string | null
+          phone?: string | null
+          preparation?: string[] | null
+          prescriptions?: string[] | null
           rated_at?: string | null
           rating?: number | null
           rating_comment?: string | null
           request_id?: string | null
+          room_number?: string | null
           specialty?: string | null
           status?: string | null
+          summary?: string | null
+          time?: string | null
           tip_amount?: number | null
           tip_currency?: string | null
           tip_payment_id?: string | null
           tipped_at?: string | null
-          time?: string | null
           type?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           cost?: string | null
           created_at?: string
           date?: string | null
           display_id?: string | null
+          doctor?: string | null
+          doctor_image?: string | null
           doctor_name?: string | null
+          estimated_duration?: string | null
+          hospital?: string | null
           hospital_id?: string | null
+          hospital_image?: string | null
           hospital_name?: string | null
           id?: string
+          image?: string | null
+          insurance_covered?: boolean | null
+          latitude?: number | null
           lifecycle_state?: string | null
           lifecycle_updated_at?: string | null
+          longitude?: number | null
+          meeting_link?: string | null
+          next_visit?: string | null
           notes?: string | null
+          phone?: string | null
+          preparation?: string[] | null
+          prescriptions?: string[] | null
           rated_at?: string | null
           rating?: number | null
           rating_comment?: string | null
           request_id?: string | null
+          room_number?: string | null
           specialty?: string | null
           status?: string | null
+          summary?: string | null
+          time?: string | null
           tip_amount?: number | null
           tip_currency?: string | null
           tip_payment_id?: string | null
           tipped_at?: string | null
-          time?: string | null
           type?: string | null
           updated_at?: string
           user_id?: string | null
@@ -2294,6 +2913,7 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _tmp_parse_test: { Args: { p_id: string }; Returns: Json }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -2337,11 +2957,35 @@ export type Database = {
         Args: { p_payment_id: string; p_request_id: string }
         Returns: Json
       }
+      assign_ambulance_to_emergency: {
+        Args: {
+          p_ambulance_id: string
+          p_emergency_request_id: string
+          p_priority?: number
+        }
+        Returns: Json
+      }
       assign_doctor_to_emergency: {
         Args: {
           p_doctor_id: string
           p_emergency_request_id: string
           p_notes?: string
+        }
+        Returns: Json
+      }
+      auto_assign_ambulance: {
+        Args: {
+          p_emergency_request_id: string
+          p_max_distance_km?: number
+          p_specialty_required?: string
+        }
+        Returns: Json
+      }
+      calculate_ambulance_eta: {
+        Args: {
+          p_ambulance_id: string
+          p_destination_lat: number
+          p_destination_lng: number
         }
         Returns: Json
       }
@@ -2359,11 +3003,57 @@ export type Database = {
         Returns: boolean
       }
       cancel_trip: { Args: { request_uuid: string }; Returns: boolean }
+      canonicalize_emergency_status: {
+        Args: { p_default?: string; p_status: string }
+        Returns: string
+      }
       check_cash_eligibility: {
         Args: { p_organization_id: string }
         Returns: Json
       }
       complete_trip: { Args: { request_uuid: string }; Returns: boolean }
+      console_cancel_emergency: {
+        Args: { p_reason?: string; p_request_id: string }
+        Returns: Json
+      }
+      console_complete_emergency: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
+      console_create_emergency_request: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
+      console_dispatch_emergency: {
+        Args: {
+          p_ambulance_id: string
+          p_bed_number?: string
+          p_hospital_id?: string
+          p_hospital_name?: string
+          p_request_id: string
+          p_responder_name?: string
+          p_responder_phone?: string
+          p_responder_vehicle_plate?: string
+          p_responder_vehicle_type?: string
+        }
+        Returns: Json
+      }
+      console_update_emergency_request: {
+        Args: { p_payload: Json; p_request_id: string }
+        Returns: Json
+      }
+      console_update_responder_location: {
+        Args: { p_heading?: number; p_location: Json; p_request_id: string }
+        Returns: Json
+      }
+      convert_currency_for_payment: {
+        Args: {
+          p_amount: number
+          p_from_currency?: string
+          p_to_currency?: string
+        }
+        Returns: Json
+      }
       create_emergency_v4: {
         Args: { p_payment_data?: Json; p_request_data: Json; p_user_id: string }
         Returns: Json
@@ -2372,6 +3062,10 @@ export type Database = {
       current_user_permission_level: { Args: never; Returns: string }
       decline_cash_payment: {
         Args: { p_payment_id: string; p_request_id: string }
+        Returns: Json
+      }
+      delete_hospital_by_admin: {
+        Args: { target_hospital_id: string }
         Returns: Json
       }
       delete_room_pricing: { Args: { target_id: string }; Returns: Json }
@@ -2411,8 +3105,17 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
+      ensure_emergency_chat_room: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      exec_sql: { Args: { sql: string }; Returns: Json }
       generate_display_id: { Args: { prefix: string }; Returns: string }
+      generate_username_from_email: {
+        Args: { email_input: string }
+        Returns: string
+      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -2513,14 +3216,45 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_activity_stats: { Args: { days_back?: number }; Returns: Json }
       get_all_auth_users: {
-        Args: never
+        Args: { p_organization_id?: string }
         Returns: {
           created_at: string
           email: string
           id: string
           last_sign_in_at: string
           phone: string
+          profile_bvn_verified: boolean
+          profile_display_id: string
+          profile_first_name: string
+          profile_full_name: string
+          profile_last_name: string
+          profile_organization_id: string
+          profile_provider_type: string
+          profile_role: string
+          profile_username: string
           raw_user_meta_data: Json
+        }[]
+      }
+      get_ambulance_status: { Args: { p_ambulance_id: string }; Returns: Json }
+      get_available_ambulances: {
+        Args: {
+          p_hospital_id?: string
+          p_radius_km?: number
+          p_specialty?: string
+        }
+        Returns: {
+          base_price: number
+          call_sign: string
+          created_at: string
+          crew: Json
+          display_id: string
+          hospital_id: string
+          id: string
+          profile_id: string
+          status: string
+          type: string
+          updated_at: string
+          vehicle_number: string
         }[]
       }
       get_available_doctors: {
@@ -2534,7 +3268,21 @@ export type Database = {
           specialty: string
         }[]
       }
+      get_billing_quote: {
+        Args: {
+          p_amount_usd: number
+          p_target_country_code?: string
+          p_target_currency_code?: string
+        }
+        Returns: Json
+      }
+      get_emergency_medical_data: { Args: { p_user_id: string }; Returns: Json }
       get_entity_id: { Args: { p_display_id: string }; Returns: string }
+      get_insurance_policies: {
+        Args: { p_include_inactive?: boolean; p_user_id: string }
+        Returns: Json
+      }
+      get_medical_summary: { Args: { p_user_id: string }; Returns: Json }
       get_org_stripe_status: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -2561,14 +3309,25 @@ export type Database = {
         }[]
       }
       get_search_analytics: {
-        Args: { p_days?: number }
+        Args: { days_back?: number; limit_count?: number }
         Returns: {
-          avg_results: number
-          total_searches: number
-          unique_queries: number
+          last_searched: string
+          query: string
+          rank: number
+          search_count: number
+          unique_users: number
         }[]
       }
-      get_search_analytics_summary: { Args: { p_days?: number }; Returns: Json }
+      get_search_analytics_summary: {
+        Args: { days_back?: number }
+        Returns: {
+          avg_searches_per_user: number
+          top_query: string
+          total_searches: number
+          unique_queries: number
+          unique_searchers: number
+        }[]
+      }
       get_service_price: {
         Args: { p_hospital_id?: string; p_service_type: string }
         Returns: {
@@ -2578,7 +3337,7 @@ export type Database = {
         }[]
       }
       get_trending_searches: {
-        Args: { p_limit?: number }
+        Args: { days_back?: number; limit_count?: number }
         Returns: {
           category: string
           id: string
@@ -2589,14 +3348,27 @@ export type Database = {
       get_user_statistics: {
         Args: never
         Returns: {
-          active_emergencies: number
-          total_hospitals: number
+          admin_count: number
+          dispatcher_count: number
+          email_verified_users: number
+          org_admin_count: number
+          patient_count: number
+          phone_verified_users: number
+          provider_count: number
+          recent_signups: number
+          sponsor_count: number
+          total_profiles: number
           total_users: number
-          verified_users: number
+          viewer_count: number
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
       is_admin: { Args: never; Returns: boolean }
+      is_valid_emergency_status_transition: {
+        Args: { p_current_status: string; p_next_status: string }
+        Returns: boolean
+      }
+      jsonb_to_point_geometry: { Args: { p_location: Json }; Returns: unknown }
       log_user_activity: {
         Args: {
           p_action: string
@@ -2608,6 +3380,10 @@ export type Database = {
         Returns: Json
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mark_emergency_chat_room_read: {
+        Args: { p_message_id?: string; p_room_id: string }
+        Returns: boolean
+      }
       nearby_ambulances: {
         Args: { radius_km?: number; user_lat: number; user_lng: number }
         Returns: {
@@ -2624,18 +3400,77 @@ export type Database = {
         Args: { radius_km?: number; user_lat: number; user_lng: number }
         Returns: {
           address: string
+          category_confidence: number
+          dispatch_eligible: boolean
           display_id: string
           distance: number
+          emergency_eligible: boolean
           id: string
           latitude: number
           longitude: number
           name: string
+          provider_source: string
+          provider_type: string
           status: string
+          verification_status: string
           verified: boolean
         }[]
       }
+      nearby_providers: {
+        Args: {
+          provider_type_filter?: string
+          radius_km?: number
+          result_limit?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          address: string
+          booking_eligible: boolean
+          category_confidence: number
+          dispatch_eligible: boolean
+          display_id: string
+          distance: number
+          emergency_eligible: boolean
+          id: string
+          image: string
+          latitude: number
+          longitude: number
+          name: string
+          phone: string
+          place_id: string
+          provider_source: string
+          provider_type: string
+          rating: number
+          status: string
+          verification_status: string
+          verified: boolean
+        }[]
+      }
+      notify_cash_approval_org_admins: {
+        Args: {
+          p_display_id?: string
+          p_fee_amount?: number
+          p_hospital_name?: string
+          p_organization_id?: string
+          p_payment_id: string
+          p_request_id: string
+          p_service_type?: string
+          p_total_amount?: number
+        }
+        Returns: Json
+      }
       p_get_current_org_id: { Args: never; Returns: string }
       p_is_admin: { Args: never; Returns: boolean }
+      p_is_console_allowed: { Args: never; Returns: boolean }
+      p_is_emergency_chat_participant: {
+        Args: { p_room_id: string }
+        Returns: boolean
+      }
+      patient_update_emergency_request: {
+        Args: { p_payload?: Json; p_request_id: string }
+        Returns: Json
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -2693,10 +3528,11 @@ export type Database = {
         }
         Returns: Json
       }
-      process_wallet_payment: {
+      process_insurance_claim: {
         Args: {
-          p_amount: number
-          p_emergency_request_id?: string
+          p_actual_cost: number
+          p_emergency_request_id: string
+          p_hospital_id: string
           p_user_id: string
         }
         Returns: Json
@@ -2705,15 +3541,46 @@ export type Database = {
         Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
         Returns: Json
       }
-      record_visit_cash_tip: {
-        Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
-        Returns: Json
-      }
+      process_wallet_payment:
+        | {
+            Args: {
+              p_amount: number
+              p_emergency_request_id?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_currency?: string
+              p_emergency_request_id: string
+              p_organization_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       rate_visit: {
         Args: { p_comment?: string; p_rating: number; p_visit_id: string }
         Returns: Json
       }
+      record_visit_cash_tip: {
+        Args: { p_currency?: string; p_tip_amount: number; p_visit_id: string }
+        Returns: Json
+      }
       reload_schema: { Args: never; Returns: undefined }
+      resolve_currency_for_country: {
+        Args: { p_country_code: string }
+        Returns: string
+      }
+      retry_payment_with_different_method: {
+        Args: {
+          p_emergency_request_id: string
+          p_new_payment_method_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       search_auth_users: {
         Args: { search_term: string }
         Returns: {
@@ -2724,6 +3591,27 @@ export type Database = {
           phone: string
           raw_user_meta_data: Json
         }[]
+      }
+      send_emergency_chat_message: {
+        Args: {
+          p_body: string
+          p_client_message_id?: string
+          p_kind?: string
+          p_metadata?: Json
+          p_room_id: string
+        }
+        Returns: Json
+      }
+      set_emergency_transition_context: {
+        Args: {
+          p_actor_id?: string
+          p_actor_role?: string
+          p_allow_status_write?: boolean
+          p_metadata?: Json
+          p_reason?: string
+          p_source: string
+        }
+        Returns: undefined
       }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
@@ -3306,7 +4194,30 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      track_emergency_progress: {
+        Args: { p_emergency_request_id: string }
+        Returns: Json
+      }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_ambulance_location: {
+        Args: {
+          p_accuracy?: number
+          p_ambulance_id: string
+          p_latitude: number
+          p_longitude: number
+        }
+        Returns: Json
+      }
+      update_ambulance_status: {
+        Args: {
+          p_ambulance_id: string
+          p_current_call?: string
+          p_eta?: string
+          p_location?: Json
+          p_status: string
+        }
+        Returns: Json
+      }
       update_hospital_availability: {
         Args: {
           ambulance_count: number
@@ -3321,8 +4232,12 @@ export type Database = {
         Args: { payload: Json; target_hospital_id: string }
         Returns: Json
       }
+      update_medical_profile: {
+        Args: { p_medical_data: Json; p_user_id: string }
+        Returns: Json
+      }
       update_profile_by_admin: {
-        Args: { payload: Json; target_user_id: string }
+        Args: { profile_data: Json; target_user_id: string }
         Returns: Json
       }
       update_trending_topics_from_search: { Args: never; Returns: Json }
@@ -3338,6 +4253,22 @@ export type Database = {
       }
       upsert_room_pricing: { Args: { payload: Json }; Returns: Json }
       upsert_service_pricing: { Args: { payload: Json }; Returns: Json }
+      validate_emergency_request: {
+        Args: { p_request_data: Json; p_user_id: string }
+        Returns: Json
+      }
+      validate_insurance_coverage: {
+        Args: {
+          p_estimated_cost: number
+          p_hospital_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      validate_medical_profile: {
+        Args: { p_medical_data: Json; p_user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

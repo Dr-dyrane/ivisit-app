@@ -1,18 +1,20 @@
 ---
 status: living
 owner: platform
-last_updated: 2026-05-24
+last_updated: 2026-06-11
 ---
 
-# Google Play Closed Testing
+# Google Play Release Readiness
 
-## Current Closed Test Status (1.0.6)
+## Current Google Play Status (1.0.6)
 
-Last updated: 2026-05-22.
+Last updated: 2026-06-11.
 
-Google Play production access is still gated by closed-test history. The latest review requested that the app continue closed testing with at least 12 opted-in testers for 14 more days from the review time. Keep tester count above the minimum; target 20-30 opted-in testers so silent churn does not drop the test below 12.
+Google Play production access has been granted for `com.dyrane.ivisit`. The app can now create a production release in Play Console, subject to the normal release artifact, review, country/region, store listing, and policy checks.
 
-Current Android closed-test build:
+Keep this file as the release-readiness record for closed-test history, reviewer access, production build preparation, and release verification.
+
+Latest Android closed-test baseline:
 
 - Version: `1.0.6`
 - Runtime version: `1.0.6`
@@ -24,7 +26,7 @@ Current Android closed-test build:
 - AAB artifact: `https://expo.dev/artifacts/eas/bzf313CdnZP3HykMrrdF6a.aab`
 - Local artifact: `dist/ivisit-1.0.6-staging.aab`
 
-Closed-test expectations for 1.0.6:
+Closed-test expectations that fed the production-access grant:
 
 1. Testers should install or update to the latest build.
 2. Testers should keep the app installed through the test window.

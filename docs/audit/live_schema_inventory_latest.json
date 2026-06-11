@@ -1,0 +1,98 @@
+{
+  "generated_at_utc": "2026-06-11T01:59:21.093Z",
+  "started_at_utc": "2026-06-11T01:59:14.911Z",
+  "source": "supabase/tests/scripts/export_live_schema_inventory.js",
+  "project_ref": "dlwtcmhdzoklveihuhjf",
+  "table_inventory": [
+    {
+      "table": "ambulances",
+      "exists": true,
+      "row_count": 236,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "emergency_requests",
+      "exists": true,
+      "row_count": 162,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "emergency_status_transitions",
+      "exists": true,
+      "row_count": 654,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "visits",
+      "exists": true,
+      "row_count": 171,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "organization_wallets",
+      "exists": true,
+      "row_count": 64,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "patient_wallets",
+      "exists": true,
+      "row_count": 615,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "ivisit_main_wallet",
+      "exists": true,
+      "row_count": 1,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "wallet_ledger",
+      "exists": true,
+      "row_count": 103,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "payment_methods",
+      "exists": true,
+      "row_count": 0,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "payments",
+      "exists": true,
+      "row_count": 173,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "insurance_policies",
+      "exists": true,
+      "row_count": 0,
+      "missing_columns": [],
+      "probe_error": null
+    },
+    {
+      "table": "insurance_billing",
+      "exists": true,
+      "row_count": 294,
+      "missing_columns": [],
+      "probe_error": null
+    }
+  ],
+  "summary": {
+    "total_tables": 12,
+    "missing_tables": 0,
+    "tables_with_missing_columns": 0,
+    "tables_with_probe_errors": 0
+  }
+}
