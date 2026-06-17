@@ -14,7 +14,7 @@ export const CHOOSE_RESOURCE_COPY = {
 	hospitalLabel: "Hospital",
 	mapPlaceholder: "Map will appear once the route is ready.",
 	skipLabel: "Later",
-	signInCta: "Continue with Google",
+	signInCta: "Confirm identity",
 	signInHelp: "Before payment",
 	signedInLabel: "Signed in",
 	flow: {

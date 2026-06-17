@@ -52,6 +52,7 @@ module.exports = ({ config }) => {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.dyrane.ivisit",
+      usesAppleSignIn: true,
       infoPlist: {
         NSCameraUsageDescription:
           "This app needs access to your camera to allow you to take photos for your profile and scan business cards/documents for text extraction.",
@@ -111,6 +112,7 @@ module.exports = ({ config }) => {
     plugins: [
       "expo-router",
       "expo-font",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
@@ -126,12 +128,10 @@ module.exports = ({ config }) => {
       ],
       "expo-web-browser",
       "react-native-vision-camera",
-      [
-        "@stripe/stripe-react-native",
-        {
-          merchantIdentifier: "merchant.com.ivisit",
-        },
-      ],
+      // PULLBACK NOTE: APP-REVIEW-PASSKIT-2026-06-17
+      // OLD: configured a Stripe merchantIdentifier, which enabled Apple Pay/PassKit without a visible Apple Pay surface.
+      // NEW: keep Stripe card support but do not declare Apple Pay until an Apple Pay UI is reviewed and shipped.
+      ["@stripe/stripe-react-native", {}],
     ],
     updates: {
       fallbackToCacheTimeout: 0,

@@ -13,6 +13,16 @@ Predecessor cleanup: [archive/historical/DOCS_REPO_CLEANUP_REPORT_2026-05-19.md]
 
 ---
 
+## Deployment And Store Release
+
+- [deployment/APP_STORE_REJECTION_RESPONSE_2026-06-17.md](./deployment/APP_STORE_REJECTION_RESPONSE_2026-06-17.md) - June 17, 2026 App Review rejection response, local fixes, external blockers, and resubmission gates.
+- [deployment/APP_STORE_PREP_2026-06-11.md](./deployment/APP_STORE_PREP_2026-06-11.md) - Apple Developer/App Store Connect setup, iOS EAS build/submit path, privacy-label draft, and App Review risks.
+- [deployment/GOOGLE_PLAY_CLOSED_TESTING.md](./deployment/GOOGLE_PLAY_CLOSED_TESTING.md) - Google Play closed-test history and production release readiness record.
+- [deployment/VERCEL_WEB_DEPLOYMENT.md](./deployment/VERCEL_WEB_DEPLOYMENT.md) - Web deployment.
+- [deployment/WEB_MAPS_SETUP.md](./deployment/WEB_MAPS_SETUP.md) - Web maps setup.
+
+---
+
 ## 1. Current Product / Architecture References
 
 These are the locked or actively maintained source-of-truth docs. When in doubt, these win.

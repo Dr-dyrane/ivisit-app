@@ -204,6 +204,11 @@ const authService = {
     // Delegate to oauthService
     getRedirectUrl: oauthService.getRedirectUrl,
     signInWithProvider: oauthService.signInWithProvider,
+    async signInWithNativeApple() {
+        const { session, credential } = await oauthService.signInWithNativeApple();
+        const user = await this._processSuccessfulSession(session);
+        return { data: { session, user, credential } };
+    },
     _formatUser: formatUser,
 
     async _decorateCurrentUser(user) {

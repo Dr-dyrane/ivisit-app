@@ -78,6 +78,39 @@ export function useSocialAuth() {
 				await authService.setEmergencyProfileCompletionDeferred(true);
 			}
 
+			if (provider === "apple" && Platform.OS === "ios") {
+				try {
+					const { data: appleData } = await authService.signInWithNativeApple();
+
+					if (appleData?.user) {
+						await login(appleData.user);
+
+						try {
+							await syncUserData();
+						} catch (syncError) {
+							console.warn("[useSocialAuth] Sync after native Apple login failed:", syncError);
+						}
+
+						await clearAuthReturnRoute();
+						return { success: true };
+					}
+
+					console.warn("[useSocialAuth] Native Apple login returned without a user; falling back to OAuth.");
+				} catch (nativeAppleError) {
+					const nativeMessage = String(nativeAppleError?.message || nativeAppleError || "");
+					if (nativeMessage.toLowerCase().includes("cancelled")) {
+						await clearAuthReturnRoute();
+						await clearDeferredProfileFlag();
+						return { success: false, error: "cancelled" };
+					}
+
+					// PULLBACK NOTE: APPLE-AUTH-RECOVERY
+					// OLD: native Apple token exchange was the only iOS Apple path and left the sheet stuck on a generic error.
+					// NEW: keep native Apple first, then recover through the configured Supabase Apple OAuth lane on non-cancel failures.
+					console.warn("[useSocialAuth] Native Apple login failed; falling back to OAuth.", nativeMessage);
+				}
+			}
+
 			const { data } = await authService.signInWithProvider(provider);
 
 			if (data?.url) {

@@ -80,6 +80,7 @@ export default function MapGuestProfileModal({
   // ─── Async state ──────────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isAppleSubmitting, setIsAppleSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -158,6 +159,7 @@ export default function MapGuestProfileModal({
     setOtp("");
     setIsSubmitting(false);
     setIsGoogleSubmitting(false);
+    setIsAppleSubmitting(false);
     setErrorMessage("");
     setSuccessMessage("");
     setOtpExpiresAt(null);
@@ -348,13 +350,14 @@ export default function MapGuestProfileModal({
     }
   }, [isSubmitting, trimmedEmail]);
 
-  // ─── Google sign-in ───────────────────────────────────────────────────────
-  const handleGoogleSignIn = useCallback(async () => {
-    setIsGoogleSubmitting(true);
+  const handleSocialSignIn = useCallback(async (provider) => {
+    const isApple = provider === "apple";
+    const setSubmitting = isApple ? setIsAppleSubmitting : setIsGoogleSubmitting;
+    setSubmitting(true);
     setErrorMessage("");
     try {
       const { success, error, pendingRedirect } = await signInWithProvider(
-        "google",
+        provider,
         {
           deferProfileCompletion: true,
           returnTo: "/(auth)/map",
@@ -371,12 +374,22 @@ export default function MapGuestProfileModal({
         !String(error).includes("cancelled") &&
         !String(error).includes("dismiss")
       ) {
-        setErrorMessage("Google sign-in failed. Try email instead.");
+        setErrorMessage(`${isApple ? "Apple" : "Google"} sign-in failed. Try email instead.`);
       }
     } finally {
-      setIsGoogleSubmitting(false);
+      setSubmitting(false);
     }
   }, [onAuthSuccess, onClose, signInWithProvider]);
+
+  const handleGoogleSignIn = useCallback(
+    () => handleSocialSignIn("google"),
+    [handleSocialSignIn],
+  );
+
+  const handleAppleSignIn = useCallback(
+    () => handleSocialSignIn("apple"),
+    [handleSocialSignIn],
+  );
 
   // ─── Input handlers ───────────────────────────────────────────────────────
   const handleEmailChange = useCallback((value) => {
@@ -406,8 +419,8 @@ export default function MapGuestProfileModal({
     otpAutoSubmittedRef.current = "";
   }, []);
 
-  // ─── Google trailing slot (email step only) ───────────────────────────────
-  const googleTrailingSlot = useMemo(
+  // Social trailing slot (email step only)
+  const socialTrailingSlot = useMemo(
     () => (
       <View style={styles.googleSlot}>
         <View style={styles.divider}>
@@ -420,15 +433,43 @@ export default function MapGuestProfileModal({
           />
         </View>
         <Pressable
+          onPress={handleAppleSignIn}
+          disabled={isAppleSubmitting || isGoogleSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Apple"
+          style={({ pressed }) => [
+            styles.googleRow,
+            { backgroundColor: googleSurface },
+            pressed && !isAppleSubmitting && !isGoogleSubmitting ? styles.googleRowPressed : null,
+            isAppleSubmitting || isGoogleSubmitting ? styles.googleRowDisabled : null,
+          ]}
+        >
+          <Ionicons name="logo-apple" size={18} color={titleColor} />
+          <Text
+            style={[styles.googleLabel, { color: titleColor }]}
+            numberOfLines={1}
+          >
+            {isAppleSubmitting ? "Signing in\u2026" : "Continue with Apple"}
+          </Text>
+          {!isAppleSubmitting ? (
+            <Ionicons
+              name="chevron-forward"
+              size={15}
+              color={mutedColor}
+              style={styles.googleChevron}
+            />
+          ) : null}
+        </Pressable>
+        <Pressable
           onPress={handleGoogleSignIn}
-          disabled={isGoogleSubmitting}
+          disabled={isGoogleSubmitting || isAppleSubmitting}
           accessibilityRole="button"
           accessibilityLabel="Continue with Google"
           style={({ pressed }) => [
             styles.googleRow,
             { backgroundColor: googleSurface },
-            pressed && !isGoogleSubmitting ? styles.googleRowPressed : null,
-            isGoogleSubmitting ? styles.googleRowDisabled : null,
+            pressed && !isGoogleSubmitting && !isAppleSubmitting ? styles.googleRowPressed : null,
+            isGoogleSubmitting || isAppleSubmitting ? styles.googleRowDisabled : null,
           ]}
         >
           <Ionicons name="logo-google" size={18} color={titleColor} />
@@ -453,7 +494,9 @@ export default function MapGuestProfileModal({
     [
       dividerColor,
       googleSurface,
+      handleAppleSignIn,
       handleGoogleSignIn,
+      isAppleSubmitting,
       isGoogleSubmitting,
       mutedColor,
       titleColor,
@@ -538,8 +581,8 @@ export default function MapGuestProfileModal({
           statusTextColor={statusColor}
           inputSurfaceColor={inputSurface}
           avatarSurfaceColor={avatarSurface}
-          // Google button as trailing slot on email step only
-          trailingSlot={isEmailStep ? googleTrailingSlot : null}
+          // Social buttons as trailing slot on email step only
+          trailingSlot={isEmailStep ? socialTrailingSlot : null}
         />
       </View>
     </MapModalShell>
@@ -595,6 +638,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 12,
     width: "100%",
+    marginBottom: 10,
   },
   googleRowPressed: {
     transform: [{ scale: 0.98 }, { translateY: 1 }],

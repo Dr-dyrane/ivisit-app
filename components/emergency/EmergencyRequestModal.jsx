@@ -189,6 +189,7 @@ const EmergencyRequestModal = React.memo(({
 	const [triageModalVisible, setTriageModalVisible] = useState(false);
 	const [triageModalPhase, setTriageModalPhase] = useState("prebooking");
 	const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+	const [isSigningInWithApple, setIsSigningInWithApple] = useState(false);
 	const [showOtherDispatchOptions, setShowOtherDispatchOptions] = useState(false);
 	const [serviceDetailSelection, setServiceDetailSelection] = useState(null);
 
@@ -883,14 +884,18 @@ const EmergencyRequestModal = React.memo(({
 		}
 	}, [requestHospital?.phone, showToast]);
 
-	const handleGoogleSignIn = useCallback(async () => {
-		if (isSigningInWithGoogle) return;
-		setIsSigningInWithGoogle(true);
+	const handleSocialSignIn = useCallback(async (provider) => {
+		const isApple = provider === "apple";
+		const isSigningIn = isApple ? isSigningInWithApple : isSigningInWithGoogle;
+		const setSigningIn = isApple ? setIsSigningInWithApple : setIsSigningInWithGoogle;
+
+		if (isSigningIn) return;
+		setSigningIn(true);
 		setErrorMessage(null);
 
 		try {
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			const result = await signInWithProvider("google", {
+			const result = await signInWithProvider(provider, {
 				deferProfileCompletion: true,
 				returnTo: "/(auth)/map",
 			});
@@ -905,13 +910,23 @@ const EmergencyRequestModal = React.memo(({
 
 			showToast("Identity confirmed.", "success");
 		} catch (error) {
-			const message = error?.message || "Google sign-in failed";
+			const message = error?.message || `${isApple ? "Apple" : "Google"} sign-in failed`;
 			setErrorMessage(message);
 			showToast(message, "error");
 		} finally {
-			setIsSigningInWithGoogle(false);
+			setSigningIn(false);
 		}
-	}, [isSigningInWithGoogle, showToast, signInWithProvider]);
+	}, [isSigningInWithApple, isSigningInWithGoogle, showToast, signInWithProvider]);
+
+	const handleGoogleSignIn = useCallback(
+		() => handleSocialSignIn("google"),
+		[handleSocialSignIn],
+	);
+
+	const handleAppleSignIn = useCallback(
+		() => handleSocialSignIn("apple"),
+		[handleSocialSignIn],
+	);
 
 	const handleStepPress = useCallback((idx) => {
 		if (idx >= currentStepIndex || isRequesting) return;
@@ -1209,8 +1224,8 @@ const EmergencyRequestModal = React.memo(({
 				}
 
 				if (!hasSignedInUser) {
-					setErrorMessage("Continue with Google to move to payment.");
-					showToast("Continue with Google first", "info");
+					setErrorMessage("Continue with Apple or Google to move to payment.");
+					showToast("Confirm identity first", "info");
 					Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 					return;
 				}
@@ -1223,8 +1238,8 @@ const EmergencyRequestModal = React.memo(({
 
 		// Fast identity gate before formal hospital submission.
 		if (!hasSignedInUser) {
-			setErrorMessage("Continue with Google to send your request.");
-			showToast("Google sign-in required", "info");
+			setErrorMessage("Continue with Apple or Google to send your request.");
+			showToast("Identity confirmation required", "info");
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 			return;
 		}
@@ -1598,8 +1613,10 @@ const EmergencyRequestModal = React.memo(({
 		hasAmbulances,
 		handleCallHospital,
 		handleGoogleSignIn,
+		handleAppleSignIn,
 		estimatedCost,
 		isSigningInWithGoogle,
+		isSigningInWithApple,
 		prebookingCheckin,
 		requestData,
 		requestStep,
@@ -1974,8 +1991,11 @@ const EmergencyRequestModal = React.memo(({
 								hasSignedInUser={hasSignedInUser}
 								requesterLabel={requesterLabel}
 								onContinueWithGoogle={handleGoogleSignIn}
+								onContinueWithApple={handleAppleSignIn}
 								onAdvanceFlow={handleSubmitRequest}
-								isSigningIn={isSigningInWithGoogle}
+								isSigningIn={isSigningInWithGoogle || isSigningInWithApple}
+								isSigningInWithGoogle={isSigningInWithGoogle}
+								isSigningInWithApple={isSigningInWithApple}
 								triageCard={triageEntryCard}
 								onOpenServiceDetails={openServiceDetailSheet}
 							/>
@@ -2099,28 +2119,54 @@ const EmergencyRequestModal = React.memo(({
 									</View>
 								) : null}
 								{!hasSignedInUser ? (
-									<Pressable
-										onPress={handleGoogleSignIn}
-										style={[
-											styles.demoPaymentNote,
-											{
-												backgroundColor: requestColors.card,
-												borderColor: requestColors.border,
-												marginBottom: 12,
-											},
-										]}
-									>
-										<Ionicons name="logo-google" size={16} color={COLORS.brandPrimary} />
-										<View style={{ flex: 1 }}>
-											<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>Continue with Google</Text>
-											<Text style={[styles.demoPaymentNoteText, { color: requestColors.textMuted }]}>Confirm identity</Text>
-										</View>
-										{isSigningInWithGoogle ? (
-											<ActivityIndicator size="small" color={COLORS.brandPrimary} />
-										) : (
-											<Text style={styles.triageEntryActionText}>Continue</Text>
-										)}
-									</Pressable>
+									<View style={{ gap: 8, marginBottom: 12 }}>
+										<Pressable
+											onPress={handleAppleSignIn}
+											disabled={isSigningInWithGoogle || isSigningInWithApple}
+											style={[
+												styles.demoPaymentNote,
+												{
+													backgroundColor: requestColors.card,
+													borderColor: requestColors.border,
+													opacity: isSigningInWithGoogle || isSigningInWithApple ? 0.72 : 1,
+												},
+											]}
+										>
+											<Ionicons name="logo-apple" size={16} color={COLORS.brandPrimary} />
+											<View style={{ flex: 1 }}>
+												<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>Continue with Apple</Text>
+												<Text style={[styles.demoPaymentNoteText, { color: requestColors.textMuted }]}>Confirm identity</Text>
+											</View>
+											{isSigningInWithApple ? (
+												<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+											) : (
+												<Text style={styles.triageEntryActionText}>Continue</Text>
+											)}
+										</Pressable>
+										<Pressable
+											onPress={handleGoogleSignIn}
+											disabled={isSigningInWithGoogle || isSigningInWithApple}
+											style={[
+												styles.demoPaymentNote,
+												{
+													backgroundColor: requestColors.card,
+													borderColor: requestColors.border,
+													opacity: isSigningInWithGoogle || isSigningInWithApple ? 0.72 : 1,
+												},
+											]}
+										>
+											<Ionicons name="logo-google" size={16} color={COLORS.brandPrimary} />
+											<View style={{ flex: 1 }}>
+												<Text style={[styles.triageEntryTitle, { color: requestColors.text }]}>Continue with Google</Text>
+												<Text style={[styles.demoPaymentNoteText, { color: requestColors.textMuted }]}>Confirm identity</Text>
+											</View>
+											{isSigningInWithGoogle ? (
+												<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+											) : (
+												<Text style={styles.triageEntryActionText}>Continue</Text>
+											)}
+										</Pressable>
+									</View>
 								) : null}
 								<PaymentMethodSelector
 									selectedMethod={selectedPaymentMethod}

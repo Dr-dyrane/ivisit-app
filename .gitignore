@@ -10,6 +10,8 @@ dist/
 dist-review/
 dist-review-next/
 web-build/
+artifacts/eas-builds/
+artifacts/app-store-screenshots/
 
 # Native
 *.orig.*

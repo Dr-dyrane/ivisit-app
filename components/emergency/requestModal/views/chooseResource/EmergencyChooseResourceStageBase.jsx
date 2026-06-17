@@ -108,8 +108,11 @@ export default function EmergencyChooseResourceStageBase({
 	hasSignedInUser = false,
 	requesterLabel = "Account confirmed",
 	onContinueWithGoogle,
+	onContinueWithApple,
 	onAdvanceFlow,
 	isSigningIn = false,
+	isSigningInWithGoogle = false,
+	isSigningInWithApple = false,
 }) {
 	const { isDarkMode } = useTheme();
 	const insets = useSafeAreaInsets();
@@ -188,8 +191,8 @@ export default function EmergencyChooseResourceStageBase({
 	const showMapPreview = previewRouteCoordinates.length > 0;
 	const routeEtaLabel = formatRouteDuration(routeInfo, primaryEtaText);
 	const routeDistanceLabel = formatRouteDistance(routeInfo);
-	const routeMetaLabel = [routeEtaLabel, routeDistanceLabel].filter(Boolean).join(" • ");
-	const summaryLine = [crewLabel, costLine].filter(Boolean).join(" • ");
+	const routeMetaLabel = [routeEtaLabel, routeDistanceLabel].filter(Boolean).join(" - ");
+	const summaryLine = [crewLabel, costLine].filter(Boolean).join(" - ");
 	const flowCopy = CHOOSE_RESOURCE_COPY.flow[selectFlowStep] || CHOOSE_RESOURCE_COPY.flow.dispatch;
 	const activeStepIndex = Math.max(0, FLOW_STEPS.indexOf(selectFlowStep));
 	const stageHeight = Math.max(
@@ -202,21 +205,20 @@ export default function EmergencyChooseResourceStageBase({
 	const sheetIconBackground = isDarkMode ? "rgba(255,255,255,0.09)" : "rgba(15,23,42,0.06)";
 	const sheetHeight = Math.max(320, Math.min(Math.round(stageHeight * 0.5), 460));
 	const fixedMapBottomPadding = Math.max(250, Math.round(sheetHeight * 1.12));
-	const shouldShowPrimaryAction = selectFlowStep !== "triage";
+	const shouldShowPrimaryAction =
+		selectFlowStep !== "triage" && (selectFlowStep !== "identity" || hasSignedInUser);
 	const primaryActionLabel =
 		selectFlowStep === "identity"
 			? hasSignedInUser
 				? "Select payment"
-				: isSigningIn
-					? "Connecting..."
-					: CHOOSE_RESOURCE_COPY.signInCta
+				: "Select sign-in"
 			: selectFlowStep === "dispatch"
 				? "Confirm and continue"
 				: "Continue";
 	const primaryActionIcon =
-		selectFlowStep === "identity" && !hasSignedInUser ? "logo-google" : "arrow-forward";
+		selectFlowStep === "identity" && !hasSignedInUser ? "person-circle" : "arrow-forward";
 	const primaryActionHandler =
-		selectFlowStep === "identity" && !hasSignedInUser ? onContinueWithGoogle : onAdvanceFlow;
+		selectFlowStep === "identity" && !hasSignedInUser ? null : onAdvanceFlow;
 
 	return (
 		<View style={[styles.shell, { gap: tuning.gap, maxWidth: tuning.maxWidth }]}>
@@ -371,7 +373,7 @@ export default function EmergencyChooseResourceStageBase({
 								<View style={styles.addressRow}>
 									<View style={[styles.addressIconWrap, { backgroundColor: sheetIconBackground }]}> 
 										<Ionicons
-											name={hasSignedInUser ? "checkmark-circle" : "logo-google"}
+											name={hasSignedInUser ? "checkmark-circle" : "person-circle"}
 											size={14}
 											color={visualProfile.accent}
 										/>
@@ -381,13 +383,49 @@ export default function EmergencyChooseResourceStageBase({
 											{hasSignedInUser ? CHOOSE_RESOURCE_COPY.signedInLabel : CHOOSE_RESOURCE_COPY.signInCta}
 										</Text>
 										<Text style={[styles.addressValue, { color: requestColors.text }]}>
-											{hasSignedInUser ? requesterLabel : "Use Google so the hospital can identify the requester."}
+											{hasSignedInUser ? requesterLabel : "Use Apple or Google so the hospital can identify the requester."}
 										</Text>
 										<Text style={[styles.addressSubvalue, { color: requestColors.textMuted }]}>
-											{hasSignedInUser ? "You’ll choose payment next." : CHOOSE_RESOURCE_COPY.signInHelp}
+											{hasSignedInUser ? "You will choose payment next." : CHOOSE_RESOURCE_COPY.signInHelp}
 										</Text>
 									</View>
 								</View>
+								{!hasSignedInUser ? (
+									<View style={styles.identityAuthRow}>
+										<Pressable
+											onPress={onContinueWithApple}
+											disabled={!onContinueWithApple || isSigningIn}
+											style={[
+												styles.identityAuthButton,
+												{
+													backgroundColor: sheetIconBackground,
+													opacity: !onContinueWithApple || isSigningIn ? 0.62 : 1,
+												},
+											]}
+										>
+											<Ionicons name="logo-apple" size={15} color={visualProfile.accent} />
+											<Text style={[styles.identityAuthButtonText, { color: requestColors.text }]}>
+												{isSigningInWithApple ? "Signing in..." : "Apple"}
+											</Text>
+										</Pressable>
+										<Pressable
+											onPress={onContinueWithGoogle}
+											disabled={!onContinueWithGoogle || isSigningIn}
+											style={[
+												styles.identityAuthButton,
+												{
+													backgroundColor: sheetIconBackground,
+													opacity: !onContinueWithGoogle || isSigningIn ? 0.62 : 1,
+												},
+											]}
+										>
+											<Ionicons name="logo-google" size={15} color={visualProfile.accent} />
+											<Text style={[styles.identityAuthButtonText, { color: requestColors.text }]}>
+												{isSigningInWithGoogle ? "Signing in..." : "Google"}
+											</Text>
+										</Pressable>
+									</View>
+								) : null}
 							</View>
 						) : null}
 					</View>
@@ -434,5 +472,3 @@ export default function EmergencyChooseResourceStageBase({
 		</View>
 	);
 }
-
-

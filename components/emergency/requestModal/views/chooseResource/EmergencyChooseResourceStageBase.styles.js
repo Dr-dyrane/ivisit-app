@@ -309,6 +309,25 @@ export function createEmergencyChooseResourceTheme({
 			padding: 12,
 			gap: 12,
 		},
+		identityAuthRow: {
+			flexDirection: "row",
+			gap: 8,
+		},
+		identityAuthButton: {
+			flex: 1,
+			minHeight: 42,
+			borderRadius: 999,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "center",
+			gap: 8,
+			paddingHorizontal: 12,
+		},
+		identityAuthButtonText: {
+			fontSize: 13,
+			fontWeight: "800",
+			letterSpacing: -0.1,
+		},
 		sheetFooter: {
 			gap: 8,
 			marginTop: "auto",

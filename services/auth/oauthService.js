@@ -6,6 +6,7 @@
 import { supabase } from "../supabase";
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
+import * as Crypto from "expo-crypto";
 import { AuthErrors, createAuthError, handleSupabaseError } from "../../utils/authErrorUtils";
 
 const CALLBACK_DEDUP_WINDOW_MS = 8000;
@@ -13,6 +14,43 @@ let inFlightCallbackKey = null;
 let inFlightCallbackPromise = null;
 let lastCompletedCallbackKey = null;
 let lastCompletedCallbackAt = 0;
+
+const buildAppleNonce = () => {
+    const bytes = Crypto.getRandomBytes(24);
+    return Array.from(bytes)
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+};
+
+const formatAppleFullName = (fullName) => {
+    if (!fullName) return null;
+    return [
+        fullName.givenName,
+        fullName.middleName,
+        fullName.familyName,
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || null;
+};
+
+const persistAppleProfileMetadata = async (credential) => {
+    const fullName = formatAppleFullName(credential?.fullName);
+    const metadata = {
+        ...(fullName ? { full_name: fullName } : {}),
+        ...(credential?.fullName?.givenName ? { given_name: credential.fullName.givenName } : {}),
+        ...(credential?.fullName?.familyName ? { family_name: credential.fullName.familyName } : {}),
+        ...(credential?.email ? { email: credential.email } : {}),
+        ...(credential?.user ? { apple_user_id: credential.user } : {}),
+    };
+
+    if (Object.keys(metadata).length === 0) return;
+
+    const { error } = await supabase.auth.updateUser({ data: metadata });
+    if (error) {
+        console.warn("[oauthService] Apple profile metadata update failed:", error.message);
+    }
+};
 
 /**
  * Get the redirect URL for OAuth and Magic Links
@@ -49,6 +87,69 @@ export const signInWithProvider = async (provider) => {
     if (error) throw handleSupabaseError(error);
     console.log("[oauthService] signInWithProvider - OAuth URL generated");
     return { data };
+};
+
+/**
+ * Sign in with the native iOS Apple Authentication Services flow.
+ *
+ * Supabase recommends native Sign in with Apple for Expo/React Native iOS
+ * instead of driving Apple through an in-app browser OAuth round trip.
+ */
+export const signInWithNativeApple = async () => {
+    const AppleAuthentication = await import("expo-apple-authentication");
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+
+    if (!isAvailable) {
+        throw createAuthError(
+            AuthErrors.NOT_IMPLEMENTED,
+            "Apple Sign In is not available on this device"
+        );
+    }
+
+    const nonce = buildAppleNonce();
+    let credential;
+
+    try {
+        credential = await AppleAuthentication.signInAsync({
+            requestedScopes: [
+                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                AppleAuthentication.AppleAuthenticationScope.EMAIL,
+            ],
+            nonce,
+        });
+    } catch (error) {
+        if (error?.code === "ERR_REQUEST_CANCELED") {
+            throw createAuthError(AuthErrors.UNKNOWN_ERROR, "cancelled");
+        }
+        throw error;
+    }
+
+    if (!credential?.identityToken) {
+        throw createAuthError(AuthErrors.INVALID_TOKEN, "Apple did not return an identity token");
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+        nonce,
+    });
+
+    if (error) throw handleSupabaseError(error);
+
+    if (credential.fullName || credential.email || credential.user) {
+        await persistAppleProfileMetadata(credential);
+    }
+
+    const session =
+        data?.session ||
+        (await supabase.auth.getSession())?.data?.session ||
+        null;
+
+    if (!session) {
+        throw createAuthError(AuthErrors.INVALID_TOKEN, "Apple session creation failed");
+    }
+
+    return { session, credential };
 };
 
 /**
