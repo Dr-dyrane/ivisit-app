@@ -6,6 +6,20 @@ Newest first.
 
 ---
 
+## `fix/revoke-anon-org-financial-fns` — close anon leak on org-financial RPCs
+
+- **Created:** 2026-07-08
+- **Branch:** `fix/revoke-anon-org-financial-fns` (commit `ed3ffb94`)
+- **Status:** APPLIED live + verified (anon removed from both acls) — PENDING review + merge
+- **Pillar touched:** `supabase/migrations/20260219010000_core_rpcs.sql`
+- **What:** `REVOKE EXECUTE ... FROM anon` on `check_cash_eligibility(uuid)` and
+  `get_org_stripe_status(uuid)` (both `SECURITY DEFINER`, read org financials past RLS).
+  authenticated + service_role retained. **Follow-up (not done):** add an in-body
+  org-scope guard so authenticated users can't read another org's status by id.
+- **Rollback:** `GRANT EXECUTE ON FUNCTION public.check_cash_eligibility(uuid) TO anon; GRANT EXECUTE ON FUNCTION public.get_org_stripe_status(uuid) TO anon;`
+
+---
+
 ## `fix/console-operator-select-rls` — console operator SELECT on visits + medical_profiles
 
 - **Created:** 2026-07-08
