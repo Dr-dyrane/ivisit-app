@@ -6,6 +6,22 @@ Newest first.
 
 ---
 
+## `fix/hospital-array-coalesce` — update_hospital_by_admin preserves arrays
+
+- **Created:** 2026-07-08
+- **Branch:** `fix/hospital-array-coalesce` (commit `35c8c969`)
+- **Status:** APPLIED live + verified (deployed fn has the COALESCE-preserve) — PENDING review + merge
+- **Pillar touched:** `supabase/migrations/20260219010000_core_rpcs.sql`
+- **What:** the RPC set `specialties/service_types/features` unconditionally, blanking
+  them on a partial update. Now extracts each array only when the payload includes the
+  key (else NULL) and `COALESCE(v_*, existing)` in the UPDATE — omitted key preserves,
+  explicit `[]` still clears. Let the console delete `mergePreservedHospitalArrays`
+  (ivisit-console `f2bfb5c7`).
+- **Rollback:** revert the two hunks (extraction + the three `COALESCE(v_*, …)` lines)
+  back to the prior unconditional `v_*` assignment; `CREATE OR REPLACE` re-applies.
+
+---
+
 ## `fix/revoke-anon-org-financial-fns` — close anon leak on org-financial RPCs
 
 - **Created:** 2026-07-08
