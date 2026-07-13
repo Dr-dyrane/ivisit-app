@@ -2,6 +2,8 @@
 -- Centralized Logic for Multi-Module Synchronization
 
 -- 1. Global User Initialization (After Profile, Preferences, Medical, and Wallet Tables exist)
+-- BEGIN CONSOLE_ONBOARDING_AUTOMATIONS
+-- BEGIN CONSOLE_NEW_USER_FUNCTION
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -39,7 +41,9 @@ BEGIN
         COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', NEW.email),
         v_avatar,
         v_avatar, -- Sync image_uri with avatar_url for mobile parity
-        COALESCE(NEW.raw_user_meta_data->>'role', 'patient'),
+        -- Public Auth metadata is user-controlled. Elevated Console roles are
+        -- issued only by audited backend receivers after scope is proved.
+        'patient',
         'pending'
     );
     
@@ -55,7 +59,9 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, auth;
+-- END CONSOLE_NEW_USER_FUNCTION
 
 -- Hook into auth.users (Supabase Managed)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -66,6 +72,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 1B. Organization Wallet Auto-Creation
 -- When a new org is created, automatically create its wallet.
+-- BEGIN CONSOLE_ORG_WALLET_FUNCTION
 CREATE OR REPLACE FUNCTION public.handle_new_organization()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -74,12 +81,15 @@ BEGIN
     ON CONFLICT (organization_id) DO NOTHING;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+-- END CONSOLE_ORG_WALLET_FUNCTION
 
 DROP TRIGGER IF EXISTS on_org_created ON public.organizations;
 CREATE TRIGGER on_org_created
 AFTER INSERT ON public.organizations
 FOR EACH ROW EXECUTE PROCEDURE public.handle_new_organization();
+-- END CONSOLE_ONBOARDING_AUTOMATIONS
 
 -- 1C. Doctor Registry Auto-Sync (Profile -> doctors)
 -- When a profile becomes a provider doctor (or doctor profile details change), ensure a doctors row exists.
@@ -110,6 +120,10 @@ BEGIN
             ORDER BY h.created_at ASC, h.id ASC
             LIMIT 1;
         END IF;
+
+        -- Mark identity changes as profile-owned so the doctors-table guard can
+        -- distinguish this canonical sync from direct Console edits.
+        PERFORM set_config('ivisit.allow_doctor_profile_sync', '1', true);
 
         INSERT INTO public.doctors (
             profile_id,
@@ -149,6 +163,36 @@ CREATE TRIGGER on_profile_sync_doctor_record
 AFTER INSERT OR UPDATE OF role, provider_type, organization_id, full_name, first_name, last_name, email, phone
 ON public.profiles
 FOR EACH ROW EXECUTE PROCEDURE public.sync_doctor_record_from_profile();
+
+CREATE OR REPLACE FUNCTION public.enforce_doctor_profile_identity_write()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_profile_sync TEXT := current_setting('ivisit.allow_doctor_profile_sync', true);
+BEGIN
+    IF NEW.profile_id IS DISTINCT FROM OLD.profile_id THEN
+        RAISE EXCEPTION 'Doctor profile linkage is immutable; use the provider profile workflow'
+            USING ERRCODE = '42501';
+    END IF;
+
+    IF OLD.profile_id IS NOT NULL
+       AND COALESCE(v_profile_sync, '0') <> '1'
+       AND (
+            NEW.name IS DISTINCT FROM OLD.name
+            OR NEW.email IS DISTINCT FROM OLD.email
+            OR NEW.phone IS DISTINCT FROM OLD.phone
+       ) THEN
+        RAISE EXCEPTION 'Linked doctor identity is owned by the provider profile workflow'
+            USING ERRCODE = '42501';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_enforce_doctor_profile_identity_write ON public.doctors;
+CREATE TRIGGER trg_enforce_doctor_profile_identity_write
+BEFORE UPDATE OF profile_id, name, email, phone ON public.doctors
+FOR EACH ROW EXECUTE FUNCTION public.enforce_doctor_profile_identity_write();
 
 
 -- 2. Logistics & Operations Synchronization

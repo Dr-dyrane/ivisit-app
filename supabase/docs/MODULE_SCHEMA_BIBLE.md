@@ -62,6 +62,7 @@ Rule: post-pillar patches may add columns, indexes, or guards. Contract renames,
 
 ### `org_structure`
 - `organizations`
+- `organization_verification_documents`
 - `hospitals` (unique constraint on `latitude, longitude` to prevent duplicate locations)
 - `doctors`
 - `doctor_schedules`
@@ -119,6 +120,7 @@ Counts below are app/console service file references from `static_supabase_usage
 | `emergency_chat_messages` | `logistics` | 0 | 0 |
 | `hospitals` | `org_structure` | 5 | 10 |
 | `organizations` | `org_structure` | 1 | 0 |
+| `organization_verification_documents` | `org_structure` | 0 | 1 |
 | `insurance_policies` | `finance` | 4 | 0 |
 | `payments` | `finance` | 1 | 0 |
 | `wallet_ledger` | `finance` | 1 | 1 |
@@ -151,8 +153,10 @@ Use the audit artifact for full table coverage. This section tracks high-surface
 ### Active Runtime RPC Surfaces
 Key RPCs called directly by app/console services:
 - App-heavy: `create_emergency_v4`, `process_wallet_payment`, `process_cash_payment_v2`, `calculate_emergency_cost_v2`, `notify_cash_approval_org_admins`, `reload_schema`
-- Console-heavy: `console_*`, `cancel_trip`, `complete_trip`, `cancel_bed_reservation`, `discharge_patient`, `check_cash_eligibility`, `search_auth_users`, `update_profile_by_admin`, `update_hospital_by_admin`
+- Console-heavy: `console_*`, `get_console_identity_projection`, `get_user_statistics`, `search_onboarding_facilities`, `provision_console_organization`, `complete_console_user_invitation`, `cancel_trip`, `complete_trip`, `cancel_bed_reservation`, `discharge_patient`, `check_cash_eligibility`, `search_auth_users`, `update_profile_by_admin`, `update_hospital_by_admin`
 - Contact Dispatch: `ensure_emergency_chat_room`, `send_emergency_chat_message`, `mark_emergency_chat_room_read`
+
+Console identity scope rule: `get_console_identity_projection` returns the canonical organization UUID plus its complete facility UUID set. `get_user_statistics` is global only for platform admins or `service_role`; organization admins receive organization-bound aggregates and every other role is denied.
 
 ## Change Control Rules (Operational)
 1. Add a tracker/plan item (`SCC-###`) before schema-impacting work.

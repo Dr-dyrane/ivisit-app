@@ -1,76 +1,78 @@
-# Pending Review & Merge
+# Historical Branch Review
 
-Branches whose changes are **already applied live to the shared DB** but whose
-canon commit is **not yet merged to `main`** — review and merge when ready.
-Newest first.
+These branches contain changes that were already applied to the shared database
+before their pillar commits reached `main`. This file preserves that history and
+records the 2026-07-13 consolidation review.
 
----
+## Current Decision
 
-## `fix/hospital-array-coalesce` — update_hospital_by_admin preserves arrays
+Do not merge the three July fix branches into the current dirty `main` worktree.
+Their exact behavior is already absorbed in the App-owned pillar files, and the
+current shared-contract pack adds stronger follow-up protections. Review and
+commit the consolidated pillar worktree instead, then apply only the still-new
+SQL through the approved linked-project workflow.
 
-- **Created:** 2026-07-08
-- **Branch:** `fix/hospital-array-coalesce` (commit `35c8c969`)
-- **Status:** APPLIED live + verified (deployed fn has the COALESCE-preserve) — PENDING review + merge
-- **Pillar touched:** `supabase/migrations/20260219010000_core_rpcs.sql`
-- **What:** the RPC set `specialties/service_types/features` unconditionally, blanking
-  them on a partial update. Now extracts each array only when the payload includes the
-  key (else NULL) and `COALESCE(v_*, existing)` in the UPDATE — omitted key preserves,
-  explicit `[]` still clears. Let the console delete `mergePreservedHospitalArrays`
-  (ivisit-console `f2bfb5c7`).
-- **Rollback:** revert the two hunks (extraction + the three `COALESCE(v_*, …)` lines)
-  back to the prior unconditional `v_*` assignment; `CREATE OR REPLACE` re-applies.
+The separate `feature/book-visit-map-sheet-infusion` branch does not belong in
+this shared Console contract pack. Its generated `types/database.ts` is identical
+to `main`; only its Book Visit architecture and audit documents remain unique.
 
 ---
 
-## `fix/revoke-anon-org-financial-fns` — close anon leak on org-financial RPCs
+## `fix/hospital-array-coalesce`
 
 - **Created:** 2026-07-08
-- **Branch:** `fix/revoke-anon-org-financial-fns` (commit `ed3ffb94`)
-- **Status:** APPLIED live + verified (anon removed from both acls) — PENDING review + merge
-- **Pillar touched:** `supabase/migrations/20260219010000_core_rpcs.sql`
-- **What:** `REVOKE EXECUTE ... FROM anon` on `check_cash_eligibility(uuid)` and
-  `get_org_stripe_status(uuid)` (both `SECURITY DEFINER`, read org financials past RLS).
-  authenticated + service_role retained. **Follow-up (not done):** add an in-body
-  org-scope guard so authenticated users can't read another org's status by id.
-- **Rollback:** `GRANT EXECUTE ON FUNCTION public.check_cash_eligibility(uuid) TO anon; GRANT EXECUTE ON FUNCTION public.get_org_stripe_status(uuid) TO anon;`
+- **Commit:** `35c8c969`
+- **Historical live state:** applied and verified
+- **2026-07-13 source decision:** absorbed; no standalone merge required
+- **Pillar:** `supabase/migrations/20260219010000_core_rpcs.sql`
+
+The current pillar contains the branch's key-aware extraction and
+`COALESCE(v_*, existing)` updates. Omitted taxonomy arrays are preserved, while
+an explicit `[]` still clears a field. The shared Console contract guard locks
+this behavior.
 
 ---
 
-## `fix/console-operator-select-rls` — console operator SELECT on visits + medical_profiles
+## `fix/revoke-anon-org-financial-fns`
 
 - **Created:** 2026-07-08
-- **Branch:** `fix/console-operator-select-rls` (commit `270d1a4b`)
-- **Status:** APPLIED live to the shared DB (`dlwtcmhdzoklveihuhjf`) — PENDING your review + merge to `main`
-- **Pillar touched:** `supabase/migrations/20260219000700_security.sql`
+- **Commit:** `ed3ffb94`
+- **Historical live state:** anonymous ACL removal applied and verified
+- **2026-07-13 source decision:** superseded; no standalone merge required
+- **Pillar:** `supabase/migrations/20260219010000_core_rpcs.sql`
 
-**What it does** — two additive, SELECT-only RLS policies (owner-read and all
-write policies untouched):
+The current pillar preserves the anonymous revokes and completes the branch's
+documented follow-up. Both organization-finance helpers now revoke `PUBLIC` and
+`anon`, grant only `authenticated` and `service_role`, and enforce platform-admin
+or same-organization org-admin scope inside the SECURITY DEFINER body.
 
-- `visits` → `"Console operators see org visits"`: admins + any org member,
-  scoped via `hospital_id` → org. Mirrors the existing `emergency_requests`
-  `"Org Admins see their hospital emergencies"` policy.
-- `medical_profiles` → `"Org operators read medical profiles via visits"`:
-  admins + operators for patients who have a visit at a hospital in their org
-  (org-scoped via the visits join; `medical_profiles` has no direct org column).
+The stronger in-body scope and `PUBLIC` revokes are new source work and still
+require reviewed linked-project application.
 
-**Why it's on a branch:** applied live via the CONTRIBUTING SOP (temp dated
-migration -> `supabase db push` -> `supabase migration repair --status reverted`
--> pillar canon), but the canon commit was kept OFF `main` for your review. The
-console-side mirror is already committed on the `ivisit-console` branch
-(`codex/ivisit-console-revamp-checkpoint-20260707`, commit `ff3cdb4e`).
+---
 
-**To merge (after review):**
+## `fix/console-operator-select-rls`
 
-```bash
-git checkout main
-git merge --no-ff fix/console-operator-select-rls
-# review the security.sql diff, then push when satisfied:
-git push origin main
-```
+- **Created:** 2026-07-08
+- **Commit:** `270d1a4b`
+- **Historical live state:** applied to project `dlwtcmhdzoklveihuhjf`
+- **2026-07-13 source decision:** absorbed; no standalone merge required
+- **Pillar:** `supabase/migrations/20260219000700_security.sql`
 
-**Rollback (additive + safe to drop, if ever needed):**
+The current pillar contains both additive SELECT policies:
 
-```sql
-DROP POLICY IF EXISTS "Console operators see org visits" ON public.visits;
-DROP POLICY IF EXISTS "Org operators read medical profiles via visits" ON public.medical_profiles;
-```
+- `Console operators see org visits`
+- `Org operators read medical profiles via visits`
+
+Owner-read and write policies remain unchanged. The consolidated policy source
+is synchronized to Console and covered by the shared-contract guard.
+
+---
+
+## Deployment Boundary
+
+Absorbed source is not proof that every new statement is live. The dated pillar
+versions are already recorded by Supabase, so they will not replay automatically.
+After the consolidated App source is committed, use the maintained rollback
+contracts and approved deployment workflow, then verify role, organization,
+concurrency, ACL, and reflected-read behavior before claiming live parity.

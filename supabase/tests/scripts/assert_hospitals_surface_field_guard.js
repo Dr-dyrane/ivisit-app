@@ -76,6 +76,7 @@ const RULES = [
     mode: 'forbid',
     root: 'console',
     file: 'src/services/hospitalImportService.js',
+    allowMissing: true,
     pattern: /\.eq\(\s*['"]import_status['"]/g,
     message: 'console hospital import service must not filter by import_status column.',
   },
@@ -84,6 +85,7 @@ const RULES = [
     mode: 'forbid',
     root: 'console',
     file: 'src/services/hospitalImportService.js',
+    allowMissing: true,
     pattern: /\bimport_status\s*:/g,
     message: 'console hospital import service must write verification_status instead of import_status.',
   },
@@ -237,6 +239,7 @@ function run() {
 
     const fullPath = path.join(baseRoot, rule.file);
     if (!fs.existsSync(fullPath)) {
+      if (rule.allowMissing) continue;
       violations.push({
         rule: rule.id,
         file: normalizePath(rule.file),

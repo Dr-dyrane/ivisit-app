@@ -11,6 +11,7 @@ const consoleSupabaseDir = path.join(consoleDir, 'frontend', 'supabase');
 
 const appMigrationsDir = path.join(appSupabaseDir, 'migrations');
 const consoleMigrationsDir = path.join(consoleSupabaseDir, 'migrations');
+const sharedFunctionNames = ['check-user', 'invite-user'];
 
 // Types path
 const appTypesFile = path.join(appDir, 'supabase', 'database.ts');
@@ -75,6 +76,23 @@ activeAppFiles.forEach(file => {
     fs.copyFileSync(path.join(appMigrationsDir, file), path.join(consoleMigrationsDir, file));
 });
 
+// 2b. Sync Console-owned shared Edge receivers without pruning unrelated functions.
+console.log('Syncing shared Console Edge Functions...');
+sharedFunctionNames.forEach((functionName) => {
+    const sourceDir = path.join(appSupabaseDir, 'functions', functionName);
+    const targetDir = path.join(consoleSupabaseDir, 'functions', functionName);
+    if (!fs.existsSync(sourceDir)) {
+        throw new Error(`Missing canonical Edge Function: ${sourceDir}`);
+    }
+    console.log(`  Copying function ${functionName}...`);
+    fs.rmSync(targetDir, { recursive: true, force: true });
+    fs.cpSync(sourceDir, targetDir, { recursive: true });
+});
+fs.copyFileSync(
+    path.join(appSupabaseDir, 'functions', 'README.md'),
+    path.join(consoleSupabaseDir, 'functions', 'README.md')
+);
+
 // 3. Sync Scripts (with README)
 console.log('Syncing Scripts...');
 const appScriptsDir = path.join(appSupabaseDir, 'scripts');
@@ -85,14 +103,7 @@ if (fs.existsSync(appScriptsDir)) {
         fs.mkdirSync(consoleScriptsDir, { recursive: true });
     }
 
-    // Clean existing scripts
-    const existingScriptFiles = fs.readdirSync(consoleScriptsDir)
-        .filter(f => f.endsWith('.js') || f.endsWith('.sql') || f === 'README.md');
-    existingScriptFiles.forEach(file => {
-        fs.unlinkSync(path.join(consoleScriptsDir, file));
-    });
-
-    // Copy all scripts
+    // Overwrite canonical shared scripts without pruning Console-owned utilities.
     const activeScriptFiles = fs.readdirSync(appScriptsDir)
         .filter(f => f.endsWith('.js') || f.endsWith('.sql') || f === 'README.md');
     activeScriptFiles.forEach(file => {

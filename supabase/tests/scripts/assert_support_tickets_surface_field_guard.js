@@ -20,24 +20,16 @@ const REQUIRED_RELATIONSHIPS = [
   'support_tickets_user_id_fkey',
 ];
 const EXPECTED_CREATE_FIELDS = [
-  'user_id',
-  'organization_id',
   'subject',
   'message',
   'category',
   'priority',
-  'status',
-  'assigned_to',
 ];
 const EXPECTED_UPDATE_FIELDS = [
-  'user_id',
-  'organization_id',
   'subject',
   'message',
   'category',
   'priority',
-  'status',
-  'assigned_to',
 ];
 
 function nowIso() {
@@ -519,6 +511,22 @@ function validateServicePayloadContract(violations) {
       message: 'createSupportTicket function is missing.',
     });
   } else {
+    if (!/payload\.user_id\s*=\s*payload\.user_id\s*\|\|\s*user\?\.id\s*\|\|\s*null/.test(createBlock.block)) {
+      pushViolation(violations, {
+        rule: 'create_support_ticket_identity_not_service_owned',
+        file: 'src/services/supportTicketsService.js',
+        line: getLineNumber(serviceContent, createBlock.start),
+        message: 'createSupportTicket must derive user_id from the authenticated actor.',
+      });
+    }
+    if (!/payload\.organization_id\s*=\s*payload\.organization_id\s*\|\|\s*user\?\.organization_id\s*\|\|\s*null/.test(createBlock.block)) {
+      pushViolation(violations, {
+        rule: 'create_support_ticket_org_not_service_owned',
+        file: 'src/services/supportTicketsService.js',
+        line: getLineNumber(serviceContent, createBlock.start),
+        message: 'createSupportTicket must derive organization_id from the authenticated actor.',
+      });
+    }
     if (/created_at\s*:/.test(createBlock.block)) {
       pushViolation(violations, {
         rule: 'create_support_ticket_created_at_forbidden',

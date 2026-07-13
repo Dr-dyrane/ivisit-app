@@ -14,6 +14,8 @@ functions/
 |   `-- refresh-exchange-rates/
 |-- discovery/
 |   `-- discover-hospitals/
+|-- check-user/
+|-- invite-user/
 |-- webhooks/
 |   `-- stripe-webhook/
 `-- shared/
@@ -103,6 +105,26 @@ Allows review testers to complete the OTP step without mailbox access.
 - Method: `POST`
 - Authentication: public, guarded by exact email plus review OTP
 
+## Console Identity Functions
+
+### check-user
+
+Retired account-discovery endpoint. It returns HTTP 410 with generic copy and never inspects Auth or profile identity.
+
+- Endpoint: `/functions/v1/check-user`
+- Method: any non-preflight request returns `410 Gone`
+- Authentication: not applicable
+
+### invite-user
+
+Sends a Console invitation and assigns a proved organization-scoped role through the service-only `complete_console_user_invitation` RPC.
+
+- Endpoint: `/functions/v1/invite-user`
+- Method: `POST`
+- Authentication: platform admin or organization admin required
+- Organization admins: limited to their own organization and provider, viewer, or dispatcher roles
+- Success reflection: email queued, role granted, and organization linked must all be true
+
 ## Webhook Functions
 
 ### stripe-webhook
@@ -120,6 +142,8 @@ supabase functions serve
 supabase functions deploy
 supabase functions deploy billing-quote
 supabase functions deploy refresh-exchange-rates
+supabase functions deploy check-user
+supabase functions deploy invite-user
 ```
 
 ## Environment Variables

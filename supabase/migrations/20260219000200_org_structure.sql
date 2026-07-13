@@ -5,15 +5,72 @@
 CREATE TABLE IF NOT EXISTS public.organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    organization_type TEXT NOT NULL DEFAULT 'hospital' CHECK (organization_type IN ('hospital', 'clinic', 'ambulance_service')),
+    registration_number TEXT,
     stripe_account_id TEXT UNIQUE,
     ivisit_fee_percentage NUMERIC DEFAULT 2.5,
     fee_tier TEXT DEFAULT 'standard',
     contact_email TEXT,
+    contact_phone TEXT,
+    address TEXT,
+    city TEXT,
+    state TEXT,
+    verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'rejected')),
+    verified_at TIMESTAMPTZ,
+    verified_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    rejection_reason TEXT,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT true,
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Keep the pillar deployable against existing environments whose original
+-- organizations table predates legal identity and verification ownership.
+-- BEGIN CONSOLE_ONBOARDING_ORGANIZATION_SCHEMA
+ALTER TABLE public.organizations
+    ADD COLUMN IF NOT EXISTS organization_type TEXT NOT NULL DEFAULT 'hospital',
+    ADD COLUMN IF NOT EXISTS registration_number TEXT,
+    ADD COLUMN IF NOT EXISTS contact_phone TEXT,
+    ADD COLUMN IF NOT EXISTS address TEXT,
+    ADD COLUMN IF NOT EXISTS city TEXT,
+    ADD COLUMN IF NOT EXISTS state TEXT,
+    ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending',
+    ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+-- Existing organizations predate this review lane and already back live
+-- operational records. Preserve their current availability; new self-service
+-- registrations carry created_by and always start pending.
+UPDATE public.organizations
+SET verification_status = 'verified',
+    verified_at = COALESCE(verified_at, updated_at, created_at)
+WHERE created_by IS NULL
+  AND verification_status = 'pending';
+
+ALTER TABLE public.organizations
+    DROP CONSTRAINT IF EXISTS organizations_organization_type_check;
+ALTER TABLE public.organizations
+    ADD CONSTRAINT organizations_organization_type_check
+    CHECK (organization_type IN ('hospital', 'clinic', 'ambulance_service'));
+
+ALTER TABLE public.organizations
+    DROP CONSTRAINT IF EXISTS organizations_verification_status_check;
+ALTER TABLE public.organizations
+    ADD CONSTRAINT organizations_verification_status_check
+    CHECK (verification_status IN ('pending', 'verified', 'rejected'));
+
+CREATE INDEX IF NOT EXISTS idx_organizations_registration_number
+    ON public.organizations (LOWER(registration_number))
+    WHERE registration_number IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_created_by_unique
+    ON public.organizations (created_by)
+    WHERE created_by IS NOT NULL;
+-- END CONSOLE_ONBOARDING_ORGANIZATION_SCHEMA
 
 -- 2. Hospitals
 CREATE TABLE IF NOT EXISTS public.hospitals (
@@ -52,6 +109,33 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Private evidence submitted during organization registration. Storage object
+-- paths stay separate from the public.documents data-room boundary.
+-- BEGIN CONSOLE_ONBOARDING_EVIDENCE_SCHEMA
+CREATE TABLE IF NOT EXISTS public.organization_verification_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    facility_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    uploaded_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    document_type TEXT NOT NULL CHECK (document_type IN ('registration', 'license', 'identity', 'other')),
+    storage_path TEXT NOT NULL UNIQUE,
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 10485760),
+    review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'accepted', 'rejected')),
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_verification_documents_org
+    ON public.organization_verification_documents (organization_id, review_status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_org_verification_documents_uploader
+    ON public.organization_verification_documents (uploaded_by, created_at DESC);
+-- END CONSOLE_ONBOARDING_EVIDENCE_SCHEMA
 
 -- PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Location-based unique constraint
 -- Prevents duplicate hospitals at the same physical location (exact coordinates)
@@ -477,23 +561,25 @@ CREATE INDEX IF NOT EXISTS idx_hospitals_provider_type_status
   ON public.hospitals(provider_type, status);
 
 -- Trigger: keep dispatch_eligible in sync with emergency_eligible + verified
+-- BEGIN CONSOLE_PROVIDER_ELIGIBILITY_FUNCTION
 CREATE OR REPLACE FUNCTION public.sync_dispatch_eligibility()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.dispatch_eligible := (
-    NEW.emergency_eligible = true
+    COALESCE(NEW.emergency_eligible, false) = true
     AND NEW.status = 'available'
     AND (
-      NEW.verified = true
-      OR NEW.verification_status IN ('verified', 'partner')
-      OR NEW.place_id LIKE 'demo:%'
-      OR NEW.verification_status LIKE 'demo%'
+      COALESCE(NEW.verified, false) = true
+      OR COALESCE(NEW.verification_status IN ('verified', 'partner'), false)
+      OR COALESCE(NEW.place_id LIKE 'demo:%', false)
+      OR COALESCE(NEW.verification_status LIKE 'demo%', false)
     )
   );
   NEW.booking_eligible := (NEW.status = 'available');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+-- END CONSOLE_PROVIDER_ELIGIBILITY_FUNCTION
 
 DROP TRIGGER IF EXISTS trg_sync_dispatch_eligibility ON public.hospitals;
 CREATE TRIGGER trg_sync_dispatch_eligibility

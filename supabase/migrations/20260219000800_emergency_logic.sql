@@ -2222,6 +2222,8 @@ BEGIN
             RETURN v_next IN ('in_progress', 'accepted', 'cancelled', 'payment_declined');
         WHEN 'in_progress' THEN
             RETURN v_next IN ('accepted', 'arrived', 'completed', 'cancelled', 'payment_declined');
+        WHEN 'payment_declined' THEN
+            RETURN v_next = 'pending_approval';
         WHEN 'accepted' THEN
             RETURN v_next IN ('arrived', 'completed', 'cancelled');
         WHEN 'arrived' THEN

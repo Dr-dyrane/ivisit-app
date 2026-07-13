@@ -133,9 +133,18 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     provider_name TEXT NOT NULL,
-    policy_number TEXT NOT NULL,
+    provider TEXT,
+    policy_number TEXT,
+    plan_type TEXT,
     policy_type TEXT DEFAULT 'basic',
-    coverage_amount NUMERIC(10,2) NOT NULL,
+    coverage_details JSONB DEFAULT '{}',
+    coverage_amount NUMERIC(10,2),
+    coverage_percentage NUMERIC(5,2),
+    linked_payment_method TEXT,
+    status TEXT DEFAULT 'active',
+    starts_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    verified BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -839,22 +848,43 @@ CREATE OR REPLACE FUNCTION public.retry_payment_with_different_method(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_payment_amount NUMERIC;
     v_organization_id UUID;
     v_currency TEXT := 'USD';
     v_payment_id UUID;
     v_validation_result JSONB;
+    v_request_status TEXT;
+    v_request_payment_status TEXT;
+    v_reused_pending BOOLEAN := false;
 BEGIN
     IF p_emergency_request_id IS NULL OR p_new_payment_method_id IS NULL OR p_user_id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Missing required retry payment arguments');
     END IF;
 
-    -- Resolve amount/organization from canonical emergency + hospital contract.
+    IF NOT v_is_service_role AND (v_actor_id IS NULL OR v_actor_id IS DISTINCT FROM p_user_id) THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Unauthorized payment retry',
+            'code', 'PAYMENT_RETRY_UNAUTHORIZED'
+        );
+    END IF;
+
+    -- Serialize retries on the request row and resolve the canonical payment context.
     SELECT
         er.total_cost,
         COALESCE(h.organization_id, p.organization_id),
-        COALESCE(p.currency, 'USD')
-    INTO v_payment_amount, v_organization_id, v_currency
+        COALESCE(p.currency, 'USD'),
+        er.status,
+        er.payment_status
+    INTO
+        v_payment_amount,
+        v_organization_id,
+        v_currency,
+        v_request_status,
+        v_request_payment_status
     FROM public.emergency_requests er
     LEFT JOIN public.hospitals h ON h.id = er.hospital_id
     LEFT JOIN LATERAL (
@@ -865,7 +895,48 @@ BEGIN
         LIMIT 1
     ) p ON TRUE
     WHERE er.id = p_emergency_request_id
-      AND er.user_id = p_user_id;
+      AND er.user_id = p_user_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Emergency request not found',
+            'code', 'PAYMENT_RETRY_REQUEST_NOT_FOUND'
+        );
+    END IF;
+
+    -- A concurrent/repeated retry converges on the one pending payment created by
+    -- the first caller instead of creating another pending row.
+    IF v_request_status = 'pending_approval' AND v_request_payment_status = 'pending' THEN
+        SELECT payment.id
+        INTO v_payment_id
+        FROM public.payments payment
+        WHERE payment.emergency_request_id = p_emergency_request_id
+          AND payment.user_id = p_user_id
+          AND payment.status = 'pending'
+        ORDER BY payment.created_at DESC, payment.id DESC
+        LIMIT 1;
+
+        IF v_payment_id IS NOT NULL THEN
+            RETURN jsonb_build_object(
+                'success', true,
+                'payment_id', v_payment_id,
+                'retry_successful', true,
+                'reused_pending', true
+            );
+        END IF;
+    END IF;
+
+    IF v_request_status IS DISTINCT FROM 'payment_declined'
+       OR v_request_payment_status IS NULL
+       OR v_request_payment_status NOT IN ('failed', 'declined') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Emergency request is not ready for payment retry',
+            'code', 'PAYMENT_RETRY_INVALID_STATE'
+        );
+    END IF;
 
     IF v_payment_amount IS NULL OR v_payment_amount <= 0 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request has no payable total_cost');
@@ -878,26 +949,76 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', COALESCE(v_validation_result->>'error', 'Invalid payment method'));
     END IF;
 
-    -- Create canonical pending card payment and preserve method-id context in metadata.
-    INSERT INTO public.payments (
-        user_id, emergency_request_id, organization_id, amount, currency, payment_method, status, metadata
-    ) VALUES (
-        p_user_id,
-        p_emergency_request_id,
-        v_organization_id,
-        v_payment_amount,
-        v_currency,
-        'card',
-        'pending',
-        jsonb_build_object(
-            'payment_method_id', p_new_payment_method_id,
-            'source', 'retry_payment_with_different_method'
-        )
-    ) RETURNING id INTO v_payment_id;
+    SELECT payment.id
+    INTO v_payment_id
+    FROM public.payments payment
+    WHERE payment.emergency_request_id = p_emergency_request_id
+      AND payment.user_id = p_user_id
+      AND payment.status = 'pending'
+    ORDER BY payment.created_at DESC, payment.id DESC
+    LIMIT 1;
 
-    RETURN jsonb_build_object('success', true, 'payment_id', v_payment_id, 'retry_successful', true);
+    IF v_payment_id IS NULL THEN
+        INSERT INTO public.payments (
+            user_id, emergency_request_id, organization_id, amount, currency, payment_method, status, metadata
+        ) VALUES (
+            p_user_id,
+            p_emergency_request_id,
+            v_organization_id,
+            v_payment_amount,
+            v_currency,
+            'card',
+            'pending',
+            jsonb_build_object(
+                'payment_method_id', p_new_payment_method_id,
+                'source', 'retry_payment_with_different_method'
+            )
+        ) RETURNING id INTO v_payment_id;
+    ELSE
+        v_reused_pending := true;
+    END IF;
+
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'retry_payment_with_different_method', true);
+    PERFORM set_config('ivisit.transition_reason', 'card_payment_retry_started', true);
+    PERFORM set_config('ivisit.transition_actor_id', p_user_id::TEXT, true);
+    PERFORM set_config(
+        'ivisit.transition_actor_role',
+        CASE WHEN v_is_service_role THEN 'service_role' ELSE 'patient' END,
+        true
+    );
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object(
+            'payment_id', v_payment_id,
+            'payment_method_id', p_new_payment_method_id,
+            'reused_pending', v_reused_pending
+        )::TEXT,
+        true
+    );
+
+    UPDATE public.emergency_requests
+    SET status = 'pending_approval',
+        payment_status = 'pending',
+        payment_id = v_payment_id,
+        payment_method_id = p_new_payment_method_id::TEXT,
+        updated_at = NOW()
+    WHERE id = p_emergency_request_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'payment_id', v_payment_id,
+        'retry_successful', true,
+        'reused_pending', v_reused_pending,
+        'request_status', 'pending_approval',
+        'payment_status', 'pending'
+    );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.retry_payment_with_different_method(UUID, UUID, UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.retry_payment_with_different_method(UUID, UUID, UUID) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.resolve_currency_for_country(
     p_country_code TEXT

@@ -32,11 +32,14 @@ ON CONFLICT DO NOTHING;
 
 -- ─── 3. ORGANIZATION ────────────────────────────────────────
 
-INSERT INTO public.organizations (id, name, contact_email, is_active)
+INSERT INTO public.organizations (id, name, organization_type, contact_email, verification_status, verified_at, is_active)
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'iVisit Medical Services',
+    'hospital',
     'halodyrane@gmail.com',
+    'verified',
+    NOW(),
     true
 )
 ON CONFLICT (id) DO NOTHING;

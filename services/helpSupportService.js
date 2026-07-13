@@ -93,7 +93,6 @@ const mapTicketToDb = (ticket = {}) => ({
   subject: ticket.subject,
   message: ticket.message,
   status: ticket.status,
-  admin_response: ticket.adminResponse,
 });
 
 const resolveUserId = async (options = {}) => {

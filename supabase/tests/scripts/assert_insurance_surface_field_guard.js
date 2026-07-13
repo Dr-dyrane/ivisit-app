@@ -310,14 +310,28 @@ function validateLegacyMutationShape(violations) {
   }
 
   runRuleChecks(
+    CONSOLE_SERVICE_FILE,
+    normalizePath(path.relative(CONSOLE_ROOT, CONSOLE_SERVICE_FILE)),
+    [
+      {
+        id: "console_policy_projection_normalized",
+        mode: "require",
+        pattern: /data:\s*\(data\s*\|\|\s*\[\]\)\.map\(normalizeInsurancePolicy\)/g,
+        message: "console getInsurancePage must normalize rows for alias compatibility.",
+      },
+    ],
+    violations
+  );
+
+  runRuleChecks(
     CONSOLE_POLICIES_SERVICE_FILE,
     normalizePath(path.relative(CONSOLE_ROOT, CONSOLE_POLICIES_SERVICE_FILE)),
     [
       {
-        id: "console_get_user_policies_normalized",
+        id: "console_legacy_policy_reads_fail_closed",
         mode: "require",
-        pattern: /return\s*\(data\s*\|\|\s*\[\]\)\.map\(normalizeInsurancePolicy\)/g,
-        message: "console getUserInsurancePolicies must normalize rows for alias compatibility.",
+        pattern: /export\s+async\s+function\s+getUserInsurancePolicies\s*\([^)]*\)\s*\{\s*return\s+legacyReadError\(\);/g,
+        message: "legacy user policy reads must remain fail-closed behind the route-owned projection.",
       },
     ],
     violations

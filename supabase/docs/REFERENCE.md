@@ -49,6 +49,7 @@ Every table uses `UUID` for internal identity. No exceptions.
 | `emergency_requests` | `id` (UUID) | `user_id`, `hospital_id`, `ambulance_id` | `REQ-` |
 | `visits` | `id` (UUID) | `user_id`, `hospital_id`, `request_id` | `VIST-` |
 | `organizations` | `id` (UUID) | - | `ORG-` |
+| `organization_verification_documents` | `id` (UUID) | `organization_id`, `facility_id`, `uploaded_by`, `reviewed_by` | - |
 | `doctors` | `id` (UUID) | `organization_id`, `profile_id` | `DOC-` |
 | `payments` | `id` (UUID) | `user_id`, `emergency_request_id` | `PAY-` |
 
@@ -155,7 +156,23 @@ Source of truth: `stamp_entity_display_id()` trigger body in [`supabase/migratio
 | `create_emergency_v4(...)` | Emergency | Atomic creation of request + payment intent |
 | `nearby_hospitals(lat, lng)` | Core RPCs | PostGIS-powered discovery |
 | `nearby_ambulances(lat, lng)` | Core RPCs | PostGIS-powered ambulance lookup |
+| `get_console_identity_projection()` | Core RPCs | Returns backend-confirmed Console role, organization, complete `facilityIds` scope, onboarding, and wallet reflection |
+| `get_user_statistics()` | Core RPCs | Returns platform totals to platform admins and organization-only totals to organization admins; all other callers are denied |
+| `search_onboarding_facilities(query)` | Core RPCs | Read-only duplicate/ownership search for public Console onboarding |
+| `provision_console_organization(payload)` | Core RPCs | Atomically provisions organization, facility, profile scope, wallet reflection, and evidence |
+| `complete_console_user_invitation(...)` | Core RPCs | Service-only invited-profile role and organization assignment after Auth delivery |
 | `log_user_activity(...)` | Analytics | Structured audit logging |
+
+### 6.1 Console Onboarding And Invitation Boundary
+
+- Public Auth signup always initializes `profiles.role = patient`; Auth user metadata cannot grant a Console role.
+- `profiles.organization_id` references `organizations.id`. A hospital or facility UUID is never an organization-scope fallback.
+- Console identity projection returns every facility UUID owned by the organization so client filters can fail closed; the first ordered UUID is only the primary display facility.
+- User statistics are caller-scoped inside the `SECURITY DEFINER` receiver. Platform admins receive global totals, organization admins receive only their organization, and unscoped actors are denied.
+- Public onboarding can create a new canonical organization through `provision_console_organization`, but existing-facility ownership remains support/admin review only.
+- Onboarding evidence is private in `documents/onboarding/{auth.uid()}/*` and becomes immutable to the submitter after the provisioning RPC links it to `organization_verification_documents`.
+- Console invitation email is sent by the `invite-user` Edge Function. The service-only invitation RPC validates the actor, role, organization scope, invited Auth user, and reflected profile assignment.
+- The retired `check-user` endpoint returns HTTP 410 and must not be restored as an account-existence or password-state oracle.
 
 ---
 

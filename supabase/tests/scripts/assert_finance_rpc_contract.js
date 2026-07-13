@@ -24,7 +24,7 @@ function writeReport(payload) {
 
 function getRetryFunctionBody(sql) {
   const pattern =
-    /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.retry_payment_with_different_method\s*\([\s\S]*?\)\s*RETURNS\s+JSONB\s+AS\s+\$\$([\s\S]*?)\$\$\s+LANGUAGE\s+plpgsql\s+SECURITY\s+DEFINER\s*;/i;
+    /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.retry_payment_with_different_method\s*\([\s\S]*?\)\s*RETURNS\s+JSONB\s+AS\s+\$\$([\s\S]*?)\$\$\s+LANGUAGE\s+plpgsql\s+SECURITY\s+DEFINER(?:\s+SET\s+search_path\s*=\s*public)?\s*;/i;
   const match = sql.match(pattern);
   return match ? match[1] : null;
 }
@@ -49,6 +49,11 @@ function run() {
     uses_total_cost_source: false,
     inserts_canonical_payment_method: false,
     inserts_metadata_payload: false,
+    authorizes_request_owner: false,
+    serializes_request_retry: false,
+    reuses_pending_payment: false,
+    converges_request_state: false,
+    revokes_public_and_anon: false,
   };
 
   if (retryBody) {
@@ -80,6 +85,39 @@ function run() {
     if (!checks.inserts_metadata_payload) {
       failures.push('retry function insert columns missing canonical payments.metadata');
     }
+
+    checks.authorizes_request_owner = /v_actor_id\s+IS\s+DISTINCT\s+FROM\s+p_user_id/i.test(
+      retryBody
+    );
+    if (!checks.authorizes_request_owner) {
+      failures.push('retry function does not authorize the authenticated request owner');
+    }
+
+    checks.serializes_request_retry = /FOR\s+UPDATE\s+OF\s+er/i.test(retryBody);
+    if (!checks.serializes_request_retry) {
+      failures.push('retry function does not serialize concurrent retries on the request row');
+    }
+
+    checks.reuses_pending_payment = /payment\.status\s*=\s*'pending'/i.test(retryBody);
+    if (!checks.reuses_pending_payment) {
+      failures.push('retry function does not converge repeated calls on an existing pending payment');
+    }
+
+    checks.converges_request_state =
+      /SET\s+status\s*=\s*'pending_approval'/i.test(retryBody) &&
+      /payment_status\s*=\s*'pending'/i.test(retryBody) &&
+      /payment_id\s*=\s*v_payment_id/i.test(retryBody);
+    if (!checks.converges_request_state) {
+      failures.push('retry function does not converge the emergency request on the pending payment');
+    }
+  }
+
+  checks.revokes_public_and_anon =
+    /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.retry_payment_with_different_method\s*\(UUID,\s*UUID,\s*UUID\)\s+FROM\s+PUBLIC,\s*anon;/i.test(
+      sql
+    );
+  if (!checks.revokes_public_and_anon) {
+    failures.push('retry function remains executable by PUBLIC or anon');
   }
 
   const report = {

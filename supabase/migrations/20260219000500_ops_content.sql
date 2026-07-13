@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
     organization_id UUID REFERENCES public.organizations(id),
     subject TEXT NOT NULL,
     message TEXT NOT NULL,
-    category TEXT DEFAULT 'general',
-    status TEXT DEFAULT 'open',
-    priority TEXT DEFAULT 'normal',
+    category TEXT DEFAULT 'general' CHECK (category IN (
+        'general', 'technical', 'billing', 'account', 'feature_request', 'bug_report', 'medical'
+    )),
+    status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
     assigned_to UUID REFERENCES public.profiles(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
