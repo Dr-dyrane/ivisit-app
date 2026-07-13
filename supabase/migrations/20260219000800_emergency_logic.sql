@@ -2199,6 +2199,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.log_emergency_status_transition();
 
 
+-- BEGIN CONSOLE_PAYMENT_RETRY_TRANSITION
 -- Canonical emergency status transition guard.
 CREATE OR REPLACE FUNCTION public.is_valid_emergency_status_transition(
     p_current_status TEXT,
@@ -2233,6 +2234,7 @@ BEGIN
     END CASE;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+-- END CONSOLE_PAYMENT_RETRY_TRANSITION
 
 CREATE OR REPLACE FUNCTION public.validate_emergency_status_transition()
 RETURNS TRIGGER AS $$

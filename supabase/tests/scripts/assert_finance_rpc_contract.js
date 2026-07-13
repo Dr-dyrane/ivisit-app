@@ -50,6 +50,8 @@ function run() {
     inserts_canonical_payment_method: false,
     inserts_metadata_payload: false,
     authorizes_request_owner: false,
+    validates_payment_method_inline: false,
+    avoids_undeployed_validation_helper: false,
     serializes_request_retry: false,
     reuses_pending_payment: false,
     converges_request_state: false,
@@ -91,6 +93,22 @@ function run() {
     );
     if (!checks.authorizes_request_owner) {
       failures.push('retry function does not authorize the authenticated request owner');
+    }
+
+    checks.validates_payment_method_inline =
+      /FROM\s+public\.payment_methods\s+method/i.test(retryBody) &&
+      /method\.id\s*=\s*p_new_payment_method_id/i.test(retryBody) &&
+      /method\.user_id\s*=\s*p_user_id/i.test(retryBody) &&
+      /v_payment_method_active/i.test(retryBody);
+    if (!checks.validates_payment_method_inline) {
+      failures.push('retry function does not validate replacement method ownership and activity inline');
+    }
+
+    checks.avoids_undeployed_validation_helper = !/public\.validate_payment_method\s*\(/i.test(
+      retryBody
+    );
+    if (!checks.avoids_undeployed_validation_helper) {
+      failures.push('retry function depends on the separately deployed validate_payment_method helper');
     }
 
     checks.serializes_request_retry = /FOR\s+UPDATE\s+OF\s+er/i.test(retryBody);

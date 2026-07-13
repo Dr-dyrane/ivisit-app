@@ -6,11 +6,10 @@ records the 2026-07-13 consolidation review.
 
 ## Current Decision
 
-Do not merge the three July fix branches into the current dirty `main` worktree.
-Their exact behavior is already absorbed in the App-owned pillar files, and the
-current shared-contract pack adds stronger follow-up protections. Review and
-commit the consolidated pillar worktree instead, then apply only the still-new
-SQL through the approved linked-project workflow.
+The three July fix branches were reviewed, found absorbed or superseded, and
+deleted locally on 2026-07-13. No matching remote branch remains. Their durable
+behavior lives in the App-owned pillar files on `main`, together with the
+stronger shared-contract protections verified for Console.
 
 The separate `feature/book-visit-map-sheet-infusion` branch does not belong in
 this shared Console contract pack. Its generated `types/database.ts` is identical
@@ -29,7 +28,8 @@ to `main`; only its Book Visit architecture and audit documents remain unique.
 The current pillar contains the branch's key-aware extraction and
 `COALESCE(v_*, existing)` updates. Omitted taxonomy arrays are preserved, while
 an explicit `[]` still clears a field. The shared Console contract guard locks
-this behavior.
+this behavior. The historical branch was deleted after this equivalence was
+confirmed.
 
 ---
 
@@ -46,8 +46,9 @@ documented follow-up. Both organization-finance helpers now revoke `PUBLIC` and
 `anon`, grant only `authenticated` and `service_role`, and enforce platform-admin
 or same-organization org-admin scope inside the SECURITY DEFINER body.
 
-The stronger in-body scope and `PUBLIC` revokes are new source work and still
-require reviewed linked-project application.
+The stronger in-body scope and `PUBLIC` revokes were applied to the linked
+project and passed the live role, organization-scope, and ACL catalog checks.
+The historical branch was deleted after the stronger contract was verified.
 
 ---
 
@@ -66,13 +67,26 @@ The current pillar contains both additive SELECT policies:
 
 Owner-read and write policies remain unchanged. The consolidated policy source
 is synchronized to Console and covered by the shared-contract guard.
+The historical branch was deleted after the live policies were verified.
 
 ---
 
-## Deployment Boundary
+## Deployment Evidence
 
-Absorbed source is not proof that every new statement is live. The dated pillar
-versions are already recorded by Supabase, so they will not replay automatically.
-After the consolidated App source is committed, use the maintained rollback
-contracts and approved deployment workflow, then verify role, organization,
-concurrency, ACL, and reflected-read behavior before claiming live parity.
+The dated pillars were already recorded, so the new statements were deployed to
+project `dlwtcmhdzoklveihuhjf` through a generated exact-source temporary
+migration. The temporary version was then marked reverted and removed. Both
+`supabase migration list` and `supabase db push --dry-run` now show only the
+eleven canonical owner pillars and no pending migration.
+
+Verification completed on 2026-07-13:
+
+- static shared-contract guard: 16/16
+- live shared-contract catalog guard: 16/16
+- payment retry: cross-user denial, owner success, two-session concurrent reuse,
+  one pending payment, one transition, reflected request state, and zero residue
+- Console onboarding rollback contract and live E2E: passed with cleanup
+- temporary Auth, database, and Storage records: removed
+
+The deployment runner remains a maintained verifier and exact-source generator;
+it does not leave a permanent fix migration in the repository.

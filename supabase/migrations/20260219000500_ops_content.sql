@@ -39,6 +39,25 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- BEGIN CONSOLE_SUPPORT_TICKET_CONSTRAINTS
+-- Converge already-created databases with the canonical Console/App vocabulary.
+ALTER TABLE public.support_tickets
+    DROP CONSTRAINT IF EXISTS support_tickets_category_check,
+    DROP CONSTRAINT IF EXISTS support_tickets_status_check,
+    DROP CONSTRAINT IF EXISTS support_tickets_priority_check;
+
+ALTER TABLE public.support_tickets
+    ADD CONSTRAINT support_tickets_category_check CHECK (category IN (
+        'general', 'technical', 'billing', 'account', 'feature_request', 'bug_report', 'medical'
+    )),
+    ADD CONSTRAINT support_tickets_status_check CHECK (
+        status IN ('open', 'in_progress', 'resolved', 'closed')
+    ),
+    ADD CONSTRAINT support_tickets_priority_check CHECK (
+        priority IN ('low', 'normal', 'high', 'urgent')
+    );
+-- END CONSOLE_SUPPORT_TICKET_CONSTRAINTS
+
 CREATE TABLE IF NOT EXISTS public.support_faqs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     question TEXT NOT NULL,

@@ -72,6 +72,8 @@ function run() {
     includesAll(retry, [
       'v_actor_id IS DISTINCT FROM p_user_id',
       'FOR UPDATE OF er',
+      'method.user_id = p_user_id',
+      'v_payment_method_active',
       "payment.status = 'pending'",
       "SET status = 'pending_approval'",
       "payment_status = 'pending'",

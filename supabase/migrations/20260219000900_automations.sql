@@ -93,6 +93,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_new_organization();
 
 -- 1C. Doctor Registry Auto-Sync (Profile -> doctors)
 -- When a profile becomes a provider doctor (or doctor profile details change), ensure a doctors row exists.
+-- BEGIN CONSOLE_DOCTOR_PROFILE_GUARD
 CREATE OR REPLACE FUNCTION public.sync_doctor_record_from_profile()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -193,6 +194,7 @@ DROP TRIGGER IF EXISTS trg_enforce_doctor_profile_identity_write ON public.docto
 CREATE TRIGGER trg_enforce_doctor_profile_identity_write
 BEFORE UPDATE OF profile_id, name, email, phone ON public.doctors
 FOR EACH ROW EXECUTE FUNCTION public.enforce_doctor_profile_identity_write();
+-- END CONSOLE_DOCTOR_PROFILE_GUARD
 
 
 -- 2. Logistics & Operations Synchronization

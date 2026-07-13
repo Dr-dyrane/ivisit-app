@@ -199,7 +199,10 @@ async function main() {
     fetchAll('ambulances', 'id,profile_id,call_sign,hospital_id'),
     fetchAll('emergency_requests', 'id,user_id,hospital_id,hospital_name'),
     fetchAll('visits', 'id,user_id,request_id,hospital_id,hospital_name'),
-    fetchAll('payments', 'id,user_id,organization_id,emergency_request_id'),
+    fetchAll(
+      'payments',
+      'id,user_id,organization_id,emergency_request_id,amount,status,payment_method,metadata,created_at'
+    ),
     fetchAll('insurance_billing', 'id,user_id,emergency_request_id'),
     fetchAll('emergency_doctor_assignments', 'id,doctor_id,emergency_request_id'),
     fetchAll('emergency_status_transitions', 'id,emergency_request_id'),
@@ -416,6 +419,13 @@ async function main() {
       .slice(0, 10)
       .map((h) => h.name),
     safeOrganizationIds: safeOrganizationIds.slice(0, 10),
+    safeOrganizations: organizations
+      .filter((organization) => safeOrganizationIds.includes(organization.id))
+      .slice(0, 10)
+      .map(({ id, name }) => ({ id, name })),
+    testPayments: payments
+      .filter((payment) => testPaymentIds.includes(payment.id))
+      .slice(0, 15),
   };
 
   printSummary({ mode: report.mode, planned: report.planned, preview }, 'plan');

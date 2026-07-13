@@ -304,6 +304,7 @@ CREATE POLICY "Users manage own payment methods"
 ON public.payment_methods FOR ALL
 USING (auth.uid() = user_id);
 
+-- BEGIN CONSOLE_INSURANCE_RLS
 DROP POLICY IF EXISTS "Users manage own insurance policies" ON public.insurance_policies;
 CREATE POLICY "Users manage own insurance policies"
 ON public.insurance_policies FOR ALL
@@ -316,6 +317,7 @@ CREATE POLICY "Admins read insurance policies"
 ON public.insurance_policies FOR SELECT
 TO authenticated
 USING (public.p_is_admin());
+-- END CONSOLE_INSURANCE_RLS
 
 -- 5. NOTIFICATIONS
 CREATE POLICY "Users see own notifications"
@@ -368,6 +370,7 @@ CREATE POLICY "Public read for ambulances"
 ON public.ambulances FOR SELECT
 USING (true);
 
+-- BEGIN CONSOLE_AMBULANCE_RLS
 DROP POLICY IF EXISTS "Org Admins manage ambulances" ON public.ambulances;
 CREATE POLICY "Org Admins manage ambulances"
 ON public.ambulances FOR ALL
@@ -424,6 +427,7 @@ WITH CHECK (
         )
     )
 );
+-- END CONSOLE_AMBULANCE_RLS
 
 CREATE POLICY "Users see own visits"
 ON public.visits FOR SELECT
@@ -517,6 +521,7 @@ CREATE POLICY "Admins read subscribers" ON public.subscribers FOR SELECT USING (
 -- Doctors: public directory reads; platform admins and organization admins manage
 -- rows in authorized facilities. Profile identity and lifecycle columns remain
 -- outside direct authenticated writes.
+-- BEGIN CONSOLE_DOCTOR_RLS_GRANTS
 DROP POLICY IF EXISTS "Public read doctors" ON public.doctors;
 CREATE POLICY "Public read doctors" ON public.doctors FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Org Admins manage doctors" ON public.doctors;
@@ -585,16 +590,19 @@ GRANT UPDATE (
     phone,
     updated_at
 ) ON TABLE public.doctors TO authenticated;
+-- END CONSOLE_DOCTOR_RLS_GRANTS
 
 -- Wallet Ledger: admins + org admins see relevant entries
 CREATE POLICY "Admins see all ledger" ON public.wallet_ledger FOR SELECT USING (public.p_is_admin());
 
 -- Support Tickets: users manage their own rows; platform admins manage all.
+-- BEGIN CONSOLE_SUPPORT_TICKET_RLS
 DROP POLICY IF EXISTS "Users manage own tickets" ON public.support_tickets;
 CREATE POLICY "Users manage own tickets" ON public.support_tickets FOR ALL
 TO authenticated
 USING (auth.uid() = user_id OR public.p_is_admin())
 WITH CHECK (auth.uid() = user_id OR public.p_is_admin());
+-- END CONSOLE_SUPPORT_TICKET_RLS
 
 -- Documents: public reads public tier, admins read all
 CREATE POLICY "Public read public documents" ON public.documents FOR SELECT
@@ -603,6 +611,7 @@ USING (tier = 'public' OR public.p_is_admin());
 -- Shared Storage canon. Public profile media is readable by URL, while writes
 -- stay inside the authenticated owner's UUID folder. Onboarding evidence uses
 -- the private documents bucket and the narrower policies below.
+-- BEGIN CONSOLE_SHARED_STORAGE_POLICIES
 INSERT INTO storage.buckets (id, name, public)
 VALUES
     ('images', 'images', true),
@@ -676,7 +685,6 @@ USING (
         OR public.p_is_admin()
     )
 );
--- END CONSOLE_ONBOARDING_STORAGE_POLICIES
 
 DROP POLICY IF EXISTS "Users remove unsubmitted onboarding evidence" ON storage.objects;
 CREATE POLICY "Users remove unsubmitted onboarding evidence"
@@ -692,6 +700,8 @@ USING (
         WHERE evidence.storage_path = storage.objects.name
     )
 );
+-- END CONSOLE_ONBOARDING_STORAGE_POLICIES
+-- END CONSOLE_SHARED_STORAGE_POLICIES
 
 -- Admin Audit Log: admins only
 CREATE POLICY "Admins read audit log" ON public.admin_audit_log FOR SELECT USING (public.p_is_admin());

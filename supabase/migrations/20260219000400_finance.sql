@@ -840,6 +840,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- BEGIN CONSOLE_SHARED_PAYMENT_RETRY
 -- 3. Retry Payment with Different Method
 CREATE OR REPLACE FUNCTION public.retry_payment_with_different_method(
     p_emergency_request_id UUID,
@@ -855,7 +856,7 @@ DECLARE
     v_organization_id UUID;
     v_currency TEXT := 'USD';
     v_payment_id UUID;
-    v_validation_result JSONB;
+    v_payment_method_active BOOLEAN;
     v_request_status TEXT;
     v_request_payment_status TEXT;
     v_reused_pending BOOLEAN := false;
@@ -942,11 +943,20 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Emergency request has no payable total_cost');
     END IF;
 
-    -- Validate the selected replacement payment method.
-    v_validation_result := public.validate_payment_method(p_user_id, p_new_payment_method_id);
+    -- Validate inside this transaction so the retry contract does not depend on
+    -- a separately deployed helper or accept another user's payment method.
+    SELECT method.is_active
+    INTO v_payment_method_active
+    FROM public.payment_methods method
+    WHERE method.id = p_new_payment_method_id
+      AND method.user_id = p_user_id;
 
-    IF NOT (v_validation_result->>'valid')::BOOLEAN THEN
-        RETURN jsonb_build_object('success', false, 'error', COALESCE(v_validation_result->>'error', 'Invalid payment method'));
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment method not found');
+    END IF;
+
+    IF NOT COALESCE(v_payment_method_active, false) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment method is inactive');
     END IF;
 
     SELECT payment.id
@@ -1019,6 +1029,7 @@ SET search_path = public;
 
 REVOKE ALL ON FUNCTION public.retry_payment_with_different_method(UUID, UUID, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.retry_payment_with_different_method(UUID, UUID, UUID) TO authenticated, service_role;
+-- END CONSOLE_SHARED_PAYMENT_RETRY
 
 CREATE OR REPLACE FUNCTION public.resolve_currency_for_country(
     p_country_code TEXT

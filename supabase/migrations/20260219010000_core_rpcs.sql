@@ -132,6 +132,7 @@ END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- 2. Nearby Ambulances (PostGIS Enabled)
+-- BEGIN CONSOLE_NEARBY_AMBULANCES_RPC
 CREATE OR REPLACE FUNCTION public.nearby_ambulances(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, radius_km INTEGER DEFAULT 50)
 RETURNS TABLE (
     id UUID,
@@ -206,6 +207,7 @@ SET search_path = public;
 
 REVOKE ALL ON FUNCTION public.nearby_ambulances(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.nearby_ambulances(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) TO authenticated, service_role;
+-- END CONSOLE_NEARBY_AMBULANCES_RPC
 
 -- 3. Get All Auth Users (Console Support)
 -- This requires a SECURITY DEFINER function because it reads from auth.users
@@ -264,6 +266,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- RPCs for Console Admin Management
 
 -- 1. Updates & Edits
+-- BEGIN CONSOLE_HOSPITAL_UPDATE_RPC
 CREATE OR REPLACE FUNCTION public.update_hospital_by_admin(target_hospital_id UUID, payload JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -380,6 +383,7 @@ SET search_path = public;
 
 REVOKE ALL ON FUNCTION public.update_hospital_by_admin(UUID, JSONB) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_hospital_by_admin(UUID, JSONB) TO authenticated, service_role;
+-- END CONSOLE_HOSPITAL_UPDATE_RPC
 
 CREATE OR REPLACE FUNCTION public.delete_hospital_by_admin(target_hospital_id UUID)
 RETURNS JSONB AS $$
@@ -1041,6 +1045,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ─── 9. Wallet & Payment RPCs ───────────────────────────
 
+-- BEGIN CONSOLE_ORG_STRIPE_STATUS_RPC
 -- get_org_stripe_status: Used by console walletService
 CREATE OR REPLACE FUNCTION public.get_org_stripe_status(p_organization_id UUID)
 RETURNS JSONB AS $$
@@ -1084,6 +1089,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.get_org_stripe_status(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_org_stripe_status(UUID) TO authenticated, service_role;
+-- END CONSOLE_ORG_STRIPE_STATUS_RPC
 
 -- process_cash_payment: Used by console walletService (legacy non-v2)
 CREATE OR REPLACE FUNCTION public.process_cash_payment(
@@ -1105,6 +1111,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- BEGIN CONSOLE_CASH_ELIGIBILITY_RPC
 -- check_cash_eligibility: Used by console walletService
 CREATE OR REPLACE FUNCTION public.check_cash_eligibility(p_organization_id UUID)
 RETURNS JSONB AS $$
@@ -1148,6 +1155,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.check_cash_eligibility(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.check_cash_eligibility(UUID) TO authenticated, service_role;
+-- END CONSOLE_CASH_ELIGIBILITY_RPC
 
 -- process_wallet_payment: Used by app paymentService
 CREATE OR REPLACE FUNCTION public.process_wallet_payment(
@@ -1712,6 +1720,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
+-- BEGIN CONSOLE_EMERGENCY_CREATE_VISIT_RPC
 CREATE OR REPLACE FUNCTION public.console_create_emergency_request(p_payload JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -1887,6 +1896,7 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+-- END CONSOLE_EMERGENCY_CREATE_VISIT_RPC
 
 
 CREATE OR REPLACE FUNCTION public.console_update_emergency_request(p_request_id UUID, p_payload JSONB)
