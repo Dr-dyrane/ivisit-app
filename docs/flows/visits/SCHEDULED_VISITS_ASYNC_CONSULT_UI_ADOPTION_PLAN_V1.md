@@ -1791,7 +1791,9 @@ Initial planned entries:
   scoped schedule/visit service -> canonical RPC -> App-visible lifecycle consequence
 - Deviation from plan: authenticated App visual proof was not available in the test
   browser because it had no patient session; executable route/state tests cover the
-  protected transition and the public handoff rendered with zero browser errors
+  protected transition and the public handoff rendered with zero browser errors. A
+  timed-out EAS CLI parent left its publish child running, creating two identical
+  groups 1.195 seconds apart; the older duplicate was verified and deleted.
 - Decision and evidence: App `933f0b88`; Console `e61a989a`; 349/349 App static
   checks; 20/20 post-deploy checks; live E2E 14/14 run
   `1784008386698-3a808102`; Console 204 suites / 1,359 tests
@@ -1812,9 +1814,9 @@ Initial planned entries:
   schedule and visit actions, modal stacking, and honest degraded states verified
 - Commit/deployment reference: App data checkpoint `d86bd3b4`, App release
   `933f0b88`, Console contract sync `db2315a8`, Console release `e61a989a`; EAS
-  production update group `1e76aee6-3c44-4b58-8c5f-0d66082c5d68`, Android update
-  `019f5f94-a36b-77ee-ab12-b59d5f972f3f`, iOS update
-  `019f5f94-a36b-7a05-819c-cc680376505f`
+  production update group `679b3c7f-91b9-40d9-9610-ffea9d44c167`, Android update
+  `019f5f94-a816-7d37-b338-59ccbe905332`, iOS update
+  `019f5f94-a816-7b0f-a50d-325d50d26aff`
 - Rollback state: App scheduled visits, async consult, and AI draft remain independent
   production flags; consult media remains false; Console schedule reads/writes and
   scheduled visit reads/actions remain independent gates; additive schema is retained
