@@ -16,10 +16,6 @@ import { buildTrackingViewState } from "./mapTracking.derived";
 import { buildTrackingRuntimeSnapshot } from "./mapTracking.snapshot";
 
 export const TRACKING_TRIAGE_STEP_FLOOR = 7;
-const ARRIVAL_TRANSITION_STATUSES = new Set([
-  EmergencyRequestStatus.IN_PROGRESS,
-  EmergencyRequestStatus.ACCEPTED,
-]);
 
 export function useMapTrackingRuntime({
   hospitals = [],
@@ -33,10 +29,8 @@ export function useMapTrackingRuntime({
   ambulanceTelemetryHealth,
   activeBedBooking,
   pendingApproval,
-  // PULLBACK NOTE: Phase 5b — XState lifecycle flags (optional, fall back to raw status)
-  // OLD: canMarkArrived/canComplete derived from activeAmbulanceTrip?.status comparisons
-  // NEW: isArrived/isPendingApproval passed from context, machine is source of truth
-  isArrived: isArrivedProp,
+  // Pending approval may come from the lifecycle machine. Arrival is read from
+  // the canonical request status below so ETA progress cannot manufacture it.
   isPendingApproval: isPendingApprovalProp,
   isDarkMode,
   setRequestStatus,
@@ -178,13 +172,6 @@ export function useMapTrackingRuntime({
       nowMs,
     });
 
-  // PULLBACK NOTE: Phase 5b — prefer machine flags over raw status string assembly
-  // OLD: resolvedStatus = String(activeAmbulanceTrip?.status || ...).toLowerCase()
-  // NEW: machine flags used for boolean decisions; resolvedStatus kept for display/derived
-  const isArrived =
-    isArrivedProp ??
-    (activeAmbulanceTrip?.status === EmergencyRequestStatus.ARRIVED ||
-      activeBedBooking?.status === EmergencyRequestStatus.ARRIVED);
   const isPendingApproval =
     isPendingApprovalProp ??
     (activeAmbulanceTrip?.status === EmergencyRequestStatus.PENDING_APPROVAL ||
@@ -198,7 +185,7 @@ export function useMapTrackingRuntime({
       ""
     ).toLowerCase(),
   );
-  const canTransitionToArrived = ARRIVAL_TRANSITION_STATUSES.has(resolvedStatus);
+  const isArrived = resolvedStatus === EmergencyRequestStatus.ARRIVED;
   const snapshotRouteInfo = useMemo(() => {
     const liveCoordinates = Array.isArray(scopedLiveRouteInfo?.coordinates)
       ? scopedLiveRouteInfo.coordinates
@@ -209,13 +196,7 @@ export function useMapTrackingRuntime({
       liveCoordinates.length >= 2;
     return hasLiveRouteInfo ? scopedLiveRouteInfo : routeInfo;
   }, [scopedLiveRouteInfo, routeInfo]);
-  const shouldShowArrivedStage = Boolean(
-    isArrived ||
-      (!isPendingApproval &&
-        canTransitionToArrived &&
-        (ambulanceComputedStatus === "Arrived" ||
-          activeMapRequest?.canConfirmArrival)),
-  );
+  const shouldShowArrivedStage = Boolean(isArrived);
 
   const trackingSnapshot = useMemo(
     () =>

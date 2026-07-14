@@ -3,6 +3,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
+import { useQueryAppStateFocus } from "./useQueryAppStateFocus";
 
 /**
  * QueryProvider
@@ -11,6 +12,8 @@ import {
  * Configured for emergency flow with optimistic updates and background refetching.
  */
 export function QueryProvider({ children }) {
+  useQueryAppStateFocus();
+
   const queryClient = useMemo(
     () =>
       new QueryClient({

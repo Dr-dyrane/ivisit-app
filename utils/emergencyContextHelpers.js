@@ -64,6 +64,7 @@ export const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
     ageSeconds: null,
     ageLabel: null,
     lastUpdateAt: null,
+    leaseExpiresAt: null,
     hasResponderLocation: false,
     staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
     lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,
@@ -79,27 +80,33 @@ export const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
   const hasResponderLocation = !!(
     trip?.currentResponderLocation || trip?.assignedAmbulance?.location
   );
-  const rawTelemetryTs = trip?.responderTelemetryAt ?? trip?.updatedAt ?? null;
+  const rawTelemetryTs =
+    trip?.responderLocationReceivedAt ?? trip?.responderTelemetryAt ?? null;
+  const rawLeaseExpiresAt = trip?.responderTelemetryLeaseExpiresAt ?? null;
   const telemetryTsMs = parseTimestampMs(rawTelemetryTs);
-  const startedAtMs = parseTimestampMs(trip?.startedAt ?? trip?.createdAt);
+  const leaseExpiresAtMs = parseTimestampMs(rawLeaseExpiresAt);
 
   if (!isTrackedStatus || !hasResponderLocation || !telemetryTsMs) {
-    return { ...inactive, lastUpdateAt: rawTelemetryTs, hasResponderLocation };
+    return {
+      ...inactive,
+      lastUpdateAt: rawTelemetryTs,
+      leaseExpiresAt: rawLeaseExpiresAt,
+      hasResponderLocation,
+    };
   }
 
-  const effectiveTelemetryTsMs =
-    Number.isFinite(startedAtMs) && startedAtMs > telemetryTsMs
-      ? startedAtMs
-      : telemetryTsMs;
-  const ageMs = Math.max(0, nowMs - effectiveTelemetryTsMs);
+  const ageMs = Math.max(0, nowMs - telemetryTsMs);
   const ageSeconds = Math.floor(ageMs / 1000);
   const ageLabel = formatTelemetryAge(ageSeconds);
-  const state =
-    ageMs > TELEMETRY_LOST_THRESHOLD_MS
-      ? "lost"
-      : ageMs > TELEMETRY_STALE_THRESHOLD_MS
-        ? "stale"
-        : "live";
+  const leaseExpired =
+    Number.isFinite(leaseExpiresAtMs) && nowMs > leaseExpiresAtMs;
+  const state = ageMs > TELEMETRY_LOST_THRESHOLD_MS
+    ? "lost"
+    : leaseExpired ||
+        (!Number.isFinite(leaseExpiresAtMs) &&
+          ageMs > TELEMETRY_STALE_THRESHOLD_MS)
+      ? "stale"
+      : "live";
 
   return {
     state,
@@ -107,6 +114,7 @@ export const deriveAmbulanceTelemetryHealth = (trip, nowMs = Date.now()) => {
     ageSeconds,
     ageLabel,
     lastUpdateAt: rawTelemetryTs,
+    leaseExpiresAt: rawLeaseExpiresAt,
     hasResponderLocation,
     staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
     lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,

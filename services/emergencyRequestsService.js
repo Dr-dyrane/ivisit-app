@@ -1,6 +1,5 @@
 import { database, StorageKeys } from "../database";
 import { supabase } from "./supabase";
-import { notificationDispatcher } from "./notificationDispatcher";
 import { calculateEmergencyCost, checkInsuranceCoverage } from "./pricingService";
 import { v4 as uuidv4 } from "uuid";
 import { isValidUUID } from "./displayIdService";
@@ -176,6 +175,13 @@ const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
     responderVehiclePlate: r.responder_vehicle_plate,
     responderLocation: r.responder_location,
     responderHeading: r.responder_heading,
+    responderLocationAccuracyMeters: r.responder_location_accuracy_meters ?? null,
+    responderLocationObservedAt: r.responder_location_observed_at ?? null,
+    responderLocationReceivedAt: r.responder_location_received_at ?? null,
+    responderTelemetrySequence: r.responder_telemetry_sequence ?? null,
+    responderTelemetryLeaseExpiresAt:
+        r.responder_telemetry_lease_expires_at ?? null,
+    patientAcknowledgedArrivalAt: r.patient_acknowledged_arrival_at ?? null,
     patientLocation: r.patient_location,
     patientHeading: r.patient_heading,
 });
@@ -288,8 +294,8 @@ export const emergencyRequestsService = {
                 paymentMethod?.is_wallet === true ||
                 normalizedMethod === 'wallet' ||
                 normalizedMethod.includes('wallet');
-            const deferDispatchUntilPayment =
-                request.deferDispatchUntilPayment === true && !isCash && !isWallet;
+            const isCard = !isCash && !isWallet;
+            const deferDispatchUntilPayment = isCard;
             const total = parseFloat(request.total_cost || request.totalCost || 0);
 
             console.log('[emergencyRequestsService] Creating fluid request via v4 RPC:', {
@@ -356,7 +362,10 @@ export const emergencyRequestsService = {
                 updatedAt: now,
                 status: data.emergency_status,
                 requiresApproval: data.requires_approval,
-                awaitsPaymentConfirmation: data.awaits_payment_confirmation === true,
+                awaitsPaymentConfirmation:
+                    isCard || data.awaits_payment_confirmation === true,
+                requiresWalletSettlement:
+                    isWallet || data.requires_wallet_settlement === true,
                 paymentStatus: data.payment_status || null,
             };
         } else {
@@ -396,6 +405,16 @@ export const emergencyRequestsService = {
         const { data: { user } } = await supabase.auth.getUser();
         const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
+        const requestedStatus = updates.status === undefined
+            ? null
+            : canonicalizeEmergencyStatus(updates.status, null);
+
+        if (
+            requestedStatus !== null &&
+            requestedStatus !== EmergencyRequestStatus.CANCELLED
+        ) {
+            throw new Error('Patients may only cancel an emergency request');
+        }
 
         if (user) {
             const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
@@ -405,8 +424,8 @@ export const emergencyRequestsService = {
             }
 
             const rpcPayload = {};
-            if (updates.status !== undefined) {
-                rpcPayload.status = canonicalizeEmergencyStatus(updates.status, null);
+            if (requestedStatus !== null) {
+                rpcPayload.status = requestedStatus;
             }
             if (updates.patientLocation !== undefined) {
                 rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;
@@ -474,26 +493,11 @@ export const emergencyRequestsService = {
     },
 
     async setStatus(id, status) {
-        const nextStatus =
-            status === EmergencyRequestStatus.CANCELLED ||
-                status === EmergencyRequestStatus.COMPLETED ||
-                status === EmergencyRequestStatus.ACCEPTED ||
-                status === EmergencyRequestStatus.ARRIVED
-                ? status
-                : EmergencyRequestStatus.IN_PROGRESS;
-
-        const result = await this.update(id, { status: nextStatus });
-
-        // Dispatch notification
-        try {
-            const request = await this.getActive();
-            if (request && (String(request.id) === String(id) || String(request.requestId) === String(id))) {
-                await notificationDispatcher.dispatchEmergencyUpdate(request, nextStatus);
-            }
-        } catch (e) {
-            console.warn("Failed to dispatch emergency update:", e);
+        if (status !== EmergencyRequestStatus.CANCELLED) {
+            throw new Error('Patients may only cancel an emergency request');
         }
 
+        const result = await this.update(id, { status });
         return result;
     },
 
@@ -516,6 +520,57 @@ export const emergencyRequestsService = {
             console.warn("[emergencyRequestsService] updateTriage failed (non-blocking):", error);
             return null;
         }
+    },
+
+    async getOwnedById(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !id) return null;
+
+        const requestId = String(id);
+        const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
+        if (!resolvedRequestId) return null;
+
+        const { data, error } = await supabase
+            .from('emergency_requests')
+            .select('*')
+            .eq('id', resolvedRequestId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data ? mapEmergencyRequestRow(data) : null;
+    },
+
+    async acknowledgeResponderArrival(id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const requestId = String(id ?? '');
+        const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
+        if (!resolvedRequestId) {
+            throw new Error('Emergency request not found');
+        }
+
+        const { data, error } = await supabase.rpc(
+            'patient_acknowledge_responder_arrival',
+            { p_request_id: resolvedRequestId }
+        );
+        if (error) throw error;
+        if (!data?.success) {
+            throw new Error(data?.error || 'Could not acknowledge responder arrival');
+        }
+
+        return {
+            success: true,
+            requestId: data.request_id || resolvedRequestId,
+            patientAcknowledgedArrivalAt:
+                data.acknowledged_at ||
+                data.patient_acknowledged_arrival_at ||
+                null,
+            status:
+                data.request_status || data.status || data.request?.status || null,
+            request: data.request ? mapEmergencyRequestRow(data.request) : null,
+        };
     },
 
     async getActive() {

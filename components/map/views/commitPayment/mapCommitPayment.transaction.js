@@ -51,6 +51,14 @@ export function getCommitPaymentMethodKind(paymentMethod) {
 	return MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
 }
 
+export function requiresSignedCardConfirmation(methodKind) {
+	return methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
+}
+
+export function requiresWalletSettlement(methodKind) {
+	return methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.WALLET;
+}
+
 export function isCommitPaymentIdleState(submissionState) {
 	return submissionState?.kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE;
 }
@@ -83,6 +91,7 @@ export function validateCommitPaymentSubmitContract({
 	paymentUnsupportedMessage = "Payment is not ready yet.",
 	stripePaymentMethodId = null,
 	totalCostValue = null,
+	demoCashOnly = false,
 }) {
 	if (!hospital?.id) {
 		return {
@@ -118,11 +127,11 @@ export function validateCommitPaymentSubmitContract({
 
 	const methodKind = getCommitPaymentMethodKind(selectedPaymentMethod);
 
-	if (methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.WALLET) {
+	if (demoCashOnly && methodKind !== MAP_COMMIT_PAYMENT_METHOD_KINDS.CASH) {
 		return {
 			ok: false,
 			level: "error",
-			message: "Choose card or cash for this request.",
+			message: "Demo checkout uses the cash approval flow.",
 		};
 	}
 
@@ -135,13 +144,14 @@ export function validateCommitPaymentSubmitContract({
 	}
 
 	if (
-		methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD &&
+		(methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD ||
+			methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.WALLET) &&
 		!Number.isFinite(totalCostValue)
 	) {
 		return {
 			ok: false,
 			level: "error",
-			message: "Could not lock the card total right now. Try again.",
+			message: "Could not lock the payment total right now. Try again.",
 		};
 	}
 
@@ -159,6 +169,8 @@ export default {
 	createCommitPaymentSubmissionState,
 	getCommitPaymentRequestIdentifiers,
 	getCommitPaymentMethodKind,
+	requiresSignedCardConfirmation,
+	requiresWalletSettlement,
 	isCommitPaymentIdleState,
 	isCommitPaymentDismissibleState,
 	isCommitPaymentFailureState,

@@ -200,13 +200,11 @@ function resolveHeaderDistanceLabel({
 	etaSeconds,
 	startedAt,
 	status,
-	etaElapsed,
 	nowMs,
 }) {
 	const isArrivedOrComplete =
 		status === EmergencyRequestStatus.ARRIVED ||
-		status === EmergencyRequestStatus.COMPLETED ||
-		etaElapsed;
+		status === EmergencyRequestStatus.COMPLETED;
 	if (isArrivedOrComplete) {
 		return "0 m";
 	}
@@ -251,8 +249,8 @@ function resolveStatusLabel({
 
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
 		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
-		if (status === EmergencyRequestStatus.ARRIVED) return "Complete";
-		if (etaElapsed) return "Arrived";
+		if (status === EmergencyRequestStatus.ARRIVED) return "Arrived";
+		if (etaElapsed) return "Arriving";
 		const etaLabel = formatHeaderEtaLabel(etaSeconds, startedAt, nowMs);
 		if (etaLabel) return etaLabel;
 		if (telemetryState === "lost") return "Tracking lost";
@@ -383,11 +381,11 @@ export function buildActiveMapRequestModel({
 		etaSeconds,
 		startedAt,
 		status,
-		etaElapsed,
 		nowMs,
 	});
 	const currentStatusForMetrics = status || "";
 	const minuteValue =
+		(kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE && etaElapsed) ||
 		currentStatusForMetrics === EmergencyRequestStatus.ARRIVED ||
 		currentStatusForMetrics === EmergencyRequestStatus.COMPLETED ||
 		statusLabel === "Arrived" ||
@@ -451,20 +449,11 @@ export function buildActiveMapRequestModel({
 		telemetryState,
 		canConfirmArrival:
 			kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE &&
-			etaElapsed &&
-			(status === EmergencyRequestStatus.IN_PROGRESS ||
-				status === EmergencyRequestStatus.ACCEPTED),
-		canCompleteAmbulance:
-			kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE &&
+			!record?.patientAcknowledgedArrivalAt &&
 			status === EmergencyRequestStatus.ARRIVED,
-		canCompleteBed:
-			kind === MAP_ACTIVE_REQUEST_KINDS.BED &&
-			status === EmergencyRequestStatus.ARRIVED,
-		canCheckInBed:
-			kind === MAP_ACTIVE_REQUEST_KINDS.BED &&
-			etaElapsed &&
-			status !== EmergencyRequestStatus.ARRIVED &&
-			status !== EmergencyRequestStatus.COMPLETED,
+		canCompleteAmbulance: false,
+		canCompleteBed: false,
+		canCheckInBed: false,
 	};
 }
 

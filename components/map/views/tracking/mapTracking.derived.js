@@ -192,12 +192,13 @@ export function buildTrackingViewState({
           bedStatus === "Ready"
           ? "Bed ready"
           : "Bed reserved"
-        : resolvedStatus === EmergencyRequestStatus.COMPLETED ||
-            resolvedStatus === EmergencyRequestStatus.ARRIVED
+        : resolvedStatus === EmergencyRequestStatus.COMPLETED
           ? "Complete"
-          : ambulanceComputedStatus === "Arrived"
+          : resolvedStatus === EmergencyRequestStatus.ARRIVED
             ? "Arrived"
-            : "En route";
+            : ambulanceComputedStatus === "Arriving"
+              ? "Arriving"
+              : "En route";
   const sheetSubtitle = hospitalName;
   const sheetTitleDisplay = toTitleCaseLabel(sheetTitle);
   const crewCountLabel =

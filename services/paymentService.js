@@ -534,21 +534,29 @@ export const paymentService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const amount = Number(cost?.totalCost ?? cost?.total_cost);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error('Wallet payment total is invalid');
+      }
+
       const { data, error } = await supabase.rpc('process_wallet_payment', {
         p_user_id: user.id,
         p_organization_id: organizationId,
         p_emergency_request_id: emergencyRequestId,
-        p_amount: cost.totalCost,
-        p_currency: cost.currency || 'USD'
+        p_amount: amount,
+        p_currency: cost?.currency || 'USD'
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error || 'Wallet payment failed');
+      if (!data?.success) throw new Error(data?.error || 'Wallet payment failed');
 
       return {
         success: true,
         paymentId: data.payment_id,
-        newBalance: data.new_balance
+        newBalance: data.new_balance,
+        paymentStatus: data.payment_status || null,
+        requestStatus: data.request_status || data.emergency_status || null,
+        request: data.request || null,
       };
     } catch (error) {
       console.error('Error processing wallet payment:', error);
@@ -1098,33 +1106,6 @@ export const paymentService = {
 
       console.log('[paymentService] ✅ Cash payment approved:', data);
 
-      // Notify the patient (non-blocking)
-      try {
-        const { notificationDispatcher } = await import('./notificationDispatcher');
-        // Look up patient user_id from the emergency request
-        const { data: reqData } = await supabase
-          .from('emergency_requests')
-          .select('user_id, hospital_name, service_type, display_id')
-          .eq('id', requestId)
-          .single();
-
-        if (reqData) {
-          await notificationDispatcher.dispatchPaymentStatusToPatient(
-            reqData.user_id,
-            'approved',
-            {
-              paymentId,
-              requestId,
-              hospitalName: reqData.hospital_name,
-              serviceType: reqData.service_type,
-              displayId: reqData.display_id,
-            }
-          );
-        }
-      } catch (notifErr) {
-        console.warn('[paymentService] Patient notification failed (non-blocking):', notifErr);
-      }
-
       return data;
     } catch (error) {
       console.error('[paymentService] approveCashPayment error:', error);
@@ -1184,32 +1165,6 @@ export const paymentService = {
       }
 
       console.log('[paymentService] ✅ Cash payment declined:', data);
-
-      // Notify the patient (non-blocking)
-      try {
-        const { notificationDispatcher } = await import('./notificationDispatcher');
-        const { data: reqData } = await supabase
-          .from('emergency_requests')
-          .select('user_id, hospital_name, service_type, display_id')
-          .eq('id', requestId)
-          .single();
-
-        if (reqData) {
-          await notificationDispatcher.dispatchPaymentStatusToPatient(
-            reqData.user_id,
-            'declined',
-            {
-              paymentId,
-              requestId,
-              hospitalName: reqData.hospital_name,
-              serviceType: reqData.service_type,
-              displayId: reqData.display_id,
-            }
-          );
-        }
-      } catch (notifErr) {
-        console.warn('[paymentService] Patient notification failed (non-blocking):', notifErr);
-      }
 
       return data;
     } catch (error) {

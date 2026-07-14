@@ -70,7 +70,7 @@ const hasSameRequestIdentity = (a, b) => {
  * queryFn to avoid silent drops. Any changes here must be mirrored there until
  * useEmergencyServerSync is retired.
  */
-async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip, parseEtaToSeconds) {
+export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip, parseEtaToSeconds) {
 	const parsePoint = parsePointGeometry;
 	const isSameAmbulanceTrip = hasSameRequestIdentity(previousAmbulanceTrip, activeAmbulance);
 
@@ -188,10 +188,46 @@ async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbulanceTrip
 						previousAmbulanceTrip?.assignedAmbulance?.heading || 0,
 			  }
 			: previousAmbulanceTrip?.assignedAmbulance || null,
-		currentResponderLocation: loc || previousAmbulanceTrip?.currentResponderLocation || null,
+		currentResponderLocation:
+			loc ||
+			fullAmbulance?.location ||
+			previousAmbulanceTrip?.currentResponderLocation ||
+			null,
 		currentResponderHeading:
 			activeAmbulance.responderHeading ?? previousAmbulanceTrip?.currentResponderHeading ?? null,
-		responderTelemetryAt: activeAmbulance.updatedAt ?? null,
+		responderTelemetryAt:
+			activeAmbulance.responderLocationReceivedAt ??
+			fullAmbulance?.locationReceivedAt ??
+			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetryAt : null) ??
+			null,
+		responderLocationObservedAt:
+			activeAmbulance.responderLocationObservedAt ??
+			fullAmbulance?.locationObservedAt ??
+			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationObservedAt : null) ??
+			null,
+		responderLocationAccuracyMeters:
+			activeAmbulance.responderLocationAccuracyMeters ??
+			fullAmbulance?.locationAccuracyMeters ??
+			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationAccuracyMeters : null) ??
+			null,
+		responderTelemetrySequence:
+			activeAmbulance.responderTelemetrySequence ??
+			fullAmbulance?.telemetrySequence ??
+			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetrySequence : null) ??
+			null,
+		responderTelemetryLeaseExpiresAt:
+			activeAmbulance.responderTelemetryLeaseExpiresAt ??
+			fullAmbulance?.telemetryLeaseExpiresAt ??
+			(isSameAmbulanceTrip
+				? previousAmbulanceTrip?.responderTelemetryLeaseExpiresAt
+				: null) ??
+			null,
+		patientAcknowledgedArrivalAt:
+			activeAmbulance.patientAcknowledgedArrivalAt ??
+			(isSameAmbulanceTrip
+				? previousAmbulanceTrip?.patientAcknowledgedArrivalAt
+				: null) ??
+			null,
 		patientLocation: parsePointGeometry(activeAmbulance.patientLocation),
 		route: preservedRoute.length >= 2 ? preservedRoute : null,
 		updatedAt: activeAmbulance.updatedAt ?? null,
@@ -234,10 +270,10 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 
 			const activeRequests = await emergencyRequestsService.list();
 
-			const activeAmbulance = activeRequests.find(
+			let activeAmbulance = activeRequests.find(
 				(r) => r?.serviceType === "ambulance" && isDispatchedStatus(r?.status)
 			);
-			const activeBed = activeRequests.find(
+			let activeBed = activeRequests.find(
 				(r) => r?.serviceType === "bed" && isDispatchedStatus(r?.status)
 			);
 			// PULLBACK NOTE: Pass 1 raw-status sweep — OLD: "pending_approval" inline  NEW: EmergencyRequestStatus.PENDING_APPROVAL
@@ -248,6 +284,49 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			const storeState = useEmergencyTripStore.getState();
 			const previousAmbulanceTrip = storeState.activeAmbulanceTrip;
 			const previousBedBooking = storeState.activeBedBooking;
+
+			if (
+				!activeAmbulance &&
+				previousAmbulanceTrip &&
+				String(previousAmbulanceTrip.status ?? "").toLowerCase() !==
+					EmergencyRequestStatus.COMPLETED
+			) {
+				const previousRequestId =
+					previousAmbulanceTrip.id ?? previousAmbulanceTrip.requestId ?? null;
+				const latestRequest = previousRequestId
+					? await emergencyRequestsService.getOwnedById(previousRequestId)
+					: null;
+				if (
+					latestRequest?.serviceType === "ambulance" &&
+					latestRequest?.status === EmergencyRequestStatus.COMPLETED &&
+					hasSameRequestIdentity(previousAmbulanceTrip, latestRequest)
+				) {
+					activeAmbulance = latestRequest;
+				}
+			}
+
+			if (
+				!activeBed &&
+				previousBedBooking &&
+				String(previousBedBooking.status ?? "").toLowerCase() !==
+					EmergencyRequestStatus.COMPLETED
+			) {
+				const previousRequestId =
+					previousBedBooking.id ??
+					previousBedBooking.requestId ??
+					previousBedBooking.bookingId ??
+					null;
+				const latestRequest = previousRequestId
+					? await emergencyRequestsService.getOwnedById(previousRequestId)
+					: null;
+				if (
+					latestRequest?.serviceType === "bed" &&
+					latestRequest?.status === EmergencyRequestStatus.COMPLETED &&
+					hasSameRequestIdentity(previousBedBooking, latestRequest)
+				) {
+					activeBed = latestRequest;
+				}
+			}
 
 			// Build normalized ambulance trip — preserves ETA/route from previous snapshot
 			const ambulanceTrip = activeAmbulance
@@ -332,10 +411,9 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 	// from a previous server event or from payment completion. We must never overwrite
 	// good data with incomplete data.
 	//
-	// PULLBACK NOTE: Terminal state preservation — query filters by isActiveStatus
-	// which excludes COMPLETED/CANCELLED. When a trip completes, query returns null
-	// which would wipe the hero card data before rating. We preserve terminal-state
-	// trips in the store until an explicit stopAmbulanceTrip() is called.
+	// Active list reads exclude terminal rows. The query fetches the current request
+	// by id to observe missed completion events, then preserves terminal snapshots
+	// until an explicit stop action clears them.
 	const isTerminalStatus = (status) =>
 		status === "completed" ||
 		status === "cancelled" ||

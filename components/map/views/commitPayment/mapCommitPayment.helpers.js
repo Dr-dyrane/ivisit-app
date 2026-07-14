@@ -267,6 +267,14 @@ export function buildCommitPaymentCompletionPayload({
 			responderVehicleType ||
 			responderVehiclePlate,
 	);
+	const status =
+		result?.requestStatus ??
+		result?.request_status ??
+		result?.emergencyStatus ??
+		result?.emergency_status ??
+		requestRow?.status ??
+		result?.status ??
+		null;
 	return {
 		success: true,
 		id: canonicalRequestId,
@@ -299,6 +307,19 @@ export function buildCommitPaymentCompletionPayload({
 		bedType: initiatedRequest?.bedType || null,
 		bedNumber: initiatedRequest?.bedNumber || null,
 		serviceType,
+		status,
+		responderLocationReceivedAt:
+			result?.responderLocationReceivedAt ??
+			requestRow?.responder_location_received_at ??
+			null,
+		responderTelemetryLeaseExpiresAt:
+			result?.responderTelemetryLeaseExpiresAt ??
+			requestRow?.responder_telemetry_lease_expires_at ??
+			null,
+		patientAcknowledgedArrivalAt:
+			result?.patientAcknowledgedArrivalAt ??
+			requestRow?.patient_acknowledged_arrival_at ??
+			null,
 		// PULLBACK NOTE: UX-C PT-11 — fabricated ETA fallback removed (patient safety)
 		// OLD: result?.estimatedArrival || hospital?.eta || "8 mins"
 		// NEW: null — caller must handle null ETA with "Calculating…" display or omit pill

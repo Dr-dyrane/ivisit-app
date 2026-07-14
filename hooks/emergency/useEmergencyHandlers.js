@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import * as Haptics from "expo-haptics";
-import { NOTIFICATION_PRIORITY, NOTIFICATION_TYPES } from "../../constants/notifications";
-import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
+import {
+	emergencyRequestsService,
+	EmergencyRequestStatus,
+} from "../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../constants/visits";
 
-const ARRIVAL_TRANSITION_STATUSES = new Set([
-	EmergencyRequestStatus.IN_PROGRESS,
-	EmergencyRequestStatus.ACCEPTED,
+const ARRIVAL_ACKNOWLEDGEMENT_STATUSES = new Set([
+	EmergencyRequestStatus.ARRIVED,
 ]);
 
 export const useEmergencyHandlers = ({
@@ -14,13 +15,9 @@ export const useEmergencyHandlers = ({
 	activeBedBooking,
 	setRequestStatus,
 	cancelVisit,
-	completeVisit,
 	updateVisit,
-	setAmbulanceTripStatus,
-	setBedBookingStatus,
 	stopAmbulanceTrip,
 	stopBedBooking,
-	addNotification,
 	onSheetSnap,
 }) => {
 	const setVisitLifecycle = useCallback(
@@ -94,43 +91,21 @@ export const useEmergencyHandlers = ({
 	);
 
 	const onCompleteAmbulanceTrip = useCallback(
-		async (options = {}) => {
+		async () => {
 			if (!activeAmbulanceTrip?.requestId) return;
-			const deferCleanup = options?.deferCleanup === true;
-
-			const result = await createBaseHandler("CompleteAmbulanceTrip", {
-				requests: [
-					setRequestStatus(
-						activeAmbulanceTrip.requestId,
-						EmergencyRequestStatus.COMPLETED
-					),
-					completeVisit(activeAmbulanceTrip.requestId),
-					setVisitLifecycle(
-						activeAmbulanceTrip.requestId,
-						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
-					),
-				],
-				onSuccess: () => {
-					if (typeof setAmbulanceTripStatus === "function") {
-						setAmbulanceTripStatus(EmergencyRequestStatus.COMPLETED);
-					}
-				},
-				cleanup: deferCleanup ? undefined : stopAmbulanceTrip,
-			})();
-
-			if (result?.ok) {
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			if (
+				String(activeAmbulanceTrip.status ?? "").toLowerCase() !==
+				EmergencyRequestStatus.COMPLETED
+			) {
+				return {
+					ok: false,
+					pending: true,
+					error: new Error("Waiting for responder completion."),
+				};
 			}
-			return result;
+			return { ok: true, backendCompleted: true };
 		},
-		[
-			activeAmbulanceTrip,
-			createBaseHandler,
-			setRequestStatus,
-			completeVisit,
-			setAmbulanceTripStatus,
-			stopAmbulanceTrip,
-		]
+		[activeAmbulanceTrip]
 	);
 
 	const onCancelBedBooking = useCallback(
@@ -154,103 +129,58 @@ export const useEmergencyHandlers = ({
 			}
 			return result;
 		},
-		[activeBedBooking, createBaseHandler, setRequestStatus, cancelVisit, addNotification, stopBedBooking]
+		[activeBedBooking, createBaseHandler, setRequestStatus, cancelVisit, stopBedBooking]
 	);
 
 	const onCompleteBedBooking = useCallback(
-		async (options = {}) => {
+		async () => {
 			if (!activeBedBooking?.requestId) return;
-			const deferCleanup = options?.deferCleanup === true;
-
-			const result = await createBaseHandler("CompleteBedBooking", {
-				requests: [
-					setRequestStatus(
-						activeBedBooking.requestId,
-						EmergencyRequestStatus.COMPLETED
-					),
-					completeVisit(activeBedBooking.requestId),
-					setVisitLifecycle(
-						activeBedBooking.requestId,
-						EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING
-					),
-				],
-				onSuccess: () => {
-					if (typeof setBedBookingStatus === "function") {
-						setBedBookingStatus(EmergencyRequestStatus.COMPLETED);
-					}
-				},
-				cleanup: deferCleanup ? undefined : stopBedBooking,
-			})();
-
-			if (result?.ok) {
-				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			if (
+				String(activeBedBooking.status ?? "").toLowerCase() !==
+				EmergencyRequestStatus.COMPLETED
+			) {
+				return {
+					ok: false,
+					pending: true,
+					error: new Error("Waiting for hospital completion."),
+				};
 			}
-			return result;
+			return { ok: true, backendCompleted: true };
 		},
-		[
-			activeBedBooking,
-			createBaseHandler,
-			setRequestStatus,
-			completeVisit,
-			addNotification,
-			setBedBookingStatus,
-			stopBedBooking,
-		]
+		[activeBedBooking]
 	);
 
 	const onMarkAmbulanceArrived = useCallback(async () => {
 		if (!activeAmbulanceTrip?.requestId) return;
 		const currentStatus = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
-		if (!ARRIVAL_TRANSITION_STATUSES.has(currentStatus)) {
+		if (!ARRIVAL_ACKNOWLEDGEMENT_STATUSES.has(currentStatus)) {
 			console.warn(
-				"[EmergencyHandlers] blocked arrival transition for status:",
+				"[EmergencyHandlers] blocked arrival acknowledgement for status:",
 				currentStatus || "unknown",
 			);
 			return { ok: false, error: new Error("Arrival is not available yet.") };
 		}
-		const result = await createBaseHandler("MarkAmbulanceArrived", {
-			requests: [
-				setRequestStatus(activeAmbulanceTrip.requestId, EmergencyRequestStatus.ARRIVED),
-				setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.ARRIVED),
-			],
-			onSuccess: () => {
-				if (typeof setAmbulanceTripStatus === "function") {
-					setAmbulanceTripStatus(EmergencyRequestStatus.ARRIVED);
-				}
-			},
-		})();
-		if (result?.ok) {
+		try {
+			const acknowledgement =
+				await emergencyRequestsService.acknowledgeResponderArrival(
+					activeAmbulanceTrip.requestId,
+				);
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+			return { ok: true, acknowledgement };
+		} catch (error) {
+			console.error("[EmergencyHandlers] arrival acknowledgement failed:", error);
+			return { ok: false, error };
 		}
-		return result;
-	}, [activeAmbulanceTrip, createBaseHandler, setRequestStatus, setVisitLifecycle, setAmbulanceTripStatus]);
+	}, [activeAmbulanceTrip]);
 
 	const onMarkBedOccupied = useCallback(async () => {
 		if (!activeBedBooking?.requestId) return;
-		const currentStatus = String(activeBedBooking?.status ?? "").toLowerCase();
-		if (!ARRIVAL_TRANSITION_STATUSES.has(currentStatus)) {
-			console.warn(
-				"[EmergencyHandlers] blocked bed check-in transition for status:",
-				currentStatus || "unknown",
-			);
-			return { ok: false, error: new Error("Check-in is not available yet.") };
-		}
-		const result = await createBaseHandler("MarkBedOccupied", {
-			requests: [
-				setRequestStatus(activeBedBooking.requestId, EmergencyRequestStatus.ARRIVED),
-				setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.OCCUPIED),
-			],
-			onSuccess: () => {
-				if (typeof setBedBookingStatus === "function") {
-					setBedBookingStatus(EmergencyRequestStatus.ARRIVED);
-				}
-			},
-		})();
-		if (result?.ok) {
-			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-		}
-		return result;
-	}, [activeBedBooking, createBaseHandler, setRequestStatus, setVisitLifecycle, setBedBookingStatus]);
+		return {
+			ok: false,
+			pending: true,
+			error: new Error("Waiting for hospital check-in confirmation."),
+		};
+	}, [activeBedBooking]);
 
 	return {
 		onCancelAmbulanceTrip,

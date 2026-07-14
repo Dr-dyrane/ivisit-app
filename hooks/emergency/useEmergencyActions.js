@@ -130,6 +130,9 @@ export function useEmergencyActions({
 
       const now = Date.now();
       const nowIso = new Date(now).toISOString();
+      const leaseExpiresAt = new Date(
+        now + DEMO_RESPONDER_HEARTBEAT_MS * 3,
+      ).toISOString();
       const explicitRoute = normalizeRouteCoordinates(trip?.route);
       const reversedRoute =
         explicitRoute.length >= 2 ? [...explicitRoute].reverse() : [];
@@ -147,6 +150,7 @@ export function useEmergencyActions({
       if (syntheticRoute.length < 2) {
         patchActiveAmbulanceTrip({
           responderTelemetryAt: nowIso,
+          responderTelemetryLeaseExpiresAt: leaseExpiresAt,
           updatedAt: nowIso,
         });
         return;
@@ -164,6 +168,7 @@ export function useEmergencyActions({
       if (!projected?.coordinate) {
         patchActiveAmbulanceTrip({
           responderTelemetryAt: nowIso,
+          responderTelemetryLeaseExpiresAt: leaseExpiresAt,
           updatedAt: nowIso,
         });
         return;
@@ -186,7 +191,11 @@ export function useEmergencyActions({
         previousHeading === null ||
         Math.abs(previousHeading - projected.heading) > 0.1;
 
-      const updates = { responderTelemetryAt: nowIso, updatedAt: nowIso };
+      const updates = {
+        responderTelemetryAt: nowIso,
+        responderTelemetryLeaseExpiresAt: leaseExpiresAt,
+        updatedAt: nowIso,
+      };
       if (locationChanged)
         updates.currentResponderLocation = projected.coordinate;
       if (headingChanged) updates.currentResponderHeading = projected.heading;
@@ -293,7 +302,28 @@ export function useEmergencyActions({
         triageProgress:
           trip?.triageProgress ?? triageSnapshot?.progress ?? null,
         responderTelemetryAt:
-          trip?.responderTelemetryAt ?? trip?.updatedAt ?? null,
+          trip?.responderLocationReceivedAt ??
+          trip?.responderTelemetryAt ??
+          assignedAmbulance?.locationReceivedAt ??
+          null,
+        responderLocationObservedAt:
+          trip?.responderLocationObservedAt ??
+          assignedAmbulance?.locationObservedAt ??
+          null,
+        responderLocationAccuracyMeters:
+          trip?.responderLocationAccuracyMeters ??
+          assignedAmbulance?.locationAccuracyMeters ??
+          null,
+        responderTelemetrySequence:
+          trip?.responderTelemetrySequence ??
+          assignedAmbulance?.telemetrySequence ??
+          null,
+        responderTelemetryLeaseExpiresAt:
+          trip?.responderTelemetryLeaseExpiresAt ??
+          assignedAmbulance?.telemetryLeaseExpiresAt ??
+          null,
+        patientAcknowledgedArrivalAt:
+          trip?.patientAcknowledgedArrivalAt ?? null,
         updatedAt: trip?.updatedAt ?? null,
       };
 

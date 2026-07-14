@@ -28,10 +28,12 @@ export const selectAmbulanceTelemetryHealth = (state, nowMs = Date.now()) => {
   }
   
   const status = String(trip.status ?? '').toLowerCase();
-  const isTracked = ['accepted', 'in_progress'].includes(status);
+  const isTracked = ['accepted', 'in_progress', 'arrived'].includes(status);
   const hasLocation = !!(trip.currentResponderLocation || trip.assignedAmbulance?.location);
-  const rawTs = trip.responderTelemetryAt ?? trip.updatedAt ?? null;
+  const rawTs = trip.responderLocationReceivedAt ?? trip.responderTelemetryAt ?? null;
+  const leaseExpiresAt = trip.responderTelemetryLeaseExpiresAt ?? null;
   const tsMs = rawTs ? Date.parse(rawTs) : null;
+  const leaseExpiresAtMs = leaseExpiresAt ? Date.parse(leaseExpiresAt) : null;
   
   if (!isTracked || !hasLocation || !tsMs) {
     return createInactiveTelemetryHealth(rawTs, hasLocation);
@@ -43,7 +45,10 @@ export const selectAmbulanceTelemetryHealth = (state, nowMs = Date.now()) => {
   
   let healthState = 'live';
   if (ageMs > TELEMETRY_LOST_THRESHOLD_MS) healthState = 'lost';
-  else if (ageMs > TELEMETRY_STALE_THRESHOLD_MS) healthState = 'stale';
+  else if (
+    (Number.isFinite(leaseExpiresAtMs) && nowMs > leaseExpiresAtMs) ||
+    (!Number.isFinite(leaseExpiresAtMs) && ageMs > TELEMETRY_STALE_THRESHOLD_MS)
+  ) healthState = 'stale';
   
   return {
     state: healthState,
@@ -51,6 +56,7 @@ export const selectAmbulanceTelemetryHealth = (state, nowMs = Date.now()) => {
     ageSeconds,
     ageLabel,
     lastUpdateAt: rawTs,
+    leaseExpiresAt,
     hasResponderLocation: hasLocation,
     staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
     lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,
@@ -70,8 +76,11 @@ export const selectTripProgress = (state, nowMs = Date.now()) => {
   if (!trip) return { progress: 0, remainingSeconds: null, isComplete: false };
   
   const status = String(trip.status ?? '').toLowerCase();
-  if (status === 'arrived' || status === 'completed') {
+  if (status === 'completed') {
     return { progress: 1, remainingSeconds: 0, isComplete: true };
+  }
+  if (status === 'arrived') {
+    return { progress: 1, remainingSeconds: 0, isComplete: false };
   }
   
   const etaSeconds = Number.isFinite(trip.etaSeconds) ? trip.etaSeconds : null;
@@ -85,7 +94,7 @@ export const selectTripProgress = (state, nowMs = Date.now()) => {
   const remainingSeconds = Math.max(0, Math.round(etaSeconds - elapsedSeconds));
   const progress = Math.min(1, elapsedSeconds / etaSeconds);
   
-  return { progress, remainingSeconds, isComplete: progress >= 1 };
+  return { progress, remainingSeconds, isComplete: false };
 };
 
 export const selectBedProgress = (state, nowMs = Date.now()) => {
@@ -115,28 +124,22 @@ export const selectCanMarkArrived = (state) => {
   const trip = state.activeAmbulanceTrip;
   if (!trip) return false;
   const status = String(trip.status ?? '').toLowerCase();
-  return status === 'in_progress' || status === 'accepted';
+  return status === 'arrived' && !trip.patientAcknowledgedArrivalAt;
 };
 
 export const selectCanCompleteAmbulance = (state) => {
-  const trip = state.activeAmbulanceTrip;
-  if (!trip) return false;
-  const status = String(trip.status ?? '').toLowerCase();
-  return status === 'arrived';
+  void state;
+  return false;
 };
 
 export const selectCanCheckInBed = (state) => {
-  const booking = state.activeBedBooking;
-  if (!booking) return false;
-  const status = String(booking.status ?? '').toLowerCase();
-  return status === 'accepted' || status === 'in_progress';
+  void state;
+  return false;
 };
 
 export const selectCanCompleteBed = (state) => {
-  const booking = state.activeBedBooking;
-  if (!booking) return false;
-  const status = String(booking.status ?? '').toLowerCase();
-  return status === 'occupied' || status === 'arrived';
+  void state;
+  return false;
 };
 
 // React hooks for derived state
@@ -181,6 +184,7 @@ function createInactiveTelemetryHealth(lastUpdateAt = null, hasResponderLocation
     ageSeconds: null,
     ageLabel: null,
     lastUpdateAt,
+    leaseExpiresAt: null,
     hasResponderLocation,
     staleAfterMs: TELEMETRY_STALE_THRESHOLD_MS,
     lostAfterMs: TELEMETRY_LOST_THRESHOLD_MS,

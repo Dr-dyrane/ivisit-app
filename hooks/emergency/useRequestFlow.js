@@ -1,20 +1,13 @@
 import { useCallback, useRef, useMemo, useEffect } from "react";
 import * as Location from "expo-location";
 import {
-  EMERGENCY_VISIT_LIFECYCLE,
-  VISIT_STATUS,
-  VISIT_TYPES,
-} from "../../constants/visits";
-import {
   ACTIVE_EMERGENCY_REQUEST_ERROR_CODE,
   ACTIVE_EMERGENCY_REQUEST_STATUSES,
   emergencyRequestsService,
 } from "../../services/emergencyRequestsService";
 import { DispatchService } from "../../services/dispatchService";
 import { EmergencyRequestStatus } from "../../services/emergencyRequestsService";
-import { usePaymentFlow } from "./usePaymentFlow";
 import { serviceCostService } from "../../services/serviceCostService";
-import { notificationDispatcher } from "../../services/notificationDispatcher";
 import { triageService } from "../../services/triageService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import {
@@ -212,23 +205,6 @@ export const useRequestFlow = (props) => {
     propsRef.current = props;
   }, [props]);
 
-  // Initialize payment flow
-  const paymentFlow = usePaymentFlow();
-
-  // Extract stable refs for use in callbacks
-  const {
-    createRequest,
-    updateRequest,
-    addVisit,
-    updateVisit,
-    setRequestStatus,
-    startAmbulanceTrip,
-    startBedBooking,
-    clearSelectedHospital,
-    hospitals,
-    onRequestComplete,
-  } = props;
-
   const inflightByTypeRef = useRef({ ambulance: false, bed: false });
 
   const blockResult = useCallback((reason, extra) => {
@@ -297,9 +273,7 @@ export const useRequestFlow = (props) => {
         requestHospitalId,
         selectedHospital,
         createRequest,
-        addVisit,
         selectedSpecialty,
-        updateRequest,
         preferences,
         effectiveDemoModeEnabled,
       } = propsRef.current;
@@ -507,8 +481,12 @@ export const useRequestFlow = (props) => {
         const isCashPayment =
           typeof paymentMethodId === "string" &&
           paymentMethodId.toLowerCase().includes("cash");
-        const awaitsPaymentConfirmation =
-          request?.deferDispatchUntilPayment === true && !isCashPayment;
+        const isWalletPayment =
+          request?.paymentMethod?.is_wallet === true ||
+          (typeof paymentMethodId === "string" &&
+            paymentMethodId.toLowerCase().includes("wallet"));
+        const isCardPayment = !isCashPayment && !isWalletPayment;
+        const awaitsPaymentConfirmation = isCardPayment;
 
         console.log("[useRequestFlow] 📋 Creating Emergency Request:", {
           displayId: visitId,
@@ -518,6 +496,8 @@ export const useRequestFlow = (props) => {
           requestedPaymentMethod: requestedPaymentMethodId,
           demoCashApprovalFlow: isDemoCashApprovalFlow,
           isCashPayment,
+          isWalletPayment,
+          isCardPayment,
           awaitsPaymentConfirmation,
           totalCost: costData?.total_cost || costData?.totalCost,
           baseCost: costData?.base_cost,
@@ -565,12 +545,16 @@ export const useRequestFlow = (props) => {
         const displayId = createdRequest?.requestId || visitId;
         const backendRequiresApproval =
           createdRequest?.requiresApproval || false;
-        const requiresApproval = backendRequiresApproval;
+        const requiresApproval = isCashPayment && backendRequiresApproval;
         const backendAwaitsPaymentConfirmation =
-          createdRequest?.awaitsPaymentConfirmation === true;
+          isCardPayment || createdRequest?.awaitsPaymentConfirmation === true;
+        const requiresWalletSettlement =
+          isWalletPayment || createdRequest?.requiresWalletSettlement === true;
         const normalizedPaymentStatus =
           createdRequest?.paymentStatus ||
-          (requiresApproval || backendAwaitsPaymentConfirmation
+          (requiresApproval ||
+          backendAwaitsPaymentConfirmation ||
+          requiresWalletSettlement
             ? "pending"
             : "completed");
         const demoAutoApproveEligible =
@@ -591,38 +575,6 @@ export const useRequestFlow = (props) => {
         // No frontend addVisit() needed — eliminates RLS and UUID errors.
 
         // 💰 CASH APPROVAL: Notify org_admin if payment needs approval
-        if (requiresApproval) {
-          try {
-            // Resolve org ID for notification targeting
-            const orgId = hospital?.organization_id || hospital?.organizationId;
-            await notificationDispatcher.dispatchCashApprovalToOrgAdmins({
-              organizationId: orgId,
-              paymentId: createdRequest.paymentId,
-              requestId: realId,
-              totalAmount: costData?.total_cost || costData?.totalCost || 0,
-              feeAmount: createdRequest.feeAmount || 0,
-              hospitalName:
-                request?.hospitalName || hospital?.name || "Hospital",
-              serviceType: request.serviceType,
-              displayId,
-            });
-
-            // Notify the patient that they're waiting
-            await notificationDispatcher.dispatchEmergencyUpdate(
-              { id: realId },
-              "pending_approval",
-            );
-
-            console.log("[useRequestFlow] 📨 Cash approval notifications sent");
-          } catch (notifError) {
-            // Non-blocking: request was still created successfully
-            console.warn(
-              "[useRequestFlow] Cash approval notification failed (non-blocking):",
-              notifError,
-            );
-          }
-        }
-
         // Non-blocking AI triage lane: collect + persist in parallel without delaying dispatch.
         const triagePersist = propsRef.current?.updateTriage;
         if (typeof triagePersist === "function") {
@@ -706,9 +658,11 @@ export const useRequestFlow = (props) => {
           etaSeconds: computedEtaSeconds,
           requiresApproval,
           awaitsPaymentConfirmation: backendAwaitsPaymentConfirmation,
+          requiresWalletSettlement,
           demoAutoApproveEligible,
           paymentId: createdRequest?.paymentId || null,
           paymentStatus: normalizedPaymentStatus,
+          status: createdRequest?.status || null,
         };
       } catch (err) {
         inflightByTypeRef.current[request.serviceType] = false;
@@ -740,9 +694,6 @@ export const useRequestFlow = (props) => {
         hospitals,
         requestHospitalId,
         selectedHospital,
-        updateRequest,
-        setRequestStatus,
-        updateVisit,
         startAmbulanceTrip,
         startBedBooking,
         clearSelectedHospital,
@@ -782,7 +733,6 @@ export const useRequestFlow = (props) => {
         });
       }
 
-      const nowIso = new Date().toISOString();
       const canonicalRequestId =
         request?.id ??
         request?._realId ??
@@ -799,36 +749,10 @@ export const useRequestFlow = (props) => {
           : `local_${Date.now()}`;
       const runtimeRequestId = mutationRequestId;
       const hospital = hospitals?.find((h) => h?.id === hospitalId) ?? null;
-
-      try {
-        await updateRequest?.(mutationRequestId, {
-          status: EmergencyRequestStatus.ACCEPTED,
-          hospitalId,
-          hospitalName: request?.hospitalName ?? hospital?.name ?? null,
-          specialty: request?.specialty ?? selectedSpecialty ?? null,
-          ambulanceType: request?.ambulanceType ?? null,
-          ambulanceId: request?.ambulanceId ?? null,
-          bedNumber: request?.bedNumber ?? null,
-          bedType: request?.bedType ?? null,
-          bedCount: request?.bedCount ?? null,
-          estimatedArrival: request?.estimatedArrival ?? null,
-        });
-      } catch (err) {
-        try {
-          await setRequestStatus?.(mutationRequestId, EmergencyRequestStatus.ACCEPTED);
-        } catch (e) {}
-      }
-
-      try {
-        // PULLBACK NOTE: PT-G — removed duplicate updateVisit(CONFIRMED) that was immediately
-        // overwritten by MONITORING in the same try block (silent drop — CONFIRMED never observable)
-        // OLD: CONFIRMED → MONITORING (two writes; first is invisible to all subscribers)
-        // NEW: write MONITORING directly — correct terminal state for an accepted dispatch
-        await updateVisit?.(mutationRequestId, {
-          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.MONITORING,
-          lifecycleUpdatedAt: nowIso,
-        });
-      } catch (e) {}
+      const backendStatus = String(
+        request?.status ?? request?.request?.status ?? "",
+      ).toLowerCase();
+      const runtimeStatus = backendStatus || EmergencyRequestStatus.IN_PROGRESS;
 
       if (request.serviceType === "ambulance") {
         const routeEtaSeconds =
@@ -850,12 +774,17 @@ export const useRequestFlow = (props) => {
           hospitalId,
           requestId: runtimeRequestId,
           displayId: displayRequestId ? String(displayRequestId) : runtimeRequestId,
-          status: EmergencyRequestStatus.ACCEPTED,
+          status: runtimeStatus,
           ambulanceId: request?.ambulanceId ?? null,
           ambulanceType: request?.ambulanceType ?? null,
           assignedAmbulance: request?.assignedAmbulance ?? null,
           currentResponderLocation: request?.currentResponderLocation ?? null,
           currentResponderHeading: request?.currentResponderHeading ?? null,
+          responderTelemetryAt: request?.responderLocationReceivedAt ?? null,
+          responderTelemetryLeaseExpiresAt:
+            request?.responderTelemetryLeaseExpiresAt ?? null,
+          patientAcknowledgedArrivalAt:
+            request?.patientAcknowledgedArrivalAt ?? null,
           hospitalCoordinate:
             request?.hospitalCoordinate ?? getHospitalCoordinate(hospital),
           patientLocation: request?.patientLocation ?? null,
@@ -877,7 +806,7 @@ export const useRequestFlow = (props) => {
           hospitalId,
           requestId: runtimeRequestId,
           displayId: displayRequestId ? String(displayRequestId) : runtimeRequestId,
-          status: EmergencyRequestStatus.ACCEPTED,
+          status: runtimeStatus,
           hospitalName: request?.hospitalName ?? hospital?.name ?? null,
           specialty: request?.specialty ?? null,
           bedNumber: request?.bedNumber ?? null,

@@ -27,7 +27,6 @@ import { useToast } from "../../../contexts/ToastContext";
 // Status transition thresholds (progress 0-1)
 const STATUS_THRESHOLDS = {
   APPROACHING: 0.7, // 70% progress = approaching destination
-  ARRIVED: 0.95, // 95% progress = arrived
 };
 
 /**
@@ -39,11 +38,19 @@ function deriveStatusPhase({
   progress,
   tripStatus,
   bookingStatus,
-  canMarkArrived,
 }) {
-  if (isCompleted) return "completed";
-  if (isArrived || canMarkArrived) return "arrived";
-  if (progress >= STATUS_THRESHOLDS.ARRIVED) return "arrived";
+  const normalizedTripStatus = String(tripStatus ?? "").toLowerCase();
+  const normalizedBookingStatus = String(bookingStatus ?? "").toLowerCase();
+  if (
+    isCompleted ||
+    normalizedTripStatus === "completed" ||
+    normalizedBookingStatus === "completed"
+  ) return "completed";
+  if (
+    isArrived ||
+    normalizedTripStatus === "arrived" ||
+    normalizedBookingStatus === "arrived"
+  ) return "arrived";
   if (progress >= STATUS_THRESHOLDS.APPROACHING) return "approaching";
   return "en_route";
 }
@@ -89,7 +96,6 @@ function resolveTrackingVisualRequestKey({
  * @param {Object} params.activeBedBooking - Active bed booking data
  * @param {boolean} params.isArrived - XState arrived flag
  * @param {boolean} params.isPendingApproval - XState pending approval flag
- * @param {boolean} params.canMarkArrived - Arrival confirmation action is available
  * @param {string} params.ambulanceTripProgress - Trip progress value 0-1
  * @param {number} params.nowMs - Current timestamp for animation sync
  */
@@ -102,7 +108,6 @@ export function useMapTrackingStatus({
   isPendingApproval,
   ambulanceTripProgress,
   nowMs,
-  canMarkArrived,
 }) {
   const { showToast } = useToast();
 
@@ -200,12 +205,10 @@ export function useMapTrackingStatus({
       progress: rawProgress,
       tripStatus: activeAmbulanceTrip?.status,
       bookingStatus: activeBedBooking?.status,
-      canMarkArrived,
     });
   }, [
     activeAmbulanceTrip,
     activeBedBooking,
-    canMarkArrived,
     isArrived,
     isPendingApproval,
     rawProgress,

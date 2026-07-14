@@ -66,6 +66,8 @@ import {
   isCommitPaymentDismissibleState,
   isCommitPaymentFailureState,
   isCommitPaymentIdleState,
+  requiresSignedCardConfirmation,
+  requiresWalletSettlement,
   validateCommitPaymentSubmitContract,
 } from "./mapCommitPayment.transaction";
 
@@ -618,6 +620,7 @@ export function useMapCommitPaymentController({
       paymentUnsupportedMessage,
       stripePaymentMethodId,
       totalCostValue,
+      demoCashOnly,
     });
 
     if (!submitContract.ok) {
@@ -637,8 +640,14 @@ export function useMapCommitPaymentController({
     if (submitLockRef.current) return;
     submitLockRef.current = true;
 
-    const isCardSelected =
-      submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CARD;
+    const isCardSelected = requiresSignedCardConfirmation(
+      submitContract.methodKind,
+    );
+    const isWalletSelected = requiresWalletSettlement(
+      submitContract.methodKind,
+    );
+    const isCashSelected =
+      submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CASH;
 
     // UX-D D-6: isSubmitting derived from state machine; PROCESSING_PAYMENT / WAITING_APPROVAL drives UI lock
     setErrorMessage("");
@@ -652,13 +661,13 @@ export function useMapCommitPaymentController({
 
     try {
       let chargeOrganizationId = null;
-      if (isCardSelected) {
+      if (isCardSelected || isWalletSelected) {
         chargeOrganizationId = await paymentService.resolveChargeOrganizationId(
           hospital?.organization_id || hospital?.organizationId || null,
         );
         if (!chargeOrganizationId) {
           const nextMessage =
-            "Card checkout is unavailable for this hospital right now.";
+            "Payment is unavailable for this hospital right now.";
           setTransactionState(
             MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
             transactionRequestIds,
@@ -715,7 +724,7 @@ export function useMapCommitPaymentController({
         initiatedRequest,
       );
 
-      if (initiationResult.requiresApproval) {
+      if (isCashSelected && initiationResult.requiresApproval) {
         const pendingApprovalState = buildPendingApprovalState({
           initiatedRequest,
           result: initiationResult,
@@ -843,7 +852,70 @@ export function useMapCommitPaymentController({
         return;
       }
 
-      if (initiationResult.awaitsPaymentConfirmation) {
+      if (isWalletSelected) {
+        setTransactionState(
+          MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT,
+          transactionRequestIds,
+        );
+
+        const walletResult = await paymentService.processWalletPayment(
+          initiationResult.requestId,
+          chargeOrganizationId,
+          estimatedCost,
+        );
+        await Promise.allSettled([
+          invalidateWalletBalance(),
+          invalidatePaymentMethods(),
+        ]);
+        setTransactionState(
+          MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH,
+          transactionRequestIds,
+        );
+        const settlementResult =
+          await paymentService.waitForEmergencyPaymentSettlement(
+            initiationResult.requestId,
+          );
+
+        if (!settlementResult?.success) {
+          setInfoMessage("Wallet payment is still finalizing dispatch.");
+          showToast("Wallet payment is still finalizing dispatch.", "info");
+          return;
+        }
+
+        const completionPayload = buildCommitPaymentCompletionPayload({
+          initiatedRequest,
+          result: {
+            ...initiationResult,
+            ...walletResult,
+            request: settlementResult.request || walletResult?.request || null,
+            requestId:
+              settlementResult.request?.id || initiationResult.requestId,
+            displayId:
+              settlementResult.request?.display_id || initiationResult.displayId,
+          },
+          hospital,
+        });
+        await handleRequestComplete(completionPayload);
+        await invalidateActiveTrip();
+        setTransactionState(MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED, {
+          displayId: completionPayload.displayId,
+          requestId: completionPayload.requestId,
+        });
+        showToast(
+          isBedFlow
+            ? "Wallet payment received. Booking is live."
+            : "Wallet payment received. Dispatching now.",
+          "success",
+        );
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            onConfirm?.();
+          }
+        }, 800);
+        return;
+      }
+
+      if (isCardSelected) {
         setTransactionState(
           MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PROCESSING_PAYMENT,
           transactionRequestIds,
@@ -1013,10 +1085,13 @@ export function useMapCommitPaymentController({
   }, [
     clearCommitFlow,
     currentLocation,
+    demoCashOnly,
     handleRequestComplete,
     handleRequestInitiated,
     hospital,
     invalidateActiveTrip,
+    invalidatePaymentMethods,
+    invalidateWalletBalance,
     isBedFlow,
     isCombinedFlow,
     isIdleState,

@@ -94,7 +94,7 @@ export function useEmergencyRealtime({
 			return;
 		}
 		const persistedVersion = parseRecordTimestampMs(
-			{ updated_at: activeAmbulanceTrip?.responderTelemetryAt ?? activeAmbulanceTrip?.updatedAt ?? null },
+			{ updated_at: activeAmbulanceTrip?.updatedAt ?? null },
 			0
 		);
 		const currentVersion = activeAmbulanceEventRef.current?.versionMs ?? 0;
@@ -105,7 +105,6 @@ export function useEmergencyRealtime({
 	}, [
 		activeAmbulanceTrip?.id,
 		activeAmbulanceTrip?.requestId,
-		activeAmbulanceTrip?.responderTelemetryAt,
 		activeAmbulanceTrip?.updatedAt,
 		resetAmbulanceEventVersion,
 	]);
@@ -130,7 +129,7 @@ export function useEmergencyRealtime({
 						setActiveBedBooking((prev) => {
 							if (!prev || !matchesTripRecord(prev, newRecord)) return prev;
 							const status = String(newRecord?.status ?? "").toLowerCase();
-							if (status === "completed" || status === "cancelled" || status === "payment_declined") return null;
+							if (status === "cancelled" || status === "payment_declined") return null;
 							return normalizeBedBookingRuntimeState(
 								{
 									...prev,

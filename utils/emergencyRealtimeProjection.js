@@ -1,4 +1,5 @@
 const TERMINAL_EMERGENCY_STATUSES = new Set(["completed", "cancelled", "payment_declined"]);
+const REMOVED_EMERGENCY_STATUSES = new Set(["cancelled", "payment_declined"]);
 
 const parseTimestampMs = (value, fallbackMs = 0) => {
 	if (typeof value === "number" && Number.isFinite(value)) {
@@ -151,7 +152,7 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 	if (!prevTrip || !record) return prevTrip;
 
 	const status = String(record.status ?? "").toLowerCase();
-	if (TERMINAL_EMERGENCY_STATUSES.has(status)) {
+	if (REMOVED_EMERGENCY_STATUSES.has(status)) {
 		return null;
 	}
 
@@ -214,7 +215,30 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 			: (prevTrip.currentResponderHeading ?? null),
 		estimatedArrival: nextEstimatedArrival,
 		etaSeconds: nextEtaSeconds,
-		responderTelemetryAt: record.updated_at ?? prevTrip.responderTelemetryAt ?? null,
+		responderTelemetryAt:
+			record.responder_location_received_at ??
+			prevTrip.responderTelemetryAt ??
+			null,
+		responderLocationObservedAt:
+			record.responder_location_observed_at ??
+			prevTrip.responderLocationObservedAt ??
+			null,
+		responderLocationAccuracyMeters:
+			record.responder_location_accuracy_meters ??
+			prevTrip.responderLocationAccuracyMeters ??
+			null,
+		responderTelemetrySequence:
+			record.responder_telemetry_sequence ??
+			prevTrip.responderTelemetrySequence ??
+			null,
+		responderTelemetryLeaseExpiresAt:
+			record.responder_telemetry_lease_expires_at ??
+			prevTrip.responderTelemetryLeaseExpiresAt ??
+			null,
+		patientAcknowledgedArrivalAt:
+			record.patient_acknowledged_arrival_at ??
+			prevTrip.patientAcknowledgedArrivalAt ??
+			null,
 		updatedAt: record.updated_at ?? prevTrip.updatedAt ?? null,
 	};
 };
@@ -222,17 +246,41 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 const mergeAmbulanceRealtimeTrip = (prevTrip, ambulanceRecord) => {
 	if (!prevTrip || !ambulanceRecord) return prevTrip;
 	const location = parsePointGeometry(ambulanceRecord.location);
-	if (!location) return prevTrip;
+	const telemetryReceivedAt = ambulanceRecord.location_received_at ?? null;
+	if (!location && !telemetryReceivedAt) return prevTrip;
 
 	return {
 		...prevTrip,
-		currentResponderLocation: location,
-		responderTelemetryAt: ambulanceRecord.updated_at ?? prevTrip.responderTelemetryAt ?? null,
+		currentResponderLocation: location || prevTrip.currentResponderLocation || null,
+		currentResponderHeading: Number.isFinite(ambulanceRecord.heading)
+			? ambulanceRecord.heading
+			: (prevTrip.currentResponderHeading ?? null),
+		responderTelemetryAt:
+			telemetryReceivedAt ?? prevTrip.responderTelemetryAt ?? null,
+		responderLocationObservedAt:
+			ambulanceRecord.location_observed_at ??
+			prevTrip.responderLocationObservedAt ??
+			null,
+		responderLocationAccuracyMeters:
+			ambulanceRecord.location_accuracy_meters ??
+			prevTrip.responderLocationAccuracyMeters ??
+			null,
+		responderTelemetrySequence:
+			ambulanceRecord.telemetry_sequence ??
+			prevTrip.responderTelemetrySequence ??
+			null,
+		responderTelemetryLeaseExpiresAt:
+			ambulanceRecord.telemetry_lease_expires_at ??
+			prevTrip.responderTelemetryLeaseExpiresAt ??
+			null,
 		updatedAt: ambulanceRecord.updated_at ?? prevTrip.updatedAt ?? null,
 		assignedAmbulance: {
 			...(prevTrip.assignedAmbulance || {}),
 			id: ambulanceRecord.id ?? prevTrip?.assignedAmbulance?.id ?? null,
-			location,
+			location: location || prevTrip?.assignedAmbulance?.location || null,
+			heading: Number.isFinite(ambulanceRecord.heading)
+				? ambulanceRecord.heading
+				: (prevTrip?.assignedAmbulance?.heading ?? null),
 		},
 	};
 };
@@ -248,6 +296,7 @@ const projectTripFromCanonicalRows = (prevTrip, requestRecord, ambulanceRecord) 
 
 module.exports = {
 	TERMINAL_EMERGENCY_STATUSES,
+	REMOVED_EMERGENCY_STATUSES,
 	parseTimestampMs,
 	parseRecordTimestampMs,
 	parsePointGeometry,
