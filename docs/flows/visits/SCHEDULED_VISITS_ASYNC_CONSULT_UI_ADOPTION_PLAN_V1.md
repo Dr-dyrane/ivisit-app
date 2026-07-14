@@ -1766,6 +1766,60 @@ Initial planned entries:
   independently gated; ordinary visit history remains available
 - Follow-up owner: release owner
 
+### UI-ADOPT-0011
+
+- Timestamp UTC: 2026-07-14T07:43:48Z
+- Actor/session: Codex scheduled-care release and state-hardening session
+- Repo and branch: App `main`; Console `main`
+- Phase/gate: R4 production release
+- Intent: release the additive scheduled-care contract, App booking/Visits and
+  async-consult lane, and Console schedule/scheduled-visit operations without a
+  native binary rebuild
+- Planned files: verified App and Console implementation packs recorded in
+  UI-ADOPT-0009 and UI-ADOPT-0010
+- Actual files: planned packs plus protected visit auth-return normalization,
+  post-booking list/detail cache priming, owner-scoped persisted Visits hydration,
+  explicit detail loading/not-found/denied/error states, and focused Console
+  controller/presentation extractions required by the final hard gates
+- Unplanned files touched and why: the protected-route and cache-state modules were
+  added after independent release review found that a cold authenticated link could
+  lose intent, a failed detail read could strand a skeleton, stale list state could
+  outrank direct truth, and a legacy ownerless snapshot could attach to a later user
+- Contract proof chain: booking RPC result -> normalized owner-scoped list/detail
+  cache -> canonical `mapSheet=visit_detail&visitKey=<uuid>` route -> authenticated
+  return handoff -> direct visit projection -> explicit sheet state; Console role ->
+  scoped schedule/visit service -> canonical RPC -> App-visible lifecycle consequence
+- Deviation from plan: authenticated App visual proof was not available in the test
+  browser because it had no patient session; executable route/state tests cover the
+  protected transition and the public handoff rendered with zero browser errors
+- Decision and evidence: App `933f0b88`; Console `e61a989a`; 349/349 App static
+  checks; 20/20 post-deploy checks; live E2E 14/14 run
+  `1784008386698-3a808102`; Console 204 suites / 1,359 tests
+- Tests run: App scheduled UI/service, post-booking state, authenticated return-route,
+  async-consult, static data contract, web export, diff/encoding checks; Console full
+  Jest suite, changed-source ESLint, database encoding, mojibake, data contract, UI
+  hardgate, mobile grammar, production build, and diff/encoding checks
+- Test result/evidence path:
+  `supabase/tests/artifacts/scheduled_visits_live_e2e_report.json`; App web export
+  bundled 2,822 modules; Console build verified 144 services and 467 high-confidence
+  data references with zero new phantom columns
+- Demo/live parity checked: yes; demo bootstrap and ordinary live users share the
+  same booking, lifecycle, projection, schedule, and async-consult receivers
+- Emergency regression checked: yes; emergency dispatch remains unconditional when
+  schedule or doctor evidence is unavailable, and emergency chat RLS passed 23/23
+- Accessibility/responsive checked: structural booking/detail loading, immediate
+  pressed/pending feedback, compact/wide App composition, Console mobile/desktop
+  schedule and visit actions, modal stacking, and honest degraded states verified
+- Commit/deployment reference: App data checkpoint `d86bd3b4`, App release
+  `933f0b88`, Console contract sync `db2315a8`, Console release `e61a989a`; EAS
+  production update group `1e76aee6-3c44-4b58-8c5f-0d66082c5d68`, Android update
+  `019f5f94-a36b-77ee-ab12-b59d5f972f3f`, iOS update
+  `019f5f94-a36b-7a05-819c-cc680376505f`
+- Rollback state: App scheduled visits, async consult, and AI draft remain independent
+  production flags; consult media remains false; Console schedule reads/writes and
+  scheduled visit reads/actions remain independent gates; additive schema is retained
+- Follow-up owner: product test users and release monitoring owner
+
 ## 18. Highest-risk adoption decisions
 
 | Risk | Why it is dangerous | Required closure |
