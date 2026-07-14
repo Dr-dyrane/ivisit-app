@@ -71,6 +71,23 @@ assert.match(modal, /attachments:\s*\[\]/);
 assert.match(draftPanel, />Discard</);
 assert.match(draftPanel, />Insert</);
 assert.match(draftPanel, />AI draft</);
+assert.doesNotMatch(
+  draftPanel,
+  /borderWidth|borderColor/,
+  "draft controls must separate with surface fills, not decorative borders",
+);
+assert.match(
+  draftPanel,
+  /styles\.panel,[\s\S]*backgroundColor: colors\.softSurface/,
+  "the draft panel must retain its own quiet surface",
+);
+assert.match(
+  draftPanel,
+  /styles\.secondaryButton,[\s\S]*backgroundColor: colors\.inputSurface/,
+  "the quiet draft action must remain fill-separated",
+);
+assert.doesNotMatch(modal, /#CBD5E1|colors\.border/);
+assert.match(modal, /borderTopColor: colors\.hairline/);
 assert.doesNotMatch(modal, /roomError\.message|draftError\.message/);
 
 assert.match(orchestrator, /import AsyncConsultModal/);

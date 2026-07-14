@@ -143,6 +143,8 @@ assert.match(
 );
 assert.match(reschedule, />Current time</);
 assert.match(reschedule, /!== currentStartAt/);
+assert.doesNotMatch(reschedule, /#CBD5E1|colors\.border/);
+assert.match(reschedule, /borderTopColor: colors\.hairline/);
 assert.doesNotMatch(reschedule, /timezone\s*!==?\s*["']UTC["']/i);
 assert.doesNotMatch(reschedule, /emergencyRequestsService|updateVisit\(/);
 
@@ -174,9 +176,24 @@ assert.doesNotMatch(scheduledMutations, /return invalidateScheduledTruth/);
 const detailBody = read(
   "components/map/surfaces/visitDetail/MapVisitDetailBody.jsx",
 );
+const detailStyles = read(
+  "components/map/surfaces/visitDetail/mapVisitDetail.styles.js",
+);
 assert.match(detailBody, /<MapVisitDetailSkeleton/);
 assert.match(detailBody, /isLoading \|\| !theme \|\| !hero/);
 assert.doesNotMatch(detailBody, /<VisitDetailSkeleton/);
+assert.doesNotMatch(
+  detailStyles,
+  /borderWidth|borderColor/,
+  "visit detail must use surface and elevation separation, not decorative strokes",
+);
+
+const specialtySearch = read(
+  "components/visits/book-visit/SpecialtySearchModal.jsx",
+);
+assert.doesNotMatch(specialtySearch, /borderBottomWidth|borderBottomColor/);
+assert.match(specialtySearch, /backgroundColor: colors\.inputBg/);
+assert.match(specialtySearch, /listContent:[\s\S]*gap: 8/);
 
 const detailModel = read(
   "components/map/surfaces/visitDetail/useMapVisitDetailModel.js",

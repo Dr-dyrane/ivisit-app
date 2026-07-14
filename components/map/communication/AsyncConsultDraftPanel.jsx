@@ -47,7 +47,7 @@ export default function AsyncConsultDraftPanel({
     <View
       style={[
         styles.panel,
-        { backgroundColor: colors.softSurface, borderColor: colors.border },
+        { backgroundColor: colors.softSurface },
       ]}
     >
       <View style={styles.header}>
@@ -79,7 +79,6 @@ export default function AsyncConsultDraftPanel({
           {
             color: colors.text,
             backgroundColor: colors.inputSurface,
-            borderColor: colors.border,
           },
         ]}
       />
@@ -116,7 +115,6 @@ export default function AsyncConsultDraftPanel({
               {
                 color: colors.text,
                 backgroundColor: colors.inputSurface,
-                borderColor: colors.border,
               },
             ]}
           />
@@ -126,7 +124,10 @@ export default function AsyncConsultDraftPanel({
               accessibilityRole="button"
               style={({ pressed }) => [
                 styles.secondaryButton,
-                { borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+                {
+                  backgroundColor: colors.inputSurface,
+                  opacity: pressed ? 0.75 : 1,
+                },
               ]}
             >
               <Text style={[styles.secondaryText, { color: colors.text }]}>Discard</Text>
@@ -159,14 +160,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   triggerText: { flex: 1, fontSize: 13, fontWeight: "700" },
-  panel: { gap: 10, padding: 12, borderRadius: 8, borderWidth: 1 },
+  panel: { gap: 10, padding: 12, borderRadius: 8 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   title: { fontSize: 14, fontWeight: "700" },
   promptInput: {
     minHeight: 70,
     maxHeight: 120,
-    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 11,
     paddingVertical: 10,
@@ -189,7 +189,6 @@ const styles = StyleSheet.create({
   draftInput: {
     minHeight: 90,
     maxHeight: 160,
-    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 11,
     paddingVertical: 10,
@@ -202,7 +201,6 @@ const styles = StyleSheet.create({
     minHeight: 40,
     justifyContent: "center",
     paddingHorizontal: 15,
-    borderWidth: 1,
     borderRadius: 8,
   },
   secondaryText: { fontSize: 13, fontWeight: "700" },

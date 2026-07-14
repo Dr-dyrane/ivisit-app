@@ -132,7 +132,10 @@ export default function SpecialtySearchModal({
                   renderItem={({ item }) => (
                     <Pressable
                       onPress={() => onSelect(item)}
-                      style={styles.modalListItem}
+                      style={[
+                        styles.modalListItem,
+                        { backgroundColor: colors.inputBg },
+                      ]}
                     >
                       <View style={styles.specialtyRow}>
                         <View
@@ -160,7 +163,7 @@ export default function SpecialtySearchModal({
                       />
                     </Pressable>
                   )}
-                  contentContainerStyle={{ paddingBottom: 20 }}
+                  contentContainerStyle={styles.listContent}
                   keyboardShouldPersistTaps="handled"
                 />
               </View>
@@ -220,12 +223,17 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   modalListItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(150,150,150,0.1)",
+    minHeight: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  listContent: {
+    gap: 8,
+    paddingBottom: 20,
   },
   specialtyRow: {
     flexDirection: "row",

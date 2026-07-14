@@ -32,7 +32,7 @@ const buildColors = (isDarkMode) => ({
   muted: isDarkMode ? "#94A3B8" : "#64748B",
   softSurface: isDarkMode ? "rgba(148,163,184,0.12)" : "#F1F5F9",
   inputSurface: isDarkMode ? "rgba(15,23,42,0.78)" : "#FFFFFF",
-  border: isDarkMode ? "rgba(148,163,184,0.24)" : "#CBD5E1",
+  hairline: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
   danger: isDarkMode ? "#FDA4AF" : "#BE123C",
 });
 
@@ -258,7 +258,7 @@ export default function AsyncConsultModal({ visible, historyItem, onClose }) {
 
   const composerSlot =
     activeRoom && !isArchived && !isEnsuring && !roomError ? (
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { borderTopColor: colors.hairline }]}>
         <AsyncConsultComposer
           text={composerText}
           onChangeText={handleComposerChange}

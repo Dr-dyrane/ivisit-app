@@ -27,7 +27,7 @@ const buildColors = (isDarkMode) => ({
   text: isDarkMode ? "#F8FAFC" : "#0F172A",
   muted: isDarkMode ? "#94A3B8" : "#64748B",
   softSurface: isDarkMode ? "rgba(148,163,184,0.12)" : "#F1F5F9",
-  border: isDarkMode ? "rgba(148,163,184,0.24)" : "#CBD5E1",
+  hairline: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)",
   danger: isDarkMode ? "#FDA4AF" : "#BE123C",
 });
 
@@ -274,7 +274,7 @@ export default function ScheduledVisitRescheduleModal({
   const canSubmit = Boolean(selectedSlot?.scheduledStartAt) && !isTransitioning;
   const footerSlot =
     featureEnabled && eligibleVisit && facility && timezoneConfirmedAt ? (
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { borderTopColor: colors.hairline }]}>
         {transitionError ? (
           <Text style={[styles.transitionError, { color: colors.danger }]}>
             {resolveTransitionError(transitionError)}
