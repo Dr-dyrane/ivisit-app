@@ -1822,6 +1822,42 @@ Initial planned entries:
   scheduled visit reads/actions remain independent gates; additive schema is retained
 - Follow-up owner: product test users and release monitoring owner
 
+### UI-ADOPT-0012
+
+- Timestamp UTC: 2026-07-14T08:01:17Z
+- Actor/session: Codex scheduled-care visual consistency follow-up
+- Repo and branch: App `main`
+- Phase/gate: post-release border and surface audit
+- Intent: remove decorative border leakage from the newly released scheduled-care
+  journey while preserving the approved low-opacity hairline exception
+- Planned files: async-consult draft/modal, reschedule modal, Book Visit specialty
+  search, visit-detail styles, and their UI contract harnesses
+- Actual files: planned files only
+- Contract proof chain: scheduled-care surface scan -> literal border ownership ->
+  surface/elevation replacement -> static no-border assertions -> App export -> EAS
+  production update
+- Decision and evidence: async draft shell, inputs, and Discard action now separate by
+  fills; specialty results are spaced filled rows; the visit place mark uses surface
+  and elevation without a stroke. Only two footer `StyleSheet.hairlineWidth` dividers
+  remain, both using `8%` opacity in light and dark modes.
+- Tests run: scheduled-visits UI/service, post-booking state, authenticated return
+  route, async-consult UI/service, relevant-directory border scan, diff/encoding
+  checks, and Expo web export
+- Test result/evidence path: all four UI/state contracts pass; relevant scheduled-care
+  directories contain no border widths/colors except the two approved hairlines; web
+  export bundled 2,822 modules
+- Demo/live parity checked: not data-affecting; both lanes render through the same UI
+- Emergency regression checked: no emergency service, lifecycle, or state code changed
+- Accessibility/responsive checked: minimum control sizes and pressed/disabled states
+  retained; specialty rows gained stable filled hit surfaces
+- Commit/deployment reference: App `bd3c071b`; EAS production group
+  `2ba35eea-e5fc-4fac-bd93-788af2177257`, Android update
+  `019f5fa4-8adb-7709-a3eb-13112761f275`, iOS update
+  `019f5fa4-8adb-7fb7-a464-56ac3b4224ee`
+- Rollback state: style-only change; no schema, RPC, Edge, Storage, auth, or state
+  rollback required
+- Follow-up owner: patient visual acceptance pass
+
 ## 18. Highest-risk adoption decisions
 
 | Risk | Why it is dangerous | Required closure |
