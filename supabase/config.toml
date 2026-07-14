@@ -424,6 +424,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/triage-copilot/index.ts"
 
+[functions.consult-assist]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/consult-assist/index.ts"
+
 [functions.hospital-media]
 enabled = true
 verify_jwt = false

@@ -310,7 +310,7 @@ DECLARE
   v_def text;
 BEGIN
   SELECT pg_get_functiondef('public.update_profile_by_admin(uuid,jsonb)'::regprocedure) INTO v_def;
-  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
+  IF position('v_actor_role NOT IN (''admin'', ''org_admin'')' in v_def) = 0 THEN
     RAISE EXCEPTION 'update_profile_by_admin missing strict operator role gate';
   END IF;
 

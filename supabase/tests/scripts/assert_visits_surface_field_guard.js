@@ -10,18 +10,6 @@ const OUT_FILE = path.join(OUT_DIR, 'visits_surface_field_guard_report.json');
 
 const RULES = [
   {
-    id: 'visits_no_legacy_doctor_id_reads',
-    file: 'src/components/pages/VisitsPage.jsx',
-    pattern: /\bvisit\.doctor_id\b/g,
-    message: 'Visits page should not read visit.doctor_id (column is not in visits contract).',
-  },
-  {
-    id: 'visits_no_legacy_doctor_id_reads_list',
-    file: 'src/components/views/VisitListView.jsx',
-    pattern: /\bvisit\.doctor_id\b/g,
-    message: 'Visit list should not read visit.doctor_id (column is not in visits contract).',
-  },
-  {
     id: 'visits_no_legacy_patient_name_reads_mobile',
     file: 'src/components/mobile/MobileVisits.jsx',
     pattern: /\b(?:v|visit)\.patient_name\b/g,

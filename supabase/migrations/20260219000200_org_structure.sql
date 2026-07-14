@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     address TEXT NOT NULL,
+    timezone TEXT NOT NULL DEFAULT 'UTC',
     phone TEXT,
     rating DOUBLE PRECISION DEFAULT 0,
     type TEXT DEFAULT 'standard',
@@ -365,8 +366,61 @@ CREATE TABLE IF NOT EXISTS public.doctor_schedules (
     end_time TIME NOT NULL,
     shift_type TEXT NOT NULL CHECK (shift_type IN ('day', 'evening', 'night')),
     is_available BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- BEGIN SCHEDULED_VISITS_PROVIDER_TIME_SCHEMA
+-- PULLBACK NOTE: Scheduled visits data pass.
+-- OLD: provider schedules had no canonical timezone or shift integrity.
+-- NEW: facilities own IANA timezone truth and same-day shifts are unique and ordered.
+ALTER TABLE public.hospitals
+    ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC';
+
+ALTER TABLE public.hospitals
+    DROP CONSTRAINT IF EXISTS hospitals_timezone_length_check;
+ALTER TABLE public.hospitals
+    ADD CONSTRAINT hospitals_timezone_length_check
+    CHECK (char_length(timezone) BETWEEN 1 AND 64);
+
+CREATE OR REPLACE FUNCTION public.validate_hospital_timezone()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+    IF NEW.timezone IS NULL OR NOT EXISTS (
+        SELECT 1
+        FROM pg_timezone_names timezone_row
+        WHERE timezone_row.name = NEW.timezone
+    ) THEN
+        RAISE EXCEPTION 'Invalid IANA timezone: %', COALESCE(NEW.timezone, '<null>');
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS validate_hospital_timezone_value ON public.hospitals;
+CREATE TRIGGER validate_hospital_timezone_value
+BEFORE INSERT OR UPDATE OF timezone ON public.hospitals
+FOR EACH ROW EXECUTE FUNCTION public.validate_hospital_timezone();
+
+ALTER TABLE public.doctor_schedules
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE public.doctor_schedules
+    DROP CONSTRAINT IF EXISTS doctor_schedules_time_order_check;
+ALTER TABLE public.doctor_schedules
+    ADD CONSTRAINT doctor_schedules_time_order_check
+    CHECK (end_time > start_time);
+
+ALTER TABLE public.doctor_schedules
+    DROP CONSTRAINT IF EXISTS doctor_schedules_exact_shift_key;
+ALTER TABLE public.doctor_schedules
+    ADD CONSTRAINT doctor_schedules_exact_shift_key
+    UNIQUE (doctor_id, date, start_time, end_time);
+-- END SCHEDULED_VISITS_PROVIDER_TIME_SCHEMA
 
 -- 5. Emergency Doctor Assignments
 CREATE TABLE IF NOT EXISTS public.emergency_doctor_assignments (
@@ -384,6 +438,8 @@ CREATE TABLE IF NOT EXISTS public.emergency_doctor_assignments (
 CREATE TRIGGER handle_org_updated_at BEFORE UPDATE ON public.organizations FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_hosp_updated_at BEFORE UPDATE ON public.hospitals FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_doc_updated_at BEFORE UPDATE ON public.doctors FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+DROP TRIGGER IF EXISTS handle_doctor_schedule_updated_at ON public.doctor_schedules;
+CREATE TRIGGER handle_doctor_schedule_updated_at BEFORE UPDATE ON public.doctor_schedules FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_eda_updated_at BEFORE UPDATE ON public.emergency_doctor_assignments FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE TRIGGER stamp_org_display_id BEFORE INSERT ON public.organizations FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
@@ -394,6 +450,12 @@ CREATE TRIGGER stamp_doc_display_id BEFORE INSERT ON public.doctors FOR EACH ROW
 CREATE INDEX IF NOT EXISTS idx_doctors_hospital_specialty ON public.doctors(hospital_id, specialization);
 CREATE INDEX IF NOT EXISTS idx_doctors_availability ON public.doctors(is_available, current_patients, max_patients);
 CREATE INDEX IF NOT EXISTS idx_doctor_schedules_doctor_date ON public.doctor_schedules(doctor_id, date);
+CREATE INDEX IF NOT EXISTS idx_doctor_schedules_available_window
+    ON public.doctor_schedules(doctor_id, date, start_time, end_time)
+    WHERE is_available = true;
+CREATE INDEX IF NOT EXISTS idx_doctors_hospital_profile
+    ON public.doctors(hospital_id, profile_id)
+    WHERE profile_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_eda_request ON public.emergency_doctor_assignments(emergency_request_id);
 CREATE INDEX IF NOT EXISTS idx_eda_doctor ON public.emergency_doctor_assignments(doctor_id);
 

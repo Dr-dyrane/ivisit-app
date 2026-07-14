@@ -37,6 +37,7 @@
     "hardening:medical-profiles-surface-field-guard": "node supabase/tests/scripts/assert_medical_profiles_surface_field_guard.js",
     "hardening:notifications-surface-field-guard": "node supabase/tests/scripts/assert_notifications_surface_field_guard.js",
     "hardening:visits-surface-field-guard": "node supabase/tests/scripts/assert_visits_surface_field_guard.js",
+    "hardening:scheduled-visits-contract": "node supabase/tests/scripts/assert_scheduled_visits_contract.js",
     "hardening:hospitals-surface-field-guard": "node supabase/tests/scripts/assert_hospitals_surface_field_guard.js",
     "hardening:organizations-surface-field-guard": "node supabase/tests/scripts/assert_organizations_surface_field_guard.js",
     "hardening:profiles-surface-field-guard": "node supabase/tests/scripts/assert_profiles_surface_field_guard.js",
@@ -77,7 +78,7 @@
     "hardening:targeted-matrix-guard": "npm run hardening:console-ui-crud-matrix && npm run hardening:runtime-crud-batch && node supabase/tests/scripts/assert_targeted_matrix_coverage.js",
     "hardening:runtime-data-integrity": "node supabase/tests/scripts/assert_runtime_data_integrity.js",
     "hardening:runtime-data-repair": "node supabase/tests/scripts/repair_runtime_data_integrity.js",
-    "hardening:full": "npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:contract-drift-guard && npm run hardening:console-ui-crud-matrix && npm run hardening:emergency && npm run hardening:console-matrix && npm run hardening:cash-matrix && npm run hardening:mutation-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert && npm run hardening:visits-runtime-confidence-assert && npm run hardening:runtime-data-integrity && npm run hardening:cleanup-apply && npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:contract-drift-guard"
+    "hardening:full": "npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:scheduled-visits-contract && npm run hardening:contract-drift-guard && npm run hardening:console-ui-crud-matrix && npm run hardening:emergency && npm run hardening:console-matrix && npm run hardening:cash-matrix && npm run hardening:mutation-matrix && node supabase/tests/scripts/run_e2e_flow_matrix.js && npm run hardening:emergency-runtime-confidence-assert && npm run hardening:visits-runtime-confidence-assert && npm run hardening:runtime-data-integrity && npm run hardening:cleanup-apply && npm run hardening:cleanup-dry-run-guard && npm run hardening:governance-guards && npm run hardening:scheduled-visits-contract && npm run hardening:contract-drift-guard"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

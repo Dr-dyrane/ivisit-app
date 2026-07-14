@@ -138,6 +138,17 @@ Artifacts:
 npm run hardening:visits-surface-field-guard
 ```
 
+### **Scheduled Visits And Async Consult Contract Guard**
+```bash
+# Read-only proof for schedule/visit/chat schema, RLS, RPC authority,
+# Storage linkage, emergency fallback, deterministic demo data, Edge posture,
+# and App/Console database type parity.
+npm run hardening:scheduled-visits-contract
+```
+
+This guard has zero database side effects. It does not replace post-deployment
+role, concurrency, Storage, cleanup, or end-to-end verification.
+
 ### **Hospitals Surface Field Guard**
 ```bash
 # Detect hospitals table contract drift across app+console JS/JSX + core admin RPC persistence

@@ -177,6 +177,7 @@ These are the locked or actively maintained source-of-truth docs. When in doubt,
 All stack/screen pass plans live under [flows/emergency/architecture/](./flows/emergency/architecture/). Key index:
 
 - Book Visit: [flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md) / [audit/screens/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
+- Scheduled Visits + Async Consult data contract: [flows/visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md](./flows/visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md)
 - Profile: [flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/PROFILE_STACK_PASS_PLAN_V1.md) / [audit/screens/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/PROFILE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 - Settings: [flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/SETTINGS_STACK_PASS_PLAN_V1.md) / [audit/screens/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/SETTINGS_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)
 - Insurance/Coverage: [flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md](./flows/emergency/architecture/INSURANCE_STACK_PASS_PLAN_V1.md) / [audit/screens/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](./audit/screens/INSURANCE_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md)

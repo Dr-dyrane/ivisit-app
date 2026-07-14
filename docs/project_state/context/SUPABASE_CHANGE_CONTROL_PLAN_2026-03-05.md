@@ -1643,6 +1643,49 @@ Verification:
   - quote request returns canonical snapshot for explicit billing country/currency
   - formatter surfaces can render quote snapshot without hardcoded symbols/codes
 
+### SCC-059: Scheduled Visits and Async Consult Data Contract
+Objective:
+- Replace fixed Book Visit presentation data with one canonical, backend-owned
+  scheduled-care contract while preserving emergency, visit-history, and demo
+  behavior.
+
+Locked scope:
+- reuse `visits`, `doctor_schedules`, and `emergency_chat_*` tables,
+- do not add `appointments`, `telemedicine_sessions`, or a second chat engine,
+- support in-person scheduled care and asynchronous text/photo/short-video
+  telemedicine with participant-scoped AI drafts,
+- prefer schedule-aware doctors during emergency matching when available, but
+  never make a doctor or schedule an emergency prerequisite,
+- complete schema, RPC, RLS, Storage, demo, types, and guard work before App or
+  Console API/UI adoption,
+- do not deploy production database or Edge changes in this pass.
+
+Deliverables:
+- owner pillar updates:
+  - `supabase/migrations/20260219000200_org_structure.sql`
+  - `supabase/migrations/20260219000300_logistics.sql`
+  - `supabase/migrations/20260219000700_security.sql`
+  - `supabase/migrations/20260219000900_automations.sql`
+  - `supabase/migrations/20260219010000_core_rpcs.sql`
+- deterministic demo schedule/provider extension in
+  `supabase/functions/bootstrap-demo-ecosystem/handler.ts`,
+- JWT-verified, read-only `supabase/functions/consult-assist/**`,
+- App generated/maintained database type parity and Console synchronization,
+- scheduled-care static contract guard and existing hardening compatibility,
+- detailed contract and rollout record in
+  `docs/flows/visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md`.
+
+Verification:
+- SQL parse plus exact marker-block/static contract guard,
+- Deno check/lint for demo and consult Edge Functions,
+- visits/emergency/chat compatibility guards,
+- App/Console type and migration sync parity,
+- pre-deploy cleanup dry-run with zero test residue,
+- after an explicitly approved deployment: live contract-drift, role,
+  concurrency, Storage, and per-table runtime field-coverage gates,
+- no production mutation, function deployment, EAS update, APK, or AAB during
+  this backend-only pass.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

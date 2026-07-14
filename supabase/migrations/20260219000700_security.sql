@@ -34,11 +34,21 @@ DECLARE
     v_actor_id UUID := auth.uid();
     v_actor_role TEXT;
     v_actor_org_id UUID;
+    v_channel_type TEXT;
     v_request_user_id UUID;
     v_responder_id UUID;
     v_request_org_id UUID;
 BEGIN
     IF p_room_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT room.channel_type
+    INTO v_channel_type
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id;
+
+    IF NOT FOUND OR v_channel_type <> 'emergency' THEN
         RETURN FALSE;
     END IF;
 
@@ -90,6 +100,113 @@ BEGIN
     RETURN FALSE;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.p_safe_uuid(p_value TEXT)
+RETURNS UUID
+LANGUAGE plpgsql
+IMMUTABLE
+STRICT
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+    RETURN p_value::UUID;
+EXCEPTION
+    WHEN invalid_text_representation THEN
+        RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.p_is_async_consult_participant(p_room_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_visit_id UUID;
+    v_patient_id UUID;
+    v_doctor_profile_id UUID;
+BEGIN
+    IF p_room_id IS NULL OR v_actor_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT room.visit_id
+    INTO v_visit_id
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id
+      AND room.channel_type = 'telemedicine_async';
+
+    IF NOT FOUND OR v_visit_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.emergency_chat_participants participant
+        WHERE participant.room_id = p_room_id
+          AND participant.user_id = v_actor_id
+          AND participant.left_at IS NULL
+    ) THEN
+        RETURN TRUE;
+    END IF;
+
+    SELECT visit.user_id, doctor.profile_id
+    INTO v_patient_id, v_doctor_profile_id
+    FROM public.visits visit
+    LEFT JOIN public.doctors doctor ON doctor.id = visit.doctor_id
+    WHERE visit.id = v_visit_id
+      AND visit.care_mode = 'telemedicine_async';
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN v_actor_id = v_patient_id OR v_actor_id = v_doctor_profile_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.p_can_manage_doctor_schedule(p_doctor_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+BEGIN
+    IF p_doctor_id IS NULL OR v_actor_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    IF public.p_is_admin() THEN
+        RETURN TRUE;
+    END IF;
+
+    RETURN EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        JOIN public.hospitals hospital
+          ON hospital.organization_id = actor.organization_id
+        JOIN public.doctors doctor
+          ON doctor.hospital_id = hospital.id
+        WHERE actor.id = v_actor_id
+          AND actor.role = 'org_admin'
+          AND actor.organization_id IS NOT NULL
+          AND doctor.id = p_doctor_id
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.p_safe_uuid(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.p_is_emergency_chat_participant(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.p_is_async_consult_participant(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.p_can_manage_doctor_schedule(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.p_safe_uuid(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.p_is_emergency_chat_participant(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.p_is_async_consult_participant(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.p_can_manage_doctor_schedule(UUID) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.p_get_current_org_id()
 RETURNS UUID SECURITY DEFINER AS $$
@@ -263,23 +380,38 @@ DROP POLICY IF EXISTS "Users see emergency chat rooms in scope" ON public.emerge
 CREATE POLICY "Users see emergency chat rooms in scope"
 ON public.emergency_chat_rooms FOR SELECT
 TO authenticated
-USING (public.p_is_emergency_chat_participant(id));
+USING (
+    public.p_is_emergency_chat_participant(id)
+    OR public.p_is_async_consult_participant(id)
+);
 
 DROP POLICY IF EXISTS "Users see emergency chat participants in scope" ON public.emergency_chat_participants;
 CREATE POLICY "Users see emergency chat participants in scope"
 ON public.emergency_chat_participants FOR SELECT
 TO authenticated
-USING (public.p_is_emergency_chat_participant(room_id));
+USING (
+    public.p_is_emergency_chat_participant(room_id)
+    OR public.p_is_async_consult_participant(room_id)
+);
 
 DROP POLICY IF EXISTS "Users see emergency chat messages in scope" ON public.emergency_chat_messages;
 CREATE POLICY "Users see emergency chat messages in scope"
 ON public.emergency_chat_messages FOR SELECT
 TO authenticated
-USING (public.p_is_emergency_chat_participant(room_id));
+USING (
+    public.p_is_emergency_chat_participant(room_id)
+    OR public.p_is_async_consult_participant(room_id)
+);
 
 GRANT SELECT ON public.emergency_chat_rooms TO authenticated;
 GRANT SELECT ON public.emergency_chat_participants TO authenticated;
 GRANT SELECT ON public.emergency_chat_messages TO authenticated;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.emergency_chat_rooms FROM anon;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.emergency_chat_participants FROM anon;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.emergency_chat_messages FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_chat_rooms FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_chat_participants FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_chat_messages FROM authenticated;
 
 -- 4. FINANCIALS (Very Restricted)
 CREATE POLICY "Users see own wallets"
@@ -429,15 +561,18 @@ WITH CHECK (
 );
 -- END CONSOLE_AMBULANCE_RLS
 
+DROP POLICY IF EXISTS "Users see own visits" ON public.visits;
 CREATE POLICY "Users see own visits"
 ON public.visits FOR SELECT
 TO authenticated
 USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users insert/update own visits" ON public.visits;
 CREATE POLICY "Users insert/update own visits"
 ON public.visits FOR ALL
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id AND care_mode IS NULL)
+WITH CHECK (auth.uid() = user_id AND care_mode IS NULL);
 
 DROP POLICY IF EXISTS "Console operators see org visits" ON public.visits;
 CREATE POLICY "Console operators see org visits"
@@ -618,6 +753,11 @@ VALUES
     ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
+UPDATE storage.buckets
+SET public = false,
+    file_size_limit = 26214400
+WHERE id = 'documents';
+
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access"
 ON storage.objects FOR SELECT
@@ -701,6 +841,59 @@ USING (
     )
 );
 -- END CONSOLE_ONBOARDING_STORAGE_POLICIES
+
+-- Private async-consult media uses documents/telemedicine/{room}/{user}/*.
+-- Reads require both room participation and a persisted message reference.
+-- BEGIN ASYNC_CONSULT_STORAGE_POLICIES
+DROP POLICY IF EXISTS "Consult participants upload private media" ON storage.objects;
+CREATE POLICY "Consult participants upload private media"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = 'telemedicine'
+    AND public.p_safe_uuid((storage.foldername(name))[2]) IS NOT NULL
+    AND (storage.foldername(name))[3] = auth.uid()::TEXT
+    AND public.p_is_async_consult_participant(
+        public.p_safe_uuid((storage.foldername(name))[2])
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM public.emergency_chat_rooms room
+        JOIN public.visits visit ON visit.id = room.visit_id
+        WHERE room.id = public.p_safe_uuid((storage.foldername(name))[2])
+          AND room.channel_type = 'telemedicine_async'
+          AND room.status = 'active'
+          AND visit.care_mode = 'telemedicine_async'
+          AND visit.status IN ('upcoming', 'in_progress')
+    )
+    AND LOWER(storage.extension(name)) IN ('jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm', 'mov')
+);
+
+DROP POLICY IF EXISTS "Consult participants read linked private media" ON storage.objects;
+CREATE POLICY "Consult participants read linked private media"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+    bucket_id = 'documents'
+    AND (storage.foldername(name))[1] = 'telemedicine'
+    AND public.p_safe_uuid((storage.foldername(name))[2]) IS NOT NULL
+    AND public.p_is_async_consult_participant(
+        public.p_safe_uuid((storage.foldername(name))[2])
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM public.emergency_chat_messages message
+        WHERE message.room_id = public.p_safe_uuid((storage.foldername(name))[2])
+          AND message.attachment_storage_path = storage.objects.name
+          AND message.deleted_at IS NULL
+    )
+);
+
+DROP POLICY IF EXISTS "Consult uploaders remove unlinked private media" ON storage.objects;
+-- Client deletion stays denied. A delayed service cleanup must recheck that an
+-- object is still unlinked before removing it from both Storage and metadata.
+-- END ASYNC_CONSULT_STORAGE_POLICIES
 -- END CONSOLE_SHARED_STORAGE_POLICIES
 
 -- Admin Audit Log: admins only
@@ -735,17 +928,31 @@ ALTER TABLE public.doctor_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_doctor_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.insurance_billing ENABLE ROW LEVEL SECURITY;
 
--- Doctor Schedules: public read, org admins manage
-CREATE POLICY "Public read doctor schedules" ON public.doctor_schedules FOR SELECT USING (true);
-CREATE POLICY "Org Admins manage doctor schedules" ON public.doctor_schedules FOR ALL
+-- Doctor schedules: clinician-own and proved schedule-admin reads only.
+DROP POLICY IF EXISTS "Public read doctor schedules" ON public.doctor_schedules;
+DROP POLICY IF EXISTS "Org Admins manage doctor schedules" ON public.doctor_schedules;
+DROP POLICY IF EXISTS "Clinicians read own doctor schedules" ON public.doctor_schedules;
+CREATE POLICY "Clinicians read own doctor schedules"
+ON public.doctor_schedules FOR SELECT
+TO authenticated
 USING (
-    doctor_id IN (
-        SELECT d.id FROM public.doctors d
-        JOIN public.hospitals h ON d.hospital_id = h.id
-        WHERE h.organization_id = public.p_get_current_org_id()
+    EXISTS (
+        SELECT 1
+        FROM public.doctors doctor
+        WHERE doctor.id = doctor_schedules.doctor_id
+          AND doctor.profile_id = auth.uid()
     )
-    OR public.p_is_admin()
 );
+
+DROP POLICY IF EXISTS "Schedule admins read scoped doctor schedules" ON public.doctor_schedules;
+CREATE POLICY "Schedule admins read scoped doctor schedules"
+ON public.doctor_schedules FOR SELECT
+TO authenticated
+USING (public.p_can_manage_doctor_schedule(doctor_id));
+
+GRANT SELECT ON public.doctor_schedules TO authenticated;
+REVOKE SELECT ON public.doctor_schedules FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON public.doctor_schedules FROM anon, authenticated;
 
 -- Emergency Doctor Assignments: users see own, org admins see org
 CREATE POLICY "Users see own doctor assignments" ON public.emergency_doctor_assignments FOR SELECT

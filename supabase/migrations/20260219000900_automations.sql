@@ -324,13 +324,15 @@ BEGIN
     /*
       Selection logic:
       1) Prefer matching specialty where capacity is available.
-      2) Fall back to any available in-hospital doctor with capacity.
-      This keeps assignment resilient in low-coverage regions.
+      2) Within that clinical fit, prefer current schedule coverage, then on-call.
+      3) Fall back to the existing available in-hospital capacity ordering.
+      Missing schedules never block emergency care in low-coverage regions.
     */
     SELECT d.id INTO v_doctor_id
     FROM public.doctors d
+    JOIN public.hospitals h ON h.id = d.hospital_id
     WHERE d.hospital_id = NEW.hospital_id
-      AND COALESCE(d.status, 'available') = 'available'
+      AND LOWER(COALESCE(d.status, 'available')) IN ('available', 'on_call')
       AND d.is_available = true
       AND COALESCE(d.current_patients, 0) < COALESCE(NULLIF(d.max_patients, 0), 1)
       AND (
@@ -340,12 +342,26 @@ BEGIN
                 FROM public.doctors ds
                 WHERE ds.hospital_id = NEW.hospital_id
                   AND ds.is_available = true
+                  AND LOWER(COALESCE(ds.status, 'available')) IN ('available', 'on_call')
                   AND COALESCE(ds.current_patients, 0) < COALESCE(NULLIF(ds.max_patients, 0), 1)
                   AND ds.specialization = v_specialty
             )
       )
     ORDER BY
       CASE WHEN d.specialization = v_specialty THEN 0 ELSE 1 END,
+      CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM public.doctor_schedules schedule
+              WHERE schedule.doctor_id = d.id
+                AND schedule.is_available = true
+                AND schedule.date = (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::DATE
+                AND schedule.start_time <= (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::TIME
+                AND schedule.end_time > (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::TIME
+          ) THEN 0
+          ELSE 1
+      END,
+      CASE WHEN COALESCE(d.is_on_call, false) OR LOWER(COALESCE(d.status, '')) = 'on_call' THEN 0 ELSE 1 END,
       COALESCE(d.current_patients, 0) ASC,
       d.created_at ASC
     FOR UPDATE OF d SKIP LOCKED
@@ -876,10 +892,10 @@ BEGIN
     END IF;
 
     v_old_available := COALESCE(OLD.is_available, false)
-        AND LOWER(COALESCE(OLD.status, '')) = 'available'
+        AND LOWER(COALESCE(OLD.status, '')) IN ('available', 'on_call')
         AND COALESCE(OLD.current_patients, 0) < GREATEST(COALESCE(NULLIF(OLD.max_patients, 0), 1), 1);
     v_new_available := COALESCE(NEW.is_available, false)
-        AND LOWER(COALESCE(NEW.status, '')) = 'available'
+        AND LOWER(COALESCE(NEW.status, '')) IN ('available', 'on_call')
         AND COALESCE(NEW.current_patients, 0) < GREATEST(COALESCE(NULLIF(NEW.max_patients, 0), 1), 1);
 
     IF NOT v_old_available OR v_new_available THEN
@@ -897,9 +913,10 @@ BEGIN
         SELECT d.id
         INTO v_candidate_doctor_id
         FROM public.doctors d
+        JOIN public.hospitals h ON h.id = d.hospital_id
         WHERE d.id IS DISTINCT FROM NEW.id
           AND d.hospital_id = v_request.hospital_id
-          AND COALESCE(d.status, 'available') = 'available'
+          AND LOWER(COALESCE(d.status, 'available')) IN ('available', 'on_call')
           AND d.is_available = true
           AND COALESCE(d.current_patients, 0) < GREATEST(COALESCE(NULLIF(d.max_patients, 0), 1), 1)
         ORDER BY
@@ -908,6 +925,19 @@ BEGIN
                 WHEN v_request.service_type = 'bed' AND d.specialization = 'Internal Medicine' THEN 0
                 ELSE 1
             END,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM public.doctor_schedules schedule
+                    WHERE schedule.doctor_id = d.id
+                      AND schedule.is_available = true
+                      AND schedule.date = (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::DATE
+                      AND schedule.start_time <= (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::TIME
+                      AND schedule.end_time > (CURRENT_TIMESTAMP AT TIME ZONE COALESCE(h.timezone, 'UTC'))::TIME
+                ) THEN 0
+                ELSE 1
+            END,
+            CASE WHEN COALESCE(d.is_on_call, false) OR LOWER(COALESCE(d.status, '')) = 'on_call' THEN 0 ELSE 1 END,
             COALESCE(d.current_patients, 0) ASC,
             d.created_at ASC
         FOR UPDATE OF d SKIP LOCKED

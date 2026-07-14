@@ -59,6 +59,7 @@ This folder contains distributed workflow maps by domain. The goal is to make ba
 - [emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md](./emergency/architecture/NOTIFICATION_DETAILS_STACK_PASS_PLAN_V1.md): Notification-details stack implementation plan and ownership split.
 - [../audit/screens/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/screens/NOTIFICATION_DETAILS_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the notification-details stack refactor.
 - [emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md](./emergency/architecture/BOOK_VISIT_STACK_PASS_PLAN_V1.md): Book Visit stack implementation plan and ownership split.
+- [visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md](./visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md): Verified backend audit and implementation contract for scheduled visits, doctor schedules, and asynchronous consults.
 - [../audit/screens/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md](../audit/screens/BOOK_VISIT_STACK_COMPARISON_AUDIT_2026-04-29.md): Pre-pass comparison baseline for the Book Visit stack refactor.
 - [../audit/screens/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md](../audit/screens/BOOK_VISIT_STACK_IMPLEMENTATION_CHECKPOINT_2026-04-29.md): Post-pass checkpoint for the Book Visit stack refactor.
 - [emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md](./emergency/architecture/HELP_SUPPORT_STACK_PASS_PLAN_V1.md): Help Support stack implementation plan and ownership split.

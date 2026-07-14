@@ -1,6 +1,6 @@
-# 📡 API Reference (Core RPCs)
+# API Reference (Core RPCs)
 
-Generated from `20260219010000_core_rpcs.sql` on 5/18/2026
+Generated from `20260219010000_core_rpcs.sql`; updated 2026-07-13.
 
 | Function | Parameters | Returns |
 |---|---|---|
@@ -56,6 +56,15 @@ Generated from `20260219010000_core_rpcs.sql` on 5/18/2026
 | `cancel_bed_reservation` | `request_uuid TEXT` | `BOOLEAN` |
 | `complete_trip` | `request_uuid TEXT` | `BOOLEAN` |
 | `cancel_trip` | `request_uuid TEXT` | `BOOLEAN` |
+| `get_book_visit_availability` | `p_hospital_id UUID, p_specialty TEXT, p_care_mode TEXT, p_from_at TIMESTAMPTZ DEFAULT NOW(), p_to_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '14 days'` | `TABLE (hospital_id UUID, doctor_id UUID, doctor_name TEXT, doctor_image TEXT, specialty TEXT, care_mode TEXT, scheduled_start_at TIMESTAMPTZ, scheduled_end_at TIMESTAMPTZ, scheduled_timezone TEXT)` |
+| `book_scheduled_visit` | `p_hospital_id UUID, p_specialty TEXT, p_care_mode TEXT, p_scheduled_start_at TIMESTAMPTZ, p_idempotency_key UUID, p_notes TEXT DEFAULT NULL` | `JSONB` |
+| `get_console_doctor_schedules` | `p_hospital_id UUID DEFAULT NULL, p_from_date DATE DEFAULT CURRENT_DATE, p_to_date DATE DEFAULT CURRENT_DATE + 30` | `TABLE (schedule_id UUID, doctor_id UUID, doctor_name TEXT, hospital_id UUID, hospital_name TEXT, scheduled_timezone TEXT, schedule_date DATE, start_time TIME, end_time TIME, shift_type TEXT, is_available BOOLEAN, updated_at TIMESTAMPTZ)` |
+| `upsert_doctor_schedule` | `p_doctor_id UUID, p_date DATE, p_start_time TIME, p_end_time TIME, p_shift_type TEXT, p_is_available BOOLEAN DEFAULT true, p_schedule_id UUID DEFAULT NULL` | `JSONB` |
+| `delete_doctor_schedule` | `p_schedule_id UUID` | `BOOLEAN` |
+| `transition_scheduled_visit` | `p_visit_id UUID, p_action TEXT, p_scheduled_start_at TIMESTAMPTZ DEFAULT NULL, p_reason TEXT DEFAULT NULL` | `JSONB` |
+| `ensure_async_consult_room` | `p_visit_id UUID` | `JSONB` |
+| `send_async_consult_message` | `p_room_id UUID, p_body TEXT, p_kind TEXT DEFAULT 'text', p_client_message_id TEXT DEFAULT NULL, p_metadata JSONB DEFAULT '{}'::JSONB, p_attachment_storage_path TEXT DEFAULT NULL, p_attachment_mime_type TEXT DEFAULT NULL, p_attachment_size_bytes BIGINT DEFAULT NULL, p_attachment_duration_ms INTEGER DEFAULT NULL` | `JSONB` |
+| `mark_async_consult_room_read` | `p_room_id UUID, p_message_id UUID DEFAULT NULL` | `BOOLEAN` |
 | `ensure_emergency_chat_room` | `p_request_id UUID` | `JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public` |
 | `send_emergency_chat_message` | `p_room_id UUID, p_body TEXT, p_kind TEXT DEFAULT 'text', p_client_message_id TEXT DEFAULT NULL, p_metadata JSONB DEFAULT '{}'::JSONB` | `JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public` |
 | `mark_emergency_chat_room_read` | `p_room_id UUID, p_message_id UUID DEFAULT NULL` | `BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public` |

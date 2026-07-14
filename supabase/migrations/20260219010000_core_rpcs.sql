@@ -4022,6 +4022,1704 @@ AFTER UPDATE OF status ON public.emergency_requests
 FOR EACH ROW
 EXECUTE FUNCTION public.archive_emergency_chat_room_on_request_close();
 
+-- ============================================================
+-- Scheduled visits and asynchronous consults
+-- ============================================================
+-- BEGIN SCHEDULED_VISITS_ASYNC_CONSULT_RPCS
+
+CREATE OR REPLACE FUNCTION public.p_scheduled_visit_duration(p_care_mode TEXT)
+RETURNS INTERVAL
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+    SELECT CASE LOWER(BTRIM(COALESCE(p_care_mode, '')))
+        WHEN 'in_person' THEN INTERVAL '45 minutes'
+        WHEN 'telemedicine_async' THEN INTERVAL '30 minutes'
+        ELSE NULL
+    END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.p_select_bookable_doctor(
+    p_hospital_id UUID,
+    p_specialty TEXT,
+    p_care_mode TEXT,
+    p_scheduled_start_at TIMESTAMPTZ,
+    p_scheduled_end_at TIMESTAMPTZ,
+    p_exclude_visit_id UUID DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_timezone TEXT;
+    v_doctor_id UUID;
+BEGIN
+    SELECT hospital.timezone
+    INTO v_timezone
+    FROM public.hospitals hospital
+    WHERE hospital.id = p_hospital_id;
+
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+
+    SELECT doctor.id
+    INTO v_doctor_id
+    FROM public.doctors doctor
+    WHERE doctor.hospital_id = p_hospital_id
+      AND doctor.is_available = true
+      AND LOWER(COALESCE(doctor.status, '')) IN ('available', 'on_call')
+      AND COALESCE(doctor.current_patients, 0) < GREATEST(COALESCE(NULLIF(doctor.max_patients, 0), 1), 1)
+      AND LOWER(BTRIM(doctor.specialization)) = LOWER(BTRIM(p_specialty))
+      AND (
+          p_care_mode <> 'telemedicine_async'
+          OR doctor.profile_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM public.doctor_schedules schedule
+          WHERE schedule.doctor_id = doctor.id
+            AND schedule.is_available = true
+            AND p_scheduled_start_at >= (
+                (schedule.date + schedule.start_time) AT TIME ZONE v_timezone
+            )
+            AND p_scheduled_end_at <= (
+                (schedule.date + schedule.end_time) AT TIME ZONE v_timezone
+            )
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM public.visits active_visit
+          WHERE active_visit.doctor_id = doctor.id
+            AND active_visit.care_mode IS NOT NULL
+            AND active_visit.status IN ('upcoming', 'in_progress')
+            AND active_visit.id IS DISTINCT FROM p_exclude_visit_id
+            AND active_visit.scheduled_start_at < p_scheduled_end_at
+            AND active_visit.scheduled_end_at > p_scheduled_start_at
+      )
+    ORDER BY
+        (
+            SELECT COUNT(*)
+            FROM public.visits workload
+            WHERE workload.doctor_id = doctor.id
+              AND workload.care_mode IS NOT NULL
+              AND workload.status IN ('upcoming', 'in_progress')
+              AND workload.scheduled_start_at >= NOW()
+        ) ASC,
+        COALESCE(doctor.current_patients, 0) ASC,
+        doctor.id ASC
+    FOR UPDATE OF doctor SKIP LOCKED
+    LIMIT 1;
+
+    RETURN v_doctor_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_book_visit_availability(
+    p_hospital_id UUID,
+    p_specialty TEXT,
+    p_care_mode TEXT,
+    p_from_at TIMESTAMPTZ DEFAULT NOW(),
+    p_to_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '14 days'
+)
+RETURNS TABLE (
+    hospital_id UUID,
+    doctor_id UUID,
+    doctor_name TEXT,
+    doctor_image TEXT,
+    specialty TEXT,
+    care_mode TEXT,
+    scheduled_start_at TIMESTAMPTZ,
+    scheduled_end_at TIMESTAMPTZ,
+    scheduled_timezone TEXT
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_care_mode TEXT := LOWER(BTRIM(COALESCE(p_care_mode, '')));
+    v_duration INTERVAL := public.p_scheduled_visit_duration(p_care_mode);
+BEGIN
+    IF v_actor_id IS NULL AND NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_hospital_id IS NULL OR NULLIF(BTRIM(COALESCE(p_specialty, '')), '') IS NULL THEN
+        RAISE EXCEPTION 'hospital_id and specialty are required';
+    END IF;
+
+    IF v_duration IS NULL THEN
+        RAISE EXCEPTION 'Unsupported care mode';
+    END IF;
+
+    IF p_from_at IS NULL OR p_to_at IS NULL
+       OR p_to_at <= p_from_at
+       OR p_to_at > p_from_at + INTERVAL '31 days' THEN
+        RAISE EXCEPTION 'Availability window must be between 1 minute and 31 days';
+    END IF;
+
+    RETURN QUERY
+    SELECT DISTINCT
+        hospital.id,
+        doctor.id,
+        doctor.name,
+        doctor.image,
+        doctor.specialization,
+        v_care_mode,
+        slot.start_at,
+        slot.start_at + v_duration,
+        hospital.timezone
+    FROM public.hospitals hospital
+    JOIN public.doctors doctor
+      ON doctor.hospital_id = hospital.id
+    JOIN public.doctor_schedules schedule
+      ON schedule.doctor_id = doctor.id
+     AND schedule.is_available = true
+    CROSS JOIN LATERAL generate_series(
+        (schedule.date + schedule.start_time) AT TIME ZONE hospital.timezone,
+        ((schedule.date + schedule.end_time) AT TIME ZONE hospital.timezone) - v_duration,
+        INTERVAL '15 minutes'
+    ) AS slot(start_at)
+    WHERE hospital.id = p_hospital_id
+      AND hospital.booking_eligible = true
+      AND hospital.status = 'available'
+      AND doctor.is_available = true
+      AND LOWER(COALESCE(doctor.status, '')) IN ('available', 'on_call')
+      AND COALESCE(doctor.current_patients, 0) < GREATEST(COALESCE(NULLIF(doctor.max_patients, 0), 1), 1)
+      AND LOWER(BTRIM(doctor.specialization)) = LOWER(BTRIM(p_specialty))
+      AND (v_care_mode <> 'telemedicine_async' OR doctor.profile_id IS NOT NULL)
+      AND slot.start_at >= GREATEST(p_from_at, NOW())
+      AND slot.start_at + v_duration <= p_to_at
+      AND NOT EXISTS (
+          SELECT 1
+          FROM public.visits active_visit
+          WHERE active_visit.doctor_id = doctor.id
+            AND active_visit.care_mode IS NOT NULL
+            AND active_visit.status IN ('upcoming', 'in_progress')
+            AND active_visit.scheduled_start_at < slot.start_at + v_duration
+            AND active_visit.scheduled_end_at > slot.start_at
+      )
+      AND (
+          v_actor_id IS NULL
+          OR NOT EXISTS (
+              SELECT 1
+              FROM public.visits patient_visit
+              WHERE patient_visit.user_id = v_actor_id
+                AND patient_visit.care_mode IS NOT NULL
+                AND patient_visit.status IN ('upcoming', 'in_progress')
+                AND patient_visit.scheduled_start_at < slot.start_at + v_duration
+                AND patient_visit.scheduled_end_at > slot.start_at
+          )
+      )
+    ORDER BY slot.start_at, doctor.id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_console_doctor_schedules(
+    p_hospital_id UUID DEFAULT NULL,
+    p_from_date DATE DEFAULT CURRENT_DATE,
+    p_to_date DATE DEFAULT CURRENT_DATE + 30
+)
+RETURNS TABLE (
+    schedule_id UUID,
+    doctor_id UUID,
+    doctor_name TEXT,
+    hospital_id UUID,
+    hospital_name TEXT,
+    scheduled_timezone TEXT,
+    schedule_date DATE,
+    start_time TIME,
+    end_time TIME,
+    shift_type TEXT,
+    is_available BOOLEAN,
+    updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+BEGIN
+    IF p_from_date IS NULL OR p_to_date IS NULL
+       OR p_to_date < p_from_date
+       OR p_to_date > p_from_date + 180 THEN
+        RAISE EXCEPTION 'Schedule window must be between 0 and 180 days';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT profile.role, profile.organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles profile
+        WHERE profile.id = v_actor_id;
+
+        IF NOT COALESCE(v_actor_role IN ('admin', 'org_admin'), false) THEN
+            RAISE EXCEPTION 'Unauthorized: schedule administration role required';
+        END IF;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        schedule.id,
+        doctor.id,
+        doctor.name,
+        hospital.id,
+        hospital.name,
+        hospital.timezone,
+        schedule.date,
+        schedule.start_time,
+        schedule.end_time,
+        schedule.shift_type,
+        schedule.is_available,
+        schedule.updated_at
+    FROM public.doctor_schedules schedule
+    JOIN public.doctors doctor ON doctor.id = schedule.doctor_id
+    JOIN public.hospitals hospital ON hospital.id = doctor.hospital_id
+    WHERE schedule.date BETWEEN p_from_date AND p_to_date
+      AND (p_hospital_id IS NULL OR hospital.id = p_hospital_id)
+      AND (
+          v_is_service_role
+          OR v_actor_role = 'admin'
+          OR (
+              v_actor_role = 'org_admin'
+              AND v_actor_org_id IS NOT NULL
+              AND hospital.organization_id = v_actor_org_id
+          )
+      )
+    ORDER BY schedule.date, schedule.start_time, doctor.name, schedule.id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.upsert_doctor_schedule(
+    p_doctor_id UUID,
+    p_date DATE,
+    p_start_time TIME,
+    p_end_time TIME,
+    p_shift_type TEXT,
+    p_is_available BOOLEAN DEFAULT true,
+    p_schedule_id UUID DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_doctor_org_id UUID;
+    v_doctor_timezone TEXT;
+    v_target_schedule_id UUID := p_schedule_id;
+    v_new_window_start TIMESTAMPTZ;
+    v_new_window_end TIMESTAMPTZ;
+    v_existing_window_start TIMESTAMPTZ;
+    v_existing_window_end TIMESTAMPTZ;
+    v_existing_schedule public.doctor_schedules%ROWTYPE;
+    v_schedule public.doctor_schedules%ROWTYPE;
+BEGIN
+    IF p_doctor_id IS NULL OR p_date IS NULL OR p_start_time IS NULL OR p_end_time IS NULL THEN
+        RAISE EXCEPTION 'doctor, date, start time, and end time are required';
+    END IF;
+
+    IF p_end_time <= p_start_time THEN
+        RAISE EXCEPTION 'Schedule end time must be later than start time';
+    END IF;
+
+    IF MOD(EXTRACT(MINUTE FROM p_start_time)::INTEGER, 15) <> 0
+       OR EXTRACT(SECOND FROM p_start_time) <> 0
+       OR MOD(EXTRACT(MINUTE FROM p_end_time)::INTEGER, 15) <> 0
+       OR EXTRACT(SECOND FROM p_end_time) <> 0 THEN
+        RAISE EXCEPTION 'Schedule boundaries must align to 15-minute increments';
+    END IF;
+
+    IF p_shift_type IS NULL OR p_shift_type NOT IN ('day', 'evening', 'night') THEN
+        RAISE EXCEPTION 'Unsupported shift type';
+    END IF;
+
+    SELECT hospital.organization_id, hospital.timezone
+    INTO v_doctor_org_id, v_doctor_timezone
+    FROM public.doctors doctor
+    JOIN public.hospitals hospital ON hospital.id = doctor.hospital_id
+    WHERE doctor.id = p_doctor_id
+    FOR UPDATE OF doctor;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Doctor not found';
+    END IF;
+
+    IF p_date < (NOW() AT TIME ZONE v_doctor_timezone)::DATE
+       OR p_date > (NOW() AT TIME ZONE v_doctor_timezone)::DATE + 365 THEN
+        RAISE EXCEPTION 'Schedules must be within the next 365 facility-local days';
+    END IF;
+
+    IF (((p_date + p_start_time) AT TIME ZONE v_doctor_timezone) AT TIME ZONE v_doctor_timezone)
+           IS DISTINCT FROM (p_date + p_start_time)
+       OR (((p_date + p_end_time) AT TIME ZONE v_doctor_timezone) AT TIME ZONE v_doctor_timezone)
+           IS DISTINCT FROM (p_date + p_end_time) THEN
+        RAISE EXCEPTION 'Schedule boundaries must be valid facility-local times';
+    END IF;
+
+    v_new_window_start := (p_date + p_start_time) AT TIME ZONE v_doctor_timezone;
+    v_new_window_end := (p_date + p_end_time) AT TIME ZONE v_doctor_timezone;
+
+    IF v_new_window_end <= v_new_window_start THEN
+        RAISE EXCEPTION 'Schedule must resolve to a positive facility-local window';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT profile.role, profile.organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles profile
+        WHERE profile.id = v_actor_id;
+
+        IF NOT COALESCE(
+            v_actor_role = 'admin'
+            OR (
+                v_actor_role = 'org_admin'
+                AND v_actor_org_id IS NOT NULL
+                AND v_actor_org_id = v_doctor_org_id
+            ),
+            false
+        ) THEN
+            RAISE EXCEPTION 'Unauthorized: doctor outside schedule scope';
+        END IF;
+    END IF;
+
+    IF v_target_schedule_id IS NULL THEN
+        SELECT schedule.id
+        INTO v_target_schedule_id
+        FROM public.doctor_schedules schedule
+        WHERE schedule.doctor_id = p_doctor_id
+          AND schedule.date = p_date
+          AND schedule.start_time = p_start_time
+          AND schedule.end_time = p_end_time
+        FOR UPDATE;
+    END IF;
+
+    IF v_target_schedule_id IS NOT NULL THEN
+        SELECT schedule.*
+        INTO v_existing_schedule
+        FROM public.doctor_schedules schedule
+        WHERE schedule.id = v_target_schedule_id
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Schedule not found';
+        END IF;
+
+        IF v_existing_schedule.doctor_id IS DISTINCT FROM p_doctor_id THEN
+            RAISE EXCEPTION 'A schedule cannot be moved to another doctor';
+        END IF;
+
+        v_existing_window_start := (
+            v_existing_schedule.date + v_existing_schedule.start_time
+        ) AT TIME ZONE v_doctor_timezone;
+        v_existing_window_end := (
+            v_existing_schedule.date + v_existing_schedule.end_time
+        ) AT TIME ZONE v_doctor_timezone;
+
+        IF EXISTS (
+            SELECT 1
+            FROM public.visits active_visit
+            WHERE active_visit.doctor_id = p_doctor_id
+              AND active_visit.care_mode IS NOT NULL
+              AND active_visit.status IN ('upcoming', 'in_progress')
+              AND active_visit.scheduled_start_at < v_existing_window_end
+              AND active_visit.scheduled_end_at > v_existing_window_start
+              AND (
+                  COALESCE(p_is_available, true) = false
+                  OR active_visit.scheduled_start_at < v_new_window_start
+                  OR active_visit.scheduled_end_at > v_new_window_end
+              )
+        ) THEN
+            RAISE EXCEPTION 'Schedule change would remove active booked visits';
+        END IF;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.doctor_schedules schedule
+        WHERE schedule.doctor_id = p_doctor_id
+          AND schedule.date = p_date
+          AND schedule.id IS DISTINCT FROM v_target_schedule_id
+          AND schedule.start_time < p_end_time
+          AND schedule.end_time > p_start_time
+    ) THEN
+        RAISE EXCEPTION 'Schedule overlaps an existing shift';
+    END IF;
+
+    IF v_target_schedule_id IS NOT NULL THEN
+        UPDATE public.doctor_schedules
+        SET date = p_date,
+            start_time = p_start_time,
+            end_time = p_end_time,
+            shift_type = p_shift_type,
+            is_available = COALESCE(p_is_available, true),
+            updated_at = NOW()
+        WHERE id = v_target_schedule_id
+        RETURNING * INTO v_schedule;
+    ELSE
+        INSERT INTO public.doctor_schedules (
+            doctor_id,
+            date,
+            start_time,
+            end_time,
+            shift_type,
+            is_available
+        )
+        VALUES (
+            p_doctor_id,
+            p_date,
+            p_start_time,
+            p_end_time,
+            p_shift_type,
+            COALESCE(p_is_available, true)
+        )
+        RETURNING * INTO v_schedule;
+    END IF;
+
+    INSERT INTO public.admin_audit_log (admin_id, action, details)
+    VALUES (
+        v_actor_id,
+        'doctor_schedule.upsert',
+        jsonb_build_object(
+            'schedule_id', v_schedule.id,
+            'doctor_id', p_doctor_id,
+            'date', p_date,
+            'start_time', p_start_time,
+            'end_time', p_end_time,
+            'service_role', v_is_service_role
+        )
+    );
+
+    RETURN to_jsonb(v_schedule);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.delete_doctor_schedule(p_schedule_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_schedule RECORD;
+    v_window_start TIMESTAMPTZ;
+    v_window_end TIMESTAMPTZ;
+BEGIN
+    SELECT
+        schedule.*,
+        hospital.organization_id,
+        hospital.timezone
+    INTO v_schedule
+    FROM public.doctor_schedules schedule
+    JOIN public.doctors doctor ON doctor.id = schedule.doctor_id
+    JOIN public.hospitals hospital ON hospital.id = doctor.hospital_id
+    WHERE schedule.id = p_schedule_id
+    FOR UPDATE OF schedule, doctor;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT profile.role, profile.organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles profile
+        WHERE profile.id = v_actor_id;
+
+        IF NOT COALESCE(
+            v_actor_role = 'admin'
+            OR (
+                v_actor_role = 'org_admin'
+                AND v_actor_org_id IS NOT NULL
+                AND v_actor_org_id = v_schedule.organization_id
+            ),
+            false
+        ) THEN
+            RAISE EXCEPTION 'Unauthorized: schedule outside actor scope';
+        END IF;
+    END IF;
+
+    v_window_start := (v_schedule.date + v_schedule.start_time) AT TIME ZONE v_schedule.timezone;
+    v_window_end := (v_schedule.date + v_schedule.end_time) AT TIME ZONE v_schedule.timezone;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.visits active_visit
+        WHERE active_visit.doctor_id = v_schedule.doctor_id
+          AND active_visit.care_mode IS NOT NULL
+          AND active_visit.status IN ('upcoming', 'in_progress')
+          AND active_visit.scheduled_start_at < v_window_end
+          AND active_visit.scheduled_end_at > v_window_start
+    ) THEN
+        RAISE EXCEPTION 'Schedule has active booked visits';
+    END IF;
+
+    DELETE FROM public.doctor_schedules
+    WHERE id = p_schedule_id;
+
+    INSERT INTO public.admin_audit_log (admin_id, action, details)
+    VALUES (
+        v_actor_id,
+        'doctor_schedule.delete',
+        jsonb_build_object(
+            'schedule_id', p_schedule_id,
+            'doctor_id', v_schedule.doctor_id,
+            'service_role', v_is_service_role
+        )
+    );
+
+    RETURN TRUE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ensure_async_consult_room(p_visit_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_visit RECORD;
+    v_room public.emergency_chat_rooms%ROWTYPE;
+    v_patient_name TEXT;
+    v_doctor_name TEXT;
+BEGIN
+    IF p_visit_id IS NULL THEN
+        RAISE EXCEPTION 'visit_id is required';
+    END IF;
+
+    SELECT
+        visit.*,
+        doctor.profile_id AS doctor_profile_id,
+        doctor.name AS canonical_doctor_name
+    INTO v_visit
+    FROM public.visits visit
+    JOIN public.doctors doctor ON doctor.id = visit.doctor_id
+    WHERE visit.id = p_visit_id
+    FOR UPDATE OF visit;
+
+    IF NOT FOUND OR v_visit.care_mode <> 'telemedicine_async' OR v_visit.request_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Visit is not an asynchronous telemedicine visit';
+    END IF;
+
+    IF v_visit.status NOT IN ('upcoming', 'in_progress') THEN
+        RAISE EXCEPTION 'Consult room is unavailable for a closed visit';
+    END IF;
+
+    IF v_visit.doctor_profile_id IS NULL THEN
+        RAISE EXCEPTION 'Assigned clinician does not have an authenticated profile';
+    END IF;
+
+    IF NOT v_is_service_role
+       AND v_actor_id IS DISTINCT FROM v_visit.user_id
+       AND v_actor_id IS DISTINCT FROM v_visit.doctor_profile_id THEN
+        RAISE EXCEPTION 'Unauthorized: visit outside actor scope';
+    END IF;
+
+    SELECT room.*
+    INTO v_room
+    FROM public.emergency_chat_rooms room
+    WHERE room.channel_type = 'telemedicine_async'
+      AND room.visit_id = p_visit_id
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_room.id IS NULL THEN
+        INSERT INTO public.emergency_chat_rooms (
+            emergency_request_id,
+            visit_id,
+            channel_type,
+            created_by,
+            status
+        )
+        VALUES (
+            NULL,
+            p_visit_id,
+            'telemedicine_async',
+            COALESCE(v_actor_id, v_visit.user_id),
+            'active'
+        )
+        RETURNING * INTO v_room;
+    END IF;
+
+    SELECT COALESCE(
+        NULLIF(BTRIM(profile.full_name), ''),
+        NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(profile.first_name, ''), NULLIF(profile.last_name, ''))), ''),
+        NULLIF(BTRIM(profile.email), ''),
+        'Patient'
+    )
+    INTO v_patient_name
+    FROM public.profiles profile
+    WHERE profile.id = v_visit.user_id;
+
+    SELECT COALESCE(
+        NULLIF(BTRIM(profile.full_name), ''),
+        NULLIF(BTRIM(CONCAT_WS(' ', NULLIF(profile.first_name, ''), NULLIF(profile.last_name, ''))), ''),
+        NULLIF(BTRIM(v_visit.canonical_doctor_name), ''),
+        'Clinician'
+    )
+    INTO v_doctor_name
+    FROM public.profiles profile
+    WHERE profile.id = v_visit.doctor_profile_id;
+
+    INSERT INTO public.emergency_chat_participants (
+        room_id,
+        user_id,
+        role,
+        display_name_snapshot
+    )
+    VALUES (
+        v_room.id,
+        v_visit.user_id,
+        'patient',
+        COALESCE(v_patient_name, 'Patient')
+    )
+    ON CONFLICT (room_id, user_id) DO UPDATE
+    SET role = 'patient',
+        display_name_snapshot = EXCLUDED.display_name_snapshot,
+        left_at = NULL,
+        updated_at = NOW();
+
+    INSERT INTO public.emergency_chat_participants (
+        room_id,
+        user_id,
+        role,
+        display_name_snapshot
+    )
+    VALUES (
+        v_room.id,
+        v_visit.doctor_profile_id,
+        'provider',
+        COALESCE(v_doctor_name, v_visit.canonical_doctor_name, 'Clinician')
+    )
+    ON CONFLICT (room_id, user_id) DO UPDATE
+    SET role = 'provider',
+        display_name_snapshot = EXCLUDED.display_name_snapshot,
+        left_at = NULL,
+        updated_at = NOW();
+
+    RETURN to_jsonb(v_room);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.book_scheduled_visit(
+    p_hospital_id UUID,
+    p_specialty TEXT,
+    p_care_mode TEXT,
+    p_scheduled_start_at TIMESTAMPTZ,
+    p_idempotency_key UUID,
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_care_mode TEXT := LOWER(BTRIM(COALESCE(p_care_mode, '')));
+    v_specialty TEXT := BTRIM(COALESCE(p_specialty, ''));
+    v_duration INTERVAL := public.p_scheduled_visit_duration(p_care_mode);
+    v_scheduled_end_at TIMESTAMPTZ;
+    v_local_start TIMESTAMP;
+    v_local_end TIMESTAMP;
+    v_hospital public.hospitals%ROWTYPE;
+    v_doctor public.doctors%ROWTYPE;
+    v_selected_doctor_id UUID;
+    v_visit public.visits%ROWTYPE;
+    v_existing public.visits%ROWTYPE;
+    v_room JSONB;
+    v_room_id UUID;
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_hospital_id IS NULL OR v_specialty = '' OR p_scheduled_start_at IS NULL OR p_idempotency_key IS NULL THEN
+        RAISE EXCEPTION 'hospital, specialty, start time, and idempotency key are required';
+    END IF;
+
+    IF v_duration IS NULL THEN
+        RAISE EXCEPTION 'Unsupported care mode';
+    END IF;
+
+    IF p_notes IS NOT NULL AND char_length(p_notes) > 2000 THEN
+        RAISE EXCEPTION 'Notes cannot exceed 2000 characters';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(
+            'scheduled-booking-key:' || v_actor_id::TEXT || ':' || p_idempotency_key::TEXT,
+            0
+        )
+    );
+
+    SELECT visit.*
+    INTO v_existing
+    FROM public.visits visit
+    WHERE visit.user_id = v_actor_id
+      AND visit.booking_idempotency_key = p_idempotency_key
+    LIMIT 1
+    FOR UPDATE;
+
+    IF v_existing.id IS NOT NULL THEN
+        IF v_existing.hospital_id IS DISTINCT FROM p_hospital_id
+           OR v_existing.care_mode IS DISTINCT FROM v_care_mode
+           OR v_existing.scheduled_start_at IS DISTINCT FROM p_scheduled_start_at
+           OR LOWER(BTRIM(COALESCE(v_existing.specialty, ''))) <> LOWER(v_specialty)
+           OR NULLIF(BTRIM(COALESCE(v_existing.notes, '')), '') IS DISTINCT FROM
+              NULLIF(BTRIM(COALESCE(p_notes, '')), '') THEN
+            RAISE EXCEPTION 'Idempotency key was already used for another booking';
+        END IF;
+
+        IF v_existing.care_mode = 'telemedicine_async' THEN
+            SELECT room.id
+            INTO v_room_id
+            FROM public.emergency_chat_rooms room
+            WHERE room.channel_type = 'telemedicine_async'
+              AND room.visit_id = v_existing.id;
+
+            IF v_room_id IS NULL AND v_existing.status IN ('upcoming', 'in_progress') THEN
+                v_room := public.ensure_async_consult_room(v_existing.id);
+                v_room_id := NULLIF(v_room->>'id', '')::UUID;
+            END IF;
+        END IF;
+
+        RETURN to_jsonb(v_existing) || jsonb_build_object(
+            'communication_room_id', v_room_id,
+            'idempotent', true
+        );
+    END IF;
+
+    SELECT hospital.*
+    INTO v_hospital
+    FROM public.hospitals hospital
+    WHERE hospital.id = p_hospital_id
+      AND hospital.booking_eligible = true
+      AND hospital.status = 'available'
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Facility is not available for booking';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_timezone_names timezone_row WHERE timezone_row.name = v_hospital.timezone
+    ) THEN
+        RAISE EXCEPTION 'Facility timezone is invalid';
+    END IF;
+
+    v_scheduled_end_at := p_scheduled_start_at + v_duration;
+    v_local_start := p_scheduled_start_at AT TIME ZONE v_hospital.timezone;
+    v_local_end := v_scheduled_end_at AT TIME ZONE v_hospital.timezone;
+
+    IF p_scheduled_start_at < NOW() + INTERVAL '5 minutes'
+       OR p_scheduled_start_at > NOW() + INTERVAL '90 days' THEN
+        RAISE EXCEPTION 'Booking start must be between 5 minutes and 90 days from now';
+    END IF;
+
+    IF v_local_start::DATE <> v_local_end::DATE
+       OR MOD(EXTRACT(MINUTE FROM v_local_start)::INTEGER, 15) <> 0
+       OR EXTRACT(SECOND FROM v_local_start) <> 0 THEN
+        RAISE EXCEPTION 'Booking must use a same-day 15-minute slot';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended('scheduled-patient:' || v_actor_id::TEXT, 0)
+    );
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.visits patient_visit
+        WHERE patient_visit.user_id = v_actor_id
+          AND patient_visit.care_mode IS NOT NULL
+          AND patient_visit.status IN ('upcoming', 'in_progress')
+          AND patient_visit.scheduled_start_at < v_scheduled_end_at
+          AND patient_visit.scheduled_end_at > p_scheduled_start_at
+    ) THEN
+        RAISE EXCEPTION 'Patient already has a scheduled visit in this time window';
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(
+        hashtextextended(
+            'book:' || p_hospital_id::TEXT || ':' || LOWER(v_specialty) || ':' || p_scheduled_start_at::TEXT,
+            0
+        )
+    );
+
+    v_selected_doctor_id := public.p_select_bookable_doctor(
+        p_hospital_id,
+        v_specialty,
+        v_care_mode,
+        p_scheduled_start_at,
+        v_scheduled_end_at,
+        NULL
+    );
+
+    IF v_selected_doctor_id IS NULL THEN
+        RAISE EXCEPTION 'No clinician is available for this slot';
+    END IF;
+
+    SELECT doctor.*
+    INTO STRICT v_doctor
+    FROM public.doctors doctor
+    WHERE doctor.id = v_selected_doctor_id;
+
+    INSERT INTO public.visits (
+        user_id,
+        hospital_id,
+        request_id,
+        doctor_id,
+        hospital_name,
+        hospital,
+        hospital_image,
+        image,
+        address,
+        phone,
+        doctor_name,
+        doctor,
+        doctor_image,
+        specialty,
+        date,
+        time,
+        type,
+        status,
+        notes,
+        estimated_duration,
+        meeting_link,
+        care_mode,
+        scheduled_start_at,
+        scheduled_end_at,
+        scheduled_timezone,
+        booking_idempotency_key,
+        lifecycle_state,
+        lifecycle_updated_at
+    )
+    VALUES (
+        v_actor_id,
+        v_hospital.id,
+        NULL,
+        v_doctor.id,
+        v_hospital.name,
+        v_hospital.name,
+        v_hospital.image,
+        v_hospital.image,
+        v_hospital.address,
+        v_hospital.phone,
+        v_doctor.name,
+        v_doctor.name,
+        v_doctor.image,
+        v_doctor.specialization,
+        TO_CHAR(v_local_start, 'YYYY-MM-DD'),
+        TO_CHAR(v_local_start, 'HH12:MI AM'),
+        CASE WHEN v_care_mode = 'telemedicine_async' THEN 'Telehealth' ELSE 'Consultation' END,
+        'upcoming',
+        NULLIF(BTRIM(COALESCE(p_notes, '')), ''),
+        CASE WHEN v_care_mode = 'telemedicine_async' THEN '30 mins' ELSE '45 mins' END,
+        NULL,
+        v_care_mode,
+        p_scheduled_start_at,
+        v_scheduled_end_at,
+        v_hospital.timezone,
+        p_idempotency_key,
+        'scheduled',
+        NOW()
+    )
+    RETURNING * INTO v_visit;
+
+    IF v_care_mode = 'telemedicine_async' THEN
+        v_room := public.ensure_async_consult_room(v_visit.id);
+        v_room_id := NULLIF(v_room->>'id', '')::UUID;
+    END IF;
+
+    RETURN to_jsonb(v_visit) || jsonb_build_object(
+        'communication_room_id', v_room_id,
+        'idempotent', false
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.transition_scheduled_visit(
+    p_visit_id UUID,
+    p_action TEXT,
+    p_scheduled_start_at TIMESTAMPTZ DEFAULT NULL,
+    p_reason TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_action TEXT := LOWER(BTRIM(COALESCE(p_action, '')));
+    v_visit RECORD;
+    v_duration INTERVAL;
+    v_new_end_at TIMESTAMPTZ;
+    v_local_start TIMESTAMP;
+    v_local_end TIMESTAMP;
+    v_new_doctor public.doctors%ROWTYPE;
+    v_selected_doctor_id UUID;
+    v_room_id UUID;
+    v_is_patient BOOLEAN := false;
+    v_is_clinician BOOLEAN := false;
+    v_is_org_admin BOOLEAN := false;
+    v_is_admin BOOLEAN := false;
+BEGIN
+    IF p_visit_id IS NULL OR v_action NOT IN ('cancel', 'reschedule', 'start', 'complete', 'no_show') THEN
+        RAISE EXCEPTION 'Valid visit_id and action are required';
+    END IF;
+
+    IF p_reason IS NOT NULL AND char_length(p_reason) > 500 THEN
+        RAISE EXCEPTION 'Reason cannot exceed 500 characters';
+    END IF;
+
+    SELECT
+        visit.*,
+        hospital.organization_id AS visit_org_id,
+        hospital.timezone AS hospital_timezone,
+        hospital.booking_eligible AS hospital_booking_eligible,
+        hospital.status AS hospital_status,
+        doctor.profile_id AS doctor_profile_id
+    INTO v_visit
+    FROM public.visits visit
+    JOIN public.hospitals hospital ON hospital.id = visit.hospital_id
+    JOIN public.doctors doctor ON doctor.id = visit.doctor_id
+    WHERE visit.id = p_visit_id
+    FOR UPDATE OF visit
+    FOR SHARE OF hospital;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Scheduled visit not found';
+    END IF;
+
+    IF v_visit.care_mode IS NULL OR v_visit.request_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Emergency and legacy visits use their existing lifecycle receivers';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT profile.role, profile.organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles profile
+        WHERE profile.id = v_actor_id;
+    END IF;
+
+    v_is_patient := v_actor_id IS NOT NULL
+        AND v_actor_id IS NOT DISTINCT FROM v_visit.user_id;
+    v_is_clinician := v_actor_id IS NOT NULL
+        AND v_visit.doctor_profile_id IS NOT NULL
+        AND v_actor_id = v_visit.doctor_profile_id;
+    v_is_admin := v_is_service_role OR COALESCE(v_actor_role = 'admin', false);
+    v_is_org_admin := COALESCE(
+        v_actor_role = 'org_admin'
+        AND v_actor_org_id IS NOT NULL
+        AND v_actor_org_id = v_visit.visit_org_id,
+        false
+    );
+
+    IF v_action = 'cancel' THEN
+        IF v_visit.status <> 'upcoming' THEN
+            RAISE EXCEPTION 'Only an upcoming visit can be cancelled';
+        END IF;
+
+        IF NOT (v_is_admin OR v_is_org_admin OR v_is_patient) THEN
+            RAISE EXCEPTION 'Unauthorized: cancellation outside actor scope';
+        END IF;
+
+        IF v_is_patient AND NOT (v_is_admin OR v_is_org_admin)
+           AND v_visit.scheduled_start_at <= NOW() + INTERVAL '2 hours' THEN
+            RAISE EXCEPTION 'Patient cancellation closes 2 hours before the visit';
+        END IF;
+
+        UPDATE public.visits
+        SET status = 'cancelled',
+            lifecycle_state = 'cancelled',
+            lifecycle_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_visit_id;
+
+        UPDATE public.emergency_chat_rooms
+        SET status = 'archived',
+            archived_at = COALESCE(archived_at, NOW()),
+            updated_at = NOW()
+        WHERE channel_type = 'telemedicine_async'
+          AND visit_id = p_visit_id
+          AND status <> 'archived';
+
+    ELSIF v_action = 'reschedule' THEN
+        IF v_visit.status <> 'upcoming' OR p_scheduled_start_at IS NULL THEN
+            RAISE EXCEPTION 'An upcoming visit and new start time are required';
+        END IF;
+
+        IF NOT (v_is_admin OR v_is_org_admin OR v_is_patient) THEN
+            RAISE EXCEPTION 'Unauthorized: reschedule outside actor scope';
+        END IF;
+
+        IF v_is_patient AND NOT (v_is_admin OR v_is_org_admin)
+           AND v_visit.scheduled_start_at <= NOW() + INTERVAL '2 hours' THEN
+            RAISE EXCEPTION 'Patient rescheduling closes 2 hours before the visit';
+        END IF;
+
+        IF NULLIF(BTRIM(COALESCE(v_visit.specialty, '')), '') IS NULL THEN
+            RAISE EXCEPTION 'Scheduled visit specialty is unavailable';
+        END IF;
+
+        IF v_visit.hospital_booking_eligible IS DISTINCT FROM true
+           OR v_visit.hospital_status <> 'available' THEN
+            RAISE EXCEPTION 'Facility is not available for rescheduling';
+        END IF;
+
+        v_duration := public.p_scheduled_visit_duration(v_visit.care_mode);
+        v_new_end_at := p_scheduled_start_at + v_duration;
+        v_local_start := p_scheduled_start_at AT TIME ZONE v_visit.hospital_timezone;
+        v_local_end := v_new_end_at AT TIME ZONE v_visit.hospital_timezone;
+
+        IF p_scheduled_start_at < NOW() + INTERVAL '5 minutes'
+           OR p_scheduled_start_at > NOW() + INTERVAL '90 days'
+           OR v_local_start::DATE <> v_local_end::DATE
+           OR MOD(EXTRACT(MINUTE FROM v_local_start)::INTEGER, 15) <> 0
+           OR EXTRACT(SECOND FROM v_local_start) <> 0 THEN
+            RAISE EXCEPTION 'New start must be a same-day 15-minute slot within 90 days';
+        END IF;
+
+        PERFORM pg_advisory_xact_lock(
+            hashtextextended('scheduled-patient:' || v_visit.user_id::TEXT, 0)
+        );
+
+        IF EXISTS (
+            SELECT 1
+            FROM public.visits patient_visit
+            WHERE patient_visit.user_id = v_visit.user_id
+              AND patient_visit.care_mode IS NOT NULL
+              AND patient_visit.status IN ('upcoming', 'in_progress')
+              AND patient_visit.id IS DISTINCT FROM p_visit_id
+              AND patient_visit.scheduled_start_at < v_new_end_at
+              AND patient_visit.scheduled_end_at > p_scheduled_start_at
+        ) THEN
+            RAISE EXCEPTION 'Patient already has a scheduled visit in this time window';
+        END IF;
+
+        PERFORM pg_advisory_xact_lock(
+            hashtextextended(
+                'book:' || v_visit.hospital_id::TEXT || ':' || LOWER(v_visit.specialty) || ':' || p_scheduled_start_at::TEXT,
+                0
+            )
+        );
+
+        v_selected_doctor_id := public.p_select_bookable_doctor(
+            v_visit.hospital_id,
+            v_visit.specialty,
+            v_visit.care_mode,
+            p_scheduled_start_at,
+            v_new_end_at,
+            p_visit_id
+        );
+
+        IF v_selected_doctor_id IS NULL THEN
+            RAISE EXCEPTION 'No clinician is available for the new slot';
+        END IF;
+
+        SELECT doctor.*
+        INTO STRICT v_new_doctor
+        FROM public.doctors doctor
+        WHERE doctor.id = v_selected_doctor_id;
+
+        SELECT room.id
+        INTO v_room_id
+        FROM public.emergency_chat_rooms room
+        WHERE room.channel_type = 'telemedicine_async'
+          AND room.visit_id = p_visit_id
+        FOR UPDATE;
+
+        UPDATE public.visits
+        SET doctor_id = v_new_doctor.id,
+            doctor_name = v_new_doctor.name,
+            doctor = v_new_doctor.name,
+            doctor_image = v_new_doctor.image,
+            scheduled_start_at = p_scheduled_start_at,
+            scheduled_end_at = v_new_end_at,
+            scheduled_timezone = v_visit.hospital_timezone,
+            date = TO_CHAR(v_local_start, 'YYYY-MM-DD'),
+            time = TO_CHAR(v_local_start, 'HH12:MI AM'),
+            lifecycle_state = 'rescheduled',
+            lifecycle_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_visit_id;
+
+        IF v_room_id IS NOT NULL
+           AND v_visit.doctor_profile_id IS DISTINCT FROM v_new_doctor.profile_id THEN
+            UPDATE public.emergency_chat_participants
+            SET left_at = COALESCE(left_at, NOW()),
+                updated_at = NOW()
+            WHERE room_id = v_room_id
+              AND user_id = v_visit.doctor_profile_id
+              AND left_at IS NULL;
+
+            INSERT INTO public.emergency_chat_participants (
+                room_id,
+                user_id,
+                role,
+                display_name_snapshot
+            )
+            VALUES (
+                v_room_id,
+                v_new_doctor.profile_id,
+                'provider',
+                v_new_doctor.name
+            )
+            ON CONFLICT (room_id, user_id) DO UPDATE
+            SET role = 'provider',
+                display_name_snapshot = EXCLUDED.display_name_snapshot,
+                left_at = NULL,
+                updated_at = NOW();
+        END IF;
+
+    ELSIF v_action = 'start' THEN
+        IF v_visit.status <> 'upcoming' THEN
+            RAISE EXCEPTION 'Only an upcoming visit can be started';
+        END IF;
+
+        IF NOT (v_is_admin OR v_is_org_admin OR v_is_clinician) THEN
+            RAISE EXCEPTION 'Unauthorized: assigned clinician or schedule administrator required';
+        END IF;
+
+        IF NOW() < v_visit.scheduled_start_at - INTERVAL '30 minutes'
+           OR NOW() > v_visit.scheduled_end_at + INTERVAL '30 minutes' THEN
+            RAISE EXCEPTION 'Visit can start only within its clinical window';
+        END IF;
+
+        UPDATE public.visits
+        SET status = 'in_progress',
+            lifecycle_state = 'in_progress',
+            lifecycle_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_visit_id;
+
+    ELSIF v_action = 'complete' THEN
+        IF v_visit.status <> 'in_progress' THEN
+            RAISE EXCEPTION 'Only an in-progress visit can be completed';
+        END IF;
+
+        IF NOT (v_is_admin OR v_is_org_admin OR v_is_clinician) THEN
+            RAISE EXCEPTION 'Unauthorized: assigned clinician or schedule administrator required';
+        END IF;
+
+        UPDATE public.visits
+        SET status = 'completed',
+            lifecycle_state = 'completed',
+            lifecycle_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_visit_id;
+
+        UPDATE public.emergency_chat_rooms
+        SET status = 'archived',
+            archived_at = COALESCE(archived_at, NOW()),
+            updated_at = NOW()
+        WHERE channel_type = 'telemedicine_async'
+          AND visit_id = p_visit_id
+          AND status <> 'archived';
+
+    ELSE
+        IF v_visit.status <> 'upcoming' OR NOW() < v_visit.scheduled_start_at + INTERVAL '15 minutes' THEN
+            RAISE EXCEPTION 'No-show is available 15 minutes after an upcoming visit starts';
+        END IF;
+
+        IF NOT (v_is_admin OR v_is_org_admin OR v_is_clinician) THEN
+            RAISE EXCEPTION 'Unauthorized: assigned clinician or schedule administrator required';
+        END IF;
+
+        UPDATE public.visits
+        SET status = 'cancelled',
+            lifecycle_state = 'no_show',
+            lifecycle_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = p_visit_id;
+
+        UPDATE public.emergency_chat_rooms
+        SET status = 'archived',
+            archived_at = COALESCE(archived_at, NOW()),
+            updated_at = NOW()
+        WHERE channel_type = 'telemedicine_async'
+          AND visit_id = p_visit_id
+          AND status <> 'archived';
+    END IF;
+
+    INSERT INTO public.user_activity (
+        user_id,
+        action,
+        entity_type,
+        entity_id,
+        description,
+        metadata
+    )
+    VALUES (
+        v_actor_id,
+        'scheduled_visit.' || v_action,
+        'visit',
+        p_visit_id,
+        NULLIF(BTRIM(COALESCE(p_reason, '')), ''),
+        jsonb_build_object(
+            'service_role', v_is_service_role,
+            'previous_status', v_visit.status,
+            'new_start_at', p_scheduled_start_at
+        )
+    );
+
+    SELECT visit.*
+    INTO v_visit
+    FROM public.visits visit
+    WHERE visit.id = p_visit_id;
+
+    RETURN to_jsonb(v_visit);
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.send_async_consult_message(
+    UUID,
+    TEXT,
+    TEXT,
+    TEXT,
+    JSONB,
+    TEXT,
+    TEXT,
+    BIGINT,
+    INTEGER,
+    BOOLEAN
+);
+
+CREATE OR REPLACE FUNCTION public.send_async_consult_message(
+    p_room_id UUID,
+    p_body TEXT,
+    p_kind TEXT DEFAULT 'text',
+    p_client_message_id TEXT DEFAULT NULL,
+    p_metadata JSONB DEFAULT '{}'::JSONB,
+    p_attachment_storage_path TEXT DEFAULT NULL,
+    p_attachment_mime_type TEXT DEFAULT NULL,
+    p_attachment_size_bytes BIGINT DEFAULT NULL,
+    p_attachment_duration_ms INTEGER DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, storage
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_kind TEXT := LOWER(BTRIM(COALESCE(p_kind, 'text')));
+    v_body TEXT := BTRIM(COALESCE(p_body, ''));
+    v_client_message_id TEXT := NULLIF(BTRIM(COALESCE(p_client_message_id, '')), '');
+    v_attachment_path TEXT := NULLIF(BTRIM(COALESCE(p_attachment_storage_path, '')), '');
+    v_attachment_mime TEXT := LOWER(NULLIF(BTRIM(COALESCE(p_attachment_mime_type, '')), ''));
+    v_sender_role TEXT;
+    v_visit_id UUID;
+    v_patient_id UUID;
+    v_doctor_profile_id UUID;
+    v_room RECORD;
+    v_message public.emergency_chat_messages%ROWTYPE;
+    v_object_size BIGINT;
+    v_object_mime TEXT;
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_room_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: consult room outside actor scope';
+    END IF;
+
+    IF v_kind NOT IN ('text', 'image', 'video') THEN
+        RAISE EXCEPTION 'Unsupported consult message kind';
+    END IF;
+
+    IF char_length(v_body) < 1 OR char_length(v_body) > 1000 THEN
+        RAISE EXCEPTION 'Message must be between 1 and 1000 characters';
+    END IF;
+
+    IF v_client_message_id IS NOT NULL AND char_length(v_client_message_id) > 120 THEN
+        RAISE EXCEPTION 'Client message id cannot exceed 120 characters';
+    END IF;
+
+    IF p_metadata IS NULL
+       OR jsonb_typeof(p_metadata) <> 'object'
+       OR octet_length(p_metadata::TEXT) > 4096 THEN
+        RAISE EXCEPTION 'Message metadata must be an object no larger than 4096 bytes';
+    END IF;
+
+    SELECT room.visit_id
+    INTO v_visit_id
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id
+      AND room.channel_type = 'telemedicine_async';
+
+    IF NOT FOUND OR v_visit_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: consult room outside actor scope';
+    END IF;
+
+    SELECT visit.user_id, doctor.profile_id
+    INTO v_patient_id, v_doctor_profile_id
+    FROM public.visits visit
+    LEFT JOIN public.doctors doctor ON doctor.id = visit.doctor_id
+    WHERE visit.id = v_visit_id
+      AND visit.care_mode = 'telemedicine_async'
+      AND visit.request_id IS NULL
+      AND visit.status IN ('upcoming', 'in_progress')
+    FOR UPDATE OF visit;
+
+    IF NOT FOUND
+       OR (
+           v_actor_id IS DISTINCT FROM v_patient_id
+           AND v_actor_id IS DISTINCT FROM v_doctor_profile_id
+       ) THEN
+        RAISE EXCEPTION 'Unauthorized: consult room outside actor scope';
+    END IF;
+
+    SELECT room.status, room.visit_id
+    INTO v_room
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id
+      AND room.channel_type = 'telemedicine_async'
+      AND room.visit_id = v_visit_id
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_room.status <> 'active' THEN
+        RAISE EXCEPTION 'Consult room is not active';
+    END IF;
+
+    SELECT participant.role
+    INTO v_sender_role
+    FROM public.emergency_chat_participants participant
+    WHERE participant.room_id = p_room_id
+      AND participant.user_id = v_actor_id
+      AND participant.left_at IS NULL
+    FOR UPDATE;
+
+    IF v_sender_role IS NULL THEN
+        PERFORM public.ensure_async_consult_room(v_room.visit_id);
+
+        SELECT participant.role
+        INTO v_sender_role
+        FROM public.emergency_chat_participants participant
+        WHERE participant.room_id = p_room_id
+          AND participant.user_id = v_actor_id
+          AND participant.left_at IS NULL
+        FOR UPDATE;
+    END IF;
+
+    IF v_sender_role IS NULL OR v_sender_role NOT IN ('patient', 'provider') THEN
+        RAISE EXCEPTION 'Only the patient or assigned clinician can send consult messages';
+    END IF;
+
+    IF v_client_message_id IS NOT NULL THEN
+        SELECT message.*
+        INTO v_message
+        FROM public.emergency_chat_messages message
+        WHERE message.room_id = p_room_id
+          AND message.sender_id = v_actor_id
+          AND message.client_message_id = v_client_message_id
+        LIMIT 1;
+
+        IF v_message.id IS NOT NULL THEN
+            IF v_message.kind IS DISTINCT FROM v_kind
+               OR v_message.body IS DISTINCT FROM v_body
+               OR v_message.metadata IS DISTINCT FROM p_metadata
+               OR v_message.attachment_storage_path IS DISTINCT FROM v_attachment_path
+               OR v_message.attachment_mime_type IS DISTINCT FROM v_attachment_mime
+               OR v_message.attachment_size_bytes IS DISTINCT FROM p_attachment_size_bytes
+               OR v_message.attachment_duration_ms IS DISTINCT FROM p_attachment_duration_ms
+               OR v_message.ai_assisted IS DISTINCT FROM false THEN
+                RAISE EXCEPTION 'Client message id was already used for another message';
+            END IF;
+            RETURN to_jsonb(v_message);
+        END IF;
+    END IF;
+
+    IF v_kind = 'text' THEN
+        IF v_attachment_path IS NOT NULL
+           OR v_attachment_mime IS NOT NULL
+           OR p_attachment_size_bytes IS NOT NULL
+           OR p_attachment_duration_ms IS NOT NULL THEN
+            RAISE EXCEPTION 'Text messages cannot include attachment fields';
+        END IF;
+    ELSE
+        IF v_attachment_path IS NULL
+           OR v_attachment_mime IS NULL
+           OR p_attachment_size_bytes IS NULL THEN
+            RAISE EXCEPTION 'Attachment path, MIME type, and size are required';
+        END IF;
+
+        IF v_attachment_path NOT LIKE (
+            'telemedicine/' || p_room_id::TEXT || '/' || v_actor_id::TEXT || '/%'
+        ) THEN
+            RAISE EXCEPTION 'Attachment path does not belong to this room and sender';
+        END IF;
+
+        SELECT
+            CASE
+                WHEN COALESCE(object.metadata->>'size', '') ~ '^[0-9]+$'
+                THEN (object.metadata->>'size')::BIGINT
+                ELSE NULL
+            END,
+            LOWER(NULLIF(object.metadata->>'mimetype', ''))
+        INTO v_object_size, v_object_mime
+        FROM storage.objects object
+        WHERE object.bucket_id = 'documents'
+          AND object.name = v_attachment_path
+        FOR SHARE;
+
+        IF NOT FOUND OR v_object_size IS NULL OR v_object_size <> p_attachment_size_bytes THEN
+            RAISE EXCEPTION 'Attachment object size could not be verified';
+        END IF;
+
+        IF v_object_mime IS NULL OR v_object_mime <> v_attachment_mime THEN
+            RAISE EXCEPTION 'Attachment MIME type could not be verified';
+        END IF;
+
+        IF v_kind = 'image' THEN
+            IF v_attachment_mime NOT IN ('image/jpeg', 'image/png', 'image/webp')
+               OR p_attachment_size_bytes NOT BETWEEN 1 AND 10485760
+               OR p_attachment_duration_ms IS NOT NULL THEN
+                RAISE EXCEPTION 'Image attachment is outside the supported contract';
+            END IF;
+        ELSE
+            IF v_attachment_mime NOT IN ('video/mp4', 'video/webm', 'video/quicktime')
+               OR p_attachment_size_bytes NOT BETWEEN 1 AND 26214400
+               OR p_attachment_duration_ms IS NULL
+               OR p_attachment_duration_ms NOT BETWEEN 1 AND 30000 THEN
+                RAISE EXCEPTION 'Video attachment is outside the supported contract';
+            END IF;
+        END IF;
+    END IF;
+
+    INSERT INTO public.emergency_chat_messages (
+        room_id,
+        sender_id,
+        sender_role,
+        kind,
+        body,
+        client_message_id,
+        metadata,
+        attachment_storage_path,
+        attachment_mime_type,
+        attachment_size_bytes,
+        attachment_duration_ms,
+        ai_assisted
+    )
+    VALUES (
+        p_room_id,
+        v_actor_id,
+        v_sender_role,
+        v_kind,
+        v_body,
+        v_client_message_id,
+        p_metadata,
+        v_attachment_path,
+        v_attachment_mime,
+        p_attachment_size_bytes,
+        p_attachment_duration_ms,
+        false
+    )
+    RETURNING * INTO v_message;
+
+    UPDATE public.emergency_chat_rooms
+    SET last_message_at = v_message.created_at,
+        updated_at = NOW()
+    WHERE id = p_room_id;
+
+    UPDATE public.emergency_chat_participants
+    SET last_read_message_id = v_message.id,
+        last_read_at = v_message.created_at,
+        updated_at = NOW()
+    WHERE room_id = p_room_id
+      AND user_id = v_actor_id
+      AND left_at IS NULL;
+
+    RETURN to_jsonb(v_message);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_async_consult_room_read(
+    p_room_id UUID,
+    p_message_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_message_id UUID := p_message_id;
+    v_visit_id UUID;
+    v_patient_id UUID;
+    v_doctor_profile_id UUID;
+    v_sender_role TEXT;
+BEGIN
+    IF v_actor_id IS NULL OR p_room_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: consult room outside actor scope';
+    END IF;
+
+    SELECT room.visit_id
+    INTO v_visit_id
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id
+      AND room.channel_type = 'telemedicine_async';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Consult room not found';
+    END IF;
+
+    SELECT visit.user_id, doctor.profile_id
+    INTO v_patient_id, v_doctor_profile_id
+    FROM public.visits visit
+    LEFT JOIN public.doctors doctor ON doctor.id = visit.doctor_id
+    WHERE visit.id = v_visit_id
+      AND visit.care_mode = 'telemedicine_async'
+      AND visit.request_id IS NULL
+    FOR UPDATE OF visit;
+
+    IF NOT FOUND
+       OR (
+           v_actor_id IS DISTINCT FROM v_patient_id
+           AND v_actor_id IS DISTINCT FROM v_doctor_profile_id
+       ) THEN
+        RAISE EXCEPTION 'Unauthorized: consult room outside actor scope';
+    END IF;
+
+    PERFORM 1
+    FROM public.emergency_chat_rooms room
+    WHERE room.id = p_room_id
+      AND room.channel_type = 'telemedicine_async'
+      AND room.visit_id = v_visit_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Consult room not found';
+    END IF;
+
+    SELECT participant.role
+    INTO v_sender_role
+    FROM public.emergency_chat_participants participant
+    WHERE participant.room_id = p_room_id
+      AND participant.user_id = v_actor_id
+      AND participant.left_at IS NULL
+    FOR UPDATE;
+
+    IF v_sender_role IS NULL THEN
+        PERFORM public.ensure_async_consult_room(v_visit_id);
+
+        SELECT participant.role
+        INTO v_sender_role
+        FROM public.emergency_chat_participants participant
+        WHERE participant.room_id = p_room_id
+          AND participant.user_id = v_actor_id
+          AND participant.left_at IS NULL
+        FOR UPDATE;
+    END IF;
+
+    IF v_sender_role IS NULL OR v_sender_role NOT IN ('patient', 'provider') THEN
+        RAISE EXCEPTION 'Only the patient or assigned clinician can update consult read state';
+    END IF;
+
+    IF v_message_id IS NULL THEN
+        SELECT message.id
+        INTO v_message_id
+        FROM public.emergency_chat_messages message
+        WHERE message.room_id = p_room_id
+          AND message.deleted_at IS NULL
+        ORDER BY message.created_at DESC
+        LIMIT 1;
+    ELSE
+        PERFORM 1
+        FROM public.emergency_chat_messages message
+        WHERE message.id = v_message_id
+          AND message.room_id = p_room_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Message does not belong to consult room';
+        END IF;
+    END IF;
+
+    UPDATE public.emergency_chat_participants
+    SET last_read_message_id = v_message_id,
+        last_read_at = NOW(),
+        updated_at = NOW()
+    WHERE room_id = p_room_id
+      AND user_id = v_actor_id
+      AND left_at IS NULL;
+
+    RETURN FOUND;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.p_scheduled_visit_duration(TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.p_select_bookable_doctor(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_book_visit_availability(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_console_doctor_schedules(UUID, DATE, DATE) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.upsert_doctor_schedule(UUID, DATE, TIME, TIME, TEXT, BOOLEAN, UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.delete_doctor_schedule(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.ensure_async_consult_room(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.book_scheduled_visit(UUID, TEXT, TEXT, TIMESTAMPTZ, UUID, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.transition_scheduled_visit(UUID, TEXT, TIMESTAMPTZ, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.send_async_consult_message(UUID, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT, BIGINT, INTEGER) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.mark_async_consult_room_read(UUID, UUID) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.get_book_visit_availability(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_console_doctor_schedules(UUID, DATE, DATE) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.upsert_doctor_schedule(UUID, DATE, TIME, TIME, TEXT, BOOLEAN, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.delete_doctor_schedule(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.ensure_async_consult_room(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.book_scheduled_visit(UUID, TEXT, TEXT, TIMESTAMPTZ, UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transition_scheduled_visit(UUID, TEXT, TIMESTAMPTZ, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.send_async_consult_message(UUID, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT, BIGINT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_async_consult_room_read(UUID, UUID) TO authenticated;
+-- END SCHEDULED_VISITS_ASYNC_CONSULT_RPCS
+
 
 REVOKE ALL ON FUNCTION public.console_create_emergency_request(JSONB) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.console_update_emergency_request(UUID, JSONB) FROM PUBLIC, anon;

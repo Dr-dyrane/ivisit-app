@@ -185,6 +185,7 @@ export type Database = {
           is_available: boolean | null
           shift_type: string
           start_time: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -195,6 +196,7 @@ export type Database = {
           is_available?: boolean | null
           shift_type: string
           start_time: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -205,6 +207,7 @@ export type Database = {
           is_available?: boolean | null
           shift_type?: string
           start_time?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -394,6 +397,11 @@ export type Database = {
       }
       emergency_chat_messages: {
         Row: {
+          ai_assisted: boolean
+          attachment_duration_ms: number | null
+          attachment_mime_type: string | null
+          attachment_size_bytes: number | null
+          attachment_storage_path: string | null
           body: string
           client_message_id: string | null
           created_at: string
@@ -408,6 +416,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_assisted?: boolean
+          attachment_duration_ms?: number | null
+          attachment_mime_type?: string | null
+          attachment_size_bytes?: number | null
+          attachment_storage_path?: string | null
           body: string
           client_message_id?: string | null
           created_at?: string
@@ -422,6 +435,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_assisted?: boolean
+          attachment_duration_ms?: number | null
+          attachment_mime_type?: string | null
+          attachment_size_bytes?: number | null
+          attachment_storage_path?: string | null
           body?: string
           client_message_id?: string | null
           created_at?: string
@@ -495,10 +513,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "emergency_chat_participants_last_read_message_id_fkey"
-            columns: ["last_read_message_id"]
+            columns: ["room_id", "last_read_message_id"]
             isOneToOne: false
             referencedRelation: "emergency_chat_messages"
-            referencedColumns: ["id"]
+            referencedColumns: ["room_id", "id"]
           },
           {
             foreignKeyName: "emergency_chat_participants_room_id_fkey"
@@ -519,9 +537,10 @@ export type Database = {
       emergency_chat_rooms: {
         Row: {
           archived_at: string | null
+          channel_type: string
           created_at: string
           created_by: string | null
-          emergency_request_id: string
+          emergency_request_id: string | null
           id: string
           last_message_at: string | null
           status: string
@@ -530,9 +549,10 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          channel_type?: string
           created_at?: string
           created_by?: string | null
-          emergency_request_id: string
+          emergency_request_id?: string | null
           id?: string
           last_message_at?: string | null
           status?: string
@@ -541,9 +561,10 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          channel_type?: string
           created_at?: string
           created_by?: string | null
-          emergency_request_id?: string
+          emergency_request_id?: string | null
           id?: string
           last_message_at?: string | null
           status?: string
@@ -1152,6 +1173,7 @@ export type Database = {
           service_types: string[] | null
           specialties: string[] | null
           status: string | null
+          timezone: string
           total_beds: number | null
           type: string | null
           updated_at: string
@@ -1198,6 +1220,7 @@ export type Database = {
           service_types?: string[] | null
           specialties?: string[] | null
           status?: string | null
+          timezone?: string
           total_beds?: number | null
           type?: string | null
           updated_at?: string
@@ -1244,6 +1267,7 @@ export type Database = {
           service_types?: string[] | null
           specialties?: string[] | null
           status?: string | null
+          timezone?: string
           total_beds?: number | null
           type?: string | null
           updated_at?: string
@@ -2684,11 +2708,14 @@ export type Database = {
       visits: {
         Row: {
           address: string | null
+          booking_idempotency_key: string | null
+          care_mode: string | null
           cost: string | null
           created_at: string
           date: string | null
           display_id: string | null
           doctor: string | null
+          doctor_id: string | null
           doctor_image: string | null
           doctor_name: string | null
           estimated_duration: string | null
@@ -2714,6 +2741,9 @@ export type Database = {
           rating_comment: string | null
           request_id: string | null
           room_number: string | null
+          scheduled_end_at: string | null
+          scheduled_start_at: string | null
+          scheduled_timezone: string | null
           specialty: string | null
           status: string | null
           summary: string | null
@@ -2728,11 +2758,14 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          booking_idempotency_key?: string | null
+          care_mode?: string | null
           cost?: string | null
           created_at?: string
           date?: string | null
           display_id?: string | null
           doctor?: string | null
+          doctor_id?: string | null
           doctor_image?: string | null
           doctor_name?: string | null
           estimated_duration?: string | null
@@ -2758,6 +2791,9 @@ export type Database = {
           rating_comment?: string | null
           request_id?: string | null
           room_number?: string | null
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
+          scheduled_timezone?: string | null
           specialty?: string | null
           status?: string | null
           summary?: string | null
@@ -2772,11 +2808,14 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          booking_idempotency_key?: string | null
+          care_mode?: string | null
           cost?: string | null
           created_at?: string
           date?: string | null
           display_id?: string | null
           doctor?: string | null
+          doctor_id?: string | null
           doctor_image?: string | null
           doctor_name?: string | null
           estimated_duration?: string | null
@@ -2802,6 +2841,9 @@ export type Database = {
           rating_comment?: string | null
           request_id?: string | null
           room_number?: string | null
+          scheduled_end_at?: string | null
+          scheduled_start_at?: string | null
+          scheduled_timezone?: string | null
           specialty?: string | null
           status?: string | null
           summary?: string | null
@@ -2815,6 +2857,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "visits_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "visits_hospital_id_fkey"
             columns: ["hospital_id"]
@@ -3084,6 +3133,17 @@ export type Database = {
         }
         Returns: Json
       }
+      book_scheduled_visit: {
+        Args: {
+          p_care_mode: string
+          p_hospital_id: string
+          p_idempotency_key: string
+          p_notes?: string
+          p_scheduled_start_at: string
+          p_specialty: string
+        }
+        Returns: Json
+      }
       calculate_ambulance_eta: {
         Args: {
           p_ambulance_id: string
@@ -3177,6 +3237,10 @@ export type Database = {
         Args: { p_payment_id: string; p_request_id: string }
         Returns: Json
       }
+      delete_doctor_schedule: {
+        Args: { p_schedule_id: string }
+        Returns: boolean
+      }
       delete_hospital_by_admin: {
         Args: { target_hospital_id: string }
         Returns: Json
@@ -3218,6 +3282,10 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
+      ensure_async_consult_room: {
+        Args: { p_visit_id: string }
+        Returns: Json
+      }
       ensure_emergency_chat_room: {
         Args: { p_request_id: string }
         Returns: Json
@@ -3389,6 +3457,47 @@ export type Database = {
         }
         Returns: Json
       }
+      get_book_visit_availability: {
+        Args: {
+          p_care_mode: string
+          p_from_at?: string
+          p_hospital_id: string
+          p_specialty: string
+          p_to_at?: string
+        }
+        Returns: {
+          care_mode: string
+          doctor_id: string
+          doctor_image: string
+          doctor_name: string
+          hospital_id: string
+          scheduled_end_at: string
+          scheduled_start_at: string
+          scheduled_timezone: string
+          specialty: string
+        }[]
+      }
+      get_console_doctor_schedules: {
+        Args: {
+          p_from_date?: string
+          p_hospital_id?: string
+          p_to_date?: string
+        }
+        Returns: {
+          doctor_id: string
+          doctor_name: string
+          end_time: string
+          hospital_id: string
+          hospital_name: string
+          is_available: boolean
+          schedule_date: string
+          schedule_id: string
+          scheduled_timezone: string
+          shift_type: string
+          start_time: string
+          updated_at: string
+        }[]
+      }
       get_console_identity_projection: { Args: never; Returns: Json }
       get_emergency_medical_data: { Args: { p_user_id: string }; Returns: Json }
       get_entity_id: { Args: { p_display_id: string }; Returns: string }
@@ -3494,6 +3603,10 @@ export type Database = {
         Returns: Json
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mark_async_consult_room_read: {
+        Args: { p_message_id?: string; p_room_id: string }
+        Returns: boolean
+      }
       mark_emergency_chat_room_read: {
         Args: { p_message_id?: string; p_room_id: string }
         Returns: boolean
@@ -3720,6 +3833,20 @@ export type Database = {
           requires_support: boolean
           verification_status: string
         }[]
+      }
+      send_async_consult_message: {
+        Args: {
+          p_attachment_duration_ms?: number
+          p_attachment_mime_type?: string
+          p_attachment_size_bytes?: number
+          p_attachment_storage_path?: string
+          p_body: string
+          p_client_message_id?: string
+          p_kind?: string
+          p_metadata?: Json
+          p_room_id: string
+        }
+        Returns: Json
       }
       send_emergency_chat_message: {
         Args: {
@@ -4328,6 +4455,15 @@ export type Database = {
         Returns: Json
       }
       unlockrows: { Args: { "": string }; Returns: number }
+      transition_scheduled_visit: {
+        Args: {
+          p_action: string
+          p_reason?: string
+          p_scheduled_start_at?: string
+          p_visit_id: string
+        }
+        Returns: Json
+      }
       update_ambulance_location: {
         Args: {
           p_accuracy?: number
@@ -4379,6 +4515,18 @@ export type Database = {
           table_name: string
         }
         Returns: string
+      }
+      upsert_doctor_schedule: {
+        Args: {
+          p_date: string
+          p_doctor_id: string
+          p_end_time: string
+          p_is_available?: boolean
+          p_schedule_id?: string
+          p_shift_type: string
+          p_start_time: string
+        }
+        Returns: Json
       }
       upsert_room_pricing: { Args: { payload: Json }; Returns: Json }
       upsert_service_pricing: { Args: { payload: Json }; Returns: Json }

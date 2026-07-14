@@ -77,6 +77,12 @@ Rule: post-pillar patches may add columns, indexes, or guards. Contract renames,
 - `emergency_chat_participants`
 - `emergency_chat_messages`
 
+Scheduled care reuses `visits` and the existing `emergency_chat_*` family.
+`doctor_schedules` remains owned by `org_structure`; patient-safe availability,
+booking, lifecycle, schedule administration, and async-consult commands are
+exposed from `core_rpcs`. No parallel appointment or telemedicine-session table
+owns encounter truth.
+
 ### `finance`
 - `ivisit_main_wallet`
 - `organization_wallets`
@@ -155,6 +161,15 @@ Key RPCs called directly by app/console services:
 - App-heavy: `create_emergency_v4`, `process_wallet_payment`, `process_cash_payment_v2`, `calculate_emergency_cost_v2`, `notify_cash_approval_org_admins`, `reload_schema`
 - Console-heavy: `console_*`, `get_console_identity_projection`, `get_user_statistics`, `search_onboarding_facilities`, `provision_console_organization`, `complete_console_user_invitation`, `cancel_trip`, `complete_trip`, `cancel_bed_reservation`, `discharge_patient`, `check_cash_eligibility`, `search_auth_users`, `update_profile_by_admin`, `update_hospital_by_admin`
 - Contact Dispatch: `ensure_emergency_chat_room`, `send_emergency_chat_message`, `mark_emergency_chat_room_read`
+- Scheduled-care backend contract (runtime adoption pending):
+  `get_book_visit_availability`, `book_scheduled_visit`,
+  `get_console_doctor_schedules`, `upsert_doctor_schedule`,
+  `delete_doctor_schedule`, `transition_scheduled_visit`,
+  `ensure_async_consult_room`, `send_async_consult_message`, and
+  `mark_async_consult_room_read`
+
+Detailed doctrine and rollout gates live in
+`docs/flows/visits/SCHEDULED_VISITS_ASYNC_CONSULT_DATA_PASS_PLAN_V1.md`.
 
 Console identity scope rule: `get_console_identity_projection` returns the canonical organization UUID plus its complete facility UUID set. `get_user_statistics` is global only for platform admins or `service_role`; organization admins receive organization-bound aggregates and every other role is denied.
 

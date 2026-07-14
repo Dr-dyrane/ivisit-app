@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS public.visits (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL,
+    doctor_id UUID REFERENCES public.doctors(id) ON DELETE SET NULL,
     -- Hospital snapshot (denormalised from hospitals join for offline/history display)
     hospital_name TEXT,
     hospital TEXT,                             -- legacy alias for hospital_name (mapFromDb reads both)
@@ -170,6 +171,11 @@ CREATE TABLE IF NOT EXISTS public.visits (
     room_number TEXT,
     estimated_duration TEXT,
     meeting_link TEXT,
+    care_mode TEXT,
+    scheduled_start_at TIMESTAMPTZ,
+    scheduled_end_at TIMESTAMPTZ,
+    scheduled_timezone TEXT,
+    booking_idempotency_key UUID,
     insurance_covered BOOLEAN DEFAULT TRUE,
     next_visit TEXT,
     -- Patient location at time of booking
@@ -193,13 +199,76 @@ CREATE TABLE IF NOT EXISTS public.visits (
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
 
+-- BEGIN SCHEDULED_VISITS_LOGISTICS_SCHEMA
+-- PULLBACK NOTE: Scheduled visits data pass.
+-- OLD: Book Visit rows had only display date/time and clinician snapshots.
+-- NEW: scheduled care has canonical clinician identity, instants, timezone, and retry identity.
+ALTER TABLE public.visits
+    ADD COLUMN IF NOT EXISTS doctor_id UUID REFERENCES public.doctors(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS care_mode TEXT,
+    ADD COLUMN IF NOT EXISTS scheduled_start_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS scheduled_end_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS scheduled_timezone TEXT,
+    ADD COLUMN IF NOT EXISTS booking_idempotency_key UUID;
+
+ALTER TABLE public.visits
+    DROP CONSTRAINT IF EXISTS visits_care_mode_check;
+ALTER TABLE public.visits
+    ADD CONSTRAINT visits_care_mode_check
+    CHECK (care_mode IS NULL OR care_mode IN ('in_person', 'telemedicine_async'));
+
+ALTER TABLE public.visits
+    DROP CONSTRAINT IF EXISTS visits_scheduled_contract_check;
+ALTER TABLE public.visits
+    ADD CONSTRAINT visits_scheduled_contract_check
+    CHECK (
+        (
+            care_mode IS NULL
+            AND scheduled_start_at IS NULL
+            AND scheduled_end_at IS NULL
+            AND scheduled_timezone IS NULL
+            AND booking_idempotency_key IS NULL
+        )
+        OR (
+            care_mode IS NOT NULL
+            AND request_id IS NULL
+            AND user_id IS NOT NULL
+            AND status IS NOT NULL
+            AND status IN ('upcoming', 'in_progress', 'completed', 'cancelled')
+            AND (
+                status IN ('completed', 'cancelled')
+                OR (hospital_id IS NOT NULL AND doctor_id IS NOT NULL)
+            )
+            AND scheduled_start_at IS NOT NULL
+            AND scheduled_end_at IS NOT NULL
+            AND scheduled_end_at > scheduled_start_at
+            AND scheduled_timezone IS NOT NULL
+            AND char_length(scheduled_timezone) BETWEEN 1 AND 64
+            AND booking_idempotency_key IS NOT NULL
+        )
+    );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_visits_booking_idempotency
+    ON public.visits(user_id, booking_idempotency_key)
+    WHERE booking_idempotency_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_visits_doctor_scheduled_window
+    ON public.visits(doctor_id, scheduled_start_at, scheduled_end_at, status)
+    WHERE care_mode IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_visits_patient_scheduled_window
+    ON public.visits(user_id, scheduled_start_at, scheduled_end_at, status)
+    WHERE care_mode IS NOT NULL;
+-- END SCHEDULED_VISITS_LOGISTICS_SCHEMA
+
 -- 3b. Emergency Communication Rooms (Contact Dispatch)
 -- Flow-owned operational chat for active emergency requests. This stays in the
 -- logistics pillar because the room lifecycle follows emergency request runtime.
 CREATE TABLE IF NOT EXISTS public.emergency_chat_rooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    emergency_request_id UUID NOT NULL UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    emergency_request_id UUID UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
     visit_id UUID REFERENCES public.visits(id) ON DELETE SET NULL,
+    channel_type TEXT NOT NULL DEFAULT 'emergency',
     created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -243,15 +312,141 @@ CREATE TABLE IF NOT EXISTS public.emergency_chat_messages (
     room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     sender_role TEXT NOT NULL CHECK (sender_role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support', 'system')),
-    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system')),
+    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system', 'image', 'video')),
     body TEXT NOT NULL CHECK (char_length(trim(body)) BETWEEN 1 AND 1000),
     client_message_id TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    attachment_storage_path TEXT,
+    attachment_mime_type TEXT,
+    attachment_size_bytes BIGINT,
+    attachment_duration_ms INTEGER,
+    ai_assisted BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     edited_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ
 );
+
+-- BEGIN ASYNC_CONSULT_COMMUNICATION_SCHEMA
+-- Emergency rooms may retain both request and visit links. Async consult rooms
+-- are visit-only and reuse the same participant and message engine.
+ALTER TABLE public.emergency_chat_rooms
+    ALTER COLUMN emergency_request_id DROP NOT NULL,
+    ADD COLUMN IF NOT EXISTS channel_type TEXT NOT NULL DEFAULT 'emergency';
+
+ALTER TABLE public.emergency_chat_rooms
+    DROP CONSTRAINT IF EXISTS emergency_chat_rooms_channel_type_check;
+ALTER TABLE public.emergency_chat_rooms
+    ADD CONSTRAINT emergency_chat_rooms_channel_type_check
+    CHECK (channel_type IN ('emergency', 'telemedicine_async'));
+
+ALTER TABLE public.emergency_chat_rooms
+    DROP CONSTRAINT IF EXISTS emergency_chat_rooms_owner_check;
+ALTER TABLE public.emergency_chat_rooms
+    ADD CONSTRAINT emergency_chat_rooms_owner_check
+    CHECK (
+        (channel_type = 'emergency' AND emergency_request_id IS NOT NULL)
+        OR (
+            channel_type = 'telemedicine_async'
+            AND emergency_request_id IS NULL
+            AND visit_id IS NOT NULL
+        )
+    );
+
+ALTER TABLE public.emergency_chat_rooms
+    DROP CONSTRAINT IF EXISTS emergency_chat_rooms_visit_id_fkey;
+ALTER TABLE public.emergency_chat_rooms
+    ADD CONSTRAINT emergency_chat_rooms_visit_id_fkey
+    FOREIGN KEY (visit_id)
+    REFERENCES public.visits(id)
+    ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION public.prevent_async_consult_visit_delete()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM public.emergency_chat_rooms room
+        WHERE room.channel_type = 'telemedicine_async'
+          AND room.visit_id = OLD.id
+    ) THEN
+        RAISE EXCEPTION 'A visit with an asynchronous consult room cannot be deleted';
+    END IF;
+
+    RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS protect_async_consult_visit_owner ON public.visits;
+CREATE TRIGGER protect_async_consult_visit_owner
+BEFORE DELETE ON public.visits
+FOR EACH ROW EXECUTE FUNCTION public.prevent_async_consult_visit_delete();
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_async_consult_room_visit
+    ON public.emergency_chat_rooms(visit_id)
+    WHERE channel_type = 'telemedicine_async';
+
+ALTER TABLE public.emergency_chat_messages
+    ADD COLUMN IF NOT EXISTS attachment_storage_path TEXT,
+    ADD COLUMN IF NOT EXISTS attachment_mime_type TEXT,
+    ADD COLUMN IF NOT EXISTS attachment_size_bytes BIGINT,
+    ADD COLUMN IF NOT EXISTS attachment_duration_ms INTEGER,
+    ADD COLUMN IF NOT EXISTS ai_assisted BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.emergency_chat_messages
+    DROP CONSTRAINT IF EXISTS emergency_chat_messages_kind_check;
+ALTER TABLE public.emergency_chat_messages
+    ADD CONSTRAINT emergency_chat_messages_kind_check
+    CHECK (kind IN ('text', 'quick_action', 'status_event', 'system', 'image', 'video'));
+
+ALTER TABLE public.emergency_chat_messages
+    DROP CONSTRAINT IF EXISTS emergency_chat_messages_attachment_check;
+ALTER TABLE public.emergency_chat_messages
+    ADD CONSTRAINT emergency_chat_messages_attachment_check
+    CHECK (
+        (
+            kind NOT IN ('image', 'video')
+            AND attachment_storage_path IS NULL
+            AND attachment_mime_type IS NULL
+            AND attachment_size_bytes IS NULL
+            AND attachment_duration_ms IS NULL
+        )
+        OR (
+            kind = 'image'
+            AND attachment_storage_path IS NOT NULL
+            AND attachment_mime_type IS NOT NULL
+            AND attachment_mime_type IN ('image/jpeg', 'image/png', 'image/webp')
+            AND attachment_size_bytes IS NOT NULL
+            AND attachment_size_bytes BETWEEN 1 AND 10485760
+            AND attachment_duration_ms IS NULL
+        )
+        OR (
+            kind = 'video'
+            AND attachment_storage_path IS NOT NULL
+            AND attachment_mime_type IS NOT NULL
+            AND attachment_mime_type IN ('video/mp4', 'video/webm', 'video/quicktime')
+            AND attachment_size_bytes IS NOT NULL
+            AND attachment_size_bytes BETWEEN 1 AND 26214400
+            AND attachment_duration_ms IS NOT NULL
+            AND attachment_duration_ms BETWEEN 1 AND 30000
+        )
+    );
+
+ALTER TABLE public.emergency_chat_participants
+    DROP CONSTRAINT IF EXISTS emergency_chat_participants_last_read_message_id_fkey;
+ALTER TABLE public.emergency_chat_messages
+    DROP CONSTRAINT IF EXISTS emergency_chat_messages_room_id_id_key;
+ALTER TABLE public.emergency_chat_messages
+    ADD CONSTRAINT emergency_chat_messages_room_id_id_key UNIQUE (room_id, id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emergency_chat_messages_attachment_path
+    ON public.emergency_chat_messages(attachment_storage_path)
+    WHERE attachment_storage_path IS NOT NULL;
+-- END ASYNC_CONSULT_COMMUNICATION_SCHEMA
 
 CREATE INDEX IF NOT EXISTS idx_emergency_chat_messages_room_created
 ON public.emergency_chat_messages (room_id, created_at DESC);
@@ -283,19 +478,14 @@ BEGIN
     END IF;
 END $$;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'emergency_chat_participants_last_read_message_id_fkey'
-    ) THEN
-        ALTER TABLE public.emergency_chat_participants
-        ADD CONSTRAINT emergency_chat_participants_last_read_message_id_fkey
-        FOREIGN KEY (last_read_message_id)
-        REFERENCES public.emergency_chat_messages(id)
-        ON DELETE SET NULL;
-    END IF;
-END $$;
+ALTER TABLE public.emergency_chat_participants
+    ADD CONSTRAINT emergency_chat_participants_last_read_message_id_fkey
+    FOREIGN KEY (room_id, last_read_message_id)
+    REFERENCES public.emergency_chat_messages(room_id, id)
+    ON DELETE SET NULL (last_read_message_id)
+    NOT VALID;
+ALTER TABLE public.emergency_chat_participants
+    VALIDATE CONSTRAINT emergency_chat_participants_last_read_message_id_fkey;
 
 -- C. Standard Timestamps & Display IDs
 CREATE TRIGGER handle_amb_updated_at BEFORE UPDATE ON public.ambulances FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

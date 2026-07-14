@@ -14,6 +14,7 @@ functions/
 |   `-- refresh-exchange-rates/
 |-- discovery/
 |   `-- discover-hospitals/
+|-- consult-assist/
 |-- check-user/
 |-- invite-user/
 |-- webhooks/
@@ -105,6 +106,21 @@ Allows review testers to complete the OTP step without mailbox access.
 - Method: `POST`
 - Authentication: public, guarded by exact email plus review OTP
 
+## Async Consult Functions
+
+### consult-assist
+
+Returns a bounded, non-diagnostic message draft for an authenticated patient,
+assigned clinician, or explicit active participant in an asynchronous consult
+room. The function performs read-only authorization and never inserts a message
+or changes visit state.
+
+- Endpoint: `/functions/v1/consult-assist`
+- Method: `POST`
+- Authentication: required
+- Configuration: `ANTHROPIC_API_KEY` and `CONSULT_ASSIST_MODEL` (or `ANTHROPIC_MODEL`)
+- Failure posture: HTTP 503 when draft assistance is not configured or available
+
 ## Console Identity Functions
 
 ### check-user
@@ -142,6 +158,7 @@ supabase functions serve
 supabase functions deploy
 supabase functions deploy billing-quote
 supabase functions deploy refresh-exchange-rates
+supabase functions deploy consult-assist
 supabase functions deploy check-user
 supabase functions deploy invite-user
 ```
@@ -152,6 +169,10 @@ supabase functions deploy invite-user
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+ANTHROPIC_API_KEY=your_anthropic_api_key
+ANTHROPIC_MODEL=your_anthropic_model
+CONSULT_ASSIST_MODEL=optional_dedicated_consult_model
 
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_webhook_secret
