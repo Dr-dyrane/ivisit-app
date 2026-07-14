@@ -3,6 +3,38 @@
 // Pure utilities for deep link and route parsing - no React dependencies
 
 import * as Linking from "expo-linking";
+import {
+	PROTECTED_VISIT_ROUTE_PATH,
+	buildProtectedVisitReturnRoute,
+} from "./authReturnRoute";
+
+function normalizeParsedPath(pathname) {
+	return String(pathname || "")
+		.replace(/^\/+|\/+$/g, "")
+		.replace(/^--\//, "");
+}
+
+function getParsedPathCandidates(url, parsed) {
+	const candidates = [parsed?.path, parsed?.hostname];
+
+	try {
+		const standardUrl = new URL(url);
+		candidates.push(standardUrl.pathname, standardUrl.hostname);
+	} catch {
+		// Linking.parse remains the source for Expo-specific URL shapes.
+	}
+
+	return candidates.map(normalizeParsedPath).filter(Boolean);
+}
+
+function isCanonicalWebRoot(url) {
+	try {
+		const parsed = new URL(url);
+		return ["http:", "https:"].includes(parsed.protocol) && parsed.pathname === "/";
+	} catch {
+		return false;
+	}
+}
 
 /**
  * Extract public auth route from deep link URL
@@ -14,9 +46,7 @@ export function getPublicAuthRouteFromUrl(url) {
 
 	try {
 		const parsed = Linking.parse(url);
-		const normalizedPath = String(parsed?.path || "")
-			.replace(/^--\//, "")
-			.replace(/^\/+|\/+$/g, "");
+		const normalizedPath = normalizeParsedPath(parsed?.path);
 
 		if (normalizedPath === "map-loading") return "/(auth)/map";
 		if (normalizedPath === "map") return "/(auth)/map";
@@ -30,6 +60,31 @@ export function getPublicAuthRouteFromUrl(url) {
 	if (url.includes("/(auth)/map")) return "/(auth)/map";
 	if (url.includes("/request-help")) return "/(auth)/map";
 	return null;
+}
+
+/**
+ * Extract and sanitize the protected visit-detail intent from a deep link.
+ * The external URL itself is never retained as a navigation target.
+ */
+export function getProtectedAuthReturnRouteFromUrl(url) {
+	if (typeof url !== "string" || !url) return null;
+
+	try {
+		const parsed = Linking.parse(url);
+		const hasProtectedPath = isCanonicalWebRoot(url)
+			|| getParsedPathCandidates(url, parsed).some(
+				(pathname) => pathname === normalizeParsedPath(PROTECTED_VISIT_ROUTE_PATH),
+			);
+		if (!hasProtectedPath) return null;
+
+		return buildProtectedVisitReturnRoute(
+			PROTECTED_VISIT_ROUTE_PATH,
+			parsed?.queryParams || {},
+		);
+	} catch (error) {
+		console.warn("[DeepLink] Failed to parse protected URL:", error?.message || error);
+		return null;
+	}
 }
 
 /**

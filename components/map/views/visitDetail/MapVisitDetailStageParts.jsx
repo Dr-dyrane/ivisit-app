@@ -18,12 +18,14 @@ export function MapVisitDetailCollapsedTopSlot({
 	titleColor,
 	mutedColor,
 	iconSurfaceColor,
+	titleOverride,
+	subtitleOverride,
 }) {
 	return (
 		<MapVisitDetailCollapsedRow
 			action={model.collapsedAction}
-			title={model.hero?.title || model.topSlot?.title || "Visit"}
-			subtitle={model.collapsedDistanceLabel}
+			title={titleOverride || model.hero?.title || model.topSlot?.title || "Visit"}
+			subtitle={subtitleOverride || model.collapsedDistanceLabel}
 			onExpand={onExpand}
 			onClose={onClose}
 			titleColor={titleColor}
@@ -133,6 +135,7 @@ export function MapVisitDetailBodyContent({
 	isExpanded,
 	onExpandedHeaderLayout,
 	onSnapStateChange,
+	isLoading = false,
 }) {
 	return (
 		<MapVisitDetailBody
@@ -141,6 +144,7 @@ export function MapVisitDetailBodyContent({
 			revealHero={isExpanded}
 			onExpandedHeaderLayout={onExpandedHeaderLayout}
 			onSnapStateChange={onSnapStateChange}
+			isLoading={isLoading}
 		/>
 	);
 }

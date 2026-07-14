@@ -11,7 +11,7 @@
 //     location intent from search, close recent visits, history filter change)
 //   - Route visit detail effect (opens visit detail from route params)
 //   - Location selection prompt effect (auto-prompts for pickup location)
-//   - Refs for effect gating (routeVisitKeyFailureRef, hasPromptedForPickupRef)
+//   - Refs for effect gating (hydrated route truth, pickup prompt)
 //
 // Does NOT own:
 //   - params — from useLocalSearchParams, passed in
@@ -20,15 +20,20 @@
 //   - State setters (setCareHistoryVisible, setRecentVisitsVisible, setSheetPhase, setSheetPayload)
 //     — from useMapExploreFlow, passed in
 //   - sheetPhase, sheetSnapState — from useMapExploreFlow, passed in
-//   - History state (selectedHistoryVisit, selectedHistoryVisitKey, visits, visitsLoading)
+//   - History state (selectedHistoryVisit, selectedHistoryVisitKey)
 //     — from useMapHistoryFlow, passed in
 //   - History handlers (openRatingForVisit, closeHistoryVisitDetails, openHistoryVisitByKey)
 //     — from useMapHistoryFlow, passed in
 //   - locationControl — from useMapExploreFlow, passed in
 //   - showToast — from ToastContext, passed in
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MAP_SHEET_PHASES } from "../../components/map/core/MapSheetOrchestrator";
+import { useVisitByIdQuery } from "../visits/useVisitByIdQuery";
+import {
+  resolveVisitDetailRouteState,
+  VISIT_DETAIL_ROUTE_STATUS,
+} from "../visits/visitDetailRouteState";
 
 /**
  * useMapRouteHandlers
@@ -55,8 +60,6 @@ import { MAP_SHEET_PHASES } from "../../components/map/core/MapSheetOrchestrator
  * @param {Function} params.openRatingForVisit - Open rating modal for visit
  * @param {Function} params.closeHistoryVisitDetails - Close history visit details
  * @param {Function} params.openHistoryVisitByKey - Open history visit by key
- * @param {Array} params.visits - Visits array
- * @param {boolean} params.visitsLoading - Whether visits are loading
  * @param {Object} params.locationControl - Location control object
  * @param {Function} params.showToast - Show toast function
  */
@@ -76,13 +79,13 @@ export function useMapRouteHandlers({
   openRatingForVisit,
   closeHistoryVisitDetails,
   openHistoryVisitByKey,
-  visits,
-  visitsLoading,
+  beginRouteManagedVisitDetail,
+  userId,
   locationControl,
   showToast,
 }) {
   // Refs for effect gating
-  const routeVisitKeyFailureRef = useRef(null);
+  const routeVisitHydratedRef = useRef({ key: null, data: null });
   const hasPromptedForPickupRef = useRef(false);
 
   // Route param parsing
@@ -105,6 +108,35 @@ export function useMapRouteHandlers({
         ? params.historyFilter[0]
         : null;
   const isRouteManagedRecentVisits = routeMapSheet === "recent_visits";
+  const wantsRouteVisitDetail =
+    routeMapSheet === "visit_detail" && Boolean(routeVisitKey);
+  const routeVisitQuery = useVisitByIdQuery({
+    visitKey: routeVisitKey,
+    userId,
+    enabled: wantsRouteVisitDetail && Boolean(userId),
+  });
+  const retryRouteVisit = useCallback(() => {
+    void routeVisitQuery.refetch();
+  }, [routeVisitQuery.refetch]);
+  const routeVisitDetailState = useMemo(() => ({
+    ...resolveVisitDetailRouteState({
+      enabled: wantsRouteVisitDetail,
+      hasUser: Boolean(userId),
+      data: routeVisitQuery.data,
+      error: routeVisitQuery.error,
+      isLoading: routeVisitQuery.isLoading,
+      isFetching: routeVisitQuery.isFetching,
+    }),
+    onRetry: retryRouteVisit,
+  }), [
+    retryRouteVisit,
+    routeVisitQuery.data,
+    routeVisitQuery.error,
+    routeVisitQuery.isFetching,
+    routeVisitQuery.isLoading,
+    userId,
+    wantsRouteVisitDetail,
+  ]);
 
   // Handler: Profile sign-out
   const handleProfileSignOut = useCallback(async () => {
@@ -195,44 +227,64 @@ export function useMapRouteHandlers({
 
   // Effect: Route visit detail (opens visit detail from route params)
   useEffect(() => {
-    const wantsRouteVisitDetail =
-      routeMapSheet === "visit_detail" && Boolean(routeVisitKey);
     if (!wantsRouteVisitDetail) {
-      routeVisitKeyFailureRef.current = null;
+      routeVisitHydratedRef.current = { key: null, data: null };
       return;
     }
 
-    if (visitsLoading) return;
-
-    if (
-      sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL &&
-      String(selectedHistoryVisitKey || "") === String(routeVisitKey)
-    ) {
-      routeVisitKeyFailureRef.current = null;
+    if (routeVisitQuery.data) {
+      const alreadyHydrated = routeVisitHydratedRef.current.key === routeVisitKey
+        && routeVisitHydratedRef.current.data === routeVisitQuery.data;
+      if (!alreadyHydrated) {
+        const didOpenHydrated = openHistoryVisitByKey(routeVisitKey, {
+          routeManaged: true,
+          visit: routeVisitQuery.data,
+        });
+        if (didOpenHydrated) {
+          routeVisitHydratedRef.current = {
+            key: routeVisitKey,
+            data: routeVisitQuery.data,
+          };
+        }
+      }
       return;
     }
 
-    const didOpen = openHistoryVisitByKey(routeVisitKey, {
-      routeManaged: true,
-    });
-    if (didOpen) {
-      routeVisitKeyFailureRef.current = null;
+    const hasMatchingSelection = sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL
+      && String(selectedHistoryVisitKey || "") === String(routeVisitKey)
+      && Boolean(selectedHistoryVisit);
+    if (hasMatchingSelection
+      && routeVisitDetailState.status === VISIT_DETAIL_ROUTE_STATUS.LOADING) return;
+
+    if (routeVisitDetailState.status === VISIT_DETAIL_ROUTE_STATUS.LOADING) {
+      const didOpenFromList = openHistoryVisitByKey(routeVisitKey, {
+        routeManaged: true,
+      });
+      if (didOpenFromList) return;
+      if (
+        sheetPhase !== MAP_SHEET_PHASES.VISIT_DETAIL ||
+        String(selectedHistoryVisitKey || "") !== String(routeVisitKey)
+      ) {
+        beginRouteManagedVisitDetail?.(routeVisitKey);
+      }
       return;
     }
 
-    if (routeVisitKeyFailureRef.current === routeVisitKey) return;
-    routeVisitKeyFailureRef.current = routeVisitKey;
-    router.replace("/(user)");
-    showToast("Visit details are not available right now.", "info");
+    if (sheetPhase !== MAP_SHEET_PHASES.VISIT_DETAIL
+      || String(selectedHistoryVisitKey || "") !== String(routeVisitKey)) {
+      beginRouteManagedVisitDetail?.(routeVisitKey);
+    }
   }, [
+    beginRouteManagedVisitDetail,
     openHistoryVisitByKey,
     routeMapSheet,
     routeVisitKey,
-    router,
+    routeVisitDetailState.status,
+    routeVisitQuery.data,
+    selectedHistoryVisit,
     selectedHistoryVisitKey,
     sheetPhase,
-    showToast,
-    visitsLoading,
+    wantsRouteVisitDetail,
   ]);
 
   // Effect: Location selection prompt (auto-prompts for pickup location)
@@ -261,6 +313,7 @@ export function useMapRouteHandlers({
     routeVisitKey,
     routeHistoryFilter,
     isRouteManagedRecentVisits,
+    routeVisitDetailState,
 
     // Handlers
     handleProfileSignOut,

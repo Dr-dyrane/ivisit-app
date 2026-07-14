@@ -68,7 +68,8 @@ export const HISTORY_DETAILS_COPY = Object.freeze({
 	},
 	actionLabels: {
 		callClinic: "Call clinic",
-		joinVideo: "Join video",
+		openConsult: "Open consult",
+		reschedule: "Reschedule visit",
 		bookAgain: "Book again",
 		paymentDetails: "Payment details",
 		directions: "Get directions",

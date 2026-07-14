@@ -8,6 +8,7 @@ import {
 const PROVIDER_TIMEOUT_MS = 15_000;
 const MAX_DRAFT_CHARS = 2_000;
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const SYSTEM_PROMPT = `You are a communication drafting assistant for a secure
 asynchronous healthcare consult. Return only JSON with the exact shape
 {"draft":"..."}.
@@ -68,56 +69,96 @@ const extractTextBlock = (body: Record<string, unknown>): string => {
   return typeof block?.text === "string" ? block.text.trim() : "";
 };
 
-const parseDraft = (raw: string): string => {
-  if (!raw) throw assistanceUnavailable();
+const parseDraft = (raw: string): string | null => {
+  if (!raw) return null;
 
   let decoded: unknown;
   try {
     decoded = JSON.parse(raw);
   } catch {
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw assistanceUnavailable();
+    if (!match) return null;
     try {
       decoded = JSON.parse(match[0]);
     } catch {
-      throw assistanceUnavailable();
+      return null;
     }
   }
 
   if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
-    throw assistanceUnavailable();
+    return null;
   }
 
   const draft = (decoded as { draft?: unknown }).draft;
-  if (typeof draft !== "string") throw assistanceUnavailable();
+  if (typeof draft !== "string") return null;
 
   const normalized = draft.trim();
   if (!normalized || normalized.length > MAX_DRAFT_CHARS) {
-    throw assistanceUnavailable();
+    return null;
   }
 
   return normalized;
 };
 
-export const generateConsultDraft = async (
-  input: ConsultAssistInput,
-  actorKind: ConsultActorKind,
-  requestId: string,
-): Promise<string> => {
-  const apiKey = getEnv("ANTHROPIC_API_KEY");
-  const model = getEnv("CONSULT_ASSIST_MODEL", "ANTHROPIC_MODEL");
-  if (!apiKey || !model) {
-    console.warn(
-      `[consult-assist:${requestId}] provider configuration unavailable`,
-    );
-    throw assistanceUnavailable();
+const extractOpenAIText = (body: Record<string, unknown>): string => {
+  if (typeof body.output_text === "string" && body.output_text.trim()) {
+    return body.output_text.trim();
   }
 
+  const output = Array.isArray(body.output) ? body.output : [];
+  const chunks: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = Array.isArray((item as { content?: unknown }).content)
+      ? (item as { content: unknown[] }).content
+      : [];
+    for (const block of content) {
+      if (!block || typeof block !== "object") continue;
+      const text = (block as { text?: unknown }).text;
+      if (typeof text === "string" && text.trim()) chunks.push(text.trim());
+    }
+  }
+  return chunks.join("\n").trim();
+};
+
+const fetchProvider = async (
+  provider: "anthropic" | "openai",
+  url: string,
+  init: RequestInit,
+  requestId: string,
+): Promise<Response | null> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
 
   try {
-    const response = await fetch(ANTHROPIC_MESSAGES_URL, {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    const reason = error instanceof DOMException && error.name === "AbortError"
+      ? "timeout"
+      : "network_error";
+    console.warn(`[consult-assist:${requestId}] ${provider} unavailable`, {
+      reason,
+    });
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const generateAnthropicDraft = async (
+  input: ConsultAssistInput,
+  actorKind: ConsultActorKind,
+  requestId: string,
+): Promise<string | null> => {
+  const apiKey = getEnv("ANTHROPIC_API_KEY");
+  const model = getEnv("CONSULT_ASSIST_MODEL", "ANTHROPIC_MODEL") ||
+    "claude-3-5-haiku-20241022";
+  if (!apiKey) return null;
+
+  const response = await fetchProvider(
+    "anthropic",
+    ANTHROPIC_MESSAGES_URL,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -136,35 +177,102 @@ export const generateConsultDraft = async (
           },
         ],
       }),
-      signal: controller.signal,
+    },
+    requestId,
+  );
+  if (!response) return null;
+
+  if (!response.ok) {
+    console.warn(`[consult-assist:${requestId}] anthropic request failed`, {
+      status: response.status,
     });
-
-    if (!response.ok) {
-      console.warn(
-        `[consult-assist:${requestId}] provider request failed`,
-        { status: response.status },
-      );
-      throw assistanceUnavailable();
-    }
-
-    let responseBody: Record<string, unknown>;
-    try {
-      responseBody = await response.json();
-    } catch {
-      throw assistanceUnavailable();
-    }
-
-    return parseDraft(extractTextBlock(responseBody));
-  } catch (error) {
-    if (error instanceof PublicRequestError) throw error;
-    const reason = error instanceof DOMException && error.name === "AbortError"
-      ? "timeout"
-      : "network_error";
-    console.warn(`[consult-assist:${requestId}] provider unavailable`, {
-      reason,
-    });
-    throw assistanceUnavailable();
-  } finally {
-    clearTimeout(timeout);
+    return null;
   }
+
+  try {
+    const body = await response.json() as Record<string, unknown>;
+    const draft = parseDraft(extractTextBlock(body));
+    if (!draft) {
+      console.warn(`[consult-assist:${requestId}] anthropic response invalid`);
+    }
+    return draft;
+  } catch {
+    console.warn(`[consult-assist:${requestId}] anthropic response invalid`);
+    return null;
+  }
+};
+
+const generateOpenAIDraft = async (
+  input: ConsultAssistInput,
+  actorKind: ConsultActorKind,
+  requestId: string,
+): Promise<string | null> => {
+  const apiKey = getEnv("OPENAI_API_KEY");
+  const model = getEnv("CONSULT_ASSIST_OPENAI_MODEL", "OPENAI_MODEL") ||
+    "gpt-4.1-mini";
+  if (!apiKey) return null;
+
+  const response = await fetchProvider(
+    "openai",
+    OPENAI_RESPONSES_URL,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        max_output_tokens: 600,
+        input: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: buildProviderPrompt(input, actorKind),
+          },
+        ],
+      }),
+    },
+    requestId,
+  );
+  if (!response) return null;
+
+  if (!response.ok) {
+    console.warn(`[consult-assist:${requestId}] openai request failed`, {
+      status: response.status,
+    });
+    return null;
+  }
+
+  try {
+    const body = await response.json() as Record<string, unknown>;
+    const draft = parseDraft(extractOpenAIText(body));
+    if (!draft) {
+      console.warn(`[consult-assist:${requestId}] openai response invalid`);
+    }
+    return draft;
+  } catch {
+    console.warn(`[consult-assist:${requestId}] openai response invalid`);
+    return null;
+  }
+};
+
+export const generateConsultDraft = async (
+  input: ConsultAssistInput,
+  actorKind: ConsultActorKind,
+  requestId: string,
+): Promise<string> => {
+  const anthropicDraft = await generateAnthropicDraft(
+    input,
+    actorKind,
+    requestId,
+  );
+  if (anthropicDraft) return anthropicDraft;
+
+  const openAIDraft = await generateOpenAIDraft(input, actorKind, requestId);
+  if (openAIDraft) return openAIDraft;
+
+  console.warn(`[consult-assist:${requestId}] all providers unavailable`);
+  throw assistanceUnavailable();
 };

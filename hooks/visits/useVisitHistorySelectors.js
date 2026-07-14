@@ -5,6 +5,14 @@ import {
 } from "../../constants/visits";
 import { resolveHistoryServiceLabel } from "../../components/map/history/history.presentation";
 import { formatMoney, resolveMoneyCurrency } from "../../utils/formatMoney";
+import {
+	classifyVisitSource,
+	formatScheduledVisitParts,
+	getScheduledCareModeLabel,
+	isScheduledVisitRow,
+	SCHEDULED_CARE_MODES,
+} from "../../utils/scheduledVisitProjection";
+import { resolveVisitActorIdentity } from "../../utils/visitHistoryIdentity";
 
 export const REQUEST_HISTORY_GROUP_ORDER = [
 	"active_now",
@@ -91,6 +99,9 @@ const parseTimeParts = (timeValue) => {
 };
 
 const buildVisitDateTime = (visit) => {
+	if (isScheduledVisitRow(visit)) {
+		return toDate(visit?.scheduledStartAt || visit?.scheduled_start_at);
+	}
 	const dateValue = toText(visit?.date);
 	const timeValue = toText(visit?.time);
 	if (!dateValue && !timeValue) return null;
@@ -152,12 +163,7 @@ const inferRequestType = (visit) => {
 	return "visit";
 };
 
-const inferSourceKind = (visit) => {
-	if (toText(visit?.requestId) || toText(visit?.lifecycleState)) {
-		return "emergency";
-	}
-	return "scheduled_visit";
-};
+const inferSourceKind = (visit) => classifyVisitSource(visit);
 
 const mapLifecycleStatus = (visit) => {
 	const lifecycleState = toLower(visit?.lifecycleState);
@@ -200,7 +206,23 @@ const mapLegacyStatus = (visit) => {
 	}
 };
 
-const inferHistoryStatus = (visit) => mapLifecycleStatus(visit) || mapLegacyStatus(visit);
+const mapScheduledStatus = (visit) => {
+	const status = toLower(visit?.status);
+	const lifecycleState = toLower(visit?.lifecycleState);
+	if (status === "in_progress" || lifecycleState === "in_progress") return "active";
+	if (status === "completed" || lifecycleState === "completed") return "completed";
+	if (status === "cancelled" || lifecycleState === "cancelled") return "cancelled";
+	if (lifecycleState === "no_show") return "cancelled";
+	if (status === "upcoming" || lifecycleState === "rescheduled") return "confirmed";
+	return "pending";
+};
+
+const inferHistoryStatus = (visit, sourceKind) =>
+	sourceKind === "scheduled_visit"
+		? mapScheduledStatus(visit)
+		: sourceKind === "emergency"
+			? mapLifecycleStatus(visit) || mapLegacyStatus(visit)
+			: mapLegacyStatus(visit);
 
 const canHistoryItemBookAgain = ({ sourceKind, status }) =>
 	sourceKind === "scheduled_visit" ||
@@ -384,6 +406,9 @@ const buildInitials = (value) => {
 };
 
 const resolveVisitTypeLabel = (visit, requestType, requestTypeLabel) => {
+	if (isScheduledVisitRow(visit)) {
+		return getScheduledCareModeLabel(visit?.careMode || visit?.care_mode) || requestTypeLabel;
+	}
 	if (requestType === "ambulance") {
 		return resolveHistoryServiceLabel({
 			requestType,
@@ -416,17 +441,6 @@ const resolveVisitTypeLabel = (visit, requestType, requestTypeLabel) => {
 	});
 };
 
-const resolveActorRole = ({ sourceKind, requestType, actorName }) => {
-	if (actorName) {
-		if (sourceKind === "scheduled_visit") return "Doctor";
-		return requestType === "ambulance" ? "Responder" : "Care team";
-	}
-	if (sourceKind === "emergency") {
-		return requestType === "ambulance" ? "Response team" : "Care team";
-	}
-	return "Care team";
-};
-
 const resolveNextVisitLabel = (visit) => {
 	const nextVisit = toText(visit?.nextVisit);
 	if (nextVisit) return nextVisit;
@@ -438,24 +452,44 @@ export const toHistoryItem = (visit, now = new Date()) => {
 
 	const requestType = inferRequestType(visit);
 	const sourceKind = inferSourceKind(visit);
-	const status = inferHistoryStatus(visit);
+	const status = inferHistoryStatus(visit, sourceKind);
 	const requestTypeLabel = getRequestTypeLabel(requestType);
 	const visitTypeLabel = resolveVisitTypeLabel(visit, requestType, requestTypeLabel);
 	const specialtyLabel = toText(visit?.specialty);
 	const statusLabel = getStatusLabel(status);
 	const statusTone = getStatusTone(status);
 	const sortDate = resolveSortDate(visit, status);
+	const patientScheduleChangesOpen =
+		sourceKind === "scheduled_visit" &&
+		status === "confirmed" &&
+		sortDate.getTime() > now.getTime() + 2 * 60 * 60 * 1000;
 	const groupKey = resolveGroupKey(status, sortDate, now);
-	const dateLabel = formatDateLabel(sortDate);
-	const timeLabel = formatTimeLabel(sortDate, visit);
+	const scheduledParts =
+		sourceKind === "scheduled_visit"
+			? formatScheduledVisitParts({
+					scheduledStartAt: visit?.scheduledStartAt || visit?.scheduled_start_at,
+					scheduledTimezone: visit?.scheduledTimezone || visit?.scheduled_timezone,
+				})
+			: null;
+	const dateLabel = scheduledParts?.dateLabel || formatDateLabel(sortDate);
+	const timeLabel = scheduledParts
+		? [scheduledParts.timeLabel, scheduledParts.timezoneLabel].filter(Boolean).join(" ")
+		: formatTimeLabel(sortDate, visit);
 	const facilityName = toText(visit?.hospital || visit?.hospitalName) || "Care request";
 	const facilityAddress = toText(
 		visit?.address ||
 			visit?.hospitalAddress ||
 			visit?._hospital_address_resolved
 	);
-	const actorName = toText(visit?.doctor || visit?.doctorName);
-	const actorRole = resolveActorRole({ sourceKind, requestType, actorName });
+	const doctorName = toText(visit?.doctor || visit?.doctorName);
+	const responderName = toText(visit?.responderName || visit?.responder_name);
+	const actorIdentity = resolveVisitActorIdentity({
+		sourceKind,
+		requestType,
+		doctorName,
+		responderName,
+	});
+	const { actorName, actorRole } = actorIdentity;
 	const existingRating = Number(visit?.rating);
 	const paymentSummary =
 		toCurrencyLabel(
@@ -481,6 +515,8 @@ export const toHistoryItem = (visit, now = new Date()) => {
 
 	return {
 		id: String(visit.id),
+		patientId: toText(visit?.patientId || visit?.userId || visit?.user_id) || null,
+		doctorId: toText(visit?.doctorId || visit?.doctor_id) || null,
 		requestId: toText(visit?.requestId) || null,
 		displayId: toText(visit?.displayId) || null,
 		paymentId: toText(visit?.paymentId || visit?.payment_id) || null,
@@ -491,7 +527,7 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		statusLabel,
 		statusTone,
 		title: facilityName,
-		subtitle: buildSubtitleParts(visitTypeLabel, dateLabel).join(" · "),
+		subtitle: buildSubtitleParts(visitTypeLabel, dateLabel).join(" - "),
 		facilityName,
 		facilityAddress: facilityAddress || null,
 		facilityCoordinate:
@@ -504,14 +540,24 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		heroImageUrl: toText(visit?.image || visit?.hospitalImage) || null,
 		actorName: actorName || null,
 		actorRole: actorRole || null,
-		doctorName: actorName || null,
-		doctorInitials: buildInitials(actorName),
+		doctorName: actorIdentity.doctorName,
+		doctorInitials: buildInitials(actorIdentity.doctorName),
+		responderName: actorIdentity.responderName,
 		specialty: specialtyLabel || null,
 		visitTypeLabel,
+		careMode: toText(visit?.careMode || visit?.care_mode) || null,
+		careModeLabel:
+			getScheduledCareModeLabel(visit?.careMode || visit?.care_mode) || null,
 		roomNumber: toText(visit?.roomNumber) || null,
 		nextVisitLabel: resolveNextVisitLabel(visit),
 		createdAt: toText(visit?.createdAt) || null,
 		scheduledFor: buildVisitDateTime(visit)?.toISOString() || null,
+		scheduledStartAt:
+			toText(visit?.scheduledStartAt || visit?.scheduled_start_at) || null,
+		scheduledEndAt:
+			toText(visit?.scheduledEndAt || visit?.scheduled_end_at) || null,
+		scheduledTimezone:
+			toText(visit?.scheduledTimezone || visit?.scheduled_timezone) || null,
 		startedAt: toText(visit?.startedAt) || null,
 		completedAt: toText(visit?.completedAt || visit?.ratedAt || visit?.tippedAt) || null,
 		terminalAt: toText(visit?.ratedAt || visit?.tippedAt || visit?.updatedAt) || null,
@@ -519,14 +565,16 @@ export const toHistoryItem = (visit, now = new Date()) => {
 		canResume: status === "active" || status === "pending",
 		canViewDetails: status !== "active" || requestType !== "ambulance",
 		canRate: status === "rating_pending",
-		canCancel:
-			sourceKind === "scheduled_visit" &&
-			(status === "confirmed" || status === "pending"),
+		canCancel: patientScheduleChangesOpen,
+		canReschedule: patientScheduleChangesOpen,
 		canBookAgain: canHistoryItemBookAgain({ sourceKind, status }),
-		canJoinVideo: Boolean(toText(visit?.meetingLink)),
+		canOpenConsult:
+			sourceKind === "scheduled_visit" &&
+			toText(visit?.careMode || visit?.care_mode) ===
+				SCHEDULED_CARE_MODES.ASYNC_CONSULT,
+		canJoinVideo: false,
 		canCallClinic: Boolean(toText(visit?.phone)),
 		notes: toText(visit?.notes) || null,
-		meetingLink: toText(visit?.meetingLink) || null,
 		contactPhone: toText(visit?.phone) || null,
 		dateLabel,
 		timeLabel,

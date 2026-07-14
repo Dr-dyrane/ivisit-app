@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { isValidUUID } from "./displayIdService";
 import { withRetry, withTimeout } from "./supabaseHelpers";
+import { communicationService } from "./communicationService";
 
 // PULLBACK NOTE: Contact Dispatch CD-3 - canonical Supabase adapter.
 // Owns: row mapping, input normalization, RPC calls, and filtered realtime subscription for emergency chat.
@@ -72,62 +73,21 @@ const normalizeBeforeCursor = (value) => {
  * Maps emergency_chat_rooms row from snake_case to camelCase.
  */
 export const mapEmergencyChatRoomRow = (row) => {
-  if (!row || typeof row !== "object") return null;
-
-  return {
-    id: row.id ? String(row.id) : null,
-    emergencyRequestId: row.emergency_request_id ? String(row.emergency_request_id) : null,
-    visitId: row.visit_id ? String(row.visit_id) : null,
-    createdBy: row.created_by ? String(row.created_by) : null,
-    status: normalizeOptionalText(row.status) || "active",
-    createdAt: row.created_at ? String(row.created_at) : null,
-    updatedAt: row.updated_at ? String(row.updated_at) : null,
-    lastMessageAt: row.last_message_at ? String(row.last_message_at) : null,
-    archivedAt: row.archived_at ? String(row.archived_at) : null,
-  };
+  return communicationService.mapRoomRow(row);
 };
 
 /**
  * Maps emergency_chat_participants row from snake_case to camelCase.
  */
 export const mapEmergencyChatParticipantRow = (row) => {
-  if (!row || typeof row !== "object") return null;
-
-  return {
-    id: row.id ? String(row.id) : null,
-    roomId: row.room_id ? String(row.room_id) : null,
-    userId: row.user_id ? String(row.user_id) : null,
-    role: normalizeOptionalText(row.role) || null,
-    displayNameSnapshot: normalizeOptionalText(row.display_name_snapshot),
-    joinedAt: row.joined_at ? String(row.joined_at) : null,
-    leftAt: row.left_at ? String(row.left_at) : null,
-    lastReadMessageId: row.last_read_message_id ? String(row.last_read_message_id) : null,
-    lastReadAt: row.last_read_at ? String(row.last_read_at) : null,
-    createdAt: row.created_at ? String(row.created_at) : null,
-    updatedAt: row.updated_at ? String(row.updated_at) : null,
-  };
+  return communicationService.mapParticipantRow(row);
 };
 
 /**
  * Maps emergency_chat_messages row from snake_case to camelCase.
  */
 export const mapEmergencyChatMessageRow = (row) => {
-  if (!row || typeof row !== "object") return null;
-
-  return {
-    id: row.id ? String(row.id) : null,
-    roomId: row.room_id ? String(row.room_id) : null,
-    senderId: row.sender_id ? String(row.sender_id) : null,
-    senderRole: normalizeOptionalText(row.sender_role) || null,
-    kind: normalizeOptionalText(row.kind) || "text",
-    body: normalizeText(row.body),
-    clientMessageId: normalizeOptionalText(row.client_message_id),
-    metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
-    createdAt: row.created_at ? String(row.created_at) : null,
-    updatedAt: row.updated_at ? String(row.updated_at) : null,
-    editedAt: row.edited_at ? String(row.edited_at) : null,
-    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-  };
+  return communicationService.mapMessageRow(row);
 };
 
 // INPUT NORMALIZATION
@@ -207,30 +167,14 @@ export async function listMessages(roomId, { limit = 50, before = null } = {}) {
   if (!roomId || !isValidUUID(String(roomId))) {
     return [];
   }
-
-  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
-
-  let query = supabase
-    .from("emergency_chat_messages")
-    .select(MESSAGE_SELECT_FIELDS)
-    .eq("room_id", roomId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
-
-  const beforeCursor = normalizeBeforeCursor(before);
-  if (beforeCursor) {
-    query = query.lt("created_at", beforeCursor);
-  }
-
-  const { data, error } = await withRetry(() => query, { maxRetries: 3 });
-
-  if (error) throw error;
-
-  return (data || [])
-    .map(mapEmergencyChatMessageRow)
-    .filter(Boolean)
-    .reverse();
+  const legacyCursor = normalizeBeforeCursor(before);
+  const page = await communicationService.listMessages(roomId, {
+    limit,
+    before: legacyCursor
+      ? { createdAt: legacyCursor, id: "ffffffff-ffff-ffff-ffff-ffffffffffff" }
+      : null,
+  });
+  return page.items;
 }
 
 /**
@@ -330,42 +274,7 @@ export async function markRoomRead(roomId, messageId = null) {
  * Returns unsubscribe function.
  */
 export function subscribeToMessages(roomId, onEvent, onStatus) {
-  if (!roomId || !isValidUUID(String(roomId)) || typeof onEvent !== "function") {
-    return { unsubscribe: () => {} };
-  }
-
-  const channelName = `emergency_chat_messages_${roomId}_${Date.now()}`;
-
-  const channel = supabase
-    .channel(channelName)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "emergency_chat_messages",
-        filter: `room_id=eq.${roomId}`,
-      },
-      (payload) => {
-        const mapped = {
-          new: payload.new ? mapEmergencyChatMessageRow(payload.new) : null,
-          old: payload.old ? mapEmergencyChatMessageRow(payload.old) : null,
-          eventType: payload.eventType,
-        };
-        onEvent(mapped);
-      }
-    )
-    .subscribe((status) => {
-      if (typeof onStatus === "function") {
-        onStatus(status);
-      }
-    });
-
-  return {
-    unsubscribe: () => {
-      supabase.removeChannel(channel);
-    },
-  };
+  return communicationService.subscribeToMessages(roomId, onEvent, onStatus);
 }
 
 // SERVICE EXPORT

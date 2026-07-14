@@ -14,6 +14,8 @@ const SOURCE_PATHS = {
   core: 'supabase/migrations/20260219010000_core_rpcs.sql',
   config: 'supabase/config.toml',
   demo: 'supabase/functions/bootstrap-demo-ecosystem/handler.ts',
+  demoHospitals: 'supabase/functions/_shared/domain/demo/hospitals.ts',
+  demoTimezone: 'supabase/functions/bootstrap-demo-ecosystem/timezone.ts',
   consultIndex: 'supabase/functions/consult-assist/index.ts',
   consultAccess: 'supabase/functions/consult-assist/access.ts',
   consultAnthropic: 'supabase/functions/consult-assist/anthropic.ts',
@@ -234,6 +236,20 @@ requirePattern(
   /CREATE\s+TRIGGER\s+validate_hospital_timezone_value[\s\S]*?BEFORE\s+INSERT\s+OR\s+UPDATE\s+OF\s+timezone/i,
   'timezone validation trigger must cover inserts and timezone updates.'
 );
+for (const field of [
+  'timezone_confirmed_at',
+  'timezone_confirmation_source',
+  'timezone_confirmed_by',
+]) {
+  requirePattern(
+    `hospital.timezone-confirmation.${field}`,
+    'org',
+    new RegExp(`ADD\\s+COLUMN\\s+IF\\s+NOT\\s+EXISTS\\s+${field}\\b`, 'i'),
+    `hospitals must expose canonical ${field} metadata.`
+  );
+}
+requirePattern('hospital.timezone-confirmation-coherence', 'org', /hospitals_timezone_confirmation_coherence_check[\s\S]*?timezone_confirmed_at\s+IS\s+NULL[\s\S]*?timezone_confirmation_source\s+IS\s+NULL[\s\S]*?timezone_confirmed_at\s+IS\s+NOT\s+NULL[\s\S]*?timezone_confirmation_source\s+IS\s+NOT\s+NULL/i, 'timezone confirmation metadata must be all-or-nothing except the optional actor.');
+requirePattern('hospital.timezone-change-clears-confirmation', 'org', /NEW\.timezone\s+IS\s+DISTINCT\s+FROM\s+OLD\.timezone[\s\S]*?NEW\.timezone_confirmed_at\s*:=\s*NULL[\s\S]*?NEW\.timezone_confirmation_source\s*:=\s*NULL/i, 'changing timezone without fresh evidence must clear stale confirmation.');
 requirePattern(
   'schedule.time-order',
   'org',
@@ -414,6 +430,7 @@ const rpcNames = [
   'get_book_visit_availability',
   'book_scheduled_visit',
   'get_console_doctor_schedules',
+  'confirm_hospital_timezone',
   'upsert_doctor_schedule',
   'delete_doctor_schedule',
   'transition_scheduled_visit',
@@ -451,6 +468,7 @@ for (const functionName of rpcNames) {
 
 requireFunctionPattern('availability.auth', 'core', 'get_book_visit_availability', /auth\.uid\(\)[\s\S]*?Unauthorized/i, 'availability must require an authenticated actor or controlled service role.');
 requireFunctionPattern('availability.booking-eligible', 'core', 'get_book_visit_availability', /hospital\.booking_eligible\s*=\s*true/i, 'availability must filter booking-eligible facilities.');
+requireFunctionPattern('availability.confirmed-timezone', 'core', 'get_book_visit_availability', /hospital\.timezone_confirmed_at\s+IS\s+NOT\s+NULL/i, 'availability must exclude facilities without confirmed timezone truth.');
 requireFunctionPattern('availability.overlap', 'core', 'get_book_visit_availability', /NOT\s+EXISTS[\s\S]*?active_visit\.scheduled_start_at\s*<[\s\S]*?active_visit\.scheduled_end_at\s*>/i, 'availability must exclude active visit overlaps.');
 requireFunctionPattern('availability.patient-overlap', 'core', 'get_book_visit_availability', /patient_visit\.user_id\s*=\s*v_actor_id[\s\S]*?patient_visit\.scheduled_start_at\s*<[\s\S]*?patient_visit\.scheduled_end_at\s*>/i, 'patient availability must hide windows that overlap the actor\'s active scheduled care.');
 
@@ -459,6 +477,7 @@ if (selector) {
   check('booking.selector-security-definer', /SECURITY\s+DEFINER/i.test(selector.definition), `${SOURCE_PATHS.core}: internal doctor selector must be SECURITY DEFINER.`);
   check('booking.selector-overlap', /NOT\s+EXISTS[\s\S]*?active_visit\.scheduled_start_at\s*<\s*p_scheduled_end_at[\s\S]*?active_visit\.scheduled_end_at\s*>\s*p_scheduled_start_at/i.test(selector.body), `${SOURCE_PATHS.core}: doctor selector must recheck active overlaps.`);
   check('booking.selector-zoned-window', /p_scheduled_start_at\s*>=\s*\([\s\S]*?schedule\.date\s*\+\s*schedule\.start_time[\s\S]*?AT\s+TIME\s+ZONE\s+v_timezone[\s\S]*?p_scheduled_end_at\s*<=\s*\([\s\S]*?schedule\.date\s*\+\s*schedule\.end_time[\s\S]*?AT\s+TIME\s+ZONE\s+v_timezone/i.test(selector.body), `${SOURCE_PATHS.core}: doctor selector must compare canonical zoned instants, including DST folds.`);
+  check('booking.selector-confirmed-timezone', /hospital\.timezone_confirmed_at\s+IS\s+NOT\s+NULL/i.test(selector.body), `${SOURCE_PATHS.core}: doctor selector must reject unconfirmed facility timezones.`);
   check('booking.selector-lock', /FOR\s+UPDATE\s+OF\s+doctor\s+SKIP\s+LOCKED/i.test(selector.body), `${SOURCE_PATHS.core}: doctor selection must lock and skip concurrent candidates.`);
 }
 requirePattern('booking.selector-internal-acl', 'core', /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.p_select_bookable_doctor\([^;]+\)\s+FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated/i, 'the overlap selector must remain internal.');
@@ -467,6 +486,7 @@ requireFunctionPattern('booking.idempotency-read', 'core', 'book_scheduled_visit
 requireFunctionPattern('booking.idempotency-lock', 'core', 'book_scheduled_visit', /pg_advisory_xact_lock[\s\S]*?'scheduled-booking-key:'[\s\S]*?p_idempotency_key/i, 'concurrent retries must serialize on patient and idempotency key before lookup.');
 requireFunctionPattern('booking.idempotency-notes', 'core', 'book_scheduled_visit', /v_existing\.notes[\s\S]*?IS\s+DISTINCT\s+FROM[\s\S]*?p_notes/i, 'booking retries must reject changed notes.');
 requireFunctionPattern('booking.facility-lock', 'core', 'book_scheduled_visit', /FROM\s+public\.hospitals\s+hospital[\s\S]*?booking_eligible\s*=\s*true[\s\S]*?FOR\s+SHARE/i, 'booking must stabilize facility eligibility and timezone for the transaction.');
+requireFunctionPattern('booking.confirmed-timezone', 'core', 'book_scheduled_visit', /v_hospital\.timezone_confirmed_at\s+IS\s+NULL[\s\S]*?Facility timezone is not confirmed/i, 'booking must reject compatibility timezone defaults without confirmation.');
 requireFunctionPattern('booking.patient-lock', 'core', 'book_scheduled_visit', /pg_advisory_xact_lock[\s\S]*?'scheduled-patient:'[\s\S]*?Patient already has a scheduled visit/i, 'booking must serialize and reject patient-window overlap across idempotency keys.');
 requireFunctionPattern('booking.transaction-lock', 'core', 'book_scheduled_visit', /pg_advisory_xact_lock[\s\S]*?'book:'/i, 'booking must serialize slot assignment.');
 requireFunctionPattern('booking.server-selector', 'core', 'book_scheduled_visit', /public\.p_select_bookable_doctor\s*\(/i, 'booking must choose a clinician through the server selector.');
@@ -485,7 +505,10 @@ for (const functionName of ['book_scheduled_visit', 'transition_scheduled_visit'
 
 requireFunctionPattern('schedule.read-role-acl', 'core', 'get_console_doctor_schedules', /NOT\s+COALESCE\s*\(\s*v_actor_role\s+IN\s*\(\s*'admin'\s*,\s*'org_admin'\s*\)[\s\S]*?false\s*\)/i, 'schedule reads must require a null-safe scheduling admin role.');
 requireFunctionPattern('schedule.read-org-scope', 'core', 'get_console_doctor_schedules', /hospital\.organization_id\s*=\s*v_actor_org_id/i, 'org admins must be limited to their facility organization.');
+requireFunctionPattern('schedule.confirm-timezone-role-acl', 'core', 'confirm_hospital_timezone', /v_actor_role\s*=\s*'admin'[\s\S]*?v_actor_role\s*=\s*'org_admin'[\s\S]*?v_actor_org_id\s*=\s*v_hospital_org_id/i, 'timezone confirmation must require platform or same-org admin scope.');
+requireFunctionPattern('schedule.confirm-timezone-catalog', 'core', 'confirm_hospital_timezone', /pg_timezone_names[\s\S]*?timezone_confirmed_at\s*=\s*NOW\(\)[\s\S]*?timezone_confirmation_source\s*=\s*'manual'/i, 'manual confirmation must validate IANA truth and persist canonical evidence.');
 requireFunctionPattern('schedule.upsert-role-acl', 'core', 'upsert_doctor_schedule', /NOT\s+COALESCE\s*\([\s\S]*?v_actor_role\s*=\s*'admin'[\s\S]*?v_actor_role\s*=\s*'org_admin'[\s\S]*?v_actor_org_id\s*=\s*v_doctor_org_id[\s\S]*?false\s*\)/i, 'schedule writes must prove platform or same-org admin scope with null-safe denial.');
+requireFunctionPattern('schedule.upsert-confirmed-timezone', 'core', 'upsert_doctor_schedule', /v_timezone_confirmed_at\s+IS\s+NULL[\s\S]*?Facility timezone is not confirmed/i, 'schedule writes must reject facilities without confirmed timezone truth.');
 requireFunctionPattern('schedule.upsert-overlap', 'core', 'upsert_doctor_schedule', /schedule\.start_time\s*<\s*p_end_time[\s\S]*?schedule\.end_time\s*>\s*p_start_time/i, 'schedule upserts must reject overlapping shifts.');
 requireFunctionPattern('schedule.upsert-booking-coverage', 'core', 'upsert_doctor_schedule', /Schedule change would remove active booked visits/i, 'schedule edits must preserve coverage for active booked visits.');
 requireFunctionPattern('schedule.upsert-slot-alignment', 'core', 'upsert_doctor_schedule', /EXTRACT\s*\(\s*MINUTE\s+FROM\s+p_start_time\s*\)[\s\S]*?15-minute increments/i, 'schedule boundaries must align with the availability and booking slot grid.');
@@ -501,6 +524,7 @@ requireFunctionPattern('lifecycle.role-matrix', 'core', 'transition_scheduled_vi
 requireFunctionPattern('lifecycle.null-safe-role-matrix', 'core', 'transition_scheduled_visit', /v_is_admin\s*:=\s*v_is_service_role\s+OR\s+COALESCE[\s\S]*?v_is_org_admin\s*:=\s*COALESCE/i, 'lifecycle role booleans must deny when profile role data is null.');
 requireFunctionPattern('lifecycle.reschedule-lock', 'core', 'transition_scheduled_visit', /pg_advisory_xact_lock[\s\S]*?p_select_bookable_doctor/i, 'rescheduling must lock and reselect atomically.');
 requireFunctionPattern('lifecycle.reschedule-facility-lock', 'core', 'transition_scheduled_visit', /FOR\s+UPDATE\s+OF\s+visit[\s\S]*?FOR\s+SHARE\s+OF\s+hospital/i, 'rescheduling must stabilize the visit and facility truth together.');
+requireFunctionPattern('lifecycle.reschedule-confirmed-timezone', 'core', 'transition_scheduled_visit', /hospital_timezone_confirmed_at[\s\S]*?Facility timezone is not confirmed/i, 'rescheduling must reject a facility whose timezone confirmation was withdrawn.');
 requireFunctionPattern('lifecycle.reschedule-patient-lock', 'core', 'transition_scheduled_visit', /'scheduled-patient:'[\s\S]*?patient_visit\.id\s+IS\s+DISTINCT\s+FROM\s+p_visit_id[\s\S]*?Patient already has a scheduled visit/i, 'rescheduling must serialize and reject patient-window overlap while excluding itself.');
 requireFunctionPattern('lifecycle.reschedule-room-lock', 'core', 'transition_scheduled_visit', /emergency_chat_rooms[\s\S]*?visit_id\s*=\s*p_visit_id[\s\S]*?FOR\s+UPDATE/i, 'clinician reassignment must lock the consult room before changing participants.');
 
@@ -570,6 +594,8 @@ requirePattern('consult-edge.access', 'consultIndex', /authorizeConsultAccess\s*
 requirePattern('consult-edge.active-visit', 'consultAccess', /\[\s*"upcoming"\s*,\s*"in_progress"\s*\][\s\S]*?visit\.status/i, 'consult-assist must reject stale rooms after the scheduled visit closes.');
 requirePattern('consult-edge.provider-key', 'consultAnthropic', /ANTHROPIC_API_KEY/i, 'consult-assist must fail honestly without a provider key.');
 requirePattern('consult-edge.provider-model', 'consultAnthropic', /CONSULT_ASSIST_MODEL[\s\S]*?ANTHROPIC_MODEL/i, 'consult-assist must resolve an explicit model configuration.');
+requirePattern('consult-edge.provider-fallback-key', 'consultAnthropic', /OPENAI_API_KEY/i, 'consult-assist must retain the established secondary provider path.');
+requirePattern('consult-edge.provider-fallback-model', 'consultAnthropic', /CONSULT_ASSIST_OPENAI_MODEL[\s\S]*?OPENAI_MODEL/i, 'consult-assist must resolve the secondary provider model independently.');
 requirePattern('consult-edge.no-live-video-prompt', 'consultAnthropic', /Do\s+not\s+offer\s+or\s+imply\s+live-video\s+care/i, 'the draft prompt must preserve the async-only product boundary.');
 const consultFunctionSource = [
   sources.consultIndex,
@@ -599,6 +625,37 @@ for (const field of ['schedule_ready', 'book_visit_ready', 'telemedicine_ready']
 }
 requirePattern('demo.schedule-upsert-key', 'demo', /onConflict:\s*"doctor_id,date,start_time,end_time"/i, 'demo schedule reruns must use the canonical exact-shift key.');
 requirePattern('demo.schedule-horizon', 'demo', /DEMO_SCHEDULE_HORIZON_DAYS/i, 'demo schedules must use a bounded rolling horizon.');
+requirePattern('demo.location-allocation-bounded', 'demoHospitals', /DEMO_LOCATION_NUDGE_ATTEMPTS[\s\S]*?allocateDemoLocation/i, 'demo hospital location collision handling must remain bounded.');
+requirePattern('demo.location-allocation-rechecks', 'demoHospitals', /allocateDemoLocation[\s\S]*?\.from\(\s*"hospitals"\s*\)[\s\S]*?\.eq\(\s*"latitude"[\s\S]*?\.eq\(\s*"longitude"/i, 'every adjusted demo hospital coordinate must be checked before upsert.');
+forbidPattern('demo.location-no-place-id-takeover', 'demoHospitals', /place_id:\s*toSafeString\(\s*existingAtLocation\?\.place_id/i, 'demo location collision handling must not take over another row identity.');
+requirePattern('demo.timezone-provider-key', 'demoTimezone', /GOOGLE_MAPS_API_KEY/i, 'demo facility timezone resolution must use the server-owned Maps key.');
+requirePattern('demo.timezone-coordinate-timestamp', 'demoTimezone', /searchParams\.set\(\s*"location"[\s\S]*?searchParams\.set\(\s*"timestamp"/i, 'demo facility timezone resolution must use coordinates and a bounded point-in-time lookup.');
+requirePattern('demo.timezone-provider-fallback', 'demoTimezone', /TIME_API_COORDINATE_URL[\s\S]*?resolveGoogleTimezone[\s\S]*?resolveTimeApiTimezone/i, 'demo timezone resolution must keep Google primary and use the validated coordinate fallback only after failure.');
+requirePattern('demo.timezone-iana-validation', 'demoTimezone', /Intl\.DateTimeFormat[\s\S]*?timeZone:\s*candidate/i, 'resolved facility timezones must pass runtime IANA validation.');
+requirePattern('demo.timezone-timeout', 'demoTimezone', /TIME_ZONE_LOOKUP_TIMEOUT_MS\s*=\s*5_000[\s\S]*?AbortController/i, 'demo timezone lookup must remain bounded.');
+requirePattern('demo.timezone-source-accounting', 'demo', /timezone_sources:\s*\{[\s\S]*?google:[\s\S]*?timeapi:/i, 'demo bootstrap must expose timezone resolution source counts.');
+requirePattern('demo.timezone-confirmation-persisted', 'demo', /timezone_confirmed_at:\s*now\.toISOString\(\)[\s\S]*?timezone_confirmation_source:\s*timezoneSource/i, 'demo facilities must persist the same canonical timezone confirmation fields as live facilities.');
+forbidPattern('demo.timezone-no-silent-utc', 'demoTimezone', /toSafeString\([^\n,]+,\s*["']UTC["']\)/i, 'missing or invalid facility timezone truth must not silently become UTC.');
+check(
+  'demo.timezone-before-schedule-write',
+  patternsAppearInOrder(sources.demo, [
+    /\.from\(\s*"hospitals"\s*\)[\s\S]*?\.update\(\s*\{\s*timezone/i,
+    /\.from\(\s*"doctor_schedules"\s*\)[\s\S]*?\.upsert\(/i,
+  ]),
+  `${SOURCE_PATHS.demo}: demo facility timezone must persist before its schedule rows are written.`
+);
+const demoRequestHandler = sources.demo.slice(
+  sources.demo.indexOf('export const handleBootstrapDemoEcosystemRequest')
+);
+check(
+  'demo.emergency-before-scheduled-care',
+  patternsAppearInOrder(demoRequestHandler, [
+    /ensureDemoStaff\(/i,
+    /createFacilityTimezoneResolver\(/i,
+    /ensureDemoScheduledCare\(/i,
+  ]),
+  `${SOURCE_PATHS.demo}: emergency/demo staffing must complete before optional scheduled-care timezone work.`
+);
 requirePattern('demo.preserve-today-schedule', 'demo', /\.lt\(\s*"date"\s*,\s*localToday\s*\)/i, 'expired-shift cleanup must preserve the facility-local current day.');
 forbidPattern('demo.no-delete-today-schedule', 'demo', /\.lte\(\s*"date"\s*,\s*localToday\s*\)/i, 'expired-shift cleanup must not delete today before it is over.');
 requirePattern('demo.retirement-active-visit-audit', 'demo', /hasActiveScheduledVisitForDoctor[\s\S]*?care_mode[\s\S]*?"upcoming"\s*,\s*"in_progress"/i, 'demo clinician retirement must detect active scheduled visits.');
@@ -621,7 +678,12 @@ for (const tableName of [
 // Maintained App, generated App, and synchronized Console types must expose the
 // same new backend surface before API/UI adoption begins.
 const requiredTypeFields = {
-  hospitals: [/\btimezone:\s*string\b/],
+  hospitals: [
+    /\btimezone:\s*string\b/,
+    /\btimezone_confirmed_at:\s*string\s*\|\s*null\b/,
+    /\btimezone_confirmation_source:\s*string\s*\|\s*null\b/,
+    /\btimezone_confirmed_by:\s*string\s*\|\s*null\b/,
+  ],
   doctor_schedules: [/\bupdated_at:\s*string\b/],
   visits: [
     /\bbooking_idempotency_key:\s*string\s*\|\s*null\b/,

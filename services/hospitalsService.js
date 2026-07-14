@@ -66,6 +66,11 @@ const toNonNegativeInt = (value, fallback = 0) => {
 	return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback;
 };
 const toText = (value, fallback = "") => (typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback);
+const toIsoTimestamp = (value) => {
+	if (!value) return null;
+	const parsed = new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
 const toTextArray = (value) =>
 	Array.isArray(value)
 		? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
@@ -91,6 +96,12 @@ const toMinutesLabel = (value, fallback = null) => {
 	return fallback ?? text;
 };
 const toObject = (value, fallback = {}) => (value && typeof value === "object" && !Array.isArray(value) ? value : fallback);
+const BOOKING_VERIFICATION_FILTER = [
+	"verified.eq.true",
+	"verification_status.in.(verified,partner)",
+	"verification_status.ilike.demo*",
+	"place_id.ilike.demo:*",
+].join(",");
 const hospitalCoordinateKey = (hospital) => {
 	const latitude = hospital?.latitude ?? hospital?.coordinates?.coordinates?.[1];
 	const longitude = hospital?.longitude ?? hospital?.coordinates?.coordinates?.[0];
@@ -642,6 +653,17 @@ export const hospitalsService = {
 			hasValidCoordinates,
 			verified: isVerified,
 			status,
+			bookingEligible: h?.booking_eligible === true,
+			booking_eligible: h?.booking_eligible === true,
+			timezone: toText(h?.timezone, "UTC"),
+			timezoneConfirmedAt: toIsoTimestamp(h?.timezone_confirmed_at),
+			timezone_confirmed_at: toIsoTimestamp(h?.timezone_confirmed_at),
+			timezoneConfirmationSource: toText(
+				h?.timezone_confirmation_source,
+			),
+			timezone_confirmation_source: toText(
+				h?.timezone_confirmation_source,
+			),
 			lastAvailabilityUpdate: toText(h?.last_availability_update),
 			// PULLBACK NOTE: EXPLORE-CARE-PERMANENT-FIX — Gap 1: Hide hospital-specific fields for non-hospitals
 			bedAvailability: isHospital ? toObject(h?.bed_availability, {}) : null,
@@ -890,6 +912,106 @@ export const hospitalsService = {
 			console.error("hospitalsService.listNearbyProviders error:", err);
 			return [];
 		}
+	},
+
+	async listBookingFacilities({
+		specialty = null,
+		search = null,
+		page = 0,
+		pageSize = 20,
+	} = {}) {
+		const safePage = Math.max(0, Math.floor(Number(page) || 0));
+		const safePageSize = Math.min(
+			50,
+			Math.max(1, Math.floor(Number(pageSize) || 20)),
+		);
+		const from = safePage * safePageSize;
+		const to = from + safePageSize - 1;
+
+		let query = supabase
+			.from("hospitals")
+			.select("*", { count: "exact" })
+			.eq("provider_type", "hospital")
+			.eq("booking_eligible", true)
+			.eq("status", "available")
+			.not("timezone_confirmed_at", "is", null)
+			.or(BOOKING_VERIFICATION_FILTER)
+			.order("name", { ascending: true })
+			.range(from, to);
+
+		const normalizedSpecialty = toText(specialty);
+		if (normalizedSpecialty) {
+			query = query.contains("specialties", [normalizedSpecialty]);
+		}
+
+		const normalizedSearch = toText(search);
+		if (normalizedSearch) {
+			query = query.ilike("name", `%${normalizedSearch}%`);
+		}
+
+		const { data, error, count } = await query;
+		if (error) {
+			console.error("hospitalsService.listBookingFacilities error:", error);
+			throw error;
+		}
+
+		const items = (data || []).map((row) => this._mapHospital(row));
+		const total = Number.isFinite(count) ? Number(count) : null;
+		return {
+			items,
+			page: safePage,
+			pageSize: safePageSize,
+			total,
+			hasMore:
+				total === null
+					? items.length === safePageSize
+					: from + items.length < total,
+		};
+	},
+
+	async listBookingSpecialties() {
+		const pageSize = 200;
+		let page = 0;
+		const specialties = new Set();
+
+		while (true) {
+			const from = page * pageSize;
+			const { data, error } = await supabase
+				.from("hospitals")
+				.select("specialties")
+				.eq("provider_type", "hospital")
+				.eq("booking_eligible", true)
+				.eq("status", "available")
+				.not("timezone_confirmed_at", "is", null)
+				.or(BOOKING_VERIFICATION_FILTER)
+				.order("id", { ascending: true })
+				.range(from, from + pageSize - 1);
+
+			if (error) {
+				console.error("hospitalsService.listBookingSpecialties error:", error);
+				throw error;
+			}
+
+			(data || []).forEach((row) => {
+				toTextArray(row?.specialties).forEach((item) => specialties.add(item));
+			});
+			if (!data || data.length < pageSize) break;
+			page += 1;
+		}
+
+		return [...specialties].sort((left, right) => left.localeCompare(right));
+	},
+
+	async getBookingFacilityById(hospitalId) {
+		if (!hospitalId || !isValidUUID(String(hospitalId))) return null;
+		const { data, error } = await supabase
+			.from("hospitals")
+			.select("*")
+			.eq("id", hospitalId)
+			.eq("provider_type", "hospital")
+			.maybeSingle();
+		if (error) throw error;
+		return data ? this._mapHospital(data) : null;
 	},
 
 	/**

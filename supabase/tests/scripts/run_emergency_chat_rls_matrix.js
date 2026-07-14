@@ -167,7 +167,12 @@ async function assertSelectVisible({ client, table, roomId, actor, expectVisible
   }
 
   const visible = rows.length > 0;
-  result.success = expectVisible ? visible && !result.error : !visible && !result.error;
+  const explicitlyDenied = Boolean(
+    result.error && /permission denied|row-level security|not authorized|forbidden/i.test(result.error),
+  );
+  result.success = expectVisible
+    ? visible && !result.error
+    : !visible && (!result.error || explicitlyDenied);
   result.detail = { visibleRows: rows.length };
   report.results.push(result);
 }

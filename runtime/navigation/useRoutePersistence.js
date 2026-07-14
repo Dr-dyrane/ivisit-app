@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { usePathname } from "expo-router";
 import { database, StorageKeys } from "../../database";
 import { normalizeStoredPublicRoute } from "./deepLinkHelpers";
+import { normalizeProtectedAuthReturnRoute } from "./authReturnRoute";
 
 // LEGACY: This key is checked for migration purposes
 const LEGACY_LAST_PUBLIC_ROUTE_STORAGE_KEY = "@ivisit/last_public_route_v1";
@@ -38,11 +39,46 @@ export async function readStoredPublicRoute() {
 
 /**
  * Read stored auth return route from database
- * @returns {Promise<string|null>} The normalized public route
+ * @returns {Promise<string|null>} The normalized allowlisted return route
  */
 export async function readStoredAuthReturnRoute() {
 	const route = await database.read(StorageKeys.AUTH_RETURN_ROUTE).catch(() => null);
-	return normalizeStoredPublicRoute(route);
+	const normalizedRoute =
+		normalizeProtectedAuthReturnRoute(route) || normalizeStoredPublicRoute(route);
+
+	if (!normalizedRoute) {
+		if (route) {
+			await database.delete(StorageKeys.AUTH_RETURN_ROUTE).catch(() => {});
+		}
+		return null;
+	}
+
+	if (normalizedRoute !== route) {
+		await database.write(StorageKeys.AUTH_RETURN_ROUTE, normalizedRoute).catch(() => {});
+	}
+
+	return normalizedRoute;
+}
+
+/**
+ * Store only an allowlisted public map route or protected visit-detail route.
+ * @returns {Promise<string|null>} The canonical route that was stored
+ */
+export async function writeStoredAuthReturnRoute(route) {
+	const normalizedRoute =
+		normalizeProtectedAuthReturnRoute(route) || normalizeStoredPublicRoute(route);
+	if (!normalizedRoute) return null;
+
+	try {
+		await database.write(StorageKeys.AUTH_RETURN_ROUTE, normalizedRoute);
+		return normalizedRoute;
+	} catch {
+		return null;
+	}
+}
+
+export async function clearStoredAuthReturnRoute() {
+	await database.delete(StorageKeys.AUTH_RETURN_ROUTE).catch(() => {});
 }
 
 /**

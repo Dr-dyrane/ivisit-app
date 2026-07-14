@@ -67,10 +67,44 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
-const assertSummaryReady = (summary, context) => {
+const assertSummaryReady = (summary, phase, context) => {
   assert(summary && typeof summary === "object", `${context}: missing summary`);
   assert(summary.coverage_ready === true, `${context}: coverage_ready was not true`);
-  assert(summary.clean_cycle_ready === true, `${context}: clean_cycle_ready was not true`);
+  if (["staff", "pricing", "summary"].includes(phase)) {
+    assert(summary.staffing_ready === true, `${context}: staffing_ready was not true`);
+    assert(summary.schedule_ready === true, `${context}: schedule_ready was not true`);
+    assert(summary.book_visit_ready === true, `${context}: book_visit_ready was not true`);
+    assert(summary.telemedicine_ready === true, `${context}: telemedicine_ready was not true`);
+  }
+  if (["pricing", "summary"].includes(phase)) {
+    assert(summary.clean_cycle_ready === true, `${context}: clean_cycle_ready was not true`);
+  }
+};
+
+const describeFunctionError = async (error) => {
+  const status = Number(error?.context?.status) || null;
+  let detail = "";
+
+  try {
+    const response = error?.context;
+    if (response && typeof response.clone === "function") {
+      const body = await response.clone().json();
+      detail = body?.error || body?.message || body?.code || JSON.stringify(body);
+    }
+  } catch {
+    try {
+      const response = error?.context;
+      if (response && typeof response.clone === "function") {
+        detail = (await response.clone().text()).trim();
+      }
+    } catch {
+      detail = "";
+    }
+  }
+
+  return [status ? `HTTP ${status}` : "", detail, error?.message]
+    .filter(Boolean)
+    .join(": ");
 };
 
 const invokePhase = async (location, phase) => {
@@ -86,7 +120,9 @@ const invokePhase = async (location, phase) => {
   });
 
   if (error) {
-    throw new Error(`${location.id}/${phase}: ${error.message || "invoke failed"}`);
+    throw new Error(
+      `${location.id}/${phase}: ${await describeFunctionError(error) || "invoke failed"}`,
+    );
   }
   if (!data?.ok) {
     throw new Error(`${location.id}/${phase}: ${data?.error || "response ok=false"}`);
@@ -104,7 +140,7 @@ const invokePhase = async (location, phase) => {
     return data;
   }
 
-  assertSummaryReady(data.summary, `${location.id}/${phase}`);
+  assertSummaryReady(data.summary, phase, `${location.id}/${phase}`);
 
   if (phase !== "summary") {
     assert(Array.isArray(data.hospitals), `${location.id}/${phase}: hospitals missing`);
@@ -155,6 +191,7 @@ const main = async () => {
         ms: Date.now() - startedAt,
         organization_id: data.organization_id,
         hospitals: Array.isArray(data.hospitals) ? data.hospitals.length : 0,
+        schedule_ready: data.summary?.schedule_ready ?? null,
         clean_cycle_ready: data.summary?.clean_cycle_ready ?? null,
       });
       console.log(`[bootstrap-matrix] PASS ${location.id}/${phase}`);

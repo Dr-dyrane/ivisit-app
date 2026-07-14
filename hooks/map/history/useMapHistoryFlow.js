@@ -22,11 +22,15 @@
 //   - useTrackingRatingFlow — stays in MapScreen (in-flow rating + openRatingForVisit)
 //   - handleBookVisitFromCare — stays in MapScreen (care-history surface, not visit-detail)
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking } from "react-native";
 import { useAtom, useAtomValue } from "jotai";
 import { paymentService } from "../../../services/paymentService";
-import { selectHistoryItemByAnyKey } from "../../visits/useVisitHistorySelectors";
+import {
+  selectHistoryItemByAnyKey,
+  toHistoryItem,
+} from "../../visits/useVisitHistorySelectors";
+import { useScheduledVisitMutations } from "../../visits/useScheduledVisitMutations";
 import {
   buildRecoveredTrackingRatingState,
   buildTrackingResolutionToast,
@@ -56,7 +60,6 @@ import {
  * @param {Object} params
  * @param {Array}    params.visits
  * @param {Function} params.updateVisit
- * @param {Function} params.cancelVisit
  * @param {Function} params.showToast
  * @param {Function} params.openTracking
  * @param {Function} params.openVisitDetail
@@ -76,7 +79,6 @@ import {
 export function useMapHistoryFlow({
   visits,
   updateVisit,
-  cancelVisit,
   showToast,
   openTracking,
   openVisitDetail,
@@ -92,6 +94,7 @@ export function useMapHistoryFlow({
   hasActiveTrip,
   discoveredHospitals,
   router,
+  userId,
 }) {
   // --- Refs ---
   const handledRecoveredRatingVisitIdsRef = useRef(new Set());
@@ -110,11 +113,22 @@ export function useMapHistoryFlow({
 
   // --- Local state (promoted to atom for call-order independence) ---
   const [historyPaymentState, setHistoryPaymentState] = useAtom(historyPaymentStateAtom);
+  const [coldVisit, setColdVisit] = useState(null);
+  const [asyncConsultVisit, setAsyncConsultVisit] = useState(null);
+  const [rescheduleVisit, setRescheduleVisit] = useState(null);
+  const { transitionVisit, isTransitioning } = useScheduledVisitMutations({ userId });
 
   // --- Derived ---
+  const selectionVisits = useMemo(() => {
+    if (!coldVisit?.id) return visits;
+    const withoutDuplicate = (visits || []).filter(
+      (visit) => String(visit?.id || "") !== String(coldVisit.id),
+    );
+    return [...withoutDuplicate, coldVisit];
+  }, [coldVisit, visits]);
   const selectedHistoryVisit = useMemo(
-    () => selectHistoryItemByAnyKey(visits, selectedHistoryVisitKey),
-    [selectedHistoryVisitKey, visits],
+    () => selectHistoryItemByAnyKey(selectionVisits, selectedHistoryVisitKey),
+    [selectedHistoryVisitKey, selectionVisits],
   );
 
   // PULLBACK NOTE: Moved here (before any useCallback that references them) to prevent TDZ.
@@ -170,6 +184,9 @@ export function useMapHistoryFlow({
     visitDetailReturnTargetRef.current = null;
     routeManagedVisitDetailRef.current = false;
     setSelectedHistoryVisitKey(null);
+    setColdVisit(null);
+    setAsyncConsultVisit(null);
+    setRescheduleVisit(null);
     // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
     // PULLBACK NOTE: PASS 19H — restore Recents modal if sourceSurface is "recents"
     // PULLBACK NOTE: PASS 19H FIX — restore surface BEFORE calling closeVisitDetail to avoid timing issues
@@ -264,8 +281,13 @@ export function useMapHistoryFlow({
   const openHistoryVisitByKey = useCallback(
     (visitKey, options = {}) => {
       if (!visitKey) return false;
-      const historyItem = selectHistoryItemByAnyKey(visits, visitKey);
+      const hydratedVisit = options?.visit || null;
+      const historyItem = hydratedVisit
+        ? toHistoryItem(hydratedVisit)
+        : selectHistoryItemByAnyKey(visits, visitKey);
       if (!historyItem) return false;
+
+      if (hydratedVisit) setColdVisit(hydratedVisit);
 
       routeManagedVisitDetailRef.current = options?.routeManaged === true;
       visitDetailReturnTargetRef.current = options?.returnTarget || null;
@@ -280,6 +302,18 @@ export function useMapHistoryFlow({
       return true;
     },
     [openVisitDetail, setSelectedHistoryVisitKey, setVisitDetailSourceSurface, visits],
+  );
+
+  const beginRouteManagedVisitDetail = useCallback(
+    (visitKey) => {
+      if (!visitKey) return;
+      routeManagedVisitDetailRef.current = true;
+      visitDetailReturnTargetRef.current = null;
+      setSelectedHistoryVisitKey(String(visitKey));
+      setVisitDetailSourceSurface(null);
+      openVisitDetail?.(null, null, null);
+    },
+    [openVisitDetail, setSelectedHistoryVisitKey, setVisitDetailSourceSurface],
   );
 
   // PULLBACK NOTE: PASS 19H — Visit Detail Return Respects Source
@@ -358,11 +392,41 @@ export function useMapHistoryFlow({
     Linking.openURL(`tel:${phone}`);
   }, [selectedHistoryVisit?.contactPhone]);
 
-  const handleJoinHistoryVisit = useCallback(() => {
-    const meetingLink = selectedHistoryVisit?.meetingLink;
-    if (!meetingLink) return;
-    Linking.openURL(meetingLink);
-  }, [selectedHistoryVisit?.meetingLink]);
+  const handleOpenHistoryConsult = useCallback(() => {
+    if (!selectedHistoryVisit?.canOpenConsult) return;
+    setAsyncConsultVisit(selectedHistoryVisit);
+  }, [selectedHistoryVisit]);
+
+  const closeAsyncConsult = useCallback(() => {
+    setAsyncConsultVisit(null);
+  }, []);
+
+  const handleRescheduleHistoryVisit = useCallback(() => {
+    if (!selectedHistoryVisit?.canReschedule) return;
+    setRescheduleVisit(selectedHistoryVisit);
+  }, [selectedHistoryVisit]);
+
+  const closeRescheduleVisit = useCallback(() => {
+    setRescheduleVisit(null);
+  }, []);
+
+  const handleRescheduleSuccess = useCallback(
+    (updatedVisit) => {
+      if (!updatedVisit?.id) return;
+      setColdVisit(updatedVisit);
+      setRescheduleVisit(null);
+      const updatedItem = toHistoryItem(updatedVisit);
+      if (updatedItem) {
+        setSelectedHistoryVisitKey(updatedItem.id);
+        openVisitDetail?.(updatedItem, null, visitDetailSourceSurface);
+      }
+    },
+    [
+      openVisitDetail,
+      setSelectedHistoryVisitKey,
+      visitDetailSourceSurface,
+    ],
+  );
 
   const handleBookHistoryAgain = useCallback(() => {
     if (!selectedHistoryVisit) return;
@@ -391,6 +455,11 @@ export function useMapHistoryFlow({
   const handleCancelHistoryVisit = useCallback(() => {
     if (!selectedHistoryVisit?.id) return;
 
+    if (selectedHistoryVisit.sourceKind !== "scheduled_visit") {
+      showToast("Manage emergency care from its request details.", "info");
+      return;
+    }
+
     Alert.alert(
       "Cancel Visit",
       "Are you sure you want to cancel this visit?",
@@ -401,23 +470,37 @@ export function useMapHistoryFlow({
           style: "destructive",
           onPress: async () => {
             try {
-              await cancelVisit(selectedHistoryVisit.id);
+              showToast("Cancelling visit...", "info");
+              const updatedVisit = await transitionVisit({
+                visitId: selectedHistoryVisit.id,
+                action: "cancel",
+              });
+              setColdVisit(updatedVisit);
+              const updatedItem = toHistoryItem(updatedVisit);
+              if (updatedItem) openVisitDetail?.(updatedItem, null, visitDetailSourceSurface);
               showToast("Visit cancelled.", "success");
             } catch (error) {
               console.error("[useMapHistoryFlow] Failed to cancel history visit:", error);
-              showToast("Could not cancel this visit right now.", "error");
+              showToast(error?.message || "Could not cancel this visit right now.", "error");
             }
           },
         },
       ],
     );
-  }, [cancelVisit, selectedHistoryVisit, showToast]);
+  }, [
+    openVisitDetail,
+    selectedHistoryVisit,
+    showToast,
+    transitionVisit,
+    visitDetailSourceSurface,
+  ]);
 
   // ─── Stale-guard effect: close VISIT_DETAIL if visit deselected ──────────
 
   useEffect(() => {
     if (!historyVisitDetailsVisible) return;
     if (selectedHistoryVisit) return;
+    if (routeManagedVisitDetailRef.current) return;
     closeHistoryVisitDetails();
   }, [closeHistoryVisitDetails, historyVisitDetailsVisible, selectedHistoryVisit]);
 
@@ -578,12 +661,16 @@ export function useMapHistoryFlow({
     // State
     selectedHistoryVisit,
     selectedHistoryVisitKey,
+    asyncConsultVisit,
+    rescheduleVisit,
+    isScheduledVisitTransitioning: isTransitioning,
     historyPaymentState,
     recoveredRatingState,
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
     historyFocusedHospital,
     openHistoryVisitByKey,
+    beginRouteManagedVisitDetail,
     // History detail handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,
@@ -594,7 +681,11 @@ export function useMapHistoryFlow({
     handleSelectHistoryItem,
     handleResumeHistoryRequest,
     handleCallHistoryClinic,
-    handleJoinHistoryVisit,
+    handleOpenHistoryConsult,
+    closeAsyncConsult,
+    handleRescheduleHistoryVisit,
+    closeRescheduleVisit,
+    handleRescheduleSuccess,
     handleBookHistoryAgain,
     handleCancelHistoryVisit,
     // Recovered-rating handlers

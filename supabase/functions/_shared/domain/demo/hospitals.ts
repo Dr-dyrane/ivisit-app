@@ -10,7 +10,6 @@ import {
 import {
   exactLocationKey,
   haversineDistanceKm,
-  normalizeFacilityText,
   normalizeHospitalName,
   nowIso,
   toFiniteNumber,
@@ -300,6 +299,8 @@ const NON_HOSPITAL_SEED_PATTERN =
 
 const DEMO_MIN_HOSPITALS = 5;
 const DEMO_MAX_HOSPITALS = 6;
+const DEMO_LOCATION_NUDGE_STEP = 0.00008;
+const DEMO_LOCATION_NUDGE_ATTEMPTS = 24;
 
 type DemoFallbackHospital = {
   name: string;
@@ -382,12 +383,58 @@ const nudgeDemoLocation = (
   latitude: number,
   longitude: number,
   slotIndex: number,
+  attemptIndex: number,
 ) => {
-  const offset = 0.00008 * (slotIndex + 1);
+  const offsetUnits = slotIndex + 1 + attemptIndex * DEMO_MAX_HOSPITALS;
+  const offset = DEMO_LOCATION_NUDGE_STEP * offsetUnits;
   return {
     latitude: Number((latitude + offset).toFixed(6)),
     longitude: Number((longitude + offset).toFixed(6)),
   };
+};
+
+const allocateDemoLocation = async (
+  admin: any,
+  latitude: number,
+  longitude: number,
+  slotIndex: number,
+  existingHospitalId: string | null,
+  reservedLocationKeys: Set<string>,
+) => {
+  const candidates = [
+    { latitude, longitude },
+    ...Array.from(
+      { length: DEMO_LOCATION_NUDGE_ATTEMPTS },
+      (_, attemptIndex) =>
+        nudgeDemoLocation(latitude, longitude, slotIndex, attemptIndex),
+    ),
+  ];
+
+  for (const candidate of candidates) {
+    const locationKey = exactLocationKey(
+      candidate.latitude,
+      candidate.longitude,
+    );
+    if (!locationKey || reservedLocationKeys.has(locationKey)) continue;
+
+    const { data, error } = await admin
+      .from("hospitals")
+      .select("id")
+      .eq("latitude", candidate.latitude)
+      .eq("longitude", candidate.longitude)
+      .limit(1);
+    if (error) {
+      throw new Error(`demo hospital location lookup failed: ${error.message}`);
+    }
+
+    const occupant = Array.isArray(data) ? data[0] : null;
+    if (!occupant || occupant.id === existingHospitalId) {
+      reservedLocationKeys.add(locationKey);
+      return candidate;
+    }
+  }
+
+  throw new Error("demo hospital location allocation exhausted");
 };
 
 const parseHospitalCoordinates = (
@@ -442,7 +489,7 @@ const resolveDemoSeedScopeKey = (ctx: DemoContext) => {
   // PULLBACK NOTE: Scope key was previously coordinate-based (ctx.coverageKey)
   // for non-catalog locations. This caused a new org + 5-6 new hospitals on every
   // ~1km GPS drift, accumulating duplicates worldwide (confirmed: Toronto user).
-  // Changed to ctx.userSlug — stable across all sessions and all cities.
+  // Changed to ctx.userSlug - stable across all sessions and all cities.
   // OLD: const catalog = findCityDemoFallbackCatalog(ctx);
   //      return catalog ? `city_${catalog.key}` : ctx.coverageKey;
   // NEW: return ctx.userSlug;
@@ -676,7 +723,6 @@ export const ensureDemoHospitals = async (
     .map((row) => toSafeString(row?.place_id, ""))
     .filter((value) => value.length > 0);
   const existingByPlaceId = new Map<string, any>();
-  const existingByLocation = new Map<string, any>();
   if (placeIds.length > 0) {
     const { data: existingRows, error: existingError } = await admin
       .from("hospitals")
@@ -698,57 +744,28 @@ export const ensureDemoHospitals = async (
     });
   }
 
+  const rows = [];
+  const reservedLocationKeys = new Set<string>();
   for (const row of baseRows) {
-    const locationKey = exactLocationKey(row.latitude, row.longitude);
-    if (!locationKey || existingByLocation.has(locationKey)) continue;
-
-    const { data: locationRows, error: locationError } = await admin
-      .from("hospitals")
-      .select(
-        "id,place_id,image,image_source,image_confidence,image_attribution_text,latitude,longitude,features,verification_status",
-      )
-      .eq("latitude", row.latitude)
-      .eq("longitude", row.longitude)
-      .limit(1);
-
-    if (locationError) {
-      throw new Error(
-        `demo hospital location lookup failed: ${locationError.message}`,
-      );
-    }
-
-    const existingLocation = Array.isArray(locationRows)
-      ? locationRows[0]
-      : null;
-    if (existingLocation) {
-      existingByLocation.set(locationKey, existingLocation);
-    }
-  }
-
-  const rows = baseRows.map((row) => {
     const { slot_index: slotIndex, ...rowForUpsert } = row;
-    const existingByPlace = existingByPlaceId.get(toSafeString(row?.place_id, ""));
-    const existingAtLocation = existingByLocation.get(
-      exactLocationKey(row.latitude, row.longitude),
+    const existingByPlace = existingByPlaceId.get(
+      toSafeString(row?.place_id, ""),
     );
-    const locationDemoRow = isDemoSeedRow(existingAtLocation)
-      ? existingAtLocation
-      : null;
-    const hasDifferentLocationOccupant =
-      existingAtLocation?.id &&
-      existingByPlace?.id &&
-      existingAtLocation.id !== existingByPlace.id;
-    const existing = locationDemoRow || existingByPlace || null;
-    const adjustedLocation =
-      existingAtLocation &&
-      !locationDemoRow &&
-      (!existing || hasDifferentLocationOccupant)
-        ? nudgeDemoLocation(row.latitude, row.longitude, slotIndex)
-        : { latitude: row.latitude, longitude: row.longitude };
-    const preferredImage = choosePreferredImage(existing, row);
-    return {
+    const adjustedLocation = await allocateDemoLocation(
+      admin,
+      row.latitude,
+      row.longitude,
+      slotIndex,
+      toSafeString(existingByPlace?.id, "") || null,
+      reservedLocationKeys,
+    );
+    const preferredImage = choosePreferredImage(existingByPlace, row);
+    rows.push({
       ...rowForUpsert,
-      place_id: toSafeString(existing?.place_id, toSafeString(row.place_id)),
+      place_id: toSafeString(
+        existingByPlace?.place_id,
+        toSafeString(row.place_id),
+      ),
       latitude: adjustedLocation.latitude,
       longitude: adjustedLocation.longitude,
       coordinates: toGeometryPoint(
@@ -764,8 +781,8 @@ export const ensureDemoHospitals = async (
       ),
       image_synced_at:
         toSafeString(preferredImage?.image, "").length > 0 ? nowIso() : null,
-    };
-  });
+    });
+  }
 
   const { error: upsertError } = await admin
     .from("hospitals")
@@ -848,10 +865,10 @@ export const ensureDemoHospitals = async (
   // PULLBACK NOTE: Added cross-org geographic retirement sweep.
   // Retires demo hospitals from old coordinate-scoped orgs within ~16km bounding box.
   // These rows accumulate from pre-Pass-1 bootstraps where scope = GPS coords.
-  // Retirement = status 'full' — never DELETE, consistent with active pool rule.
+  // Retirement = status 'full' - never DELETE, consistent with active pool rule.
   // OLD: sweep was organization_id-scoped only.
-  // NEW: sweep also covers demo rows from other orgs within 0.15° bounding box.
-  const STALE_SWEEP_RADIUS_DEG = 0.15; // ~16.6 km at equator, ~11 km at 48°N (Toronto)
+  // NEW: sweep also covers demo rows from other orgs within a 0.15 degree box.
+  const STALE_SWEEP_RADIUS_DEG = 0.15; // ~16.6 km at equator, ~11 km at 48 degrees north.
 
   const { data: crossOrgStaleRows, error: crossOrgSweepError } = await admin
     .from("hospitals")

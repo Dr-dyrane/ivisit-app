@@ -81,7 +81,7 @@ export default function BookVisitContextPane({
             fontSize: Math.max(metrics.typography.title.fontSize + 2, 22),
             lineHeight: Math.max(metrics.typography.title.lineHeight + 4, 28),
             fontWeight: "700",
-            letterSpacing: -0.35,
+            letterSpacing: 0,
           }}
         >
           {BOOK_VISIT_SCREEN_COPY.context.title}
@@ -155,12 +155,14 @@ export default function BookVisitContextPane({
             />
           ))}
         </View>
-        <SelectionRow
-          label={BOOK_VISIT_SCREEN_COPY.context.quoteLabel}
-          value={quoteLabel}
-          theme={theme}
-          metrics={metrics}
-        />
+        {quoteLabel ? (
+          <SelectionRow
+            label={BOOK_VISIT_SCREEN_COPY.context.quoteLabel}
+            value={quoteLabel}
+            theme={theme}
+            metrics={metrics}
+          />
+        ) : null}
       </View>
     </View>
   );

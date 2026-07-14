@@ -78,6 +78,9 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     name TEXT NOT NULL,
     address TEXT NOT NULL,
     timezone TEXT NOT NULL DEFAULT 'UTC',
+    timezone_confirmed_at TIMESTAMPTZ,
+    timezone_confirmation_source TEXT,
+    timezone_confirmed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     phone TEXT,
     rating DOUBLE PRECISION DEFAULT 0,
     type TEXT DEFAULT 'standard',
@@ -373,15 +376,43 @@ CREATE TABLE IF NOT EXISTS public.doctor_schedules (
 -- BEGIN SCHEDULED_VISITS_PROVIDER_TIME_SCHEMA
 -- PULLBACK NOTE: Scheduled visits data pass.
 -- OLD: provider schedules had no canonical timezone or shift integrity.
--- NEW: facilities own IANA timezone truth and same-day shifts are unique and ordered.
+-- NEW: facilities own confirmed IANA timezone truth and shifts are unique and ordered.
 ALTER TABLE public.hospitals
-    ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC';
+    ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC',
+    ADD COLUMN IF NOT EXISTS timezone_confirmed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS timezone_confirmation_source TEXT,
+    ADD COLUMN IF NOT EXISTS timezone_confirmed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 ALTER TABLE public.hospitals
     DROP CONSTRAINT IF EXISTS hospitals_timezone_length_check;
 ALTER TABLE public.hospitals
     ADD CONSTRAINT hospitals_timezone_length_check
     CHECK (char_length(timezone) BETWEEN 1 AND 64);
+
+ALTER TABLE public.hospitals
+    DROP CONSTRAINT IF EXISTS hospitals_timezone_confirmation_source_check;
+ALTER TABLE public.hospitals
+    ADD CONSTRAINT hospitals_timezone_confirmation_source_check
+    CHECK (
+        timezone_confirmation_source IS NULL
+        OR timezone_confirmation_source IN ('manual', 'google', 'timeapi')
+    );
+
+ALTER TABLE public.hospitals
+    DROP CONSTRAINT IF EXISTS hospitals_timezone_confirmation_coherence_check;
+ALTER TABLE public.hospitals
+    ADD CONSTRAINT hospitals_timezone_confirmation_coherence_check
+    CHECK (
+        (
+            timezone_confirmed_at IS NULL
+            AND timezone_confirmation_source IS NULL
+            AND timezone_confirmed_by IS NULL
+        )
+        OR (
+            timezone_confirmed_at IS NOT NULL
+            AND timezone_confirmation_source IS NOT NULL
+        )
+    );
 
 CREATE OR REPLACE FUNCTION public.validate_hospital_timezone()
 RETURNS TRIGGER
@@ -395,6 +426,16 @@ BEGIN
         WHERE timezone_row.name = NEW.timezone
     ) THEN
         RAISE EXCEPTION 'Invalid IANA timezone: %', COALESCE(NEW.timezone, '<null>');
+    END IF;
+
+    IF TG_OP = 'UPDATE'
+       AND NEW.timezone IS DISTINCT FROM OLD.timezone
+       AND NEW.timezone_confirmed_at IS NOT DISTINCT FROM OLD.timezone_confirmed_at
+       AND NEW.timezone_confirmation_source IS NOT DISTINCT FROM OLD.timezone_confirmation_source
+       AND NEW.timezone_confirmed_by IS NOT DISTINCT FROM OLD.timezone_confirmed_by THEN
+        NEW.timezone_confirmed_at := NULL;
+        NEW.timezone_confirmation_source := NULL;
+        NEW.timezone_confirmed_by := NULL;
     END IF;
 
     RETURN NEW;
@@ -434,7 +475,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_doctor_assignments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 🛠️ AUTOMATION: ORG/HOSPITAL TRIGGERS
+-- AUTOMATION: ORG/HOSPITAL TRIGGERS
 CREATE TRIGGER handle_org_updated_at BEFORE UPDATE ON public.organizations FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_hosp_updated_at BEFORE UPDATE ON public.hospitals FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_doc_updated_at BEFORE UPDATE ON public.doctors FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

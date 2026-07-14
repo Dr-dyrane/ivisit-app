@@ -1174,6 +1174,9 @@ export type Database = {
           specialties: string[] | null
           status: string | null
           timezone: string
+          timezone_confirmation_source: string | null
+          timezone_confirmed_at: string | null
+          timezone_confirmed_by: string | null
           total_beds: number | null
           type: string | null
           updated_at: string
@@ -1221,6 +1224,9 @@ export type Database = {
           specialties?: string[] | null
           status?: string | null
           timezone?: string
+          timezone_confirmation_source?: string | null
+          timezone_confirmed_at?: string | null
+          timezone_confirmed_by?: string | null
           total_beds?: number | null
           type?: string | null
           updated_at?: string
@@ -1268,6 +1274,9 @@ export type Database = {
           specialties?: string[] | null
           status?: string | null
           timezone?: string
+          timezone_confirmation_source?: string | null
+          timezone_confirmed_at?: string | null
+          timezone_confirmed_by?: string | null
           total_beds?: number | null
           type?: string | null
           updated_at?: string
@@ -1288,6 +1297,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hospitals_timezone_confirmed_by_fkey"
+            columns: ["timezone_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3185,6 +3201,10 @@ export type Database = {
         Returns: Json
       }
       complete_trip: { Args: { request_uuid: string }; Returns: boolean }
+      confirm_hospital_timezone: {
+        Args: { p_hospital_id: string; p_timezone: string }
+        Returns: Json
+      }
       console_cancel_emergency: {
         Args: { p_reason?: string; p_request_id: string }
         Returns: Json

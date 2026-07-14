@@ -66,10 +66,12 @@ export default function MapSheetOrchestrator({
 	onAddAmbulanceFromTracking = () => {},
 	onCloseHospitalDetail = () => {},
 	onCloseVisitDetail = () => {},
+	visitDetailRouteState = null,
 	onResumeHistoryVisit = () => {},
 	onRateHistoryVisit = () => {},
 	onCallHistoryClinic = () => {},
-	onJoinHistoryVideo = () => {},
+	onOpenHistoryConsult = () => {},
+	onRescheduleHistoryVisit = () => {},
 	onBookHistoryAgain = () => {},
 	onOpenHistoryPaymentDetails = () => {},
 	onGetHistoryDirections = () => {},
@@ -452,12 +454,14 @@ export default function MapSheetOrchestrator({
 						sheetHeight={sheetHeight}
 						snapState={snapState}
 						historyItem={sheetPayload?.historyItem || null}
+						routeState={visitDetailRouteState}
 						activeMapRequest={activeMapRequest}
 						onClose={onCloseVisitDetail}
 						onResume={onResumeHistoryVisit}
 						onRateVisit={onRateHistoryVisit}
 						onCallClinic={onCallHistoryClinic}
-						onJoinVideo={onJoinHistoryVideo}
+						onOpenConsult={onOpenHistoryConsult}
+						onReschedule={onRescheduleHistoryVisit}
 						onBookAgain={onBookHistoryAgain}
 						onOpenPaymentDetails={onOpenHistoryPaymentDetails}
 						onGetDirections={onGetHistoryDirections}

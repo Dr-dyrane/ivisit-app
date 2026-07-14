@@ -54,7 +54,7 @@ export default function BookVisitStepPanel({
               fontSize: Math.max(metrics.typography.title.fontSize + 4, 24),
               lineHeight: Math.max(metrics.typography.title.lineHeight + 6, 30),
               fontWeight: "700",
-              letterSpacing: -0.35,
+              letterSpacing: 0,
             }}
           >
             {BOOK_VISIT_SCREEN_COPY.center.title}
@@ -75,6 +75,7 @@ export default function BookVisitStepPanel({
           <ServiceSelection
             onSelect={model.handleSelectService}
             showHeader={showHeader}
+            enabled={model.scheduledVisitsEnabled}
           />
         ) : null}
 
@@ -84,6 +85,9 @@ export default function BookVisitStepPanel({
             onSelect={model.handleSelectSpecialty}
             onSearchPress={model.openSpecialtySearch}
             showHeader={showHeader}
+            loading={model.isSpecialtiesLoading}
+            error={model.specialtiesError}
+            onRetry={model.retrySpecialties}
           />
         ) : null}
 
@@ -93,18 +97,35 @@ export default function BookVisitStepPanel({
             specialty={model.bookingData.specialty}
             onSelect={model.handleProviderSelect}
             showHeader={showHeader}
+            searchQuery={model.facilitySearchQuery}
+            onSearchChange={model.setFacilitySearchQuery}
+            resultCount={model.facilityResultCount}
+            loading={model.isFacilitiesLoading}
+            refreshing={model.isFacilitiesRefreshing}
+            error={model.facilitiesError}
+            onRetry={model.retryFacilities}
+            hasMore={model.hasMoreFacilities}
+            loadingMore={model.isLoadingMoreFacilities}
+            onLoadMore={model.loadMoreFacilities}
           />
         ) : null}
 
         {model.step === BOOK_VISIT_STEPS.DATETIME ? (
           <DateTimeSelection
-            dates={model.dates}
-            selectedDate={model.bookingData.date}
-            selectedTime={model.bookingData.time}
+            availabilityDays={model.availabilityDays}
+            selectedDayKey={model.selectedAvailabilityDayKey}
+            selectedSlot={model.bookingData.slot}
             onSelectDate={model.handleSelectDate}
             onSelectTime={model.handleSelectTime}
             onConfirm={model.handleConfirmDateTime}
             showHeader={showHeader}
+            loading={model.isAvailabilityLoading}
+            refreshing={model.isAvailabilityRefreshing}
+            error={model.availabilityError}
+            timezoneReady={model.facilityTimezoneReady}
+            onRetry={model.retryAvailability}
+            onChangeFacility={model.handleChangeFacility}
+            onChangeSpecialty={model.handleChangeSpecialty}
           />
         ) : null}
 
@@ -113,9 +134,9 @@ export default function BookVisitStepPanel({
             bookingData={model.bookingData}
             isSubmitting={model.isSubmitting}
             onConfirm={model.handleBookVisit}
+            onNotesChange={model.handleNotesChange}
             showHeader={showHeader}
-            costLabel={model.quoteLabel}
-            quoteLoading={model.isQuoteLoading}
+            error={model.error}
           />
         ) : null}
       </View>

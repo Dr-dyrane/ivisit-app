@@ -6,11 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import {
+	getProtectedAuthReturnRouteFromUrl,
 	getPublicAuthRouteFromUrl,
 	isBaseAppUrl,
 	isNormalizedPublicRouteActive,
+	normalizeStoredPublicRoute,
 } from "./deepLinkHelpers";
-import { readStoredAuthReturnRoute, readStoredPublicRoute, writeStoredPublicRoute } from "./useRoutePersistence";
+import {
+	readStoredAuthReturnRoute,
+	readStoredPublicRoute,
+	writeStoredAuthReturnRoute,
+	writeStoredPublicRoute,
+} from "./useRoutePersistence";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * useInitialRoute - Handles deep links and initial route hydration
@@ -23,13 +31,18 @@ import { readStoredAuthReturnRoute, readStoredPublicRoute, writeStoredPublicRout
  * - Set initialRouteResolved flag when complete
  *
  * Returns:
- * - initialRouteResolved: boolean — true when initial hydration is done
- * - startupPublicRoute: string|null — the public route to restore
+ * - initialRouteResolved: boolean - true when initial hydration is done
+ * - startupPublicRoute: string|null - the public route to restore
  */
 export function useInitialRoute() {
 	const router = useRouter();
 	const pathname = usePathname();
+	const { user, loading } = useAuth();
 	const pathnameRef = useRef(pathname);
+	const authStateRef = useRef({
+		isAuthenticated: user.isAuthenticated,
+		loading,
+	});
 	const [initialRouteResolved, setInitialRouteResolved] = useState(false);
 	const [startupPublicRoute, setStartupPublicRoute] = useState(null);
 
@@ -37,6 +50,13 @@ export function useInitialRoute() {
 	useEffect(() => {
 		pathnameRef.current = pathname;
 	}, [pathname]);
+
+	useEffect(() => {
+		authStateRef.current = {
+			isAuthenticated: user.isAuthenticated,
+			loading,
+		};
+	}, [loading, user.isAuthenticated]);
 
 	// Initial route hydration (deep links + stored routes)
 	useEffect(() => {
@@ -58,14 +78,29 @@ export function useInitialRoute() {
 				if (!isAlreadyOnResetPasswordRoute) {
 					router.replace("/auth/reset-password");
 				}
-				return;
+				return true;
 			}
 
 			if (isAuthCallback) {
 				if (!isAlreadyOnAuthCallbackRoute) {
 					router.replace("/auth/callback");
 				}
-				return;
+				return true;
+			}
+
+			const protectedReturnRoute = getProtectedAuthReturnRouteFromUrl(url);
+			if (protectedReturnRoute) {
+				await writeStoredAuthReturnRoute(protectedReturnRoute);
+
+				if (
+					!authStateRef.current.loading &&
+					authStateRef.current.isAuthenticated
+				) {
+					router.replace(protectedReturnRoute);
+				} else {
+					router.replace("/(auth)");
+				}
+				return true;
 			}
 
 			const publicAuthRoute = getPublicAuthRouteFromUrl(url);
@@ -75,11 +110,12 @@ export function useInitialRoute() {
 				if (!isNormalizedPublicRouteActive(pathnameRef.current, publicAuthRoute)) {
 					router.replace(publicAuthRoute);
 				}
-				return;
+				return true;
 			}
 
 			// Prevent loop on base app URLs - no redirect needed
-			const isBaseUrl = isBaseAppUrl(url);
+			if (isBaseAppUrl(url)) return false;
+			return false;
 		};
 
 		const hydrateInitialRoute = async () => {
@@ -88,15 +124,25 @@ export function useInitialRoute() {
 
 			try {
 				const url = await Linking.getInitialURL();
+				let initialUrlHandled = false;
 				if (url) {
-					await handleDeepLink({ url });
+					initialUrlHandled = await handleDeepLink({ url });
 				}
 
-				// Always check stored route as fallback, even if URL was present.
+				if (initialUrlHandled) return;
+
+				// Check stored public routes as a fallback when the launch URL did not
+				// identify a destination. Protected intent is left for auth routing.
 				// On Metro reload, Expo Go may provide a URL that doesn't contain
 				// routing info, so we rely on the stored last route.
+				const storedAuthReturnRoute = await readStoredAuthReturnRoute();
+				const storedAuthPublicRoute = normalizeStoredPublicRoute(
+					storedAuthReturnRoute,
+				);
+				if (storedAuthReturnRoute && !storedAuthPublicRoute) return;
+
 				const restoredPublicRoute =
-					(await readStoredAuthReturnRoute()) || (await readStoredPublicRoute());
+					storedAuthPublicRoute || (await readStoredPublicRoute());
 				if (restoredPublicRoute) {
 					if (isMounted) {
 						setStartupPublicRoute(restoredPublicRoute);

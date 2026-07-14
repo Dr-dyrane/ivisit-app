@@ -174,6 +174,17 @@ for schedule interpretation. New or updated provider records must supply a valid
 IANA timezone when known. `UTC` is a safe compatibility default, not a claim that
 an existing facility is physically in UTC.
 
+Canonical readiness is explicit:
+
+- `timezone_confirmed_at TIMESTAMPTZ` records when the zone was proved
+- `timezone_confirmation_source TEXT` records `manual`, `google`, or `timeapi`
+- `timezone_confirmed_by UUID` records the confirming Console actor when present
+- `confirm_hospital_timezone` is the admin/same-organization-admin command
+
+Changing `timezone` without fresh evidence clears stale confirmation. Schedule,
+availability, booking, and reschedule receivers reject an unconfirmed facility.
+Demo provisioning writes the same fields through its service-owned path.
+
 ### Doctor schedules
 
 Keep the existing table and columns. Add:
@@ -404,11 +415,41 @@ message sends therefore persist `ai_assisted = false`; trusted persisted AI
 provenance requires a future backend attestation/write path and must not be
 simulated with a caller-provided flag.
 
-Current pass state: the canonical backend sources are implemented and the
-pre-deploy static, compatibility, build, and zero-residue gates are green. The
-pass is not production-validated: live contract drift, role, concurrency,
-Storage, and per-table runtime coverage remain rollout gates after an explicitly
-approved database and Edge deployment.
+Current pass state: the canonical backend sources are deployed to the approved
+project and the live contract, role, concurrency, Storage, field-coverage,
+emergency-fallback, demo, and zero-residue gates are green. App and Console UI
+adoption remain separate release gates.
+
+## Live Deployment Evidence (2026-07-13)
+
+Approved target: Supabase project `dlwtcmhdzoklveihuhjf`.
+
+- additive migration `20260713020000_scheduled_visits_async_consult_runtime_sync.sql`
+  was deployed without a reset or destructive cleanup
+- follow-up exact-source digest `9ed59d572adbf0f6` added canonical timezone
+  confirmation through temporary deployment version `20260714044500`; the
+  temporary file was removed and only its remote history entry was repaired as
+  reverted so maintained pillar files remain canonical
+- `consult-assist` was deployed with JWT participant authorization, bounded
+  provider fallback, draft-only behavior, and no persistence
+- `bootstrap-demo-ecosystem` was deployed with deterministic scheduled-care
+  staffing, bounded timezone resolution, provider-source accounting, and no
+  silent UTC fallback
+- 349 static scheduled-visit contract checks passed with zero side effects
+- the live post-deploy guard passed 20 of 20 checks, including the canonical
+  confirmation RPC and explicit execute privileges
+- the live booking, RLS, role, concurrency, idempotency, Storage, lifecycle,
+  consult, emergency-fallback, and cleanup harness passed 14 of 14 checks for
+  run `1784004570245-3efdc05d`
+- the demo matrix passed all 25 phases across Hemet, Festac, London, Nairobi,
+  and Delhi after timezone confirmation enforcement; the earlier repeated Hemet
+  cycle also passed to prove repeatability
+- final cleanup reported zero test residue
+
+The deployed demo bootstrap resolves and persists validated IANA timezones plus
+canonical confirmation evidence for demo-owned facilities. Real facilities
+remain unconfirmed until an authorized Console actor uses the confirmation RPC;
+compatibility `UTC` alone never unlocks schedule or booking writes.
 
 ## Implementation Order
 
@@ -475,8 +516,9 @@ Storage and AI:
 
 ## Rollout Boundary
 
-Completion of this data pass means the backend contract is implementation-ready,
-not that the patient or Console experience is shipped. The next pass adopts the
-RPCs in App services and UI, then Console scheduling and visit projections. After
-end-to-end verification, release remains an EAS update plus normal Git-based web
-deployment; no APK or AAB is planned for this feature.
+Completion of this data pass means the deployed backend contract is
+implementation-ready, not that the patient or Console experience is shipped.
+The active pass adopts the RPCs in App services and UI, then Console scheduling
+and visit projections. After end-to-end verification, release remains an EAS
+update plus normal Git-based web deployment; no APK or AAB is planned for this
+feature.

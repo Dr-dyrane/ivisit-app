@@ -83,7 +83,7 @@ export default function BookVisitWideLayout({
             style={{
               fontSize: 18,
               fontWeight: "700",
-              letterSpacing: -0.3,
+              letterSpacing: 0,
               color: isDarkMode ? "#FFFFFF" : "#0F172A",
               lineHeight: 20,
             }}

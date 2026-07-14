@@ -329,6 +329,24 @@ function extractVariableInitializer(sourceText, variableName, beforeIndex) {
   return null;
 }
 
+function extractAssignedPropertyKeys(sourceText, variableName, beforeIndex) {
+  if (!sourceText || !variableName) return [];
+  const hardEnd = typeof beforeIndex === 'number'
+    ? Math.min(sourceText.length, beforeIndex)
+    : sourceText.length;
+  const sourcePrefix = sourceText.slice(0, hardEnd);
+  const propertyRegex = new RegExp(
+    `\\b${escapeRegex(variableName)}\\s*\\.\\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*=(?!=|>)`,
+    'g'
+  );
+  const keys = [];
+  let match;
+  while ((match = propertyRegex.exec(sourcePrefix)) !== null) {
+    keys.push(match[1]);
+  }
+  return [...new Set(keys)];
+}
+
 function isSimpleIdentifier(token) {
   return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(token || '');
 }
@@ -361,13 +379,65 @@ function extractPayloadKeysFromExpression(exprText, sourceText, beforeIndex, see
 
   if (isSimpleIdentifier(expr) && !seenVars.has(expr)) {
     seenVars.add(expr);
+    const keys = extractAssignedPropertyKeys(sourceText, expr, beforeIndex);
     const init = extractVariableInitializer(sourceText, expr, beforeIndex);
     if (init) {
-      return extractPayloadKeysFromExpression(init, sourceText, beforeIndex, seenVars);
+      keys.push(...extractPayloadKeysFromExpression(init, sourceText, beforeIndex, seenVars));
     }
+    return [...new Set(keys)];
   }
 
   return [];
+}
+
+function hasTopLevelSpread(objectText) {
+  if (!objectText || (objectText[0] !== '{' && objectText[0] !== '[')) return false;
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let i = 0; i < objectText.length; i += 1) {
+    const ch = objectText[i];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{' || ch === '[') depth += 1;
+    if (ch === '}' || ch === ']') depth = Math.max(0, depth - 1);
+    if (depth === 1 && objectText.slice(i, i + 3) === '...') return true;
+  }
+  return false;
+}
+
+function payloadExpressionHasUnknownShape(exprText, sourceText, beforeIndex, seenVars = new Set()) {
+  const expr = String(exprText || '').trim();
+  if (!expr) return true;
+
+  if (expr[0] === '{' || expr[0] === '[') {
+    return hasTopLevelSpread(expr);
+  }
+
+  if (isSimpleIdentifier(expr) && !seenVars.has(expr)) {
+    seenVars.add(expr);
+    const init = extractVariableInitializer(sourceText, expr, beforeIndex);
+    return init
+      ? payloadExpressionHasUnknownShape(init, sourceText, beforeIndex, seenVars)
+      : true;
+  }
+
+  return true;
 }
 
 function extractTopLevelObjectKeys(objectText) {
@@ -413,10 +483,17 @@ function extractTopLevelObjectKeys(objectText) {
       let j = i + 1;
       while (j < objectText.length && /[a-zA-Z0-9_$]/.test(objectText[j])) j += 1;
       const key = objectText.slice(i, j);
+      let previous = i - 1;
+      while (previous >= 0 && /\s/.test(objectText[previous])) previous -= 1;
+      const isMemberAccess = previous >= 0 && objectText[previous] === '.';
       let k = j;
       while (k < objectText.length && /\s/.test(objectText[k])) k += 1;
-      if (objectText[k] === ':') {
+      if (!isMemberAccess && objectText[k] === ':') {
         keys.push(key);
+      } else if (!isMemberAccess && (objectText[k] === ',' || objectText[k] === '}')) {
+        if (previous < 0 || objectText[previous] === '{' || objectText[previous] === ',') {
+          keys.push(key);
+        }
       }
       i = j - 1;
       continue;
@@ -448,8 +525,9 @@ function extractTopLevelObjectKeys(objectText) {
   return keys;
 }
 
-function extractWritePayloadKeys(windowText, fnName, minCallIndex = 0) {
+function extractWritePayloadAnalysis(windowText, fnName, minCallIndex = 0) {
   const keys = [];
+  let hasUnknownShape = false;
   const re = new RegExp(`\\.${fnName}\\s*\\(`, 'g');
   let match;
   while ((match = re.exec(windowText)) !== null) {
@@ -460,8 +538,10 @@ function extractWritePayloadKeys(windowText, fnName, minCallIndex = 0) {
     if (!firstArg) continue;
     const payloadKeys = extractPayloadKeysFromExpression(firstArg, windowText, match.index);
     keys.push(...payloadKeys);
+    hasUnknownShape = hasUnknownShape
+      || payloadExpressionHasUnknownShape(firstArg, windowText, match.index);
   }
-  return keys;
+  return { keys, hasUnknownShape };
 }
 
 function extractCallArgsText(sourceText, callStartIndex) {
@@ -768,6 +848,7 @@ function makeEmptyTableUsage(name) {
     columns: new Set(),
     insertKeys: new Set(),
     updateKeys: new Set(),
+    hasUnknownInsertPayloadShape: false,
     realtimeReferences: [],
   };
 }
@@ -818,11 +899,14 @@ function scanFileForUsage(filePath, tableUsageMap, rpcUsageMap) {
 
     const writeFns = ['insert', 'upsert', 'update'];
     for (const fn of writeFns) {
-      const keys = extractWritePayloadKeys(contextWindow, fn, contextAnchor);
-      for (const key of keys) {
+      const analysis = extractWritePayloadAnalysis(contextWindow, fn, contextAnchor);
+      for (const key of analysis.keys) {
         usage.columns.add(key);
         if (fn === 'update') usage.updateKeys.add(key);
         if (fn === 'insert' || fn === 'upsert') usage.insertKeys.add(key);
+      }
+      if ((fn === 'insert' || fn === 'upsert') && analysis.hasUnknownShape) {
+        usage.hasUnknownInsertPayloadShape = true;
       }
     }
   }
@@ -1239,6 +1323,7 @@ async function run() {
       update_keys: [...entry.updateKeys]
         .filter((c) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(c))
         .sort(),
+      has_unknown_insert_payload_shape: entry.hasUnknownInsertPayloadShape,
       realtime_references: entry.realtimeReferences.map((ref) => ({
         file: toRelPath(ref.file),
         line: ref.line,
@@ -1305,7 +1390,7 @@ async function run() {
 
     const insertCoverageStatus = !writesInsert
       ? 'n/a'
-      : entry.insert_keys.length === 0
+      : entry.has_unknown_insert_payload_shape || entry.insert_keys.length === 0
         ? 'unknown_payload_shape'
         : missingRequiredInsertColumns.length > 0
           ? 'missing_required_columns'
@@ -1319,7 +1404,9 @@ async function run() {
       observed_insert_keys: entry.insert_keys,
       observed_update_keys: entry.update_keys,
       insert_coverage_status: insertCoverageStatus,
-      missing_required_insert_columns: missingRequiredInsertColumns,
+      missing_required_insert_columns: insertCoverageStatus === 'missing_required_columns'
+        ? missingRequiredInsertColumns
+        : [],
       unknown_type_columns: unknownColumnDrift,
       type_columns: typeMeta.columns,
       type_required_insert_columns: typeMeta.required_insert_columns,

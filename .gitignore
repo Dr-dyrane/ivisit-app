@@ -43,6 +43,7 @@ yarn-error.*
 
 # test artifacts
 supabase/tests/validation/
+supabase/tests/artifacts/
 test-results/
 tmp-screens/
 

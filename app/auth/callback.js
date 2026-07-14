@@ -3,10 +3,14 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { authService } from '../../services/authService';
-import { database, StorageKeys } from '../../database';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import AuthProgressScreen from '../../components/auth/AuthProgressScreen';
+import { normalizeStoredPublicRoute } from '../../runtime/navigation/deepLinkHelpers';
+import {
+  readStoredAuthReturnRoute,
+  readStoredPublicRoute,
+} from '../../runtime/navigation/useRoutePersistence';
 
 const PUBLIC_MAP_ROUTE = '/(auth)/map';
 const CALLBACK_PAGE_DEDUP_WINDOW_MS = 8000;
@@ -14,16 +18,6 @@ let inFlightCallbackPageKey = null;
 let inFlightCallbackPagePromise = null;
 let lastCompletedCallbackPageKey = null;
 let lastCompletedCallbackPageAt = 0;
-
-function normalizePublicMapRoute(route) {
-  if (route === '/(auth)/request-help') return PUBLIC_MAP_ROUTE;
-  if (route === '/(auth)/map') return PUBLIC_MAP_ROUTE;
-  if (route === '/(auth)/map-loading') return PUBLIC_MAP_ROUTE;
-  if (route === '/map' || route === '/map-loading' || route === '/request-help') {
-    return PUBLIC_MAP_ROUTE;
-  }
-  return null;
-}
 
 function readCallbackParams(currentUrl, fallbackParams = {}) {
   const fallback = {
@@ -128,22 +122,6 @@ export default function AuthCallback() {
       }
 
       const processCallback = async () => {
-        const readStoredPublicRoute = async () => {
-          const [explicitReturnRoute, lastPublicRoute] = await Promise.all([
-            database.read(StorageKeys.AUTH_RETURN_ROUTE).catch(() => null),
-            database.read(StorageKeys.LAST_PUBLIC_ROUTE).catch(() => null),
-          ]);
-
-          return (
-            normalizePublicMapRoute(explicitReturnRoute) ||
-            normalizePublicMapRoute(lastPublicRoute)
-          );
-        };
-
-        const clearStoredReturnRoute = async () => {
-          await database.delete(StorageKeys.AUTH_RETURN_ROUTE).catch(() => {});
-        };
-
         const finalizeAuth = async (resolvedUser, resolvedToken = null) => {
           const nextUser =
             resolvedUser && resolvedToken && !resolvedUser?.token
@@ -164,18 +142,31 @@ export default function AuthCallback() {
         };
 
         const resolvePublicFallback = async () => {
-          return (await readStoredPublicRoute()) || PUBLIC_MAP_ROUTE;
+          const explicitReturnRoute = await readStoredAuthReturnRoute();
+          return (
+            normalizeStoredPublicRoute(explicitReturnRoute) ||
+            (await readStoredPublicRoute()) ||
+            PUBLIC_MAP_ROUTE
+          );
         };
 
         const resolvePostAuthRoute = async () => {
-          return (await readStoredPublicRoute()) || PUBLIC_MAP_ROUTE;
+          return (
+            (await readStoredAuthReturnRoute()) ||
+            (await readStoredPublicRoute()) ||
+            PUBLIC_MAP_ROUTE
+          );
+        };
+
+        const completeSuccessfulAuthHandoff = async () => {
+          const nextRoute = await resolvePostAuthRoute();
+          router.replace(nextRoute);
         };
 
         try {
           if (error) {
             console.error('Auth callback error:', error);
             const fallbackRoute = await resolvePublicFallback();
-            await clearStoredReturnRoute();
             router.replace(fallbackRoute);
             return;
           }
@@ -188,7 +179,6 @@ export default function AuthCallback() {
               } catch (parseError) {
                 console.error('Error parsing user data:', parseError);
                 const fallbackRoute = await resolvePublicFallback();
-                await clearStoredReturnRoute();
                 router.replace(fallbackRoute);
                 return;
               }
@@ -197,13 +187,10 @@ export default function AuthCallback() {
             const authSettled = await finalizeAuth(userData, token);
             if (!authSettled) {
               const fallbackRoute = await resolvePublicFallback();
-              await clearStoredReturnRoute();
               router.replace(fallbackRoute);
               return;
             }
-            const nextRoute = await resolvePostAuthRoute();
-            await clearStoredReturnRoute();
-            router.replace(nextRoute);
+            await completeSuccessfulAuthHandoff();
             return;
           }
 
@@ -226,14 +213,12 @@ export default function AuthCallback() {
             if (oauthError) {
               console.error('OAuth callback error:', oauthError);
               const fallbackRoute = await resolvePublicFallback();
-              await clearStoredReturnRoute();
               router.replace(fallbackRoute);
               return;
             }
 
             if (!oauthToken && !oauthUser && !oauthError && !oauthCode && !oauthAccessToken) {
               const fallbackRoute = await resolvePublicFallback();
-              await clearStoredReturnRoute();
               router.replace(fallbackRoute);
               return;
             }
@@ -245,7 +230,6 @@ export default function AuthCallback() {
               } catch (parseError) {
                 console.error('Error parsing OAuth user data:', parseError);
                 const fallbackRoute = await resolvePublicFallback();
-                await clearStoredReturnRoute();
                 router.replace(fallbackRoute);
                 return;
               }
@@ -253,13 +237,10 @@ export default function AuthCallback() {
               const authSettled = await finalizeAuth(parsedUserData, oauthToken);
               if (!authSettled) {
                 const fallbackRoute = await resolvePublicFallback();
-                await clearStoredReturnRoute();
                 router.replace(fallbackRoute);
                 return;
               }
-              const nextRoute = await resolvePostAuthRoute();
-              await clearStoredReturnRoute();
-              router.replace(nextRoute);
+              await completeSuccessfulAuthHandoff();
               return;
             }
 
@@ -274,19 +255,15 @@ export default function AuthCallback() {
                   );
                   if (!authSettled) {
                     const fallbackRoute = await resolvePublicFallback();
-                    await clearStoredReturnRoute();
                     router.replace(fallbackRoute);
                     return;
                   }
-                  const nextRoute = await resolvePostAuthRoute();
-                  await clearStoredReturnRoute();
-                  router.replace(nextRoute);
+                  await completeSuccessfulAuthHandoff();
                   return;
                 }
               } catch (oauthError) {
                 console.error('OAuth callback error:', oauthError);
                 const fallbackRoute = await resolvePublicFallback();
-                await clearStoredReturnRoute();
                 router.replace(fallbackRoute);
                 return;
               }
@@ -294,12 +271,10 @@ export default function AuthCallback() {
           }
 
           const fallbackRoute = await resolvePublicFallback();
-          await clearStoredReturnRoute();
           router.replace(fallbackRoute);
         } catch (callbackError) {
           console.error('Error handling auth callback:', callbackError);
           const fallbackRoute = await resolvePublicFallback();
-          await clearStoredReturnRoute();
           router.replace(fallbackRoute);
         }
       };

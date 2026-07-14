@@ -4060,7 +4060,8 @@ BEGIN
     SELECT hospital.timezone
     INTO v_timezone
     FROM public.hospitals hospital
-    WHERE hospital.id = p_hospital_id;
+    WHERE hospital.id = p_hospital_id
+      AND hospital.timezone_confirmed_at IS NOT NULL;
 
     IF NOT FOUND THEN
         RETURN NULL;
@@ -4191,6 +4192,7 @@ BEGIN
     WHERE hospital.id = p_hospital_id
       AND hospital.booking_eligible = true
       AND hospital.status = 'available'
+      AND hospital.timezone_confirmed_at IS NOT NULL
       AND doctor.is_available = true
       AND LOWER(COALESCE(doctor.status, '')) IN ('available', 'on_call')
       AND COALESCE(doctor.current_patients, 0) < GREATEST(COALESCE(NULLIF(doctor.max_patients, 0), 1), 1)
@@ -4307,6 +4309,100 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.confirm_hospital_timezone(
+    p_hospital_id UUID,
+    p_timezone TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
+    v_hospital_org_id UUID;
+    v_timezone TEXT := BTRIM(COALESCE(p_timezone, ''));
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_hospital public.hospitals%ROWTYPE;
+BEGIN
+    IF p_hospital_id IS NULL OR v_timezone = '' THEN
+        RAISE EXCEPTION 'hospital and timezone are required';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_timezone_names timezone_row
+        WHERE timezone_row.name = v_timezone
+    ) THEN
+        RAISE EXCEPTION 'Invalid IANA timezone: %', v_timezone;
+    END IF;
+
+    SELECT hospital.organization_id
+    INTO v_hospital_org_id
+    FROM public.hospitals hospital
+    WHERE hospital.id = p_hospital_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Hospital not found';
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        SELECT profile.role, profile.organization_id
+        INTO v_actor_role, v_actor_org_id
+        FROM public.profiles profile
+        WHERE profile.id = v_actor_id;
+
+        IF NOT COALESCE(
+            v_actor_role = 'admin'
+            OR (
+                v_actor_role = 'org_admin'
+                AND v_actor_org_id IS NOT NULL
+                AND v_actor_org_id = v_hospital_org_id
+            ),
+            false
+        ) THEN
+            RAISE EXCEPTION 'Unauthorized: hospital outside timezone scope';
+        END IF;
+    END IF;
+
+    UPDATE public.hospitals
+    SET timezone = v_timezone,
+        timezone_confirmed_at = NOW(),
+        timezone_confirmation_source = 'manual',
+        timezone_confirmed_by = CASE WHEN v_is_service_role THEN NULL ELSE v_actor_id END,
+        updated_at = NOW()
+    WHERE id = p_hospital_id
+    RETURNING * INTO v_hospital;
+
+    INSERT INTO public.admin_audit_log (admin_id, action, details)
+    VALUES (
+        v_actor_id,
+        'hospital.timezone_confirm',
+        jsonb_build_object(
+            'hospital_id', p_hospital_id,
+            'timezone', v_timezone,
+            'service_role', v_is_service_role
+        )
+    );
+
+    RETURN jsonb_build_object(
+        'hospital_id', v_hospital.id,
+        'timezone', v_hospital.timezone,
+        'timezone_confirmed_at', v_hospital.timezone_confirmed_at,
+        'timezone_confirmation_source', v_hospital.timezone_confirmation_source,
+        'timezone_confirmed_by', v_hospital.timezone_confirmed_by
+    );
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.upsert_doctor_schedule(
     p_doctor_id UUID,
     p_date DATE,
@@ -4329,6 +4425,7 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_doctor_org_id UUID;
     v_doctor_timezone TEXT;
+    v_timezone_confirmed_at TIMESTAMPTZ;
     v_target_schedule_id UUID := p_schedule_id;
     v_new_window_start TIMESTAMPTZ;
     v_new_window_end TIMESTAMPTZ;
@@ -4356,8 +4453,8 @@ BEGIN
         RAISE EXCEPTION 'Unsupported shift type';
     END IF;
 
-    SELECT hospital.organization_id, hospital.timezone
-    INTO v_doctor_org_id, v_doctor_timezone
+    SELECT hospital.organization_id, hospital.timezone, hospital.timezone_confirmed_at
+    INTO v_doctor_org_id, v_doctor_timezone, v_timezone_confirmed_at
     FROM public.doctors doctor
     JOIN public.hospitals hospital ON hospital.id = doctor.hospital_id
     WHERE doctor.id = p_doctor_id
@@ -4365,6 +4462,10 @@ BEGIN
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Doctor not found';
+    END IF;
+
+    IF v_timezone_confirmed_at IS NULL THEN
+        RAISE EXCEPTION 'Facility timezone is not confirmed';
     END IF;
 
     IF p_date < (NOW() AT TIME ZONE v_doctor_timezone)::DATE
@@ -4841,6 +4942,10 @@ BEGIN
         RAISE EXCEPTION 'Facility is not available for booking';
     END IF;
 
+    IF v_hospital.timezone_confirmed_at IS NULL THEN
+        RAISE EXCEPTION 'Facility timezone is not confirmed';
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM pg_timezone_names timezone_row WHERE timezone_row.name = v_hospital.timezone
     ) THEN
@@ -5020,6 +5125,7 @@ BEGIN
         visit.*,
         hospital.organization_id AS visit_org_id,
         hospital.timezone AS hospital_timezone,
+        hospital.timezone_confirmed_at AS hospital_timezone_confirmed_at,
         hospital.booking_eligible AS hospital_booking_eligible,
         hospital.status AS hospital_status,
         doctor.profile_id AS doctor_profile_id
@@ -5108,6 +5214,10 @@ BEGIN
 
         IF NULLIF(BTRIM(COALESCE(v_visit.specialty, '')), '') IS NULL THEN
             RAISE EXCEPTION 'Scheduled visit specialty is unavailable';
+        END IF;
+
+        IF v_visit.hospital_timezone_confirmed_at IS NULL THEN
+            RAISE EXCEPTION 'Facility timezone is not confirmed';
         END IF;
 
         IF v_visit.hospital_booking_eligible IS DISTINCT FROM true
@@ -5701,6 +5811,7 @@ REVOKE ALL ON FUNCTION public.p_scheduled_visit_duration(TEXT) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.p_select_bookable_doctor(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.get_book_visit_availability(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.get_console_doctor_schedules(UUID, DATE, DATE) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.confirm_hospital_timezone(UUID, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.upsert_doctor_schedule(UUID, DATE, TIME, TIME, TEXT, BOOLEAN, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.delete_doctor_schedule(UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.ensure_async_consult_room(UUID) FROM PUBLIC, anon;
@@ -5711,6 +5822,7 @@ REVOKE ALL ON FUNCTION public.mark_async_consult_room_read(UUID, UUID) FROM PUBL
 
 GRANT EXECUTE ON FUNCTION public.get_book_visit_availability(UUID, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_console_doctor_schedules(UUID, DATE, DATE) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.confirm_hospital_timezone(UUID, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.upsert_doctor_schedule(UUID, DATE, TIME, TIME, TEXT, BOOLEAN, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.delete_doctor_schedule(UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.ensure_async_consult_room(UUID) TO authenticated, service_role;

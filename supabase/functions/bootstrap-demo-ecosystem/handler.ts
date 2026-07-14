@@ -21,6 +21,11 @@ import {
   createServiceClient,
   createUserClient,
 } from "../_shared/supabase/clients.ts";
+import {
+  createFacilityTimezoneResolver,
+  type FacilityTimezoneResolver,
+  normalizeIanaTimezone,
+} from "./timezone.ts";
 
 const DEMO_SCHEDULE_HORIZON_DAYS = 14;
 const DEMO_SCHEDULE_START_TIME = "09:00:00";
@@ -38,6 +43,10 @@ type DemoScheduledCareHospital = {
   status: string;
   booking_eligible: boolean;
   timezone: string | null;
+  timezone_confirmed_at: string | null;
+  timezone_confirmation_source: string | null;
+  latitude: number | null;
+  longitude: number | null;
   specialties: string[] | null;
 };
 
@@ -91,18 +100,6 @@ const addDaysToDateKey = (dateKey: string, days: number) => {
   return new Date(Date.UTC(year, month - 1, day + days))
     .toISOString()
     .slice(0, 10);
-};
-
-const resolveFacilityTimezone = (value: unknown) => {
-  const candidate = toSafeString(value, "UTC");
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format(
-      new Date(0),
-    );
-    return candidate;
-  } catch {
-    return "UTC";
-  }
 };
 
 const buildScheduleDateKeys = (now: Date, timezone: string) => {
@@ -302,7 +299,7 @@ const listPackDemoHospitals = async (
   const { data, error } = await admin
     .from("hospitals")
     .select(
-      "id,name,place_id,organization_id,status,booking_eligible,timezone,specialties",
+      "id,name,place_id,organization_id,status,booking_eligible,timezone,timezone_confirmed_at,timezone_confirmation_source,latitude,longitude,specialties",
     )
     .eq("organization_id", organizationId)
     .like("place_id", "demo:%")
@@ -540,16 +537,45 @@ const ensureDemoScheduledCare = async (
   ctx: ReturnType<typeof buildDemoContext>,
   organizationId: string,
   now: Date,
+  resolveFacilityTimezone: FacilityTimezoneResolver,
 ) => {
   const packHospitals = await listPackDemoHospitals(admin, organizationId);
   const activeHospitals = packHospitals.filter(
     (hospital) =>
       hospital.status === "available" && hospital.booking_eligible === true,
   );
+  const timezoneResolutions = await Promise.all(
+    activeHospitals.map(async (hospital) => ({
+      hospitalId: hospital.id,
+      resolution: await resolveFacilityTimezone(
+        hospital.latitude,
+        hospital.longitude,
+      ),
+    })),
+  );
+  const resolvedTimezoneByHospitalId = new Map<string, string>();
+  const timezoneSourceByHospitalId = new Map<string, "google" | "timeapi">();
+  const unresolvedTimezoneHospitalIds = new Set<string>();
+
+  timezoneResolutions.forEach(({ hospitalId, resolution }) => {
+    if ("timezone" in resolution) {
+      resolvedTimezoneByHospitalId.set(hospitalId, resolution.timezone);
+      timezoneSourceByHospitalId.set(hospitalId, resolution.source);
+    } else {
+      unresolvedTimezoneHospitalIds.add(hospitalId);
+      console.warn(
+        "[bootstrap-demo-ecosystem] scheduled-care timezone unavailable; skipping facility",
+        { hospital_id: hospitalId, reason: resolution.reason },
+      );
+    }
+  });
+
   const targetEmails = new Set(
-    activeHospitals.map((hospital) =>
-      toLowerEmail(toScheduledCareEmail(hospital.id, ctx.userSlug))
-    ),
+    activeHospitals
+      .filter((hospital) => resolvedTimezoneByHospitalId.has(hospital.id))
+      .map((hospital) =>
+        toLowerEmail(toScheduledCareEmail(hospital.id, ctx.userSlug))
+      ),
   );
   const usersByEmail = await listAuthUsersByEmail(admin, targetEmails);
   const activeDoctorIds = new Set<string>();
@@ -558,6 +584,41 @@ const ensureDemoScheduledCare = async (
 
   for (let index = 0; index < activeHospitals.length; index += 1) {
     const hospital = activeHospitals[index];
+    const timezone = resolvedTimezoneByHospitalId.get(hospital.id);
+    const timezoneSource = timezoneSourceByHospitalId.get(hospital.id);
+    if (!timezone) continue;
+    if (!timezoneSource) continue;
+
+    const { data: persistedHospital, error: timezonePersistError } = await admin
+      .from("hospitals")
+      .update({
+        timezone,
+        timezone_confirmed_at: now.toISOString(),
+        timezone_confirmation_source: timezoneSource,
+        timezone_confirmed_by: null,
+        updated_at: now.toISOString(),
+      })
+      .eq("id", hospital.id)
+      .eq("organization_id", organizationId)
+      .select(
+        "id,timezone,timezone_confirmed_at,timezone_confirmation_source",
+      )
+      .single();
+    if (
+      timezonePersistError ||
+      persistedHospital?.id !== hospital.id ||
+      persistedHospital?.timezone !== timezone ||
+      !persistedHospital?.timezone_confirmed_at ||
+      persistedHospital?.timezone_confirmation_source !== timezoneSource
+    ) {
+      throw new Error(
+        `scheduled-care hospital timezone sync failed (${hospital.id}): ${timezonePersistError?.message || "persistence mismatch"}`,
+      );
+    }
+    hospital.timezone = timezone;
+    hospital.timezone_confirmed_at = persistedHospital.timezone_confirmed_at;
+    hospital.timezone_confirmation_source = timezoneSource;
+
     const email = toScheduledCareEmail(hospital.id, ctx.userSlug);
     const fullName = `Dr Demo Scheduled Care ${index + 1}`;
     const account = await ensureScheduledCareAuthUser(
@@ -613,7 +674,6 @@ const ensureDemoScheduledCare = async (
     }
 
     activeDoctorIds.add(String(doctor.id));
-    const timezone = resolveFacilityTimezone(hospital.timezone);
     const localToday = toDateKeyInTimezone(now, timezone);
     const { data: expiredShifts, error: expiredShiftError } = await admin
       .from("doctor_schedules")
@@ -664,7 +724,9 @@ const ensureDemoScheduledCare = async (
     ctx.userSlug,
   );
   const retirementCandidates = packDoctors.filter(
-    (doctor) => !activeDoctorIds.has(doctor.id),
+    (doctor) =>
+      !activeDoctorIds.has(doctor.id) &&
+      !unresolvedTimezoneHospitalIds.has(doctor.hospital_id || ""),
   );
   const retiredProfiles = await listScheduledCareProfiles(
     admin,
@@ -701,14 +763,21 @@ const ensureDemoScheduledCare = async (
         continue;
       }
 
-      retiredDoctors.push(doctor);
       const hospital = doctor.hospital_id
         ? hospitalsById.get(doctor.hospital_id)
         : null;
-      const localToday = toDateKeyInTimezone(
-        now,
-        resolveFacilityTimezone(hospital?.timezone),
-      );
+      const timezone = normalizeIanaTimezone(hospital?.timezone);
+      if (!timezone) {
+        retirementDeferred += 1;
+        console.warn(
+          "[bootstrap-demo-ecosystem] scheduled-care retirement deferred; facility timezone unavailable",
+          { doctor_id: doctor.id, hospital_id: hospital?.id || null },
+        );
+        continue;
+      }
+
+      retiredDoctors.push(doctor);
+      const localToday = toDateKeyInTimezone(now, timezone);
       const { error: cleanupError } = await admin
         .from("doctor_schedules")
         .delete()
@@ -737,7 +806,17 @@ const ensureDemoScheduledCare = async (
   }
 
   return {
-    hospitals_scheduled: activeHospitals.length,
+    hospitals_scheduled: resolvedTimezoneByHospitalId.size,
+    hospitals_timezone_resolved: resolvedTimezoneByHospitalId.size,
+    hospitals_timezone_skipped: unresolvedTimezoneHospitalIds.size,
+    timezone_sources: {
+      google: [...timezoneSourceByHospitalId.values()].filter(
+        (source) => source === "google",
+      ).length,
+      timeapi: [...timezoneSourceByHospitalId.values()].filter(
+        (source) => source === "timeapi",
+      ).length,
+    },
     appointment_clinicians: activeDoctorIds.size,
     future_shifts_upserted: scheduleRows.length,
     expired_shifts_removed: expiredShiftsRemoved,
@@ -771,11 +850,18 @@ const getDemoScheduledCareReadiness = async (
     activeDoctors.map((doctor) => [doctor.hospital_id, doctor]),
   );
   const expectedShiftKeys = new Set<string>();
+  let timezoneReadyHospitalCount = 0;
 
   activeHospitals.forEach((hospital) => {
     const doctor = activeDoctorByHospital.get(hospital.id);
     if (!doctor) return;
-    const timezone = resolveFacilityTimezone(hospital.timezone);
+    const timezone = normalizeIanaTimezone(hospital.timezone);
+    if (
+      !timezone ||
+      !hospital.timezone_confirmed_at ||
+      !hospital.timezone_confirmation_source
+    ) return;
+    timezoneReadyHospitalCount += 1;
     buildScheduleDateKeys(now, timezone).forEach((date) => {
       expectedShiftKeys.add(
         `${doctor.id}|${date}|${DEMO_SCHEDULE_START_TIME}|${DEMO_SCHEDULE_END_TIME}`,
@@ -815,6 +901,7 @@ const getDemoScheduledCareReadiness = async (
 
   const scheduleReady =
     activeHospitals.length > 0 &&
+    timezoneReadyHospitalCount === activeHospitals.length &&
     activeDoctors.length === activeHospitals.length &&
     activeDoctorByHospital.size === activeHospitals.length &&
     expectedShiftKeys.size ===
@@ -968,12 +1055,16 @@ export const handleBootstrapDemoEcosystemRequest = async (req: Request) => {
           staffing.org_admin_profile_id ?? null,
         ),
       );
+      const resolveFacilityTimezone = createFacilityTimezoneResolver(
+        bootstrapNow,
+      );
       await runStep("ensure_demo_scheduled_care", () =>
         ensureDemoScheduledCare(
           adminClient,
           ctx,
           organizationId,
           bootstrapNow,
+          resolveFacilityTimezone,
         ),
       );
     }

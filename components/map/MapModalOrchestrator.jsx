@@ -20,6 +20,8 @@ import MapChooseCareModal from "./MapChooseCareModal";
 import MapHistoryModal from "./history/MapHistoryModal";
 import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
 import { EmergencyContactDispatchModal } from "./communication/EmergencyContactDispatchModal";
+import AsyncConsultModal from "./communication/AsyncConsultModal";
+import ScheduledVisitRescheduleModal from "./visits/ScheduledVisitRescheduleModal";
 import { useAtom } from "jotai";
 import {
   emergencyChatModalVisibleAtom,
@@ -104,6 +106,14 @@ export default function MapModalOrchestrator({
   // History payment
   historyPaymentState,
   closeHistoryPaymentDetails,
+
+  // Scheduled visits
+  asyncConsultVisit,
+  closeAsyncConsult,
+  rescheduleVisit,
+  closeRescheduleVisit,
+  handleRescheduleSuccess,
+  userId,
 
   // Recovered rating
   recoveredRatingState,
@@ -195,6 +205,20 @@ export default function MapModalOrchestrator({
         loading={historyPaymentState.loading}
         paymentRecord={historyPaymentState.paymentRecord}
         onClose={closeHistoryPaymentDetails}
+      />
+
+      <AsyncConsultModal
+        visible={Boolean(asyncConsultVisit)}
+        historyItem={asyncConsultVisit}
+        onClose={closeAsyncConsult}
+      />
+
+      <ScheduledVisitRescheduleModal
+        visible={Boolean(rescheduleVisit)}
+        historyItem={rescheduleVisit}
+        onClose={closeRescheduleVisit}
+        onSuccess={handleRescheduleSuccess}
+        userId={userId}
       />
 
       <ServiceRatingModal

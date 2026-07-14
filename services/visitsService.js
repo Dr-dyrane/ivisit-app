@@ -7,6 +7,7 @@ import {
 } from "../constants/notifications";
 import { notificationDispatcher } from "./notificationDispatcher";
 import { isValidUUID } from "./displayIdService";
+import { normalizeScheduledVisitProjection } from "../utils/scheduledVisitProjection";
 
 const TABLE = "visits";
 const DEFAULT_HOSPITAL_IMAGES = [
@@ -75,7 +76,7 @@ const resolveEmergencyRequestIdForUser = async (key, userId) => {
       `[visitsService] resolveEmergencyRequestIdForUser failed for ${lookup}:`,
       error,
     );
-    return null;
+    throw error;
   }
   return data?.id ?? null;
 };
@@ -99,6 +100,7 @@ const resolveVisitRowForKey = async (key, userId) => {
       `[visitsService] resolveVisitRowForKey direct lookup failed for ${lookup}:`,
       directError,
     );
+    throw directError;
   }
   if (directVisit) return directVisit;
 
@@ -117,7 +119,7 @@ const resolveVisitRowForKey = async (key, userId) => {
       `[visitsService] resolveVisitRowForKey request lookup failed for ${lookup}:`,
       requestError,
     );
-    return null;
+    throw requestError;
   }
 
   return requestVisit ?? null;
@@ -265,6 +267,8 @@ const mapToDb = (item) => {
 
 const mapFromDb = (row) => ({
   ...row,
+  userId: row.user_id,
+  patientId: row.user_id,
   hospitalId: row.hospital_id,
   hospital:
     row.hospital_name ?? row.hospital ?? row._hospital_name_resolved ?? null,
@@ -295,6 +299,7 @@ const mapFromDb = (row) => ({
     ),
   doctor: row.doctor_name ?? row.doctor ?? null,
   doctorName: row.doctor_name ?? row.doctor ?? null,
+  doctorId: row.doctor_id,
   roomNumber: row.room_number,
   estimatedDuration: row.estimated_duration,
   requestId: row.request_id,
@@ -302,6 +307,11 @@ const mapFromDb = (row) => ({
   insuranceCovered: row.insurance_covered,
   nextVisit: row.next_visit,
   meetingLink: row.meeting_link,
+  careMode: row.care_mode,
+  scheduledStartAt: row.scheduled_start_at,
+  scheduledEndAt: row.scheduled_end_at,
+  scheduledTimezone: row.scheduled_timezone,
+  bookingIdempotencyKey: row.booking_idempotency_key,
   displayId: row.display_id,
   lifecycleState: row.lifecycle_state,
   lifecycleUpdatedAt: row.lifecycle_updated_at,
@@ -464,7 +474,10 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
 
 export const visitsService = {
   fromDbRow(row) {
-    return normalizeVisit(mapFromDb(row));
+    return normalizeScheduledVisitProjection(
+      row,
+      normalizeVisit(mapFromDb(row)),
+    );
   },
   async list(options = {}) {
     const userId = await resolveUserId(options);
@@ -488,6 +501,17 @@ export const visitsService = {
       .map((row) => this.fromDbRow(row))
       .filter(Boolean);
     return result;
+  },
+
+  async getById(key, options = {}) {
+    const userId = await resolveUserId(options);
+    if (!userId || !key) return null;
+
+    const row = await resolveVisitRowForKey(key, userId);
+    if (!row) return null;
+
+    const [hydratedRow] = await hydrateVisitRowsWithHospitals([row]);
+    return hydratedRow ? this.fromDbRow(hydratedRow) : null;
   },
 
   subscribe(userId, onEvent) {

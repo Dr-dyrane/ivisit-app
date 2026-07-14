@@ -42,7 +42,7 @@ export default function BookVisitActionIsland({
           fontSize: metrics.typography.title.fontSize,
           lineHeight: metrics.typography.title.lineHeight,
           fontWeight: "700",
-          letterSpacing: -0.25,
+          letterSpacing: 0,
         }}
       >
         {BOOK_VISIT_SCREEN_COPY.island.title}
@@ -116,7 +116,7 @@ export default function BookVisitActionIsland({
           ))}
         </View>
 
-        <View style={{ gap: 2 }}>
+        {quoteLabel ? <View style={{ gap: 2 }}>
           <Text
             style={{
               color: theme.textMuted,
@@ -137,7 +137,7 @@ export default function BookVisitActionIsland({
           >
             {quoteLabel}
           </Text>
-        </View>
+        </View> : null}
       </View>
     </View>
   );

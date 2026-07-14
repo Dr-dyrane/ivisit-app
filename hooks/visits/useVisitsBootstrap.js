@@ -19,7 +19,6 @@ export function useVisitsBootstrap() {
   const mutationCount = useVisitsStore((state) => state.mutationCount);
   const retryRequestCount = useVisitsStore((state) => state.retryRequestCount);
   const hydrateFromServer = useVisitsStore((state) => state.hydrateFromServer);
-  const markHydrated = useVisitsStore((state) => state.markHydrated);
   const resetVisitsState = useVisitsStore((state) => state.resetVisitsState);
   const setLifecycleStatus = useVisitsStore(
     (state) => state.setLifecycleStatus,
@@ -40,9 +39,9 @@ export function useVisitsBootstrap() {
     }
 
     if (!ownerUserId) {
-      markHydrated(userId);
+      resetVisitsState(userId);
     }
-  }, [hydrated, markHydrated, ownerUserId, resetVisitsState, userId]);
+  }, [hydrated, ownerUserId, resetVisitsState, userId]);
 
   const query = useVisitsQuery({
     userId,

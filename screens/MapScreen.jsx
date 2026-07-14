@@ -58,9 +58,7 @@ export default function MapScreen() {
   const { logout, user } = useAuth();
   const {
     visits = [],
-    isLoading: visitsLoading,
     updateVisit,
-    cancelVisit,
     refreshVisits,
   } = useVisits();
   const { registerFAB, unregisterFAB } = useFABActions();
@@ -371,12 +369,15 @@ export default function MapScreen() {
     // State
     selectedHistoryVisit,
     selectedHistoryVisitKey,
+    asyncConsultVisit,
+    rescheduleVisit,
     historyPaymentState,
     recoveredRatingState,
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
     historyFocusedHospital,
     openHistoryVisitByKey,
+    beginRouteManagedVisitDetail,
     // Handlers
     closeHistoryVisitDetails,
     closeHistoryPaymentDetails,
@@ -387,7 +388,11 @@ export default function MapScreen() {
     handleSelectHistoryItem,
     handleResumeHistoryRequest,
     handleCallHistoryClinic,
-    handleJoinHistoryVisit,
+    handleOpenHistoryConsult,
+    closeAsyncConsult,
+    handleRescheduleHistoryVisit,
+    closeRescheduleVisit,
+    handleRescheduleSuccess,
     handleBookHistoryAgain,
     handleCancelHistoryVisit,
     closeRecoveredRating,
@@ -396,7 +401,6 @@ export default function MapScreen() {
   } = useMapHistoryFlow({
     visits,
     updateVisit,
-    cancelVisit,
     showToast,
     openTracking,
     openVisitDetail,
@@ -412,6 +416,7 @@ export default function MapScreen() {
     hasActiveTrip,
     discoveredHospitals,
     router,
+    userId: user?.id || null,
   });
 
   // PULLBACK NOTE: MapScreen decomposition Pass 6 — FAB management extracted
@@ -543,6 +548,7 @@ export default function MapScreen() {
     routeVisitKey,
     routeHistoryFilter,
     isRouteManagedRecentVisits,
+    routeVisitDetailState,
     handleProfileSignOut,
     handleBookVisitFromCare,
     handleRateHistoryVisit,
@@ -566,8 +572,8 @@ export default function MapScreen() {
     openRatingForVisit,
     closeHistoryVisitDetails,
     openHistoryVisitByKey,
-    visits,
-    visitsLoading,
+    beginRouteManagedVisitDetail,
+    userId: user?.id || null,
     locationControl,
     showToast,
   });
@@ -739,6 +745,7 @@ export default function MapScreen() {
           onAddAmbulanceFromTracking={handleAddAmbulanceFromTracking}
           onCloseHospitalDetail={closeHospitalDetail}
           onCloseVisitDetail={closeHistoryVisitDetails}
+          visitDetailRouteState={routeVisitDetailState}
           onCloseProviderDetail={handleCloseProviderDetail}
           onCloseProviderList={handleCloseProviderList}
           onSelectProvider={handleSelectExploreProvider}
@@ -746,7 +753,8 @@ export default function MapScreen() {
           onResumeHistoryVisit={handleResumeHistoryRequest}
           onRateHistoryVisit={handleRateHistoryVisit}
           onCallHistoryClinic={handleCallHistoryClinic}
-          onJoinHistoryVideo={handleJoinHistoryVisit}
+          onOpenHistoryConsult={handleOpenHistoryConsult}
+          onRescheduleHistoryVisit={handleRescheduleHistoryVisit}
           onBookHistoryAgain={handleBookHistoryAgain}
           onOpenHistoryPaymentDetails={handleOpenHistoryPaymentDetails}
           onGetHistoryDirections={handleGetHistoryDirections}
@@ -867,6 +875,12 @@ export default function MapScreen() {
         routeHistoryFilter={routeHistoryFilter}
         historyPaymentState={historyPaymentState}
         closeHistoryPaymentDetails={closeHistoryPaymentDetails}
+        asyncConsultVisit={asyncConsultVisit}
+        closeAsyncConsult={closeAsyncConsult}
+        rescheduleVisit={rescheduleVisit}
+        closeRescheduleVisit={closeRescheduleVisit}
+        handleRescheduleSuccess={handleRescheduleSuccess}
+        userId={user?.id || null}
         recoveredRatingState={recoveredRatingState}
         closeRecoveredRating={closeRecoveredRating}
         handleSkipRecoveredRating={handleSkipRecoveredRating}

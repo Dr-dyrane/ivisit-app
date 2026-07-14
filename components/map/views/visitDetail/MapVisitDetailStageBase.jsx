@@ -14,6 +14,8 @@ import {
 	MapVisitDetailCollapsedTopSlot,
 	MapVisitDetailFloatingTopSlot,
 } from "./MapVisitDetailStageParts";
+import MapVisitDetailRouteState from "./MapVisitDetailRouteState";
+import { VISIT_DETAIL_ROUTE_STATUS } from "../../../../hooks/visits/visitDetailRouteState";
 import styles from "./mapVisitDetailStage.styles";
 
 const FLOATING_TITLE_REVEAL_DELAY = 160;
@@ -37,12 +39,14 @@ export default function MapVisitDetailStageBase({
 	sheetHeight,
 	snapState,
 	historyItem,
+	routeState = null,
 	activeMapRequest,
 	onClose,
 	onResume,
 	onRateVisit,
 	onCallClinic,
-	onJoinVideo,
+	onOpenConsult,
+	onReschedule,
 	onBookAgain,
 	onOpenPaymentDetails,
 	onGetDirections,
@@ -65,7 +69,8 @@ export default function MapVisitDetailStageBase({
 		onResume,
 		onRateVisit,
 		onCallClinic,
-		onJoinVideo,
+		onOpenConsult,
+		onReschedule,
 		onBookAgain,
 		onOpenPaymentDetails,
 		onGetDirections,
@@ -169,6 +174,13 @@ export default function MapVisitDetailStageBase({
 		: isDarkMode
 			? "rgba(248,250,252,0.92)"
 			: "rgba(15,23,42,0.86)";
+	const isRouteLoading = routeState?.status === VISIT_DETAIL_ROUTE_STATUS.LOADING;
+	const hasRouteFailure = [
+		VISIT_DETAIL_ROUTE_STATUS.DENIED,
+		VISIT_DETAIL_ROUTE_STATUS.NOT_FOUND,
+		VISIT_DETAIL_ROUTE_STATUS.ERROR,
+	].includes(routeState?.status);
+	const routeSubtitle = isRouteLoading ? routeState?.message : null;
 
 	return (
 		<MapSheetShell
@@ -186,6 +198,8 @@ export default function MapVisitDetailStageBase({
 						titleColor={titleColor}
 						mutedColor={mutedColor}
 						iconSurfaceColor={iconSurfaceColor}
+						titleOverride={routeState?.title}
+						subtitleOverride={routeSubtitle}
 					/>
 				) : (
 					<MapVisitDetailFloatingTopSlot
@@ -206,9 +220,9 @@ export default function MapVisitDetailStageBase({
 						floatingToggleSurface={floatingToggleSurface}
 						floatingToggleIconColor={floatingToggleIconColor}
 						shouldShowFloatingTitle={shouldShowFloatingTitle}
-						title={model.topSlot?.title || model.hero?.title || null}
+						title={routeState?.title || model.topSlot?.title || model.hero?.title || null}
 						subtitle={
-							isHalf ? model.topSlot?.subtitle || model.hero?.subtitle || null : null
+							isHalf ? routeSubtitle || model.topSlot?.subtitle || model.hero?.subtitle || null : null
 						}
 						titleColor={titleColor}
 						mutedColor={mutedColor}
@@ -246,13 +260,24 @@ export default function MapVisitDetailStageBase({
 				androidExpandedBodyGesture={androidExpandedBodyGesture}
 				androidExpandedBodyStyle={androidExpandedBodyStyle}
 			>
-				<MapVisitDetailBodyContent
-					model={model}
-					onCancelVisit={onCancelVisit}
-					isExpanded={isExpanded}
-					onExpandedHeaderLayout={handleExpandedHeaderLayout}
-					onSnapStateChange={onSnapStateChange}
-				/>
+				{hasRouteFailure ? (
+					<MapVisitDetailRouteState
+						state={routeState}
+						isDarkMode={isDarkMode}
+						titleColor={titleColor}
+						mutedColor={mutedColor}
+						onClose={onClose}
+					/>
+				) : (
+					<MapVisitDetailBodyContent
+						model={model}
+						onCancelVisit={onCancelVisit}
+						isExpanded={isExpanded}
+						onExpandedHeaderLayout={handleExpandedHeaderLayout}
+						onSnapStateChange={onSnapStateChange}
+						isLoading={isRouteLoading}
+					/>
+				)}
 			</MapStageBodyScroll>
 		</MapSheetShell>
 	);

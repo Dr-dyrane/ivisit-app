@@ -49,7 +49,8 @@ export default function useMapVisitDetailModel({
 	onResume,
 	onRateVisit,
 	onCallClinic,
-	onJoinVideo,
+	onOpenConsult,
+	onReschedule,
 	onBookAgain,
 	onOpenPaymentDetails,
 	onGetDirections,
@@ -100,9 +101,9 @@ export default function useMapVisitDetailModel({
 	const actorName = useMemo(
 		() =>
 			pickText(
-				historyItem?.doctorName,
 				historyItem?.actorName,
 				readRawField(raw, "responderName", "responder_name"),
+				historyItem?.doctorName,
 			),
 		[historyItem?.actorName, historyItem?.doctorName, raw],
 	);
@@ -529,13 +530,22 @@ export default function useMapVisitDetailModel({
 				onPress: onCallClinic,
 			});
 		}
-		if (historyItem.canJoinVideo && typeof onJoinVideo === "function") {
+		if (historyItem.canOpenConsult && typeof onOpenConsult === "function") {
 			list.push({
-				key: "video",
-				label: HISTORY_DETAILS_COPY.actionLabels.joinVideo,
-				iconName: "videocam-outline",
+				key: "consult",
+				label: HISTORY_DETAILS_COPY.actionLabels.openConsult,
+				iconName: "chatbubbles-outline",
 				iconColor: theme.actionVideoColor,
-				onPress: onJoinVideo,
+				onPress: onOpenConsult,
+			});
+		}
+		if (historyItem.canReschedule && typeof onReschedule === "function") {
+			list.push({
+				key: "reschedule",
+				label: HISTORY_DETAILS_COPY.actionLabels.reschedule,
+				iconName: "calendar-outline",
+				iconColor: theme.actionBookColor,
+				onPress: onReschedule,
 			});
 		}
 		if (historyItem.canBookAgain && typeof onBookAgain === "function") {
@@ -574,8 +584,9 @@ export default function useMapVisitDetailModel({
 		onBookAgain,
 		onCallClinic,
 		onGetDirections,
-		onJoinVideo,
+		onOpenConsult,
 		onOpenPaymentDetails,
+		onReschedule,
 		paymentRows.length,
 		theme,
 	]);

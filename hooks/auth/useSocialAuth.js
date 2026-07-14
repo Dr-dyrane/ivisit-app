@@ -6,7 +6,13 @@ import * as Linking from "expo-linking";
 import { authService } from "../../services/authService";
 import { supabase } from "../../services/supabase";
 import { AuthContext } from "../../contexts/AuthContext";
-import { database, StorageKeys } from "../../database";
+import { normalizeStoredPublicRoute } from "../../runtime/navigation/deepLinkHelpers";
+import { isProtectedAuthReturnRoute } from "../../runtime/navigation/authReturnRoute";
+import {
+	readStoredAuthReturnRoute,
+	writeStoredAuthReturnRoute,
+	writeStoredPublicRoute,
+} from "../../runtime/navigation/useRoutePersistence";
 
 let webOAuthRedirectInFlight = false;
 
@@ -54,20 +60,23 @@ export function useSocialAuth() {
 				console.warn("[useSocialAuth] Failed to clear deferred profile flag:", flagError);
 			}
 		};
-		const clearAuthReturnRoute = async () => {
-			try {
-				await database.delete(StorageKeys.AUTH_RETURN_ROUTE);
-			} catch (routeError) {
-				console.warn("[useSocialAuth] Failed to clear auth return route:", routeError);
-			}
-		};
-
 		try {
 			if (returnTo) {
-				await database.write(StorageKeys.AUTH_RETURN_ROUTE, returnTo);
-				await database.write(StorageKeys.LAST_PUBLIC_ROUTE, returnTo).catch(() => {});
-			} else {
-				await clearAuthReturnRoute();
+				const existingReturnRoute = await readStoredAuthReturnRoute();
+				const preserveProtectedIntent =
+					isProtectedAuthReturnRoute(existingReturnRoute) &&
+					!isProtectedAuthReturnRoute(returnTo);
+				const storedReturnRoute = preserveProtectedIntent
+					? existingReturnRoute
+					: await writeStoredAuthReturnRoute(returnTo);
+				if (!storedReturnRoute) {
+					console.warn("[useSocialAuth] Ignored invalid auth return route.");
+				} else {
+					const publicReturnRoute = normalizeStoredPublicRoute(storedReturnRoute);
+					if (publicReturnRoute) {
+						await writeStoredPublicRoute(publicReturnRoute);
+					}
+				}
 			}
 
 			if (canUseNativeBrowserWarmup) {
@@ -91,7 +100,6 @@ export function useSocialAuth() {
 							console.warn("[useSocialAuth] Sync after native Apple login failed:", syncError);
 						}
 
-						await clearAuthReturnRoute();
 						return { success: true };
 					}
 
@@ -99,7 +107,6 @@ export function useSocialAuth() {
 				} catch (nativeAppleError) {
 					const nativeMessage = String(nativeAppleError?.message || nativeAppleError || "");
 					if (nativeMessage.toLowerCase().includes("cancelled")) {
-						await clearAuthReturnRoute();
 						await clearDeferredProfileFlag();
 						return { success: false, error: "cancelled" };
 					}
@@ -185,7 +192,6 @@ export function useSocialAuth() {
 
 					if (skipped) {
 						console.log("[useSocialAuth] Auth already handled by deep link listener");
-						await clearAuthReturnRoute();
 						return { success: true };
 					}
 
@@ -201,12 +207,9 @@ export function useSocialAuth() {
 							console.warn("[useSocialAuth] Sync after login failed:", syncError);
 						}
 
-						await clearAuthReturnRoute();
-						
 						return { success: true };
 					}
 
-					await clearAuthReturnRoute();
 					await clearDeferredProfileFlag();
 					return { success: false, error: "Authentication failed" };
 				} else if (result.type === "cancel" || result.type === "dismiss") {
@@ -219,21 +222,17 @@ export function useSocialAuth() {
 						console.log("[useSocialAuth] Session found! Deep link handler processed auth.");
 						const { data: currentUser } = await authService.getCurrentUser();
 						await login(currentUser);
-						await clearAuthReturnRoute();
 						return { success: true };
 					}
 
-					await clearAuthReturnRoute();
 					await clearDeferredProfileFlag();
 					return { success: false, error: result.type };
 				}
 
-				await clearAuthReturnRoute();
 				await clearDeferredProfileFlag();
 				return { success: false, error: "Unexpected authentication result" };
 			}
 
-			await clearAuthReturnRoute();
 			await clearDeferredProfileFlag();
 			return { success: false, error: "Cancelled or failed" };
 		} catch (error) {
@@ -241,7 +240,6 @@ export function useSocialAuth() {
 			if (Platform.OS === "web") {
 				webOAuthRedirectInFlight = false;
 			}
-			await clearAuthReturnRoute();
 			await clearDeferredProfileFlag();
 
 			let errorMessage = "Failed to initiate login";

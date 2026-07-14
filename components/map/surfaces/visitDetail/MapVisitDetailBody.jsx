@@ -101,6 +101,7 @@ export default function MapVisitDetailBody({
 	revealHero = false,
 	onExpandedHeaderLayout,
 	onSnapStateChange,
+	isLoading = false,
 }) {
 	const {
 		recordKey,
@@ -334,9 +335,9 @@ export default function MapVisitDetailBody({
 
 	const heroSubtitle = hero?.subtitle || hero?.supportLine || "";
 
-	if (!theme || !hero) {
+	if (isLoading || !theme || !hero) {
 		return (
-			<VisitDetailSkeleton
+			<MapVisitDetailSkeleton
 				theme={
 					theme || {
 						groupSurface: "rgba(255,255,255,0.08)",

@@ -4,7 +4,12 @@
 // NEW: Commit-details and emergency-auth users can continue without the legacy full-profile gate; the old route remains deprecated fallback only.
 
 import { View, StyleSheet } from "react-native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import {
+  Stack,
+  useGlobalSearchParams,
+  useRouter,
+  useSegments,
+} from "expo-router";
 import { useEffect } from "react";
 import { UserProviders } from "../../providers/UserProviders";
 import { useHeaderState } from "../../contexts/HeaderStateContext";
@@ -18,6 +23,11 @@ import {
   shouldDeferProfileCompletion,
 } from "../../utils/profileCompletion";
 import { authService } from "../../services/authService";
+import {
+  PROTECTED_VISIT_ROUTE_PATH,
+  buildProtectedVisitReturnRoute,
+} from "../../runtime/navigation/authReturnRoute";
+import { writeStoredAuthReturnRoute } from "../../runtime/navigation/useRoutePersistence";
 
 // PULLBACK NOTE: Remove WebAppShell wrapper to eliminate viewport constraint on web
 // OLD: WebAppShell with surfaceMode handling constrains viewport on web
@@ -27,13 +37,37 @@ import { authService } from "../../services/authService";
 function UserStackScreens() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
+  const params = useGlobalSearchParams();
+  const isUserMapHome =
+    segments?.[0] === "(user)" &&
+    (segments.length === 1 || (segments.length === 2 && segments[1] === "index"));
+  const protectedReturnRoute = buildProtectedVisitReturnRoute(
+    isUserMapHome ? PROTECTED_VISIT_ROUTE_PATH : null,
+    {
+      mapSheet: params?.mapSheet,
+      visitKey: params?.visitKey,
+    },
+  );
 
   useEffect(() => {
     if (loading) return;
 
     if (!user.isAuthenticated) {
-      router.replace("/(auth)");
-      return;
+      let cancelled = false;
+      const preserveIntentAndRedirect = async () => {
+        if (protectedReturnRoute) {
+          await writeStoredAuthReturnRoute(protectedReturnRoute);
+        }
+        if (!cancelled) {
+          router.replace("/(auth)");
+        }
+      };
+
+      void preserveIntentAndRedirect();
+      return () => {
+        cancelled = true;
+      };
     }
 
     const deferProfileCompletion = shouldDeferProfileCompletion(user);
@@ -47,7 +81,7 @@ function UserStackScreens() {
         );
       });
     }
-  }, [loading, router, user]);
+  }, [loading, protectedReturnRoute, router, user]);
 
   return (
     <UserProviders>

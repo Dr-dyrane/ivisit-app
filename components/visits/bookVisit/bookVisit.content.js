@@ -1,42 +1,16 @@
 export const BOOK_VISIT_SERVICE_OPTIONS = [
   {
-    key: "clinic",
-    title: "In-clinic",
-    body: "Book care at a nearby hospital or clinic.",
+    key: "in_person",
+    title: "In person",
+    body: "Schedule care at an eligible hospital.",
+    icon: "business",
   },
   {
-    key: "telehealth",
-    title: "Telehealth",
-    body: "Meet a clinician by video from home.",
+    key: "telemedicine_async",
+    title: "Async consult",
+    body: "Message your assigned clinician before and during scheduled care.",
+    icon: "chatbubbles",
   },
-];
-
-export const BOOK_VISIT_DOCTOR_NAMES = [
-  "Dr. Sarah Wilson",
-  "Dr. James Chen",
-  "Dr. Emily Rodriguez",
-  "Dr. Michael Chang",
-  "Dr. Lisa Thompson",
-  "Dr. David Kim",
-  "Dr. Rachel Foster",
-  "Dr. Robert Patel",
-];
-
-export const BOOK_VISIT_TIME_SLOTS = [
-  "09:00 AM",
-  "09:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "01:00 PM",
-  "01:30 PM",
-  "02:00 PM",
-  "02:30 PM",
-  "03:00 PM",
-  "03:30 PM",
-  "04:00 PM",
-  "04:30 PM",
 ];
 
 export const BOOK_VISIT_SCREEN_COPY = {
@@ -48,17 +22,16 @@ export const BOOK_VISIT_SCREEN_COPY = {
     title: "Schedule care",
   },
   context: {
-    title: "Visit in progress",
-    body: "Choose care, time, and provider. Progress is saved while you book.",
+    title: "Booking in progress",
+    body: "Choose care, a facility, and an available time. Progress is saved while you book.",
     selectionsLabel: "Current selection",
-    quoteLabel: "Estimate",
   },
   island: {
     title: "Booking summary",
     stepLabel: "Current step",
     serviceLabel: "Care type",
     specialtyLabel: "Specialty",
-    providerLabel: "Provider",
+    providerLabel: "Facility",
     timeLabel: "Visit time",
   },
   steps: {
@@ -71,8 +44,8 @@ export const BOOK_VISIT_SCREEN_COPY = {
       body: "Choose the care area that fits this visit.",
     },
     provider: {
-      title: "Choose a provider",
-      body: "Select a hospital or clinic that can take this visit.",
+      title: "Choose a facility",
+      body: "Select a hospital with available booking.",
     },
     datetime: {
       title: "Pick date and time",
@@ -88,14 +61,14 @@ export const BOOK_VISIT_SCREEN_COPY = {
   },
   messages: {
     dateTimeRequired: "Choose a date and time to continue.",
-    quoteFailed: "Unable to load the visit estimate right now.",
     saveSuccess: "Visit booked successfully.",
     saveFailed: "Unable to book this visit right now.",
-    cashBlocked:
-      "This provider is not ready for cash-backed booking right now.",
+    bookingUnavailable: "Scheduled booking is temporarily unavailable.",
+    timezoneUnconfirmed:
+      "Scheduling times are not ready for this facility yet.",
     noSpecialties: "No specialties available right now.",
-    noProviders: "No providers found for this specialty.",
-    noQuote: "Estimate unavailable",
+    noProviders: "No available facilities match this specialty.",
+    noAvailability: "No times are available for this selection.",
   },
 };
 

@@ -121,24 +121,19 @@ export const useVisitsStore = create(
     initFromStorage: async () => {
       if (hydrationPromise) return hydrationPromise;
 
-      hydrationPromise = Promise.all([
-        database.read(STORAGE_KEY, null),
-        database.read(StorageKeys.VISITS, null),
-      ])
-        .then(([snapshot, legacyVisits]) => {
-          if (snapshot && typeof snapshot === "object") {
+      hydrationPromise = database.read(STORAGE_KEY, null)
+        .then((snapshot) => {
+          if (snapshot && typeof snapshot === "object" && snapshot?.ownerUserId) {
             get().hydrateFromLocalSnapshot(
               snapshot,
-              snapshot?.ownerUserId ?? null,
+              snapshot.ownerUserId,
             );
-            get().markHydrated(snapshot?.ownerUserId ?? null);
+            get().markHydrated(snapshot.ownerUserId);
             return;
           }
 
-          if (Array.isArray(legacyVisits)) {
-            get().hydrateFromLocalSnapshot({ visits: legacyVisits }, null);
-          }
-
+          // Ownerless snapshots cannot be assigned to whichever account signs in next.
+          get().hydrateFromLocalSnapshot({}, null);
           get().markHydrated(null);
         })
         .catch(() => {
