@@ -112,11 +112,14 @@ function run() {
   check(
     'ambulance writes use direct organization ownership with hospital fallback only for null owners',
     includesAll(source.security, [
-      'CREATE POLICY "Org Admins manage ambulances"',
+      'CREATE POLICY "Org Admins insert ambulances"',
+      'CREATE POLICY "Org Admins update ambulances"',
+      'CREATE POLICY "Org Admins delete idle ambulances"',
       "actor.role = 'org_admin'",
       'organization_id = public.p_get_current_org_id()',
       'organization_id IS NULL',
       'WITH CHECK (',
+      'REVOKE INSERT, UPDATE, DELETE ON public.ambulances FROM anon, authenticated;',
     ]),
     files.security
   );
@@ -129,7 +132,7 @@ function run() {
       'REVOKE INSERT, UPDATE, DELETE ON TABLE public.doctors FROM anon, authenticated;',
       ') ON TABLE public.doctors TO authenticated;',
     ]) &&
-      !/GRANT\s+DELETE[\s\S]*?ON\s+TABLE\s+public\.doctors\s+TO\s+authenticated/i.test(
+      !/GRANT\s+DELETE\s+ON\s+(?:TABLE\s+)?public\.doctors\s+TO\s+authenticated\s*;/i.test(
         source.security
       ),
     files.security

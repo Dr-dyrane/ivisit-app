@@ -24,7 +24,20 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_actor_role TEXT;
+    v_actor_org_id UUID;
 BEGIN
+    SELECT actor.role, actor.organization_id
+    INTO v_actor_role, v_actor_org_id
+    FROM public.profiles actor
+    WHERE actor.id = v_actor_id;
+
+    IF v_actor_id IS NULL OR v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
     RETURN QUERY
     SELECT 
         a.id,
@@ -40,8 +53,16 @@ BEGIN
         a.created_at,
         a.updated_at
     FROM public.ambulances a
+    LEFT JOIN public.hospitals hospital ON hospital.id = a.hospital_id
     WHERE a.status = 'available'
-        AND (p_hospital_id IS NULL OR a.hospital_id = p_hospital_id);
+        AND (p_hospital_id IS NULL OR a.hospital_id = p_hospital_id)
+        AND (
+            v_actor_role = 'admin'
+            OR (
+                v_actor_org_id IS NOT NULL
+                AND COALESCE(a.organization_id, hospital.organization_id) = v_actor_org_id
+            )
+        );
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
@@ -56,38 +77,67 @@ CREATE OR REPLACE FUNCTION public.update_ambulance_status(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_hospital_id UUID;
+    v_previous_status TEXT;
+    v_location GEOMETRY;
     v_result JSONB;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Legacy ambulance status mutation is restricted to service_role';
+    END IF;
+
     -- Validate status
     IF p_status NOT IN ('available', 'dispatched', 'en_route', 'on_scene', 'returning', 'maintenance', 'offline') THEN
         RETURN jsonb_build_object('error', 'Invalid status', 'code', 'INVALID_STATUS');
     END IF;
     
     -- Get current hospital for validation
-    SELECT hospital_id INTO v_hospital_id 
+    SELECT hospital_id, status INTO v_hospital_id, v_previous_status
     FROM public.ambulances 
-    WHERE id = p_ambulance_id;
+    WHERE id = p_ambulance_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('error', 'Ambulance not found', 'code', 'AMBULANCE_NOT_FOUND');
+    END IF;
+
+    IF p_location IS NOT NULL THEN
+        IF jsonb_typeof(p_location) <> 'object'
+           OR NULLIF(p_location->>'lat', '') IS NULL
+           OR NULLIF(p_location->>'lng', '') IS NULL THEN
+            RETURN jsonb_build_object('error', 'Invalid location', 'code', 'INVALID_LOCATION');
+        END IF;
+
+        v_location := ST_SetSRID(
+            ST_MakePoint(
+                (p_location->>'lng')::DOUBLE PRECISION,
+                (p_location->>'lat')::DOUBLE PRECISION
+            ),
+            4326
+        );
+    END IF;
     
     -- Update ambulance
     UPDATE public.ambulances 
     SET 
         status = p_status,
-        location = COALESCE(p_location, location),
+        location = COALESCE(v_location, location),
         eta = COALESCE(p_eta, eta),
         current_call = COALESCE(p_current_call, current_call),
         updated_at = NOW()
     WHERE id = p_ambulance_id;
     
     -- If ambulance was dispatched, update hospital availability
-    IF p_status = 'dispatched' AND OLD.status = 'available' THEN
+    IF p_status = 'dispatched' AND v_previous_status = 'available' THEN
         UPDATE public.hospitals 
         SET available_ambulances = GREATEST(0, available_ambulances - 1)
         WHERE id = v_hospital_id;
     END IF;
     
     -- If ambulance returned to available, update hospital availability
-    IF p_status = 'available' AND OLD.status != 'available' THEN
+    IF p_status = 'available' AND v_previous_status <> 'available' THEN
         UPDATE public.hospitals 
         SET available_ambulances = available_ambulances + 1
         WHERE id = v_hospital_id;
@@ -116,32 +166,6 @@ DECLARE
     v_hospital_id UUID;
 BEGIN
     PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
-    PERFORM set_config('ivisit.transition_source', 'approve_cash_payment', true);
-    PERFORM set_config('ivisit.transition_reason', 'cash_payment_approved', true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
-        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)::TEXT,
-        true
-    );
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    IF v_is_service_role THEN
-        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
-    END IF;
-    PERFORM set_config('ivisit.transition_source', 'approve_cash_payment', true);
-    PERFORM set_config('ivisit.transition_reason', 'cash_payment_approved', true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
-        jsonb_build_object('payment_id', p_payment_id, 'request_id', p_request_id)::TEXT,
-        true
-    );
-    IF v_actor_id IS NOT NULL THEN
-        PERFORM set_config('ivisit.transition_actor_id', v_actor_id::TEXT, true);
-    END IF;
-    IF v_is_service_role THEN
-        PERFORM set_config('ivisit.transition_actor_role', 'service_role', true);
-    END IF;
     PERFORM set_config('ivisit.transition_source', 'assign_ambulance_to_emergency', true);
     PERFORM set_config('ivisit.transition_reason', 'manual_ambulance_assignment', true);
     PERFORM set_config(
@@ -170,7 +194,7 @@ BEGIN
     WHERE id = p_ambulance_id;
     
     UPDATE public.emergency_requests 
-    SET ambulance_id = p_ambulance_id, status = 'accepted', updated_at = NOW()
+    SET ambulance_id = p_ambulance_id, updated_at = NOW()
     WHERE id = p_emergency_request_id;
     
     RETURN jsonb_build_object(
@@ -190,8 +214,9 @@ CREATE OR REPLACE FUNCTION public.auto_assign_ambulance(
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_user_id UUID;
-    v_user_location JSONB;
+    v_user_location GEOMETRY;
+    v_hospital_id UUID;
+    v_request_status TEXT;
     v_best_ambulance_id UUID;
     v_best_distance NUMERIC;
     v_result JSONB;
@@ -208,31 +233,36 @@ BEGIN
         true
     );
 
-    -- Get emergency user and location
-    SELECT user_id INTO v_user_id
-    FROM public.emergency_requests 
-    WHERE id = p_emergency_request_id;
-    
-    -- Get user location from profile
-    SELECT location INTO v_user_location
-    FROM public.profiles 
-    WHERE id = v_user_id;
+    SELECT request.patient_location, request.hospital_id, request.status
+    INTO v_user_location, v_hospital_id, v_request_status
+    FROM public.emergency_requests request
+    WHERE request.id = p_emergency_request_id;
+
+    IF NOT FOUND OR v_request_status <> 'in_progress' OR v_user_location IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Emergency request is not dispatch ready',
+            'auto_assigned', false
+        );
+    END IF;
     
     -- Find best available ambulance
     SELECT 
         a.id, 
         ST_Distance(
-            ST_GeomFromText(a.location),
-            ST_GeomFromText(v_user_location)
+            a.location::geography,
+            v_user_location::geography
         ) as distance
     INTO v_best_ambulance_id, v_best_distance
     FROM public.ambulances a
     WHERE a.status = 'available'
-        AND (p_specialty_required IS NULL OR a.specialty = p_specialty_required)
+        AND a.hospital_id = v_hospital_id
+        AND a.current_call IS NULL
+        AND a.profile_id IS NOT NULL
         AND a.location IS NOT NULL
         AND ST_DWithin(
-            ST_GeomFromText(a.location),
-            ST_GeomFromText(v_user_location),
+            a.location::geography,
+            v_user_location::geography,
             p_max_distance_km * 1000
         )
     ORDER BY distance
@@ -248,11 +278,11 @@ BEGIN
             updated_at = NOW()
         WHERE id = v_best_ambulance_id;
         
-        -- Update emergency request
+        -- Assignment is an offer. Responder acceptance is owned by the
+        -- hardened command installed later in this pillar set.
         UPDATE public.emergency_requests 
         SET 
             ambulance_id = v_best_ambulance_id,
-            status = 'accepted',
             updated_at = NOW()
         WHERE id = p_emergency_request_id;
         
@@ -281,6 +311,8 @@ CREATE OR REPLACE FUNCTION public.validate_emergency_request(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_hospital_id UUID;
     v_patient_location JSONB;
     v_hospital_available BOOLEAN;
@@ -454,19 +486,36 @@ DECLARE
     v_payment_id UUID;
     v_fee_amount NUMERIC;
     v_total_amount NUMERIC;
+    v_hospital_service_price NUMERIC;
+    v_hospital_base_price NUMERIC;
+    v_admin_service_price NUMERIC;
+    v_default_base_price NUMERIC;
+    v_distance_km NUMERIC := 0;
+    v_fee_percentage NUMERIC := 2.5;
     v_requires_approval BOOLEAN := FALSE;
     v_awaits_payment_confirmation BOOLEAN := FALSE;
+    v_requires_wallet_settlement BOOLEAN := FALSE;
     v_hospital_id UUID;
     v_organization_id UUID;
     v_patient_location GEOMETRY;
     v_transition_reason TEXT;
+    v_service_type TEXT := LOWER(COALESCE(NULLIF(TRIM(COALESCE(p_request_data->>'service_type', '')), ''), ''));
     v_payment_method TEXT := LOWER(COALESCE(NULLIF(TRIM(COALESCE(p_payment_data->>'method', '')), ''), 'unknown'));
+    v_payment_method_id TEXT := NULLIF(TRIM(COALESCE(p_payment_data->>'method_id', '')), '');
     v_defer_dispatch_until_payment BOOLEAN := FALSE;
     v_request_status TEXT := 'in_progress';
     v_request_payment_status TEXT := 'pending';
 BEGIN
     IF p_user_id IS NULL THEN
         RAISE EXCEPTION 'user id is required';
+    END IF;
+
+    IF v_service_type NOT IN ('ambulance', 'bed') THEN
+        RAISE EXCEPTION 'Unsupported emergency service type';
+    END IF;
+
+    IF p_payment_data IS NULL OR v_payment_method NOT IN ('cash', 'card', 'wallet') THEN
+        RAISE EXCEPTION 'A supported payment method is required';
     END IF;
 
     IF NOT v_is_service_role THEN
@@ -506,7 +555,7 @@ BEGIN
     PERFORM set_config(
         'ivisit.transition_metadata',
         jsonb_build_object(
-            'service_type', COALESCE(p_request_data->>'service_type', 'ambulance'),
+            'service_type', v_service_type,
             'payment_method', v_payment_method
         )::TEXT,
         true
@@ -523,34 +572,67 @@ BEGIN
         RAISE EXCEPTION 'Hospital not found';
     END IF;
 
-    IF v_payment_method = 'card' THEN
-        v_defer_dispatch_until_payment := LOWER(
-            COALESCE(
-                NULLIF(TRIM(COALESCE(p_payment_data->>'defer_dispatch_until_payment', '')), ''),
-                'false'
-            )
-        ) IN ('1', 'true', 't', 'yes', 'y');
-    END IF;
+    -- Payment release is server-owned. A client cannot assert a completed
+    -- card, wallet, or cash settlement while creating the request.
+    v_defer_dispatch_until_payment := v_payment_method = 'card';
 
-    IF p_payment_data IS NOT NULL THEN
-        v_total_amount := NULLIF(p_payment_data->>'total_amount', '')::NUMERIC;
-        v_fee_amount := NULLIF(p_payment_data->>'fee_amount', '')::NUMERIC;
-        IF v_fee_amount IS NULL THEN
-            v_fee_amount := ROUND(COALESCE(v_total_amount, 0) * 0.025, 2);
-        END IF;
-    END IF;
+    v_distance_km := GREATEST(COALESCE(NULLIF(p_request_data->>'distance_km', '')::NUMERIC, 0), 0);
+    v_default_base_price := CASE
+        WHEN v_service_type = 'ambulance' THEN 150
+        WHEN v_service_type = 'bed' THEN 200
+        ELSE 100
+    END;
+
+    SELECT hospital.base_price
+    INTO v_hospital_base_price
+    FROM public.hospitals hospital
+    WHERE hospital.id = v_hospital_id;
+
+    SELECT pricing.base_price
+    INTO v_hospital_service_price
+    FROM public.service_pricing pricing
+    WHERE pricing.hospital_id = v_hospital_id
+      AND pricing.service_type = v_service_type
+    ORDER BY pricing.updated_at DESC NULLS LAST, pricing.created_at DESC
+    LIMIT 1;
+
+    SELECT pricing.base_price
+    INTO v_admin_service_price
+    FROM public.service_pricing pricing
+    WHERE pricing.hospital_id IS NULL
+      AND pricing.service_type = v_service_type
+    ORDER BY pricing.updated_at DESC NULLS LAST, pricing.created_at DESC
+    LIMIT 1;
+
+    v_total_amount := ROUND(
+        COALESCE(
+            NULLIF(v_hospital_service_price, 0),
+            NULLIF(v_hospital_base_price, 0),
+            NULLIF(v_admin_service_price, 0),
+            v_default_base_price
+        ) + CASE WHEN v_distance_km > 5 THEN (v_distance_km - 5) * 2 ELSE 0 END,
+        2
+    );
+
+    SELECT COALESCE(NULLIF(organization.ivisit_fee_percentage, 0), 2.5)
+    INTO v_fee_percentage
+    FROM public.organizations organization
+    WHERE organization.id = v_organization_id;
+
+    v_fee_amount := ROUND(v_total_amount * (COALESCE(v_fee_percentage, 2.5) / 100.0), 2);
 
     IF v_payment_method = 'cash' THEN
         v_requires_approval := TRUE;
         v_request_status := 'pending_approval';
         v_request_payment_status := 'pending';
-    ELSIF v_payment_method = 'card' AND v_defer_dispatch_until_payment THEN
+    ELSIF v_payment_method = 'card' THEN
         v_awaits_payment_confirmation := TRUE;
         v_request_status := 'pending_approval';
         v_request_payment_status := 'pending';
-    ELSIF p_payment_data IS NOT NULL THEN
-        v_request_status := 'in_progress';
-        v_request_payment_status := 'completed';
+    ELSIF v_payment_method = 'wallet' THEN
+        v_requires_wallet_settlement := TRUE;
+        v_request_status := 'pending_approval';
+        v_request_payment_status := 'pending';
     END IF;
     
     -- 2. Physical Location Parse
@@ -564,7 +646,7 @@ BEGIN
         user_id, hospital_id, service_type, hospital_name, specialty,
         ambulance_type, bed_number, patient_location, patient_snapshot, status, total_cost, payment_status
     ) VALUES (
-        p_user_id, v_hospital_id, p_request_data->>'service_type',
+        p_user_id, v_hospital_id, v_service_type,
         p_request_data->>'hospital_name', p_request_data->>'specialty',
         p_request_data->>'ambulance_type', p_request_data->>'bed_number', v_patient_location,
         p_request_data->'patient_snapshot',
@@ -573,43 +655,56 @@ BEGIN
         v_request_payment_status
     ) RETURNING id, display_id INTO v_request_id, v_display_id;
 
-    -- 4. Create Visit Record (Medical History)
-    BEGIN
-        INSERT INTO public.visits (
-            user_id, hospital_id, request_id, status, 
-            date, time, type
-        ) VALUES (
-            p_user_id, v_hospital_id, v_request_id, 'pending',
-            TO_CHAR(NOW(), 'YYYY-MM-DD'),
-            TO_CHAR(NOW(), 'HH24:MI:SS'),
-            'emergency'
-        ) RETURNING display_id INTO v_visit_id;
-    EXCEPTION WHEN OTHERS THEN
-        -- Non-blocking visit creation
-        RAISE NOTICE 'Non-blocking visit creation failure: %', SQLERRM;
-    END;
+    -- 4. Create the request-derived visit in the same transaction. A request
+    -- cannot report success without its canonical history row.
+    INSERT INTO public.visits (
+        user_id, hospital_id, request_id, status,
+        date, time, type
+    ) VALUES (
+        p_user_id, v_hospital_id, v_request_id, 'pending',
+        TO_CHAR(NOW(), 'YYYY-MM-DD'),
+        TO_CHAR(NOW(), 'HH24:MI:SS'),
+        'emergency'
+    ) RETURNING display_id INTO v_visit_id;
 
     -- 5. Process Payment Information
-    IF p_payment_data IS NOT NULL THEN
-        INSERT INTO public.payments (
-            user_id, emergency_request_id, organization_id, amount, currency,
-            payment_method, status, ivisit_fee_amount, metadata
-        ) VALUES (
-            p_user_id, v_request_id, v_organization_id, v_total_amount, 
-            p_payment_data->>'currency', v_payment_method,
-            CASE
-                WHEN v_payment_method = 'cash' THEN 'pending'
-                WHEN v_payment_method = 'card' AND v_defer_dispatch_until_payment THEN 'pending'
-                ELSE 'completed'
-            END,
+    INSERT INTO public.payments (
+        user_id, emergency_request_id, organization_id, amount, currency,
+        payment_method, status, ivisit_fee_amount, metadata
+    ) VALUES (
+        p_user_id, v_request_id, v_organization_id, v_total_amount,
+        'USD', v_payment_method, 'pending', v_fee_amount,
+        jsonb_build_object(
+            'source', 'create_emergency_v4',
+            'payment_kind', 'service',
+            'fee_percentage', v_fee_percentage,
+            'fee_amount', v_fee_amount,
+            'fee', v_fee_amount,
+            'method_id', v_payment_method_id,
+            'client_quoted_total', NULLIF(p_payment_data->>'total_amount', '')::NUMERIC,
+            'canonical_total', v_total_amount,
+            'defer_dispatch_until_payment', v_defer_dispatch_until_payment
+        )
+    ) RETURNING id INTO v_payment_id;
+
+    UPDATE public.emergency_requests
+    SET payment_id = v_payment_id,
+        payment_method_id = v_payment_method_id,
+        total_cost = v_total_amount,
+        updated_at = NOW()
+    WHERE id = v_request_id;
+
+    IF v_payment_method = 'cash' THEN
+        PERFORM public.notify_cash_approval_org_admins_internal(
+            v_request_id,
+            v_payment_id,
+            v_total_amount,
             v_fee_amount,
-            jsonb_build_object(
-                'fee_amount', v_fee_amount,
-                'fee', v_fee_amount,
-                'method_id', p_payment_data->>'method_id',
-                'defer_dispatch_until_payment', v_defer_dispatch_until_payment
-            )
-        ) RETURNING id INTO v_payment_id;
+            NULL,
+            NULL,
+            NULL,
+            v_organization_id
+        );
     END IF;
 
     RETURN jsonb_build_object(
@@ -620,13 +715,106 @@ BEGIN
         'payment_id', v_payment_id,
         'requires_approval', v_requires_approval,
         'awaits_payment_confirmation', v_awaits_payment_confirmation,
+        'requires_wallet_settlement', v_requires_wallet_settlement,
         'payment_status', v_request_payment_status,
-        'emergency_status', v_request_status
+        'emergency_status', v_request_status,
+        'canonical_total', v_total_amount,
+        'currency', 'USD'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 🛠️ Stripe webhook finalize card payment after confirmation
+-- BEGIN EMERGENCY_PAYMENT_RELEASE_GATE
+-- This projection is the only payment predicate dispatch commands consume.
+-- It requires the request-linked payment and method-specific backend evidence.
+CREATE OR REPLACE FUNCTION public.emergency_dispatch_payment_snapshot(
+    p_request_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_request public.emergency_requests%ROWTYPE;
+    v_payment public.payments%ROWTYPE;
+    v_method_proven BOOLEAN := FALSE;
+    v_reasons JSONB := '[]'::JSONB;
+BEGIN
+    SELECT request.*
+    INTO v_request
+    FROM public.emergency_requests request
+    WHERE request.id = p_request_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'ready', false,
+            'request_id', p_request_id,
+            'reasons', jsonb_build_array('request_not_found')
+        );
+    END IF;
+
+    IF v_request.payment_id IS NOT NULL THEN
+        SELECT payment.*
+        INTO v_payment
+        FROM public.payments payment
+        WHERE payment.id = v_request.payment_id
+          AND payment.emergency_request_id = v_request.id;
+    END IF;
+
+    IF v_payment.id IS NOT NULL THEN
+        v_method_proven := CASE v_payment.payment_method
+            WHEN 'card' THEN
+                v_payment.stripe_payment_intent_id IS NOT NULL
+                AND v_payment.metadata->>'source' = 'complete_card_payment'
+            WHEN 'wallet' THEN
+                v_payment.metadata->>'source' = 'process_wallet_payment'
+                AND EXISTS (
+                    SELECT 1
+                    FROM public.wallet_ledger ledger
+                    WHERE ledger.reference_id = v_payment.id
+                      AND ledger.idempotency_key = 'payment:' || v_payment.id::TEXT || ':patient_wallet_debit'
+                      AND ledger.transaction_type = 'debit'
+                      AND ledger.amount = -v_payment.amount
+                )
+            WHEN 'cash' THEN
+                v_payment.metadata->>'source' = 'approve_cash_payment'
+            ELSE false
+        END;
+    END IF;
+
+    IF v_request.status <> 'in_progress' THEN
+        v_reasons := v_reasons || jsonb_build_array('request_not_released');
+    END IF;
+    IF v_request.payment_id IS NULL OR v_payment.id IS NULL THEN
+        v_reasons := v_reasons || jsonb_build_array('linked_payment_missing');
+    END IF;
+    IF COALESCE(v_request.payment_status, 'pending') NOT IN ('paid', 'completed') THEN
+        v_reasons := v_reasons || jsonb_build_array('request_payment_pending');
+    END IF;
+    IF COALESCE(v_payment.status, 'pending') <> 'completed' THEN
+        v_reasons := v_reasons || jsonb_build_array('payment_not_completed');
+    END IF;
+    IF v_payment.id IS NOT NULL AND NOT v_method_proven THEN
+        v_reasons := v_reasons || jsonb_build_array('settlement_proof_missing');
+    END IF;
+
+    RETURN jsonb_build_object(
+        'ready', jsonb_array_length(v_reasons) = 0,
+        'request_id', p_request_id,
+        'payment_id', v_payment.id,
+        'payment_method', v_payment.payment_method,
+        'payment_status', v_payment.status,
+        'request_payment_status', v_request.payment_status,
+        'method_proven', v_method_proven,
+        'reasons', v_reasons
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.emergency_dispatch_payment_snapshot(UUID)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.emergency_dispatch_payment_snapshot(UUID)
+    TO service_role;
+-- END EMERGENCY_PAYMENT_RELEASE_GATE
+
 CREATE OR REPLACE FUNCTION public.complete_card_payment(
     p_payment_intent_id TEXT,
     p_provider_response JSONB DEFAULT '{}'::JSONB,
@@ -637,21 +825,23 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_payment RECORD;
     v_request_status TEXT := NULL;
+    v_request_payment_status TEXT := NULL;
+    v_request_payment_id UUID := NULL;
     v_effective_fee_amount NUMERIC := 0;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
     IF NULLIF(TRIM(COALESCE(p_payment_intent_id, '')), '') IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'payment intent id is required');
     END IF;
 
-    SELECT
-        p.*,
-        er.status AS request_status,
-        er.payment_status AS request_payment_status
+    SELECT p.*
     INTO v_payment
     FROM public.payments p
-    LEFT JOIN public.emergency_requests er ON er.id = p.emergency_request_id
     WHERE p.stripe_payment_intent_id = p_payment_intent_id
-    FOR UPDATE OF p, er;
+    FOR UPDATE;
 
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Card payment not found');
@@ -661,10 +851,22 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Payment is not a card payment');
     END IF;
 
+    IF v_payment.emergency_request_id IS NOT NULL THEN
+        SELECT request.status, request.payment_status, request.payment_id
+        INTO v_request_status, v_request_payment_status, v_request_payment_id
+        FROM public.emergency_requests request
+        WHERE request.id = v_payment.emergency_request_id
+        FOR UPDATE;
+
+        IF NOT FOUND OR v_request_payment_id IS DISTINCT FROM v_payment.id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Card payment is not linked to its emergency request');
+        END IF;
+    END IF;
+
     IF COALESCE(v_payment.status, '') = 'completed'
        AND (
             v_payment.emergency_request_id IS NULL
-            OR COALESCE(v_payment.request_payment_status, 'completed') = 'completed'
+            OR COALESCE(v_request_payment_status, 'completed') = 'completed'
        ) THEN
         RETURN jsonb_build_object(
             'success', true,
@@ -711,7 +913,7 @@ BEGIN
     WHERE id = v_payment.id;
 
     IF v_payment.emergency_request_id IS NOT NULL THEN
-        IF COALESCE(v_payment.request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
+        IF COALESCE(v_request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
             UPDATE public.emergency_requests
             SET status = CASE
                     WHEN status = 'pending_approval' THEN 'in_progress'
@@ -726,8 +928,6 @@ BEGIN
             SET status = 'active',
                 updated_at = NOW()
             WHERE request_id = v_payment.emergency_request_id;
-        ELSE
-            v_request_status := v_payment.request_status;
         END IF;
     END IF;
 
@@ -741,6 +941,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+REVOKE ALL ON FUNCTION public.get_available_ambulances(UUID, INTEGER, TEXT)
+    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_available_ambulances(UUID, INTEGER, TEXT)
+    TO authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.update_ambulance_status(UUID, TEXT, JSONB, TIMESTAMPTZ, UUID)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.update_ambulance_status(UUID, TEXT, JSONB, TIMESTAMPTZ, UUID)
+    TO service_role;
+
 -- 🛠️ Stripe webhook fail card payment and close the pending request safely
 CREATE OR REPLACE FUNCTION public.fail_card_payment(
     p_payment_intent_id TEXT,
@@ -751,20 +961,23 @@ DECLARE
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_payment RECORD;
+    v_request_status TEXT := NULL;
+    v_request_payment_status TEXT := NULL;
+    v_request_payment_id UUID := NULL;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
     IF NULLIF(TRIM(COALESCE(p_payment_intent_id, '')), '') IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'payment intent id is required');
     END IF;
 
-    SELECT
-        p.*,
-        er.status AS request_status,
-        er.payment_status AS request_payment_status
+    SELECT p.*
     INTO v_payment
     FROM public.payments p
-    LEFT JOIN public.emergency_requests er ON er.id = p.emergency_request_id
     WHERE p.stripe_payment_intent_id = p_payment_intent_id
-    FOR UPDATE OF p, er;
+    FOR UPDATE;
 
     IF v_payment.id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Card payment not found');
@@ -774,10 +987,31 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Payment is not a card payment');
     END IF;
 
+    IF v_payment.emergency_request_id IS NOT NULL THEN
+        SELECT request.status, request.payment_status, request.payment_id
+        INTO v_request_status, v_request_payment_status, v_request_payment_id
+        FROM public.emergency_requests request
+        WHERE request.id = v_payment.emergency_request_id
+        FOR UPDATE;
+
+        IF NOT FOUND OR v_request_payment_id IS DISTINCT FROM v_payment.id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Card payment is not linked to its emergency request');
+        END IF;
+    END IF;
+
+    IF COALESCE(v_payment.status, '') = 'completed' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'payment_id', v_payment.id,
+            'request_id', v_payment.emergency_request_id,
+            'ignored_after_success', true
+        );
+    END IF;
+
     IF COALESCE(v_payment.status, '') IN ('failed', 'declined')
        AND (
             v_payment.emergency_request_id IS NULL
-            OR COALESCE(v_payment.request_status, 'payment_declined') = 'payment_declined'
+            OR COALESCE(v_request_status, 'payment_declined') = 'payment_declined'
        ) THEN
         RETURN jsonb_build_object(
             'success', true,
@@ -818,7 +1052,7 @@ BEGIN
     WHERE id = v_payment.id;
 
     IF v_payment.emergency_request_id IS NOT NULL
-       AND COALESCE(v_payment.request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
+       AND COALESCE(v_request_status, 'pending_approval') NOT IN ('completed', 'cancelled', 'payment_declined') THEN
         UPDATE public.emergency_requests
         SET status = 'payment_declined',
             payment_status = 'failed',
@@ -1953,10 +2187,16 @@ CREATE OR REPLACE FUNCTION public.update_ambulance_status(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_hospital_id UUID;
     v_prev_status TEXT;
     v_location geometry;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Legacy ambulance status mutation is restricted to service_role';
+    END IF;
+
     IF p_status NOT IN ('available', 'dispatched', 'en_route', 'on_scene', 'returning', 'maintenance', 'offline', 'on_trip') THEN
         RETURN jsonb_build_object('error', 'Invalid status', 'code', 'INVALID_STATUS');
     END IF;
@@ -2220,13 +2460,13 @@ BEGIN
 
     CASE v_current
         WHEN 'pending_approval' THEN
-            RETURN v_next IN ('in_progress', 'accepted', 'cancelled', 'payment_declined');
+            RETURN v_next IN ('in_progress', 'cancelled', 'payment_declined');
         WHEN 'in_progress' THEN
-            RETURN v_next IN ('accepted', 'arrived', 'completed', 'cancelled', 'payment_declined');
+            RETURN v_next IN ('accepted', 'completed', 'cancelled', 'payment_declined');
         WHEN 'payment_declined' THEN
             RETURN v_next = 'pending_approval';
         WHEN 'accepted' THEN
-            RETURN v_next IN ('arrived', 'completed', 'cancelled');
+            RETURN v_next IN ('in_progress', 'arrived', 'completed', 'cancelled');
         WHEN 'arrived' THEN
             RETURN v_next IN ('completed', 'cancelled');
         ELSE

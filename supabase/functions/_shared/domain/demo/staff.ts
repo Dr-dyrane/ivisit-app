@@ -125,6 +125,7 @@ export const ensureDemoStaff = async (
     role: "org_admin",
     organization_id: organizationId,
     full_name: toDisplayName("admin"),
+    onboarding_status: "complete",
   });
 
   const staffSummary: any[] = [];
@@ -149,6 +150,7 @@ export const ensureDemoStaff = async (
       provider_type: "doctor",
       organization_id: organizationId,
       full_name: toDisplayName("doctor", i),
+      onboarding_status: "complete",
     });
 
     await syncProfileRole(admin, driverAccount.user.id, {
@@ -156,6 +158,7 @@ export const ensureDemoStaff = async (
       provider_type: "driver",
       organization_id: organizationId,
       full_name: toDisplayName("driver", i),
+      onboarding_status: "complete",
     });
 
     const { error: doctorError } = await admin.from("doctors").upsert(
@@ -179,6 +182,8 @@ export const ensureDemoStaff = async (
 
     const callSign = `D-AMB-${i + 1}`;
     const scopeKey = resolveDemoSeedScopeKey(ctx);
+    const ambulanceLatitude = toFiniteNumber(hospital?.latitude) ?? ctx.latitude;
+    const ambulanceLongitude = toFiniteNumber(hospital?.longitude) ?? ctx.longitude;
     const { data: ambulance, error: ambulanceError } = await admin
       .from("ambulances")
       .upsert(
@@ -196,19 +201,52 @@ export const ensureDemoStaff = async (
             mode: "demo",
             label: "Demo Crew",
           },
-          location: toGeometryPoint(
-            toFiniteNumber(hospital?.latitude) ?? ctx.latitude,
-            toFiniteNumber(hospital?.longitude) ?? ctx.longitude,
-          ),
+          location: toGeometryPoint(ambulanceLatitude, ambulanceLongitude),
           updated_at: nowIso(),
         },
         { onConflict: "profile_id", ignoreDuplicates: false },
       )
-      .select("id")
+      .select("id,telemetry_sequence")
       .single();
 
     if (ambulanceError) {
       throw new Error(`ambulance upsert failed: ${ambulanceError.message}`);
+    }
+
+    const { data: staffingResult, error: staffingError } = await admin.rpc(
+      "staff_ambulance_responder",
+      {
+        p_ambulance_id: ambulance.id,
+        p_responder_id: driverAccount.user.id,
+      },
+    );
+
+    if (staffingError || staffingResult?.success !== true) {
+      throw new Error(
+        `ambulance staffing failed: ${staffingError?.message || staffingResult?.error || "unknown error"}`,
+      );
+    }
+
+    const { data: telemetryResult, error: telemetryError } = await admin.rpc(
+      "report_responder_telemetry",
+      {
+        p_payload: {
+          ambulance_id: ambulance.id,
+          sequence: Number(ambulance.telemetry_sequence || 0) + 1,
+          observed_at: nowIso(),
+          location: {
+            lat: ambulanceLatitude,
+            lng: ambulanceLongitude,
+          },
+          accuracy_meters: 10,
+        },
+      },
+    );
+
+    if (telemetryError || telemetryResult?.success !== true) {
+      throw new Error(
+        `ambulance telemetry bootstrap failed: ${telemetryError?.message || telemetryResult?.error || "unknown error"}`,
+      );
     }
 
     await syncProfileRole(admin, driverAccount.user.id, {

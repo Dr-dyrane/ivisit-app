@@ -1,6 +1,6 @@
 # 📸 Schema Snapshot
 
-Generated on 5/18/2026
+Generated on 7/14/2026
 
 ## 📄 20260219000100_identity.sql
 
@@ -157,10 +157,21 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 CREATE TABLE IF NOT EXISTS public.organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    organization_type TEXT NOT NULL DEFAULT 'hospital' CHECK (organization_type IN ('hospital', 'clinic', 'ambulance_service')),
+    registration_number TEXT,
     stripe_account_id TEXT UNIQUE,
     ivisit_fee_percentage NUMERIC DEFAULT 2.5,
     fee_tier TEXT DEFAULT 'standard',
     contact_email TEXT,
+    contact_phone TEXT,
+    address TEXT,
+    city TEXT,
+    state TEXT,
+    verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'rejected')),
+    verified_at TIMESTAMPTZ,
+    verified_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    rejection_reason TEXT,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT true,
     display_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -175,6 +186,10 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     address TEXT NOT NULL,
+    timezone TEXT NOT NULL DEFAULT 'UTC',
+    timezone_confirmed_at TIMESTAMPTZ,
+    timezone_confirmation_source TEXT,
+    timezone_confirmed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     phone TEXT,
     rating DOUBLE PRECISION DEFAULT 0,
     type TEXT DEFAULT 'standard',
@@ -206,6 +221,27 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     last_availability_update TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `organization_verification_documents`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.organization_verification_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    facility_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    uploaded_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    document_type TEXT NOT NULL CHECK (document_type IN ('registration', 'license', 'identity', 'other')),
+    storage_path TEXT NOT NULL UNIQUE,
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 10485760),
+    review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'accepted', 'rejected')),
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -302,7 +338,8 @@ CREATE TABLE IF NOT EXISTS public.doctor_schedules (
     end_time TIME NOT NULL,
     shift_type TEXT NOT NULL CHECK (shift_type IN ('day', 'evening', 'night')),
     is_available BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -370,7 +407,7 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
-    profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE, -- Driver Profile
+    profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE SET NULL, -- Current Driver Profile
     type TEXT,
     call_sign TEXT,
     -- Dispatch lifecycle statuses (matches automations + emergency_logic RPCs)
@@ -379,6 +416,14 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
         'maintenance', 'offline', 'pending_approval'
     )),
     location GEOMETRY(POINT, 4326),
+    heading DOUBLE PRECISION,
+    location_accuracy_meters DOUBLE PRECISION CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    location_observed_at TIMESTAMPTZ,
+    location_received_at TIMESTAMPTZ,
+    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
+    telemetry_lease_expires_at TIMESTAMPTZ,
     vehicle_number TEXT,
     license_plate TEXT,
     base_price NUMERIC,
@@ -399,6 +444,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    dispatch_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
     ambulance_id UUID REFERENCES public.ambulances(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
     payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'completed', 'failed', 'refunded', 'declined')),
@@ -425,6 +471,12 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     patient_location GEOMETRY(POINT, 4326),
     responder_location GEOMETRY(POINT, 4326),
     responder_heading DOUBLE PRECISION,
+    responder_location_accuracy_meters DOUBLE PRECISION,
+    responder_location_observed_at TIMESTAMPTZ,
+    responder_location_received_at TIMESTAMPTZ,
+    responder_telemetry_sequence BIGINT,
+    responder_telemetry_lease_expires_at TIMESTAMPTZ,
+    patient_acknowledged_arrival_at TIMESTAMPTZ,
     patient_heading DOUBLE PRECISION,
     estimated_arrival TEXT,
     
@@ -475,6 +527,63 @@ CREATE TABLE IF NOT EXISTS public.emergency_status_transitions (
 );
 ```
 
+### Table: `emergency_responder_assignments`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_responder_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE RESTRICT,
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'offered' CHECK (
+        status IN ('offered', 'accepted', 'arrived', 'declined', 'released', 'completed', 'cancelled')
+    ),
+    offered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds'),
+    decline_reason TEXT,
+    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
+    responder_location GEOMETRY(POINT, 4326),
+    responder_heading DOUBLE PRECISION,
+    location_accuracy_meters DOUBLE PRECISION CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    location_observed_at TIMESTAMPTZ,
+    location_received_at TIMESTAMPTZ,
+    telemetry_lease_expires_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ,
+    arrived_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    offered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `ambulance_staff_assignments`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.ambulance_staff_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    duty_role TEXT NOT NULL DEFAULT 'driver' CHECK (duty_role = 'driver'),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'cancelled')),
+    starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ends_at TIMESTAMPTZ,
+    assigned_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    ended_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    end_reason TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at IS NULL OR ends_at > starts_at)
+);
+```
+
 ### Table: `visits`
 
 ```sql
@@ -483,6 +592,7 @@ CREATE TABLE IF NOT EXISTS public.visits (
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL,
+    doctor_id UUID REFERENCES public.doctors(id) ON DELETE SET NULL,
     -- Hospital snapshot (denormalised from hospitals join for offline/history display)
     hospital_name TEXT,
     hospital TEXT,                             -- legacy alias for hospital_name (mapFromDb reads both)
@@ -509,6 +619,11 @@ CREATE TABLE IF NOT EXISTS public.visits (
     room_number TEXT,
     estimated_duration TEXT,
     meeting_link TEXT,
+    care_mode TEXT,
+    scheduled_start_at TIMESTAMPTZ,
+    scheduled_end_at TIMESTAMPTZ,
+    scheduled_timezone TEXT,
+    booking_idempotency_key UUID,
     insurance_covered BOOLEAN DEFAULT TRUE,
     next_visit TEXT,
     -- Patient location at time of booking
@@ -538,8 +653,9 @@ CREATE TABLE IF NOT EXISTS public.visits (
 ```sql
 CREATE TABLE IF NOT EXISTS public.emergency_chat_rooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    emergency_request_id UUID NOT NULL UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
+    emergency_request_id UUID UNIQUE REFERENCES public.emergency_requests(id) ON DELETE CASCADE,
     visit_id UUID REFERENCES public.visits(id) ON DELETE SET NULL,
+    channel_type TEXT NOT NULL DEFAULT 'emergency',
     created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -576,10 +692,15 @@ CREATE TABLE IF NOT EXISTS public.emergency_chat_messages (
     room_id UUID NOT NULL REFERENCES public.emergency_chat_rooms(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     sender_role TEXT NOT NULL CHECK (sender_role IN ('patient', 'driver', 'crew', 'provider', 'hospital_admin', 'dispatcher', 'support', 'system')),
-    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system')),
+    kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'quick_action', 'status_event', 'system', 'image', 'video')),
     body TEXT NOT NULL CHECK (char_length(trim(body)) BETWEEN 1 AND 1000),
     client_message_id TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    attachment_storage_path TEXT,
+    attachment_mime_type TEXT,
+    attachment_size_bytes BIGINT,
+    attachment_duration_ms INTEGER,
+    ai_assisted BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     edited_at TIMESTAMPTZ,
@@ -639,6 +760,7 @@ CREATE TABLE IF NOT EXISTS public.wallet_ledger (
     description TEXT,
     reference_id UUID, -- Internal ID (Payment ID or Request ID)
     external_reference TEXT, -- External ID (Stripe Intent, Payout ID)
+    idempotency_key TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -688,6 +810,37 @@ CREATE TABLE IF NOT EXISTS public.payments (
 );
 ```
 
+### Table: `stripe_webhook_event_receipts`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.stripe_webhook_event_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stripe_event_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    stripe_account_id TEXT,
+    status TEXT NOT NULL DEFAULT 'processing',
+    attempts INTEGER NOT NULL DEFAULT 1,
+    claim_token UUID,
+    first_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processing_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    lease_expires_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT stripe_webhook_event_receipts_event_id_chk
+        CHECK (BTRIM(stripe_event_id) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_event_type_chk
+        CHECK (BTRIM(event_type) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_status_chk
+        CHECK (status IN ('processing', 'completed', 'failed')),
+    CONSTRAINT stripe_webhook_event_receipts_attempts_chk
+        CHECK (attempts > 0)
+);
+```
+
 ### Table: `exchange_rates`
 
 ```sql
@@ -716,9 +869,18 @@ CREATE TABLE IF NOT EXISTS public.insurance_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     provider_name TEXT NOT NULL,
-    policy_number TEXT NOT NULL,
+    provider TEXT,
+    policy_number TEXT,
+    plan_type TEXT,
     policy_type TEXT DEFAULT 'basic',
-    coverage_amount NUMERIC(10,2) NOT NULL,
+    coverage_details JSONB DEFAULT '{}',
+    coverage_amount NUMERIC(10,2),
+    coverage_percentage NUMERIC(5,2),
+    linked_payment_method TEXT,
+    status TEXT DEFAULT 'active',
+    starts_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    verified BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -756,6 +918,7 @@ CREATE TABLE IF NOT EXISTS public.insurance_billing (
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    event_key TEXT,
     type TEXT, -- 'emergency', 'system', 'visit'
     title TEXT,
     message TEXT,
@@ -783,9 +946,11 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
     organization_id UUID REFERENCES public.organizations(id),
     subject TEXT NOT NULL,
     message TEXT NOT NULL,
-    category TEXT DEFAULT 'general',
-    status TEXT DEFAULT 'open',
-    priority TEXT DEFAULT 'normal',
+    category TEXT DEFAULT 'general' CHECK (category IN (
+        'general', 'technical', 'billing', 'account', 'feature_request', 'bug_report', 'medical'
+    )),
+    status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
     assigned_to UUID REFERENCES public.profiles(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -951,6 +1116,96 @@ CREATE TABLE IF NOT EXISTS public.room_pricing (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(hospital_id, room_type)
+);
+```
+
+## 📄 20260714101500_emergency_dispatch_readiness.sql
+
+### Table: `emergency_responder_assignments`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.emergency_responder_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE RESTRICT,
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'offered' CHECK (
+        status IN ('offered', 'accepted', 'arrived', 'declined', 'released', 'completed', 'cancelled')
+    ),
+    offered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds'),
+    decline_reason TEXT,
+    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
+    responder_location GEOMETRY(POINT, 4326),
+    responder_heading DOUBLE PRECISION,
+    location_accuracy_meters DOUBLE PRECISION CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    location_observed_at TIMESTAMPTZ,
+    location_received_at TIMESTAMPTZ,
+    telemetry_lease_expires_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ,
+    arrived_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    offered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table: `ambulance_staff_assignments`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.ambulance_staff_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    duty_role TEXT NOT NULL DEFAULT 'driver' CHECK (duty_role = 'driver'),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'cancelled')),
+    starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ends_at TIMESTAMPTZ,
+    assigned_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    ended_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    end_reason TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at IS NULL OR ends_at > starts_at)
+);
+```
+
+### Table: `stripe_webhook_event_receipts`
+
+```sql
+CREATE TABLE IF NOT EXISTS public.stripe_webhook_event_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stripe_event_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    stripe_account_id TEXT,
+    status TEXT NOT NULL DEFAULT 'processing',
+    attempts INTEGER NOT NULL DEFAULT 1,
+    claim_token UUID,
+    first_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processing_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    lease_expires_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT stripe_webhook_event_receipts_event_id_chk
+        CHECK (BTRIM(stripe_event_id) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_event_type_chk
+        CHECK (BTRIM(event_type) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_status_chk
+        CHECK (status IN ('processing', 'completed', 'failed')),
+    CONSTRAINT stripe_webhook_event_receipts_attempts_chk
+        CHECK (attempts > 0)
 );
 ```
 

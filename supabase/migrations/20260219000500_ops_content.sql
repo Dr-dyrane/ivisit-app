@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    event_key TEXT,
     type TEXT, -- 'emergency', 'system', 'visit'
     title TEXT,
     message TEXT,
@@ -21,6 +22,251 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Canonical notification events are additive. Legacy/client-created rows keep a
+-- NULL event_key, while backend-owned events are unique per recipient and event.
+ALTER TABLE public.notifications
+    ADD COLUMN IF NOT EXISTS event_key TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_recipient_event_key_uidx
+    ON public.notifications(user_id, event_key)
+    WHERE event_key IS NOT NULL;
+
+COMMENT ON COLUMN public.notifications.event_key IS
+    'Stable backend event identity. Unique per notification recipient when present.';
+
+-- Internal callers must derive the recipient and payload from canonical server
+-- rows before calling this helper. Client roles have no execute privilege.
+CREATE OR REPLACE FUNCTION public.emit_canonical_notification(
+    p_event_key TEXT,
+    p_recipient_user_id UUID,
+    p_type TEXT,
+    p_title TEXT,
+    p_message TEXT,
+    p_priority TEXT DEFAULT 'normal',
+    p_action_type TEXT DEFAULT NULL,
+    p_target_id UUID DEFAULT NULL,
+    p_action_data JSONB DEFAULT '{}'::JSONB,
+    p_metadata JSONB DEFAULT '{}'::JSONB,
+    p_icon TEXT DEFAULT NULL,
+    p_color TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_event_key TEXT := NULLIF(BTRIM(p_event_key), '');
+    v_recipient_user_id UUID;
+    v_type TEXT := NULLIF(BTRIM(p_type), '');
+    v_title TEXT := NULLIF(BTRIM(p_title), '');
+    v_message TEXT := NULLIF(BTRIM(p_message), '');
+    v_priority TEXT := COALESCE(NULLIF(BTRIM(p_priority), ''), 'normal');
+    v_action_type TEXT := NULLIF(BTRIM(p_action_type), '');
+    v_action_data JSONB := COALESCE(p_action_data, '{}'::JSONB);
+    v_metadata JSONB := COALESCE(p_metadata, '{}'::JSONB);
+    v_icon TEXT := NULLIF(BTRIM(p_icon), '');
+    v_color TEXT := NULLIF(BTRIM(p_color), '');
+    v_notification_id UUID;
+    v_existing public.notifications%ROWTYPE;
+    v_inserted BOOLEAN := false;
+BEGIN
+    IF v_event_key IS NULL OR CHAR_LENGTH(v_event_key) > 512 THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Canonical notification event_key is required and must not exceed 512 characters';
+    END IF;
+
+    IF p_recipient_user_id IS NULL THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Canonical notification recipient is required';
+    END IF;
+
+    SELECT profile.id
+    INTO v_recipient_user_id
+    FROM public.profiles AS profile
+    WHERE profile.id = p_recipient_user_id;
+
+    IF v_recipient_user_id IS NULL THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '23503',
+            MESSAGE = 'Canonical notification recipient does not exist';
+    END IF;
+
+    IF v_type IS NULL OR v_title IS NULL OR v_message IS NULL THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Canonical notification type, title, and message are required';
+    END IF;
+
+    IF v_priority NOT IN ('low', 'normal', 'high', 'urgent') THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Canonical notification priority is invalid';
+    END IF;
+
+    IF JSONB_TYPEOF(v_action_data) <> 'object' OR JSONB_TYPEOF(v_metadata) <> 'object' THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Canonical notification action_data and metadata must be JSON objects';
+    END IF;
+
+    INSERT INTO public.notifications (
+        user_id,
+        event_key,
+        type,
+        title,
+        message,
+        icon,
+        color,
+        priority,
+        action_type,
+        target_id,
+        action_data,
+        metadata
+    )
+    VALUES (
+        v_recipient_user_id,
+        v_event_key,
+        v_type,
+        v_title,
+        v_message,
+        v_icon,
+        v_color,
+        v_priority,
+        v_action_type,
+        p_target_id,
+        v_action_data,
+        v_metadata
+    )
+    ON CONFLICT (user_id, event_key) WHERE event_key IS NOT NULL DO NOTHING
+    RETURNING id INTO v_notification_id;
+
+    v_inserted := v_notification_id IS NOT NULL;
+
+    IF NOT v_inserted THEN
+        SELECT notification.*
+        INTO v_existing
+        FROM public.notifications AS notification
+        WHERE notification.user_id = v_recipient_user_id
+          AND notification.event_key = v_event_key;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION USING
+                ERRCODE = '40001',
+                MESSAGE = 'Canonical notification replay could not resolve the existing row';
+        END IF;
+
+        IF v_existing.type IS DISTINCT FROM v_type
+           OR v_existing.title IS DISTINCT FROM v_title
+           OR v_existing.message IS DISTINCT FROM v_message
+           OR v_existing.icon IS DISTINCT FROM v_icon
+           OR v_existing.color IS DISTINCT FROM v_color
+           OR v_existing.priority IS DISTINCT FROM v_priority
+           OR v_existing.action_type IS DISTINCT FROM v_action_type
+           OR v_existing.target_id IS DISTINCT FROM p_target_id
+           OR v_existing.action_data IS DISTINCT FROM v_action_data
+           OR v_existing.metadata IS DISTINCT FROM v_metadata THEN
+            RAISE EXCEPTION USING
+                ERRCODE = '23505',
+                MESSAGE = 'Canonical notification event replay payload does not match the existing row';
+        END IF;
+
+        v_notification_id := v_existing.id;
+    END IF;
+
+    RETURN JSONB_BUILD_OBJECT(
+        'success', true,
+        'notification_id', v_notification_id,
+        'recipient_user_id', v_recipient_user_id,
+        'event_key', v_event_key,
+        'inserted', v_inserted,
+        'replayed', NOT v_inserted
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
+
+REVOKE ALL ON FUNCTION public.emit_canonical_notification(
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, JSONB, JSONB, TEXT, TEXT
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.emit_canonical_notification(
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, JSONB, JSONB, TEXT, TEXT
+) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.notify_canonical_payment_status_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_title TEXT;
+    v_message TEXT;
+    v_priority TEXT;
+    v_color TEXT;
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status
+       OR NEW.user_id IS NULL
+       OR NEW.status NOT IN ('completed', 'failed', 'declined', 'refunded') THEN
+        RETURN NEW;
+    END IF;
+
+    v_title := CASE NEW.status
+        WHEN 'completed' THEN 'Payment completed'
+        WHEN 'refunded' THEN 'Payment refunded'
+        WHEN 'declined' THEN 'Payment declined'
+        ELSE 'Payment failed'
+    END;
+    v_message := CASE NEW.status
+        WHEN 'completed' THEN 'Your payment was confirmed.'
+        WHEN 'refunded' THEN 'Your payment was refunded.'
+        WHEN 'declined' THEN 'Your payment was declined. Open the payment to review your options.'
+        ELSE 'Your payment could not be completed. Open the payment to review your options.'
+    END;
+    v_priority := CASE
+        WHEN NEW.status IN ('failed', 'declined') THEN 'high'
+        ELSE 'normal'
+    END;
+    v_color := CASE
+        WHEN NEW.status = 'completed' THEN 'success'
+        WHEN NEW.status = 'refunded' THEN 'info'
+        ELSE 'danger'
+    END;
+
+    PERFORM public.emit_canonical_notification(
+        p_event_key => 'payment:' || NEW.id::TEXT || ':status:' || NEW.status,
+        p_recipient_user_id => NEW.user_id,
+        p_type => 'payment',
+        p_title => v_title,
+        p_message => v_message,
+        p_priority => v_priority,
+        p_action_type => 'view_payment',
+        p_target_id => NEW.id,
+        p_action_data => JSONB_BUILD_OBJECT(
+            'id', NEW.id,
+            'paymentId', NEW.id,
+            'requestId', NEW.emergency_request_id
+        ),
+        p_metadata => JSONB_BUILD_OBJECT(
+            'eventName', 'payment.status.' || NEW.status,
+            'paymentId', NEW.id,
+            'requestId', NEW.emergency_request_id,
+            'method', NEW.payment_method,
+            'status', NEW.status
+        ),
+        p_icon => CASE WHEN NEW.status = 'completed' THEN 'checkmark-circle-outline' ELSE 'card-outline' END,
+        p_color => v_color
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
+
+REVOKE ALL ON FUNCTION public.notify_canonical_payment_status_change()
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.notify_canonical_payment_status_change()
+    TO service_role;
+
+DROP TRIGGER IF EXISTS notify_payment_status_change ON public.payments;
+CREATE TRIGGER notify_payment_status_change
+    AFTER UPDATE OF status ON public.payments
+    FOR EACH ROW
+    EXECUTE FUNCTION public.notify_canonical_payment_status_change();
 
 -- 2. Support System
 CREATE TABLE IF NOT EXISTS public.support_tickets (
@@ -153,38 +399,62 @@ CREATE TABLE IF NOT EXISTS public.documents (
 );
 
 -- 🛠️ AUTOMATION: OPS HOOKS
--- A. Notify on Emergency Status Change
+-- Notify organization administrators when a canonical emergency request is created.
+-- Lifecycle and payment notifications belong to their owning RPCs and must call
+-- emit_canonical_notification with an immutable event key.
 CREATE OR REPLACE FUNCTION public.notify_emergency_events()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_recipient RECORD;
+    v_service_label TEXT := CASE NEW.service_type
+        WHEN 'ambulance' THEN 'ambulance'
+        WHEN 'bed' THEN 'bed'
+        ELSE 'emergency'
+    END;
 BEGIN
-    -- Notify Org Admins on New Request
-    IF (TG_OP = 'INSERT') THEN
-        INSERT INTO public.notifications (user_id, type, title, message, priority, action_type, action_data)
-        SELECT 
-            p.id, 'emergency', '🚨 New Emergency', 
-            'A new ' || NEW.service_type || ' request was created at your facility.', 
-            'high', 'view_emergency', jsonb_build_object('id', NEW.id)
-        FROM public.profiles p
-        WHERE p.organization_id = (SELECT organization_id FROM public.hospitals WHERE id = NEW.hospital_id)
-        AND p.role IN ('org_admin', 'admin');
+    IF TG_OP <> 'INSERT' OR NEW.id IS NULL OR NEW.hospital_id IS NULL THEN
+        RETURN NEW;
     END IF;
 
-    -- Notify Patient on Approval/Dispatch
-    IF (TG_OP = 'UPDATE' AND NEW.status != OLD.status) THEN
-        INSERT INTO public.notifications (user_id, type, title, message, priority)
-        VALUES (
-            NEW.user_id, 'emergency', 'Status Updated', 
-            'Your emergency request is now: ' || NEW.status, 
-            'normal'
+    FOR v_recipient IN
+        SELECT profile.id AS user_id
+        FROM public.hospitals AS hospital
+        JOIN public.profiles AS profile
+          ON profile.organization_id = hospital.organization_id
+        WHERE hospital.id = NEW.hospital_id
+          AND hospital.organization_id IS NOT NULL
+          AND profile.role IN ('org_admin', 'admin')
+    LOOP
+        PERFORM public.emit_canonical_notification(
+            p_event_key => 'emergency_request:' || NEW.id::TEXT || ':created',
+            p_recipient_user_id => v_recipient.user_id,
+            p_type => 'emergency',
+            p_title => 'New Emergency',
+            p_message => 'A new ' || v_service_label || ' request was created at your facility.',
+            p_priority => 'high',
+            p_action_type => 'view_emergency',
+            p_target_id => NEW.id,
+            p_action_data => JSONB_BUILD_OBJECT(
+                'id', NEW.id,
+                'requestId', NEW.id
+            ),
+            p_metadata => JSONB_BUILD_OBJECT(
+                'eventName', 'emergency_request.created',
+                'requestId', NEW.id,
+                'hospitalId', NEW.hospital_id
+            )
         );
-    END IF;
+    END LOOP;
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
+REVOKE ALL ON FUNCTION public.notify_emergency_events() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS on_emergency_notification ON public.emergency_requests;
 CREATE TRIGGER on_emergency_notification
-AFTER INSERT OR UPDATE ON public.emergency_requests
+AFTER INSERT ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.notify_emergency_events();
 
 CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();
@@ -279,11 +549,26 @@ CREATE OR REPLACE FUNCTION public.process_insurance_claim(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_policy_id UUID;
     v_coverage_amount NUMERIC;
     v_claim_amount NUMERIC;
-    v_result JSONB;
+    v_claim_id UUID;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Insurance claim processing is restricted to service_role';
+    END IF;
+
+    IF p_emergency_request_id IS NULL OR p_user_id IS NULL OR p_hospital_id IS NULL
+       OR p_actual_cost IS NULL OR p_actual_cost <= 0 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Claim input is invalid',
+            'code', 'INVALID_CLAIM_INPUT'
+        );
+    END IF;
+
     -- Get user's active policy
     SELECT id, coverage_amount INTO v_policy_id, v_coverage_amount
     FROM public.insurance_policies 
@@ -301,16 +586,18 @@ BEGIN
     END IF;
     
     -- Calculate claim amount (minimum of actual cost and coverage)
-    v_claim_amount := LEAST(p_actual_cost, v_coverage_amount);
+    v_claim_amount := LEAST(p_actual_cost, COALESCE(v_coverage_amount, 0));
     
     -- Create insurance claim record
     INSERT INTO public.insurance_billing (
         emergency_request_id,
         user_id,
         hospital_id,
-        policy_id,
-        billed_amount,
-        covered_amount,
+        insurance_policy_id,
+        total_amount,
+        insurance_amount,
+        user_amount,
+        coverage_percentage,
         status,
         created_at
     ) VALUES (
@@ -320,13 +607,24 @@ BEGIN
         v_policy_id,
         p_actual_cost,
         v_claim_amount,
+        p_actual_cost - v_claim_amount,
+        CASE WHEN p_actual_cost > 0 THEN (v_claim_amount / p_actual_cost) * 100 ELSE 0 END,
         'pending',
         NOW()
-    ) RETURNING id INTO v_result;
+    )
+    ON CONFLICT (emergency_request_id) WHERE emergency_request_id IS NOT NULL
+    DO UPDATE SET
+        insurance_policy_id = EXCLUDED.insurance_policy_id,
+        total_amount = EXCLUDED.total_amount,
+        insurance_amount = EXCLUDED.insurance_amount,
+        user_amount = EXCLUDED.user_amount,
+        coverage_percentage = EXCLUDED.coverage_percentage,
+        updated_at = NOW()
+    RETURNING id INTO v_claim_id;
     
     RETURN jsonb_build_object(
         'success', true,
-        'claim_id', v_result,
+        'claim_id', v_claim_id,
         'billed_amount', p_actual_cost,
         'covered_amount', v_claim_amount,
         'patient_responsibility', p_actual_cost - v_claim_amount,
@@ -334,6 +632,11 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.process_insurance_claim(UUID, UUID, UUID, NUMERIC)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.process_insurance_claim(UUID, UUID, UUID, NUMERIC)
+    TO service_role;
 
 -- 3. Get Insurance Policies
 CREATE OR REPLACE FUNCTION public.get_insurance_policies(

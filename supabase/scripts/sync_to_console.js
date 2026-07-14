@@ -1,9 +1,32 @@
 const fs = require('fs');
 const path = require('path');
 
-// Paths (Corrected for Windows/Absolute)
-const appDir = 'c:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-app';
-const consoleDir = 'c:\\Users\\Dyrane\\Documents\\GitHub\\ivisit-console';
+// Resolve the canonical source from this checkout so linked worktrees do not
+// accidentally sync stale files from a different App clone. The script is also
+// copied into Console, where explicit roots keep that copy usable.
+const scriptProjectRoot = path.resolve(__dirname, '..', '..');
+const scriptProjectPackage = JSON.parse(
+    fs.readFileSync(path.join(scriptProjectRoot, 'package.json'), 'utf8')
+);
+const runningFromConsole = scriptProjectPackage.name === 'ivisit-console';
+const defaultConsoleRoot = runningFromConsole
+    ? path.resolve(scriptProjectRoot, '..')
+    : path.resolve(scriptProjectRoot, '..', 'ivisit-console');
+const defaultAppRoot = runningFromConsole
+    ? path.resolve(defaultConsoleRoot, '..', 'ivisit-app')
+    : scriptProjectRoot;
+const appDir = path.resolve(process.env.IVISIT_APP_ROOT || defaultAppRoot);
+const consoleDir = path.resolve(process.env.IVISIT_CONSOLE_ROOT || defaultConsoleRoot);
+
+if (!fs.existsSync(path.join(appDir, 'supabase', 'migrations'))) {
+    throw new Error(`Invalid App source root: ${appDir}`);
+}
+
+if (!fs.existsSync(path.join(consoleDir, 'frontend'))) {
+    throw new Error(
+        `Invalid Console target root: ${consoleDir}. Set IVISIT_CONSOLE_ROOT when the repos are not siblings.`
+    );
+}
 
 // Target the FRONTEND supabase folder in Console
 const appSupabaseDir = path.join(appDir, 'supabase');

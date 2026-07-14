@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.wallet_ledger (
     description TEXT,
     reference_id UUID, -- Internal ID (Payment ID or Request ID)
     external_reference TEXT, -- External ID (Stripe Intent, Payout ID)
+    idempotency_key TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -78,6 +79,556 @@ CREATE TABLE IF NOT EXISTS public.payments (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- BEGIN EMERGENCY_PAYMENT_IDEMPOTENCY_SCHEMA
+-- PULLBACK NOTE: financial retry identity is persisted beside the ledger entry.
+-- Balance mutation functions claim these keys before changing a balance.
+ALTER TABLE public.wallet_ledger
+    ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_ledger_idempotency_key
+    ON public.wallet_ledger(idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_open_emergency_settlement
+    ON public.payments(emergency_request_id)
+    WHERE emergency_request_id IS NOT NULL
+      AND status IN ('pending', 'completed')
+      AND COALESCE(metadata->>'payment_kind', 'service') = 'service';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'emergency_requests'
+          AND constraint_name = 'emergency_requests_payment_id_fkey'
+    ) THEN
+        ALTER TABLE public.emergency_requests
+            ADD CONSTRAINT emergency_requests_payment_id_fkey
+            FOREIGN KEY (payment_id)
+            REFERENCES public.payments(id)
+            ON DELETE SET NULL
+            NOT VALID;
+    END IF;
+END
+$$;
+-- END EMERGENCY_PAYMENT_IDEMPOTENCY_SCHEMA
+
+-- BEGIN STRIPE_WEBHOOK_EVENT_RECEIPTS
+-- PULLBACK NOTE: Stripe webhook delivery now has a durable finance-owned lease.
+-- OLD: replay and concurrent delivery relied only on downstream idempotency.
+-- NEW: signed events claim a unique receipt before any consequence is applied.
+CREATE TABLE IF NOT EXISTS public.stripe_webhook_event_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stripe_event_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    stripe_account_id TEXT,
+    status TEXT NOT NULL DEFAULT 'processing',
+    attempts INTEGER NOT NULL DEFAULT 1,
+    claim_token UUID,
+    first_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processing_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    lease_expires_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT stripe_webhook_event_receipts_event_id_chk
+        CHECK (BTRIM(stripe_event_id) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_event_type_chk
+        CHECK (BTRIM(event_type) <> ''),
+    CONSTRAINT stripe_webhook_event_receipts_status_chk
+        CHECK (status IN ('processing', 'completed', 'failed')),
+    CONSTRAINT stripe_webhook_event_receipts_attempts_chk
+        CHECK (attempts > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stripe_webhook_event_receipts_event_id
+    ON public.stripe_webhook_event_receipts(stripe_event_id);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_webhook_event_receipts_status_lease
+    ON public.stripe_webhook_event_receipts(status, lease_expires_at);
+
+ALTER TABLE public.stripe_webhook_event_receipts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.stripe_webhook_event_receipts FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.stripe_webhook_event_receipts TO service_role;
+
+CREATE OR REPLACE FUNCTION public.claim_stripe_webhook_event(
+    p_stripe_event_id TEXT,
+    p_event_type TEXT,
+    p_stripe_account_id TEXT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_event_id TEXT := NULLIF(BTRIM(COALESCE(p_stripe_event_id, '')), '');
+    v_event_type TEXT := NULLIF(BTRIM(COALESCE(p_event_type, '')), '');
+    v_account_id TEXT := NULLIF(BTRIM(COALESCE(p_stripe_account_id, '')), '');
+    v_now TIMESTAMPTZ := clock_timestamp();
+    v_claim_token UUID := gen_random_uuid();
+    v_disposition TEXT := 'claimed';
+    v_receipt public.stripe_webhook_event_receipts%ROWTYPE;
+BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF v_event_id IS NULL OR v_event_type IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Stripe event id and type are required'
+        );
+    END IF;
+
+    INSERT INTO public.stripe_webhook_event_receipts (
+        stripe_event_id,
+        event_type,
+        stripe_account_id,
+        status,
+        attempts,
+        claim_token,
+        first_received_at,
+        last_received_at,
+        processing_started_at,
+        lease_expires_at,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        v_event_id,
+        v_event_type,
+        v_account_id,
+        'processing',
+        1,
+        v_claim_token,
+        v_now,
+        v_now,
+        v_now,
+        v_now + INTERVAL '5 minutes',
+        v_now,
+        v_now
+    )
+    ON CONFLICT (stripe_event_id) DO NOTHING
+    RETURNING * INTO v_receipt;
+
+    IF v_receipt.id IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'should_process', true,
+            'disposition', v_disposition,
+            'receipt_id', v_receipt.id,
+            'claim_token', v_receipt.claim_token,
+            'attempts', v_receipt.attempts,
+            'lease_expires_at', v_receipt.lease_expires_at
+        );
+    END IF;
+
+    -- The insert can wait behind a concurrent claim. Refresh the lease clock
+    -- before deciding whether that owner is still active.
+    v_now := clock_timestamp();
+
+    SELECT receipt.*
+    INTO v_receipt
+    FROM public.stripe_webhook_event_receipts receipt
+    WHERE receipt.stripe_event_id = v_event_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Stripe event receipt disappeared during claim';
+    END IF;
+
+    IF v_receipt.event_type IS DISTINCT FROM v_event_type
+       OR v_receipt.stripe_account_id IS DISTINCT FROM v_account_id THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Stripe event receipt identity mismatch',
+            'receipt_id', v_receipt.id
+        );
+    END IF;
+
+    IF v_receipt.status = 'completed' THEN
+        UPDATE public.stripe_webhook_event_receipts
+        SET last_received_at = v_now,
+            updated_at = v_now
+        WHERE id = v_receipt.id;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'should_process', false,
+            'disposition', 'completed',
+            'receipt_id', v_receipt.id,
+            'attempts', v_receipt.attempts,
+            'completed_at', v_receipt.completed_at
+        );
+    END IF;
+
+    IF v_receipt.status = 'processing'
+       AND v_receipt.lease_expires_at IS NOT NULL
+       AND v_receipt.lease_expires_at > v_now THEN
+        UPDATE public.stripe_webhook_event_receipts
+        SET last_received_at = v_now,
+            updated_at = v_now
+        WHERE id = v_receipt.id;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'should_process', false,
+            'disposition', 'active',
+            'receipt_id', v_receipt.id,
+            'attempts', v_receipt.attempts,
+            'lease_expires_at', v_receipt.lease_expires_at
+        );
+    END IF;
+
+    v_disposition := CASE
+        WHEN v_receipt.status = 'failed' THEN 'retried_failed'
+        ELSE 'reclaimed_stale'
+    END;
+    v_claim_token := gen_random_uuid();
+
+    UPDATE public.stripe_webhook_event_receipts
+    SET status = 'processing',
+        attempts = attempts + 1,
+        claim_token = v_claim_token,
+        last_received_at = v_now,
+        processing_started_at = v_now,
+        lease_expires_at = v_now + INTERVAL '5 minutes',
+        completed_at = NULL,
+        updated_at = v_now
+    WHERE id = v_receipt.id
+    RETURNING * INTO v_receipt;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'should_process', true,
+        'disposition', v_disposition,
+        'receipt_id', v_receipt.id,
+        'claim_token', v_receipt.claim_token,
+        'attempts', v_receipt.attempts,
+        'lease_expires_at', v_receipt.lease_expires_at
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION public.complete_stripe_webhook_event(
+    p_stripe_event_id TEXT,
+    p_claim_token UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_event_id TEXT := NULLIF(BTRIM(COALESCE(p_stripe_event_id, '')), '');
+    v_now TIMESTAMPTZ := clock_timestamp();
+    v_receipt public.stripe_webhook_event_receipts%ROWTYPE;
+BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF v_event_id IS NULL OR p_claim_token IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Stripe event claim is required');
+    END IF;
+
+    UPDATE public.stripe_webhook_event_receipts
+    SET status = 'completed',
+        completed_at = COALESCE(completed_at, v_now),
+        claim_token = NULL,
+        lease_expires_at = NULL,
+        updated_at = v_now
+    WHERE stripe_event_id = v_event_id
+      AND status = 'processing'
+      AND claim_token = p_claim_token
+    RETURNING * INTO v_receipt;
+
+    IF v_receipt.id IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'receipt_id', v_receipt.id,
+            'attempts', v_receipt.attempts,
+            'completed_at', v_receipt.completed_at
+        );
+    END IF;
+
+    SELECT receipt.*
+    INTO v_receipt
+    FROM public.stripe_webhook_event_receipts receipt
+    WHERE receipt.stripe_event_id = v_event_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Stripe event receipt not found');
+    END IF;
+
+    IF v_receipt.status = 'completed' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_completed', true,
+            'receipt_id', v_receipt.id,
+            'attempts', v_receipt.attempts,
+            'completed_at', v_receipt.completed_at
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Stripe event claim is no longer owned',
+        'receipt_id', v_receipt.id,
+        'status', v_receipt.status
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION public.fail_stripe_webhook_event(
+    p_stripe_event_id TEXT,
+    p_claim_token UUID,
+    p_last_error TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_event_id TEXT := NULLIF(BTRIM(COALESCE(p_stripe_event_id, '')), '');
+    v_error TEXT := LEFT(
+        COALESCE(NULLIF(BTRIM(COALESCE(p_last_error, '')), ''), 'Stripe webhook processing failed'),
+        4000
+    );
+    v_now TIMESTAMPTZ := clock_timestamp();
+    v_receipt public.stripe_webhook_event_receipts%ROWTYPE;
+BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF v_event_id IS NULL OR p_claim_token IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Stripe event claim is required');
+    END IF;
+
+    UPDATE public.stripe_webhook_event_receipts
+    SET status = 'failed',
+        failed_at = v_now,
+        last_error = v_error,
+        claim_token = NULL,
+        lease_expires_at = NULL,
+        updated_at = v_now
+    WHERE stripe_event_id = v_event_id
+      AND status = 'processing'
+      AND claim_token = p_claim_token
+    RETURNING * INTO v_receipt;
+
+    IF v_receipt.id IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'receipt_id', v_receipt.id,
+            'attempts', v_receipt.attempts,
+            'failed_at', v_receipt.failed_at
+        );
+    END IF;
+
+    SELECT receipt.*
+    INTO v_receipt
+    FROM public.stripe_webhook_event_receipts receipt
+    WHERE receipt.stripe_event_id = v_event_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Stripe event receipt not found');
+    END IF;
+
+    IF v_receipt.status = 'completed' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_completed', true,
+            'receipt_id', v_receipt.id
+        );
+    END IF;
+
+    IF v_receipt.status = 'failed' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_failed', true,
+            'receipt_id', v_receipt.id,
+            'failed_at', v_receipt.failed_at
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Stripe event claim is no longer owned',
+        'receipt_id', v_receipt.id,
+        'status', v_receipt.status
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION public.apply_stripe_payout_paid(
+    p_payout_id TEXT,
+    p_stripe_account_id TEXT,
+    p_amount NUMERIC,
+    p_provider_response JSONB DEFAULT '{}'::JSONB
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_payout_id TEXT := NULLIF(BTRIM(COALESCE(p_payout_id, '')), '');
+    v_account_id TEXT := NULLIF(BTRIM(COALESCE(p_stripe_account_id, '')), '');
+    v_amount NUMERIC := ROUND(COALESCE(p_amount, 0), 2);
+    v_organization_id UUID;
+    v_wallet_id UUID;
+    v_ledger_id UUID;
+    v_existing_amount NUMERIC;
+    v_existing_wallet_id UUID;
+    v_ledger_key TEXT;
+BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF v_payout_id IS NULL OR v_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Valid payout id and amount are required');
+    END IF;
+
+    IF v_account_id IS NOT NULL THEN
+        SELECT organization.id, wallet.id
+        INTO v_organization_id, v_wallet_id
+        FROM public.organizations organization
+        JOIN public.organization_wallets wallet
+          ON wallet.organization_id = organization.id
+        WHERE organization.stripe_account_id = v_account_id
+        ORDER BY organization.id
+        LIMIT 1
+        FOR UPDATE OF wallet;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Stripe payout organization wallet not found');
+        END IF;
+    ELSE
+        SELECT wallet.id
+        INTO v_wallet_id
+        FROM public.ivisit_main_wallet wallet
+        ORDER BY wallet.id
+        LIMIT 1
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Platform payout wallet not found');
+        END IF;
+    END IF;
+
+    SELECT ledger.id, ledger.amount
+    INTO v_ledger_id, v_existing_amount
+    FROM public.wallet_ledger ledger
+    WHERE ledger.wallet_id = v_wallet_id
+      AND ledger.external_reference = v_payout_id
+      AND ledger.transaction_type = 'payout'
+    ORDER BY ledger.created_at
+    LIMIT 1;
+
+    IF FOUND THEN
+        IF v_existing_amount IS DISTINCT FROM -v_amount THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Stripe payout receipt amount mismatch');
+        END IF;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_processed', true,
+            'ledger_id', v_ledger_id,
+            'wallet_id', v_wallet_id
+        );
+    END IF;
+
+    v_ledger_key := 'stripe:payout:' || COALESCE(v_account_id, 'platform') || ':' || v_payout_id;
+
+    INSERT INTO public.wallet_ledger (
+        wallet_id,
+        amount,
+        transaction_type,
+        description,
+        external_reference,
+        idempotency_key,
+        metadata,
+        created_at
+    )
+    VALUES (
+        v_wallet_id,
+        -v_amount,
+        'payout',
+        CASE
+            WHEN v_account_id IS NULL THEN 'Platform Payout ' || v_payout_id || ' to bank'
+            ELSE 'Payout ' || v_payout_id || ' to bank'
+        END,
+        v_payout_id,
+        v_ledger_key,
+        jsonb_build_object(
+            'source', 'stripe-webhook',
+            'stripe_account_id', v_account_id,
+            'stripe_payout', COALESCE(p_provider_response, '{}'::JSONB)
+        ),
+        NOW()
+    )
+    ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+    RETURNING id INTO v_ledger_id;
+
+    IF v_ledger_id IS NULL THEN
+        SELECT ledger.id, ledger.amount, ledger.wallet_id
+        INTO v_ledger_id, v_existing_amount, v_existing_wallet_id
+        FROM public.wallet_ledger ledger
+        WHERE ledger.idempotency_key = v_ledger_key;
+
+        IF NOT FOUND
+           OR v_existing_amount IS DISTINCT FROM -v_amount
+           OR v_existing_wallet_id IS DISTINCT FROM v_wallet_id THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Stripe payout idempotency conflict');
+        END IF;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_processed', true,
+            'ledger_id', v_ledger_id,
+            'wallet_id', v_wallet_id
+        );
+    END IF;
+
+    IF v_account_id IS NOT NULL THEN
+        UPDATE public.organization_wallets
+        SET balance = COALESCE(balance, 0) - v_amount,
+            updated_at = NOW()
+        WHERE id = v_wallet_id;
+    ELSE
+        UPDATE public.ivisit_main_wallet
+        SET balance = COALESCE(balance, 0) - v_amount,
+            last_updated = NOW()
+        WHERE id = v_wallet_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'already_processed', false,
+        'organization_id', v_organization_id,
+        'ledger_id', v_ledger_id,
+        'wallet_id', v_wallet_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION public.claim_stripe_webhook_event(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.complete_stripe_webhook_event(TEXT, UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fail_stripe_webhook_event(TEXT, UUID, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.apply_stripe_payout_paid(TEXT, TEXT, NUMERIC, JSONB) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.claim_stripe_webhook_event(TEXT, TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.complete_stripe_webhook_event(TEXT, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fail_stripe_webhook_event(TEXT, UUID, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.apply_stripe_payout_paid(TEXT, TEXT, NUMERIC, JSONB) TO service_role;
+-- END STRIPE_WEBHOOK_EVENT_RECEIPTS
 
 CREATE TABLE IF NOT EXISTS public.exchange_rates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -177,6 +728,7 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_org_wallet_id UUID;
     v_platform_wallet_id UUID;
+    v_ledger_claim_id UUID;
     v_net_amount NUMERIC := 0;
     v_fee_amount NUMERIC := 0;
     v_is_top_up BOOLEAN := false;
@@ -237,17 +789,13 @@ BEGIN
     v_net_amount := GREATEST(ROUND(COALESCE(NEW.amount, 0)::NUMERIC - v_fee_amount, 2), 0);
 
     IF v_net_amount > 0 THEN
-        UPDATE public.organization_wallets
-        SET balance = COALESCE(balance, 0) + v_net_amount,
-            updated_at = NOW()
-        WHERE id = v_org_wallet_id;
-
         INSERT INTO public.wallet_ledger (
             wallet_id,
             amount,
             transaction_type,
             description,
             reference_id,
+            idempotency_key,
             metadata,
             created_at
         )
@@ -257,27 +805,34 @@ BEGIN
             'credit',
             'Service Payment (Net)',
             NEW.id,
+            'payment:' || NEW.id::TEXT || ':organization_net_credit',
             jsonb_build_object(
                 'source', 'process_payment_distribution',
                 'payment_method', COALESCE(NEW.payment_method, 'unknown'),
                 'ivisit_fee_amount', v_fee_amount
             ),
             COALESCE(NEW.processed_at, NEW.updated_at, NEW.created_at, NOW())
-        );
+        )
+        ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+        RETURNING id INTO v_ledger_claim_id;
+
+        IF v_ledger_claim_id IS NOT NULL THEN
+            UPDATE public.organization_wallets
+            SET balance = COALESCE(balance, 0) + v_net_amount,
+                updated_at = NOW()
+            WHERE id = v_org_wallet_id;
+        END IF;
     END IF;
 
     IF v_fee_amount > 0 THEN
-        UPDATE public.ivisit_main_wallet
-        SET balance = COALESCE(balance, 0) + v_fee_amount,
-            last_updated = NOW()
-        WHERE id = v_platform_wallet_id;
-
+        v_ledger_claim_id := NULL;
         INSERT INTO public.wallet_ledger (
             wallet_id,
             amount,
             transaction_type,
             description,
             reference_id,
+            idempotency_key,
             metadata,
             created_at
         )
@@ -287,12 +842,22 @@ BEGIN
             'credit',
             'Platform Fee',
             NEW.id,
+            'payment:' || NEW.id::TEXT || ':platform_fee_credit',
             jsonb_build_object(
                 'source', 'process_payment_distribution',
                 'payment_method', COALESCE(NEW.payment_method, 'unknown')
             ),
             COALESCE(NEW.processed_at, NEW.updated_at, NEW.created_at, NOW())
-        );
+        )
+        ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+        RETURNING id INTO v_ledger_claim_id;
+
+        IF v_ledger_claim_id IS NOT NULL THEN
+            UPDATE public.ivisit_main_wallet
+            SET balance = COALESCE(balance, 0) + v_fee_amount,
+                last_updated = NOW()
+            WHERE id = v_platform_wallet_id;
+        END IF;
     END IF;
 
     RETURN NEW;
@@ -314,14 +879,41 @@ DECLARE
     v_actor_org_id UUID;
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_request RECORD;
+    v_payment RECORD;
     v_wallet_id UUID;
     v_balance NUMERIC;
-    v_payment_id UUID;
-    v_fee_percentage NUMERIC := 2.5;
-    v_fee_amount NUMERIC := 0;
+    v_ledger_claim_id UUID;
 BEGIN
     IF p_user_id IS NULL OR p_organization_id IS NULL OR p_emergency_request_id IS NULL OR p_amount IS NULL OR p_amount <= 0 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid wallet payment payload');
+    END IF;
+
+    SELECT
+        request.*,
+        hospital.organization_id AS resolved_org_id
+    INTO v_request
+    FROM public.emergency_requests request
+    LEFT JOIN public.hospitals hospital ON hospital.id = request.hospital_id
+    WHERE request.id = p_emergency_request_id
+    FOR UPDATE OF request;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Emergency request not found');
+    END IF;
+
+    IF v_request.user_id IS DISTINCT FROM p_user_id
+       OR v_request.resolved_org_id IS DISTINCT FROM p_organization_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Wallet payment scope does not match the emergency request');
+    END IF;
+
+    IF ROUND(COALESCE(v_request.total_cost, 0), 2) <= 0
+       OR ROUND(p_amount, 2) IS DISTINCT FROM ROUND(COALESCE(v_request.total_cost, 0), 2) THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Wallet amount does not match canonical request pricing',
+            'expected_amount', v_request.total_cost
+        );
     END IF;
 
     IF NOT v_is_service_role THEN
@@ -347,6 +939,50 @@ BEGIN
         END IF;
     END IF;
 
+    SELECT payment.*
+    INTO v_payment
+    FROM public.payments payment
+    WHERE payment.id = v_request.payment_id
+      AND payment.emergency_request_id = p_emergency_request_id
+      AND payment.user_id = p_user_id
+      AND payment.organization_id = p_organization_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Canonical wallet payment not found');
+    END IF;
+
+    IF COALESCE(v_payment.payment_method, '') <> 'wallet' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment is not a wallet payment');
+    END IF;
+
+    IF v_payment.status = 'completed'
+       AND v_request.payment_status IN ('completed', 'paid')
+       AND v_request.status IN ('in_progress', 'accepted', 'arrived', 'completed') THEN
+        SELECT balance INTO v_balance
+        FROM public.patient_wallets
+        WHERE user_id = p_user_id;
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_completed', true,
+            'payment_id', v_payment.id,
+            'fee_amount', v_payment.ivisit_fee_amount,
+            'new_balance', v_balance
+        );
+    END IF;
+
+    IF v_payment.status <> 'pending'
+       OR v_request.status <> 'pending_approval'
+       OR COALESCE(v_request.payment_status, 'pending') <> 'pending' THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Wallet payment is not awaiting settlement',
+            'payment_status', v_payment.status,
+            'request_status', v_request.status
+        );
+    END IF;
+
     SELECT id, balance INTO v_wallet_id, v_balance
     FROM public.patient_wallets 
     WHERE user_id = p_user_id
@@ -360,83 +996,79 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
     END IF;
 
-    SELECT COALESCE(NULLIF(ivisit_fee_percentage, 0), 2.5)
-    INTO v_fee_percentage
-    FROM public.organizations
-    WHERE id = p_organization_id;
-
-    v_fee_amount := ROUND(COALESCE(p_amount, 0) * (COALESCE(v_fee_percentage, 2.5) / 100.0), 2);
-
-    -- Deduct user wallet first (same transaction)
-    UPDATE public.patient_wallets
-    SET balance = balance - p_amount,
-        updated_at = NOW()
-    WHERE id = v_wallet_id;
-
-    -- Persist payment with explicit fee metadata for downstream settlement trigger.
-    INSERT INTO public.payments (
-        user_id,
-        emergency_request_id,
-        organization_id,
-        amount,
-        currency,
-        payment_method,
-        status,
-        ivisit_fee_amount,
-        metadata,
-        processed_at,
-        created_at,
-        updated_at
-    )
-    VALUES (
-        p_user_id,
-        p_emergency_request_id,
-        p_organization_id,
-        p_amount,
-        UPPER(COALESCE(NULLIF(TRIM(p_currency), ''), 'USD')),
-        'wallet',
-        'completed',
-        v_fee_amount,
-        jsonb_build_object(
-            'source', 'process_wallet_payment',
-            'payment_kind', 'service',
-            'fee_percentage', v_fee_percentage,
-            'fee_amount', v_fee_amount,
-            'fee', v_fee_amount
-        ),
-        NOW(),
-        NOW(),
-        NOW()
-    )
-    RETURNING id INTO v_payment_id;
-
     INSERT INTO public.wallet_ledger (
         wallet_id,
         amount,
         transaction_type,
         description,
         reference_id,
+        idempotency_key,
         metadata,
         created_at
     )
     VALUES (
         v_wallet_id,
-        -p_amount,
+        -v_payment.amount,
         'debit',
         'Emergency Service Payment',
-        v_payment_id,
+        v_payment.id,
+        'payment:' || v_payment.id::TEXT || ':patient_wallet_debit',
         jsonb_build_object(
             'source', 'process_wallet_payment',
             'payment_kind', 'service'
         ),
         NOW()
+    )
+    ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+    RETURNING id INTO v_ledger_claim_id;
+
+    IF v_ledger_claim_id IS NULL THEN
+        RAISE EXCEPTION 'Wallet settlement retry state is inconsistent';
+    END IF;
+
+    UPDATE public.patient_wallets
+    SET balance = balance - v_payment.amount,
+        updated_at = NOW()
+    WHERE id = v_wallet_id;
+
+    PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+    PERFORM set_config('ivisit.transition_source', 'process_wallet_payment', true);
+    PERFORM set_config('ivisit.transition_reason', 'wallet_payment_completed', true);
+    PERFORM set_config(
+        'ivisit.transition_metadata',
+        jsonb_build_object('payment_id', v_payment.id, 'request_id', p_emergency_request_id)::TEXT,
+        true
     );
+
+    UPDATE public.payments
+    SET status = 'completed',
+        processed_at = COALESCE(processed_at, NOW()),
+        metadata = COALESCE(metadata, '{}'::JSONB) || jsonb_build_object(
+            'source', 'process_wallet_payment',
+            'wallet_ledger_id', v_ledger_claim_id
+        ),
+        updated_at = NOW()
+    WHERE id = v_payment.id
+      AND status = 'pending';
+
+    UPDATE public.emergency_requests
+    SET status = 'in_progress',
+        payment_status = 'completed',
+        updated_at = NOW()
+    WHERE id = p_emergency_request_id
+      AND status = 'pending_approval'
+      AND payment_status = 'pending';
+
+    UPDATE public.visits
+    SET status = 'active',
+        updated_at = NOW()
+    WHERE request_id = p_emergency_request_id;
 
     RETURN jsonb_build_object(
         'success', true,
-        'payment_id', v_payment_id,
-        'fee_amount', v_fee_amount,
-        'new_balance', (v_balance - p_amount)
+        'payment_id', v_payment.id,
+        'fee_amount', v_payment.ivisit_fee_amount,
+        'new_balance', (v_balance - v_payment.amount)
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -1331,6 +1963,9 @@ CREATE INDEX IF NOT EXISTS idx_payment_methods_active ON public.payment_methods(
 CREATE INDEX IF NOT EXISTS idx_payment_methods_default ON public.payment_methods(user_id, is_default);
 CREATE INDEX IF NOT EXISTS idx_insurance_user_id ON public.insurance_policies(user_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_request ON public.insurance_billing(emergency_request_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_insurance_billing_one_per_request
+    ON public.insurance_billing(emergency_request_id)
+    WHERE emergency_request_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_hospital ON public.insurance_billing(hospital_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_user ON public.insurance_billing(user_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_billing_status ON public.insurance_billing(status);

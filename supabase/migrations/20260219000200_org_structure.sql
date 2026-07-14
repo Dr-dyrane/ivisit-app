@@ -499,6 +499,9 @@ CREATE INDEX IF NOT EXISTS idx_doctors_hospital_profile
     WHERE profile_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_eda_request ON public.emergency_doctor_assignments(emergency_request_id);
 CREATE INDEX IF NOT EXISTS idx_eda_doctor ON public.emergency_doctor_assignments(doctor_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_eda_one_active_assignment_per_request
+    ON public.emergency_doctor_assignments(emergency_request_id)
+    WHERE status IN ('assigned', 'accepted');
 
 -- LINK ORG ADMIN
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE SET NULL;

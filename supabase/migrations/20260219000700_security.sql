@@ -233,6 +233,8 @@ ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.emergency_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_status_transitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_responder_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ambulance_staff_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_chat_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_chat_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_chat_messages ENABLE ROW LEVEL SECURITY;
@@ -298,30 +300,98 @@ GRANT UPDATE (
 -- END CONSOLE_PROFILE_COLUMN_SECURITY
 
 -- 2. EMERGENCY REQUESTS
+DROP POLICY IF EXISTS "Users see own emergency requests" ON public.emergency_requests;
 CREATE POLICY "Users see own emergency requests"
 ON public.emergency_requests FOR SELECT
 TO authenticated
 USING (auth.uid() = user_id OR public.p_is_admin());
 
-CREATE POLICY "Users can create emergency requests"
-ON public.emergency_requests FOR INSERT
+DROP POLICY IF EXISTS "Assigned responders see their emergency requests" ON public.emergency_requests;
+CREATE POLICY "Assigned responders see their emergency requests"
+ON public.emergency_requests FOR SELECT
 TO authenticated
-WITH CHECK (auth.uid() = user_id);
+USING (
+    EXISTS (
+        SELECT 1
+        FROM public.emergency_responder_assignments assignment
+        WHERE assignment.id = emergency_requests.current_responder_assignment_id
+          AND assignment.emergency_request_id = emergency_requests.id
+          AND assignment.responder_id = auth.uid()
+          AND assignment.status IN ('offered', 'accepted', 'arrived')
+    )
+);
 
-CREATE POLICY "Users can update own emergency requests"
-ON public.emergency_requests FOR UPDATE
-TO authenticated
-USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create emergency requests" ON public.emergency_requests;
 
+DROP POLICY IF EXISTS "Users can update own emergency requests" ON public.emergency_requests;
+
+DROP POLICY IF EXISTS "Org Admins see their hospital emergencies" ON public.emergency_requests;
 CREATE POLICY "Org Admins see their hospital emergencies"
 ON public.emergency_requests FOR SELECT
 TO authenticated
 USING (
-    hospital_id IN (
-        SELECT id FROM public.hospitals 
-        WHERE organization_id = public.p_get_current_org_id()
+    EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        LEFT JOIN public.hospitals hospital
+          ON hospital.id = emergency_requests.hospital_id
+        WHERE actor.id = auth.uid()
+          AND actor.role IN ('org_admin', 'dispatcher')
+          AND actor.organization_id IS NOT NULL
+          AND actor.organization_id IN (
+              hospital.organization_id,
+              emergency_requests.dispatch_organization_id
+          )
     )
 );
+
+-- Direct PostgREST updates could otherwise change non-status responder/payment
+-- fields even though the status trigger is RPC-gated. Mutations go through the
+-- narrow patient, responder, and operator commands instead.
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.emergency_requests FROM anon, authenticated;
+
+DROP POLICY IF EXISTS "Emergency responder assignments are readable in role scope"
+    ON public.emergency_responder_assignments;
+CREATE POLICY "Emergency responder assignments are readable in role scope"
+ON public.emergency_responder_assignments FOR SELECT
+TO authenticated
+USING (
+    public.p_is_admin()
+    OR responder_id = auth.uid()
+    OR EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        WHERE actor.id = auth.uid()
+          AND actor.role IN ('org_admin', 'dispatcher')
+          AND actor.organization_id IS NOT NULL
+          AND actor.organization_id = emergency_responder_assignments.organization_id
+    )
+);
+
+GRANT SELECT ON public.emergency_responder_assignments TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_responder_assignments
+    FROM anon, authenticated;
+
+DROP POLICY IF EXISTS "Ambulance staffing is readable in role scope"
+    ON public.ambulance_staff_assignments;
+CREATE POLICY "Ambulance staffing is readable in role scope"
+ON public.ambulance_staff_assignments FOR SELECT
+TO authenticated
+USING (
+    public.p_is_admin()
+    OR responder_id = auth.uid()
+    OR EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        WHERE actor.id = auth.uid()
+          AND actor.role IN ('org_admin', 'dispatcher')
+          AND actor.organization_id = ambulance_staff_assignments.organization_id
+    )
+);
+
+GRANT SELECT ON public.ambulance_staff_assignments TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.ambulance_staff_assignments
+    FROM anon, authenticated;
 
 -- 3. ORGANIZATIONS & HOSPITALS
 -- BEGIN CONSOLE_ONBOARDING_READ_POLICIES
@@ -430,7 +500,16 @@ USING (auth.uid() = user_id OR public.p_is_admin());
 CREATE POLICY "Org Admins see org payments"
 ON public.payments FOR SELECT
 TO authenticated
-USING (organization_id = public.p_get_current_org_id() OR public.p_is_admin());
+USING (
+    public.p_is_admin()
+    OR EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        WHERE actor.id = auth.uid()
+          AND actor.role = 'org_admin'
+          AND actor.organization_id = payments.organization_id
+    )
+);
 
 CREATE POLICY "Users manage own payment methods"
 ON public.payment_methods FOR ALL
@@ -461,9 +540,11 @@ ON public.notifications FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users insert own notifications"
-ON public.notifications FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users insert own notifications" ON public.notifications;
+
+REVOKE INSERT, UPDATE, DELETE ON public.notifications FROM anon, authenticated;
+GRANT SELECT ON public.notifications TO authenticated;
+GRANT UPDATE (read, updated_at) ON public.notifications TO authenticated;
 
 -- 6. USER DATA (Preferences & Medical)
 CREATE POLICY "Users manage own preferences"
@@ -498,16 +579,47 @@ WITH CHECK (auth.uid() = user_id OR public.p_is_admin());
 
 -- 7. LOGISTICS (Ambulances & Visits)
 DROP POLICY IF EXISTS "Public read for ambulances" ON public.ambulances;
-CREATE POLICY "Public read for ambulances"
+DROP POLICY IF EXISTS "Ambulances are visible in role scope" ON public.ambulances;
+CREATE POLICY "Ambulances are visible in role scope"
 ON public.ambulances FOR SELECT
-USING (true);
+TO authenticated
+USING (
+    public.p_is_admin()
+    OR EXISTS (
+        SELECT 1
+        FROM public.ambulance_staff_assignments staffing
+        WHERE staffing.ambulance_id = ambulances.id
+          AND staffing.responder_id = auth.uid()
+          AND staffing.status = 'active'
+          AND staffing.starts_at <= NOW()
+          AND (staffing.ends_at IS NULL OR staffing.ends_at > NOW())
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM public.profiles actor
+        LEFT JOIN public.hospitals hospital ON hospital.organization_id = actor.organization_id
+        WHERE actor.id = auth.uid()
+          AND actor.role IN ('org_admin', 'dispatcher')
+          AND actor.organization_id IS NOT NULL
+          AND (
+              ambulances.organization_id = actor.organization_id
+              OR (
+                  ambulances.organization_id IS NULL
+                  AND hospital.id = ambulances.hospital_id
+              )
+          )
+    )
+);
 
 -- BEGIN CONSOLE_AMBULANCE_RLS
 DROP POLICY IF EXISTS "Org Admins manage ambulances" ON public.ambulances;
-CREATE POLICY "Org Admins manage ambulances"
-ON public.ambulances FOR ALL
+DROP POLICY IF EXISTS "Org Admins insert ambulances" ON public.ambulances;
+DROP POLICY IF EXISTS "Org Admins update ambulances" ON public.ambulances;
+DROP POLICY IF EXISTS "Org Admins delete idle ambulances" ON public.ambulances;
+CREATE POLICY "Org Admins insert ambulances"
+ON public.ambulances FOR INSERT
 TO authenticated
-USING (
+WITH CHECK (
     public.p_is_admin()
     OR (
         EXISTS (
@@ -529,8 +641,12 @@ USING (
             )
         )
     )
-)
-WITH CHECK (
+);
+
+CREATE POLICY "Org Admins update ambulances"
+ON public.ambulances FOR UPDATE
+TO authenticated
+USING (
     public.p_is_admin()
     OR (
         EXISTS (
@@ -558,7 +674,67 @@ WITH CHECK (
             )
         )
     )
+)
+WITH CHECK (
+    public.p_is_admin()
+    OR (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles actor
+            WHERE actor.id = auth.uid()
+              AND actor.role = 'org_admin'
+              AND actor.organization_id IS NOT NULL
+        )
+        AND organization_id = public.p_get_current_org_id()
+        AND (
+            hospital_id IS NULL
+            OR hospital_id IN (
+                SELECT hospital.id
+                FROM public.hospitals hospital
+                WHERE hospital.organization_id = public.p_get_current_org_id()
+            )
+        )
+    )
 );
+
+CREATE POLICY "Org Admins delete idle ambulances"
+ON public.ambulances FOR DELETE
+TO authenticated
+USING (
+    (
+        public.p_is_admin()
+        OR EXISTS (
+            SELECT 1
+            FROM public.profiles actor
+            WHERE actor.id = auth.uid()
+              AND actor.role = 'org_admin'
+              AND actor.organization_id IS NOT NULL
+              AND (
+                  actor.organization_id = ambulances.organization_id
+                  OR (
+                      ambulances.organization_id IS NULL
+                      AND ambulances.hospital_id IN (
+                          SELECT hospital.id
+                          FROM public.hospitals hospital
+                          WHERE hospital.organization_id = actor.organization_id
+                      )
+                  )
+              )
+        )
+    )
+    AND current_call IS NULL
+);
+
+REVOKE INSERT, UPDATE, DELETE ON public.ambulances FROM anon, authenticated;
+GRANT INSERT (
+    id, hospital_id, organization_id, type, call_sign, vehicle_number,
+    license_plate, base_price, crew, created_at, updated_at
+) ON public.ambulances TO authenticated;
+GRANT UPDATE (
+    hospital_id, organization_id, type, call_sign, vehicle_number,
+    license_plate, base_price, crew, updated_at
+) ON public.ambulances TO authenticated;
+GRANT DELETE ON public.ambulances TO authenticated;
 -- END CONSOLE_AMBULANCE_RLS
 
 DROP POLICY IF EXISTS "Users see own visits" ON public.visits;

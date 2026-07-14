@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
     organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
-    profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE, -- Driver Profile
+    profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE SET NULL, -- Current Driver Profile
     type TEXT,
     call_sign TEXT,
     -- Dispatch lifecycle statuses (matches automations + emergency_logic RPCs)
@@ -15,6 +15,14 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
         'maintenance', 'offline', 'pending_approval'
     )),
     location GEOMETRY(POINT, 4326),
+    heading DOUBLE PRECISION,
+    location_accuracy_meters DOUBLE PRECISION CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    location_observed_at TIMESTAMPTZ,
+    location_received_at TIMESTAMPTZ,
+    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
+    telemetry_lease_expires_at TIMESTAMPTZ,
     vehicle_number TEXT,
     license_plate TEXT,
     base_price NUMERIC,
@@ -27,11 +35,42 @@ CREATE TABLE IF NOT EXISTS public.ambulances (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- BEGIN EMERGENCY_RESPONDER_TELEMETRY_SCHEMA
+-- PULLBACK NOTE: responder readiness and telemetry generation contract.
+-- OLD: ambulance.updated_at mixed operational edits with responder location freshness.
+-- NEW: observed/received clocks, sequence, accuracy, and lease are explicit.
+ALTER TABLE public.ambulances
+    ADD COLUMN IF NOT EXISTS heading DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS location_accuracy_meters DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS location_observed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS location_received_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS telemetry_sequence BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS telemetry_lease_expires_at TIMESTAMPTZ;
+
+ALTER TABLE public.ambulances
+    DROP CONSTRAINT IF EXISTS ambulances_location_accuracy_nonnegative_chk,
+    DROP CONSTRAINT IF EXISTS ambulances_telemetry_sequence_nonnegative_chk;
+ALTER TABLE public.ambulances
+    ADD CONSTRAINT ambulances_location_accuracy_nonnegative_chk CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    ADD CONSTRAINT ambulances_telemetry_sequence_nonnegative_chk CHECK (
+        telemetry_sequence >= 0
+    );
+
+ALTER TABLE public.ambulances
+    DROP CONSTRAINT IF EXISTS ambulances_profile_id_fkey;
+ALTER TABLE public.ambulances
+    ADD CONSTRAINT ambulances_profile_id_fkey
+    FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+-- END EMERGENCY_RESPONDER_TELEMETRY_SCHEMA
+
 -- 2. Emergency Requests
 CREATE TABLE IF NOT EXISTS public.emergency_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     hospital_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    dispatch_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
     ambulance_id UUID REFERENCES public.ambulances(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('pending_approval', 'payment_declined', 'in_progress', 'accepted', 'arrived', 'completed', 'cancelled')),
     payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'completed', 'failed', 'refunded', 'declined')),
@@ -58,6 +97,12 @@ CREATE TABLE IF NOT EXISTS public.emergency_requests (
     patient_location GEOMETRY(POINT, 4326),
     responder_location GEOMETRY(POINT, 4326),
     responder_heading DOUBLE PRECISION,
+    responder_location_accuracy_meters DOUBLE PRECISION,
+    responder_location_observed_at TIMESTAMPTZ,
+    responder_location_received_at TIMESTAMPTZ,
+    responder_telemetry_sequence BIGINT,
+    responder_telemetry_lease_expires_at TIMESTAMPTZ,
+    patient_acknowledged_arrival_at TIMESTAMPTZ,
     patient_heading DOUBLE PRECISION,
     estimated_arrival TEXT,
     
@@ -103,6 +148,210 @@ CREATE TABLE IF NOT EXISTS public.emergency_status_transitions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT emergency_status_transitions_status_change_chk CHECK (from_status IS NULL OR from_status <> to_status)
 );
+
+-- BEGIN EMERGENCY_RESPONDER_ASSIGNMENT_SCHEMA
+-- PULLBACK NOTE: assignment is no longer equivalent to responder acceptance.
+-- Each row is one immutable responder/ambulance offer generation. Lifecycle and
+-- telemetry fields advance only through the narrow RPCs in core_rpcs.
+CREATE TABLE IF NOT EXISTS public.emergency_responder_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE RESTRICT,
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'offered' CHECK (
+        status IN ('offered', 'accepted', 'arrived', 'declined', 'released', 'completed', 'cancelled')
+    ),
+    offered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds'),
+    decline_reason TEXT,
+    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
+    responder_location GEOMETRY(POINT, 4326),
+    responder_heading DOUBLE PRECISION,
+    location_accuracy_meters DOUBLE PRECISION CHECK (
+        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
+    ),
+    location_observed_at TIMESTAMPTZ,
+    location_received_at TIMESTAMPTZ,
+    telemetry_lease_expires_at TIMESTAMPTZ,
+    accepted_at TIMESTAMPTZ,
+    arrived_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    offered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.emergency_requests
+    ADD COLUMN IF NOT EXISTS current_responder_assignment_id UUID,
+    ADD COLUMN IF NOT EXISTS dispatch_organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS responder_location_accuracy_meters DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS responder_location_observed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS responder_location_received_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS responder_telemetry_sequence BIGINT,
+    ADD COLUMN IF NOT EXISTS responder_telemetry_lease_expires_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS patient_acknowledged_arrival_at TIMESTAMPTZ;
+
+ALTER TABLE public.emergency_responder_assignments
+    ADD COLUMN IF NOT EXISTS offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds');
+
+UPDATE public.emergency_responder_assignments assignment
+SET organization_id = COALESCE(
+    ambulance.organization_id,
+    ambulance_hospital.organization_id,
+    request.dispatch_organization_id,
+    request_hospital.organization_id
+)
+FROM public.ambulances ambulance
+LEFT JOIN public.hospitals ambulance_hospital
+  ON ambulance_hospital.id = ambulance.hospital_id
+,
+public.emergency_requests request
+LEFT JOIN public.hospitals request_hospital
+  ON request_hospital.id = request.hospital_id
+WHERE ambulance.id = assignment.ambulance_id
+  AND request.id = assignment.emergency_request_id
+  AND assignment.organization_id IS NULL;
+
+ALTER TABLE public.emergency_responder_assignments
+    ALTER COLUMN organization_id SET NOT NULL;
+
+ALTER TABLE public.emergency_responder_assignments
+    DROP CONSTRAINT IF EXISTS emergency_responder_assignments_emergency_request_id_fkey;
+ALTER TABLE public.emergency_responder_assignments
+    ADD CONSTRAINT emergency_responder_assignments_emergency_request_id_fkey
+    FOREIGN KEY (emergency_request_id)
+    REFERENCES public.emergency_requests(id)
+    ON DELETE RESTRICT;
+
+ALTER TABLE public.emergency_requests
+    DROP CONSTRAINT IF EXISTS emergency_requests_responder_location_accuracy_nonnegative_chk,
+    DROP CONSTRAINT IF EXISTS emergency_requests_responder_telemetry_sequence_nonnegative_chk;
+ALTER TABLE public.emergency_requests
+    ADD CONSTRAINT emergency_requests_responder_location_accuracy_nonnegative_chk CHECK (
+        responder_location_accuracy_meters IS NULL OR responder_location_accuracy_meters >= 0
+    ),
+    ADD CONSTRAINT emergency_requests_responder_telemetry_sequence_nonnegative_chk CHECK (
+        responder_telemetry_sequence IS NULL OR responder_telemetry_sequence >= 0
+    );
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_schema = 'public'
+          AND table_name = 'emergency_requests'
+          AND constraint_name = 'emergency_requests_current_responder_assignment_fkey'
+    ) THEN
+        ALTER TABLE public.emergency_requests
+            ADD CONSTRAINT emergency_requests_current_responder_assignment_fkey
+            FOREIGN KEY (current_responder_assignment_id)
+            REFERENCES public.emergency_responder_assignments(id)
+            ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emergency_responder_assignment_active_request
+    ON public.emergency_responder_assignments(emergency_request_id)
+    WHERE status IN ('offered', 'accepted', 'arrived');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emergency_responder_assignment_active_ambulance
+    ON public.emergency_responder_assignments(ambulance_id)
+    WHERE status IN ('offered', 'accepted', 'arrived');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emergency_responder_assignment_active_responder
+    ON public.emergency_responder_assignments(responder_id)
+    WHERE status IN ('offered', 'accepted', 'arrived');
+CREATE INDEX IF NOT EXISTS idx_emergency_responder_assignment_request_time
+    ON public.emergency_responder_assignments(emergency_request_id, offered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_emergency_responder_assignment_offer_expiry
+    ON public.emergency_responder_assignments(offer_expires_at)
+    WHERE status = 'offered';
+
+-- Staffing history is separate from the current ambulance.profile_id cache.
+-- Readiness requires one active, in-window assignment; Console writes it only
+-- through the scoped staffing command.
+CREATE TABLE IF NOT EXISTS public.ambulance_staff_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
+    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+    duty_role TEXT NOT NULL DEFAULT 'driver' CHECK (duty_role = 'driver'),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'cancelled')),
+    starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ends_at TIMESTAMPTZ,
+    assigned_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    ended_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    end_reason TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at IS NULL OR ends_at > starts_at)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ambulance_staff_one_active_unit
+    ON public.ambulance_staff_assignments(ambulance_id)
+    WHERE status = 'active';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ambulance_staff_one_active_responder
+    ON public.ambulance_staff_assignments(responder_id)
+    WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_ambulance_staff_org_window
+    ON public.ambulance_staff_assignments(organization_id, starts_at, ends_at);
+
+DROP TRIGGER IF EXISTS handle_ambulance_staff_assignment_updated_at
+    ON public.ambulance_staff_assignments;
+CREATE TRIGGER handle_ambulance_staff_assignment_updated_at
+BEFORE UPDATE ON public.ambulance_staff_assignments
+FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE OR REPLACE FUNCTION public.protect_emergency_responder_assignment_history()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'emergency_responder_assignments history cannot be deleted';
+    END IF;
+
+    IF NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.emergency_request_id IS DISTINCT FROM OLD.emergency_request_id
+       OR NEW.ambulance_id IS DISTINCT FROM OLD.ambulance_id
+       OR NEW.responder_id IS DISTINCT FROM OLD.responder_id
+       OR NEW.organization_id IS DISTINCT FROM OLD.organization_id
+       OR NEW.offered_by IS DISTINCT FROM OLD.offered_by
+       OR NEW.offer_expires_at IS DISTINCT FROM OLD.offer_expires_at
+       OR NEW.offered_at IS DISTINCT FROM OLD.offered_at
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+        RAISE EXCEPTION 'responder assignment identity is immutable';
+    END IF;
+
+    IF NEW.status IS DISTINCT FROM OLD.status THEN
+        IF NOT (
+            (OLD.status = 'offered' AND NEW.status IN ('accepted', 'declined', 'released', 'cancelled'))
+            OR (OLD.status = 'accepted' AND NEW.status IN ('arrived', 'released', 'cancelled'))
+            OR (OLD.status = 'arrived' AND NEW.status IN ('completed', 'released', 'cancelled'))
+        ) THEN
+            RAISE EXCEPTION 'Illegal responder assignment transition: % -> %', OLD.status, NEW.status
+                USING ERRCODE = '23514';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_protect_emergency_responder_assignment_history
+    ON public.emergency_responder_assignments;
+CREATE TRIGGER trg_protect_emergency_responder_assignment_history
+BEFORE UPDATE OR DELETE ON public.emergency_responder_assignments
+FOR EACH ROW EXECUTE FUNCTION public.protect_emergency_responder_assignment_history();
+
+DROP TRIGGER IF EXISTS handle_emergency_responder_assignment_updated_at
+    ON public.emergency_responder_assignments;
+CREATE TRIGGER handle_emergency_responder_assignment_updated_at
+BEFORE UPDATE ON public.emergency_responder_assignments
+FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+-- END EMERGENCY_RESPONDER_ASSIGNMENT_SCHEMA
 
 CREATE INDEX IF NOT EXISTS idx_emergency_status_transitions_request_time
 ON public.emergency_status_transitions (emergency_request_id, occurred_at DESC);
@@ -198,6 +447,10 @@ CREATE TABLE IF NOT EXISTS public.visits (
     CONSTRAINT visits_tip_amount_nonnegative_chk CHECK (tip_amount IS NULL OR tip_amount >= 0),
     CONSTRAINT visits_rating_range_chk CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_visits_one_per_emergency_request
+ON public.visits(request_id)
+WHERE request_id IS NOT NULL;
 
 -- BEGIN SCHEDULED_VISITS_LOGISTICS_SCHEMA
 -- PULLBACK NOTE: Scheduled visits data pass.
@@ -556,48 +809,56 @@ CREATE OR REPLACE FUNCTION public.update_ambulance_location(
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_ambulance_status TEXT;
-    v_result JSONB;
+    v_request_id UUID;
+    v_assignment_id UUID;
+    v_sequence BIGINT;
 BEGIN
-    -- Get current ambulance status
-    SELECT status INTO v_ambulance_status
-    FROM public.ambulances 
-    WHERE id = p_ambulance_id;
-    
-    IF v_ambulance_status IS NULL THEN
+    IF p_latitude IS NULL OR p_longitude IS NULL
+       OR p_latitude < -90 OR p_latitude > 90
+       OR p_longitude < -180 OR p_longitude > 180 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Invalid ambulance location',
+            'code', 'INVALID_LOCATION'
+        );
+    END IF;
+
+    SELECT ambulance.current_call,
+           request.current_responder_assignment_id,
+           COALESCE(ambulance.telemetry_sequence, 0) + 1
+    INTO v_request_id, v_assignment_id, v_sequence
+    FROM public.ambulances ambulance
+    LEFT JOIN public.emergency_requests request ON request.id = ambulance.current_call
+    WHERE ambulance.id = p_ambulance_id
+    FOR UPDATE OF ambulance;
+
+    IF NOT FOUND THEN
         RETURN jsonb_build_object(
             'success', false,
             'error', 'Ambulance not found',
             'code', 'AMBULANCE_NOT_FOUND'
         );
     END IF;
-    
-    -- Update ambulance location
-    UPDATE public.ambulances 
-    SET 
-        location = jsonb_build_object(
-            'latitude', p_latitude,
-            'longitude', p_longitude,
-            'accuracy', p_accuracy,
-            'updated_at', NOW()
-        ),
-        updated_at = NOW()
-    WHERE id = p_ambulance_id;
-    
-    v_result := jsonb_build_object(
-        'success', true,
-        'ambulance_id', p_ambulance_id,
-        'location', jsonb_build_object(
-            'latitude', p_latitude,
-            'longitude', p_longitude,
-            'accuracy', p_accuracy
-        ),
-        'updated_at', NOW()
-    );
-    
-    RETURN v_result;
+
+    RETURN public.report_responder_telemetry(
+        jsonb_strip_nulls(jsonb_build_object(
+            'ambulance_id', p_ambulance_id,
+            'request_id', v_request_id,
+            'assignment_id', v_assignment_id,
+            'sequence', v_sequence,
+            'observed_at', NOW(),
+            'location', jsonb_build_object(
+                'lat', p_latitude,
+                'lng', p_longitude
+            ),
+            'accuracy_meters', p_accuracy
+        ))
+    ) || jsonb_build_object('compatibility_command', 'update_ambulance_location');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.update_ambulance_location(UUID, NUMERIC, NUMERIC, NUMERIC) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_ambulance_location(UUID, NUMERIC, NUMERIC, NUMERIC) TO authenticated, service_role;
 
 -- 2. Get Ambulance Status
 CREATE OR REPLACE FUNCTION public.get_ambulance_status(
@@ -706,13 +967,30 @@ CREATE OR REPLACE FUNCTION public.calculate_ambulance_eta(
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_ambulance_location JSONB;
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_ambulance_location GEOMETRY;
+    v_destination GEOMETRY;
     v_distance_km NUMERIC;
     v_avg_speed_kmh NUMERIC := 50; -- Average city speed
     v_prep_time_minutes NUMERIC := 5; -- Preparation time
     v_eta TIMESTAMPTZ;
     v_result JSONB;
 BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Ambulance ETA calculation is restricted to service_role';
+    END IF;
+
+    IF p_destination_lat IS NULL OR p_destination_lng IS NULL
+       OR p_destination_lat < -90 OR p_destination_lat > 90
+       OR p_destination_lng < -180 OR p_destination_lng > 180 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Destination coordinates are invalid',
+            'code', 'INVALID_DESTINATION'
+        );
+    END IF;
+
     -- Get ambulance current location
     SELECT location INTO v_ambulance_location
     FROM public.ambulances 
@@ -726,18 +1004,19 @@ BEGIN
         );
     END IF;
     
-    -- Calculate distance using PostGIS
-    v_distance_km := ST_Distance(
-        ST_GeomFromText(
-            'POINT(' || (v_ambulance_location->>'longitude') || ' ' || (v_ambulance_location->>'latitude') || ')'
-        ),
-        ST_GeomFromText(
-            'POINT(' || p_destination_lng || ' ' || p_destination_lat || ')'
-        )
+    v_destination := ST_SetSRID(
+        ST_MakePoint(p_destination_lng::DOUBLE PRECISION, p_destination_lat::DOUBLE PRECISION),
+        4326
     );
+    v_distance_km := ST_Distance(
+        v_ambulance_location::GEOGRAPHY,
+        v_destination::GEOGRAPHY
+    ) / 1000;
     
     -- Calculate ETA
-    v_eta := NOW() + (v_distance_km / v_avg_speed_kmh || ' hours')::INTERVAL + v_prep_time_minutes || ' minutes'::INTERVAL;
+    v_eta := NOW() + make_interval(
+        secs => ((v_distance_km / v_avg_speed_kmh) * 3600 + v_prep_time_minutes * 60)::DOUBLE PRECISION
+    );
     
     -- Update ambulance ETA
     UPDATE public.ambulances 
@@ -756,3 +1035,8 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.calculate_ambulance_eta(UUID, NUMERIC, NUMERIC)
+    FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.calculate_ambulance_eta(UUID, NUMERIC, NUMERIC)
+    TO service_role;

@@ -506,10 +506,20 @@ CREATE OR REPLACE FUNCTION public.update_medical_profile(
 )
 RETURNS JSONB AS $$
 DECLARE
+    v_actor_id UUID := auth.uid();
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_validation_result JSONB;
     v_profile_exists BOOLEAN;
+    v_allergies TEXT[];
+    v_medications TEXT[];
+    v_conditions TEXT[];
     v_result JSONB;
 BEGIN
+    IF NOT v_is_service_role AND v_actor_id IS DISTINCT FROM p_user_id THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
     -- Validate medical data first
     v_validation_result := public.validate_medical_profile(p_user_id, p_medical_data);
     
@@ -520,6 +530,28 @@ BEGIN
             'validation_errors', v_validation_result->'errors'
         );
     END IF;
+
+    v_allergies := CASE
+        WHEN jsonb_typeof(p_medical_data->'allergies') = 'array'
+            THEN ARRAY(SELECT value FROM jsonb_array_elements_text(p_medical_data->'allergies'))
+        WHEN NULLIF(BTRIM(p_medical_data->>'allergies'), '') IS NOT NULL
+            THEN ARRAY[BTRIM(p_medical_data->>'allergies')]
+        ELSE NULL
+    END;
+    v_medications := CASE
+        WHEN jsonb_typeof(p_medical_data->'medications') = 'array'
+            THEN ARRAY(SELECT value FROM jsonb_array_elements_text(p_medical_data->'medications'))
+        WHEN NULLIF(BTRIM(p_medical_data->>'medications'), '') IS NOT NULL
+            THEN ARRAY[BTRIM(p_medical_data->>'medications')]
+        ELSE NULL
+    END;
+    v_conditions := CASE
+        WHEN jsonb_typeof(p_medical_data->'conditions') = 'array'
+            THEN ARRAY(SELECT value FROM jsonb_array_elements_text(p_medical_data->'conditions'))
+        WHEN NULLIF(BTRIM(p_medical_data->>'conditions'), '') IS NOT NULL
+            THEN ARRAY[BTRIM(p_medical_data->>'conditions')]
+        ELSE NULL
+    END;
     
     -- Check if profile exists
     SELECT EXISTS(
@@ -532,9 +564,9 @@ BEGIN
         UPDATE public.medical_profiles 
         SET 
             blood_type = p_medical_data->>'blood_type',
-            allergies = p_medical_data->>'allergies',
-            medications = p_medical_data->>'medications',
-            conditions = p_medical_data->>'conditions',
+            allergies = v_allergies,
+            medications = v_medications,
+            conditions = v_conditions,
             emergency_notes = p_medical_data->>'emergency_notes',
             updated_at = NOW()
         WHERE user_id = p_user_id;
@@ -544,9 +576,9 @@ BEGIN
         ) VALUES (
             p_user_id, 
             p_medical_data->>'blood_type',
-            p_medical_data->>'allergies',
-            p_medical_data->>'medications',
-            p_medical_data->>'conditions',
+            v_allergies,
+            v_medications,
+            v_conditions,
             p_medical_data->>'emergency_notes'
         );
     END IF;
@@ -560,6 +592,11 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.update_medical_profile(UUID, JSONB)
+    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_medical_profile(UUID, JSONB)
+    TO authenticated, service_role;
 
 -- 4. Get Emergency Medical Data
 CREATE OR REPLACE FUNCTION public.get_emergency_medical_data(

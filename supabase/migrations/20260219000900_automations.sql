@@ -198,6 +198,214 @@ FOR EACH ROW EXECUTE FUNCTION public.enforce_doctor_profile_identity_write();
 
 
 -- 2. Logistics & Operations Synchronization
+-- BEGIN LIVE_EMERGENCY_RELATIONSHIP_RECONCILIATION
+-- Historical runtimes briefly created a second shadow visit using the request
+-- UUID and could replay the insurance completion trigger. Keep the richer row,
+-- preserve useful patient-entered fields, and retain the removed row snapshot
+-- in the permanent audit log before one-to-one indexes are enforced.
+DO $$
+DECLARE
+    v_group RECORD;
+    v_duplicate public.visits%ROWTYPE;
+    v_canonical_id UUID;
+BEGIN
+    FOR v_group IN
+        SELECT visit.request_id
+        FROM public.visits visit
+        WHERE visit.request_id IS NOT NULL
+        GROUP BY visit.request_id
+        HAVING COUNT(*) > 1
+    LOOP
+        SELECT visit.id
+        INTO v_canonical_id
+        FROM public.visits visit
+        WHERE visit.request_id = v_group.request_id
+        ORDER BY
+            (visit.date IS NOT NULL) DESC,
+            (visit.time IS NOT NULL) DESC,
+            (visit.cost IS NOT NULL) DESC,
+            (visit.hospital_name IS NOT NULL) DESC,
+            visit.created_at ASC,
+            visit.id ASC
+        LIMIT 1;
+
+        FOR v_duplicate IN
+            SELECT visit.*
+            FROM public.visits visit
+            WHERE visit.request_id = v_group.request_id
+              AND visit.id <> v_canonical_id
+            ORDER BY visit.created_at, visit.id
+        LOOP
+            UPDATE public.emergency_chat_rooms
+            SET visit_id = v_canonical_id,
+                updated_at = NOW()
+            WHERE visit_id = v_duplicate.id;
+
+            UPDATE public.visits canonical
+            SET user_id = COALESCE(canonical.user_id, v_duplicate.user_id),
+                hospital_id = COALESCE(canonical.hospital_id, v_duplicate.hospital_id),
+                hospital_name = COALESCE(canonical.hospital_name, v_duplicate.hospital_name),
+                hospital = COALESCE(canonical.hospital, v_duplicate.hospital),
+                hospital_image = COALESCE(canonical.hospital_image, v_duplicate.hospital_image),
+                address = COALESCE(canonical.address, v_duplicate.address),
+                phone = COALESCE(canonical.phone, v_duplicate.phone),
+                image = COALESCE(canonical.image, v_duplicate.image),
+                doctor_id = COALESCE(canonical.doctor_id, v_duplicate.doctor_id),
+                doctor_name = COALESCE(canonical.doctor_name, v_duplicate.doctor_name),
+                doctor = COALESCE(canonical.doctor, v_duplicate.doctor),
+                doctor_image = COALESCE(canonical.doctor_image, v_duplicate.doctor_image),
+                specialty = COALESCE(canonical.specialty, v_duplicate.specialty),
+                date = COALESCE(canonical.date, v_duplicate.date),
+                time = COALESCE(canonical.time, v_duplicate.time),
+                type = COALESCE(canonical.type, v_duplicate.type),
+                status = COALESCE(canonical.status, v_duplicate.status),
+                notes = COALESCE(canonical.notes, v_duplicate.notes),
+                cost = COALESCE(canonical.cost, v_duplicate.cost),
+                summary = COALESCE(canonical.summary, v_duplicate.summary),
+                preparation = COALESCE(canonical.preparation, v_duplicate.preparation),
+                prescriptions = COALESCE(canonical.prescriptions, v_duplicate.prescriptions),
+                room_number = COALESCE(canonical.room_number, v_duplicate.room_number),
+                estimated_duration = COALESCE(canonical.estimated_duration, v_duplicate.estimated_duration),
+                meeting_link = COALESCE(canonical.meeting_link, v_duplicate.meeting_link),
+                care_mode = COALESCE(canonical.care_mode, v_duplicate.care_mode),
+                scheduled_start_at = COALESCE(canonical.scheduled_start_at, v_duplicate.scheduled_start_at),
+                scheduled_end_at = COALESCE(canonical.scheduled_end_at, v_duplicate.scheduled_end_at),
+                scheduled_timezone = COALESCE(canonical.scheduled_timezone, v_duplicate.scheduled_timezone),
+                booking_idempotency_key = COALESCE(
+                    canonical.booking_idempotency_key,
+                    v_duplicate.booking_idempotency_key
+                ),
+                insurance_covered = COALESCE(canonical.insurance_covered, v_duplicate.insurance_covered),
+                next_visit = COALESCE(canonical.next_visit, v_duplicate.next_visit),
+                latitude = COALESCE(canonical.latitude, v_duplicate.latitude),
+                longitude = COALESCE(canonical.longitude, v_duplicate.longitude),
+                tip_amount = CASE
+                    WHEN COALESCE(canonical.tip_amount, 0) = 0
+                        THEN COALESCE(v_duplicate.tip_amount, canonical.tip_amount)
+                    ELSE canonical.tip_amount
+                END,
+                tip_currency = COALESCE(canonical.tip_currency, v_duplicate.tip_currency),
+                tipped_at = COALESCE(canonical.tipped_at, v_duplicate.tipped_at),
+                tip_payment_id = COALESCE(canonical.tip_payment_id, v_duplicate.tip_payment_id),
+                rating = COALESCE(canonical.rating, v_duplicate.rating),
+                rating_comment = COALESCE(canonical.rating_comment, v_duplicate.rating_comment),
+                rated_at = COALESCE(canonical.rated_at, v_duplicate.rated_at),
+                lifecycle_state = CASE
+                    WHEN COALESCE(canonical.rated_at, v_duplicate.rated_at) IS NOT NULL THEN 'rated'
+                    ELSE COALESCE(canonical.lifecycle_state, v_duplicate.lifecycle_state)
+                END,
+                lifecycle_updated_at = GREATEST(
+                    COALESCE(canonical.lifecycle_updated_at, '-infinity'::TIMESTAMPTZ),
+                    COALESCE(v_duplicate.lifecycle_updated_at, '-infinity'::TIMESTAMPTZ)
+                ),
+                updated_at = GREATEST(canonical.updated_at, v_duplicate.updated_at, NOW())
+            WHERE canonical.id = v_canonical_id;
+
+            INSERT INTO public.admin_audit_log (action, details)
+            VALUES (
+                'reconcile_duplicate_emergency_visit',
+                JSONB_BUILD_OBJECT(
+                    'request_id', v_group.request_id,
+                    'canonical_visit_id', v_canonical_id,
+                    'removed_visit', TO_JSONB(v_duplicate),
+                    'reason', 'legacy_shadow_visit'
+                )
+            );
+
+            DELETE FROM public.visits
+            WHERE id = v_duplicate.id
+              AND request_id = v_group.request_id;
+        END LOOP;
+    END LOOP;
+END
+$$;
+
+DO $$
+DECLARE
+    v_group RECORD;
+    v_duplicate public.insurance_billing%ROWTYPE;
+    v_canonical_id UUID;
+BEGIN
+    FOR v_group IN
+        SELECT billing.emergency_request_id
+        FROM public.insurance_billing billing
+        WHERE billing.emergency_request_id IS NOT NULL
+        GROUP BY billing.emergency_request_id
+        HAVING COUNT(*) > 1
+    LOOP
+        IF EXISTS (
+            SELECT 1
+            FROM public.insurance_billing billing
+            WHERE billing.emergency_request_id = v_group.emergency_request_id
+            GROUP BY billing.emergency_request_id
+            HAVING COUNT(DISTINCT billing.status) > 1
+                OR COUNT(DISTINCT billing.total_amount) > 1
+                OR COUNT(DISTINCT billing.insurance_amount) > 1
+                OR COUNT(DISTINCT billing.user_amount) > 1
+                OR COUNT(DISTINCT billing.insurance_policy_id) FILTER (
+                    WHERE billing.insurance_policy_id IS NOT NULL
+                ) > 1
+        ) THEN
+            RAISE EXCEPTION
+                'Conflicting insurance billing duplicates require manual review for request %',
+                v_group.emergency_request_id;
+        END IF;
+
+        SELECT billing.id
+        INTO v_canonical_id
+        FROM public.insurance_billing billing
+        WHERE billing.emergency_request_id = v_group.emergency_request_id
+        ORDER BY
+            (billing.status IN ('paid', 'approved')) DESC,
+            (billing.claim_number IS NOT NULL) DESC,
+            billing.created_at ASC,
+            billing.id ASC
+        LIMIT 1;
+
+        FOR v_duplicate IN
+            SELECT billing.*
+            FROM public.insurance_billing billing
+            WHERE billing.emergency_request_id = v_group.emergency_request_id
+              AND billing.id <> v_canonical_id
+            ORDER BY billing.created_at, billing.id
+        LOOP
+            UPDATE public.insurance_billing canonical
+            SET hospital_id = COALESCE(canonical.hospital_id, v_duplicate.hospital_id),
+                user_id = COALESCE(canonical.user_id, v_duplicate.user_id),
+                insurance_policy_id = COALESCE(
+                    canonical.insurance_policy_id,
+                    v_duplicate.insurance_policy_id
+                ),
+                claim_number = COALESCE(canonical.claim_number, v_duplicate.claim_number),
+                billing_date = LEAST(canonical.billing_date, v_duplicate.billing_date),
+                paid_date = COALESCE(canonical.paid_date, v_duplicate.paid_date),
+                coverage_percentage = COALESCE(
+                    canonical.coverage_percentage,
+                    v_duplicate.coverage_percentage
+                ),
+                updated_at = GREATEST(canonical.updated_at, v_duplicate.updated_at, NOW())
+            WHERE canonical.id = v_canonical_id;
+
+            INSERT INTO public.admin_audit_log (action, details)
+            VALUES (
+                'reconcile_duplicate_insurance_billing',
+                JSONB_BUILD_OBJECT(
+                    'emergency_request_id', v_group.emergency_request_id,
+                    'canonical_billing_id', v_canonical_id,
+                    'removed_billing', TO_JSONB(v_duplicate),
+                    'reason', 'replayed_completion_trigger'
+                )
+            );
+
+            DELETE FROM public.insurance_billing
+            WHERE id = v_duplicate.id
+              AND emergency_request_id = v_group.emergency_request_id;
+        END LOOP;
+    END LOOP;
+END
+$$;
+-- END LIVE_EMERGENCY_RELATIONSHIP_RECONCILIATION
+
 -- Sync Emergency -> Visit across lifecycle transitions
 CREATE OR REPLACE FUNCTION public.sync_emergency_to_visit()
 RETURNS TRIGGER AS $$
@@ -486,7 +694,20 @@ BEGIN
             NEW.id, NEW.hospital_id, NEW.user_id, v_policy.id,
             v_total, v_insurance_amount, v_user_amount,
             COALESCE(v_policy.coverage_percentage, 0), CURRENT_DATE, 'pending'
-        );
+        )
+        ON CONFLICT (emergency_request_id)
+            WHERE emergency_request_id IS NOT NULL
+        DO UPDATE SET
+            hospital_id = EXCLUDED.hospital_id,
+            user_id = EXCLUDED.user_id,
+            insurance_policy_id = EXCLUDED.insurance_policy_id,
+            total_amount = EXCLUDED.total_amount,
+            insurance_amount = EXCLUDED.insurance_amount,
+            user_amount = EXCLUDED.user_amount,
+            coverage_percentage = EXCLUDED.coverage_percentage,
+            billing_date = EXCLUDED.billing_date,
+            updated_at = NOW()
+        WHERE public.insurance_billing.status = 'pending';
     END IF;
     RETURN NEW;
 END;
@@ -507,25 +728,28 @@ CREATE OR REPLACE FUNCTION public.auto_assign_driver()
 RETURNS TRIGGER AS $$
 DECLARE
     v_amb_id UUID;
-    v_driver_id UUID;
-    v_driver_name TEXT;
     v_should_attempt BOOLEAN := FALSE;
+    v_offer_result JSONB;
 BEGIN
-    IF NEW.service_type != 'ambulance' OR NEW.hospital_id IS NULL THEN
+    IF NEW.service_type <> 'ambulance' OR NEW.hospital_id IS NULL THEN
         RETURN NEW;
     END IF;
 
-    IF NEW.responder_id IS NOT NULL OR NEW.ambulance_id IS NOT NULL THEN
+    IF NEW.current_responder_assignment_id IS NOT NULL
+       OR NEW.responder_id IS NOT NULL
+       OR NEW.ambulance_id IS NOT NULL THEN
         RETURN NEW;
     END IF;
 
     IF TG_OP = 'INSERT' THEN
-        v_should_attempt := NEW.status IN ('in_progress', 'accepted');
+        v_should_attempt := NEW.status = 'in_progress';
     ELSIF TG_OP = 'UPDATE' THEN
-        v_should_attempt := NEW.status IN ('in_progress', 'accepted')
+        v_should_attempt := NEW.status = 'in_progress'
             AND (
                 OLD.status IS DISTINCT FROM NEW.status
                 OR OLD.hospital_id IS DISTINCT FROM NEW.hospital_id
+                OR OLD.current_responder_assignment_id IS DISTINCT FROM NEW.current_responder_assignment_id
+                OR OLD.ambulance_id IS DISTINCT FROM NEW.ambulance_id
             );
     END IF;
 
@@ -533,62 +757,43 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    WITH candidate AS (
-        SELECT a.id, a.profile_id
-        FROM public.ambulances a
-        WHERE a.hospital_id = NEW.hospital_id
-          AND a.status = 'available'
-          AND a.profile_id IS NOT NULL
-        ORDER BY a.created_at ASC
-        FOR UPDATE SKIP LOCKED
-        LIMIT 1
-    ),
-    claimed AS (
-        UPDATE public.ambulances a
-        SET status = 'on_trip',
-            current_call = NEW.id,
-            updated_at = NOW()
-        FROM candidate c
-        WHERE a.id = c.id
-        RETURNING a.id, c.profile_id
-    )
-    SELECT id, profile_id INTO v_amb_id, v_driver_id FROM claimed;
+    SELECT ambulance.id
+    INTO v_amb_id
+    FROM public.ambulances ambulance
+    WHERE ambulance.status = 'available'
+      AND ambulance.current_call IS NULL
+      AND ambulance.profile_id IS NOT NULL
+      AND COALESCE(
+            (public.ambulance_dispatch_readiness_snapshot(ambulance.id, NEW.id)->>'ready')::BOOLEAN,
+            false
+      )
+      AND NOT EXISTS (
+            SELECT 1
+            FROM public.emergency_responder_assignments previous
+            WHERE previous.emergency_request_id = NEW.id
+              AND previous.ambulance_id = ambulance.id
+              AND previous.status IN ('declined', 'released')
+      )
+    ORDER BY
+        CASE
+            WHEN NEW.patient_location IS NOT NULL AND ambulance.location IS NOT NULL
+            THEN ST_Distance(ambulance.location::GEOGRAPHY, NEW.patient_location::GEOGRAPHY)
+            ELSE 1000000000
+        END,
+        ambulance.updated_at ASC
+    FOR UPDATE OF ambulance SKIP LOCKED
+    LIMIT 1;
 
     IF v_amb_id IS NULL THEN
         RETURN NEW;
     END IF;
 
-    SELECT full_name INTO v_driver_name
-    FROM public.profiles
-    WHERE id = v_driver_id;
-
-    PERFORM set_config('ivisit.transition_source', 'automation:auto_assign_driver', true);
-    PERFORM set_config('ivisit.transition_reason', 'auto_dispatch_assignment', true);
-    PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
-        jsonb_build_object('ambulance_id', v_amb_id, 'driver_id', v_driver_id)::TEXT,
-        true
+    v_offer_result := public.offer_responder_assignment(
+        NEW.id,
+        v_amb_id,
+        NULL,
+        'automation:auto_assign_driver'
     );
-
-    UPDATE public.emergency_requests
-    SET responder_id = v_driver_id,
-        responder_name = v_driver_name,
-        ambulance_id = v_amb_id,
-        status = 'accepted',
-        updated_at = NOW()
-    WHERE id = NEW.id
-      AND responder_id IS NULL
-      AND ambulance_id IS NULL;
-
-    IF NOT FOUND THEN
-        UPDATE public.ambulances
-        SET status = 'available',
-            current_call = NULL,
-            updated_at = NOW()
-        WHERE id = v_amb_id
-          AND current_call = NEW.id;
-    END IF;
 
     RETURN NEW;
 END;
@@ -622,7 +827,15 @@ BEGIN
         FROM public.ambulances
         WHERE id = NEW.ambulance_id;
 
-        IF NEW.status IN ('accepted', 'arrived', 'in_progress') THEN
+        IF NEW.status = 'in_progress' AND NEW.current_responder_assignment_id IS NOT NULL THEN
+            IF v_current_amb_status = 'available' THEN
+                UPDATE public.ambulances
+                SET status = 'dispatched',
+                    current_call = NEW.id,
+                    updated_at = NOW()
+                WHERE id = NEW.ambulance_id;
+            END IF;
+        ELSIF NEW.status IN ('accepted', 'arrived') THEN
             IF v_current_amb_status IN ('available', 'dispatched', 'en_route', 'on_scene') THEN
                 UPDATE public.ambulances
                 SET status = 'on_trip',
@@ -710,13 +923,6 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_request_id UUID;
     v_request_status TEXT;
-    v_request_hospital_id UUID;
-    v_candidate_ambulance_id UUID;
-    v_candidate_driver_id UUID;
-    v_candidate_type TEXT;
-    v_candidate_vehicle_number TEXT;
-    v_candidate_driver_name TEXT;
-    v_candidate_driver_phone TEXT;
     v_old_status TEXT := LOWER(COALESCE(OLD.status, ''));
     v_new_status TEXT := LOWER(COALESCE(NEW.status, ''));
     v_became_unavailable BOOLEAN := FALSE;
@@ -747,8 +953,8 @@ BEGIN
 
     v_request_id := NEW.current_call;
 
-    SELECT public.canonicalize_emergency_status(er.status, er.status), er.hospital_id
-    INTO v_request_status, v_request_hospital_id
+    SELECT public.canonicalize_emergency_status(er.status, er.status)
+    INTO v_request_status
     FROM public.emergency_requests er
     WHERE er.id = v_request_id
     FOR UPDATE OF er;
@@ -761,41 +967,36 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    SELECT
-        a.id,
-        a.profile_id,
-        a.type,
-        COALESCE(NULLIF(BTRIM(a.vehicle_number), ''), NULLIF(BTRIM(a.license_plate), '')),
-        p.full_name,
-        p.phone
-    INTO
-        v_candidate_ambulance_id,
-        v_candidate_driver_id,
-        v_candidate_type,
-        v_candidate_vehicle_number,
-        v_candidate_driver_name,
-        v_candidate_driver_phone
-    FROM public.ambulances a
-    LEFT JOIN public.profiles p ON p.id = a.profile_id
-    WHERE a.id IS DISTINCT FROM NEW.id
-      AND a.hospital_id = v_request_hospital_id
-      AND a.status = 'available'
-      AND a.profile_id IS NOT NULL
-    ORDER BY a.created_at ASC
-    FOR UPDATE OF a SKIP LOCKED
-    LIMIT 1;
+    IF EXISTS (
+        SELECT 1
+        FROM public.emergency_requests request
+        WHERE request.id = v_request_id
+          AND request.current_responder_assignment_id IS NOT NULL
+    ) THEN
+        PERFORM public.release_current_responder_assignment(
+            v_request_id,
+            'released',
+            'assigned_responder_became_unavailable',
+            NULL,
+            'automation'
+        );
+    ELSE
+        PERFORM set_config('ivisit.allow_emergency_status_write', '1', true);
+        PERFORM set_config('ivisit.transition_source', 'automation:driver_failover', true);
+        PERFORM set_config('ivisit.transition_reason', 'legacy_assignment_became_unavailable', true);
+        PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
 
-    IF v_candidate_ambulance_id IS NULL THEN
-        UPDATE public.emergency_requests er
-        SET ambulance_id = NULL,
+        UPDATE public.emergency_requests
+        SET status = 'in_progress',
+            ambulance_id = NULL,
+            dispatch_organization_id = NULL,
             responder_id = NULL,
             responder_name = NULL,
             responder_phone = NULL,
             responder_vehicle_type = NULL,
             responder_vehicle_plate = NULL,
             updated_at = NOW()
-        WHERE er.id = v_request_id
-          AND er.ambulance_id = NEW.id;
+        WHERE id = v_request_id;
 
         UPDATE public.ambulances
         SET current_call = NULL,
@@ -803,66 +1004,7 @@ BEGIN
             updated_at = NOW()
         WHERE id = NEW.id
           AND current_call = v_request_id;
-
-        RETURN NEW;
     END IF;
-
-    UPDATE public.ambulances
-    SET status = 'on_trip',
-        current_call = v_request_id,
-        updated_at = NOW()
-    WHERE id = v_candidate_ambulance_id;
-
-    UPDATE public.ambulances
-    SET current_call = NULL,
-        eta = NULL,
-        updated_at = NOW()
-    WHERE id = NEW.id
-      AND current_call = v_request_id;
-
-    PERFORM set_config('ivisit.transition_source', 'automation:driver_failover', true);
-    PERFORM set_config('ivisit.transition_reason', 'assigned_driver_unavailable_auto_reassign', true);
-    PERFORM set_config('ivisit.transition_actor_role', 'automation', true);
-    PERFORM set_config(
-        'ivisit.transition_metadata',
-        jsonb_build_object(
-            'request_id', v_request_id,
-            'unavailable_ambulance_id', NEW.id,
-            'replacement_ambulance_id', v_candidate_ambulance_id,
-            'old_status', v_old_status,
-            'new_status', v_new_status
-        )::TEXT,
-        true
-    );
-
-    UPDATE public.emergency_requests er
-    SET ambulance_id = v_candidate_ambulance_id,
-        responder_id = COALESCE(v_candidate_driver_id, er.responder_id),
-        responder_name = COALESCE(
-            NULLIF(BTRIM(v_candidate_driver_name), ''),
-            NULLIF(BTRIM(v_candidate_vehicle_number), ''),
-            NULLIF(BTRIM(v_candidate_type), ''),
-            NULLIF(BTRIM(er.responder_name), ''),
-            'Responder'
-        ),
-        responder_phone = COALESCE(
-            NULLIF(BTRIM(v_candidate_driver_phone), ''),
-            NULLIF(BTRIM(er.responder_phone), '')
-        ),
-        responder_vehicle_type = COALESCE(
-            NULLIF(BTRIM(v_candidate_type), ''),
-            NULLIF(BTRIM(er.responder_vehicle_type), '')
-        ),
-        responder_vehicle_plate = COALESCE(
-            NULLIF(BTRIM(v_candidate_vehicle_number), ''),
-            NULLIF(BTRIM(er.responder_vehicle_plate), '')
-        ),
-        status = CASE
-            WHEN v_request_status = 'in_progress' THEN 'accepted'
-            ELSE er.status
-        END,
-        updated_at = NOW()
-    WHERE er.id = v_request_id;
 
     RETURN NEW;
 END;
@@ -1038,7 +1180,13 @@ DECLARE
     v_table TEXT;
     v_targets TEXT[] := ARRAY[
         'ambulances',
+        'ambulance_staff_assignments',
+        'doctor_schedules',
         'emergency_contacts',
+        'emergency_chat_messages',
+        'emergency_chat_participants',
+        'emergency_chat_rooms',
+        'emergency_responder_assignments',
         'doctors',
         'emergency_requests',
         'health_news',

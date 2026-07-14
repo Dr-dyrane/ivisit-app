@@ -101,10 +101,12 @@ function run() {
         approveBody
       );
     checks.approve_persists_fee_to_payment_row = /ivisit_fee_amount\s*=\s*v_fee_amount/i.test(approveBody);
+    const paymentMetadataUpdate = approveBody.match(
+      /metadata\s*=\s*COALESCE\s*\(\s*metadata\s*,\s*'\{\}'::jsonb\s*\)\s*\|\|\s*jsonb_build_object\s*\(([\s\S]*?)\)\s*,\s*updated_at/i
+    )?.[1] || '';
     checks.approve_persists_fee_to_payment_metadata =
-      /metadata\s*=\s*COALESCE\s*\(\s*metadata\s*,\s*'\{\}'::jsonb\s*\)\s*\|\|\s*jsonb_build_object\s*\(\s*'fee_amount'\s*,\s*v_fee_amount\s*,\s*'fee'\s*,\s*v_fee_amount\s*\)/i.test(
-        approveBody
-      );
+      /'fee_amount'\s*,\s*v_fee_amount/i.test(paymentMetadataUpdate) &&
+      /'fee'\s*,\s*v_fee_amount/i.test(paymentMetadataUpdate);
 
     if (!checks.approve_nullif_ivisit_fee_amount) {
       failures.push('approve_cash_payment missing NULLIF(v_payment.ivisit_fee_amount, 0) guard');

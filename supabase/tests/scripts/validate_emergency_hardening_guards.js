@@ -308,6 +308,7 @@ async function assertMutationRoleGates() {
 DO $$
 DECLARE
   v_def text;
+  v_target_def text;
 BEGIN
   SELECT pg_get_functiondef('public.update_profile_by_admin(uuid,jsonb)'::regprocedure) INTO v_def;
   IF position('v_actor_role NOT IN (''admin'', ''org_admin'')' in v_def) = 0 THEN
@@ -386,25 +387,36 @@ BEGIN
   END IF;
 
   SELECT pg_get_functiondef('public.complete_trip(text)'::regprocedure) INTO v_def;
-  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
-    RAISE EXCEPTION 'complete_trip missing strict operator role gate';
+  SELECT pg_get_functiondef('public.console_complete_emergency(uuid)'::regprocedure) INTO v_target_def;
+  IF position('public.console_complete_emergency' in v_def) = 0 THEN
+    RAISE EXCEPTION 'complete_trip missing canonical completion delegation';
   END IF;
-  IF position('set_emergency_transition_context' in v_def) = 0 THEN
-    RAISE EXCEPTION 'complete_trip missing canonical transition context helper';
+  IF position('v_actor_role NOT IN (''org_admin'', ''dispatcher'')' in v_target_def) = 0
+     OR position('v_is_admin' in v_target_def) = 0
+     OR position('v_req_responder_id IS DISTINCT FROM v_actor_id' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_complete_emergency missing scoped operator/responder role gate';
   END IF;
-  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
-    RAISE EXCEPTION 'complete_trip missing legal status transition guard';
+  IF position('set_emergency_transition_context' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_complete_emergency missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_complete_emergency missing legal status transition guard';
   END IF;
 
   SELECT pg_get_functiondef('public.cancel_trip(text)'::regprocedure) INTO v_def;
-  IF position('v_actor_role NOT IN (''admin'', ''org_admin'', ''dispatcher'')' in v_def) = 0 THEN
-    RAISE EXCEPTION 'cancel_trip missing strict operator role gate';
+  SELECT pg_get_functiondef('public.console_cancel_emergency(uuid,text)'::regprocedure) INTO v_target_def;
+  IF position('public.console_cancel_emergency' in v_def) = 0 THEN
+    RAISE EXCEPTION 'cancel_trip missing canonical cancellation delegation';
   END IF;
-  IF position('set_emergency_transition_context' in v_def) = 0 THEN
-    RAISE EXCEPTION 'cancel_trip missing canonical transition context helper';
+  IF position('v_actor_role NOT IN (''org_admin'', ''dispatcher'')' in v_target_def) = 0
+     OR position('v_is_admin' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_cancel_emergency missing scoped operator role gate';
   END IF;
-  IF position('is_valid_emergency_status_transition' in v_def) = 0 THEN
-    RAISE EXCEPTION 'cancel_trip missing legal status transition guard';
+  IF position('set_emergency_transition_context' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_cancel_emergency missing canonical transition context helper';
+  END IF;
+  IF position('is_valid_emergency_status_transition' in v_target_def) = 0 THEN
+    RAISE EXCEPTION 'console_cancel_emergency missing legal status transition guard';
   END IF;
 
   SELECT pg_get_functiondef('public.discharge_patient(text)'::regprocedure) INTO v_def;

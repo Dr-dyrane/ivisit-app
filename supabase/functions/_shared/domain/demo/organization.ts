@@ -25,7 +25,23 @@ export const ensureDemoOrganization = async (
   }
 
   if (existing?.id) {
-    return { organization: existing, created: false };
+    const { data: refreshed, error: refreshError } = await admin
+      .from("organizations")
+      .update({
+        organization_type: "hospital",
+        verification_status: "verified",
+        is_active: true,
+        updated_at: nowIso(),
+      })
+      .eq("id", existing.id)
+      .select("id,name,contact_email")
+      .single();
+
+    if (refreshError) {
+      throw new Error(`organization refresh failed: ${refreshError.message}`);
+    }
+
+    return { organization: refreshed, created: false };
   }
 
   const payload = {
@@ -33,6 +49,8 @@ export const ensureDemoOrganization = async (
     contact_email: contactEmail,
     fee_tier: "standard",
     ivisit_fee_percentage: 2.5,
+    organization_type: "hospital",
+    verification_status: "verified",
     is_active: true,
     updated_at: nowIso(),
   };
