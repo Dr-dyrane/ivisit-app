@@ -22,7 +22,6 @@ export const TRACKING_STAGE_GROUPS = Object.freeze({
 });
 
 const ACTIVE_STATUSES = new Set([
-  EmergencyRequestStatus.IN_PROGRESS,
   EmergencyRequestStatus.ACCEPTED,
   EmergencyRequestStatus.ARRIVED,
 ]);
@@ -101,7 +100,7 @@ export function resolveTrackingStage({
     return TRACKING_STAGES.COMPLETED;
   }
 
-  if (isArrived || status === EmergencyRequestStatus.ARRIVED) {
+  if (status === EmergencyRequestStatus.ARRIVED) {
     return TRACKING_STAGES.ARRIVED;
   }
 
@@ -111,6 +110,21 @@ export function resolveTrackingStage({
     status === EmergencyRequestStatus.PENDING_APPROVAL
   ) {
     return TRACKING_STAGES.PENDING_APPROVAL;
+  }
+
+  if (
+    kind === "ambulance" &&
+    status === EmergencyRequestStatus.IN_PROGRESS
+  ) {
+    return TRACKING_STAGES.ASSIGNING;
+  }
+
+  if (kind === "bed" && status === EmergencyRequestStatus.IN_PROGRESS) {
+    return TRACKING_STAGES.ASSIGNING;
+  }
+
+  if (!status && isArrived) {
+    return TRACKING_STAGES.ARRIVED;
   }
 
   const hasMovementSignal = hasRoute || hasEta;
@@ -138,6 +152,10 @@ export function resolveTrackingStage({
   }
 
   if (hasResponder) {
+    return TRACKING_STAGES.DISPATCH_CONFIRMED;
+  }
+
+  if (status === EmergencyRequestStatus.ACCEPTED) {
     return TRACKING_STAGES.DISPATCH_CONFIRMED;
   }
 

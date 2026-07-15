@@ -90,13 +90,12 @@ export default function NotificationsSelectionBar({
           disabled={model.selectedCount === 0}
         />
         <SelectionAction
-          label={NOTIFICATIONS_SCREEN_COPY.rows.delete}
-          icon="trash-outline"
-          onPress={model.onDeleteSelected}
+          label={NOTIFICATIONS_SCREEN_COPY.rows.clear}
+          icon="close-circle-outline"
+          onPress={model.onClearSelected}
           theme={theme}
           metrics={metrics}
           disabled={model.selectedCount === 0}
-          destructive
         />
       </View>
     </View>

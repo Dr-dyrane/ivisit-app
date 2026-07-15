@@ -2,6 +2,7 @@ import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { database, StorageKeys } from "../../../../database";
 import { paymentService } from "../../../../services/paymentService";
 import { visitsService } from "../../../../services/visitsService";
+import { classifyVisitSource } from "../../../../utils/scheduledVisitProjection";
 
 export const TRACKING_RATING_RESOLUTION_KINDS = Object.freeze({
 	MISSING_VISIT: "missing_visit",
@@ -101,6 +102,44 @@ const normalizeTrackingVisitKind = (visit) => {
   return null;
 };
 
+const getTrackingRatingLifecycleState = (visit) =>
+  String(visit?.lifecycleState ?? visit?.lifecycle_state ?? "")
+    .trim()
+    .toLowerCase();
+
+const getTrackingRatingVisitStatus = (visit) =>
+  String(visit?.status ?? "").trim().toLowerCase();
+
+const hasPersistedTrackingRating = (visit) => {
+  const ratedAt = visit?.ratedAt ?? visit?.rated_at;
+  if (ratedAt !== null && ratedAt !== undefined && String(ratedAt).trim() !== "") {
+    return true;
+  }
+
+  const rating = Number(visit?.rating);
+  return Number.isFinite(rating) && rating > 0;
+};
+
+export function isTrackingRatingRecoveryEligible(visit) {
+  if (!visit || typeof visit !== "object" || hasPersistedTrackingRating(visit)) {
+    return false;
+  }
+
+  const lifecycleState = getTrackingRatingLifecycleState(visit);
+  if (lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING) {
+    return true;
+  }
+
+  const hasCanonicalCompletion =
+    lifecycleState === EMERGENCY_VISIT_LIFECYCLE.COMPLETED ||
+    (!lifecycleState && getTrackingRatingVisitStatus(visit) === "completed");
+
+  return (
+    hasCanonicalCompletion &&
+    classifyVisitSource(visit) === "emergency"
+  );
+}
+
 export const getTrackingRatingVisitKeys = (visit) =>
   [
     visit?.id,
@@ -110,6 +149,37 @@ export const getTrackingRatingVisitKeys = (visit) =>
   ]
     .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
     .map((value) => String(value));
+
+export function shouldPresentTrackingRatingState(ratingState, visits) {
+  if (!ratingState?.visible || !ratingState?.visitId) return false;
+  if (!Array.isArray(visits) || visits.length === 0) return true;
+
+  const visitId = String(ratingState.visitId);
+  const matchingVisit = visits.find((visit) =>
+    getTrackingRatingVisitKeys(visit).includes(visitId),
+  );
+
+  if (!matchingVisit) {
+    // A just-completed trip can render before the invalidated visits query
+    // includes its row. Hydration strips persisted visibility, so only an
+    // explicit committed handoff may survive that short data lag.
+    return ratingState.completionCommitted === true;
+  }
+
+  return (
+    getTrackingRatingLifecycleState(matchingVisit) !==
+      EMERGENCY_VISIT_LIFECYCLE.RATED &&
+    !hasPersistedTrackingRating(matchingVisit)
+  );
+}
+
+export function canPresentTrackingRatingWithActiveRequest(
+  activeMapRequest,
+  _visit,
+) {
+  if (!activeMapRequest?.hasActiveRequest) return true;
+  return false;
+}
 
 export function getTrackingRatingRecoveryClaim(visit, claims) {
   const normalizedClaims = normalizeTrackingRatingClaims(claims);
@@ -144,13 +214,12 @@ export function findPendingTrackingRatingVisit(
 
   return [...visits]
     .filter((visit) => {
-      const lifecycleState = String(visit?.lifecycleState ?? "").toLowerCase();
       const visitKeys = getTrackingRatingVisitKeys(visit);
       const hasVisitKey = visitKeys.length > 0;
       const isExcluded = visitKeys.some((key) => excludedIds.has(key));
       const isAllowed = !allowedIds || visitKeys.some((key) => allowedIds.has(key));
       return (
-        lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING &&
+        isTrackingRatingRecoveryEligible(visit) &&
         hasVisitKey &&
         !isExcluded &&
         isAllowed
@@ -173,7 +242,7 @@ export function findPendingTrackingRatingVisit(
 
 export function buildRecoveredTrackingRatingState(visit, claim = null) {
   const visitId = visit?.id ?? visit?.requestId ?? null;
-  if (!visitId) return null;
+  if (!visitId || !isTrackingRatingRecoveryEligible(visit)) return null;
 
   const kind = normalizeTrackingVisitKind(visit);
   const hospitalTitle =
@@ -253,11 +322,10 @@ export function buildTrackingResolutionToast({
  * purgeStaleTrackingRatingClaims
  *
  * 5th layer (Supabase truth) — cross-checks every persisted recovery claim
- * against the current visits array. Removes any claim whose visit lifecycle is
- * no longer RATING_PENDING (already RATED, POST_COMPLETION, COMPLETED, or
- * CANCELLED). Should be called once after visits load to flush accumulated
- * stale claims from previous sessions where rating was submitted but the
- * deleteRecoveryClaim write was lost (app kill, network error, etc).
+ * against the current visits array. Completed, unrated emergency visits remain
+ * eligible because responder-owned completion is now canonical. Claims are
+ * removed only after rating/skip/cancellation or when a completed visit is not
+ * an emergency. This preserves reload recovery without reopening rated visits.
  *
  * @param {Array} visits - normalized visit objects from useVisits()
  * @returns {Promise<Object>} remaining claims after purge
@@ -272,6 +340,7 @@ export async function purgeStaleTrackingRatingClaims(visits) {
 		EMERGENCY_VISIT_LIFECYCLE.RATED,
 		EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
 		EMERGENCY_VISIT_LIFECYCLE.COMPLETED,
+		EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING,
 		EMERGENCY_VISIT_LIFECYCLE.CLEARED,
 		EMERGENCY_VISIT_LIFECYCLE.CANCELLED,
 	]);
@@ -282,7 +351,8 @@ export async function purgeStaleTrackingRatingClaims(visits) {
 			return keys.includes(claimId);
 		});
 		if (!visit) return false;
-		const state = String(visit?.lifecycleState ?? "").toLowerCase();
+		if (isTrackingRatingRecoveryEligible(visit)) return false;
+		const state = getTrackingRatingLifecycleState(visit);
 		return terminalStates.has(state);
 	});
 

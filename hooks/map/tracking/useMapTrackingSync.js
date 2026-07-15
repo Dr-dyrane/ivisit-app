@@ -279,17 +279,24 @@ export function useMapTrackingSync({
     [trackingRouteCoordinates],
   );
 
+  const hasAcceptedResponder = ["accepted", "arrived", "completed"].includes(
+    String(activeAmbulanceTrip?.status ?? "").toLowerCase(),
+  );
+
   const trackingTimeline = useMemo(
     () => ({
       etaSeconds:
         activeAmbulanceTrip?.etaSeconds ??
         scopedTrackingRouteInfo?.durationSec ??
         null,
-      startedAt: activeAmbulanceTrip?.startedAt ?? null,
+      startedAt: hasAcceptedResponder
+        ? activeAmbulanceTrip?.startedAt ?? null
+        : null,
     }),
     [
       activeAmbulanceTrip?.etaSeconds,
       activeAmbulanceTrip?.startedAt,
+      hasAcceptedResponder,
       scopedTrackingRouteInfo?.durationSec,
     ],
   );
@@ -299,6 +306,7 @@ export function useMapTrackingSync({
       !isTrackingMapActive ||
       trackingKind !== "ambulance" ||
       !activeAmbulanceTrip?.requestId ||
+      !hasAcceptedResponder ||
       typeof patchActiveAmbulanceTrip !== "function"
     ) {
       return;
@@ -357,6 +365,7 @@ export function useMapTrackingSync({
     scopedTrackingRouteInfo?.durationSec,
     scopedTrackingRouteInfo?.routeSource,
     trackingRouteSignature,
+    hasAcceptedResponder,
   ]);
 
   return {

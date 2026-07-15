@@ -16,6 +16,7 @@ export function buildTrackingActionEligibility({
 } = {}) {
   const stage = normalizeStage(trackingSnapshot);
   const isAmbulance = trackingKind === "ambulance";
+  const isBed = trackingKind === "bed";
   const isPending = stage === TRACKING_STAGES.PENDING_APPROVAL;
   const isTerminal = TERMINAL_ACTION_STAGES.has(stage);
   const canActOnActiveStage = !isPending && !isTerminal;
@@ -28,9 +29,9 @@ export function buildTrackingActionEligibility({
       isAmbulance &&
       canActOnActiveStage &&
       activeMapRequest?.canConfirmArrival === true,
-    canCompleteAmbulance: false,
+    canCompleteAmbulance: isAmbulance && isTerminal,
     canCheckInBed: false,
-    canCompleteBed: false,
+    canCompleteBed: isBed && isTerminal,
   };
 }
 

@@ -1,10 +1,11 @@
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import {
 	emergencyRequestsService,
 	EmergencyRequestStatus,
 } from "../../services/emergencyRequestsService";
-import { EMERGENCY_VISIT_LIFECYCLE } from "../../constants/visits";
+import { ACTIVE_TRIP_QUERY_KEY } from "./useActiveTripQuery";
 
 const ARRIVAL_ACKNOWLEDGEMENT_STATUSES = new Set([
 	EmergencyRequestStatus.ARRIVED,
@@ -14,29 +15,11 @@ export const useEmergencyHandlers = ({
 	activeAmbulanceTrip,
 	activeBedBooking,
 	setRequestStatus,
-	cancelVisit,
-	updateVisit,
 	stopAmbulanceTrip,
 	stopBedBooking,
 	onSheetSnap,
 }) => {
-	const setVisitLifecycle = useCallback(
-		(id, lifecycleState) => {
-			if (!id) {
-				console.warn("[EmergencyHandlers] setVisitLifecycle called without id");
-				return Promise.resolve();
-			}
-			if (typeof updateVisit !== "function") {
-				console.warn("[EmergencyHandlers] setVisitLifecycle called but updateVisit is not a function");
-				return Promise.resolve();
-			}
-			return updateVisit(id, {
-				lifecycleState,
-				lifecycleUpdatedAt: new Date().toISOString(),
-			});
-		},
-		[updateVisit]
-	);
+	const queryClient = useQueryClient();
 
 	const createBaseHandler = useCallback(
 		(_type, actions) => {
@@ -76,8 +59,6 @@ export const useEmergencyHandlers = ({
 						activeAmbulanceTrip.requestId,
 						EmergencyRequestStatus.CANCELLED
 					),
-					cancelVisit(activeAmbulanceTrip.requestId),
-					setVisitLifecycle(activeAmbulanceTrip.requestId, EMERGENCY_VISIT_LIFECYCLE.CANCELLED),
 				],
 				cleanup: stopAmbulanceTrip,
 			})();
@@ -87,7 +68,7 @@ export const useEmergencyHandlers = ({
 			}
 			return result;
 		},
-		[activeAmbulanceTrip, createBaseHandler, setRequestStatus, cancelVisit, stopAmbulanceTrip]
+		[activeAmbulanceTrip, createBaseHandler, setRequestStatus, stopAmbulanceTrip]
 	);
 
 	const onCompleteAmbulanceTrip = useCallback(
@@ -118,8 +99,6 @@ export const useEmergencyHandlers = ({
 						activeBedBooking.requestId,
 						EmergencyRequestStatus.CANCELLED
 					),
-					cancelVisit(activeBedBooking.requestId),
-					setVisitLifecycle(activeBedBooking.requestId, EMERGENCY_VISIT_LIFECYCLE.CANCELLED),
 				],
 				cleanup: stopBedBooking,
 			})();
@@ -129,7 +108,7 @@ export const useEmergencyHandlers = ({
 			}
 			return result;
 		},
-		[activeBedBooking, createBaseHandler, setRequestStatus, cancelVisit, stopBedBooking]
+		[activeBedBooking, createBaseHandler, setRequestStatus, stopBedBooking]
 	);
 
 	const onCompleteBedBooking = useCallback(
@@ -165,13 +144,14 @@ export const useEmergencyHandlers = ({
 				await emergencyRequestsService.acknowledgeResponderArrival(
 					activeAmbulanceTrip.requestId,
 				);
+			await queryClient.invalidateQueries({ queryKey: ACTIVE_TRIP_QUERY_KEY });
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			return { ok: true, acknowledgement };
 		} catch (error) {
 			console.error("[EmergencyHandlers] arrival acknowledgement failed:", error);
 			return { ok: false, error };
 		}
-	}, [activeAmbulanceTrip]);
+	}, [activeAmbulanceTrip, queryClient]);
 
 	const onMarkBedOccupied = useCallback(async () => {
 		if (!activeBedBooking?.requestId) return;

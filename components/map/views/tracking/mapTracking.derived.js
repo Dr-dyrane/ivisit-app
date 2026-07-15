@@ -97,8 +97,16 @@ export function buildTrackingViewState({
           ? "pending"
           : "idle"
   );
+  const isAwaitingResponder =
+    trackingKind === "ambulance" &&
+    resolvedStatus === EmergencyRequestStatus.IN_PROGRESS;
+  const isAwaitingFacility =
+    trackingKind === "bed" &&
+    resolvedStatus === EmergencyRequestStatus.IN_PROGRESS;
   const remainingSeconds =
-    trackingKind === "ambulance"
+    isAwaitingResponder
+      ? null
+      : trackingKind === "ambulance"
       ? Number.isFinite(ambulanceRemainingSeconds)
         ? ambulanceRemainingSeconds
         : routeInfo?.durationSec ?? null
@@ -161,6 +169,7 @@ export function buildTrackingViewState({
   const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
   const shouldShowTelemetryWarning =
     trackingKind === "ambulance" &&
+    resolvedStatus === EmergencyRequestStatus.ACCEPTED &&
     resolvedStatus !== EmergencyRequestStatus.ARRIVED &&
     resolvedStatus !== EmergencyRequestStatus.COMPLETED;
   const telemetryWarningLabel =
@@ -181,7 +190,9 @@ export function buildTrackingViewState({
     activeAmbulanceTrip?.requestId && activeBedBooking?.requestId
       ? activeBedBooking?.status === EmergencyRequestStatus.ARRIVED
         ? "Bed ready"
-        : "Bed reserved"
+        : activeBedBooking?.status === EmergencyRequestStatus.IN_PROGRESS
+          ? "Awaiting facility"
+          : "Bed reserved"
       : null;
   const sheetTitle =
     trackingKind === "pending"
@@ -191,11 +202,15 @@ export function buildTrackingViewState({
           resolvedStatus === EmergencyRequestStatus.COMPLETED ||
           bedStatus === "Ready"
           ? "Bed ready"
-          : "Bed reserved"
+          : isAwaitingFacility
+            ? "Awaiting facility"
+            : "Bed reserved"
         : resolvedStatus === EmergencyRequestStatus.COMPLETED
           ? "Complete"
           : resolvedStatus === EmergencyRequestStatus.ARRIVED
             ? "Arrived"
+            : isAwaitingResponder
+              ? "Finding responder"
             : ambulanceComputedStatus === "Arriving"
               ? "Arriving"
               : "En route";

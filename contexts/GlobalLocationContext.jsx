@@ -22,8 +22,20 @@ import {
 
 const LOCATION_CONFIG = {
   TIMEOUT: 10000,
+  PLACE_TIMEOUT: 5000,
   MAX_AGE: 30000,
   ACCURACY: Location.Accuracy.High,
+};
+
+const withLocationDeadline = (promise, timeoutMs, message) => {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => {
+    clearTimeout(timeoutId);
+  });
 };
 
 // LOC-3: Location Recovery - Structured error classification
@@ -233,8 +245,10 @@ export function GlobalLocationProvider({ children }) {
         let nextPlace = null;
 
         try {
-          const nativePlaces = await Location.reverseGeocodeAsync(
-            normalizedLocation,
+          const nativePlaces = await withLocationDeadline(
+            Location.reverseGeocodeAsync(normalizedLocation),
+            LOCATION_CONFIG.PLACE_TIMEOUT,
+            "Native reverse geocoding timed out",
           );
           const nativePlace = buildPlaceModelFromNativePlace(
             nativePlaces?.[0],
@@ -249,9 +263,13 @@ export function GlobalLocationProvider({ children }) {
 
         if (!nextPlace) {
           try {
-            const formattedAddress = await mapboxService.reverseGeocode(
-              normalizedLocation.latitude,
-              normalizedLocation.longitude,
+            const formattedAddress = await withLocationDeadline(
+              mapboxService.reverseGeocode(
+                normalizedLocation.latitude,
+                normalizedLocation.longitude,
+              ),
+              LOCATION_CONFIG.PLACE_TIMEOUT,
+              "Mapbox reverse geocoding timed out",
             );
             if (
               typeof formattedAddress === "string" &&
@@ -270,7 +288,11 @@ export function GlobalLocationProvider({ children }) {
         }
 
         if (!nextPlace) {
-          nextPlace = await reverseGeocodeWithOpenStreetMap(normalizedLocation);
+          nextPlace = await withLocationDeadline(
+            reverseGeocodeWithOpenStreetMap(normalizedLocation),
+            LOCATION_CONFIG.PLACE_TIMEOUT,
+            "OpenStreetMap reverse geocoding timed out",
+          );
         }
 
         if (!nextPlace) {
@@ -306,6 +328,9 @@ export function GlobalLocationProvider({ children }) {
         setResolvedPlace(null);
         return null;
       }
+
+      // Coordinates are sufficient to render the map. Place-name lookup is secondary.
+      setIsLoadingLocation(false);
 
       return resolveLocationDetails(normalizedLocation);
     },
@@ -353,7 +378,11 @@ export function GlobalLocationProvider({ children }) {
 
       const servicesEnabled =
         typeof Location.hasServicesEnabledAsync === "function"
-          ? await Location.hasServicesEnabledAsync()
+          ? await withLocationDeadline(
+              Location.hasServicesEnabledAsync(),
+              LOCATION_CONFIG.TIMEOUT,
+              "Location services check timed out",
+            )
           : true;
       setLocationServicesEnabled(servicesEnabled);
 
@@ -377,11 +406,19 @@ export function GlobalLocationProvider({ children }) {
         };
       }
 
-      let permission = await Location.getForegroundPermissionsAsync();
+      let permission = await withLocationDeadline(
+        Location.getForegroundPermissionsAsync(),
+        LOCATION_CONFIG.TIMEOUT,
+        "Location permission check timed out",
+      );
       let permissionStatus = permission?.status || "undetermined";
 
       if (permissionStatus !== "granted") {
-        permission = await Location.requestForegroundPermissionsAsync();
+        permission = await withLocationDeadline(
+          Location.requestForegroundPermissionsAsync(),
+          LOCATION_CONFIG.TIMEOUT,
+          "Location permission request timed out",
+        );
         permissionStatus = permission?.status || "undetermined";
       }
 
@@ -414,19 +451,15 @@ export function GlobalLocationProvider({ children }) {
       }
 
       try {
-        const location = await Promise.race([
+        const location = await withLocationDeadline(
           Location.getCurrentPositionAsync({
             accuracy: LOCATION_CONFIG.ACCURACY,
             maxAge: LOCATION_CONFIG.MAX_AGE,
             timeout: LOCATION_CONFIG.TIMEOUT,
           }),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Location timeout")),
-              LOCATION_CONFIG.TIMEOUT,
-            ),
-          ),
-        ]);
+          LOCATION_CONFIG.TIMEOUT,
+          "Location timeout",
+        );
 
         const locationData = {
           latitude: location.coords.latitude,
@@ -501,6 +534,9 @@ export function GlobalLocationProvider({ children }) {
   }, [requestLocationPermission]);
 
   const refreshLocation = useCallback(async () => {
+    if (isRequestingPermission.current) {
+      return null;
+    }
     setIsLoadingLocation(true);
     return requestLocationPermission();
   }, [requestLocationPermission]);

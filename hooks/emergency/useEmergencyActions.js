@@ -6,7 +6,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AmbulanceStatus } from "../../constants/emergency";
+import {
+  emergencyRequestsService,
+  EmergencyRequestStatus,
+} from "../../services/emergencyRequestsService";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
 import {
   AMBULANCE_LIVE_TRACK_STATUSES,
@@ -18,6 +23,11 @@ import {
 } from "../../utils/emergencyContextHelpers";
 import { isValidCoordinate } from "../../utils/mapUtils";
 import { useEmergencyTripStore } from "../../stores/emergencyTripStore";
+import { ACTIVE_TRIP_QUERY_KEY } from "./useActiveTripQuery";
+
+const DEMO_LIFECYCLE_TICK_MS = 4000;
+const DEMO_DISPATCH_RETRY_MS = 8000;
+const DEMO_COMPLETION_DELAY_MS = 2000;
 
 const getRequestIdentityKeys = (record) => {
   if (!record || typeof record !== "object") return [];
@@ -77,7 +87,14 @@ export function useEmergencyActions({
   getActiveAmbulanceDemoHospital,
   resetAmbulanceEventVersion,
 }) {
+  const queryClient = useQueryClient();
   const [telemetryNowMs, setTelemetryNowMs] = useState(Date.now());
+  const demoLifecycleSyncRef = useRef({
+    requestId: null,
+    action: null,
+    inFlight: false,
+    lastAttemptAt: 0,
+  });
   const transitionPendingToActive = useEmergencyTripStore(
     (s) => s.transitionPendingToActive,
   );
@@ -109,8 +126,107 @@ export function useEmergencyActions({
     const requestId = activeAmbulanceTrip?.requestId ?? null;
     if (!requestId || !activeAmbulanceDemoHospital) return;
 
+    let cancelled = false;
+    const syncLifecycle = async () => {
+      const trip = activeAmbulanceTripRef.current;
+      if (!trip || String(trip?.requestId ?? "") !== String(requestId)) return;
+
+      const status = String(trip?.status ?? "").toLowerCase();
+      let action = null;
+      if (status === EmergencyRequestStatus.IN_PROGRESS) {
+        action = "ensure_dispatch";
+      } else if (status === EmergencyRequestStatus.ACCEPTED) {
+        const etaSeconds =
+          Number.isFinite(trip?.etaSeconds) && trip.etaSeconds > 0
+            ? Number(trip.etaSeconds)
+            : 600;
+        const startedAt = Number.isFinite(trip?.startedAt)
+          ? Number(trip.startedAt)
+          : null;
+        if (
+          Number.isFinite(startedAt) &&
+          Math.max(0, (Date.now() - startedAt) / 1000) >= etaSeconds
+        ) {
+          action = "mark_arrived";
+        }
+      } else if (
+        status === EmergencyRequestStatus.ARRIVED &&
+        trip?.patientAcknowledgedArrivalAt
+      ) {
+        const acknowledgedAt = Date.parse(trip.patientAcknowledgedArrivalAt);
+        if (
+          Number.isFinite(acknowledgedAt) &&
+          Date.now() - acknowledgedAt >= DEMO_COMPLETION_DELAY_MS
+        ) {
+          action = "mark_completed";
+        }
+      }
+      if (!action) return;
+
+      const syncState = demoLifecycleSyncRef.current;
+      const now = Date.now();
+      const sameAttempt =
+        syncState.requestId === requestId && syncState.action === action;
+      const retryWindow = action === "ensure_dispatch"
+        ? DEMO_DISPATCH_RETRY_MS
+        : DEMO_LIFECYCLE_TICK_MS;
+      if (
+        syncState.inFlight ||
+        (sameAttempt && now - syncState.lastAttemptAt < retryWindow)
+      ) {
+        return;
+      }
+
+      demoLifecycleSyncRef.current = {
+        requestId,
+        action,
+        inFlight: true,
+        lastAttemptAt: now,
+      };
+      try {
+        const result = await emergencyRequestsService.syncDemoResponderLifecycle(
+          requestId,
+          action,
+        );
+        if (!cancelled && result?.success === true) {
+          await queryClient.invalidateQueries({ queryKey: ACTIVE_TRIP_QUERY_KEY });
+        }
+      } catch (error) {
+        if (__DEV__ && !cancelled) {
+          console.warn(
+            `[useEmergencyActions] Demo lifecycle ${action} failed:`,
+            error?.message || error,
+          );
+        }
+      } finally {
+        if (
+          demoLifecycleSyncRef.current.requestId === requestId &&
+          demoLifecycleSyncRef.current.action === action
+        ) {
+          demoLifecycleSyncRef.current.inFlight = false;
+        }
+      }
+    };
+
+    void syncLifecycle();
+    const intervalId = setInterval(syncLifecycle, DEMO_LIFECYCLE_TICK_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [
+    activeAmbulanceDemoHospital,
+    activeAmbulanceTrip?.requestId,
+    activeAmbulanceTripRef,
+    queryClient,
+  ]);
+
+  useEffect(() => {
+    const requestId = activeAmbulanceTrip?.requestId ?? null;
+    if (!requestId || !activeAmbulanceDemoHospital) return;
+
     const status = String(activeAmbulanceTrip?.status ?? "").toLowerCase();
-    if (!AMBULANCE_LIVE_TRACK_STATUSES.has(status)) return;
+    if (status !== EmergencyRequestStatus.ACCEPTED) return;
 
     const hospitalCoordinate =
       normalizeCoordinate(activeAmbulanceDemoHospital?.coordinates) ||
@@ -126,7 +242,7 @@ export function useEmergencyActions({
       const trip = activeAmbulanceTripRef.current;
       if (!trip || trip?.requestId !== requestId) return;
       const tripStatus = String(trip?.status ?? "").toLowerCase();
-      if (!AMBULANCE_LIVE_TRACK_STATUSES.has(tripStatus)) return;
+      if (tripStatus !== EmergencyRequestStatus.ACCEPTED) return;
 
       const now = Date.now();
       const nowIso = new Date(now).toISOString();
@@ -147,11 +263,35 @@ export function useEmergencyActions({
             ? [hospitalCoordinate, destinationCoordinate]
             : [];
 
+      const reportCanonicalTelemetry = (coordinate, heading = 0) => {
+        const normalized = normalizeCoordinate(coordinate);
+        if (!isValidCoordinate(normalized)) return;
+        void emergencyRequestsService
+          .syncDemoResponderLifecycle(requestId, "report_telemetry", {
+            telemetry: {
+              location: normalized,
+              heading: Number.isFinite(Number(heading)) ? Number(heading) : 0,
+              accuracyMeters: 5,
+            },
+          })
+          .catch((error) => {
+            if (__DEV__) {
+              console.warn(
+                "[useEmergencyActions] Demo telemetry sync failed:",
+                error?.message || error,
+              );
+            }
+          });
+      };
+
       if (syntheticRoute.length < 2) {
+        reportCanonicalTelemetry(
+          trip?.currentResponderLocation || hospitalCoordinate,
+          trip?.currentResponderHeading,
+        );
         patchActiveAmbulanceTrip({
           responderTelemetryAt: nowIso,
           responderTelemetryLeaseExpiresAt: leaseExpiresAt,
-          updatedAt: nowIso,
         });
         return;
       }
@@ -166,10 +306,13 @@ export function useEmergencyActions({
       const projected = interpolateRoutePosition(syntheticRoute, progressRatio);
 
       if (!projected?.coordinate) {
+        reportCanonicalTelemetry(
+          trip?.currentResponderLocation || hospitalCoordinate,
+          trip?.currentResponderHeading,
+        );
         patchActiveAmbulanceTrip({
           responderTelemetryAt: nowIso,
           responderTelemetryLeaseExpiresAt: leaseExpiresAt,
-          updatedAt: nowIso,
         });
         return;
       }
@@ -194,8 +337,8 @@ export function useEmergencyActions({
       const updates = {
         responderTelemetryAt: nowIso,
         responderTelemetryLeaseExpiresAt: leaseExpiresAt,
-        updatedAt: nowIso,
       };
+      reportCanonicalTelemetry(projected.coordinate, projected.heading);
       if (locationChanged)
         updates.currentResponderLocation = projected.coordinate;
       if (headingChanged) updates.currentResponderHeading = projected.heading;
@@ -251,7 +394,14 @@ export function useEmergencyActions({
         activeAmbulances.find((a) => a?.status === AmbulanceStatus.AVAILABLE) ??
         activeAmbulances[0] ??
         null;
-      const discoveredAssigned = byId ?? byHospital ?? fallback;
+      const hasAcceptedResponder = [
+        EmergencyRequestStatus.ACCEPTED,
+        EmergencyRequestStatus.ARRIVED,
+        EmergencyRequestStatus.COMPLETED,
+      ].includes(String(trip?.status ?? "").toLowerCase());
+      const discoveredAssigned = hasAcceptedResponder
+        ? byId ?? byHospital ?? fallback
+        : null;
       const assignedAmbulance = explicitAssigned
         ? { ...(discoveredAssigned || {}), ...explicitAssigned }
         : discoveredAssigned;
@@ -281,19 +431,25 @@ export function useEmergencyActions({
         estimatedArrival: trip.estimatedArrival ?? null,
         etaSeconds: Number.isFinite(etaSeconds) ? etaSeconds : null,
         assignedAmbulance,
-        startedAt: Number.isFinite(trip?.startedAt)
-          ? trip.startedAt
-          : Date.now(),
+        startedAt: hasAcceptedResponder
+          ? Number.isFinite(trip?.startedAt)
+            ? trip.startedAt
+            : Date.now()
+          : null,
         currentResponderLocation:
-          trip?.currentResponderLocation ??
-          hospitalCoordinate ??
-          assignedAmbulance?.location ??
-          null,
+          hasAcceptedResponder
+            ? trip?.currentResponderLocation ??
+              hospitalCoordinate ??
+              assignedAmbulance?.location ??
+              null
+            : null,
         patientLocation: trip?.patientLocation ?? null,
         route: normalizeRouteCoordinates(trip?.route),
         currentResponderHeading: Number.isFinite(trip?.currentResponderHeading)
-          ? trip.currentResponderHeading
-          : Number.isFinite(assignedAmbulance?.heading)
+          ? hasAcceptedResponder
+            ? trip.currentResponderHeading
+            : null
+          : hasAcceptedResponder && Number.isFinite(assignedAmbulance?.heading)
             ? assignedAmbulance.heading
             : null,
         triage: triageSnapshot,

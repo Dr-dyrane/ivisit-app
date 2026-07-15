@@ -37,10 +37,79 @@ function loadSourceModule(file, mocks = {}) {
 const transaction = loadSourceModule(
   "components/map/views/commitPayment/mapCommitPayment.transaction.js",
 );
+const ambulanceTypes = loadSourceModule("utils/ambulanceType.js");
+assert.equal(ambulanceTypes.resolveAmbulanceDispatchType({ service_type: "ambulance" }), "BLS");
+assert.equal(
+  ambulanceTypes.resolveAmbulanceDispatchType({
+    service_type: "ambulance",
+    service_name: "Advanced Life Support",
+  }),
+  "ALS",
+);
+assert.equal(
+  ambulanceTypes.resolveAmbulanceDispatchType({ service_type: "ambulance_critical" }),
+  "CCT",
+);
+assert.equal(
+  ambulanceTypes.getAmbulanceTierKey({ title: "Basic Life Support" }),
+  "basic",
+  "Basic Life Support must not be mistaken for the advanced tier",
+);
+
+const commitPaymentHelpers = loadSourceModule(
+  "components/map/views/commitPayment/mapCommitPayment.helpers.js",
+  {
+    "../../../../services/dispatchService": {
+      DispatchService: { calculateDistance: () => 0 },
+    },
+    "../../surfaces/hospitals/mapHospitalDetail.helpers": {
+      getDestinationCoordinate: () => null,
+    },
+  },
+);
+assert.equal(
+  commitPaymentHelpers.buildAmbulanceCommitRequest({
+    hospital: { id: "hospital-1", name: "Hospital" },
+    transport: { tierKey: "basic", service_type: "ambulance" },
+    paymentMethod: { id: "cash_payment" },
+    pricingSnapshot: { totalCost: 160 },
+    currentLocation: { latitude: 1, longitude: 2 },
+  }).ambulanceType,
+  "BLS",
+  "the real generic pricing row must cross the request boundary as a fleet-compatible type",
+);
+
 const kinds = transaction.MAP_COMMIT_PAYMENT_METHOD_KINDS;
 assert.equal(transaction.requiresSignedCardConfirmation(kinds.CARD), true);
 assert.equal(transaction.requiresSignedCardConfirmation(kinds.WALLET), false);
 assert.equal(transaction.requiresWalletSettlement(kinds.WALLET), true);
+assert.deepEqual(
+  transaction.reconcileCanonicalPaymentTotal({
+    quotedTotal: 42,
+    canonicalTotal: 42,
+    costSnapshot: { baseCost: 40 },
+  }),
+  {
+    ok: true,
+    code: null,
+    hasMismatch: false,
+    quotedTotal: 42,
+    canonicalTotal: 42,
+    costSnapshot: {
+      baseCost: 40,
+      totalCost: 42,
+      total_cost: 42,
+      currency: "USD",
+    },
+  },
+);
+assert.equal(
+  transaction.reconcileCanonicalPaymentTotal({
+    quotedTotal: 42,
+    canonicalTotal: 45,
+  }).code,
+  "CANONICAL_TOTAL_CHANGED",
+);
 assert.equal(
   transaction.validateCommitPaymentSubmitContract({
     hospital: { id: "hospital-1" },
@@ -91,6 +160,11 @@ assert.equal(
 assert.equal(
   progress.resolveAmbulanceProgressStatus({ status: "completed", tripProgress: 0 }),
   "Complete",
+);
+assert.equal(
+  progress.resolveAmbulanceProgressStatus({ status: "in_progress", tripProgress: 1 }),
+  "Assigning",
+  "payment-ready must not masquerade as responder movement",
 );
 
 const telemetry = loadSourceModule("utils/emergencyContextHelpers.js", {
@@ -191,6 +265,86 @@ assert.equal(
   }),
   null,
 );
+const unassignedProjection = realtime.mergeEmergencyRealtimeTrip(
+  {
+    id: "request-2",
+    requestId: "request-2",
+    status: "in_progress",
+    startedAt: now - 1000,
+    assignedAmbulance: { id: "stale-local-ambulance" },
+    currentResponderLocation: { latitude: 1, longitude: 2 },
+  },
+  {
+    id: "request-2",
+    status: "in_progress",
+    ambulance_id: "offered-not-accepted",
+    updated_at: "2026-07-14T12:00:00.000Z",
+  },
+);
+assert.equal(unassignedProjection.assignedAmbulance, null);
+assert.equal(unassignedProjection.currentResponderLocation, null);
+assert.equal(unassignedProjection.startedAt, null);
+
+const trackingStage = loadSourceModule(
+  "components/map/views/tracking/mapTracking.stage.js",
+  {
+    "../../../../services/emergencyRequestsService": {
+      EmergencyRequestStatus: statusConstants,
+    },
+  },
+);
+assert.equal(
+  trackingStage.resolveTrackingStage({
+    kind: "ambulance",
+    status: "in_progress",
+    hasResponder: true,
+    hasRoute: true,
+    hasEta: true,
+    progress: 0.95,
+    telemetryState: "live",
+  }),
+  trackingStage.TRACKING_STAGES.ASSIGNING,
+  "in_progress is dispatch-ready, not accepted",
+);
+assert.equal(
+  trackingStage.resolveTrackingStage({
+    kind: "ambulance",
+    status: "in_progress",
+    isArrived: true,
+    hasResponder: true,
+    hasRoute: true,
+    hasEta: true,
+    progress: 1,
+    telemetryState: "live",
+  }),
+  trackingStage.TRACKING_STAGES.ASSIGNING,
+  "canonical in_progress must outrank a stale local arrival flag",
+);
+assert.equal(
+  trackingStage.resolveTrackingStage({
+    kind: "ambulance",
+    status: "accepted",
+    hasResponder: false,
+    hasRoute: false,
+    hasEta: false,
+    progress: null,
+    telemetryState: "inactive",
+  }),
+  trackingStage.TRACKING_STAGES.DISPATCH_CONFIRMED,
+);
+assert.equal(
+  trackingStage.resolveTrackingStage({
+    kind: "bed",
+    status: "in_progress",
+    hasResponder: false,
+    hasRoute: false,
+    hasEta: false,
+    progress: null,
+    telemetryState: "inactive",
+  }),
+  trackingStage.TRACKING_STAGES.ASSIGNING,
+  "a paid bed request is not reserved before facility acceptance",
+);
 
 const actions = loadSourceModule(
   "components/map/views/tracking/mapTracking.actions.js",
@@ -211,6 +365,18 @@ const actionEligibility = actions.buildTrackingActionEligibility({
 });
 assert.equal(actionEligibility.canMarkArrived, true);
 assert.equal(actionEligibility.canCompleteAmbulance, false);
+const completedAmbulanceEligibility = actions.buildTrackingActionEligibility({
+  trackingSnapshot: { trackingStage: "completed", status: "completed" },
+  trackingKind: "ambulance",
+  activeMapRequest: { canConfirmArrival: false },
+});
+assert.equal(completedAmbulanceEligibility.canMarkArrived, false);
+assert.equal(completedAmbulanceEligibility.canCompleteAmbulance, true);
+const completedBedEligibility = actions.buildTrackingActionEligibility({
+  trackingSnapshot: { trackingStage: "completed", status: "completed" },
+  trackingKind: "bed",
+});
+assert.equal(completedBedEligibility.canCompleteBed, true);
 
 const controller = read(
   "components/map/views/commitPayment/useMapCommitPaymentController.js",
@@ -228,6 +394,8 @@ assert.ok(walletProcessedAt < walletCompletedAt);
 assert.doesNotMatch(controller, /if \(initiationResult\.awaitsPaymentConfirmation\)/);
 assert.match(controller, /if \(isCardSelected\) \{/);
 assert.match(controller, /requestDemoCashAutoApproval/);
+assert.match(controller, /reconcileCanonicalPaymentTotal/);
+assert.match(controller, /The provider price changed/);
 
 const requestFlow = read("hooks/emergency/useRequestFlow.js");
 assert.match(requestFlow, /const awaitsPaymentConfirmation = isCardPayment;/);
@@ -256,11 +424,66 @@ const patientStatusWrites = Array.from(
   (match) => match[1],
 );
 assert.deepEqual(patientStatusWrites, ["CANCELLED", "CANCELLED"]);
+assert.doesNotMatch(handlers, /cancelVisit|setVisitLifecycle/);
+
+const trackingController = read(
+  "components/map/views/tracking/useMapTrackingController.js",
+);
+const pendingCancelStart = trackingController.indexOf(
+  "const handleCancelPendingRequest",
+);
+const completeAmbulanceStart = trackingController.indexOf(
+  "const handleCompleteAmbulanceWithRating",
+  pendingCancelStart,
+);
+const ratingPreparationStart = trackingController.indexOf(
+  "const prepareTrackingRating",
+  pendingCancelStart,
+);
+const pendingCancelFlow = trackingController.slice(
+  pendingCancelStart,
+  ratingPreparationStart,
+);
+assert.match(pendingCancelFlow, /setRequestStatus/);
+assert.doesNotMatch(pendingCancelFlow, /cancelVisit|updateVisit|Promise\.all/);
+const completeBedStart = trackingController.indexOf(
+  "const handleCompleteBedWithRating",
+  completeAmbulanceStart,
+);
+const ambulanceRatingHandoff = trackingController.slice(
+  completeAmbulanceStart,
+  completeBedStart,
+);
+assert.match(ambulanceRatingHandoff, /onCompleteAmbulanceTrip/);
+assert.match(ambulanceRatingHandoff, /prepareTrackingRating/);
+assert.match(ambulanceRatingHandoff, /setRatingState/);
+assert.doesNotMatch(ambulanceRatingHandoff, /setRequestStatus/);
+assert.match(
+  trackingController,
+  /EMERGENCY_VISIT_LIFECYCLE\.RATING_PENDING/,
+);
+assert.match(
+  read("components/map/views/tracking/mapTracking.model.js"),
+  /label: "Complete Visit"/,
+);
 
 const requestService = read("services/emergencyRequestsService.js");
 assert.match(requestService, /'patient_acknowledge_responder_arrival'/);
 assert.match(requestService, /data\.acknowledged_at/);
 assert.match(requestService, /const deferDispatchUntilPayment = isCard;/);
+assert.match(requestService, /demo-emergency-lifecycle/);
+assert.match(requestService, /emergency_status_transitions/);
+assert.match(requestService, /distance_km/);
+assert.match(requestService, /canonicalTotal/);
+const demoLifecycleAdapterStart = requestService.indexOf(
+  "async syncDemoResponderLifecycle",
+);
+const demoLifecycleAdapter = requestService.slice(demoLifecycleAdapterStart);
+assert.match(
+  demoLifecycleAdapter,
+  /"mark_completed"/,
+  "the App adapter must allow the responder-owned demo completion action",
+);
 const setStatusStart = requestService.indexOf("async setStatus");
 const updateTriageStart = requestService.indexOf("async updateTriage", setStatusStart);
 const patientStatusCommand = requestService.slice(setStatusStart, updateTriageStart);
@@ -288,6 +511,147 @@ assert.doesNotMatch(
 );
 const activeTripQuery = read("hooks/emergency/useActiveTripQuery.js");
 assert.match(activeTripQuery, /getOwnedById\(previousRequestId\)/);
+assert.match(activeTripQuery, /dispatchAcceptedAt/);
+assert.match(activeTripQuery, /hasAcceptedResponder/);
+assert.match(activeTripQuery, /refetchOnWindowFocus: true/);
+assert.match(activeTripQuery, /reconcileCanonicalAmbulanceTrip/);
+assert.match(
+  activeTripQuery,
+  /responderTelemetryAt: hasAcceptedResponder/,
+  "released or unassigned requests must not retain responder telemetry",
+);
+
+const activeTripReconciliation = loadSourceModule(
+  "hooks/emergency/useActiveTripQuery.js",
+  {
+    "@tanstack/react-query": { useQuery: () => null, useQueryClient: () => null },
+    react: { useEffect: () => null },
+    "../../services/supabase": { supabase: {} },
+    "../../services/emergencyRequestsService": {
+      emergencyRequestsService: {},
+      EmergencyRequestStatus: statusConstants,
+    },
+    "../../services/ambulanceService": { ambulanceService: {} },
+    "./bedBookingRuntime": { normalizeBedBookingRuntimeState: (value) => value },
+    "../../utils/emergencyRealtimeProjection": {
+      parsePointGeometry: (value) => value,
+    },
+    "../../utils/emergencyContextHelpers": {
+      normalizeRouteCoordinates: (value) => (Array.isArray(value) ? value : []),
+    },
+    "../../stores/emergencyTripStore": {
+      useEmergencyTripStore: { getState: () => ({}) },
+      useStoreHydrated: () => true,
+    },
+  },
+);
+const staleAssignedTrip = {
+  id: "request-1",
+  requestId: "request-1",
+  status: "arrived",
+  assignedAmbulance: { id: "ambulance-1", name: "Stale responder" },
+};
+assert.equal(
+  activeTripReconciliation.reconcileCanonicalAmbulanceTrip(
+    {
+      id: "request-1",
+      requestId: "request-1",
+      status: "in_progress",
+      assignedAmbulance: null,
+    },
+    staleAssignedTrip,
+  ).assignedAmbulance,
+  null,
+  "canonical unassigned state must not inherit local responder identity",
+);
+
+const { createActor } = require("xstate");
+const lifecycle = loadSourceModule("machines/tripLifecycleMachine.js");
+const lifecycleActor = createActor(lifecycle.tripLifecycleMachine).start();
+lifecycleActor.send({
+  type: "SUBMIT",
+  serviceType: "ambulance",
+  requestId: "request-1",
+  hospitalId: "hospital-1",
+});
+lifecycleActor.send({
+  type: "APPROVE",
+  assignedAmbulance: { id: "ambulance-1" },
+});
+lifecycleActor.send({ type: "ARRIVE" });
+assert.equal(lifecycleActor.getSnapshot().value, "arrived");
+lifecycleActor.send(
+  lifecycle.serverStatusToMachineEvent("in_progress", {
+    requestId: "request-1",
+    hospitalId: "hospital-1",
+    serviceType: "ambulance",
+    assignedAmbulance: null,
+  }),
+);
+assert.equal(
+  lifecycleActor.getSnapshot().value,
+  "active",
+  "server reconciliation must correct a stale local arrived state",
+);
+assert.equal(lifecycleActor.getSnapshot().context.assignedAmbulance, null);
+lifecycleActor.stop();
+
+const focusedMapState = loadSourceModule("hooks/map/shell/useMapFocusedState.js", {
+  react: { useMemo: (factory) => factory() },
+  "../../../components/map/core/MapSheetOrchestrator": {
+    MAP_SHEET_PHASES: { COMMIT_PAYMENT: "commit_payment" },
+  },
+  "../../../components/map/core/mapActiveRequestModel": {
+    MAP_ACTIVE_REQUEST_KINDS: {
+      AMBULANCE: "ambulance",
+      PENDING: "pending",
+    },
+  },
+  "../../../components/map/surfaces/hospitals/mapHospitalDetail.helpers": {
+    getDestinationCoordinate: () => null,
+  },
+  "../../../services/emergencyRequestsService": {
+    EmergencyRequestStatus: statusConstants,
+  },
+  "../../../utils/mapUtils": { calculateBearing: () => 0 },
+});
+assert.equal(
+  focusedMapState.resolveMapServiceMarkerKind({
+    historyVisitDetailsVisible: false,
+    activeMapRequest: { kind: "ambulance", status: "in_progress" },
+    sheetPhase: "tracking",
+    paymentPreviewKind: null,
+  }),
+  null,
+  "the map must not animate a responder before canonical acceptance",
+);
+assert.equal(
+  focusedMapState.resolveMapServiceMarkerKind({
+    historyVisitDetailsVisible: false,
+    activeMapRequest: { kind: "ambulance", status: "accepted" },
+    sheetPhase: "tracking",
+    paymentPreviewKind: null,
+  }),
+  "ambulance",
+);
+const emergencyActions = read("hooks/emergency/useEmergencyActions.js");
+assert.match(emergencyActions, /"report_telemetry"/);
+assert.match(emergencyActions, /"ensure_dispatch"/);
+assert.match(emergencyActions, /"mark_arrived"/);
+assert.match(emergencyActions, /"mark_completed"/);
+assert.doesNotMatch(
+  emergencyActions,
+  /responderTelemetryLeaseExpiresAt: leaseExpiresAt,\s*updatedAt:/,
+  "local demo telemetry must not advance the canonical event version",
+);
+const demoLifecycleEdge = read(
+  "supabase/functions/_shared/domain/demo/emergencyLifecycle.ts",
+);
+assert.match(demoLifecycleEdge, /"responder_accept_emergency"/);
+assert.match(demoLifecycleEdge, /"report_responder_telemetry"/);
+assert.match(demoLifecycleEdge, /"responder_arrive_emergency"/);
+assert.match(demoLifecycleEdge, /REQUEST_OWNERSHIP_MISMATCH/);
+assert.match(demoLifecycleEdge, /NOT_DEMO_HOSPITAL/);
 const tripSelectors = read("stores/emergencyTripSelectors.js");
 assert.doesNotMatch(
   tripSelectors,
@@ -300,6 +664,17 @@ assert.match(
 assert.match(
   tripSelectors,
   /selectCanMarkArrived[\s\S]*status === 'arrived'/,
+);
+
+const paymentService = read("services/paymentService.js");
+assert.equal(
+  (
+    paymentService.match(
+      /emergency_requests!payments_emergency_request_id_fkey/g,
+    ) || []
+  ).length,
+  2,
+  "payment history reads must pin the request-owned FK when both payment relationships exist",
 );
 
 console.log("PASS emergency payment and patient lifecycle contract");

@@ -40,6 +40,25 @@ const isDispatchedStatus = (status) =>
 	status === "accepted" ||
 	status === "arrived";
 
+const RESPONDER_ACCEPTED_STATUSES = new Set([
+	EmergencyRequestStatus.ACCEPTED,
+	EmergencyRequestStatus.ARRIVED,
+	EmergencyRequestStatus.COMPLETED,
+]);
+
+const isTerminalStatus = (status) =>
+	status === EmergencyRequestStatus.COMPLETED ||
+	status === EmergencyRequestStatus.CANCELLED ||
+	status === "COMPLETED" ||
+	status === "CANCELLED";
+
+const toTimestampMs = (value) => {
+	if (Number.isFinite(value)) return Number(value);
+	if (typeof value !== "string" || !value.trim()) return null;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : null;
+};
+
 const getRequestIdentityKeys = (record) => {
 	if (!record || typeof record !== "object") return [];
 	return [
@@ -63,6 +82,41 @@ const hasSameRequestIdentity = (a, b) => {
 	return aKeys.some((key) => bKeys.includes(key));
 };
 
+export function reconcileCanonicalAmbulanceTrip(queryTrip, storeTrip) {
+	if (!queryTrip) {
+		return storeTrip && isTerminalStatus(storeTrip.status) ? storeTrip : queryTrip;
+	}
+
+	if (!hasSameRequestIdentity(storeTrip, queryTrip)) {
+		return queryTrip;
+	}
+
+	const queryStatus = String(queryTrip?.status ?? "").toLowerCase();
+	if (!RESPONDER_ACCEPTED_STATUSES.has(queryStatus)) {
+		return queryTrip;
+	}
+
+	const storeAssigned = storeTrip?.assignedAmbulance;
+	const queryAssigned = queryTrip?.assignedAmbulance;
+	const needsMerge =
+		storeAssigned &&
+		(!queryAssigned || (!queryAssigned.name && storeAssigned.name));
+
+	if (!needsMerge) return queryTrip;
+
+	return {
+		...queryTrip,
+		assignedAmbulance: {
+			...(queryAssigned || {}),
+			name: queryAssigned?.name || storeAssigned.name || null,
+			phone: queryAssigned?.phone || storeAssigned.phone || null,
+			type: queryAssigned?.type || storeAssigned.type || null,
+			plate: queryAssigned?.plate || storeAssigned.plate || null,
+			id: queryAssigned?.id || storeAssigned.id || null,
+		},
+	};
+}
+
 /**
  * Build the normalized ambulance trip snapshot from a raw server record.
  * Preserves ETA, route and assignedAmbulance from the previous trip snapshot.
@@ -85,13 +139,21 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 	}
 
 	const hydratedAtMs = Date.now();
+	const normalizedStatus = String(activeAmbulance?.status ?? "").toLowerCase();
+	const hasAcceptedResponder = RESPONDER_ACCEPTED_STATUSES.has(normalizedStatus);
 	const serverEtaSeconds = parseEtaToSeconds(activeAmbulance.estimatedArrival);
 	const preservedRoute = isSameAmbulanceTrip
 		? normalizeRouteCoordinates(previousAmbulanceTrip?.route)
 		: [];
-	const preservedStartedAtMs = isSameAmbulanceTrip
+	const previousHadAcceptedResponder = RESPONDER_ACCEPTED_STATUSES.has(
+		String(previousAmbulanceTrip?.status ?? "").toLowerCase(),
+	);
+	const preservedStartedAtMs = isSameAmbulanceTrip && previousHadAcceptedResponder
 		? (typeof previousAmbulanceTrip?.startedAt === "number" ? previousAmbulanceTrip.startedAt : null)
 		: null;
+	const canonicalDispatchStartedAtMs = toTimestampMs(
+		activeAmbulance?.dispatchAcceptedAt,
+	);
 	const preservedEtaSeconds =
 		isSameAmbulanceTrip &&
 		previousAmbulanceTrip?.etaSource === "map_route" &&
@@ -103,9 +165,13 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 	const etaSeconds = Number.isFinite(preservedEtaSeconds)
 		? preservedEtaSeconds
 		: Number.isFinite(serverEtaSeconds) ? serverEtaSeconds : null;
-	const startedAt = Number.isFinite(preservedStartedAtMs)
-		? preservedStartedAtMs
-		: Number.isFinite(etaSeconds) ? hydratedAtMs : null;
+	const startedAt = !hasAcceptedResponder
+		? null
+		: Number.isFinite(preservedStartedAtMs)
+			? preservedStartedAtMs
+			: Number.isFinite(canonicalDispatchStartedAtMs)
+				? canonicalDispatchStartedAtMs
+				: hydratedAtMs;
 
 	const triageSnapshot =
 		activeAmbulance.triageSnapshot ??
@@ -115,7 +181,8 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 			: null);
 	const triageCheckin =
 		activeAmbulance.triageCheckin ?? triageSnapshot?.signals?.userCheckin ?? null;
-	const hasResponderIdentity = !!(
+	const hasResponderIdentity = hasAcceptedResponder && !!(
+		activeAmbulance.responderId ||
 		activeAmbulance.responderName || activeAmbulance.responderPhone ||
 		activeAmbulance.responderVehicleType || activeAmbulance.responderVehiclePlate ||
 		activeAmbulance.ambulanceId || fullAmbulance?.id || loc
@@ -138,6 +205,13 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 		requestId: activeAmbulance.id ?? activeAmbulance.requestId ?? null,
 		displayId: activeAmbulance.displayId ?? activeAmbulance.requestId ?? null,
 		status: activeAmbulance.status,
+		ambulanceId: activeAmbulance.ambulanceId ?? null,
+		responderId: activeAmbulance.responderId ?? null,
+		currentResponderAssignmentId:
+			activeAmbulance.currentResponderAssignmentId ?? null,
+		dispatchOrganizationId: activeAmbulance.dispatchOrganizationId ?? null,
+		dispatchAcceptedAt: activeAmbulance.dispatchAcceptedAt ?? null,
+		responderArrivedAt: activeAmbulance.responderArrivedAt ?? null,
 		triage: triageSnapshot,
 		triageSnapshot,
 		triageCheckin,
@@ -187,47 +261,57 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 						activeAmbulance.responderHeading || fullAmbulance?.heading ||
 						previousAmbulanceTrip?.assignedAmbulance?.heading || 0,
 			  }
-			: previousAmbulanceTrip?.assignedAmbulance || null,
+			: null,
 		currentResponderLocation:
-			loc ||
-			fullAmbulance?.location ||
-			previousAmbulanceTrip?.currentResponderLocation ||
-			null,
+			hasAcceptedResponder
+				? loc ||
+					fullAmbulance?.location ||
+					previousAmbulanceTrip?.currentResponderLocation ||
+					null
+				: null,
 		currentResponderHeading:
-			activeAmbulance.responderHeading ?? previousAmbulanceTrip?.currentResponderHeading ?? null,
-		responderTelemetryAt:
-			activeAmbulance.responderLocationReceivedAt ??
-			fullAmbulance?.locationReceivedAt ??
-			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetryAt : null) ??
-			null,
-		responderLocationObservedAt:
-			activeAmbulance.responderLocationObservedAt ??
-			fullAmbulance?.locationObservedAt ??
-			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationObservedAt : null) ??
-			null,
-		responderLocationAccuracyMeters:
-			activeAmbulance.responderLocationAccuracyMeters ??
-			fullAmbulance?.locationAccuracyMeters ??
-			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationAccuracyMeters : null) ??
-			null,
-		responderTelemetrySequence:
-			activeAmbulance.responderTelemetrySequence ??
-			fullAmbulance?.telemetrySequence ??
-			(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetrySequence : null) ??
-			null,
-		responderTelemetryLeaseExpiresAt:
-			activeAmbulance.responderTelemetryLeaseExpiresAt ??
-			fullAmbulance?.telemetryLeaseExpiresAt ??
-			(isSameAmbulanceTrip
-				? previousAmbulanceTrip?.responderTelemetryLeaseExpiresAt
-				: null) ??
-			null,
-		patientAcknowledgedArrivalAt:
-			activeAmbulance.patientAcknowledgedArrivalAt ??
-			(isSameAmbulanceTrip
-				? previousAmbulanceTrip?.patientAcknowledgedArrivalAt
-				: null) ??
-			null,
+			hasAcceptedResponder
+				? activeAmbulance.responderHeading ?? previousAmbulanceTrip?.currentResponderHeading ?? null
+				: null,
+		responderTelemetryAt: hasAcceptedResponder
+			? activeAmbulance.responderLocationReceivedAt ??
+				fullAmbulance?.locationReceivedAt ??
+				(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetryAt : null) ??
+				null
+			: null,
+		responderLocationObservedAt: hasAcceptedResponder
+			? activeAmbulance.responderLocationObservedAt ??
+				fullAmbulance?.locationObservedAt ??
+				(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationObservedAt : null) ??
+				null
+			: null,
+		responderLocationAccuracyMeters: hasAcceptedResponder
+			? activeAmbulance.responderLocationAccuracyMeters ??
+				fullAmbulance?.locationAccuracyMeters ??
+				(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderLocationAccuracyMeters : null) ??
+				null
+			: null,
+		responderTelemetrySequence: hasAcceptedResponder
+			? activeAmbulance.responderTelemetrySequence ??
+				fullAmbulance?.telemetrySequence ??
+				(isSameAmbulanceTrip ? previousAmbulanceTrip?.responderTelemetrySequence : null) ??
+				null
+			: null,
+		responderTelemetryLeaseExpiresAt: hasAcceptedResponder
+			? activeAmbulance.responderTelemetryLeaseExpiresAt ??
+				fullAmbulance?.telemetryLeaseExpiresAt ??
+				(isSameAmbulanceTrip
+					? previousAmbulanceTrip?.responderTelemetryLeaseExpiresAt
+					: null) ??
+				null
+			: null,
+		patientAcknowledgedArrivalAt: hasAcceptedResponder
+			? activeAmbulance.patientAcknowledgedArrivalAt ??
+				(isSameAmbulanceTrip
+					? previousAmbulanceTrip?.patientAcknowledgedArrivalAt
+					: null) ??
+				null
+			: null,
 		patientLocation: parsePointGeometry(activeAmbulance.patientLocation),
 		route: preservedRoute.length >= 2 ? preservedRoute : null,
 		updatedAt: activeAmbulance.updatedAt ?? null,
@@ -397,7 +481,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		},
 		staleTime: STALE_TIME,
 		refetchInterval: REFETCH_INTERVAL,
-		refetchOnWindowFocus: false,
+		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
 		enabled: hydrated,
 	});
@@ -414,58 +498,11 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 	// Active list reads exclude terminal rows. The query fetches the current request
 	// by id to observe missed completion events, then preserves terminal snapshots
 	// until an explicit stop action clears them.
-	const isTerminalStatus = (status) =>
-		status === "completed" ||
-		status === "cancelled" ||
-		status === "COMPLETED" ||
-		status === "CANCELLED";
-
 	useEffect(() => {
 		if (!hydrated) return;
 		if (!query.data) return;
 
 		const storeState = useEmergencyTripStore.getState();
-
-		// Merge helper: preserve responder identity if query data is incomplete
-		const mergeAmbulanceTrip = (queryTrip) => {
-			// If query returns null but store has a terminal-state trip, preserve it
-			// This prevents the hero card from wiping when completing a trip
-			if (!queryTrip) {
-				const storeTrip = storeState.activeAmbulanceTrip;
-				if (storeTrip && isTerminalStatus(storeTrip.status)) {
-					return storeTrip;
-				}
-				return queryTrip;
-			}
-
-			const storeTrip = storeState.activeAmbulanceTrip;
-			// If same trip identity and store has assignedAmbulance but query doesn't (or has incomplete)
-			const sameTrip = hasSameRequestIdentity(storeTrip, queryTrip);
-			if (!sameTrip) {
-				return queryTrip;
-			}
-
-			const storeAssigned = storeTrip?.assignedAmbulance;
-			const queryAssigned = queryTrip?.assignedAmbulance;
-			const needsMerge = storeAssigned && (!queryAssigned || (!queryAssigned.name && storeAssigned.name));
-
-			// If store has name/phone but query doesn't, merge store's identity into query result
-			if (needsMerge) {
-				return {
-					...queryTrip,
-					assignedAmbulance: {
-						...(queryAssigned || {}),
-						name: queryAssigned?.name || storeAssigned.name || null,
-						phone: queryAssigned?.phone || storeAssigned.phone || null,
-						// Also preserve other identity fields if missing in query
-						type: queryAssigned?.type || storeAssigned.type || null,
-						plate: queryAssigned?.plate || storeAssigned.plate || null,
-						id: queryAssigned?.id || storeAssigned.id || null,
-					},
-				};
-			}
-			return queryTrip;
-		};
 
 		// Same logic for bed bookings
 		const mergeBedBooking = (queryBooking) => {
@@ -479,7 +516,10 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 			return queryBooking;
 		};
 
-		const finalTrip = mergeAmbulanceTrip(query.data.ambulanceTrip);
+		const finalTrip = reconcileCanonicalAmbulanceTrip(
+			query.data.ambulanceTrip,
+			storeState.activeAmbulanceTrip,
+		);
 		setActiveAmbulanceTrip(finalTrip);
 		setActiveBedBooking(mergeBedBooking(query.data.bedBooking));
 		setPendingApproval(query.data.pending);

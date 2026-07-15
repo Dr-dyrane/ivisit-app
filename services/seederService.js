@@ -131,18 +131,8 @@ export const seederService = {
     },
 
     async seedNotifications() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not logged in");
-
-        const notifications = MOCK_NOTIFICATIONS.map(n => ({
-            ...n,
-            user_id: user.id,
-            id: `notif_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-        }));
-
-        const { error } = await supabase.from('notifications').insert(notifications);
-        if (error) throw error;
-        return notifications.length;
+        // Demo clients cannot seed server-owned notification events.
+        return 0;
     },
 
     async seedFAQs() {

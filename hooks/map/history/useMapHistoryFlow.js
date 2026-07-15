@@ -34,6 +34,7 @@ import { useScheduledVisitMutations } from "../../visits/useScheduledVisitMutati
 import {
   buildRecoveredTrackingRatingState,
   buildTrackingResolutionToast,
+  canPresentTrackingRatingWithActiveRequest,
   findPendingTrackingRatingVisit,
   getTrackingRatingRecoveryClaim,
   purgeStaleTrackingRatingClaims,
@@ -68,6 +69,8 @@ import {
  * @param {Function} params.setCareHistoryVisible
  * @param {Function} params.openAmbulanceDecision
  * @param {Function} params.openBedDecision
+ * @param {Function} params.stopAmbulanceTrip
+ * @param {Function} params.stopBedBooking
  * @param {Object|null} params.activeMapRequest
  * @param {Set}      params.activeHistoryRequestKeys
  * @param {string}   params.sheetPhase
@@ -87,6 +90,8 @@ export function useMapHistoryFlow({
   setCareHistoryVisible,
   openAmbulanceDecision,
   openBedDecision,
+  stopAmbulanceTrip,
+  stopBedBooking,
   activeMapRequest,
   activeHistoryRequestKeys,
   sheetPhase,
@@ -530,15 +535,25 @@ export function useMapHistoryFlow({
   ]);
 
   const pendingRecoveredRatingVisit = useMemo(() => {
-    if (!canRecoverTrackingRating || hasActiveMapModal || activeMapRequest?.hasActiveRequest) {
+    if (!canRecoverTrackingRating || hasActiveMapModal) {
       return null;
     }
-    return findPendingTrackingRatingVisit(visits, {
+    const candidate = findPendingTrackingRatingVisit(visits, {
       excludeVisitIds: Array.from(handledRecoveredRatingVisitIdsRef.current),
       allowedVisitIds: Object.keys(ratingRecoveryClaims),
     });
+    return canPresentTrackingRatingWithActiveRequest(activeMapRequest, candidate)
+      ? candidate
+      : null;
   }, [
     activeMapRequest?.hasActiveRequest,
+    activeMapRequest?.displayId,
+    activeMapRequest?.id,
+    activeMapRequest?.isTerminal,
+    activeMapRequest?.record?.displayId,
+    activeMapRequest?.record?.id,
+    activeMapRequest?.record?.requestId,
+    activeMapRequest?.requestId,
     canRecoverTrackingRating,
     handledRecoveredRatingVersion,
     hasActiveMapModal,
@@ -568,8 +583,23 @@ export function useMapHistoryFlow({
       pendingRecoveredRatingVisit,
       getTrackingRatingRecoveryClaim(pendingRecoveredRatingVisit, ratingRecoveryClaims),
     );
-    if (nextState) setRecoveredRatingState(nextState);
-  }, [inFlowRatingVisible, pendingRecoveredRatingVisit, ratingRecoveryClaims, recoveredRatingState?.visible, setRecoveredRatingState]);
+    if (!nextState) return;
+
+    if (activeMapRequest?.isTerminal === true) {
+      if (nextState.completeKind === "ambulance") stopAmbulanceTrip?.();
+      if (nextState.completeKind === "bed") stopBedBooking?.();
+    }
+    setRecoveredRatingState(nextState);
+  }, [
+    activeMapRequest?.isTerminal,
+    inFlowRatingVisible,
+    pendingRecoveredRatingVisit,
+    ratingRecoveryClaims,
+    recoveredRatingState?.visible,
+    setRecoveredRatingState,
+    stopAmbulanceTrip,
+    stopBedBooking,
+  ]);
 
   // ─── Recovered-rating handlers ────────────────────────────────────────────
 

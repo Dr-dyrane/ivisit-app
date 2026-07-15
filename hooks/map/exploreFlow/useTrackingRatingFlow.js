@@ -26,8 +26,8 @@ import {
   resolveTrackingRatingSkip,
   resolveTrackingRatingSubmit,
   deleteTrackingRatingRecoveryClaim,
+  shouldPresentTrackingRatingState,
 } from "../../../components/map/views/tracking/mapTracking.rating";
-import { EMERGENCY_VISIT_LIFECYCLE } from "../../../constants/visits";
 
 const normalizeHistoryServiceType = (requestType) => {
   if (requestType === "ambulance") return "ambulance";
@@ -117,19 +117,12 @@ export function useTrackingRatingFlow({
   //      (reactive side-effect on a data dependency belongs in derived state, not useEffect).
   // NEW: pure useMemo derivation — reads atom + visits, returns validated shape without writing.
   //      Layer: L5 derived read (Jotai atom is source of truth; visits is context-provided truth).
-  //      The upstream hydrateTrackingViz fix already prevents visible:true on cold start.
-  //      This guard covers the runtime case: visits load after atom, atom has stale visible:true.
+  //      Hydration prevents visible:true on cold start. A committed in-flow handoff remains
+  //      visible while its invalidated visits query catches up, but rated server truth wins.
   const validatedRatingState = useMemo(() => {
-    if (!ratingState?.visible || !ratingState?.visitId) return ratingState;
-    if (!Array.isArray(visits) || visits.length === 0) return ratingState;
-    const visitId = String(ratingState.visitId);
-    const match = visits.find(
-      (v) => String(v.id) === visitId || String(v.requestId) === visitId,
-    );
-    if (!match || match.lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATED) {
-      return INITIAL_TRACKING_RATING_STATE;
-    }
-    return ratingState;
+    return shouldPresentTrackingRatingState(ratingState, visits)
+      ? ratingState
+      : INITIAL_TRACKING_RATING_STATE;
   }, [ratingState, visits]);
 
   const finalizeCompletedTracking = useCallback(

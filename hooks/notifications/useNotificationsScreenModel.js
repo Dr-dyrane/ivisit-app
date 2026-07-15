@@ -129,7 +129,7 @@ export function useNotificationsScreenModel() {
     isRefreshing,
     markAsRead,
     markAllAsRead,
-    deleteNotification,
+    dismissNotifications,
     refreshNotifications,
   } = useNotifications();
   const [filter, setFilter] = useAtom(notificationsFilterAtom);
@@ -292,34 +292,33 @@ export function useNotificationsScreenModel() {
     setSelectedIds([]);
   }, [markAsRead, selectedCount, setSelectedIds, validSelectedIds]);
 
-  const deleteNotificationIds = useCallback(
+  const clearNotificationIds = useCallback(
     async (notificationIds) => {
       const ids = [...new Set((notificationIds || []).filter(Boolean))];
       if (ids.length === 0) return;
-      await Promise.all(ids.map((id) => deleteNotification(id)));
+      await dismissNotifications(ids);
       closeSelectionMode();
     },
-    [closeSelectionMode, deleteNotification],
+    [closeSelectionMode, dismissNotifications],
   );
 
-  const deleteSelected = useCallback(() => {
+  const clearSelected = useCallback(() => {
     if (selectedCount === 0) return;
 
     Alert.alert(
-      "Delete notifications",
-      `Delete ${selectedCount} notification${selectedCount === 1 ? "" : "s"}?`,
+      "Clear notifications",
+      `Remove ${selectedCount} notification${selectedCount === 1 ? "" : "s"} from your inbox?`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
-          style: "destructive",
+          text: "Clear",
           onPress: async () => {
-            await deleteNotificationIds(validSelectedIds);
+            await clearNotificationIds(validSelectedIds);
           },
         },
       ],
     );
-  }, [deleteNotificationIds, selectedCount, validSelectedIds]);
+  }, [clearNotificationIds, selectedCount, validSelectedIds]);
 
   const prepareSectionSelection = useCallback(
     (section) => {
@@ -337,7 +336,7 @@ export function useNotificationsScreenModel() {
     [setIsSelectMode, setSelectedIds],
   );
 
-  const deleteSection = useCallback(
+  const clearSection = useCallback(
     async (section) => {
       const ids =
         section?.items
@@ -345,10 +344,9 @@ export function useNotificationsScreenModel() {
           .filter(Boolean) ?? [];
 
       if (ids.length === 0) return;
-
-      await deleteNotificationIds(ids);
+      await clearNotificationIds(ids);
     },
-    [deleteNotificationIds],
+    [clearNotificationIds],
   );
 
   const handleNotificationPress = useCallback(
@@ -430,9 +428,9 @@ export function useNotificationsScreenModel() {
     onCloseSelectionMode: closeSelectionMode,
     onToggleSelectAll: toggleSelectAll,
     onMarkSelectedRead: markSelectedRead,
-    onDeleteSelected: deleteSelected,
+    onClearSelected: clearSelected,
     onPrepareSectionSelection: prepareSectionSelection,
-    onDeleteSection: deleteSection,
+    onClearSection: clearSection,
     onNotificationPress: handleNotificationPress,
     onNotificationLongPress: handleNotificationLongPress,
   };

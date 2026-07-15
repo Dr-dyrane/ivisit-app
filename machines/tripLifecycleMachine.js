@@ -100,8 +100,14 @@ const actions = {
 		requestId: ({ event, context }) => event.requestId ?? context.requestId,
 		hospitalId: ({ event, context }) => event.hospitalId ?? context.hospitalId,
 		serviceType: ({ event, context }) => event.serviceType ?? context.serviceType,
-		assignedAmbulance: ({ event, context }) => event.assignedAmbulance ?? context.assignedAmbulance,
-		bedNumber: ({ event, context }) => event.bedNumber ?? context.bedNumber,
+		assignedAmbulance: ({ event, context }) =>
+			Object.prototype.hasOwnProperty.call(event, "assignedAmbulance")
+				? event.assignedAmbulance
+				: context.assignedAmbulance,
+		bedNumber: ({ event, context }) =>
+			Object.prototype.hasOwnProperty.call(event, "bedNumber")
+				? event.bedNumber
+				: context.bedNumber,
 	}),
 
 	clearContext: assign(createInitialContext()),
@@ -125,6 +131,7 @@ export const tripLifecycleMachine = setup({
 			| { type: "RESET" }
 			| { type: "RATING_DISMISSED" }
 			| { type: "SERVER_SYNC"; status: string; requestId?: string; hospitalId?: string; serviceType?: string; assignedAmbulance?: object; bedNumber?: string }
+			| { type: "SERVER_RECONCILE"; status: string; requestId?: string; hospitalId?: string; serviceType?: string; assignedAmbulance?: object | null; bedNumber?: string | null }
 		} */ ({}),
 	},
 	guards,
@@ -133,6 +140,35 @@ export const tripLifecycleMachine = setup({
 	id: "tripLifecycle",
 	initial: "idle",
 	context: createInitialContext(),
+	on: {
+		SERVER_RECONCILE: [
+			{
+				guard: "serverStatusIsPendingApproval",
+				target: ".pendingApproval",
+				actions: "assignServerSync",
+			},
+			{
+				guard: "serverStatusIsActive",
+				target: ".active",
+				actions: "assignServerSync",
+			},
+			{
+				guard: "serverStatusIsArrived",
+				target: ".arrived",
+				actions: "assignServerSync",
+			},
+			{
+				guard: "serverStatusIsCompleted",
+				target: ".completed",
+				actions: ["assignServerSync", "assignCompletion"],
+			},
+			{
+				guard: "serverStatusIsCancelled",
+				target: ".cancelled",
+				actions: "assignServerSync",
+			},
+		],
+	},
 
 	states: {
 		idle: {
@@ -331,17 +367,17 @@ export const TripState = {
 export const serverStatusToMachineEvent = (serverStatus, context = {}) => {
 	switch (serverStatus) {
 		case "pending_approval":
-			return { type: "SERVER_SYNC", status: serverStatus, ...context };
+			return { type: "SERVER_RECONCILE", status: serverStatus, ...context };
 		case "in_progress":
 		case "accepted":
-			return { type: "SERVER_SYNC", status: serverStatus, ...context };
+			return { type: "SERVER_RECONCILE", status: serverStatus, ...context };
 		case "arrived":
-			return { type: "SERVER_SYNC", status: serverStatus, ...context };
+			return { type: "SERVER_RECONCILE", status: serverStatus, ...context };
 		case "completed":
-			return { type: "SERVER_SYNC", status: serverStatus, ...context };
+			return { type: "SERVER_RECONCILE", status: serverStatus, ...context };
 		case "cancelled":
 		case "payment_declined":
-			return { type: "SERVER_SYNC", status: serverStatus, ...context };
+			return { type: "SERVER_RECONCILE", status: serverStatus, ...context };
 		default:
 			return null;
 	}

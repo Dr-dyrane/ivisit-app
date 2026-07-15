@@ -31,9 +31,9 @@ export const NOTIFICATIONS_SCREEN_COPY = {
   rows: {
     clearSection: "Clear",
     selectAll: "Select all",
-    clearAll: "Clear all",
+    clearAll: "Deselect all",
     markRead: "Mark read",
-    delete: "Delete",
+    clear: "Clear",
     done: "Done",
     unreadBadge: "New",
   },

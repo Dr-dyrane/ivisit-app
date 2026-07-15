@@ -208,6 +208,9 @@ function resolveHeaderDistanceLabel({
 	if (isArrivedOrComplete) {
 		return "0 m";
 	}
+	if (status === EmergencyRequestStatus.IN_PROGRESS) {
+		return formatHospitalDistanceLabel(hospital);
+	}
 
 	const initialDistanceKm = resolveInitialDistanceKm(hospital);
 	if (!Number.isFinite(initialDistanceKm) || initialDistanceKm <= 0) {
@@ -250,6 +253,7 @@ function resolveStatusLabel({
 	if (kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
 		if (status === EmergencyRequestStatus.COMPLETED) return "Complete";
 		if (status === EmergencyRequestStatus.ARRIVED) return "Arrived";
+		if (status === EmergencyRequestStatus.IN_PROGRESS) return "Finding responder";
 		if (etaElapsed) return "Arriving";
 		const etaLabel = formatHeaderEtaLabel(etaSeconds, startedAt, nowMs);
 		if (etaLabel) return etaLabel;
@@ -373,7 +377,8 @@ export function buildActiveMapRequestModel({
 		nowMs,
 	});
 	const arrivalLabel =
-		kind === MAP_ACTIVE_REQUEST_KINDS.PENDING
+		kind === MAP_ACTIVE_REQUEST_KINDS.PENDING ||
+		status === EmergencyRequestStatus.IN_PROGRESS
 			? null
 			: formatHeaderArrivalLabel(etaSeconds, startedAt, nowMs);
 	const distanceLabel = resolveHeaderDistanceLabel({
@@ -384,7 +389,9 @@ export function buildActiveMapRequestModel({
 		nowMs,
 	});
 	const currentStatusForMetrics = status || "";
-	const minuteValue =
+	const minuteValue = status === EmergencyRequestStatus.IN_PROGRESS
+		? "--"
+		:
 		(kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE && etaElapsed) ||
 		currentStatusForMetrics === EmergencyRequestStatus.ARRIVED ||
 		currentStatusForMetrics === EmergencyRequestStatus.COMPLETED ||
@@ -394,6 +401,9 @@ export function buildActiveMapRequestModel({
 			? "0"
 			: stripHeaderMetricUnit(statusLabel, /\s*(min|mins|minute|minutes)$/i);
 	const progressValue = (() => {
+		if (currentStatusForMetrics === EmergencyRequestStatus.IN_PROGRESS) {
+			return null;
+		}
 		if (
 			currentStatusForMetrics === EmergencyRequestStatus.ARRIVED ||
 			currentStatusForMetrics === EmergencyRequestStatus.COMPLETED

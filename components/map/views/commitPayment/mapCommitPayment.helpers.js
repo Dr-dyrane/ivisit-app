@@ -1,6 +1,7 @@
 import { DispatchService } from "../../../../services/dispatchService";
 import { getDestinationCoordinate } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
 import { formatMoney, resolveMoneyCurrency } from "../../../../utils/formatMoney";
+import { resolveAmbulanceDispatchType } from "../../../../utils/ambulanceType";
 
 function toFiniteNumber(value) {
 	const parsed = Number(value);
@@ -173,12 +174,12 @@ export function buildAmbulanceCommitRequest({
 		hospitalId: hospital?.id || null,
 		hospitalName:
 			hospital?.name || hospital?.title || hospital?.service_name || "Hospital",
-		ambulanceType:
-			transport?.service_type || transport?.serviceType || transport?.tierKey || null,
+		ambulanceType: resolveAmbulanceDispatchType(transport),
 		serviceType: "ambulance",
 		specialty: null,
 		paymentMethod,
 		pricingSnapshot,
+		distanceKm: buildCommitPaymentDistanceKm(hospital, currentLocation),
 		patientLocation: buildCommitPaymentPickupCoordinate(currentLocation),
 		locationLabel: buildCommitPaymentPickupLabel(currentLocation),
 		locationConfirmedAt: new Date().toISOString(),
@@ -205,6 +206,7 @@ export function buildBedCommitRequest({
 		specialty: null,
 		paymentMethod,
 		pricingSnapshot,
+		distanceKm: buildCommitPaymentDistanceKm(hospital, currentLocation),
 		bedType: room?.room_type || room?.title || null,
 		bedNumber: room?.id || null,
 		bedCount: 1,

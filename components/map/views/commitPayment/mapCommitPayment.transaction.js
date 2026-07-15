@@ -59,6 +59,42 @@ export function requiresWalletSettlement(methodKind) {
 	return methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.WALLET;
 }
 
+export function reconcileCanonicalPaymentTotal({
+	quotedTotal,
+	canonicalTotal,
+	costSnapshot = null,
+	currency = "USD",
+} = {}) {
+	const quoted = Number(quotedTotal);
+	const canonical = Number(canonicalTotal);
+	if (!Number.isFinite(canonical) || canonical < 0) {
+		return {
+			ok: false,
+			code: "CANONICAL_TOTAL_UNAVAILABLE",
+			hasMismatch: false,
+			costSnapshot,
+		};
+	}
+
+	const nextCostSnapshot = {
+		...(costSnapshot && typeof costSnapshot === "object" ? costSnapshot : {}),
+		totalCost: canonical,
+		total_cost: canonical,
+		currency: currency || costSnapshot?.currency || "USD",
+	};
+	const hasMismatch =
+		Number.isFinite(quoted) && Math.abs(quoted - canonical) > 0.009;
+
+	return {
+		ok: !hasMismatch,
+		code: hasMismatch ? "CANONICAL_TOTAL_CHANGED" : null,
+		hasMismatch,
+		quotedTotal: Number.isFinite(quoted) ? quoted : null,
+		canonicalTotal: canonical,
+		costSnapshot: nextCostSnapshot,
+	};
+}
+
 export function isCommitPaymentIdleState(submissionState) {
 	return submissionState?.kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE;
 }
@@ -171,6 +207,7 @@ export default {
 	getCommitPaymentMethodKind,
 	requiresSignedCardConfirmation,
 	requiresWalletSettlement,
+	reconcileCanonicalPaymentTotal,
 	isCommitPaymentIdleState,
 	isCommitPaymentDismissibleState,
 	isCommitPaymentFailureState,

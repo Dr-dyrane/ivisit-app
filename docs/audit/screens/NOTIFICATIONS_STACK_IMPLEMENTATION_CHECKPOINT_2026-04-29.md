@@ -1,7 +1,7 @@
 ---
 status: living
 owner: architecture
-last_updated: 2026-05-24
+last_updated: 2026-07-14
 ---
 
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
@@ -10,7 +10,7 @@ last_updated: 2026-05-24
 
 # Notifications Stack Implementation Checkpoint (2026-04-29)
 
-Status: Implemented in code, runtime verification still pending
+Status: Implemented; authority and cross-session dismissal verified live
 
 ## Scope
 
@@ -86,8 +86,24 @@ This wave modernized `/(user)/(stacks)/notifications` to match the refined stack
 - `git diff --check`
 - grep sweep for old runtime references to the legacy monolith-only surfaces
 
-## Not Yet Verified
+## Remaining Verification
 
-- mobile and desktop runtime interaction smoke
-- seven-width visual matrix
-- live read/delete/mark-read behavior against the running app
+- seven-width visual matrix after the recipient-dismissal UI update
+- final native and web interaction smoke for selection and section-clear presentation
+
+## Authority Reconciliation: 2026-07-14
+
+The April implementation preserved physical client deletion because the original January schema allowed recipients to delete their own notification rows. February hardening later made notification creation backend-owned and narrowed recipient mutation to inbox state, but the App and Console clear controls were not migrated to that authority model. This produced permission errors after emergency completion and rating while also leaving clear behavior non-durable across devices.
+
+The reconciled contract is:
+
+- canonical notification events are emitted and retained by backend functions and triggers
+- clients cannot insert or physically delete notification events
+- recipients may update only `read`, `dismissed_at`, and `updated_at` on their own rows
+- clear one, clear selected, clear section, and clear all persist `dismissed_at`
+- inbox reads exclude dismissed rows, so a second authenticated session observes the same state
+- related requests, visits, payments, and activity records remain untouched
+
+Live RLS proof on `dlwtcmhdzoklveihuhjf` passed own-recipient read and dismissal, foreign-recipient denial, second-session persistence, canonical-field update denial, insert denial, physical-delete denial, retained event identity, and zero-residue cleanup. The temporary deployment was absorbed into `0005_ops_content` and `0007_security`; its remote migration receipt was repaired as reverted.
+
+The historical "delete" wording above records the April UI behavior only. The current product action is recipient-owned inbox dismissal, not canonical event deletion.

@@ -11,23 +11,9 @@ const mapFromDb = (row) => ({
   actionType: row.action_type,
   actionData: row.action_data,
   createdAt: row.created_at,
+  dismissedAt: row.dismissed_at,
   updatedAt: row.updated_at,
 });
-
-const mapToDb = (item) => {
-  const db = { ...item };
-  if (item.actionType !== undefined) db.action_type = item.actionType;
-  if (item.actionData !== undefined) db.action_data = item.actionData;
-  if (item.icon !== undefined) db.icon = item.icon;
-  if (item.color !== undefined) db.color = item.color;
-
-  delete db.actionType;
-  delete db.actionData;
-  delete db.createdAt;
-  delete db.updatedAt;
-
-  return db;
-};
 
 const resolveUserId = async (options = {}) => {
   if (options?.userId) return String(options.userId);
@@ -54,6 +40,7 @@ export const notificationsService = {
       .from(TABLE)
       .select("*")
       .eq("user_id", userId)
+      .is("dismissed_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -74,6 +61,7 @@ export const notificationsService = {
       .select("*")
       .eq("user_id", userId)
       .eq("id", id)
+      .is("dismissed_at", null)
       .single();
 
     if (error) {
@@ -85,35 +73,10 @@ export const notificationsService = {
     return normalizeNotification(mapFromDb(data));
   },
 
-  async create(notification) {
-    const userId = await requireUserId();
-    const normalized = normalizeNotification(notification);
-    const dbItem = mapToDb({ ...normalized, user_id: userId });
-
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    if (dbItem.id) {
-      if (typeof dbItem.id !== "string" || !uuidRegex.test(dbItem.id)) {
-        delete dbItem.id;
-      }
-    }
-
-    const { data, error } = await supabase
-      .from(TABLE)
-      .insert(dbItem)
-      .select()
-      .single();
-
-    if (error) {
-      console.error(
-        `[notificationsService] Create error for ${normalized.id}:`,
-        error,
-      );
-      throw error;
-    }
-
-    return normalizeNotification(mapFromDb(data));
+  async create(_notification) {
+    // Canonical notifications are emitted by trusted RPCs and database hooks.
+    // Authenticated clients intentionally have no INSERT grant.
+    return null;
   },
 
   async markAsRead(id) {
@@ -146,72 +109,56 @@ export const notificationsService = {
     }
   },
 
-  async delete(id) {
-    const userId = await requireUserId();
-
-    const { error } = await supabase
-      .from(TABLE)
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error(`[notificationsService] delete error for ${id}:`, error);
-      throw error;
-    }
+  async dismiss(id) {
+    if (!id) return false;
+    const dismissedCount = await this.dismissMany([id]);
+    return dismissedCount > 0;
   },
 
-  async clearAll() {
+  async dismissMany(ids) {
+    const notificationIds = [
+      ...new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (notificationIds.length === 0) return 0;
+
     const userId = await requireUserId();
-
-    const { error } = await supabase
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
       .from(TABLE)
-      .delete()
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error("[notificationsService] clearAll error:", error);
-      throw error;
-    }
-  },
-
-  async deleteOldest(count) {
-    const userId = await requireUserId();
-
-    const { data: oldestNotifications, error: fetchError } = await supabase
-      .from(TABLE)
-      .select("id")
+      .update({ dismissed_at: now, updated_at: now })
       .eq("user_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(count);
+      .in("id", notificationIds)
+      .is("dismissed_at", null)
+      .select("id");
 
-    if (fetchError) {
-      console.error(
-        "[notificationsService] deleteOldest fetch error:",
-        fetchError,
-      );
-      throw fetchError;
+    if (error) {
+      console.error("[notificationsService] dismissMany error:", error);
+      throw error;
     }
 
-    if (!oldestNotifications || oldestNotifications.length === 0) {
-      return;
-    }
+    return data?.length || 0;
+  },
 
-    const idsToDelete = oldestNotifications.map((notification) => notification.id);
-
-    const { error: deleteError } = await supabase
+  async dismissAll() {
+    const userId = await requireUserId();
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
       .from(TABLE)
-      .delete()
-      .in("id", idsToDelete)
-      .eq("user_id", userId);
+      .update({ dismissed_at: now, updated_at: now })
+      .eq("user_id", userId)
+      .is("dismissed_at", null)
+      .select("id");
 
-    if (deleteError) {
-      console.error(
-        "[notificationsService] deleteOldest delete error:",
-        deleteError,
-      );
-      throw deleteError;
+    if (error) {
+      console.error("[notificationsService] dismissAll error:", error);
+      throw error;
     }
+
+    return data?.length || 0;
   },
 
   subscribe(userId, onEvent) {

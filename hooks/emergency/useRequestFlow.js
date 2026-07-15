@@ -518,6 +518,7 @@ export const useRequestFlow = (props) => {
           bedNumber: request?.bedNumber ?? null,
           bedType: request?.bedType ?? null,
           bedCount: request?.bedCount ?? null,
+          distanceKm: request?.distanceKm ?? computedDistanceKm,
           estimatedArrival: derivedEstimatedArrival,
           status: EmergencyRequestStatus.IN_PROGRESS,
           patient: patientSnapshot,
@@ -663,6 +664,8 @@ export const useRequestFlow = (props) => {
           paymentId: createdRequest?.paymentId || null,
           paymentStatus: normalizedPaymentStatus,
           status: createdRequest?.status || null,
+          canonicalTotal: createdRequest?.canonicalTotal ?? null,
+          currency: createdRequest?.currency || costData?.currency || "USD",
         };
       } catch (err) {
         inflightByTypeRef.current[request.serviceType] = false;

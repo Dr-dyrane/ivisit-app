@@ -97,10 +97,9 @@ export default function NotificationsScreenOrchestrator() {
             isDarkMode={isDarkMode}
           />
           <HeaderIconAction
-            icon="trash-outline"
-            label={NOTIFICATIONS_SCREEN_COPY.rows.delete}
-            onPress={model.onDeleteSelected}
-            destructive
+            icon="close-circle-outline"
+            label={NOTIFICATIONS_SCREEN_COPY.rows.clear}
+            onPress={model.onClearSelected}
             disabled={model.selectedCount === 0}
             isDarkMode={isDarkMode}
           />
@@ -139,8 +138,8 @@ export default function NotificationsScreenOrchestrator() {
     isCompactLayout,
     model.allFilteredSelected,
     model.isSelectMode,
+    model.onClearSelected,
     model.onCloseSelectionMode,
-    model.onDeleteSelected,
     model.onMarkSelectedRead,
     model.onOpenSelectionMode,
     model.onPrimaryAction,

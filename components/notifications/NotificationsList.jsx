@@ -18,6 +18,7 @@ import NotificationsSectionClearModal from "./NotificationsSectionClearModal";
 export default function NotificationsList({
   sections,
   isDarkMode,
+  theme,
   loading = false,
   emptyTitle,
   emptyBody,
@@ -26,16 +27,14 @@ export default function NotificationsList({
   primaryActionLabel,
   isSelectMode = false,
   selectedIdSet,
-  onPrepareSectionSelection,
-  onDeleteSection,
-  onClearSectionSelection,
+  onClearSection,
   onPressNotification,
   onLongPressNotification,
 }) {
   const colors = useMemo(() => getMiniProfileColors(isDarkMode), [isDarkMode]);
   const tones = useMemo(() => getMiniProfileTones(isDarkMode), [isDarkMode]);
   const [pendingClearSection, setPendingClearSection] = useState(null);
-  const [isDeletingSection, setIsDeletingSection] = useState(false);
+  const [isClearingSection, setIsClearingSection] = useState(false);
   const layout = useMemo(
     () =>
       getMiniProfileLayout(
@@ -58,30 +57,16 @@ export default function NotificationsList({
     [],
   );
 
-  const handleRequestSectionClear = useCallback(
-    (section) => {
-      if (!section?.items?.length) return;
-      onPrepareSectionSelection?.(section);
-      setPendingClearSection(section);
-    },
-    [onPrepareSectionSelection],
-  );
-
-  const handleCancelSectionClear = useCallback(() => {
-    setPendingClearSection(null);
-    onClearSectionSelection?.();
-  }, [onClearSectionSelection]);
-
-  const handleConfirmSectionClear = useCallback(async () => {
-    if (!pendingClearSection) return;
-    setIsDeletingSection(true);
+  const confirmSectionClear = useCallback(async () => {
+    if (!pendingClearSection || isClearingSection) return;
+    setIsClearingSection(true);
     try {
-      await onDeleteSection?.(pendingClearSection);
+      await onClearSection?.(pendingClearSection);
       setPendingClearSection(null);
     } finally {
-      setIsDeletingSection(false);
+      setIsClearingSection(false);
     }
-  }, [onDeleteSection, pendingClearSection]);
+  }, [isClearingSection, onClearSection, pendingClearSection]);
 
   if (loading) {
     return (
@@ -251,26 +236,27 @@ export default function NotificationsList({
             >
               {section.label}
             </Text>
-            {!isSelectMode ? (
-              <Pressable
-                onPress={() => handleRequestSectionClear(section)}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.8 : 1,
-                  paddingVertical: 2,
-                })}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${NOTIFICATIONS_SCREEN_COPY.rows.clearSection} ${section.label} notifications`}
+              onPress={() => setPendingClearSection(section)}
+              style={({ pressed }) => ({
+                paddingHorizontal: 4,
+                paddingVertical: 2,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: COLORS.brandPrimary,
+                  fontSize: 12,
+                  lineHeight: 16,
+                  fontWeight: "600",
+                }}
               >
-                <Text
-                  style={{
-                    color: COLORS.brandPrimary,
-                    fontSize: 12,
-                    lineHeight: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  {NOTIFICATIONS_SCREEN_COPY.rows.clearSection}
-                </Text>
-              </Pressable>
-            ) : null}
+                {NOTIFICATIONS_SCREEN_COPY.rows.clearSection}
+              </Text>
+            </Pressable>
           </View>
 
           <View
@@ -297,17 +283,16 @@ export default function NotificationsList({
           </View>
         </View>
       ))}
-
       <NotificationsSectionClearModal
         visible={Boolean(pendingClearSection)}
         sectionLabel={pendingClearSection?.label}
         count={pendingClearSection?.items?.length || 0}
-        onClose={handleCancelSectionClear}
-        onConfirm={handleConfirmSectionClear}
-        loading={isDeletingSection}
-        theme={{
-          text: colors.text,
+        onClose={() => {
+          if (!isClearingSection) setPendingClearSection(null);
         }}
+        onConfirm={confirmSectionClear}
+        loading={isClearingSection}
+        theme={theme}
       />
     </View>
   );

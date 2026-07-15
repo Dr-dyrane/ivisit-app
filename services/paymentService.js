@@ -597,7 +597,7 @@ export const paymentService = {
         .from('payments')
         .select(`
           *,
-          emergency_requests (
+          emergency_requests!payments_emergency_request_id_fkey (
             id,
             service_type,
             created_at,
@@ -633,7 +633,7 @@ export const paymentService = {
         .from('payments')
         .select(`
           *,
-          emergency_requests (
+          emergency_requests!payments_emergency_request_id_fkey (
             id,
             service_type,
             created_at,

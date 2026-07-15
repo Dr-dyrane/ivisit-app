@@ -14,6 +14,8 @@ artifacts/eas-builds/
 artifacts/app-store-screenshots/
 
 # Native
+/android/
+/ios/
 *.orig.*
 *.jks
 *.p8
@@ -24,6 +26,7 @@ tmp/
 
 # Metro
 .metro-health-check*
+.codex-expo-*.log
 
 # debug
 npm-debug.*

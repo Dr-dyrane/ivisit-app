@@ -1,7 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
 import InputModal from "../ui/InputModal";
-import { COLORS } from "../../constants/colors";
 
 export default function NotificationsSectionClearModal({
   visible,
@@ -15,8 +14,8 @@ export default function NotificationsSectionClearModal({
   const title = sectionLabel ? `Clear ${sectionLabel}` : "Clear section";
   const body =
     count === 1
-      ? "Delete 1 notification from this group."
-      : `Delete ${count} notifications from this group.`;
+      ? "Remove 1 notification from your inbox."
+      : `Remove ${count} notifications from your inbox.`;
 
   return (
     <InputModal
@@ -24,8 +23,7 @@ export default function NotificationsSectionClearModal({
       onClose={onClose}
       title={title}
       primaryAction={onConfirm}
-      primaryActionLabel="Delete"
-      primaryActionBackgroundColor={COLORS.error}
+      primaryActionLabel="Clear"
       secondaryAction={onClose}
       secondaryActionLabel="Cancel"
       loading={loading}
@@ -43,6 +41,16 @@ export default function NotificationsSectionClearModal({
           }}
         >
           {body}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            lineHeight: 19,
+            fontWeight: "400",
+            color: theme.textMuted,
+          }}
+        >
+          Related visits, requests, and activity are not affected.
         </Text>
       </View>
     </InputModal>

@@ -1,7 +1,5 @@
 import { NOTIFICATION_TYPES, NOTIFICATION_PRIORITY } from "../constants/notifications";
-import { notificationsService } from "./notificationsService";
 import { supabase } from "./supabase";
-import { v4 as uuidv4 } from "uuid";
 import { formatMoney } from "../utils/formatMoney";
 
 /**
@@ -31,28 +29,9 @@ export const notificationDispatcher = {
      * @param {Object} params.actionData - Optional action data
      * @returns {Promise<Object>} Created notification
      */
-    async dispatchNotification({ type, priority, title, message, icon = null, color = null, actionType = null, actionData = null }) {
-        try {
-            const notification = {
-                id: uuidv4(),
-                type,
-                priority,
-                title,
-                message,
-                timestamp: new Date().toISOString(),
-                read: false,
-                icon,
-                color,
-                actionType,
-                actionData,
-            };
-
-            const result = await notificationsService.create(notification);
-            return result;
-        } catch (error) {
-            console.error("[notificationDispatcher] Error creating notification:", error);
-            throw error;
-        }
+    async dispatchNotification(_notification) {
+        // Domain receivers emit canonical notification rows server-side.
+        return null;
     },
 
     /**
@@ -61,38 +40,8 @@ export const notificationDispatcher = {
      * @param {string} targetUserId - The user to send the notification to
      * @param {Object} params - Notification fields
      */
-    async dispatchToUser(targetUserId, { type, priority, title, message, icon = null, color = null, actionType = null, actionData = null }) {
-        try {
-            const now = new Date().toISOString();
-            const { data, error } = await supabase
-                .from('notifications')
-                .insert({
-                    id: uuidv4(),
-                    user_id: targetUserId,
-                    type,
-                    priority,
-                    title,
-                    message,
-                    icon,
-                    color,
-                    action_type: actionType,
-                    action_data: actionData,
-                    read: false,
-                    created_at: now,
-                    updated_at: now,
-                })
-                .select()
-                .single();
-
-            if (error) {
-                console.warn(`[notificationDispatcher] Failed to notify user ${targetUserId}:`, error.message);
-                return null;
-            }
-            return data;
-        } catch (error) {
-            console.error("[notificationDispatcher] dispatchToUser error:", error);
-            return null;
-        }
+    async dispatchToUser(_targetUserId, _notification) {
+        return null;
     },
 
     /**

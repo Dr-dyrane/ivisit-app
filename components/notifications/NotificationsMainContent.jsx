@@ -48,6 +48,7 @@ export default function NotificationsMainContent({
       <NotificationsList
         sections={model.sections}
         isDarkMode={isDarkMode}
+        theme={theme}
         loading={model.isDataLoading}
         emptyTitle={emptyTitle}
         emptyBody={emptyBody}
@@ -56,9 +57,7 @@ export default function NotificationsMainContent({
         primaryActionLabel={model.primaryActionLabel}
         isSelectMode={model.isSelectMode}
         selectedIdSet={model.selectedIdSet}
-        onPrepareSectionSelection={model.onPrepareSectionSelection}
-        onDeleteSection={model.onDeleteSection}
-        onClearSectionSelection={model.onCloseSelectionMode}
+        onClearSection={model.onClearSection}
         onPressNotification={model.onNotificationPress}
         onLongPressNotification={model.onNotificationLongPress}
       />

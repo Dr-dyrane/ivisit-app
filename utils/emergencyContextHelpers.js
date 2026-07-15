@@ -11,7 +11,6 @@ import { calculateBearing, isValidCoordinate } from "./mapUtils";
 
 export const AMBULANCE_LIVE_TRACK_STATUSES = new Set([
   "accepted",
-  "in_progress",
   "arrived",
 ]);
 export const TELEMETRY_STALE_THRESHOLD_MS = 30000;

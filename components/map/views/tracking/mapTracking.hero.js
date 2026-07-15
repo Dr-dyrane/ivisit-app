@@ -143,6 +143,9 @@ export function buildTrackingHeaderModel({
   }
 
   if (trackingKind === "bed") {
+    if (stage === TRACKING_STAGES.ASSIGNING) {
+      return { title: "Awaiting Facility", subtitle: fallbackSubtitle || null };
+    }
     if (
       stage === TRACKING_STAGES.ARRIVED ||
       stage === TRACKING_STAGES.COMPLETED

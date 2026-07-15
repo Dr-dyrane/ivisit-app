@@ -14,6 +14,7 @@ export function resolveAmbulanceProgressStatus({ status, tripProgress }) {
 	const normalizedStatus = String(status ?? "").toLowerCase();
 	if (normalizedStatus === EmergencyRequestStatus.COMPLETED) return "Complete";
 	if (normalizedStatus === EmergencyRequestStatus.ARRIVED) return "Arrived";
+	if (normalizedStatus === EmergencyRequestStatus.IN_PROGRESS) return "Assigning";
 	if (!Number.isFinite(tripProgress)) return "En Route";
 	if (tripProgress < 0.2) return "Dispatched";
 	if (tripProgress < 0.85) return "En Route";
@@ -24,6 +25,11 @@ export const useTripProgress = ({
 	activeAmbulanceTrip,
 	nowMs = Date.now(),
 }) => {
+	const hasAcceptedResponder = [
+		EmergencyRequestStatus.ACCEPTED,
+		EmergencyRequestStatus.ARRIVED,
+		EmergencyRequestStatus.COMPLETED,
+	].includes(String(activeAmbulanceTrip?.status ?? "").toLowerCase());
 	const fallbackEtaSeconds = useMemo(() => {
 		const eta = activeAmbulanceTrip?.estimatedArrival;
 		if (eta === null || eta === undefined) return null;
@@ -59,21 +65,23 @@ export const useTripProgress = ({
 	}, [activeAmbulanceTrip?.startedAt]);
 
 	const remainingSeconds = useMemo(() => {
+		if (!hasAcceptedResponder) return null;
 		const eta = resolvedEtaSeconds;
 		const startedAtMs = resolvedStartedAtMs;
 		if (!Number.isFinite(eta) || !Number.isFinite(startedAtMs)) return null;
 		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.max(0, Math.round(eta - elapsedSec));
-	}, [nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
+	}, [hasAcceptedResponder, nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
 
 	const tripProgress = useMemo(() => {
+		if (!hasAcceptedResponder) return null;
 		const eta = resolvedEtaSeconds;
 		const startedAtMs = resolvedStartedAtMs;
 		if (!Number.isFinite(eta) || eta <= 0 || !Number.isFinite(startedAtMs))
 			return null;
 		const elapsedSec = (nowMs - startedAtMs) / 1000;
 		return Math.min(1, Math.max(0, elapsedSec / eta));
-	}, [nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
+	}, [hasAcceptedResponder, nowMs, resolvedEtaSeconds, resolvedStartedAtMs]);
 
 	const computedStatus = useMemo(() => {
 		return resolveAmbulanceProgressStatus({

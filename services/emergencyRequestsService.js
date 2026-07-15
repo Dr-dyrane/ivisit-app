@@ -156,6 +156,10 @@ const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
     specialty: r.specialty,
     ambulanceType: r.ambulance_type,
     ambulanceId: r.ambulance_id,
+    responderId: r.responder_id ?? null,
+    currentResponderAssignmentId:
+        r.current_responder_assignment_id ?? null,
+    dispatchOrganizationId: r.dispatch_organization_id ?? null,
     bedNumber: r.bed_number,
     bedType: r.bed_type,
     bedCount: r.bed_count,
@@ -169,6 +173,10 @@ const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
     shared: r.shared_data_snapshot,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    dispatchAcceptedAt:
+        r.dispatchAcceptedAt ?? r.dispatch_accepted_at ?? null,
+    responderArrivedAt:
+        r.responderArrivedAt ?? r.responder_arrived_at ?? null,
     responderName: r.responder_name,
     responderPhone: r.responder_phone,
     responderVehicleType: r.responder_vehicle_type,
@@ -185,6 +193,56 @@ const mapEmergencyRequestRow = (r) => withResolvedTriageFields({
     patientLocation: r.patient_location,
     patientHeading: r.patient_heading,
 });
+
+const attachLifecycleTransitionTimes = async (rows) => {
+    const sourceRows = Array.isArray(rows) ? rows : [];
+    const requestIds = sourceRows
+        .map((row) => row?.id)
+        .filter((id) => typeof id === "string" && id);
+    if (requestIds.length === 0) return sourceRows;
+
+    const { data, error } = await supabase
+        .from("emergency_status_transitions")
+        .select("emergency_request_id, to_status, occurred_at")
+        .in("emergency_request_id", requestIds)
+        .in("to_status", [EmergencyRequestStatus.ACCEPTED, EmergencyRequestStatus.ARRIVED])
+        .order("occurred_at", { ascending: true });
+
+    if (error) {
+        if (__DEV__) {
+            console.warn(
+                "[emergencyRequestsService] Lifecycle timestamps unavailable:",
+                error.message,
+            );
+        }
+        return sourceRows;
+    }
+
+    const lifecycleByRequest = new Map();
+    for (const transition of Array.isArray(data) ? data : []) {
+        const requestId = transition?.emergency_request_id;
+        if (!requestId) continue;
+        const current = lifecycleByRequest.get(requestId) || {};
+        if (
+            transition?.to_status === EmergencyRequestStatus.ACCEPTED &&
+            !current.dispatchAcceptedAt
+        ) {
+            current.dispatchAcceptedAt = transition.occurred_at ?? null;
+        }
+        if (
+            transition?.to_status === EmergencyRequestStatus.ARRIVED &&
+            !current.responderArrivedAt
+        ) {
+            current.responderArrivedAt = transition.occurred_at ?? null;
+        }
+        lifecycleByRequest.set(requestId, current);
+    }
+
+    return sourceRows.map((row) => ({
+        ...row,
+        ...(lifecycleByRequest.get(row?.id) || {}),
+    }));
+};
 
 const createActiveRequestError = (serviceType, activeRequest) => {
     const label = serviceType === "bed" ? "bed reservation" : "ambulance request";
@@ -219,7 +277,9 @@ export const emergencyRequestsService = {
                     // });
                 }
             } else {
-                const rows = Array.isArray(data) ? data : [];
+                const rows = await attachLifecycleTransitionTimes(
+                    Array.isArray(data) ? data : [],
+                );
                 const requests = rows.map(mapEmergencyRequestRow);
                 await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
@@ -336,7 +396,13 @@ export const emergencyRequestsService = {
                     specialty: request.specialty,
                     patient_location: rpcPatientLocation,
                     patient_snapshot: patientSnapshot,
-                    ambulance_type: request.ambulanceType
+                    ambulance_type: request.ambulanceType,
+                    bed_number: request.bedNumber,
+                    bed_type: request.bedType,
+                    bed_count: request.bedCount,
+                    distance_km: Number.isFinite(Number(request.distanceKm))
+                        ? Number(request.distanceKm)
+                        : 0
                 },
                 p_payment_data: {
                     method: isCash ? 'cash' : (isWallet ? 'wallet' : 'card'),
@@ -367,6 +433,10 @@ export const emergencyRequestsService = {
                 requiresWalletSettlement:
                     isWallet || data.requires_wallet_settlement === true,
                 paymentStatus: data.payment_status || null,
+                canonicalTotal: Number.isFinite(Number(data.canonical_total))
+                    ? Number(data.canonical_total)
+                    : null,
+                currency: data.currency || request.currency || 'USD',
             };
         } else {
             // Local fallback
@@ -538,7 +608,51 @@ export const emergencyRequestsService = {
             .maybeSingle();
 
         if (error) throw error;
-        return data ? mapEmergencyRequestRow(data) : null;
+        if (!data) return null;
+        const [row] = await attachLifecycleTransitionTimes([data]);
+        return mapEmergencyRequestRow(row);
+    },
+
+    async syncDemoResponderLifecycle(id, action, payload = {}) {
+        const requestId = String(id ?? "").trim();
+        const normalizedAction = String(action ?? "").trim().toLowerCase();
+        if (!requestId) throw new Error("Emergency request id is required");
+        if (
+            ![
+                "ensure_dispatch",
+                "report_telemetry",
+                "mark_arrived",
+                "mark_completed",
+            ].includes(normalizedAction)
+        ) {
+            throw new Error("Unsupported demo emergency lifecycle action");
+        }
+
+        const { data, error } = await supabase.functions.invoke(
+            "demo-emergency-lifecycle",
+            {
+                body: {
+                    requestId,
+                    action: normalizedAction,
+                    ...(normalizedAction === "report_telemetry"
+                        ? { telemetry: payload?.telemetry || payload }
+                        : {}),
+                },
+            },
+        );
+        if (error) throw error;
+        if (!data?.success && data?.retryable !== true) {
+            const lifecycleError = new Error(
+                data?.error || "Demo emergency lifecycle could not advance",
+            );
+            lifecycleError.code = data?.code || null;
+            throw lifecycleError;
+        }
+
+        return {
+            ...data,
+            request: data?.request ? mapEmergencyRequestRow(data.request) : null,
+        };
     },
 
     async acknowledgeResponderArrival(id) {

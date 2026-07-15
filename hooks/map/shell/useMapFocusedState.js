@@ -19,7 +19,31 @@ import { useMemo } from "react";
 import { MAP_SHEET_PHASES } from "../../../components/map/core/MapSheetOrchestrator";
 import { MAP_ACTIVE_REQUEST_KINDS } from "../../../components/map/core/mapActiveRequestModel";
 import { getDestinationCoordinate } from "../../../components/map/surfaces/hospitals/mapHospitalDetail.helpers";
+import { EmergencyRequestStatus } from "../../../services/emergencyRequestsService";
 import { calculateBearing } from "../../../utils/mapUtils";
+
+const TRACKABLE_AMBULANCE_STATUSES = new Set([
+  EmergencyRequestStatus.ACCEPTED,
+  EmergencyRequestStatus.ARRIVED,
+  EmergencyRequestStatus.COMPLETED,
+]);
+
+export function resolveMapServiceMarkerKind({
+  historyVisitDetailsVisible,
+  activeMapRequest,
+  sheetPhase,
+  paymentPreviewKind,
+}) {
+  if (historyVisitDetailsVisible) return null;
+  if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) {
+    return TRACKABLE_AMBULANCE_STATUSES.has(activeMapRequest?.status)
+      ? "ambulance"
+      : null;
+  }
+  if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.PENDING) return null;
+  if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) return paymentPreviewKind;
+  return null;
+}
 
 const PROVIDER_FOCUS_PHASES = new Set([
   MAP_SHEET_PHASES.PROVIDER_LIST,
@@ -129,16 +153,15 @@ export function useMapFocusedState({
   ]);
 
   const mapServiceMarkerKind = useMemo(() => {
-    if (historyVisitDetailsVisible) return null;
-    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE) return "ambulance";
-    if (activeMapRequest?.kind === MAP_ACTIVE_REQUEST_KINDS.PENDING) {
-      return activeMapRequest?.pendingKind === MAP_ACTIVE_REQUEST_KINDS.BED ? null : "ambulance";
-    }
-    if (sheetPhase === MAP_SHEET_PHASES.COMMIT_PAYMENT) return paymentPreviewKind;
-    return null;
+    return resolveMapServiceMarkerKind({
+      historyVisitDetailsVisible,
+      activeMapRequest,
+      sheetPhase,
+      paymentPreviewKind,
+    });
   }, [
     activeMapRequest?.kind,
-    activeMapRequest?.pendingKind,
+    activeMapRequest?.status,
     historyVisitDetailsVisible,
     paymentPreviewKind,
     sheetPhase,

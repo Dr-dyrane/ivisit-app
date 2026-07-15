@@ -271,6 +271,7 @@ export function useMapTrackingRuntime({
 
   const routeVisualProgress = useMemo(() => {
     if (viewState.trackingKind !== "ambulance") return 0;
+    if (resolvedStatus === EmergencyRequestStatus.IN_PROGRESS) return 0;
     if (
       resolvedStatus === EmergencyRequestStatus.ARRIVED ||
       resolvedStatus === EmergencyRequestStatus.COMPLETED ||

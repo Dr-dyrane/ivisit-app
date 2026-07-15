@@ -479,7 +479,7 @@ export default function MapTrackingStageBase({
         stateTextColor={null}
         progressValue={
           trackingKind === "ambulance"
-            ? ambulanceTripProgress
+            ? routeVisualProgress
             : trackingKind === "bed"
               ? bedProgress
               : 0
@@ -546,6 +546,16 @@ export default function MapTrackingStageBase({
     </>
   );
 
+  const trackingBottomAction = (
+    <TrackingBottomActionButton
+      bottomAction={bottomAction}
+      isBottomCompletionAction={isBottomCompletionAction}
+      bottomActionGradientColors={themeTokens.bottomActionGradientColors}
+      bottomActionTextColor={themeTokens.bottomActionTextColor}
+      bottomActionSpinnerColor={themeTokens.bottomActionSpinnerColor}
+    />
+  );
+
   const body =
     trackingKind === "idle" ? (
       <View
@@ -564,14 +574,9 @@ export default function MapTrackingStageBase({
     ) : (
       <View style={styles.sectionStack}>
         {trackingPrimaryContent}
+        {isBottomCompletionAction ? trackingBottomAction : null}
         {expandedSnapContent}
-        <TrackingBottomActionButton
-          bottomAction={bottomAction}
-          isBottomCompletionAction={isBottomCompletionAction}
-          bottomActionGradientColors={themeTokens.bottomActionGradientColors}
-          bottomActionTextColor={themeTokens.bottomActionTextColor}
-          bottomActionSpinnerColor={themeTokens.bottomActionSpinnerColor}
-        />
+        {!isBottomCompletionAction ? trackingBottomAction : null}
       </View>
     );
 

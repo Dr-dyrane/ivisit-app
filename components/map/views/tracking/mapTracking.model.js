@@ -37,7 +37,7 @@ export function buildTrackingPrimaryAction({
   if (canCompleteAmbulance) {
     return {
       key: "complete-ambulance",
-      label: "Complete trip",
+      label: "Complete visit",
       ctaLabel: "Complete",
       iconName: "checkmark-circle-outline",
       onPress: handleCompleteAmbulanceWithRating,
@@ -255,7 +255,7 @@ export function buildTrackingMidActions({
       trackingKind === "ambulance" &&
       primaryAction.key === "complete-ambulance"
     ) {
-      // Complete Request is promoted to the bottom primary slot after arrival.
+      // Complete Visit is promoted after backend-owned completion.
     } else if (trackingKind === "bed" && primaryAction.key === "complete-bed") {
       // Complete Stay is promoted to the bottom primary slot after check-in.
     } else {
@@ -295,7 +295,7 @@ export function buildTrackingBottomAction({
   ) {
     action = {
       ...primaryAction,
-      label: "Complete Request",
+      label: "Complete Visit",
     };
   } else if (trackingKind === "bed" && primaryAction?.key === "complete-bed") {
     action = {

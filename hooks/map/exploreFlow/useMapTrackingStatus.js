@@ -145,6 +145,12 @@ export function useMapTrackingStatus({
     if (trackingKind === "idle") return 0;
 
     if (trackingKind === "ambulance" && activeAmbulanceTrip) {
+      if (
+        String(activeAmbulanceTrip?.status ?? "").toLowerCase() ===
+        "in_progress"
+      ) {
+        return 0;
+      }
       // Use trip progress if available
       if (
         typeof ambulanceTripProgress === "number" &&

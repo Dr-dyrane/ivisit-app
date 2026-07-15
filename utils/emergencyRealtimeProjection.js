@@ -1,5 +1,6 @@
 const TERMINAL_EMERGENCY_STATUSES = new Set(["completed", "cancelled", "payment_declined"]);
 const REMOVED_EMERGENCY_STATUSES = new Set(["cancelled", "payment_declined"]);
+const RESPONDER_ACCEPTED_STATUSES = new Set(["accepted", "arrived", "completed"]);
 
 const parseTimestampMs = (value, fallbackMs = 0) => {
 	if (typeof value === "number" && Number.isFinite(value)) {
@@ -162,7 +163,11 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 			? prevTrip.assignedAmbulance
 			: null;
 
-	const hasResponderIdentity = !!(
+	const hasAcceptedResponder = RESPONDER_ACCEPTED_STATUSES.has(status);
+	const previousHadAcceptedResponder = RESPONDER_ACCEPTED_STATUSES.has(
+		String(prevTrip?.status ?? "").toLowerCase(),
+	);
+	const hasResponderIdentity = hasAcceptedResponder && !!(
 		record.responder_name ||
 		record.responder_phone ||
 		record.responder_vehicle_type ||
@@ -185,7 +190,7 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 					? record.responder_heading
 					: (prevAssigned?.heading ?? null),
 		  }
-		: prevAssigned;
+		: null;
 
 	// Parse estimated_arrival string from DB (e.g. "8 min", "12 min") → etaSeconds
 	// Falls back to prevTrip values if the record doesn't carry a fresh ETA.
@@ -205,14 +210,44 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 		requestId: record.id ?? prevTrip.id ?? prevTrip.requestId,
 		displayId: record.display_id ?? prevTrip.displayId ?? null,
 		status: record.status ?? prevTrip.status,
+		ambulanceId: record.ambulance_id ?? prevTrip.ambulanceId ?? null,
+		responderId: record.responder_id ?? prevTrip.responderId ?? null,
+		currentResponderAssignmentId:
+			record.current_responder_assignment_id ??
+			prevTrip.currentResponderAssignmentId ??
+			null,
+		dispatchOrganizationId:
+			record.dispatch_organization_id ??
+			prevTrip.dispatchOrganizationId ??
+			null,
+		startedAt:
+			hasAcceptedResponder && !previousHadAcceptedResponder
+				? parseRecordTimestampMs(record, Date.now())
+				: hasAcceptedResponder
+					? prevTrip.startedAt ?? parseRecordTimestampMs(record, Date.now())
+					: null,
+		dispatchAcceptedAt:
+			hasAcceptedResponder && !previousHadAcceptedResponder
+				? record.updated_at ?? new Date().toISOString()
+				: prevTrip.dispatchAcceptedAt ?? null,
+		responderArrivedAt:
+			status === "arrived" && String(prevTrip?.status ?? "").toLowerCase() !== "arrived"
+				? record.updated_at ?? new Date().toISOString()
+				: prevTrip.responderArrivedAt ?? null,
 		hospitalId: record.hospital_id ?? prevTrip.hospitalId ?? null,
 		hospitalName: record.hospital_name ?? prevTrip.hospitalName ?? null,
 		specialty: record.specialty ?? prevTrip.specialty ?? null,
 		assignedAmbulance: mergedAssigned,
-		currentResponderLocation: loc || prevTrip.currentResponderLocation || null,
+		currentResponderLocation: hasAcceptedResponder
+			? loc || prevTrip.currentResponderLocation || null
+			: null,
 		currentResponderHeading: Number.isFinite(record.responder_heading)
-			? record.responder_heading
-			: (prevTrip.currentResponderHeading ?? null),
+			? hasAcceptedResponder
+				? record.responder_heading
+				: null
+			: hasAcceptedResponder
+				? prevTrip.currentResponderHeading ?? null
+				: null,
 		estimatedArrival: nextEstimatedArrival,
 		etaSeconds: nextEtaSeconds,
 		responderTelemetryAt:
@@ -245,6 +280,13 @@ const mergeEmergencyRealtimeTrip = (prevTrip, record) => {
 
 const mergeAmbulanceRealtimeTrip = (prevTrip, ambulanceRecord) => {
 	if (!prevTrip || !ambulanceRecord) return prevTrip;
+	if (
+		!RESPONDER_ACCEPTED_STATUSES.has(
+			String(prevTrip?.status ?? "").toLowerCase(),
+		)
+	) {
+		return prevTrip;
+	}
 	const location = parsePointGeometry(ambulanceRecord.location);
 	const telemetryReceivedAt = ambulanceRecord.location_received_at ?? null;
 	if (!location && !telemetryReceivedAt) return prevTrip;

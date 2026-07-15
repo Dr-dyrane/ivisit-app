@@ -2,23 +2,12 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "../../services/notificationsService";
 import { useNotificationsStore } from "../../stores/notificationsStore";
-import {
-  normalizeNotification,
-  normalizeNotificationsList,
-} from "../../utils/domainNormalize";
+import { normalizeNotificationsList } from "../../utils/domainNormalize";
 import { notificationsQueryKeys } from "./notifications.queryKeys";
 
 // PULLBACK NOTE: Notifications five-layer pass - Layer 2 write lane.
 // Owns: optimistic inbox writes and post-settlement cache reconciliation.
 // Does NOT own: persisted cross-surface reads or lifecycle legality.
-
-const buildOptimisticNotification = (input = {}) =>
-  normalizeNotification({
-    ...input,
-    id: `optimistic_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    read: input?.read === true,
-  });
 
 export function useNotificationsMutations({ userId }) {
   const queryClient = useQueryClient();
@@ -29,38 +18,6 @@ export function useNotificationsMutations({ userId }) {
   const decrementMutationCount = useNotificationsStore(
     (state) => state.decrementMutationCount,
   );
-
-  const createMutation = useMutation({
-    mutationFn: (notification) => notificationsService.create(notification),
-    onMutate: async (notification) => {
-      incrementMutationCount();
-      await queryClient.cancelQueries({ queryKey });
-      const previousNotifications = queryClient.getQueryData(queryKey) || [];
-      const optimisticNotification = buildOptimisticNotification(notification);
-      queryClient.setQueryData(queryKey, (current = []) =>
-        normalizeNotificationsList([optimisticNotification, ...current]),
-      );
-      return { previousNotifications };
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previousNotifications) {
-        queryClient.setQueryData(queryKey, context.previousNotifications);
-      }
-    },
-    onSuccess: (createdNotification) => {
-      queryClient.setQueryData(queryKey, (current = []) => {
-        const next = (Array.isArray(current) ? current : []).filter(
-          (notification) =>
-            !String(notification?.id || "").startsWith("optimistic_"),
-        );
-        return normalizeNotificationsList([createdNotification, ...next]);
-      });
-    },
-    onSettled: () => {
-      decrementMutationCount();
-      queryClient.invalidateQueries({ queryKey });
-    },
-  });
 
   const markAsReadMutation = useMutation({
     mutationFn: (notificationId) => notificationsService.markAsRead(notificationId),
@@ -122,16 +79,22 @@ export function useNotificationsMutations({ userId }) {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (notificationId) => notificationsService.delete(notificationId),
-    onMutate: async (notificationId) => {
+  const dismissMutation = useMutation({
+    mutationFn: (notificationIds) =>
+      notificationsService.dismissMany(notificationIds),
+    onMutate: async (notificationIds) => {
       incrementMutationCount();
       await queryClient.cancelQueries({ queryKey });
       const previousNotifications = queryClient.getQueryData(queryKey) || [];
+      const dismissedIds = new Set(
+        (Array.isArray(notificationIds) ? notificationIds : [notificationIds])
+          .map((id) => String(id || ""))
+          .filter(Boolean),
+      );
       queryClient.setQueryData(queryKey, (current = []) =>
         normalizeNotificationsList(
           (Array.isArray(current) ? current : []).filter(
-            (notification) => String(notification?.id) !== String(notificationId),
+            (notification) => !dismissedIds.has(String(notification?.id || "")),
           ),
         ),
       );
@@ -148,8 +111,8 @@ export function useNotificationsMutations({ userId }) {
     },
   });
 
-  const clearAllMutation = useMutation({
-    mutationFn: () => notificationsService.clearAll(),
+  const dismissAllMutation = useMutation({
+    mutationFn: () => notificationsService.dismissAll(),
     onMutate: async () => {
       incrementMutationCount();
       await queryClient.cancelQueries({ queryKey });
@@ -168,10 +131,7 @@ export function useNotificationsMutations({ userId }) {
     },
   });
 
-  const addNotification = useCallback(
-    (notification) => createMutation.mutateAsync(notification),
-    [createMutation],
-  );
+  const addNotification = useCallback(async () => null, []);
   const markAsRead = useCallback(
     (notificationId) => markAsReadMutation.mutateAsync(notificationId),
     [markAsReadMutation],
@@ -180,13 +140,17 @@ export function useNotificationsMutations({ userId }) {
     () => markAllAsReadMutation.mutateAsync(),
     [markAllAsReadMutation],
   );
-  const deleteNotification = useCallback(
-    (notificationId) => deleteMutation.mutateAsync(notificationId),
-    [deleteMutation],
+  const dismissNotification = useCallback(
+    (notificationId) => dismissMutation.mutateAsync([notificationId]),
+    [dismissMutation],
+  );
+  const dismissNotifications = useCallback(
+    (notificationIds) => dismissMutation.mutateAsync(notificationIds),
+    [dismissMutation],
   );
   const clearAll = useCallback(
-    () => clearAllMutation.mutateAsync(),
-    [clearAllMutation],
+    () => dismissAllMutation.mutateAsync(),
+    [dismissAllMutation],
   );
 
   return useMemo(
@@ -194,32 +158,30 @@ export function useNotificationsMutations({ userId }) {
       addNotification,
       markAsRead,
       markAllAsRead,
-      deleteNotification,
+      dismissNotification,
+      dismissNotifications,
       clearAll,
       isMutating:
-        createMutation.isPending ||
         markAsReadMutation.isPending ||
         markAllAsReadMutation.isPending ||
-        deleteMutation.isPending ||
-        clearAllMutation.isPending,
+        dismissMutation.isPending ||
+        dismissAllMutation.isPending,
       error:
-        createMutation.error ||
         markAsReadMutation.error ||
         markAllAsReadMutation.error ||
-        deleteMutation.error ||
-        clearAllMutation.error ||
+        dismissMutation.error ||
+        dismissAllMutation.error ||
         null,
     }),
     [
       addNotification,
       clearAll,
-      clearAllMutation.error,
-      clearAllMutation.isPending,
-      createMutation.error,
-      createMutation.isPending,
-      deleteMutation.error,
-      deleteMutation.isPending,
-      deleteNotification,
+      dismissAllMutation.error,
+      dismissAllMutation.isPending,
+      dismissMutation.error,
+      dismissMutation.isPending,
+      dismissNotification,
+      dismissNotifications,
       markAllAsRead,
       markAllAsReadMutation.error,
       markAllAsReadMutation.isPending,

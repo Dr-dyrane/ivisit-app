@@ -68,6 +68,7 @@ import {
   isCommitPaymentIdleState,
   requiresSignedCardConfirmation,
   requiresWalletSettlement,
+  reconcileCanonicalPaymentTotal,
   validateCommitPaymentSubmitContract,
 } from "./mapCommitPayment.transaction";
 
@@ -724,6 +725,35 @@ export function useMapCommitPaymentController({
         initiatedRequest,
       );
 
+      const canonicalTotalContract = reconcileCanonicalPaymentTotal({
+        quotedTotal: totalCostValue,
+        canonicalTotal: initiationResult.canonicalTotal,
+        costSnapshot: estimatedCost,
+        currency: initiationResult.currency || estimatedCost?.currency || "USD",
+      });
+      const settlementCost = canonicalTotalContract.costSnapshot || estimatedCost;
+      if (canonicalTotalContract.canonicalTotal != null) {
+        initiatedRequest.pricingSnapshot = settlementCost;
+      }
+      if (
+        (isCardSelected || isWalletSelected) &&
+        canonicalTotalContract.ok !== true
+      ) {
+        if (canonicalTotalContract.canonicalTotal != null) {
+          setEstimatedCost(settlementCost);
+        }
+        const nextMessage = canonicalTotalContract.hasMismatch
+          ? "The provider price changed. Review the updated total before paying."
+          : "The provider could not confirm the payment total. Try again.";
+        setTransactionState(
+          MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
+          transactionRequestIds,
+        );
+        setErrorMessage(nextMessage);
+        showToast(nextMessage, "error");
+        return;
+      }
+
       if (isCashSelected && initiationResult.requiresApproval) {
         const pendingApprovalState = buildPendingApprovalState({
           initiatedRequest,
@@ -861,7 +891,7 @@ export function useMapCommitPaymentController({
         const walletResult = await paymentService.processWalletPayment(
           initiationResult.requestId,
           chargeOrganizationId,
-          estimatedCost,
+          settlementCost,
         );
         await Promise.allSettled([
           invalidateWalletBalance(),
@@ -926,7 +956,7 @@ export function useMapCommitPaymentController({
             await paymentService.createEmergencyCardPaymentIntent(
               initiationResult.requestId,
               chargeOrganizationId,
-              estimatedCost,
+              settlementCost,
               selectedPaymentMethod,
             );
 

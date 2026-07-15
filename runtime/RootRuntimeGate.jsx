@@ -28,8 +28,7 @@ let isSplashPrevented = false;
  *
  * Handles startup readiness before the app renders:
  * - Splash screen management
- * - Database migrations
- * - Schema reload
+ * - Local persisted-state migrations
  * - Core persisted-store hydration before first paint
  */
 export function RootRuntimeGate({ children }) {
@@ -57,7 +56,7 @@ export function RootRuntimeGate({ children }) {
           setIsDarkSurface(resolveThemeModeIsDark(savedThemeMode, deviceTheme));
         }
 
-        // Run migrations and schema reload on startup
+        // Run local persisted-state migrations before store hydration.
         await appMigrationsService.run();
 
         // Phase 6a/6b — hydrate Zustand stores before first render

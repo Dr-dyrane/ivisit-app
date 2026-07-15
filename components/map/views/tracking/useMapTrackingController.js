@@ -10,8 +10,8 @@ import {
   emergencyChatModalVisibleAtom,
   activeEmergencyChatRequestIdAtom,
 } from "../../../../atoms/emergencyChatAtoms";
-import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
+import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { buildTrackingSharePayload } from "./mapTracking.share";
 import {
   buildTrackingRatingState,
@@ -35,7 +35,6 @@ export function useMapTrackingController({
   activeMapRequest,
   setPendingApproval,
   setRequestStatus,
-  cancelVisit,
   updateVisit,
   onCancelAmbulanceTrip,
   onCancelBedBooking,
@@ -181,26 +180,34 @@ export function useMapTrackingController({
 
   const handleCancelPendingRequest = useCallback(async () => {
     if (!pendingApproval?.requestId) return;
-    const lifecycleUpdatedAt = new Date().toISOString();
-    await Promise.all([
-      setRequestStatus(
-        pendingApproval.requestId,
-        EmergencyRequestStatus.CANCELLED,
-      ),
-      cancelVisit(pendingApproval.requestId),
-      updateVisit?.(pendingApproval.requestId, {
-        lifecycleState: EMERGENCY_VISIT_LIFECYCLE.CANCELLED,
-        lifecycleUpdatedAt,
-      }),
-    ]);
+    await setRequestStatus(
+      pendingApproval.requestId,
+      EmergencyRequestStatus.CANCELLED,
+    );
     setPendingApproval(null);
   }, [
-    cancelVisit,
     pendingApproval?.requestId,
     setPendingApproval,
     setRequestStatus,
-    updateVisit,
   ]);
+
+  const prepareTrackingRating = useCallback(
+    async ({ visitId, claim }) => {
+      await writeTrackingRatingRecoveryClaim(visitId, claim);
+      try {
+        await updateVisit?.(visitId, {
+          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING,
+          lifecycleUpdatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.warn(
+          "[useMapTrackingController] Rating handoff persistence failed:",
+          error,
+        );
+      }
+    },
+    [updateVisit],
+  );
 
   const handleCompleteAmbulanceWithRating = useCallback(async () => {
     const visitId =
@@ -218,10 +225,13 @@ export function useMapTrackingController({
       showToast("Could not complete the request right now.", "error");
       return;
     }
-    await writeTrackingRatingRecoveryClaim(visitId, {
-      kind: "ambulance",
-      hospitalTitle,
-      providerName,
+    await prepareTrackingRating({
+      visitId,
+      claim: {
+        kind: "ambulance",
+        hospitalTitle,
+        providerName,
+      },
     });
     setRecoveredRatingState(null);
     setRatingState(
@@ -241,6 +251,7 @@ export function useMapTrackingController({
     activeAmbulanceTrip?.requestId,
     hospitalName,
     onCompleteAmbulanceTrip,
+    prepareTrackingRating,
     runBusyAction,
     showToast,
   ]);
@@ -256,10 +267,13 @@ export function useMapTrackingController({
       showToast("Could not complete the request right now.", "error");
       return;
     }
-    await writeTrackingRatingRecoveryClaim(visitId, {
-      kind: "bed",
-      hospitalTitle,
-      providerName: "Hospital staff",
+    await prepareTrackingRating({
+      visitId,
+      claim: {
+        kind: "bed",
+        hospitalTitle,
+        providerName: "Hospital staff",
+      },
     });
     setRecoveredRatingState(null);
     setRatingState(
@@ -277,6 +291,7 @@ export function useMapTrackingController({
     activeBedBooking?.requestId,
     hospitalName,
     onCompleteBedBooking,
+    prepareTrackingRating,
     runBusyAction,
     showToast,
   ]);

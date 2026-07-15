@@ -45,14 +45,7 @@ export function useNotificationsData() {
     return notificationsQuery.refetch();
   }, [notificationsQuery]);
 
-  const addNotification = useCallback(
-    async (notificationData) => {
-      const created = await notificationsService.create(notificationData);
-      setCachedNotifications((current) => [created, ...current]);
-      return created;
-    },
-    [setCachedNotifications],
-  );
+  const addNotification = useCallback(async () => null, []);
 
   const markAsRead = useCallback(
     async (notificationId) => {
@@ -96,11 +89,9 @@ export function useNotificationsData() {
       );
 
       try {
-        await notificationsService.delete(notificationId);
+        await notificationsService.dismiss(notificationId);
       } catch (error) {
-        await queryClient.invalidateQueries({
-          queryKey: notificationsQueryKey,
-        });
+        await queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
         throw error;
       }
     },
@@ -111,7 +102,7 @@ export function useNotificationsData() {
     setCachedNotifications([]);
 
     try {
-      await notificationsService.clearAll();
+      await notificationsService.dismissAll();
     } catch (error) {
       await queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
       throw error;

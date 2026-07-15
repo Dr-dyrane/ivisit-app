@@ -409,6 +409,8 @@ export default function MapScreen() {
     setCareHistoryVisible,
     openAmbulanceDecision,
     openBedDecision,
+    stopAmbulanceTrip,
+    stopBedBooking,
     activeMapRequest,
     activeHistoryRequestKeys,
     sheetPhase,
