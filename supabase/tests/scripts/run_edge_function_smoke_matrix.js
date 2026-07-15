@@ -250,6 +250,7 @@ async function invokeDiscovery({ location, category }) {
       mode: "nearby",
       limit: 15,
       providerCategory: category,
+      emergencyMode: false,
       includeProviderDiscovery: true,
       includeMapboxPlaces,
       includeGooglePlaces,

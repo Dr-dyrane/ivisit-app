@@ -45,7 +45,11 @@ export const parseProviderDiscoveryRequest = (
     body?.countryCode ?? body?.country_code ?? body?.regionCountryCode,
   );
   const providerCategory = parseProviderCategory(body?.providerCategory);
-  const isEmergencyMode = providerCategory === "hospital";
+  const requestedEmergencyMode = body?.emergencyMode ?? body?.emergency_mode;
+  // Hospital discovery remains emergency-safe for older callers. Explore Care
+  // opts out explicitly without granting provider rows commitment authority.
+  const isEmergencyMode =
+    providerCategory === "hospital" && requestedEmergencyMode !== false;
   const regionLocalFirstEnabled = shouldUseRegionLocalFirst(countryCode, providerCategory);
 
   return {

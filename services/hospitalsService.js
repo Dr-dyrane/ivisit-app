@@ -128,26 +128,27 @@ const isLegacySyntheticDemoHospital = (hospital) => {
 		/^Coverage\s+.+\s+Zone\s+\d+$/i.test(address)
 	);
 };
+const CANONICAL_EMERGENCY_DISCOVERY_SOURCE = "nearby_hospitals";
+const markCanonicalEmergencyDiscoveryRows = (rows = []) =>
+	(Array.isArray(rows) ? rows : []).map((row) => ({
+		...row,
+		emergency_discovery_source: CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
+	}));
 const isDispatchableHospital = (hospital) => {
 	const status = toText(hospital?.status, "available").toLowerCase();
-	const verificationStatus = toText(hospital?.verification_status, "").toLowerCase();
+	const organizationId = toText(hospital?.organization_id, toText(hospital?.organizationId));
 
-	// PULLBACK NOTE: EXP-4 Emergency strict filter
-	// OLD: any available+verified provider could be dispatched
-	// NEW: only provider_type=hospital with emergency_eligible=true is dispatch-eligible
+	// Emergency presentation is fail-closed. The server owns the derived
+	// eligibility flags and canonical organization-backed discovery projection.
 	const providerType = toText(hospital?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
 	if (providerType !== PROVIDER_TYPES.HOSPITAL) return false;
 
-	// If the schema patch is live, trust the precomputed dispatch_eligible flag
-	if (typeof hospital?.dispatch_eligible === "boolean") return hospital.dispatch_eligible;
-
-	// Legacy fallback: derive from verified + demo status
 	return (
 		status === "available" &&
-		(hospital?.verified === true ||
-			isDemoLikeHospital(hospital) ||
-			verificationStatus === "verified" ||
-			verificationStatus === "not_certified")
+		organizationId.length > 0 &&
+		hospital?.emergency_discovery_source === CANONICAL_EMERGENCY_DISCOVERY_SOURCE &&
+		hospital?.emergency_eligible === true &&
+		hospital?.dispatch_eligible === true
 	);
 };
 const sortHospitalsByDistance = (hospitals = []) =>
@@ -750,8 +751,10 @@ export const hospitalsService = {
 				});
 
 			if (error) throw error;
-			const hydrated = await this._hydrateHospitalRows(data || []);
-			return sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
+			const canonicalRows = markCanonicalEmergencyDiscoveryRows(data || []);
+			const hydrated = await this._hydrateHospitalRows(canonicalRows);
+			const mapped = sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
+			return mapped.filter(h => h?.isDispatchReady === true);
 		} catch (err) {
 			console.error("hospitalsService.listNearby error:", err);
 			throw err;
@@ -782,6 +785,7 @@ export const hospitalsService = {
 					radius,
 					mode: 'nearby',
 					limit: 15,
+					emergencyMode: true,
 					// EXP-4: Emergency strict — always hospital category for this method
 					providerCategory: 'hospital',
 					// Mapbox-first discovery keeps provider costs predictable while still
@@ -808,7 +812,7 @@ export const hospitalsService = {
 			const hydrated = await this._hydrateHospitalRows(rawHospitals);
 			// EXP-4: Post-fetch safety filter — only return dispatchable hospitals
 			const mapped = sortHospitalsByDistance(hydrated.map(h => this._mapHospital(h)));
-			return mapped.filter(h => h.providerType === PROVIDER_TYPES.HOSPITAL);
+			return mapped.filter(h => h?.isDispatchReady === true);
 
 		} catch (error) {
 			console.error("hospitalsService.discoverNearby error:", error);
@@ -846,6 +850,7 @@ export const hospitalsService = {
 					mode: 'nearby',
 					limit,
 					providerCategory,
+					emergencyMode: false,
 					includeProviderDiscovery: true,
 					includeMapboxPlaces,
 					includeGooglePlaces,
