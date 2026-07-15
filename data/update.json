@@ -1,26 +1,26 @@
 {
-  "_lastCommitHash": "65d29942",
-  "_lastCommitDate": "2026-05-19T20:28:46-07:00",
+  "_lastCommitHash": "1f35bb24",
+  "_lastCommitDate": "2026-07-15T14:40:00-07:00",
   "version": "1.0.6",
-  "date": "2026-05-22",
-  "title": "Closed Test Stability Update",
-  "summary": "Improved emergency tracking stability, location permission clarity, provider detail polish, and rating follow-up interactions for closed testing.",
+  "date": "2026-07-15",
+  "title": "Lifecycle Continuity Update",
+  "summary": "Request-to-visit lifecycle repair: arrival confirmation, visit completion, scheduled-visit continuity, and emergency pricing now flow end-to-end. Release f26e2959 - OTA groups d334c57b (production) / 8cc11b0b (staging).",
   "changes": [
     {
-      "type": "bugfix",
-      "message": "Improved emergency tracking continuity across payment approval, realtime updates, hydration, and dispatch contact handoff."
+      "type": "fix",
+      "message": "Confirm arrival and complete visits reliably - the full emergency lifecycle now syncs from dispatch through completion and rating."
     },
     {
-      "type": "bugfix",
-      "message": "Refined rating prompts so testers can give clearer feedback after completed emergency and visit flows."
+      "type": "feature",
+      "message": "Scheduled visits gained a live lifecycle card, cancel confirmation, and recovery notice on the map visit detail."
     },
     {
-      "type": "bugfix",
-      "message": "Clarified location and provider detail states for closed-test hospital discovery scenarios."
+      "type": "fix",
+      "message": "Emergency pricing never blocks intake - a server-owned fallback quote applies when an exact service tier is missing."
     },
     {
-      "type": "quality",
-      "message": "Polished staging reliability notes for the next Google Play production access review window."
+      "type": "improvement",
+      "message": "Realtime tracking, payment approval, and hospital discovery hardened across web, Android, and iOS."
     }
   ]
 }

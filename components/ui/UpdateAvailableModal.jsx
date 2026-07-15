@@ -212,13 +212,14 @@ export default function UpdateAvailableModal({
 
                 <Text style={[styles.description, { color: colors.subtext }]}>
                     {isCompleted
-                        ? `iVisit is now running version ${VERSION}.`
+                        ? `Now running: ${UPDATE_METADATA?.title || "the latest update"} - v${VERSION}${UPDATE_METADATA?.date ? ` - ${UPDATE_METADATA.date}` : ""}`
                         : (UPDATE_METADATA?.title || "Restart to apply the latest improvements.")
                     }
                 </Text>
 
-                {/* Changelog — only show for 'available' variant */}
-                {!isCompleted && UPDATE_METADATA?.changes?.length > 0 && (
+                {/* Changelog — shown in BOTH variants so the applied update is verifiable
+                    on-device (the completed sheet proves which release actually landed). */}
+                {UPDATE_METADATA?.changes?.length > 0 && (
                     <View style={styles.changelogContainer}>
                         <ScrollView
                             showsVerticalScrollIndicator={true}
