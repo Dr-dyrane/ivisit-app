@@ -40,7 +40,10 @@ module.exports = ({ config }) => {
     name: "iVisit",
     slug: "ivisit",
     scheme: "ivisit",
-    version: "1.0.7",
+    // 1.0.7 is the current runtime. IVISIT_RUNTIME_OVERRIDE lets `eas update` publish
+    // the same bundle to an OLDER runtime too (e.g. 1.0.6) so existing installs keep
+    // getting OTAs in parallel -- see scripts/ota-publish-dual.js. Builds never set it.
+    version: process.env.IVISIT_RUNTIME_OVERRIDE || "1.0.7",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",

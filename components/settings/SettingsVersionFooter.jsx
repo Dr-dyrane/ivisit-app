@@ -1,25 +1,35 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { FULL_VERSION } from "../../version";
+import * as Updates from "expo-updates";
+import VERSION, { OTA_BUILD } from "../../version";
 
-// Muted OTA build marker at the very bottom of Settings.
-// FULL_VERSION is `${runtimeVersion}.${OTA_BUILD}` (e.g. "1.0.6.50"). OTA_BUILD
-// increments on every EAS update push (`npm run ota:bump`), so a tester can glance
-// here and confirm they are running the newest over-the-air bundle of the current
-// runtime -- a higher trailing number means a fresher fix. Display-only; the
-// leading "1.0.6" is the OTA compatibility key and must not be inferred from here.
+// Muted OTA build marker at the very bottom of Settings, e.g. "iVisit v1.0.7.51".
+//
+// Runtime is read LIVE from expo-updates so the same bundle prints the correct
+// runtime on every install -- essential now that updates are served to BOTH the
+// 1.0.6 and 1.0.7 runtimes in parallel: a 1.0.6 install shows "1.0.6.<N>", a 1.0.7
+// install shows "1.0.7.<N>". Falls back to the bundled VERSION constant in dev /
+// Expo Go / web where Updates.runtimeVersion is unavailable. OTA_BUILD is the
+// monotonic build counter (higher = fresher fix). Display-only.
+function resolveRuntime() {
+  const rt = Updates?.runtimeVersion;
+  if (typeof rt === "string" && rt.length > 0) return rt;
+  return VERSION;
+}
+
 export default function SettingsVersionFooter({ isDarkMode }) {
   const color = isDarkMode ? "rgba(226,232,240,0.38)" : "rgba(71,85,105,0.42)";
+  const fullVersion = `${resolveRuntime()}.${OTA_BUILD}`;
 
   return (
     <View style={styles.container}>
       <Text
         style={[styles.text, { color }]}
         accessibilityRole="text"
-        accessibilityLabel={`iVisit version ${FULL_VERSION}`}
+        accessibilityLabel={`iVisit version ${fullVersion}`}
         allowFontScaling
       >
-        iVisit v{FULL_VERSION}
+        iVisit v{fullVersion}
       </Text>
     </View>
   );
