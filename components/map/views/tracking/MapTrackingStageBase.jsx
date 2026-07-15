@@ -5,7 +5,6 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 // PULLBACK NOTE: Phase 5c — useEmergency() removed from MapTrackingStageBase
 // OLD: imported EmergencyContext for raw trip data + action callbacks
 // NEW: raw trip data sourced from activeMapRequest.raw; action callbacks are props
-import { useVisits } from "../../../../contexts/VisitsContext";
 import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRequests";
 import MapSheetShell from "../../MapSheetShell";
 import { MAP_SHEET_SNAP_STATES } from "../../core/mapSheet.constants";
@@ -86,7 +85,6 @@ export default function MapTrackingStageBase({
     activeMapRequest?.raw?.activeAmbulanceTrip ?? null;
   const activeBedBooking = activeMapRequest?.raw?.activeBedBooking ?? null;
   const pendingApproval = activeMapRequest?.raw?.pendingApproval ?? null;
-  const { updateVisit, cancelVisit, completeVisit } = useVisits();
   const { setRequestStatus } = useEmergencyRequests();
   const {
     isSidebarPresentation,
@@ -154,9 +152,6 @@ export default function MapTrackingStageBase({
     pendingApproval,
     isDarkMode,
     setRequestStatus,
-    cancelVisit,
-    completeVisit,
-    updateVisit,
     setAmbulanceTripStatus,
     setBedBookingStatus,
     stopAmbulanceTrip,
@@ -308,8 +303,6 @@ export default function MapTrackingStageBase({
     activeMapRequest,
     setPendingApproval,
     setRequestStatus,
-    cancelVisit,
-    updateVisit,
     onCancelAmbulanceTrip,
     onCancelBedBooking,
     onMarkAmbulanceArrived,

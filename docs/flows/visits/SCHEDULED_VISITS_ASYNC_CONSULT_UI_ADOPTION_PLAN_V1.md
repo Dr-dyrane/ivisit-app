@@ -1858,6 +1858,55 @@ Initial planned entries:
   rollback required
 - Follow-up owner: patient visual acceptance pass
 
+### UI-ADOPT-0013
+
+- Timestamp UTC: 2026-07-15T03:38:04Z
+- Actor/session: Codex scheduled-visit lifecycle and post-booking continuity pass
+- Repo and branch: App `main`
+- Phase/gate: patient post-booking lifecycle closure
+- Intent: make canonical scheduled visits explain what happens after booking in the
+  Visit Detail half snap without giving patients provider-owned clinical transitions
+- Planned files: scheduled Visit Detail projection/body, history realtime selection,
+  async-consult refresh path, and scheduled UI contract harness
+- Actual files: planned files plus the existing Visit Detail stage/Map sheet prop chain
+  needed to expose cancellation pending state; no database, RPC, Edge, Storage, or
+  generated-type file changed
+- Contract proof chain: `book_scheduled_visit` result -> owner-scoped visits cache ->
+  history projection preserving `lifecycle_state` and facility-local time -> live
+  selected Visit Detail row -> scheduled lifecycle card and capability-based actions ->
+  Console/provider `start|complete|no_show` transition -> visits realtime invalidation ->
+  open patient detail and async-consult participant refresh
+- Deviation from plan: the read-only audit found two adjacent regressions and they were
+  closed in the same pack: scheduled half-snap time had drifted to the device timezone,
+  and collapsed detail could advertise Directions without facility coordinates
+- Decision and evidence: Visit Detail now renders Scheduled/Rescheduled, In progress,
+  Completed, Cancelled, and Missed as a compact three-stage progress surface. Async
+  consult prioritizes Open/View consult; in-person visits prioritize directions only
+  when coordinates exist; Book again is terminal-only; patient cancellation and
+  rescheduling remain subject to the canonical two-hour cutoff. Provider-owned start,
+  completion, and no-show remain absent from the patient action model.
+- Tests run: 349-check scheduled backend contract, scheduled visits UI/service
+  contract, post-booking state behavior, authenticated return-route behavior,
+  async-consult UI/service contract, web export, diff check, and touched-file
+  encoding review
+- Test result/evidence path: all 349 static backend checks and all four scheduled
+  UI/state contracts pass; Expo web export bundled 2,825 modules. ESLint was
+  unavailable because this repo has no ESLint
+  9 flat config. Browser visual control could not initialize, and the connected Android
+  device was running the prior production bundle, so final first-viewport visual proof
+  remains a patient acceptance item rather than being overstated.
+- Demo/live parity checked: yes at the projection/action layer; both consume the same
+  canonical scheduled row and transition RPC consequences
+- Emergency regression checked: scheduled rows cannot enter emergency Resume tracking;
+  the existing ambulance/bed/legacy action branch and backend lifecycle are unchanged
+- Accessibility/responsive checked: the progress card exposes one summary label, keeps
+  compact single-line labels, uses continuous surface radius without decorative borders,
+  and cancellation now shows a pending spinner and blocks duplicate transition intent
+- Commit/deployment reference: pending this coherent App checkpoint; no EAS update run
+- Rollback state: remove the scheduled presentation/card and realtime-selection wiring;
+  canonical schema and booking/lifecycle receivers remain intact
+- Follow-up owner: patient visual acceptance, then request-to-visit end-to-end audit
+
 ## 18. Highest-risk adoption decisions
 
 | Risk | Why it is dangerous | Required closure |

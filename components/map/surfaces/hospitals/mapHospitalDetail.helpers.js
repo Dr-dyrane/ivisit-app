@@ -252,7 +252,13 @@ export function buildPhotoGallery(hospital) {
 	]).slice(0, 8);
 }
 
-export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading = false, quotedPriceMap = {}) {
+export function buildAmbulanceServiceCards(
+	hospital,
+	pricingRows = [],
+	isLoading = false,
+	quotedPriceMap = {},
+	serverQuoteMap = {},
+) {
 	const rows = Array.isArray(pricingRows)
 		? pricingRows.filter((row) =>
 				String(row?.service_type || "").toLowerCase().startsWith("ambulance"),
@@ -282,24 +288,28 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 				: null);
 		const enabled = Boolean(row) || (tier.id === "basic" && hasAmbulances);
 		const title = tier.label;
-		// PULLBACK NOTE: Use quoted price from billing quote service if available
-		const rowId = row?.id;
-		const quotedPrice = rowId && quotedPriceMap?.[rowId];
+		const serverQuote = serverQuoteMap?.[tier.id] || null;
+		const quotedPrice = quotedPriceMap?.[tier.id] || null;
+		const serverAmount = Number(serverQuote?.amount);
+		const hasServerAmount = Number.isFinite(serverAmount) && serverAmount >= 0;
+		const serverQuoteReady = Boolean(
+			hasServerAmount &&
+				serverQuote?.isLoading !== true &&
+				serverQuote?.isError !== true,
+		);
+		// Raw rows indicate which tier can be requested, never its user-facing
+		// price. The server resolves exact or fallback pricing for every card.
 		const priceText = quotedPrice?.label
 			? quotedPrice.label
-			: row
+			: hasServerAmount
 				? formatPrice(
-						row.base_price ?? row.base_cost,
+						serverAmount,
 						null,
-						resolveMoneyCurrency(row?.currency, hospital?.currency),
-				)
-			: enabled
-				? formatPrice(
-							hospital?.basePrice ?? hospital?.base_price,
-							null,
-							hospital?.currency,
-						)
-				: null;
+						resolveMoneyCurrency(serverQuote?.currency, hospital?.currency),
+					)
+				: serverQuote?.isError
+					? "Price unavailable"
+					: null;
 		return {
 			id: row?.id || tier.id,
 			tierKey: tier.id,
@@ -310,9 +320,12 @@ export function buildAmbulanceServiceCards(hospital, pricingRows = [], isLoading
 			metaText: enabled ? "Ready" : null,
 			priceText,
 			showMetaSkeleton: !enabled,
-			showPriceSkeleton: !priceText,
+			showPriceSkeleton: Boolean(enabled && !priceText && (isLoading || serverQuote?.isLoading)),
 			enabled,
 			source: row ? "db" : "fallback",
+			serverQuoteReady,
+			pricingSource: serverQuote?.pricingSource || null,
+			pricingIsFallback: serverQuote?.pricingIsFallback === true,
 		};
 	});
 

@@ -15,7 +15,6 @@ import { useEmergencyRequests } from "../../../../hooks/emergency/useEmergencyRe
 import { useInvalidateActiveTrip } from "../../../../hooks/emergency/useActiveTripQuery";
 import { useRequestFlow } from "../../../../hooks/emergency/useRequestFlow";
 import { useMedicalProfile } from "../../../../hooks/user/useMedicalProfile";
-import { useVisits } from "../../../../contexts/VisitsContext";
 import { database, StorageKeys } from "../../../../database";
 import { demoEcosystemService } from "../../../../services/demoEcosystemService";
 import { paymentService } from "../../../../services/paymentService";
@@ -61,6 +60,8 @@ import { useWalletBalanceQuery, useInvalidateWalletBalance } from "../../../../h
 import {
   MAP_COMMIT_PAYMENT_METHOD_KINDS,
   MAP_COMMIT_PAYMENT_TRANSACTION_STATES,
+  canResumeCanonicalPaymentRetry,
+  createCanonicalPaymentRetry,
   createCommitPaymentSubmissionState,
   getCommitPaymentRequestIdentifiers,
   isCommitPaymentDismissibleState,
@@ -95,7 +96,6 @@ export function useMapCommitPaymentController({
   const { createRequest, updateRequest, updateTriage, setRequestStatus } =
     useEmergencyRequests();
   const invalidateActiveTrip = useInvalidateActiveTrip();
-  const { addVisit, updateVisit } = useVisits();
   const {
     hospitals,
     selectedSpecialty,
@@ -123,8 +123,6 @@ export function useMapCommitPaymentController({
     createRequest,
     updateRequest,
     updateTriage,
-    addVisit,
-    updateVisit,
     setRequestStatus,
     startAmbulanceTrip,
     startBedBooking,
@@ -192,6 +190,7 @@ export function useMapCommitPaymentController({
   // OLD: isSubmitting reset to false in finally's return path, making CTA re-pressable during approval wait
   // NEW: ref prevents isSubmitting reset until approval resolves (DISPATCHED/FAILED/PAYMENT_DECLINED)
   const awaitingApprovalRef = useRef(false);
+  const canonicalPaymentRetryRef = useRef(null);
   const [isRefreshingPaymentMethods, setIsRefreshingPaymentMethods] =
     useState(false);
   const [paymentMethodsSnapshotReady, setPaymentMethodsSnapshotReady] =
@@ -442,14 +441,18 @@ export function useMapCommitPaymentController({
       try {
         let checkoutCost = null;
         if (!isCombinedFlow && !isBedFlow) {
-          const distanceKm = buildCommitPaymentDistanceKm(h, loc);
+          const distanceKm = buildCommitPaymentDistanceKm(h, loc, t);
           const nextCost = await serviceCostService.calculateEmergencyCost(
             "ambulance",
             {
               distance: distanceKm,
               hospitalId: h.id,
               ambulanceType:
-                t?.service_type || t?.serviceType || t?.tierKey || null,
+                // A legacy pricing row can be generically typed "ambulance"
+                // while the selected card represents ALS/CCT. Preserve the
+                // selected tier for the server quote and final request.
+                t?.tierKey || t?.service_type || t?.serviceType || null,
+              requireServerQuote: true,
             },
           );
           if (cancelled) return;
@@ -525,7 +528,7 @@ export function useMapCommitPaymentController({
         if (cancelled) return;
         const normalized = normalizeCommitPaymentCost(
           checkoutCost,
-          isBedFlow ? r : t || r,
+          isBedFlow || isCombinedFlow ? r || t : null,
           selectionHeaderLabel,
         );
         setEstimatedCost(normalized);
@@ -541,9 +544,9 @@ export function useMapCommitPaymentController({
             currentCost ||
             normalizeCommitPaymentCost(
               null,
-              isBedFlow
+              isBedFlow || isCombinedFlow
                 ? roomRef.current
-                : transportRef.current || roomRef.current,
+                : null,
               selectionHeaderLabel,
             ),
         );
@@ -565,6 +568,7 @@ export function useMapCommitPaymentController({
     hospital?.id,
     transport?.id,
     transport?.service_type,
+    transport?.routeDistanceKm,
     room?.id,
     isBedFlow,
     isCombinedFlow,
@@ -649,6 +653,25 @@ export function useMapCommitPaymentController({
     );
     const isCashSelected =
       submitContract.methodKind === MAP_COMMIT_PAYMENT_METHOD_KINDS.CASH;
+    const retryContext = {
+      userId: user?.id || null,
+      hospitalId: hospital?.id || null,
+      serviceType: isBedFlow ? "bed" : "ambulance",
+      methodKind: submitContract.methodKind,
+    };
+    const pendingCanonicalRetry = canonicalPaymentRetryRef.current;
+
+    if (
+      pendingCanonicalRetry &&
+      !canResumeCanonicalPaymentRetry(pendingCanonicalRetry, retryContext)
+    ) {
+      const nextMessage =
+        "A payment is already pending for this request. Return to its original service and payment type to continue.";
+      setErrorMessage(nextMessage);
+      setInfoMessage("");
+      showToast(nextMessage, "error");
+      return;
+    }
 
     // UX-D D-6: isSubmitting derived from state machine; PROCESSING_PAYMENT / WAITING_APPROVAL drives UI lock
     setErrorMessage("");
@@ -679,27 +702,33 @@ export function useMapCommitPaymentController({
         }
       }
 
-      const initiatedRequest = isBedFlow
-        ? buildBedCommitRequest({
-            hospital,
-            room,
-            paymentMethod: selectedPaymentMethod,
-            pricingSnapshot: estimatedCost,
-            currentLocation,
-            triageCheckin: payload?.triageDraft || null,
-            triageSnapshot: payload?.triageSnapshot || null,
-          })
-        : buildAmbulanceCommitRequest({
-            hospital,
-            transport,
-            paymentMethod: selectedPaymentMethod,
-            pricingSnapshot: estimatedCost,
-            currentLocation,
-            triageCheckin: payload?.triageDraft || null,
-            triageSnapshot: payload?.triageSnapshot || null,
-          });
-      const initiationResult = await handleRequestInitiated(initiatedRequest);
-      await waitForMinimumPending(pendingStartedAt);
+      const initiatedRequest = pendingCanonicalRetry
+        ? pendingCanonicalRetry.initiatedRequest
+        : isBedFlow
+          ? buildBedCommitRequest({
+              hospital,
+              room,
+              paymentMethod: selectedPaymentMethod,
+              pricingSnapshot: estimatedCost,
+              currentLocation,
+              triageCheckin: payload?.triageDraft || null,
+              triageSnapshot: payload?.triageSnapshot || null,
+            })
+          : buildAmbulanceCommitRequest({
+              hospital,
+              transport,
+              paymentMethod: selectedPaymentMethod,
+              pricingSnapshot: estimatedCost,
+              currentLocation,
+              triageCheckin: payload?.triageDraft || null,
+              triageSnapshot: payload?.triageSnapshot || null,
+            });
+      const initiationResult = pendingCanonicalRetry
+        ? pendingCanonicalRetry.initiationResult
+        : await handleRequestInitiated(initiatedRequest);
+      if (!pendingCanonicalRetry) {
+        await waitForMinimumPending(pendingStartedAt);
+      }
 
       if (!initiationResult?.ok) {
         const nextMessage = normalizeApiErrorMessage(
@@ -715,7 +744,6 @@ export function useMapCommitPaymentController({
         return;
       }
 
-      clearCommitFlow?.();
       initiatedRequest._realId =
         initiationResult.requestId || initiatedRequest.requestId;
       initiatedRequest._displayId =
@@ -731,28 +759,58 @@ export function useMapCommitPaymentController({
         costSnapshot: estimatedCost,
         currency: initiationResult.currency || estimatedCost?.currency || "USD",
       });
-      const settlementCost = canonicalTotalContract.costSnapshot || estimatedCost;
+      const canonicalPricing =
+        initiationResult?.pricing && typeof initiationResult.pricing === "object"
+          ? initiationResult.pricing
+          : null;
+      const settlementCost = canonicalTotalContract.costSnapshot
+        ? {
+            ...canonicalTotalContract.costSnapshot,
+            ...(canonicalPricing || {}),
+            pricingSource:
+              initiationResult?.pricingSource ||
+              canonicalPricing?.pricing_source ||
+              null,
+            pricingIsFallback:
+              initiationResult?.pricingIsFallback === true ||
+              canonicalPricing?.pricing_is_fallback === true,
+            totalCost: canonicalTotalContract.canonicalTotal,
+            total_cost: canonicalTotalContract.canonicalTotal,
+          }
+        : estimatedCost;
       if (canonicalTotalContract.canonicalTotal != null) {
         initiatedRequest.pricingSnapshot = settlementCost;
+        setEstimatedCost(settlementCost);
       }
       if (
         (isCardSelected || isWalletSelected) &&
         canonicalTotalContract.ok !== true
       ) {
-        if (canonicalTotalContract.canonicalTotal != null) {
-          setEstimatedCost(settlementCost);
+        if (canonicalTotalContract.hasMismatch) {
+          canonicalPaymentRetryRef.current = createCanonicalPaymentRetry({
+            ...retryContext,
+            initiatedRequest,
+            initiationResult,
+            settlementCost,
+          });
         }
         const nextMessage = canonicalTotalContract.hasMismatch
-          ? "The provider price changed. Review the updated total before paying."
+          ? "The provider price changed. Review the updated total, then confirm again."
           : "The provider could not confirm the payment total. Try again.";
         setTransactionState(
-          MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
+          canonicalTotalContract.hasMismatch
+            ? MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE
+            : MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FAILED,
           transactionRequestIds,
         );
         setErrorMessage(nextMessage);
         showToast(nextMessage, "error");
         return;
       }
+
+      canonicalPaymentRetryRef.current = null;
+
+      clearCommitFlow?.();
 
       if (isCashSelected && initiationResult.requiresApproval) {
         const pendingApprovalState = buildPendingApprovalState({

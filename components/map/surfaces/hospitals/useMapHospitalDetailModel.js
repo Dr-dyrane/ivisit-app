@@ -29,6 +29,10 @@ import {
 	getHospitalWebsiteUrl,
 } from "./mapHospitalDetail.model";
 import { useQuotedPriceMap } from "../../../../hooks/payment/useQuotedPriceMap";
+import {
+	buildEmergencyAmbulanceQuoteRows,
+	useEmergencyAmbulanceQuoteMap,
+} from "../../../../hooks/emergency/useEmergencyAmbulanceQuoteMap";
 import { usePreferences } from "../../../../contexts/PreferencesContext";
 import { useBillingQuoteStore } from "../../../../stores/billingQuoteStore";
 import { resolveMoneyCurrency } from "../../../../utils/formatMoney";
@@ -51,6 +55,15 @@ export default function useMapHospitalDetailModel({
 		useMemo(() => getHospitalDetailTheme(isDarkMode), [isDarkMode]);
 
 	const destination = useMemo(() => getDestinationCoordinate(hospital), [hospital]);
+	const ambulanceDistanceKm = useMemo(() => {
+		const meters = Number(routeInfo?.distanceMeters);
+		return Number.isFinite(meters) && meters > 0 ? meters / 1000 : 0;
+	}, [routeInfo?.distanceMeters]);
+	const ambulanceServerQuoteMap = useEmergencyAmbulanceQuoteMap({
+		hospitalId: hospital?.id,
+		distanceKm: ambulanceDistanceKm,
+		enabled: visible && Boolean(hospital?.id),
+	});
 	const heroBadges = useMemo(() => buildHeroBadges(hospital), [hospital]);
 	const roomRows = useMemo(() => buildRoomRows(hospital), [hospital]);
 	const galleryPhotos = useMemo(() => buildPhotoGallery(hospital), [hospital]);
@@ -241,14 +254,18 @@ export default function useMapHospitalDetailModel({
 	// Merge: store overrides take precedence over saved preferences (runtime > persisted)
 	const effectiveBillingCountryCode = billingCountryCodeOverride || preferences?.billingCountryCode || null;
 	const effectiveBillingCurrencyCode = billingCurrencyCodeOverride || preferences?.billingCurrencyCode || null;
-	const servicePricingQuoteMap = useQuotedPriceMap({
-		items: servicePricingRows,
+	const ambulanceServerQuoteRows = useMemo(
+		() => buildEmergencyAmbulanceQuoteRows(ambulanceServerQuoteMap),
+		[ambulanceServerQuoteMap],
+	);
+	const ambulancePricingQuoteMap = useQuotedPriceMap({
+		items: ambulanceServerQuoteRows,
 		getAmount: (row) => row?.base_price ?? row?.base_cost,
 		getCurrency: (row) => resolveMoneyCurrency(row?.currency, hospital?.currency),
 		billingCountryCode: effectiveBillingCountryCode,
 		billingCurrencyCode: effectiveBillingCurrencyCode,
 		preferences,
-		enabled: servicePricingRows.length > 0 && !isLoadingServiceRails && !isLoadingPrefs,
+		enabled: ambulanceServerQuoteRows.length > 0 && !isLoadingPrefs,
 	});
 	const roomPricingQuoteMap = useQuotedPriceMap({
 		items: hydratedRoomRows.length > 0 ? hydratedRoomRows : roomRows,
@@ -271,8 +288,21 @@ export default function useMapHospitalDetailModel({
 		[hospital, hydratedRoomRows, isLoadingServiceRails, roomRows, roomPricingQuoteMap],
 	);
 	const ambulanceServiceCards = useMemo(
-		() => buildAmbulanceServiceCards(hospital, servicePricingRows, isLoadingServiceRails, servicePricingQuoteMap),
-		[hospital, isLoadingServiceRails, servicePricingRows, servicePricingQuoteMap],
+		() =>
+			buildAmbulanceServiceCards(
+				hospital,
+				servicePricingRows,
+				isLoadingServiceRails,
+				ambulancePricingQuoteMap,
+				ambulanceServerQuoteMap,
+			),
+		[
+			hospital,
+			isLoadingServiceRails,
+			servicePricingRows,
+			ambulancePricingQuoteMap,
+			ambulanceServerQuoteMap,
+		],
 	);
 
 	const collapsedAction = useMemo(

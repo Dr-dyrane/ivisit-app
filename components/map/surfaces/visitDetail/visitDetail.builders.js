@@ -46,9 +46,8 @@ export const resolveBedLabel = (raw) => {
 	});
 };
 
-// PULLBACK NOTE: Fix collapsed action to always show primary CTA (never null)
-// OLD: Return null if no action available (hides left button)
-// NEW: Always return directions as fallback (matches mid-snap behavior)
+// A collapsed action must always have a real receiver. A missing action is
+// preferable to advertising Directions without facility coordinates.
 export const buildVisitCollapsedAction = ({
 	canResume,
 	onResume,
@@ -103,19 +102,15 @@ export const buildVisitCollapsedAction = ({
 			accessibilityLabel: "Book again",
 		};
 	}
-	if (onGetDirections) {
-		return {
-			onPress: onGetDirections,
-			icon: "navigate-outline",
-			iconType: "ion",
-			primary: false,
-			accessibilityLabel: "Get directions",
-		};
-	}
 	return null;
 };
 
-export const buildVisitCollapsedDistanceLabel = ({ whenValue, status }) => {
+export const buildVisitCollapsedDistanceLabel = ({
+	whenValue,
+	status,
+	sourceKind,
+}) => {
+	if (sourceKind === "scheduled_visit" && whenValue) return whenValue;
 	if (status === "active") return "Active now";
 	if (status === "pending") return "Pending";
 	if (status === "confirmed") return "Upcoming";

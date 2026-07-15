@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../../constants/colors";
 import { useTheme } from "../../../contexts/ThemeContext";
+import ScheduledVisitRecoveryNotice from "../ScheduledVisitRecoveryNotice";
 import { BOOK_VISIT_SCREEN_COPY } from "../bookVisit/bookVisit.content";
 
 const formatDayCard = (day) => {
@@ -72,8 +73,10 @@ export default function DateTimeSelection({
   error = null,
   timezoneReady = false,
   onRetry,
+  onChangeDates,
   onChangeFacility,
   onChangeSpecialty,
+  recoveryNotice = null,
 }) {
   const { isDarkMode } = useTheme();
   const colors = {
@@ -107,7 +110,7 @@ export default function DateTimeSelection({
     ? "Choose another facility or check again after its scheduling timezone is confirmed."
     : error
       ? "Your choices are saved. Try loading available times again."
-      : "Try another facility or specialty, or check this date range again.";
+      : "Try later dates, another facility, or another specialty.";
 
   return (
     <View style={styles.container}>
@@ -117,15 +120,28 @@ export default function DateTimeSelection({
         </View>
       ) : null}
 
+      <ScheduledVisitRecoveryNotice
+        message={recoveryNotice}
+        busy={loading || refreshing}
+        style={styles.recoveryNotice}
+      />
+
       {loading ? <AvailabilitySkeleton backgroundColor={colors.cardBg} /> : null}
 
       {showState ? (
         <View style={[styles.statePanel, { backgroundColor: colors.cardBg }]}>
           <Ionicons name={!timezoneReady ? "time-outline" : error ? "cloud-offline-outline" : "calendar-outline"} size={28} color={colors.textMuted} />
-          <Text style={[styles.stateTitle, { color: colors.text }]}>{stateTitle}</Text>
+          <Text
+            accessible
+            accessibilityRole="header"
+            style={[styles.stateTitle, { color: colors.text }]}
+          >
+            {stateTitle}
+          </Text>
           <Text style={[styles.stateBody, { color: colors.textMuted }]}>{stateBody}</Text>
           <View style={styles.stateActions}>
-            {timezoneReady ? <StateAction label={error ? "Try again" : "Check again"} onPress={onRetry} /> : null}
+            {timezoneReady && error ? <StateAction label="Try again" onPress={onRetry} /> : null}
+            {timezoneReady && !error ? <StateAction label="Change dates" onPress={onChangeDates} /> : null}
             <StateAction label="Change facility" onPress={onChangeFacility} secondary={timezoneReady} />
             <StateAction label="Change specialty" onPress={onChangeSpecialty} secondary />
           </View>
@@ -161,7 +177,13 @@ export default function DateTimeSelection({
           </View>
 
           <View style={styles.slotSection}>
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>Available slots</Text>
+            <Text
+              accessible
+              accessibilityRole="header"
+              style={[styles.sectionHeader, { color: colors.textMuted }]}
+            >
+              Available slots
+            </Text>
             <FlatList
               data={selectedDay?.slots || []}
               numColumns={3}
@@ -217,6 +239,7 @@ const styles = StyleSheet.create({
   skeletonDate: { width: 74, height: 84, borderRadius: 22 },
   skeletonSlots: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   skeletonSlot: { width: "30%", minWidth: 86, height: 54, borderRadius: 20 },
+  recoveryNotice: { marginBottom: 18 },
   statePanel: { alignItems: "center", padding: 24, borderRadius: 28, gap: 9 },
   stateTitle: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center" },
   stateBody: { fontSize: 14, lineHeight: 20, textAlign: "center" },

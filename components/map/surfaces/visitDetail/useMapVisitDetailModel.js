@@ -40,6 +40,10 @@ import {
 	buildJourney,
 	buildTriageRows,
 } from "./visitDetail.builders";
+import {
+	buildScheduledVisitLifecycle,
+	buildScheduledVisitPlaceActions,
+} from "./scheduledVisit.presentation";
 import { useHospitalDetailQuery } from "../../../../hooks/visits/useHospitalDetailQuery";
 import { usePaymentHistoryEntryQuery } from "../../../../hooks/visits/usePaymentHistoryEntryQuery";
 
@@ -137,7 +141,10 @@ export default function useMapVisitDetailModel({
 			historyItem.hospitalName ||
 			historyItem.title ||
 			modalTitle;
-		const subtitle = historyItem.statusLabel || resolveTypeValue(historyItem) || null;
+		const subtitle =
+			historyItem.sourceKind === "scheduled_visit"
+				? historyItem.careModeLabel || resolveTypeValue(historyItem) || null
+				: historyItem.statusLabel || resolveTypeValue(historyItem) || null;
 		return {
 			title,
 			subtitle,
@@ -490,6 +497,10 @@ export default function useMapVisitDetailModel({
 		() => buildJourney(historyItem, raw, whenValue),
 		[historyItem, raw, whenValue],
 	);
+	const scheduledLifecycle = useMemo(
+		() => buildScheduledVisitLifecycle(historyItem),
+		[historyItem],
+	);
 
 	const triageRows = useMemo(() => buildTriageRows(raw), [raw]);
 
@@ -533,7 +544,9 @@ export default function useMapVisitDetailModel({
 		if (historyItem.canOpenConsult && typeof onOpenConsult === "function") {
 			list.push({
 				key: "consult",
-				label: HISTORY_DETAILS_COPY.actionLabels.openConsult,
+				label: scheduledLifecycle?.isTerminal
+					? HISTORY_DETAILS_COPY.actionLabels.viewConsult
+					: HISTORY_DETAILS_COPY.actionLabels.openConsult,
 				iconName: "chatbubbles-outline",
 				iconColor: theme.actionVideoColor,
 				onPress: onOpenConsult,
@@ -588,6 +601,7 @@ export default function useMapVisitDetailModel({
 		onOpenPaymentDetails,
 		onReschedule,
 		paymentRows.length,
+		scheduledLifecycle?.isTerminal,
 		theme,
 	]);
 
@@ -612,6 +626,12 @@ export default function useMapVisitDetailModel({
 	);
 	const canRate = Boolean(historyItem?.canRate && typeof onRateVisit === "function");
 	const canCall = Boolean(historyItem?.canCallClinic && typeof onCallClinic === "function");
+	const canOpenConsult = Boolean(
+		historyItem?.canOpenConsult && typeof onOpenConsult === "function",
+	);
+	const canReschedule = Boolean(
+		historyItem?.canReschedule && typeof onReschedule === "function",
+	);
 	const canDirections = Boolean(hasCoordinates && typeof onGetDirections === "function");
 	const canRevisit = Boolean(historyItem?.canBookAgain && typeof onBookAgain === "function");
 
@@ -637,8 +657,9 @@ export default function useMapVisitDetailModel({
 			buildVisitCollapsedDistanceLabel({
 				whenValue,
 				status: historyItem?.status,
+				sourceKind: historyItem?.sourceKind,
 			}),
-		[whenValue, historyItem?.status],
+		[whenValue, historyItem?.sourceKind, historyItem?.status],
 	);
 
 	// Reference ID for display
@@ -739,6 +760,21 @@ export default function useMapVisitDetailModel({
 	// Video stays in the deep CTA group (only valid in narrow joinable windows).
 	const placeActions = useMemo(() => {
 		if (!historyItem) return [];
+		const scheduledActions = buildScheduledVisitPlaceActions({
+			historyItem,
+			lifecycle: scheduledLifecycle,
+			canOpenConsult,
+			canCall,
+			canReschedule,
+			canDirections,
+			canBookAgain: canRevisit,
+			onOpenConsult,
+			onCallClinic,
+			onReschedule,
+			onGetDirections,
+			onBookAgain,
+		});
+		if (scheduledActions) return scheduledActions;
 
 		const status = historyItem.status;
 		const isCancelled = status === "cancelled";
@@ -835,22 +871,43 @@ export default function useMapVisitDetailModel({
 		};
 
 		return [slot1, slot2, slot3, slot4];
-	}, [historyItem, canResume, canRate, canCall, canDirections, canRevisit, onResume, onRateVisit, onCallClinic, onGetDirections, onBookAgain]);
+	}, [
+		historyItem,
+		scheduledLifecycle,
+		canResume,
+		canRate,
+		canCall,
+		canOpenConsult,
+		canReschedule,
+		canDirections,
+		canRevisit,
+		onResume,
+		onRateVisit,
+		onOpenConsult,
+		onCallClinic,
+		onReschedule,
+		onGetDirections,
+		onBookAgain,
+	]);
 
 	// Build place stats - request-type-specific per contract.
 	// Status is intentionally NOT included here: it lives on the compact hero chip
 	// so the stats row carries fresh detail instead of repeating the chip.
 	//   Ambulance: ETA/When, Responder, Vehicle,  Reference
 	//   Bed:       ETA/When, Bed type,  Bed #,    Reference
-	//   Visit:     When,     Specialty, Clinician, Reference
+	//   Scheduled: facility-local When, Mode, Clinician, Specialty
+	//   Visit:     When, Specialty, Clinician, Reference
 	const placeStats = useMemo(() => {
 		if (!historyItem) return [];
 
 		const requestType = historyItem.requestType;
+		const isScheduledVisit = historyItem.sourceKind === "scheduled_visit";
 		// ETA stays as the live delta string (e.g. "8 min"); non-live falls back
 		// to the human-friendly when label so the row reads "Today, 10:30 AM"
 		// instead of a raw "12/05/2024 / 10:30" string.
-		const whenOrEta = etaLabel || humanWhenLabel || whenValue;
+		const whenOrEta = isScheduledVisit
+			? whenValue
+			: etaLabel || humanWhenLabel || whenValue;
 		const stats = [];
 
 		const pushWhen = (etaLabelText) => {
@@ -914,6 +971,38 @@ export default function useMapVisitDetailModel({
 					});
 				}
 			}
+		} else if (isScheduledVisit) {
+			pushWhen("When");
+			if (historyItem.careModeLabel) {
+				stats.push({
+					key: "careMode",
+					label: "Mode",
+					value: historyItem.careModeLabel,
+					icon:
+						historyItem.careMode === "telemedicine_async"
+							? "chatbubbles-outline"
+							: "business-outline",
+					iconType: "ion",
+				});
+			}
+			if (actorName) {
+				stats.push({
+					key: "clinician",
+					label: clinicianLabel || "Clinician",
+					value: actorName,
+					icon: "person-outline",
+					iconType: "ion",
+				});
+			}
+			if (specialtyLabel) {
+				stats.push({
+					key: "specialty",
+					label: "Specialty",
+					value: specialtyLabel,
+					icon: "medkit-outline",
+					iconType: "ion",
+				});
+			}
 		} else {
 			pushWhen("When");
 			if (specialtyLabel) {
@@ -941,7 +1030,17 @@ export default function useMapVisitDetailModel({
 		// Trailing slot: prefer the lifecycle headline (payment / rating / next
 		// visit / room / cancelled). Fall back to the reference id when no
 		// headline applies, so the stat row is never short.
-		if (headlineStat) {
+		if (isScheduledVisit) {
+			if (stats.length < 4 && referenceId) {
+				stats.push({
+					key: "reference",
+					label: "Ref",
+					value: referenceId,
+					icon: "document-text-outline",
+					iconType: "ion",
+				});
+			}
+		} else if (headlineStat) {
 			stats.push(headlineStat);
 		} else if (referenceId) {
 			stats.push({
@@ -978,6 +1077,7 @@ export default function useMapVisitDetailModel({
 		hero,
 		compactDetails,
 		journey,
+		scheduledLifecycle,
 		expandedDetails,
 		paymentRows,
 		paymentSummary,

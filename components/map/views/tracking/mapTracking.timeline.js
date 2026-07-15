@@ -128,6 +128,51 @@ export function normalizeTrackingRouteInfo(routeInfo = {}) {
   };
 }
 
+export function buildTrackingRouteRequestSeed({
+  currentRouteInfo = null,
+  previousRequestKey = null,
+  nextRequestKey = null,
+  tripEtaSeconds = null,
+  tripRoute = null,
+} = {}) {
+  const requestKey =
+    nextRequestKey != null && nextRequestKey !== ""
+      ? String(nextRequestKey)
+      : null;
+  if (!requestKey) {
+    return normalizeTrackingRouteInfo();
+  }
+
+  const current = normalizeTrackingRouteInfo(currentRouteInfo);
+  const tripCoordinates = normalizeTrackingRouteCoordinates(tripRoute);
+  const normalizedTripEtaSeconds = normalizeTrackingMetric(tripEtaSeconds);
+  const isSameRequest = current.requestKey === requestKey;
+  const isPaymentHandoff =
+    previousRequestKey === null && current.requestKey === null;
+  const canPreserveLiveRoute = isSameRequest || isPaymentHandoff;
+  const coordinates =
+    tripCoordinates.length >= 2
+      ? tripCoordinates
+      : canPreserveLiveRoute
+        ? current.coordinates
+        : [];
+  return normalizeTrackingRouteInfo({
+    requestKey,
+    routeSource: tripCoordinates.length >= 2
+      ? "trip"
+      : canPreserveLiveRoute && current.routeSource !== "none"
+        ? current.routeSource
+        : normalizedTripEtaSeconds != null
+          ? "trip"
+          : "none",
+    durationSec:
+      normalizedTripEtaSeconds ??
+      (canPreserveLiveRoute ? current.durationSec : null),
+    distanceMeters: canPreserveLiveRoute ? current.distanceMeters : null,
+    coordinates,
+  });
+}
+
 export function areTrackingRouteInfosEqual(left, right) {
   const normalizedLeft = normalizeTrackingRouteInfo(left);
   const normalizedRight = normalizeTrackingRouteInfo(right);

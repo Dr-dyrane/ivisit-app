@@ -70,10 +70,10 @@ const buildHistoryVisitRatingState = (historyItem) => {
  * (not inside MapTrackingStageBase, which only mounts during TRACKING phase).
  *
  * @param {Object} params
- * @param {Function} params.updateVisit
  * @param {Function} params.showToast
  * @param {Function} params.stopAmbulanceTrip
  * @param {Function} params.stopBedBooking
+ * @param {Function} params.suppressRecoveredRatingForSession
  * @param {Array}    params.visits - visits array from VisitsContext (already loaded)
  *   Used once on mount to validate persisted ratingState.visible against server truth.
  *   If the visit is already RATED, the atom is reset before the modal can surface.
@@ -86,10 +86,10 @@ const buildHistoryVisitRatingState = (historyItem) => {
  * }}
  */
 export function useTrackingRatingFlow({
-  updateVisit,
   showToast,
   stopAmbulanceTrip,
   stopBedBooking,
+  suppressRecoveredRatingForSession,
   onAfterResolution,
   onAfterSubmit,
   visits,
@@ -150,7 +150,6 @@ export function useTrackingRatingFlow({
     }
     const resolution = await resolveTrackingRatingSkip({
       visitId,
-      updateVisit,
       deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
     });
     if (!resolution.ok) {
@@ -160,6 +159,12 @@ export function useTrackingRatingFlow({
     const completeKind = ratingState?.completeKind;
     const serviceType = ratingState?.serviceType;
     const hospitalTitle = ratingState?.serviceDetails?.hospital ?? null;
+    suppressRecoveredRatingForSession?.(visitId);
+    // Keep the in-memory claim closed before removing the terminal request or
+    // hiding the in-flow modal. The recovered-rating effect observes both
+    // independently; reversing this order lets it reopen the same visit for
+    // one render and recreates the double-rating sheet.
+    await removeRecoveredRatingClaim(visitId);
     setRatingState(INITIAL_TRACKING_RATING_STATE);
     finalizeCompletedTracking(completeKind);
     // PULLBACK NOTE: VD-B4 — 5th layer refetch after skip
@@ -169,12 +174,12 @@ export function useTrackingRatingFlow({
       serviceType,
       hospitalTitle,
     });
-    await removeRecoveredRatingClaim(visitId);
     showToast?.(skipToast.message, skipToast.level);
     return true;
   }, [
     onAfterResolution,
     finalizeCompletedTracking,
+    suppressRecoveredRatingForSession,
     ratingState?.completeKind,
     ratingState?.serviceDetails?.hospital,
     ratingState?.serviceType,
@@ -182,7 +187,6 @@ export function useTrackingRatingFlow({
     removeRecoveredRatingClaim,
     setRatingState,
     showToast,
-    updateVisit,
   ]);
 
   const submitRating = useCallback(
@@ -195,7 +199,6 @@ export function useTrackingRatingFlow({
         comment,
         tipAmount,
         tipCurrency,
-        updateVisit,
         deleteRecoveryClaim: deleteTrackingRatingRecoveryClaim,
       });
       if (!resolution.ok) {
@@ -205,6 +208,7 @@ export function useTrackingRatingFlow({
       if (resolution.tipError) {
         console.warn("[useTrackingRatingFlow] Tip processing failed:", resolution.tipError);
       }
+      suppressRecoveredRatingForSession?.(visitId);
       const completeKind = ratingState?.completeKind;
       const serviceType = ratingState?.serviceType;
       const hospitalTitle = ratingState?.serviceDetails?.hospital ?? null;
@@ -230,13 +234,13 @@ export function useTrackingRatingFlow({
       onAfterResolution,
       onAfterSubmit,
       finalizeCompletedTracking,
+      suppressRecoveredRatingForSession,
       ratingState?.completeKind,
       ratingState?.serviceDetails?.hospital,
       ratingState?.serviceType,
       ratingState?.visitId,
       setRatingState,
       showToast,
-      updateVisit,
     ],
   );
 

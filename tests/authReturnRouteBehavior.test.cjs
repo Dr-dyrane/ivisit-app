@@ -137,6 +137,7 @@ const authRouting = read("runtime/navigation/useAuthRouting.js");
 const callback = read("app/auth/callback.js");
 const socialAuth = read("hooks/auth/useSocialAuth.js");
 const persistence = read("runtime/navigation/useRoutePersistence.js");
+const rootNavigator = read("runtime/RootNavigator.jsx");
 
 const captureIndex = userLayout.indexOf(
   "await writeStoredAuthReturnRoute(protectedReturnRoute)",
@@ -211,6 +212,16 @@ assert.match(
   persistence,
   /normalizeProtectedAuthReturnRoute\(route\) \|\| normalizeStoredPublicRoute\(route\)/,
   "stored auth routes must pass through the protected/public allowlist",
+);
+assert.match(
+  rootNavigator,
+  /initialRouteResolved[\s\S]*useRoutePersistence\(\{ initialRouteResolved, startupPublicRoute \}\)/,
+  "route persistence must wait for startup route hydration",
+);
+assert.match(
+  persistence,
+  /if \(!initialRouteResolved \|\| !pathname\)[\s\S]*pathname === "\/" && !startupPublicRoute/,
+  "startup root must not erase a resumable map route before hydration completes",
 );
 
 console.log("PASS authenticated return-route behavior and handoff contracts");

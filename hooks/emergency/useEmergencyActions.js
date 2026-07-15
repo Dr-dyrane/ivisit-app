@@ -7,7 +7,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AmbulanceStatus } from "../../constants/emergency";
 import {
   emergencyRequestsService,
   EmergencyRequestStatus,
@@ -79,7 +78,6 @@ export function useEmergencyActions({
   activeBedBookingRef,
   activeAmbulanceTripRef,
   userLocationRef,
-  activeAmbulances,
   setActiveAmbulanceTrip,
   setActiveBedBooking,
   patchActiveAmbulanceTrip,
@@ -382,29 +380,12 @@ export function useEmergencyActions({
         trip?.assignedAmbulance && typeof trip.assignedAmbulance === "object"
           ? trip.assignedAmbulance
           : null;
-      const byId = trip?.ambulanceId
-        ? (activeAmbulances.find((a) => a?.id === trip.ambulanceId) ?? null)
-        : null;
-      const byHospital = trip?.hospitalName
-        ? (activeAmbulances.find((a) => a?.hospital === trip.hospitalName) ??
-          null)
-        : null;
-      // PULLBACK NOTE: Pass 1 raw-status sweep — OLD: "available" inline  NEW: AmbulanceStatus.AVAILABLE
-      const fallback =
-        activeAmbulances.find((a) => a?.status === AmbulanceStatus.AVAILABLE) ??
-        activeAmbulances[0] ??
-        null;
       const hasAcceptedResponder = [
         EmergencyRequestStatus.ACCEPTED,
         EmergencyRequestStatus.ARRIVED,
         EmergencyRequestStatus.COMPLETED,
       ].includes(String(trip?.status ?? "").toLowerCase());
-      const discoveredAssigned = hasAcceptedResponder
-        ? byId ?? byHospital ?? fallback
-        : null;
-      const assignedAmbulance = explicitAssigned
-        ? { ...(discoveredAssigned || {}), ...explicitAssigned }
-        : discoveredAssigned;
+      const assignedAmbulance = hasAcceptedResponder ? explicitAssigned : null;
       const hospitalCoordinate = normalizeCoordinate(trip?.hospitalCoordinate);
       const triageSnapshot =
         trip?.triageSnapshot ??
@@ -495,7 +476,6 @@ export function useEmergencyActions({
       setActiveAmbulanceTrip(nextTrip);
     },
     [
-      activeAmbulances,
       parseEtaToSeconds,
       setActiveAmbulanceTrip,
       transitionPendingToActive,

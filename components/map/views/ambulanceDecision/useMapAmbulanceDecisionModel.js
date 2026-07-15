@@ -4,6 +4,10 @@ import { hospitalsService } from "../../../../services/hospitalsService";
 import { getDestinationCoordinate } from "../../surfaces/hospitals/mapHospitalDetail.helpers";
 import { buildAmbulanceDecisionModel } from "./mapAmbulanceDecision.helpers";
 import { useQuotedPriceMap } from "../../../../hooks/payment/useQuotedPriceMap";
+import {
+	buildEmergencyAmbulanceQuoteRows,
+	useEmergencyAmbulanceQuoteMap,
+} from "../../../../hooks/emergency/useEmergencyAmbulanceQuoteMap";
 import { usePreferences } from "../../../../contexts/PreferencesContext";
 import { useBillingQuoteStore } from "../../../../stores/billingQuoteStore";
 import { resolveMoneyCurrency } from "../../../../utils/formatMoney";
@@ -17,6 +21,15 @@ export default function useMapAmbulanceDecisionModel({
 	const [pricingRows, setPricingRows] = useState([]);
 	const [isLoadingServices, setIsLoadingServices] = useState(false);
 	const destination = useMemo(() => getDestinationCoordinate(hospital), [hospital]);
+	const ambulanceDistanceKm = useMemo(() => {
+		const meters = Number(routeInfo?.distanceMeters);
+		return Number.isFinite(meters) && meters > 0 ? meters / 1000 : 0;
+	}, [routeInfo?.distanceMeters]);
+	const serverQuoteMap = useEmergencyAmbulanceQuoteMap({
+		hospitalId: hospital?.id,
+		distanceKm: ambulanceDistanceKm,
+		enabled: Boolean(hospital?.id),
+	});
 
 	// PULLBACK NOTE: Billing quote integration for country-based pricing
 	// Same pattern as payment phase: use preferences (user billing context)
@@ -29,14 +42,18 @@ export default function useMapAmbulanceDecisionModel({
 	// Merge: store overrides take precedence over saved preferences (runtime > persisted)
 	const effectiveBillingCountryCode = billingCountryCodeOverride || preferences?.billingCountryCode || null;
 	const effectiveBillingCurrencyCode = billingCurrencyCodeOverride || preferences?.billingCurrencyCode || null;
+	const ambulanceQuoteRows = useMemo(
+		() => buildEmergencyAmbulanceQuoteRows(serverQuoteMap),
+		[serverQuoteMap],
+	);
 	const quotedPriceMap = useQuotedPriceMap({
-		items: pricingRows,
+		items: ambulanceQuoteRows,
 		getAmount: (row) => row?.base_price ?? row?.base_cost,
 		getCurrency: (row) => resolveMoneyCurrency(row?.currency, hospital?.currency),
 		billingCountryCode: effectiveBillingCountryCode,
 		billingCurrencyCode: effectiveBillingCurrencyCode,
 		preferences,
-		enabled: pricingRows.length > 0 && !isLoadingServices && !isLoadingPrefs,
+		enabled: ambulanceQuoteRows.length > 0 && !isLoadingPrefs,
 	});
 
 	useEffect(() => {
@@ -103,6 +120,7 @@ export default function useMapAmbulanceDecisionModel({
 				isCalculatingRoute,
 				// PULLBACK NOTE: Pass quoted price map for country-based currency display
 				quotedPriceMap,
+				serverQuoteMap,
 			}),
 		[
 			hospital,
@@ -111,6 +129,7 @@ export default function useMapAmbulanceDecisionModel({
 			origin,
 			pricingRows,
 			quotedPriceMap,
+			serverQuoteMap,
 			routeInfo,
 			selectedServiceId,
 		],

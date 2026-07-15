@@ -9,6 +9,7 @@ import {
 	useEmergencyActions,
 	useTripLifecycle,
 } from '../hooks/emergency';
+import { useAuth } from "./AuthContext";
 // PULLBACK NOTE: EmergencyMode moved to constants/emergency.js to break circular dep
 // OLD: Defined inline here
 // NEW: Imported from constants, re-exported for backward compat
@@ -17,6 +18,8 @@ export { EmergencyMode } from '../constants/emergency';
 const EmergencyContext = createContext();
 
 export function EmergencyProvider({ children }) {
+	const { user } = useAuth();
+	const userId = user?.id ?? null;
 	const {
 		userLocation,
 		userLocationSource,
@@ -54,7 +57,7 @@ export function EmergencyProvider({ children }) {
 	const {
 		hospitals, filteredHospitals, visibleHospitals, availableHospitals,
 		specialties, selectedHospital, isLoadingHospitals,
-		activeAmbulances, refetchHospitals,
+		refetchHospitals,
 		updateHospitals, refreshHospitals, getActiveAmbulanceDemoHospital,
 	} = useEmergencyHospitalSync({
 		userLocation, demoOwnerSlug, forceDemoFetch,
@@ -67,6 +70,7 @@ export function EmergencyProvider({ children }) {
 	useEffect(() => { setRefetchHospitals(refetchHospitals); }, [refetchHospitals, setRefetchHospitals]);
 
 	const { syncActiveTripsFromServer } = useEmergencyServerSync({
+		userId,
 		activeAmbulanceTripRef,
 		activeBedBookingRef,
 		setActiveAmbulanceTrip,
@@ -76,9 +80,11 @@ export function EmergencyProvider({ children }) {
 	});
 
 	const { resetAmbulanceEventVersion } = useEmergencyRealtime({
+		userId,
 		activeAmbulanceTrip,
 		activeBedBooking,
 		activeAmbulanceTripRef,
+		activeBedBookingRef,
 		userLocationRef,
 		setActiveAmbulanceTrip,
 		setActiveBedBooking,
@@ -109,7 +115,6 @@ export function EmergencyProvider({ children }) {
 		activeBedBookingRef,
 		activeAmbulanceTripRef,
 		userLocationRef,
-		activeAmbulances,
 		setActiveAmbulanceTrip,
 		setActiveBedBooking,
 		patchActiveAmbulanceTrip,

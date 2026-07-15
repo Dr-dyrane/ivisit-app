@@ -58,7 +58,6 @@ export default function MapScreen() {
   const { logout, user } = useAuth();
   const {
     visits = [],
-    updateVisit,
     refreshVisits,
   } = useVisits();
   const { registerFAB, unregisterFAB } = useFABActions();
@@ -371,6 +370,8 @@ export default function MapScreen() {
     selectedHistoryVisitKey,
     asyncConsultVisit,
     rescheduleVisit,
+    cancelConfirmationVisit,
+    isScheduledVisitTransitioning,
     historyPaymentState,
     recoveredRatingState,
     ratingRecoveryClaims,
@@ -393,14 +394,16 @@ export default function MapScreen() {
     handleRescheduleHistoryVisit,
     closeRescheduleVisit,
     handleRescheduleSuccess,
+    closeCancelConfirmation,
+    confirmCancelHistoryVisit,
     handleBookHistoryAgain,
     handleCancelHistoryVisit,
     closeRecoveredRating,
     handleSkipRecoveredRating,
     handleSubmitRecoveredRating,
+    suppressRecoveredRatingForSession,
   } = useMapHistoryFlow({
     visits,
-    updateVisit,
     showToast,
     openTracking,
     openVisitDetail,
@@ -522,10 +525,10 @@ export default function MapScreen() {
     submitRating: submitTrackingRating,
     openRatingForVisit,
   } = useTrackingRatingFlow({
-    updateVisit,
     showToast,
     stopAmbulanceTrip,
     stopBedBooking,
+    suppressRecoveredRatingForSession,
     visits,
     onAfterResolution: refreshVisits,
     onAfterSubmit: useCallback(
@@ -748,6 +751,8 @@ export default function MapScreen() {
           onCloseHospitalDetail={closeHospitalDetail}
           onCloseVisitDetail={closeHistoryVisitDetails}
           visitDetailRouteState={routeVisitDetailState}
+          visitDetailHistoryItem={selectedHistoryVisit}
+          isHistoryVisitTransitioning={isScheduledVisitTransitioning}
           onCloseProviderDetail={handleCloseProviderDetail}
           onCloseProviderList={handleCloseProviderList}
           onSelectProvider={handleSelectExploreProvider}
@@ -882,6 +887,9 @@ export default function MapScreen() {
         rescheduleVisit={rescheduleVisit}
         closeRescheduleVisit={closeRescheduleVisit}
         handleRescheduleSuccess={handleRescheduleSuccess}
+        cancelConfirmationVisit={cancelConfirmationVisit}
+        closeCancelConfirmation={closeCancelConfirmation}
+        confirmCancelHistoryVisit={confirmCancelHistoryVisit}
         userId={user?.id || null}
         recoveredRatingState={recoveredRatingState}
         closeRecoveredRating={closeRecoveredRating}

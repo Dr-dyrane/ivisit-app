@@ -16,12 +16,15 @@ import { useBookVisitAvailabilityQuery } from "../../../hooks/visits/useBookVisi
 import { useBookingFacilityQuery } from "../../../hooks/visits/useBookingFacilitiesQuery";
 import { useScheduledVisitMutations } from "../../../hooks/visits/useScheduledVisitMutations";
 import { scheduledVisitReleaseGates } from "../../../services/scheduledVisitsService";
+import ScheduledVisitRecoveryNotice from "../../visits/ScheduledVisitRecoveryNotice";
 import {
   formatScheduledVisitParts,
   groupAvailabilitySlots,
   toValidIsoString,
 } from "../../../utils/scheduledVisitProjection";
 import MapModalShell from "../surfaces/MapModalShell";
+
+const AVAILABILITY_WINDOW_DAYS = 14;
 
 const buildColors = (isDarkMode) => ({
   text: isDarkMode ? "#F8FAFC" : "#0F172A",
@@ -90,20 +93,48 @@ function AvailabilitySkeleton({ colors }) {
   );
 }
 
-function AvailabilityState({ icon, title, body, onRetry, colors }) {
+function AvailabilityState({
+  icon,
+  title,
+  body,
+  primaryActionLabel = "Try again",
+  onPrimaryAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  colors,
+}) {
   return (
     <View style={[styles.state, { backgroundColor: colors.softSurface }]}>
       <Ionicons name={icon} size={28} color={colors.muted} />
       <Text style={[styles.stateTitle, { color: colors.text }]}>{title}</Text>
       {body ? <Text style={[styles.stateBody, { color: colors.muted }]}>{body}</Text> : null}
-      {onRetry ? (
-        <Pressable
-          onPress={onRetry}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.retryButton, { opacity: pressed ? 0.84 : 1 }]}
-        >
-          <Text style={styles.retryText}>Try again</Text>
-        </Pressable>
+      {onPrimaryAction || onSecondaryAction ? (
+        <View style={styles.stateActions}>
+          {onPrimaryAction ? (
+            <Pressable
+              onPress={onPrimaryAction}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.retryButton,
+                { opacity: pressed ? 0.84 : 1 },
+              ]}
+            >
+              <Text style={styles.retryText}>{primaryActionLabel}</Text>
+            </Pressable>
+          ) : null}
+          {onSecondaryAction ? (
+            <Pressable
+              onPress={onSecondaryAction}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.secondaryStateButton,
+                { opacity: pressed ? 0.72 : 1 },
+              ]}
+            >
+              <Text style={styles.secondaryStateText}>{secondaryActionLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -129,13 +160,19 @@ export default function ScheduledVisitRescheduleModal({
     historyItem?.canReschedule === true &&
     Boolean(visitId && hospitalId && specialty && careMode && currentStartAt);
   const featureEnabled = scheduledVisitReleaseGates.scheduledVisits;
-  const availabilityWindow = useMemo(() => {
-    const from = new Date();
-    const to = new Date(from.getTime() + 14 * 24 * 60 * 60 * 1000);
-    return { fromAt: from.toISOString(), toAt: to.toISOString() };
-  }, [visitId, visible]);
   const [selectedDayKey, setSelectedDayKey] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [availabilityWindowOffsetDays, setAvailabilityWindowOffsetDays] =
+    useState(0);
+  const [conflictRecoveryNotice, setConflictRecoveryNotice] = useState(null);
+  const availabilityWindow = useMemo(() => {
+    const from = new Date();
+    from.setSeconds(0, 0);
+    from.setDate(from.getDate() + availabilityWindowOffsetDays);
+    const to = new Date(from);
+    to.setDate(to.getDate() + AVAILABILITY_WINDOW_DAYS);
+    return { fromAt: from.toISOString(), toAt: to.toISOString() };
+  }, [availabilityWindowOffsetDays, visitId, visible]);
 
   const facilityQuery = useBookingFacilityQuery({
     hospitalId,
@@ -197,6 +234,8 @@ export default function ScheduledVisitRescheduleModal({
   useEffect(() => {
     setSelectedDayKey(null);
     setSelectedSlot(null);
+    setAvailabilityWindowOffsetDays(0);
+    setConflictRecoveryNotice(null);
     resetTransition();
   }, [resetTransition, visitId, visible]);
 
@@ -216,6 +255,7 @@ export default function ScheduledVisitRescheduleModal({
     (dayKey) => {
       setSelectedDayKey(dayKey);
       setSelectedSlot(null);
+      setConflictRecoveryNotice(null);
       if (transitionError) resetTransition();
     },
     [resetTransition, transitionError],
@@ -224,10 +264,33 @@ export default function ScheduledVisitRescheduleModal({
   const handleSelectSlot = useCallback(
     (slot) => {
       setSelectedSlot(slot);
+      setConflictRecoveryNotice(null);
       if (transitionError) resetTransition();
     },
     [resetTransition, transitionError],
   );
+
+  const shiftAvailabilityWindow = useCallback(
+    (deltaDays) => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setSelectedDayKey(null);
+      setSelectedSlot(null);
+      setConflictRecoveryNotice(null);
+      resetTransition();
+      setAvailabilityWindowOffsetDays((current) =>
+        Math.max(0, current + deltaDays),
+      );
+    },
+    [resetTransition],
+  );
+
+  const handleLaterDates = useCallback(() => {
+    shiftAvailabilityWindow(AVAILABILITY_WINDOW_DAYS);
+  }, [shiftAvailabilityWindow]);
+
+  const handleEarlierDates = useCallback(() => {
+    shiftAvailabilityWindow(-AVAILABILITY_WINDOW_DAYS);
+  }, [shiftAvailabilityWindow]);
 
   const handleSubmit = useCallback(async () => {
     if (!eligibleVisit || isTransitioning || !selectedSlot?.scheduledStartAt) {
@@ -255,8 +318,24 @@ export default function ScheduledVisitRescheduleModal({
       onSuccess?.(updatedVisit);
     } catch (error) {
       if (error?.code === "slot_unavailable") {
+        setConflictRecoveryNotice(
+          "That time is no longer available. Choose another time from the refreshed list.",
+        );
+        setSelectedDayKey(null);
         setSelectedSlot(null);
-        await availabilityQuery.refetch();
+        resetTransition();
+        try {
+          const refreshResult = await availabilityQuery.refetch();
+          if (refreshResult?.error) {
+            setConflictRecoveryNotice(
+              "That time is no longer available. Try loading available times again.",
+            );
+          }
+        } catch (_refreshError) {
+          setConflictRecoveryNotice(
+            "That time is no longer available. Try loading available times again.",
+          );
+        }
       }
     }
   }, [
@@ -265,6 +344,7 @@ export default function ScheduledVisitRescheduleModal({
     eligibleVisit,
     isTransitioning,
     onSuccess,
+    resetTransition,
     selectedSlot?.scheduledStartAt,
     transitionVisit,
     showToast,
@@ -323,7 +403,7 @@ export default function ScheduledVisitRescheduleModal({
         icon="cloud-offline-outline"
         title="Visit location unavailable"
         body="We could not load this facility."
-        onRetry={facilityQuery.refetch}
+        onPrimaryAction={facilityQuery.refetch}
         colors={colors}
       />
     );
@@ -344,7 +424,7 @@ export default function ScheduledVisitRescheduleModal({
         icon="cloud-offline-outline"
         title="Times unavailable"
         body="Your current visit has not changed."
-        onRetry={availabilityQuery.refetch}
+        onPrimaryAction={availabilityQuery.refetch}
         colors={colors}
       />
     );
@@ -353,8 +433,13 @@ export default function ScheduledVisitRescheduleModal({
       <AvailabilityState
         icon="calendar-outline"
         title="No other times available"
-        body="Your current visit has not changed. Check again later."
-        onRetry={availabilityQuery.refetch}
+        body="There are no other times in this two-week window. Your current visit has not changed."
+        primaryActionLabel="Check later dates"
+        onPrimaryAction={handleLaterDates}
+        secondaryActionLabel="Earlier dates"
+        onSecondaryAction={
+          availabilityWindowOffsetDays > 0 ? handleEarlierDates : undefined
+        }
         colors={colors}
       />
     );
@@ -387,6 +472,35 @@ export default function ScheduledVisitRescheduleModal({
             );
           })}
         </ScrollView>
+
+        <View style={styles.windowActions}>
+          {availabilityWindowOffsetDays > 0 ? (
+            <Pressable
+              onPress={handleEarlierDates}
+              accessibilityRole="button"
+              accessibilityLabel="Show earlier available dates"
+              style={({ pressed }) => [
+                styles.windowAction,
+                { backgroundColor: colors.softSurface, opacity: pressed ? 0.72 : 1 },
+              ]}
+            >
+              <Ionicons name="chevron-back" size={16} color={COLORS.brandPrimary} />
+              <Text style={styles.windowActionText}>Earlier dates</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={handleLaterDates}
+            accessibilityRole="button"
+            accessibilityLabel="Show later available dates"
+            style={({ pressed }) => [
+              styles.windowAction,
+              { backgroundColor: colors.softSurface, opacity: pressed ? 0.72 : 1 },
+            ]}
+          >
+            <Text style={styles.windowActionText}>Later dates</Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.brandPrimary} />
+          </Pressable>
+        </View>
 
         <Text style={[styles.sectionLabel, { color: colors.muted }]}>Choose a time</Text>
         <View style={styles.slotGrid}>
@@ -438,6 +552,10 @@ export default function ScheduledVisitRescheduleModal({
           {historyItem?.facilityName || historyItem?.title || "Care facility"}
         </Text>
       </View>
+      <ScheduledVisitRecoveryNotice
+        message={conflictRecoveryNotice}
+        busy={availabilityQuery.isFetching}
+      />
       {selector}
     </MapModalShell>
   );
@@ -453,6 +571,7 @@ const styles = StyleSheet.create({
   state: { alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 28, borderRadius: 8 },
   stateTitle: { fontSize: 17, fontWeight: "700", textAlign: "center" },
   stateBody: { maxWidth: 320, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  stateActions: { width: "100%", alignItems: "center", gap: 6, marginTop: 4 },
   skeleton: { gap: 12 },
   skeletonLabel: { width: 92, height: 12, borderRadius: 6 },
   skeletonDays: { flexDirection: "row", gap: 8 },
@@ -461,12 +580,17 @@ const styles = StyleSheet.create({
   skeletonSlot: { width: "31%", minWidth: 84, height: 46, borderRadius: 8 },
   retryButton: { minHeight: 42, justifyContent: "center", marginTop: 4, paddingHorizontal: 18, borderRadius: 8, backgroundColor: COLORS.brandPrimary },
   retryText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  secondaryStateButton: { minHeight: 42, justifyContent: "center", paddingHorizontal: 18, borderRadius: 8 },
+  secondaryStateText: { color: COLORS.brandPrimary, fontSize: 13, fontWeight: "700" },
   selector: { gap: 12 },
   sectionLabel: { fontSize: 12, lineHeight: 17, fontWeight: "700" },
   dayList: { gap: 8, paddingBottom: 4 },
   dayButton: { width: 64, height: 68, alignItems: "center", justifyContent: "center", borderRadius: 8 },
   weekday: { fontSize: 11, fontWeight: "600" },
   dayNumber: { marginTop: 3, fontSize: 20, fontWeight: "700" },
+  windowActions: { minHeight: 42, flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  windowAction: { minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 12, borderRadius: 8 },
+  windowActionText: { color: COLORS.brandPrimary, fontSize: 12, fontWeight: "700" },
   slotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   slotButton: { width: "31%", minWidth: 84, minHeight: 46, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, borderRadius: 8 },
   slotText: { fontSize: 14, fontWeight: "700" },

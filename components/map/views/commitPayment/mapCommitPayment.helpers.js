@@ -61,7 +61,16 @@ export function buildCommitPaymentPickupLabel(currentLocation) {
 	return [primaryText, secondaryText].filter(Boolean).join(", ") || address || "My location";
 }
 
-export function buildCommitPaymentDistanceKm(hospital, currentLocation) {
+export function buildCommitPaymentDistanceKm(
+	hospital,
+	currentLocation,
+	transport = null,
+) {
+	const routeDistanceKm = toFiniteNumber(transport?.routeDistanceKm);
+	if (routeDistanceKm != null && routeDistanceKm > 0) {
+		return routeDistanceKm;
+	}
+
 	const pickupCoordinate = buildCommitPaymentPickupCoordinate(currentLocation);
 	const destinationCoordinate = getDestinationCoordinate(hospital);
 	if (!pickupCoordinate || !destinationCoordinate) return 0;
@@ -115,7 +124,9 @@ export function normalizeCommitPaymentCost(
 				breakdown,
 				currency,
 				grossTotal: grossTotal ?? totalCost,
-				subtotal: subtotal ?? (feeAmount != null ? Math.max(0, totalCost - feeAmount) : totalCost),
+				// The payment amount is server-owned. A fee may be settlement metadata,
+				// but it must not be subtracted from or added to the displayed total here.
+				subtotal: subtotal ?? totalCost,
 				orgFee: rawCost.orgFee || null,
 				source: rawCost.source || "service_cost",
 			};
@@ -179,7 +190,11 @@ export function buildAmbulanceCommitRequest({
 		specialty: null,
 		paymentMethod,
 		pricingSnapshot,
-		distanceKm: buildCommitPaymentDistanceKm(hospital, currentLocation),
+		distanceKm: buildCommitPaymentDistanceKm(
+			hospital,
+			currentLocation,
+			transport,
+		),
 		patientLocation: buildCommitPaymentPickupCoordinate(currentLocation),
 		locationLabel: buildCommitPaymentPickupLabel(currentLocation),
 		locationConfirmedAt: new Date().toISOString(),
@@ -294,7 +309,7 @@ export function buildCommitPaymentCompletionPayload({
 		assignedAmbulance:
 			serviceType === "ambulance" && hasResponderAssignment
 				? {
-						id: ambulanceId || "ems_001",
+						id: ambulanceId || null,
 						type:
 							responderVehicleType ||
 							(typeof initiatedRequest?.ambulanceType === "object"

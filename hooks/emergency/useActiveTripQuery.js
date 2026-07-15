@@ -236,7 +236,11 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 			? {
 					...fullAmbulance,
 					...(previousAmbulanceTrip?.assignedAmbulance || {}),
-					id: activeAmbulance.ambulanceId || fullAmbulance?.id || "ems_001",
+					id:
+						activeAmbulance.ambulanceId ||
+						previousAmbulanceTrip?.assignedAmbulance?.id ||
+						fullAmbulance?.id ||
+						null,
 					type: activeAmbulance.responderVehicleType || fullAmbulance?.type || "Ambulance",
 					plate: activeAmbulance.responderVehiclePlate || fullAmbulancePlate,
 					vehicleNumber:
@@ -326,7 +330,7 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
  *
  * @param {Function} parseEtaToSeconds - ETA string → seconds parser from useEmergencyActions
  */
-export function useActiveTripQuery({ parseEtaToSeconds }) {
+export function useActiveTripQuery({ parseEtaToSeconds, userId }) {
 	const hydrated = useStoreHydrated();
 	const setActiveAmbulanceTrip = useEmergencyTripStore((s) => s.setActiveAmbulanceTrip);
 	const setActiveBedBooking = useEmergencyTripStore((s) => s.setActiveBedBooking);
@@ -341,15 +345,22 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 	//      query always observes the post-hydration value. Same fix applied to bedBooking.
 
 	const query = useQuery({
-		queryKey: ACTIVE_TRIP_QUERY_KEY,
+		queryKey: [...ACTIVE_TRIP_QUERY_KEY, userId],
 		queryFn: async () => {
 			// Session guard — wait for auth before querying
 			let attempt = 0;
+			let sessionUser = null;
 			while (attempt < 10) {
-				const { data: { user: sessionUser } } = await supabase.auth.getUser();
-				if (sessionUser) break;
+				const { data: { user } } = await supabase.auth.getUser();
+				sessionUser = user ?? null;
+				if (sessionUser?.id === userId) break;
 				attempt += 1;
 				await new Promise((resolve) => setTimeout(resolve, 400));
+			}
+			if (!sessionUser || sessionUser.id !== userId) {
+				const error = new Error("Emergency session is not ready.");
+				error.code = "AUTH_SESSION_UNAVAILABLE";
+				throw error;
 			}
 
 			const activeRequests = await emergencyRequestsService.list();
@@ -483,7 +494,7 @@ export function useActiveTripQuery({ parseEtaToSeconds }) {
 		refetchInterval: REFETCH_INTERVAL,
 		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
-		enabled: hydrated,
+		enabled: hydrated && Boolean(userId),
 	});
 
 	// Auto-sync query result → Zustand store

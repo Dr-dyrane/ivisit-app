@@ -10,6 +10,26 @@ import { isValidUUID } from "./displayIdService";
 import { normalizeScheduledVisitProjection } from "../utils/scheduledVisitProjection";
 
 const TABLE = "visits";
+const VISIT_READ_SELECT = `
+  *,
+  emergency_request:emergency_requests!visits_request_id_fkey (
+    id,
+    display_id,
+    hospital_id,
+    hospital_name,
+    status,
+    service_type,
+    total_cost,
+    payment_status,
+    responder_id,
+    responder_name,
+    responder_vehicle_type,
+    responder_vehicle_plate,
+    patient_location,
+    ambulance_type,
+    bed_number
+  )
+`;
 const DEFAULT_HOSPITAL_IMAGES = [
   "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?auto=format&fit=crop&w=1200&q=80",
@@ -85,7 +105,10 @@ const resolveVisitRowForKey = async (key, userId) => {
   const lookup = String(key || "").trim();
   if (!lookup || !userId) return null;
 
-  let visitQuery = supabase.from(TABLE).select("*").eq("user_id", userId);
+  let visitQuery = supabase
+    .from(TABLE)
+    .select(VISIT_READ_SELECT)
+    .eq("user_id", userId);
 
   if (isValidUUID(lookup)) {
     visitQuery = visitQuery.eq("id", lookup);
@@ -109,7 +132,7 @@ const resolveVisitRowForKey = async (key, userId) => {
 
   const { data: requestVisit, error: requestError } = await supabase
     .from(TABLE)
-    .select("*")
+    .select(VISIT_READ_SELECT)
     .eq("user_id", userId)
     .eq("request_id", requestId)
     .maybeSingle();
@@ -303,6 +326,20 @@ const mapFromDb = (row) => ({
   roomNumber: row.room_number,
   estimatedDuration: row.estimated_duration,
   requestId: row.request_id,
+  requestDisplayId:
+    row.request_display_id ?? row.emergency_request?.display_id ?? null,
+  responderId:
+    row.responder_id ?? row.emergency_request?.responder_id ?? null,
+  responderName:
+    row.responder_name ?? row.emergency_request?.responder_name ?? null,
+  responderVehicleType:
+    row.responder_vehicle_type ??
+    row.emergency_request?.responder_vehicle_type ??
+    null,
+  responderVehiclePlate:
+    row.responder_vehicle_plate ??
+    row.emergency_request?.responder_vehicle_plate ??
+    null,
   doctorImage: row.doctor_image,
   insuranceCovered: row.insurance_covered,
   nextVisit: row.next_visit,
@@ -330,13 +367,56 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
   if (!Array.isArray(rows) || rows.length === 0)
     return Array.isArray(rows) ? rows : [];
 
+  const mergeEmergencyRequestProjection = (row, requestRow) => {
+    if (!requestRow || typeof requestRow !== "object") return row;
+    return {
+      ...row,
+      request_display_id:
+        row?.request_display_id ?? requestRow?.display_id ?? null,
+      hospital_id: row?.hospital_id ?? requestRow?.hospital_id ?? null,
+      hospital_name:
+        row?.hospital_name && String(row.hospital_name).trim().length > 0
+          ? row.hospital_name
+          : (requestRow?.hospital_name ?? null),
+      status: row?.status ?? requestRow?.status ?? null,
+      service_type: row?.service_type ?? requestRow?.service_type ?? null,
+      total_cost: row?.total_cost ?? requestRow?.total_cost ?? null,
+      payment_status:
+        row?.payment_status ?? requestRow?.payment_status ?? null,
+      payment_method_id: row?.payment_method_id ?? null,
+      estimated_arrival: row?.estimated_arrival ?? null,
+      responder_id: row?.responder_id ?? requestRow?.responder_id ?? null,
+      responder_name:
+        row?.responder_name ?? requestRow?.responder_name ?? null,
+      responder_vehicle_type:
+        row?.responder_vehicle_type ??
+        requestRow?.responder_vehicle_type ??
+        null,
+      responder_vehicle_plate:
+        row?.responder_vehicle_plate ??
+        requestRow?.responder_vehicle_plate ??
+        null,
+      patient_location:
+        row?.patient_location ?? requestRow?.patient_location ?? null,
+      ambulance_type:
+        row?.ambulance_type ?? requestRow?.ambulance_type ?? null,
+      bed_number: row?.bed_number ?? requestRow?.bed_number ?? null,
+    };
+  };
+
+  const rowsWithEmbeddedRequests = rows.map((row) => {
+    const embedded = Array.isArray(row?.emergency_request)
+      ? row.emergency_request[0]
+      : row?.emergency_request;
+    return mergeEmergencyRequestProjection(row, embedded);
+  });
+
   const requestKeysNeedingFallback = Array.from(
     new Set(
-      rows
+      rowsWithEmbeddedRequests
         .filter(
           (row) =>
-            (!row?.hospital_name ||
-              String(row.hospital_name).trim().length === 0) &&
+            !row?.emergency_request &&
             typeof row?.request_id === "string" &&
             row.request_id.trim().length > 0,
         )
@@ -344,7 +424,7 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
     ),
   );
 
-  let rowsWithRequestFallback = rows;
+  let rowsWithRequestFallback = rowsWithEmbeddedRequests;
   if (requestKeysNeedingFallback.length > 0) {
     const requestUuidKeys = requestKeysNeedingFallback.filter((key) =>
       isValidUUID(String(key)),
@@ -358,7 +438,7 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
       const { data: uuidRequests, error: uuidLookupError } = await supabase
         .from("emergency_requests")
         .select(
-          "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number",
+          "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_id,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number",
         )
         .in("id", requestUuidKeys);
       if (uuidLookupError) {
@@ -376,7 +456,7 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
         await supabase
           .from("emergency_requests")
           .select(
-            "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number",
+            "id,display_id,hospital_id,hospital_name,status,service_type,total_cost,payment_status,responder_id,responder_name,responder_vehicle_type,responder_vehicle_plate,patient_location,ambulance_type,bed_number",
           )
           .in("display_id", requestDisplayKeys);
       if (displayLookupError) {
@@ -397,39 +477,9 @@ const hydrateVisitRowsWithHospitals = async (rows) => {
         requestByAnyKey.set(String(requestRow.display_id), requestRow);
     }
 
-    rowsWithRequestFallback = rows.map((row) => {
+    rowsWithRequestFallback = rowsWithEmbeddedRequests.map((row) => {
       const requestRow = requestByAnyKey.get(String(row?.request_id ?? ""));
-      if (!requestRow) return row;
-      return {
-        ...row,
-        hospital_id: row?.hospital_id ?? requestRow?.hospital_id ?? null,
-        hospital_name:
-          row?.hospital_name && String(row.hospital_name).trim().length > 0
-            ? row.hospital_name
-            : (requestRow?.hospital_name ?? null),
-        status: row?.status ?? requestRow?.status ?? null,
-        service_type: row?.service_type ?? requestRow?.service_type ?? null,
-        total_cost: row?.total_cost ?? requestRow?.total_cost ?? null,
-        payment_status:
-          row?.payment_status ?? requestRow?.payment_status ?? null,
-        payment_method_id: row?.payment_method_id ?? null,
-        estimated_arrival: row?.estimated_arrival ?? null,
-        responder_name:
-          row?.responder_name ?? requestRow?.responder_name ?? null,
-        responder_vehicle_type:
-          row?.responder_vehicle_type ??
-          requestRow?.responder_vehicle_type ??
-          null,
-        responder_vehicle_plate:
-          row?.responder_vehicle_plate ??
-          requestRow?.responder_vehicle_plate ??
-          null,
-        patient_location:
-          row?.patient_location ?? requestRow?.patient_location ?? null,
-        ambulance_type:
-          row?.ambulance_type ?? requestRow?.ambulance_type ?? null,
-        bed_number: row?.bed_number ?? requestRow?.bed_number ?? null,
-      };
+      return mergeEmergencyRequestProjection(row, requestRow);
     });
   }
 
@@ -487,7 +537,7 @@ export const visitsService = {
 
     const { data, error } = await supabase
       .from(TABLE)
-      .select("*")
+      .select(VISIT_READ_SELECT)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -972,73 +1022,25 @@ export const visitsService = {
     });
   },
 
-  // DOUBLE-RATING FIX (BUG-009/BUG-010) — Layer 2: server-side idempotency.
-  //
-  // Unlike update(), this method applies a .is('rated_at', null) condition so
-  // the PATCH is a no-op if the visit was already rated in a previous session.
-  // That makes duplicate submissions (from retry after network failure) safe:
-  // the second call returns { ok: true, alreadyRated: true } and the caller
-  // can proceed to delete the recovery claim without writing garbage data.
-  async updateRating(
-    id,
-    { rating, ratingComment, ratedAt, lifecycleState, lifecycleUpdatedAt },
-  ) {
+  // Rating is a lifecycle command, not ordinary patient visit CRUD. The RPC
+  // owns completion validation, one-write idempotency, and the rated state.
+  async updateRating(id, { rating, ratingComment }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) throw new Error("User not logged in");
     const lookupId = String(id);
     const resolvedVisitRow = await resolveVisitRowForKey(lookupId, user.id);
-    const targetId = resolvedVisitRow?.id ?? lookupId;
+    const targetId = resolvedVisitRow?.id ?? null;
+    if (!targetId || !isValidUUID(targetId)) {
+      throw new Error("Visit not found or unavailable for rating");
+    }
 
-    let dbUpdates = mapToDb({
-      rating,
-      ratingComment,
-      ratedAt,
-      lifecycleState,
-      lifecycleUpdatedAt,
+    const { data, error } = await supabase.rpc("rate_visit", {
+      p_visit_id: targetId,
+      p_rating: Number(rating),
+      p_comment: ratingComment || null,
     });
-    dbUpdates.updated_at = new Date().toISOString();
-    if (supportsExtendedEmergencyColumns === false) {
-      dbUpdates = stripExtendedEmergencyColumns(dbUpdates);
-    }
-
-    let updateQuery = supabase.from(TABLE).update(dbUpdates);
-    updateQuery = eqById(updateQuery, targetId);
-    const { data, error } = await updateQuery
-      .eq("user_id", user.id)
-      .is("rated_at", null)
-      .select();
-
-    if (
-      error &&
-      supportsExtendedEmergencyColumns !== false &&
-      shouldDisableExtendedColumns(error)
-    ) {
-      supportsExtendedEmergencyColumns = false;
-      const retryUpdates = stripExtendedEmergencyColumns(dbUpdates);
-      let retryQuery = supabase.from(TABLE).update(retryUpdates);
-      retryQuery = eqById(retryQuery, targetId);
-      const { data: retryData, error: retryError } = await retryQuery
-        .eq("user_id", user.id)
-        .is("rated_at", null)
-        .select();
-      if (retryError) {
-        console.error(
-          `[visitsService] updateRating retry error for ${lookupId}:`,
-          retryError,
-        );
-        throw retryError;
-      }
-      if (!retryData || retryData.length === 0) {
-        return { alreadyRated: true, visit: null };
-      }
-      return {
-        alreadyRated: false,
-        visit: normalizeVisit(mapFromDb(retryData[0])),
-      };
-    }
-
     if (error) {
       console.error(
         `[visitsService] updateRating error for ${lookupId}:`,
@@ -1046,12 +1048,47 @@ export const visitsService = {
       );
       throw error;
     }
-
-    if (!data || data.length === 0) {
-      return { alreadyRated: true, visit: null };
+    if (!data?.success) {
+      throw new Error(data?.error || "Visit rating could not be saved");
     }
 
-    return { alreadyRated: false, visit: normalizeVisit(mapFromDb(data[0])) };
+    return {
+      alreadyRated: data?.already_rated === true,
+      visit: data?.visit ? normalizeVisit(mapFromDb(data.visit)) : null,
+    };
+  },
+
+  async skipRating(id) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not logged in");
+    const lookupId = String(id);
+    const resolvedVisitRow = await resolveVisitRowForKey(lookupId, user.id);
+    const targetId = resolvedVisitRow?.id ?? null;
+    if (!targetId || !isValidUUID(targetId)) {
+      throw new Error("Visit not found or unavailable for rating");
+    }
+
+    const { data, error } = await supabase.rpc("skip_visit_rating", {
+      p_visit_id: targetId,
+    });
+    if (error) {
+      console.error(
+        `[visitsService] skipRating error for ${lookupId}:`,
+        error,
+      );
+      throw error;
+    }
+    if (!data?.success) {
+      throw new Error(data?.error || "Visit rating could not be closed");
+    }
+
+    return {
+      alreadyRated: data?.already_rated === true,
+      alreadySkipped: data?.already_skipped === true,
+      visit: data?.visit ? normalizeVisit(mapFromDb(data.visit)) : null,
+    };
   },
 
   async delete(id) {

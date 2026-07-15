@@ -67,6 +67,8 @@ export default function MapSheetOrchestrator({
 	onCloseHospitalDetail = () => {},
 	onCloseVisitDetail = () => {},
 	visitDetailRouteState = null,
+	visitDetailHistoryItem = null,
+	isHistoryVisitTransitioning = false,
 	onResumeHistoryVisit = () => {},
 	onRateHistoryVisit = () => {},
 	onCallHistoryClinic = () => {},
@@ -138,6 +140,8 @@ export default function MapSheetOrchestrator({
 		() => getMapSheetHeight(screenHeight, snapState),
 		[screenHeight, snapState],
 	);
+	const resolvedVisitDetailHistoryItem =
+		visitDetailHistoryItem || sheetPayload?.historyItem || null;
 
 	switch (phase) {
 		case MAP_SHEET_PHASES.AMBULANCE_DECISION: {
@@ -448,13 +452,14 @@ export default function MapSheetOrchestrator({
 		case MAP_SHEET_PHASES.VISIT_DETAIL:
 			return (
 				<MapPhaseTransitionView
-					phaseKey={`${phase}-${sheetPayload?.historyItem?.requestId || sheetPayload?.historyItem?.id || "unknown"}`}
+					phaseKey={`${phase}-${resolvedVisitDetailHistoryItem?.requestId || resolvedVisitDetailHistoryItem?.id || "unknown"}`}
 				>
 					<MapVisitDetailOrchestrator
 						sheetHeight={sheetHeight}
 						snapState={snapState}
-						historyItem={sheetPayload?.historyItem || null}
+						historyItem={resolvedVisitDetailHistoryItem}
 						routeState={visitDetailRouteState}
+						isTransitioning={isHistoryVisitTransitioning}
 						activeMapRequest={activeMapRequest}
 						onClose={onCloseVisitDetail}
 						onResume={onResumeHistoryVisit}

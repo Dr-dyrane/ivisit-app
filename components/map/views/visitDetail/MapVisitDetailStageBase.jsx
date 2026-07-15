@@ -40,6 +40,7 @@ export default function MapVisitDetailStageBase({
 	snapState,
 	historyItem,
 	routeState = null,
+	isTransitioning = false,
 	activeMapRequest,
 	onClose,
 	onResume,
@@ -272,6 +273,7 @@ export default function MapVisitDetailStageBase({
 					<MapVisitDetailBodyContent
 						model={model}
 						onCancelVisit={onCancelVisit}
+						isTransitioning={isTransitioning}
 						isExpanded={isExpanded}
 						onExpandedHeaderLayout={handleExpandedHeaderLayout}
 						onSnapStateChange={onSnapStateChange}

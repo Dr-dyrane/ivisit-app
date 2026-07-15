@@ -10,6 +10,11 @@ import { buildBedDecisionSourcePayload } from "../../../components/map/core/mapS
 import { MAP_SHEET_PHASES, MAP_SHEET_SNAP_STATES } from "../../../components/map/core/mapSheet.constants";
 import { emergencyRequestsService } from "../../../services/emergencyRequestsService";
 
+function normalizeRouteDistanceKm(value) {
+  const distanceKm = Number(value);
+  return Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : null;
+}
+
 /**
  * useMapDecisionHandlers
  *
@@ -104,6 +109,9 @@ export function useMapDecisionHandlers({
                   transport.service_type || transport.serviceType || null,
                 tierKey:
                   transport.tierKey || transport.visualProfile?.key || null,
+                routeDistanceKm: normalizeRouteDistanceKm(
+                  transport.routeDistanceKm,
+                ),
               }
             : null,
         });

@@ -5,17 +5,10 @@
  */
 
 import { supabase } from './supabase';
-import { paymentService } from './paymentService';
 
 const toFiniteNumber = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-};
-
-const looksLikeFeeItem = (item) => {
-  const type = String(item?.type || '').toLowerCase();
-  const name = String(item?.name || '').toLowerCase();
-  return type === 'fee' || name.includes('fee');
 };
 
 const buildEmergencyBreakdown = (cost, serviceType) => {
@@ -68,9 +61,7 @@ const buildEmergencyBreakdown = (cost, serviceType) => {
 export async function augmentEmergencyCostForCheckout(
   rawCost,
   {
-    hospitalId = null,
     serviceType = 'ambulance',
-    orgFee = null,
   } = {}
 ) {
   if (!rawCost || typeof rawCost !== 'object') {
@@ -78,81 +69,39 @@ export async function augmentEmergencyCostForCheckout(
   }
 
   const breakdown = buildEmergencyBreakdown(rawCost, serviceType);
-  const existingFeeFromBreakdown = breakdown.reduce((sum, item) => {
-    if (!looksLikeFeeItem(item)) return sum;
-    return sum + Number(item.cost || 0);
-  }, 0);
-
-  const existingFee =
+  // `total_cost` is the server's canonical patient amount. The organization
+  // fee is settled on the backend; this presentation adapter must never add
+  // one locally and advertise a different amount before payment is created.
+  const serverFee =
     toFiniteNumber(
       rawCost.service_fee ??
       rawCost.feeAmount ??
       rawCost.fee_amount ??
       rawCost.ivisit_fee_amount
-    ) ??
-    (existingFeeFromBreakdown > 0 ? Number(existingFeeFromBreakdown.toFixed(2)) : null);
+    );
 
-  const rawTotal =
+  const canonicalTotal =
     toFiniteNumber(rawCost.totalCost ?? rawCost.total_cost ?? rawCost.total_amount);
   const baseCost = toFiniteNumber(rawCost.base_cost ?? rawCost.baseCost);
-  const subtotal =
-    (() => {
-      if (rawTotal != null && existingFee != null) {
-        return Number(Math.max(0, rawTotal - existingFee).toFixed(2));
-      }
-      if (rawTotal != null) return rawTotal;
-      const nonFeeBreakdownSum = breakdown.reduce((sum, item) => {
-        if (looksLikeFeeItem(item)) return sum;
-        return sum + Number(item.cost || 0);
-      }, 0);
-      if (nonFeeBreakdownSum > 0) return Number(nonFeeBreakdownSum.toFixed(2));
-      if (baseCost != null) return baseCost;
-      return null;
-    })();
-
-  const resolvedOrgFee =
-    orgFee || (hospitalId ? await paymentService.getOrganizationFee(hospitalId) : null);
-  const feeRate = toFiniteNumber(resolvedOrgFee?.feePercentage);
-
-  let feeAmount = existingFee;
-  if (feeAmount == null && feeRate != null && feeRate > 0) {
-    const feeBase = baseCost != null && baseCost > 0 ? baseCost : subtotal;
-    if (feeBase != null) {
-      feeAmount = Number((feeBase * (feeRate / 100)).toFixed(2));
-    }
-  }
-
-  const hasFeeRow = breakdown.some((item) => looksLikeFeeItem(item));
-  if (!hasFeeRow && feeAmount != null && feeAmount > 0) {
-    breakdown.push({
-      name: feeRate != null ? `Service Fee (${feeRate}%)` : 'Service Fee',
-      cost: feeAmount,
-      type: 'fee',
-    });
-  }
-
-  const grossTotal =
-    (() => {
-      if (rawTotal != null && existingFee != null) {
-        return rawTotal;
-      }
-      if (subtotal != null) {
-        return Number((subtotal + (feeAmount || 0)).toFixed(2));
-      }
-      return rawTotal;
-    })();
+  const breakdownTotal = breakdown.reduce(
+    (sum, item) => sum + Number(item?.cost || 0),
+    0,
+  );
+  const total =
+    canonicalTotal ??
+    (breakdownTotal > 0 ? Number(breakdownTotal.toFixed(2)) : null) ??
+    baseCost;
 
   return {
     ...rawCost,
     breakdown,
-    orgFee: resolvedOrgFee,
-    subtotal,
-    feeAmount,
-    fee_amount: feeAmount,
-    service_fee: feeAmount,
-    grossTotal,
-    totalCost: grossTotal ?? rawCost.totalCost ?? rawCost.total_cost ?? null,
-    total_cost: grossTotal ?? rawCost.total_cost ?? rawCost.totalCost ?? null,
+    subtotal: total,
+    feeAmount: serverFee,
+    fee_amount: serverFee,
+    service_fee: serverFee,
+    grossTotal: total,
+    totalCost: total ?? rawCost.totalCost ?? rawCost.total_cost ?? null,
+    total_cost: total ?? rawCost.total_cost ?? rawCost.totalCost ?? null,
   };
 }
 

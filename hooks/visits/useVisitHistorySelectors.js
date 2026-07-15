@@ -225,7 +225,8 @@ const inferHistoryStatus = (visit, sourceKind) =>
 			: mapLegacyStatus(visit);
 
 const canHistoryItemBookAgain = ({ sourceKind, status }) =>
-	sourceKind === "scheduled_visit" ||
+	(sourceKind === "scheduled_visit" &&
+		(status === "completed" || status === "cancelled")) ||
 	(sourceKind === "emergency" &&
 		(status === "completed" ||
 			status === "rating_pending" ||
@@ -263,6 +264,14 @@ const getStatusLabel = (status) => {
 		default:
 			return "Visit";
 	}
+};
+
+const getScheduledStatusLabel = ({ lifecycleState, status }) => {
+	if (lifecycleState === "no_show") return "Missed";
+	if (lifecycleState === "rescheduled") return "Rescheduled";
+	if (status === "confirmed" || status === "pending") return "Scheduled";
+	if (status === "active") return "In progress";
+	return getStatusLabel(status);
 };
 
 const getStatusTone = (status) => {
@@ -453,10 +462,16 @@ export const toHistoryItem = (visit, now = new Date()) => {
 	const requestType = inferRequestType(visit);
 	const sourceKind = inferSourceKind(visit);
 	const status = inferHistoryStatus(visit, sourceKind);
+	const lifecycleState = toLower(
+		visit?.lifecycleState || visit?.lifecycle_state,
+	);
 	const requestTypeLabel = getRequestTypeLabel(requestType);
 	const visitTypeLabel = resolveVisitTypeLabel(visit, requestType, requestTypeLabel);
 	const specialtyLabel = toText(visit?.specialty);
-	const statusLabel = getStatusLabel(status);
+	const statusLabel =
+		sourceKind === "scheduled_visit"
+			? getScheduledStatusLabel({ lifecycleState, status })
+			: getStatusLabel(status);
 	const statusTone = getStatusTone(status);
 	const sortDate = resolveSortDate(visit, status);
 	const patientScheduleChangesOpen =
@@ -558,11 +573,16 @@ export const toHistoryItem = (visit, now = new Date()) => {
 			toText(visit?.scheduledEndAt || visit?.scheduled_end_at) || null,
 		scheduledTimezone:
 			toText(visit?.scheduledTimezone || visit?.scheduled_timezone) || null,
+		lifecycleState: lifecycleState || null,
+		lifecycleUpdatedAt:
+			toText(visit?.lifecycleUpdatedAt || visit?.lifecycle_updated_at) || null,
 		startedAt: toText(visit?.startedAt) || null,
 		completedAt: toText(visit?.completedAt || visit?.ratedAt || visit?.tippedAt) || null,
 		terminalAt: toText(visit?.ratedAt || visit?.tippedAt || visit?.updatedAt) || null,
 		paymentSummary,
-		canResume: status === "active" || status === "pending",
+		canResume:
+			sourceKind === "emergency" &&
+			(status === "active" || status === "pending"),
 		canViewDetails: status !== "active" || requestType !== "ambulance",
 		canRate: status === "rating_pending",
 		canCancel: patientScheduleChangesOpen,

@@ -12,7 +12,6 @@ import { useAuth } from "../../contexts/AuthContext";
 // OLD: useHospitals violated REFACTORING_GUARDRAILS §1: server data triggered by location → useEffect
 // NEW: useEmergencyHospitalsQuery in useHospitalsQuery.ts — queryKey drives refetch, staleTime/gcTime replace globalHospitalCache
 import { useEmergencyHospitalsQuery } from "./useHospitalsQuery";
-import { useAmbulances } from "./useAmbulances";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
 import { SPECIALTIES } from "../../constants/hospitals";
 // PULLBACK NOTE: Moved import source to break circular dep with EmergencyContext
@@ -51,8 +50,6 @@ export function useEmergencyHospitalSync({
 		demoModeEnabled: forceDemoFetch,
 		userId: user?.id,
 	});
-
-	const { ambulances: activeAmbulances } = useAmbulances();
 
 	// Pure derivation: distance/ETA localization is computation over query data, not a side effect.
 	// useEffect + setState here was a Category-1 violation (guardrails #1).
@@ -245,7 +242,6 @@ export function useEmergencyHospitalSync({
 		specialties,
 		selectedHospital,
 		isLoadingHospitals,
-		activeAmbulances,
 		refetchHospitals,
 		updateHospitals,
 		refreshHospitals,

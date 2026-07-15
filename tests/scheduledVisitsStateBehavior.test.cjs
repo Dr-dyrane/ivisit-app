@@ -91,6 +91,25 @@ assert.doesNotMatch(routeHandlers, /Visit details are not available right now/);
 const historyFlow = read("hooks/map/history/useMapHistoryFlow.js");
 assert.match(historyFlow, /const historyItem = hydratedVisit\s*\? toHistoryItem\(hydratedVisit\)/s);
 
+const sheetNavigation = read("hooks/map/exploreFlow/useMapSheetNavigation.js");
+const inPlaceVisitDetailRefresh = sheetNavigation.indexOf(
+  "if (sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL)",
+);
+const visitDetailTransition = sheetNavigation.indexOf(
+  "transitionTo(\n        buildVisitDetailSheetView",
+  inPlaceVisitDetailRefresh,
+);
+assert.ok(inPlaceVisitDetailRefresh >= 0, "open visit detail must detect an in-place refresh");
+assert.ok(
+  visitDetailTransition > inPlaceVisitDetailRefresh,
+  "an already-open visit detail must refresh before considering navigation",
+);
+assert.match(
+  sheetNavigation,
+  /setSheetPayload\(\{[\s\S]*sourcePhase: sourcePhase \?\? sheetPayload\?\.sourcePhase \?\? null,[\s\S]*sourceSurface: sourceSurface \?\? sheetPayload\?\.sourceSurface \?\? null,/,
+  "refreshing visit truth must preserve the original return contract",
+);
+
 const detailState = read("components/map/views/visitDetail/MapVisitDetailRouteState.jsx");
 assert.match(detailState, />Try again</);
 assert.match(detailState, /accessibilityLabel="Close visit details"/);

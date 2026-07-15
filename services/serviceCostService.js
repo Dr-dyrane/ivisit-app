@@ -30,7 +30,7 @@ export const serviceCostService = {
    */
   async calculateEmergencyCost(serviceType, options = {}) {
     try {
-      const { distance = 0, hospitalId = null } = options;
+      const { distance = 0, hospitalId = null, requireServerQuote = false } = options;
       const ambulanceType =
         typeof options.ambulanceType === 'string' ? options.ambulanceType :
           (typeof options.ambulanceId === 'string' && !/^[0-9a-f]{8}-/i.test(options.ambulanceId) ? options.ambulanceId : null);
@@ -48,6 +48,9 @@ export const serviceCostService = {
       return Array.isArray(data) ? data[0] : data;
     } catch (error) {
       console.error('Error calculating emergency cost:', error);
+      if (options?.requireServerQuote === true) {
+        throw error;
+      }
       return this.getMockCost(serviceType, options);
     }
   },

@@ -28,9 +28,11 @@ import {
 } from "../../utils/emergencyContextHelpers";
 
 export function useEmergencyRealtime({
+	userId,
 	activeAmbulanceTrip,
 	activeBedBooking,
 	activeAmbulanceTripRef,
+	activeBedBookingRef,
 	userLocationRef,
 	setActiveAmbulanceTrip,
 	setActiveBedBooking,
@@ -112,19 +114,18 @@ export function useEmergencyRealtime({
 	// ─── Main emergency_requests subscription ─────────────────────────────────
 
 	useEffect(() => {
+		if (!userId) return undefined;
 		let subscription;
 
-		const setupSubscription = async () => {
-			const { data: { user } } = await supabase.auth.getUser();
-			if (!user) return;
-
+		try {
 			subscription = supabase
 				.channel("emergency_updates")
 				.on(
 					"postgres_changes",
-					{ event: "UPDATE", schema: "public", table: "emergency_requests", filter: `user_id=eq.${user.id}` },
+					{ event: "*", schema: "public", table: "emergency_requests", filter: `user_id=eq.${userId}` },
 					(payload) => {
 						const newRecord = payload.new;
+						if (!newRecord?.id) return;
 
 						setActiveBedBooking((prev) => {
 							if (!prev || !matchesTripRecord(prev, newRecord)) return prev;
@@ -153,14 +154,44 @@ export function useEmergencyRealtime({
 							if (!mergedTrip) resetAmbulanceEventVersion();
 							return mergedTrip;
 						});
+
+						const hasKnownTrip = [
+							activeAmbulanceTripRef.current,
+							activeBedBookingRef.current,
+						].some((trip) => trip && matchesTripRecord(trip, newRecord));
+						const status = String(newRecord?.status ?? "").toLowerCase();
+						if (
+							!hasKnownTrip &&
+							["pending_approval", "in_progress", "accepted", "arrived"].includes(status)
+						) {
+							void syncActiveTripsFromServer(
+								`event:emergency_requests:${payload.eventType || "change"}`,
+							);
+						}
 					}
 				)
 				.subscribe((status) => handleRealtimeStatus("emergency_updates", status));
-		};
+		} catch (error) {
+			console.warn("[useEmergencyRealtime] Failed to setup main emergency subscription:", error);
+		}
 
-		setupSubscription();
-		return () => { if (subscription) supabase.removeChannel(subscription); };
-	}, [handleRealtimeStatus, setActiveBedBooking, setActiveAmbulanceTrip, shouldApplyAmbulanceEvent, resetAmbulanceEventVersion]);
+		return () => {
+			if (!subscription) return;
+			void supabase.removeChannel(subscription).catch((error) => {
+				console.warn("[useEmergencyRealtime] Failed to remove main emergency subscription:", error);
+			});
+		};
+	}, [
+		activeAmbulanceTripRef,
+		activeBedBookingRef,
+		handleRealtimeStatus,
+		resetAmbulanceEventVersion,
+		setActiveAmbulanceTrip,
+		setActiveBedBooking,
+		shouldApplyAmbulanceEvent,
+		syncActiveTripsFromServer,
+		userId,
+	]);
 
 	// ─── Per-trip ambulance subscriptions ────────────────────────────────────
 

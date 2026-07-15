@@ -12,6 +12,7 @@ import { supabase } from "../services/supabase";
 import { database, StorageKeys } from "../database";
 import { resolveThemeModeIsDark } from "../constants/appSurfaces";
 import AuthProgressScreen from "../components/auth/AuthProgressScreen";
+import { useEmergencyTripStore } from "../stores/emergencyTripStore";
 
 // Create AuthContext
 export const AuthContext = createContext(null);
@@ -26,8 +27,15 @@ export const AuthProvider = ({ children }) => {
 	const clearLocalAuthState = useCallback(async () => {
 		setUser(null);
 		setToken(null);
-		await database.delete(StorageKeys.CURRENT_USER);
-		await database.delete(StorageKeys.AUTH_TOKEN);
+		useEmergencyTripStore.getState().resetTripState();
+		await Promise.all([
+			database.delete(StorageKeys.CURRENT_USER),
+			database.delete(StorageKeys.AUTH_TOKEN),
+			database.delete(StorageKeys.EMERGENCY_REQUESTS),
+			database.delete(StorageKeys.EMERGENCY_STATE),
+			database.delete(StorageKeys.TRACKING_VISUALIZATION),
+			database.delete(StorageKeys.TRACKING_RATING_RECOVERY),
+		]);
 	}, []);
 
 	useEffect(() => {
@@ -178,31 +186,30 @@ export const AuthProvider = ({ children }) => {
 
 	// **3. Logout function**: Clear user data and token
 	const logout = useCallback(async () => {
+		let remoteLogoutSucceeded = false;
 		try {
-			setUser(null);
-			setToken(null);
-			// Use API logout and database layer
 			await authService.logout();
-			await database.delete(StorageKeys.CURRENT_USER);
+			remoteLogoutSucceeded = true;
 
 			// Clear any pending registration data to prevent "Complete profile" toasts for next user
 			await authService.clearPendingRegistration();
-
-			return { success: true, message: "Successfully logged out" };
 		} catch (error) {
 			console.error("Error clearing user data:", error);
-			return { success: false, message: "Logout failed" };
+		} finally {
+			await clearLocalAuthState();
 		}
-	}, []);
+
+		return remoteLogoutSucceeded
+			? { success: true, message: "Successfully logged out" }
+			: { success: false, message: "Logged out locally; remote sign-out failed" };
+	}, [clearLocalAuthState]);
 
 	// **4. Delete Account function**
 	const deleteAccount = useCallback(async () => {
 		try {
 			await authService.deleteUser();
 			// Perform local cleanup same as logout
-			setUser(null);
-			setToken(null);
-			await database.delete(StorageKeys.CURRENT_USER);
+			await clearLocalAuthState();
 			await authService.clearPendingRegistration();
 			return { success: true, message: "Account deleted successfully" };
 		} catch (error) {
@@ -211,7 +218,7 @@ export const AuthProvider = ({ children }) => {
 			await logout();
 			return { success: false, message: "Account deletion failed, logged out locally" };
 		}
-	}, [logout]);
+	}, [clearLocalAuthState, logout]);
 
 	const authContextValue = useMemo(
 		() => ({

@@ -50,6 +50,7 @@ export function useMapSheetNavigation({
   selectHospital,
   setFeaturedHospital,
   setSearchSheetMode,
+  setSheetPayload,
   setSheetView,
 }) {
   // PULLBACK NOTE: Pass 3 valid-transitions reducer — wraps setSheetView with __DEV__ warn-only guard
@@ -253,11 +254,21 @@ export function useMapSheetNavigation({
   // NEW: sourceSurface added (surface level: "explore", "recents", "tracking", "notification", "unknown")
   const openVisitDetail = useCallback(
     (historyItem, sourcePhase = null, sourceSurface = null) => {
+      if (sheetPhase === MAP_SHEET_PHASES.VISIT_DETAIL) {
+        setSheetPayload({
+          ...(sheetPayload || {}),
+          historyItem: historyItem || sheetPayload?.historyItem || null,
+          sourcePhase: sourcePhase ?? sheetPayload?.sourcePhase ?? null,
+          sourceSurface: sourceSurface ?? sheetPayload?.sourceSurface ?? null,
+        });
+        return;
+      }
+
       transitionTo(
         buildVisitDetailSheetView({ usesSidebarLayout, historyItem: historyItem || null, sourcePhase, sourceSurface }),
       );
     },
-    [transitionTo, usesSidebarLayout],
+    [setSheetPayload, sheetPayload, sheetPhase, transitionTo, usesSidebarLayout],
   );
 
   // VD-B (EC-VD-2): PULLBACK NOTE: Pass 3 — goBack() handles sourcePhase return

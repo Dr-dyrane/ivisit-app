@@ -10,7 +10,6 @@ import {
   emergencyChatModalVisibleAtom,
   activeEmergencyChatRequestIdAtom,
 } from "../../../../atoms/emergencyChatAtoms";
-import { EMERGENCY_VISIT_LIFECYCLE } from "../../../../constants/visits";
 import { EmergencyRequestStatus } from "../../../../services/emergencyRequestsService";
 import { buildTrackingSharePayload } from "./mapTracking.share";
 import {
@@ -35,7 +34,6 @@ export function useMapTrackingController({
   activeMapRequest,
   setPendingApproval,
   setRequestStatus,
-  updateVisit,
   onCancelAmbulanceTrip,
   onCancelBedBooking,
   onMarkAmbulanceArrived,
@@ -178,6 +176,19 @@ export function useMapTrackingController({
     }
   }, []);
 
+  const handleConfirmAmbulanceArrival = useCallback(async () => {
+    const result = await onMarkAmbulanceArrived?.();
+    if (result?.ok !== true) {
+      showToast(
+        result?.error?.message || "Could not confirm arrival right now.",
+        "error",
+      );
+      return result;
+    }
+    showToast("Arrival confirmed.", "success");
+    return result;
+  }, [onMarkAmbulanceArrived, showToast]);
+
   const handleCancelPendingRequest = useCallback(async () => {
     if (!pendingApproval?.requestId) return;
     await setRequestStatus(
@@ -194,19 +205,8 @@ export function useMapTrackingController({
   const prepareTrackingRating = useCallback(
     async ({ visitId, claim }) => {
       await writeTrackingRatingRecoveryClaim(visitId, claim);
-      try {
-        await updateVisit?.(visitId, {
-          lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATING_PENDING,
-          lifecycleUpdatedAt: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.warn(
-          "[useMapTrackingController] Rating handoff persistence failed:",
-          error,
-        );
-      }
     },
-    [updateVisit],
+    [],
   );
 
   const handleCompleteAmbulanceWithRating = useCallback(async () => {
@@ -303,7 +303,7 @@ export function useMapTrackingController({
         openTrackingTriage,
         canMarkArrived,
         runBusyAction,
-        onMarkAmbulanceArrived,
+        onMarkAmbulanceArrived: handleConfirmAmbulanceArrival,
         busyAction,
         canCompleteAmbulance,
         handleCompleteAmbulanceWithRating,
@@ -318,9 +318,9 @@ export function useMapTrackingController({
       canCompleteAmbulance,
       canCompleteBed,
       canMarkArrived,
+      handleConfirmAmbulanceArrival,
       handleCompleteAmbulanceWithRating,
       handleCompleteBedWithRating,
-      onMarkAmbulanceArrived,
       onMarkBedOccupied,
       openTrackingTriage,
       runBusyAction,

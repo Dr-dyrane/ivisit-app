@@ -26,7 +26,6 @@ import { usePreferences } from "../contexts/PreferencesContext";
 import { useEmergencyContacts } from "../hooks/emergency/useEmergencyContacts";
 import { useMedicalProfile } from "../hooks/user/useMedicalProfile";
 import { useEmergencyRequests } from "../hooks/emergency/useEmergencyRequests";
-import { useVisits } from "../contexts/VisitsContext";
 import { useRequestFlow } from "../hooks/emergency/useRequestFlow";
 import useAuthViewport from "../hooks/ui/useAuthViewport";
 import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal";
@@ -136,7 +135,6 @@ export default function RequestAmbulanceScreen() {
 	const { contacts: emergencyContacts } = useEmergencyContacts();
 	const { profile: medicalProfile } = useMedicalProfile();
 	const { createRequest, updateRequest, updateTriage, setRequestStatus } = useEmergencyRequests();
-	const { addVisit, updateVisit } = useVisits();
 
 	const { registerFAB, unregisterFAB } = useFABActions();
 	const {
@@ -317,8 +315,6 @@ export default function RequestAmbulanceScreen() {
 		createRequest,
 		updateRequest,
 		updateTriage,
-		addVisit,
-		updateVisit,
 		setRequestStatus,
 		startAmbulanceTrip,
 		startBedBooking,

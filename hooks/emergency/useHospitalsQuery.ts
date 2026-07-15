@@ -152,8 +152,7 @@ export function useEmergencyHospitalsQuery({
       const definedLat = lat as number;
       const definedLng = lng as number;
       const raw = await hospitalsService.discoverNearby(definedLat, definedLng, 50000);
-      const dispatchReady = raw.filter((h: any) => h?.isDispatchReady !== false);
-      const source = dispatchReady.length > 0 ? dispatchReady : raw;
+      const source = raw.filter((h: any) => h?.isDispatchReady === true);
       return {
         allHospitals: raw,
         displayHospitals: getDisplayHospitals(source).map((hospital: any) => ({

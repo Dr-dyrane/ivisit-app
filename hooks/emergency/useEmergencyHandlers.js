@@ -5,11 +5,20 @@ import {
 	emergencyRequestsService,
 	EmergencyRequestStatus,
 } from "../../services/emergencyRequestsService";
+import { useEmergencyTripStore } from "../../stores/emergencyTripStore";
 import { ACTIVE_TRIP_QUERY_KEY } from "./useActiveTripQuery";
 
 const ARRIVAL_ACKNOWLEDGEMENT_STATUSES = new Set([
 	EmergencyRequestStatus.ARRIVED,
 ]);
+
+function hasMatchingRequestIdentity(trip, requestId) {
+	if (!trip || requestId == null || requestId === "") return false;
+	const requestKey = String(requestId);
+	return [trip.id, trip.requestId, trip.displayId]
+		.filter((value) => value != null && value !== "")
+		.some((value) => String(value) === requestKey);
+}
 
 export const useEmergencyHandlers = ({
 	activeAmbulanceTrip,
@@ -144,7 +153,28 @@ export const useEmergencyHandlers = ({
 				await emergencyRequestsService.acknowledgeResponderArrival(
 					activeAmbulanceTrip.requestId,
 				);
-			await queryClient.invalidateQueries({ queryKey: ACTIVE_TRIP_QUERY_KEY });
+			const acknowledgedAt = acknowledgement?.patientAcknowledgedArrivalAt;
+			if (acknowledgedAt) {
+				useEmergencyTripStore.getState().setActiveAmbulanceTrip((current) =>
+					hasMatchingRequestIdentity(
+						current,
+						acknowledgement?.requestId || activeAmbulanceTrip.requestId,
+					)
+						? {
+								...current,
+								patientAcknowledgedArrivalAt: acknowledgedAt,
+							}
+						: current,
+				);
+			}
+			void queryClient
+				.invalidateQueries({ queryKey: ACTIVE_TRIP_QUERY_KEY })
+				.catch((error) => {
+					console.warn(
+						"[EmergencyHandlers] arrival acknowledgement refresh failed:",
+						error,
+					);
+				});
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 			return { ok: true, acknowledgement };
 		} catch (error) {

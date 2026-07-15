@@ -14,6 +14,28 @@ const SOURCE_PATH = path.join(
   "tracking",
   "mapTracking.rating.js",
 );
+const FLOW_SOURCE_PATH = path.join(
+  ROOT,
+  "hooks",
+  "map",
+  "exploreFlow",
+  "useTrackingRatingFlow.js",
+);
+const MODAL_ORCHESTRATOR_PATH = path.join(
+  ROOT,
+  "components",
+  "map",
+  "MapModalOrchestrator.jsx",
+);
+const HISTORY_FLOW_PATH = path.join(
+  ROOT,
+  "hooks",
+  "map",
+  "history",
+  "useMapHistoryFlow.js",
+);
+const MAP_SCREEN_PATH = path.join(ROOT, "screens", "MapScreen.jsx");
+const VISITS_SERVICE_PATH = path.join(ROOT, "services", "visitsService.js");
 
 const LIFECYCLE = Object.freeze({
   COMPLETED: "completed",
@@ -31,7 +53,7 @@ const classifyVisitSource = (visit) => {
     : "emergency";
 };
 
-const loadRatingModule = ({ claims = {} } = {}) => {
+const loadRatingModule = ({ claims = {}, visitService = null } = {}) => {
   let storedClaims = { ...claims };
   const writes = [];
   const source = fs.readFileSync(SOURCE_PATH, "utf8");
@@ -62,7 +84,12 @@ const loadRatingModule = ({ claims = {} } = {}) => {
       return { paymentService: { processVisitTip: async () => null } };
     }
     if (request === "../../../../services/visitsService") {
-      return { visitsService: { updateRating: async () => ({ alreadyRated: false }) } };
+      return {
+        visitsService: visitService || {
+          updateRating: async () => ({ alreadyRated: false }),
+          skipRating: async () => ({ alreadySkipped: false }),
+        },
+      };
     }
     if (request === "../../../../utils/scheduledVisitProjection") {
       return { classifyVisitSource };
@@ -102,6 +129,11 @@ const completedEmergency = (overrides = {}) => ({
 
 async function run() {
   const { api } = loadRatingModule();
+  const flowSource = fs.readFileSync(FLOW_SOURCE_PATH, "utf8");
+  const modalOrchestratorSource = fs.readFileSync(MODAL_ORCHESTRATOR_PATH, "utf8");
+  const historyFlowSource = fs.readFileSync(HISTORY_FLOW_PATH, "utf8");
+  const mapScreenSource = fs.readFileSync(MAP_SCREEN_PATH, "utf8");
+  const visitsServiceSource = fs.readFileSync(VISITS_SERVICE_PATH, "utf8");
 
   const completed = completedEmergency();
   assert.equal(
@@ -140,8 +172,8 @@ async function run() {
       },
       completed,
     ),
-    false,
-    "the mounted terminal request must wait for the explicit Complete Visit handoff",
+    true,
+    "a responder-completed terminal request must hand off to the one recovered rating modal",
   );
   assert.equal(
     api.canPresentTrackingRatingWithActiveRequest(
@@ -174,6 +206,25 @@ async function run() {
     true,
     "legacy rating_pending recovery must remain supported",
   );
+  assert.equal(
+    api.isTrackingRatingResolutionFinal(
+      completedEmergency({ lifecycleState: LIFECYCLE.POST_COMPLETION }),
+    ),
+    true,
+    "a skipped canonical rating must release a persisted terminal trip",
+  );
+  assert.equal(
+    api.isTrackingRatingResolutionFinal(completed),
+    false,
+    "a completed, unrated emergency must keep its Complete Visit handoff",
+  );
+  assert.equal(
+    api.isTrackingRatingResolutionFinal(
+      completedEmergency({ ratedAt: "2026-07-14T12:05:00.000Z" }),
+    ),
+    true,
+    "persisted rating truth must release a terminal trip even for legacy lifecycle rows",
+  );
 
   const committedRatingState = api.buildTrackingRatingState({
     kind: "ambulance",
@@ -182,6 +233,37 @@ async function run() {
     providerName: "Demo Driver 3",
     completionCommitted: true,
   });
+  const recoveredTransport = api.buildRecoveredTrackingRatingState(
+    completedEmergency({
+      doctorName: "Dr Demo Physician 2",
+      responderName: "Demo Driver 2",
+      hospitalName: "Odyssey Hospice",
+    }),
+  );
+  assert.equal(
+    recoveredTransport.serviceDetails.provider,
+    "Demo Driver 2",
+    "transport ratings must identify the responder without discarding optional doctor context",
+  );
+  const recoveredTransportFromClaim = api.buildRecoveredTrackingRatingState(
+    completedEmergency({ doctorName: "Dr Demo Physician 2" }),
+    { providerName: "Demo Driver 2" },
+  );
+  assert.equal(
+    recoveredTransportFromClaim.serviceDetails.provider,
+    "Demo Driver 2",
+    "a responder recovery claim must outrank a doctor snapshot for transport ratings",
+  );
+  assert.match(
+    visitsServiceSource,
+    /emergency_request:emergency_requests!visits_request_id_fkey/,
+    "Visit reads must embed canonical emergency responder identity",
+  );
+  assert.match(
+    visitsServiceSource,
+    /responderName:\s*\n?\s*row\.responder_name \?\?/,
+    "Visit normalization must expose responder identity separately from doctor identity",
+  );
   assert.equal(
     api.shouldPresentTrackingRatingState(committedRatingState, [
       completedEmergency({ id: "older-visit", requestId: "older-request" }),
@@ -262,6 +344,73 @@ async function run() {
     null,
     "claim allowlists must continue to gate recovery candidates",
   );
+  assert.equal(
+    api.findPendingTrackingRatingVisit([completed], {
+      allowedVisitIds: [completed.requestId],
+    })?.id,
+    completed.id,
+    "a recovery claim keyed by the request alias must recover only its matching visit",
+  );
+  assert.equal(
+    api.findPendingTrackingRatingVisit([completed], {
+      allowedVisitIds: [],
+    })?.id,
+    completed.id,
+    "a fresh device must recover canonical completed, unrated truth without a local claim",
+  );
+
+  const skipRatingStart = flowSource.indexOf("const skipRating = useCallback");
+  const submitRatingStart = flowSource.indexOf("const submitRating = useCallback", skipRatingStart);
+  const claimClearAt = flowSource.indexOf(
+    "await removeRecoveredRatingClaim(visitId);",
+    skipRatingStart,
+  );
+  const stateClearAt = flowSource.indexOf(
+    "setRatingState(INITIAL_TRACKING_RATING_STATE);",
+    claimClearAt,
+  );
+  const cleanupAt = flowSource.indexOf("finalizeCompletedTracking(completeKind);", claimClearAt);
+  assert.ok(
+    skipRatingStart >= 0 && submitRatingStart > skipRatingStart,
+    "tracking skip flow must remain identifiable for recovery-order verification",
+  );
+  assert.ok(
+    claimClearAt > skipRatingStart && claimClearAt < submitRatingStart,
+    "tracking skip must clear its in-memory recovery claim",
+  );
+  assert.ok(
+    claimClearAt < stateClearAt && claimClearAt < cleanupAt,
+    "tracking skip must clear the recovery claim before hiding the modal or clearing the terminal trip",
+  );
+  assert.ok(
+    flowSource.indexOf("suppressRecoveredRatingForSession?.(visitId);") < stateClearAt,
+    "tracking resolution must suppress same-session recovery before terminal cleanup",
+  );
+  assert.match(
+    historyFlowSource,
+    /suppressRecoveredRatingForSession:\s*markRecoveredRatingHandled/,
+    "history recovery must expose its handled-visit guard to in-flow resolution",
+  );
+  assert.match(
+    historyFlowSource,
+    /isTrackingRatingResolutionFinal\(visit\)/,
+    "cold-start reconciliation must identify canonically resolved rating visits",
+  );
+  assert.match(
+    historyFlowSource,
+    /resolvedTerminalTrackingVisit[\s\S]*stopAmbulanceTrip\?\.\(\)/,
+    "a matching resolved Visit must release stale terminal ambulance state",
+  );
+  assert.match(
+    mapScreenSource,
+    /suppressRecoveredRatingForSession,\s*\n\s*visits,/,
+    "MapScreen must wire the recovery guard into the tracking rating flow",
+  );
+  assert.equal(
+    (modalOrchestratorSource.match(/<ServiceRatingModal\b/g) || []).length,
+    1,
+    "map modal orchestration must keep one physical rating-modal renderer",
+  );
 
   const reloadEligible = completedEmergency({ id: "reload-eligible" });
   const alreadyRated = completedEmergency({
@@ -296,6 +445,41 @@ async function run() {
     "persisted recovery state must match the guarded reload result",
   );
   assert.equal(storageHarness.writes.length, 1, "stale claims should be purged in one write");
+
+  const commandCalls = [];
+  const commandHarness = loadRatingModule({
+    claims: { [completed.id]: { kind: "ambulance" } },
+    visitService: {
+      updateRating: async (visitId, payload) => {
+        commandCalls.push({ command: "rate", visitId, payload });
+        return { alreadyRated: false };
+      },
+      skipRating: async (visitId) => {
+        commandCalls.push({ command: "skip", visitId });
+        return { alreadySkipped: false };
+      },
+    },
+  });
+  const skippedResolution = await commandHarness.api.resolveTrackingRatingSkip({
+    visitId: completed.id,
+  });
+  assert.equal(skippedResolution.ok, true);
+  assert.deepEqual(commandCalls[0], {
+    command: "skip",
+    visitId: completed.id,
+  });
+
+  const ratedResolution = await commandHarness.api.resolveTrackingRatingSubmit({
+    visitId: completed.id,
+    rating: 5,
+    comment: "Excellent care",
+    tipAmount: 0,
+  });
+  assert.equal(ratedResolution.ok, true);
+  assert.equal(commandCalls[1].command, "rate");
+  assert.equal(commandCalls[1].visitId, completed.id);
+  assert.equal(commandCalls[1].payload.rating, 5);
+  assert.equal(commandCalls[1].payload.ratingComment, "Excellent care");
 
   console.log("emergencyRatingRecovery.test.cjs: all assertions passed");
 }

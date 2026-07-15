@@ -27,14 +27,38 @@ function buildCrewPillLabel(recommendedService, visualProfile) {
 	return "Crew ready";
 }
 
-function getEnabledServiceOptions(hospital, pricingRows, isLoadingServices) {
-	return buildAmbulanceServiceCards(hospital, pricingRows, isLoadingServices).filter(
+function getEnabledServiceOptions(
+	hospital,
+	pricingRows,
+	isLoadingServices,
+	quotedPriceMap,
+	serverQuoteMap,
+) {
+	return buildAmbulanceServiceCards(
+		hospital,
+		pricingRows,
+		isLoadingServices,
+		quotedPriceMap,
+		serverQuoteMap,
+	).filter(
 		(entry) => !entry?.isSkeleton && entry?.enabled !== false,
 	);
 }
 
-function getVisibleServiceOptions(hospital, pricingRows, isLoadingServices) {
-	return buildAmbulanceServiceCards(hospital, pricingRows, isLoadingServices).filter(
+function getVisibleServiceOptions(
+	hospital,
+	pricingRows,
+	isLoadingServices,
+	quotedPriceMap,
+	serverQuoteMap,
+) {
+	return buildAmbulanceServiceCards(
+		hospital,
+		pricingRows,
+		isLoadingServices,
+		quotedPriceMap,
+		serverQuoteMap,
+	).filter(
 		(entry) => !entry?.isSkeleton,
 	);
 }
@@ -57,8 +81,16 @@ export function getRecommendedAmbulanceService({
 	pricingRows = [],
 	selectedServiceId = null,
 	isLoadingServices = false,
+	quotedPriceMap = {},
+	serverQuoteMap = {},
 }) {
-	const serviceOptions = getVisibleServiceOptions(hospital, pricingRows, isLoadingServices);
+	const serviceOptions = getVisibleServiceOptions(
+		hospital,
+		pricingRows,
+		isLoadingServices,
+		quotedPriceMap,
+		serverQuoteMap,
+	);
 	const enabledServiceOptions = serviceOptions.filter(
 		(entry) => entry?.enabled !== false,
 	);
@@ -100,10 +132,16 @@ export function getAmbulanceDecisionDistanceLabel(hospital, routeInfo) {
 	const hospitalDistance =
 		typeof hospital?.distance === "string" ? hospital.distance.trim() : "";
 	return (
-		(hospitalDistance && hospitalDistance !== "--" ? hospitalDistance : null) ||
 		formatDistanceMeters(routeInfo?.distanceMeters) ||
+		(hospitalDistance && hospitalDistance !== "--" ? hospitalDistance : null) ||
 		null
 	);
+}
+
+function getAmbulanceDecisionRouteDistanceKm(routeInfo) {
+	const distanceMeters = Number(routeInfo?.distanceMeters);
+	if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) return null;
+	return Math.round(distanceMeters) / 1000;
 }
 
 export function buildAmbulanceDecisionFeatures({
@@ -176,6 +214,7 @@ export function buildAmbulanceDecisionModel({
 	isCalculatingRoute = false,
 	// PULLBACK NOTE: quotedPriceMap provides country-based quoted prices for service options
 	quotedPriceMap = {},
+	serverQuoteMap = {},
 }) {
 	if (!hospital) {
 		return {
@@ -213,15 +252,25 @@ export function buildAmbulanceDecisionModel({
 			pricingRows,
 			selectedServiceId,
 			isLoadingServices,
+			quotedPriceMap,
+			serverQuoteMap,
 		});
+	const routeDistanceKm = getAmbulanceDecisionRouteDistanceKm(routeInfo);
 
 	// PULLBACK NOTE: Inject quoted prices into service options for country-based currency display
 	// Preserve canonical amounts underneath, only override display label
 	const serviceOptionsWithQuotes = serviceOptions.map((option) => {
-		const quotedPrice = quotedPriceMap?.[option?.id];
-		if (!quotedPrice?.label) return option;
+		const quotedPrice =
+			quotedPriceMap?.[option?.tierKey] || quotedPriceMap?.[option?.id];
+		if (!quotedPrice?.label) {
+			return {
+				...option,
+				routeDistanceKm,
+			};
+		}
 		return {
 			...option,
+			routeDistanceKm,
 			// Override priceText with quoted display label
 			priceText: quotedPrice.label,
 			// Preserve canonical info for reference
@@ -232,7 +281,16 @@ export function buildAmbulanceDecisionModel({
 
 	const recommendedServiceWithQuote =
 		serviceOptionsWithQuotes.find((opt) => opt.id === recommendedService?.id) ||
-		recommendedService;
+		(recommendedService
+			? {
+					...recommendedService,
+					routeDistanceKm,
+				}
+			: null);
+	const quoteContinuityReady = Boolean(
+		recommendedServiceWithQuote?.serverQuoteReady === true &&
+			routeDistanceKm != null,
+	);
 
 	const visualProfile = getAmbulanceVisualProfile(recommendedServiceWithQuote);
 	const hospitalSummary = buildHospitalDetailSummary(hospital, routeInfo);
@@ -244,7 +302,10 @@ export function buildAmbulanceDecisionModel({
 	const distanceLabel = getAmbulanceDecisionDistanceLabel(hospital, routeInfo);
 	// PULLBACK NOTE: Use quoted price label if available, fall back to canonical price
 	const priceLabel =
-		recommendedServiceWithQuote?.priceText ||
+		(quoteContinuityReady ||
+		recommendedServiceWithQuote?.priceText === "Price unavailable"
+			? recommendedServiceWithQuote?.priceText
+			: null) ||
 		MAP_AMBULANCE_DECISION_COPY.PRICE_FALLBACK;
 	const features = buildAmbulanceDecisionFeatures({
 		hospital,
@@ -259,7 +320,11 @@ export function buildAmbulanceDecisionModel({
 		serviceOptions: serviceOptionsWithQuotes,
 		enabledServiceOptions: serviceOptionsWithQuotes.filter((opt) => opt?.enabled !== false),
 		recommendedService: recommendedServiceWithQuote,
-		canConfirm: Boolean(enabledServiceOptions.length > 0 && recommendedServiceWithQuote?.id),
+		canConfirm: Boolean(
+			enabledServiceOptions.length > 0 &&
+				recommendedServiceWithQuote?.id &&
+				quoteContinuityReady,
+		),
 		visualProfile,
 		etaLabel,
 		distanceLabel,
@@ -268,7 +333,12 @@ export function buildAmbulanceDecisionModel({
 		// PULLBACK NOTE: UX-A — priceShowsSkeleton: true when loading services and no real priceText yet
 		// OLD: no skeleton guard — PRICE_FALLBACK string always shown in pill
 		// NEW: skeleton shown while loading; pill hidden entirely when not loading and no real price
-		priceShowsSkeleton: isLoadingServices && !recommendedServiceWithQuote?.priceText,
+		priceShowsSkeleton: Boolean(
+			!quoteContinuityReady &&
+				(isCalculatingRoute ||
+					isLoadingServices ||
+					recommendedServiceWithQuote?.showPriceSkeleton === true),
+		),
 		confidenceLabel:
 			recommendedService?.source === "db"
 				? MAP_AMBULANCE_DECISION_COPY.CONFIDENCE_LIVE

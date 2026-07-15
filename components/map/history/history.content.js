@@ -34,6 +34,7 @@ export const HISTORY_DETAILS_COPY = Object.freeze({
 	sectionTitles: {
 		details: "Details",
 		moreDetails: "More details",
+		visitProgress: "Visit progress",
 		journey: "Journey",
 		payment: "Payment",
 		preparation: "Preparation",
@@ -69,6 +70,7 @@ export const HISTORY_DETAILS_COPY = Object.freeze({
 	actionLabels: {
 		callClinic: "Call clinic",
 		openConsult: "Open consult",
+		viewConsult: "View consult",
 		reschedule: "Reschedule visit",
 		bookAgain: "Book again",
 		paymentDetails: "Payment details",

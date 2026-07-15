@@ -35,6 +35,13 @@ import {
 	getMapViewportVariant,
 } from "../core/mapViewportConfig";
 import MapHeaderIconButton from "../views/shared/MapHeaderIconButton";
+import {
+	focusMapModalWebDialog,
+	getMapModalWebDialogProps,
+	handleMapModalWebDialogKeyDown,
+	isTopmostMapModalWebDialog,
+	restoreMapModalWebDialogFocus,
+} from "./mapModalShell.web";
 import { styles } from "./mapModalShell.styles";
 
 export default function MapModalShell({
@@ -122,6 +129,10 @@ export default function MapModalShell({
 	const [keyboardHeight, setKeyboardHeight] = useState(0);
 	const prevModalSnapStateRef = useRef(resolvedDefaultSnapState);
 	const prevExternalSnapStateRef = useRef(snapState);
+	const webDialogRef = useRef(null);
+	const webReturnFocusRef = useRef(null);
+	const onCloseRef = useRef(onClose);
+	onCloseRef.current = onClose;
 	const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 	const bgOpacity = useRef(new Animated.Value(0)).current;
 	const snapProgress = useRef(
@@ -322,6 +333,59 @@ export default function MapModalShell({
 			setModalSnapState(snapState);
 		}
 	}, [enableDetents, modalSnapState, snapState, visible]);
+
+	useEffect(() => {
+		if (!isWeb || !visible || !shouldRender || typeof document === "undefined") {
+			return undefined;
+		}
+
+		const dialogNode = webDialogRef.current;
+		if (!dialogNode) return undefined;
+
+		const ownerDocument = dialogNode.ownerDocument || document;
+		const ownerWindow = ownerDocument.defaultView || (typeof window !== "undefined" ? window : null);
+		const activeElement = ownerDocument.activeElement;
+		webReturnFocusRef.current =
+			activeElement &&
+			activeElement !== ownerDocument.body &&
+			typeof activeElement.focus === "function"
+				? activeElement
+				: null;
+
+		let focusFrame = null;
+		let focusTimer = null;
+		const focusDialog = () => {
+			focusMapModalWebDialog(dialogNode, ownerDocument.activeElement);
+		};
+		if (typeof ownerWindow?.requestAnimationFrame === "function") {
+			focusFrame = ownerWindow.requestAnimationFrame(focusDialog);
+		} else {
+			focusTimer = setTimeout(focusDialog, 0);
+		}
+
+		const handleKeyDown = (event) => {
+			if (!isTopmostMapModalWebDialog(dialogNode, ownerDocument)) return;
+			handleMapModalWebDialogKeyDown({
+				event,
+				dialogNode,
+				activeElement: ownerDocument.activeElement,
+				onEscape: () => onCloseRef.current?.(),
+			});
+		};
+		ownerDocument.addEventListener("keydown", handleKeyDown, true);
+
+		return () => {
+			if (focusFrame !== null && typeof ownerWindow?.cancelAnimationFrame === "function") {
+				ownerWindow.cancelAnimationFrame(focusFrame);
+			}
+			if (focusTimer !== null) clearTimeout(focusTimer);
+			ownerDocument.removeEventListener("keydown", handleKeyDown, true);
+
+			const returnTarget = webReturnFocusRef.current;
+			webReturnFocusRef.current = null;
+			restoreMapModalWebDialogFocus(returnTarget, ownerDocument);
+		};
+	}, [isWeb, shouldRender, visible]);
 
 	if (!shouldRender) return null;
 
@@ -660,9 +724,12 @@ export default function MapModalShell({
 			modalSnapState === MAP_SHEET_SNAP_STATES.EXPANDED ||
 			allowScrollDetents ||
 			allowWheelDetents);
+	const webDialogProps = isWeb && visible ? getMapModalWebDialogProps(title) : {};
 
 	const modalContent = (
 		<Animated.View
+			ref={isWeb ? webDialogRef : null}
+			{...webDialogProps}
 			style={[
 				styles.sheetSurface,
 				surfaceShapeStyle,

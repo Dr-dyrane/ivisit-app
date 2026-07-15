@@ -253,53 +253,46 @@ const createActiveRequestError = (serviceType, activeRequest) => {
     return error;
 };
 
+const requireEmergencyUser = (user) => {
+    if (user?.id) return user;
+    const error = new Error("Sign in to request or change emergency care.");
+    error.code = "AUTH_REQUIRED";
+    throw error;
+};
+
 const isGuardedServiceType = (serviceType) =>
     serviceType === "ambulance" || serviceType === "bed";
 
 export const emergencyRequestsService = {
     async list() {
         const { data: { user } } = await supabase.auth.getUser();
+        requireEmergencyUser(user);
 
-        // Fetch active request from Supabase
-        if (user) {
-            const { data, error } = await supabase
-                .from('emergency_requests')
-                .select('*')
-                .eq('user_id', user.id)
-                .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived'])
-                .order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('emergency_requests')
+            .select('*')
+            .eq('user_id', user.id)
+            .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived'])
+            .order('created_at', { ascending: false });
 
-            if (error) {
-                if (__DEV__) {
-                    // console.log("[emergencyRequestsService.list] Supabase error, falling back to local:", {
-                    //     code: error?.code ?? null,
-                    //     message: error?.message ?? null,
-                    // });
-                }
-            } else {
-                const rows = await attachLifecycleTransitionTimes(
-                    Array.isArray(data) ? data : [],
-                );
-                const requests = rows.map(mapEmergencyRequestRow);
-                await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
+        // The persisted trip store already supplies last-known presentation while
+        // this query retries. The legacy collection cache is not user-scoped and
+        // must never masquerade as a successful canonical read.
+        if (error) throw error;
 
-                return requests;
-            }
-        }
+        const rows = await attachLifecycleTransitionTimes(
+            Array.isArray(data) ? data : [],
+        );
+        const requests = rows.map(mapEmergencyRequestRow);
+        await database.write(StorageKeys.EMERGENCY_REQUESTS, requests);
 
-        // Fallback to local
-        const items = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
-        if (!Array.isArray(items)) return [];
-        return items
-            .filter((r) => r && typeof r === "object")
-            .map(withResolvedTriageFields)
-            .sort((a, b) => String(b?.createdAt ?? "").localeCompare(String(a?.createdAt ?? "")));
+        return requests;
     },
 
     async create(request) {
         const { data: { user } } = await supabase.auth.getUser();
+        requireEmergencyUser(user);
         const now = new Date().toISOString();
-        const displayId = request?.requestId || `REQ-${Date.now()}`;
         const requestTriageSnapshot =
             resolveTriageSnapshot(request) ??
             (isPlainObject(request?.triageCheckin)
@@ -312,32 +305,6 @@ export const emergencyRequestsService = {
             ? { ...basePatientSnapshot, triage: requestTriageSnapshot }
             : (request?.patient ?? null);
 
-        // Prepare common fields
-        const commonFields = {
-            display_id: displayId,
-            service_type: request?.serviceType ?? null,
-            hospital_id: request?.hospitalId ?? null,
-            hospital_name: request?.hospitalName ?? null,
-            specialty: request?.specialty ?? null,
-            ambulance_type: request?.ambulanceType ?? null,
-            ambulance_id: request?.ambulanceId ?? null,
-            bed_number: request?.bedNumber ?? null,
-            bed_type: request?.bedType ?? null,
-            bed_count: request?.bedCount ?? null,
-            estimated_arrival: request?.estimatedArrival ?? null,
-            status: request?.status ?? EmergencyRequestStatus.IN_PROGRESS,
-            patient_snapshot: patientSnapshot,
-            shared_data_snapshot: request?.shared ?? null,
-            created_at: request?.createdAt ?? now,
-            updated_at: now,
-            patient_location: request?.patientLocation ?? null,
-            patient_heading: request?.patientHeading ?? null,
-            total_cost: request?.total_cost ?? null,
-            payment_status: request?.payment_status ?? null,
-            payment_method_id: request?.payment_method_id ?? null
-        };
-
-        if (user) {
             // Determine payment info
             const paymentMethod = request.paymentMethod || null;
             const method =
@@ -436,43 +403,18 @@ export const emergencyRequestsService = {
                 canonicalTotal: Number.isFinite(Number(data.canonical_total))
                     ? Number(data.canonical_total)
                     : null,
+                pricing: data.pricing && typeof data.pricing === "object" ? data.pricing : null,
+                pricingSource: data.pricing_source || data.pricing?.pricing_source || null,
+                pricingIsFallback:
+                    data.pricing_is_fallback === true ||
+                    data.pricing?.pricing_is_fallback === true,
                 currency: data.currency || request.currency || 'USD',
             };
-        } else {
-            // Local fallback
-            const serviceType = request?.serviceType ?? null;
-            if (isGuardedServiceType(serviceType)) {
-                const existingItems = await database.read(StorageKeys.EMERGENCY_REQUESTS, []);
-                const activeLocalRequest = Array.isArray(existingItems)
-                    ? existingItems.find(
-                            (item) =>
-                                item?.serviceType === serviceType &&
-                                ACTIVE_EMERGENCY_REQUEST_STATUSES.includes(
-                                    canonicalizeEmergencyStatus(item?.status, "")
-                                )
-                        )
-                    : null;
-                if (activeLocalRequest) {
-                    throw createActiveRequestError(serviceType, withResolvedTriageFields(activeLocalRequest));
-                }
-            }
-
-            const localItem = {
-                ...request,
-                ...commonFields,
-                id: displayId,
-                requestId: displayId,
-                createdAt: now,
-                updatedAt: now
-            };
-            const normalizedLocalItem = withResolvedTriageFields(localItem);
-            await database.createOne(StorageKeys.EMERGENCY_REQUESTS, normalizedLocalItem);
-            return normalizedLocalItem;
-        }
     },
 
     async update(id, updates) {
         const { data: { user } } = await supabase.auth.getUser();
+        requireEmergencyUser(user);
         const requestId = String(id);
         const nextUpdatedAt = new Date().toISOString();
         const requestedStatus = updates.status === undefined
@@ -486,54 +428,44 @@ export const emergencyRequestsService = {
             throw new Error('Patients may only cancel an emergency request');
         }
 
-        if (user) {
-            const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
-            if (!resolvedRequestId) {
-                console.warn(`[emergencyRequestsService] No matching emergency request for update: ${requestId}`);
-                return { id: requestId, ...updates, updatedAt: nextUpdatedAt };
-            }
-
-            const rpcPayload = {};
-            if (requestedStatus !== null) {
-                rpcPayload.status = requestedStatus;
-            }
-            if (updates.patientLocation !== undefined) {
-                rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;
-            }
-            if (updates.triageSnapshot !== undefined) {
-                rpcPayload.triage_snapshot = updates.triageSnapshot;
-            }
-            if (typeof updates.transition_reason === "string" && updates.transition_reason.trim()) {
-                rpcPayload.transition_reason = updates.transition_reason.trim();
-            }
-            if (typeof updates.reason === "string" && updates.reason.trim()) {
-                rpcPayload.reason = updates.reason.trim();
-            }
-
-            if (Object.keys(rpcPayload).length > 0) {
-                const { data, error } = await supabase.rpc('patient_update_emergency_request', {
-                    p_request_id: resolvedRequestId,
-                    p_payload: rpcPayload
-                });
-
-                if (error) {
-                    console.error(`[emergencyRequestsService] RPC update failed for ${requestId}:`, error);
-                    throw error;
-                }
-                if (!data?.success || !data?.request) {
-                    throw new Error(data?.error || 'Emergency update failed');
-                }
-            }
-
-            return { id: resolvedRequestId, ...updates, updatedAt: nextUpdatedAt };
+        const resolvedRequestId = await resolveOwnedRequestUuid(requestId, user.id);
+        if (!resolvedRequestId) {
+            throw new Error("Emergency request not found or no longer available.");
         }
 
-        const item = await database.updateOne(
-            StorageKeys.EMERGENCY_REQUESTS,
-            (r) => String(r?.id ?? r?.requestId) === requestId,
-            { ...updates, updatedAt: nextUpdatedAt }
-        );
-        return item;
+        const rpcPayload = {};
+        if (requestedStatus !== null) {
+            rpcPayload.status = requestedStatus;
+        }
+        if (updates.patientLocation !== undefined) {
+            rpcPayload.patient_location = parsePointInput(updates.patientLocation) || updates.patientLocation;
+        }
+        if (updates.triageSnapshot !== undefined) {
+            rpcPayload.triage_snapshot = updates.triageSnapshot;
+        }
+        if (typeof updates.transition_reason === "string" && updates.transition_reason.trim()) {
+            rpcPayload.transition_reason = updates.transition_reason.trim();
+        }
+        if (typeof updates.reason === "string" && updates.reason.trim()) {
+            rpcPayload.reason = updates.reason.trim();
+        }
+
+        if (Object.keys(rpcPayload).length > 0) {
+            const { data, error } = await supabase.rpc('patient_update_emergency_request', {
+                p_request_id: resolvedRequestId,
+                p_payload: rpcPayload
+            });
+
+            if (error) {
+                console.error(`[emergencyRequestsService] RPC update failed for ${requestId}:`, error);
+                throw error;
+            }
+            if (!data?.success || !data?.request) {
+                throw new Error(data?.error || 'Emergency update failed');
+            }
+        }
+
+        return { id: resolvedRequestId, ...updates, updatedAt: nextUpdatedAt };
     },
 
     /**

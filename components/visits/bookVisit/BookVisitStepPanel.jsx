@@ -124,8 +124,10 @@ export default function BookVisitStepPanel({
             error={model.availabilityError}
             timezoneReady={model.facilityTimezoneReady}
             onRetry={model.retryAvailability}
+            onChangeDates={model.handleChangeDates}
             onChangeFacility={model.handleChangeFacility}
             onChangeSpecialty={model.handleChangeSpecialty}
+            recoveryNotice={model.availabilityRecoveryNotice}
           />
         ) : null}
 

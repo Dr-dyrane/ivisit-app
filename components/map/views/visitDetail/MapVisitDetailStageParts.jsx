@@ -132,6 +132,7 @@ export function MapVisitDetailFloatingTopSlot({
 export function MapVisitDetailBodyContent({
 	model,
 	onCancelVisit,
+	isTransitioning = false,
 	isExpanded,
 	onExpandedHeaderLayout,
 	onSnapStateChange,
@@ -141,6 +142,7 @@ export function MapVisitDetailBodyContent({
 		<MapVisitDetailBody
 			model={model}
 			onCancelVisit={onCancelVisit}
+			isTransitioning={isTransitioning}
 			revealHero={isExpanded}
 			onExpandedHeaderLayout={onExpandedHeaderLayout}
 			onSnapStateChange={onSnapStateChange}

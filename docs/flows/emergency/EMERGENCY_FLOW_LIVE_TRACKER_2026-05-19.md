@@ -142,6 +142,27 @@ Tracking owns live presentation after the handoff:
 
 Reload rule: tracking sheet ETA, status phase, CTA colors, and route progress must update from React state/store/query updates. Any fix that requires a Metro reload, app reload, or sheet remount to reveal current ETA or arrival state is incomplete.
 
+## Payment-To-Tracking Commitment Contract (2026-07-15)
+
+Before payment creates a request, the selected hospital must be a canonical
+hospital row that is available, emergency eligible, dispatch eligible, and
+linked to an active verified organization. Provider-search previews never cross
+the emergency commitment boundary.
+
+Price is a server-owned input to the same handoff:
+
+- The map can use raw pricing rows to decide which transport tier is offered.
+- The server resolves the chosen BLS/ALS/CCT tier and its non-blocking fallback.
+- That quote is the displayed payment amount; request creation recalculates and
+  persists the same authority result.
+- The payment sheet carries the returned canonical total and pricing provenance
+  into its pending/approval presentation. It does not fabricate a local price
+  or fee before tracking opens.
+
+This protects the tracking handoff from two false starts: a provider that cannot
+legally/operationally receive an emergency request, and a visual price that the
+server cannot settle.
+
 ## Current Suspicions
 
 1. Cash auto-approval handoff starts tracking from an initiation payload, not the hydrated approval/assignment payload.
@@ -322,3 +343,105 @@ EAS production release evidence:
 - dashboard: `https://expo.dev/accounts/dyrane/projects/ivisit/updates/9f9ba054-66c6-4b45-bcdf-b15d6d8987ec`
 
 The production branch contains exactly one new group for this release. No AAB or APK was built.
+
+## Tracking Sheet Git Genealogy And Browser Repair Audit: 2026-07-14
+
+### Verified Lineage
+
+The tracking surface did not regress in one rewrite. It accumulated several independently reasonable changes whose ownership boundaries later diverged:
+
+```text
+236ce610  2026-04-20  tracking sheet and orchestrator introduced
+|- e58a710c             monolithic tracking header and interaction polish
+|- b630a446  2026-04-21 controller/runtime/presentation/timeline decomposition
+|  `- 15db1938 2026-04-22 floating active-session header and animation model
+|- 9aac4ce3  2026-04-26 XState lifecycle flags enter tracking runtime
+|- ddd655bb             EmergencyContext removed from the subtree; MapScreen prop-drilling
+|- dc8ae3d8  2026-04-27 persisted startedAt and reload recovery
+|  `- c9b89b4c          route reconciliation extracted from MapScreen
+|- 4e1408b2  2026-04-28 realtime and route-projection gap repair
+|- ceab6c64  2026-05-03 live ETA atom fallback after request-key reset
+|- 8d717951  2026-05-19 explicit tracking snapshot and stage taxonomy
+|  `- 778f0dcc          stage-owned action eligibility
+|     |- d11b1792       arrival-stage synchronization
+|     `- b07abef7       Confirm arrival CTA emphasis
+|- 09d9195c             payment-to-tracking identity and hydration stabilization
+|- a75b4265  2026-07-14 responder-owned lifecycle authority; patient arrival acknowledgement RPC
+`- fb4396c6             active-trip recovery, demo lifecycle continuity, rating handoff
+```
+
+The important asymmetry is now explicit:
+
+- `MapTrackingStageBase.jsx` continued changing through the July continuity repair.
+- `useMapTrackingSync.js` continued changing through the July continuity repair.
+- `useMapTrackingHeader.js` was extracted on 2026-04-26 and its route-data contract did not evolve with the May and July tracking changes.
+- `mapActiveSessionPresentation.js` was created on 2026-04-22 and still projected only the older `activeMapRequest` snapshot.
+
+The sheet, route synchronizer, and top pill therefore no longer observed the same state graph.
+
+### Root Cause: Payment To Route Pill
+
+The pre-payment map calculates route duration, distance, and coordinates before a canonical emergency request UUID exists. That route is stored with `requestKey = null`. Payment completion then creates or hydrates the canonical request and changes the active tracking key to its UUID.
+
+The request-key effect in `useMapTrackingSync.js` preserved route data only when the atom already had the new request key. On the actual payment transition it therefore discarded the preview duration, distance, and coordinates. It also omitted `distanceMeters` while seeding even for an already matching request. The map route callback commonly did not emit again because its route signature had not changed.
+
+The top pill had a second, independent gap: it rendered `arrivalLabel`, `minuteValue`, and `distanceValue` only from `activeMapRequest`. It did not subscribe to the scoped live route atom used by the tracking sheet. Store reconciliation could not repair the gap immediately because responder-authority rules correctly prevent route/movement state from being committed while the request is only `in_progress` and still finding a responder.
+
+### Root Cause: Confirm Arrival Appeared Dead
+
+The July authority repair correctly changed Confirm arrival from a patient status write into `patient_acknowledge_responder_arrival`. The linked production endpoint exists and denies anonymous execution as expected. The remaining client problem was interaction continuity:
+
+- the handler waited for active-trip invalidation/refetch after the RPC had already succeeded;
+- a refetch problem could turn a successful acknowledgement into an apparent failed action;
+- the controller did not inspect the returned `{ ok, error }` result;
+- the patient received no success or failure toast;
+- the local trip did not immediately receive the canonical acknowledgement timestamp.
+
+This preserved backend authority but violated the UI rule that every primary action must acknowledge intent and outcome.
+
+### Surgical Repair
+
+The repair keeps the July lifecycle authority intact:
+
+1. A pure request-seed projection promotes an unscoped live preview only during the observed `null -> canonical UUID` payment handoff.
+2. A route belonging to an older request is rejected, so the repair cannot leak stale ETA or geometry into a later emergency.
+3. Duration, distance, and coordinates survive both the payment handoff and same-request reseeding.
+4. The top pill subscribes to the same request-scoped route atom as the sheet and overlays live metrics only for canonical `accepted` ambulance state.
+5. `in_progress` remains `Finding responder`, with no manufactured responder movement or arrival.
+6. Confirm arrival still calls only `patient_acknowledge_responder_arrival`.
+7. On RPC success, the returned canonical acknowledgement timestamp is identity-guarded into the active trip immediately; active-trip refetch becomes background verification.
+8. The CTA retains its pending state and now reports a visible success or error toast.
+
+### Verification Added
+
+`tests/emergencyPaymentLifecycleContract.test.cjs` now proves:
+
+- preview route promotion to the canonical request key;
+- rejection of a route belonging to an older request;
+- accepted-state header synchronization for arrival, minutes, and kilometers;
+- `in_progress` header copy remains `Finding responder` with no movement ETA;
+- arrival acknowledgement updates local trip truth and refetches without blocking the successful RPC;
+- success and failure feedback remain wired at the tracking controller.
+
+The focused emergency payment/lifecycle contract, rating recovery contract, and production web export pass after the repair.
+
+### Release Gate
+
+Before calling the deployed browser incident closed, publish the App change and run one fresh authenticated browser journey:
+
+`payment confirmed -> in_progress/Finding responder -> accepted/live top pill -> arrived/Confirm arrival -> acknowledgement removed -> responder completion -> rating`
+
+Record the request UUID and display ID, verify `patient_acknowledged_arrival_at`, and confirm that a hard refresh resumes the same request without route identity leakage.
+
+### Browser Follow-up: Responder-Owned Completion And Rating Recovery (2026-07-15)
+
+A local authenticated browser journey confirmed the repaired tracking handoff through patient acknowledgement. The canonical request advanced from `arrived` to patient acknowledgement, then the responder completed it. That completion exposed one remaining recovery deadlock: `activeMapRequest` remained mounted as a terminal request, and the rating-recovery guard rejected every active request before the recovery effect could clear that terminal snapshot.
+
+The repair is deliberately narrow:
+
+1. A nonterminal active request still blocks rating recovery.
+2. A terminal request may enter recovery only when one of its canonical request keys matches the completed, unrated Visit.
+3. The history recovery effect clears that terminal trip before rendering the recovered rating state.
+4. An already-visible in-flow rating state still wins, so the responder-completion path cannot create a second physical rating modal.
+
+Browser proof after the repair: the terminal pill cleared, exactly one `Rate your transport` modal appeared for the matching completed visit, Skip resolved it through the canonical visit command, and a hard reload showed no duplicate rating modal. The completed request still projects terminal `Complete` truth when it is intentionally retained as context; it no longer presents stale en-route state or blocks rating recovery.

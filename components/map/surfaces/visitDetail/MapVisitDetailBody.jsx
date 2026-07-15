@@ -30,6 +30,7 @@ import { LinearGradient } from "expo-linear-gradient";
 // NEW: Imported from separate files for easier maintenance and platform inclusivity
 import MapVisitDetailHero from "./MapVisitDetailHero";
 import MapVisitDetailSkeleton from "./MapVisitDetailSkeleton";
+import MapScheduledVisitLifecycleCard from "./MapScheduledVisitLifecycleCard";
 import { styles as bodyStyles } from "./mapVisitDetail.styles";
 import { HISTORY_DETAILS_COPY } from "../../history/history.content";
 import { COLORS } from "../../../../constants/colors";
@@ -98,6 +99,7 @@ function renderIcon(item, color, size = 16) {
 export default function MapVisitDetailBody({
 	model,
 	onCancelVisit,
+	isTransitioning = false,
 	revealHero = false,
 	onExpandedHeaderLayout,
 	onSnapStateChange,
@@ -109,6 +111,7 @@ export default function MapVisitDetailBody({
 		hero,
 		compactDetails,
 		journey,
+		scheduledLifecycle,
 		expandedDetails,
 		paymentRows,
 		triageRows,
@@ -183,23 +186,33 @@ export default function MapVisitDetailBody({
 		if (canCancel && typeof onCancelVisit === "function") {
 			items.push({
 				key: "cancel",
-				label: HISTORY_DETAILS_COPY.actionLabels.cancel || "Cancel visit",
+				label: isTransitioning
+					? "Cancelling visit"
+					: HISTORY_DETAILS_COPY.actionLabels.cancel || "Cancel visit",
 				iconName: "close-circle",
 				tone: "transport",
-				onPress: onCancelVisit,
+				onPress: isTransitioning ? undefined : onCancelVisit,
+				loading: isTransitioning,
 			});
 		}
 		return items;
-	}, [canCancel, onCancelVisit]);
+	}, [canCancel, isTransitioning, onCancelVisit]);
 
 	// Deep "Actions" CTAs (expanded only) — Call / Video / Payment / Directions.
-	// Book again is already rendered in the top action row; filter it out
-	// here to avoid duplication. Shaped to feed TrackingCtaButton (1:1 with the
-	// tracking sheet's mid-actions card).
+	// Actions already visible in the half-snap row are filtered here so expanded
+	// detail adds capability without repeating the primary choices.
+	const placeActionKeys = useMemo(
+		() => new Set((placeActions || []).map((item) => item.key)),
+		[placeActions],
+	);
 	const deepActionCtas = useMemo(
 		() =>
 			(actions || [])
-				.filter((a) => a.key !== "bookAgain")
+				.filter(
+					(actionItem) =>
+						actionItem.key !== "bookAgain" &&
+						!placeActionKeys.has(actionItem.key),
+				)
 				.map((a) => ({
 					key: a.key,
 					label: a.label,
@@ -207,7 +220,7 @@ export default function MapVisitDetailBody({
 					tone: a.key === "paymentDetails" ? "share" : "info",
 					onPress: a.onPress,
 				})),
-		[actions],
+		[actions, placeActionKeys],
 	);
 
 	// Preparation steps mapped onto the TrackingDetailsCard row shape so the
@@ -356,6 +369,14 @@ export default function MapVisitDetailBody({
 	// sections + deep CTAs. Mirrors mapHospitalDetail.expandedBody composition.
 	const bodyContent = (
 		<>
+			{scheduledLifecycle ? (
+				<MapScheduledVisitLifecycleCard
+					lifecycle={scheduledLifecycle}
+					isDarkMode={isDarkMode}
+					tokens={trackingTokens}
+				/>
+			) : null}
+
 			{placeActions?.length > 0 ? (
 				<View style={bodyStyles.placeActionRow}>
 					{placeActions.map((item) => (

@@ -19,6 +19,7 @@ import { useActiveTripQuery } from "./useActiveTripQuery";
 import { ambulanceService } from "../../services/ambulanceService";
 
 export function useEmergencyServerSync({
+	userId,
 	parseEtaToSeconds,
 	// PULLBACK NOTE: Phase 2 — activeAmbulanceTripRef, activeBedBookingRef,
 	// setActiveAmbulanceTrip, setActiveBedBooking, setPendingApproval are now
@@ -32,7 +33,7 @@ export function useEmergencyServerSync({
 }) {
 	// Mount the query — auto-fetches on mount, background-refetches every 15s,
 	// auto-syncs result → Zustand store via useEffect inside the hook.
-	const query = useActiveTripQuery({ parseEtaToSeconds });
+	const { refetch } = useActiveTripQuery({ parseEtaToSeconds, userId });
 
 	const lastHydratedAmbulanceIdRef = useRef(null);
 	const isHydratingAmbulanceRef = useRef(false);
@@ -43,12 +44,12 @@ export function useEmergencyServerSync({
 	const syncActiveTripsFromServer = useCallback(
 		async (_reason = "manual") => {
 			try {
-				await query.refetch();
+				await refetch();
 			} catch (error) {
 				console.warn("[useEmergencyServerSync] Sync failed:", error);
 			}
 		},
-		[query]
+		[refetch]
 	);
 
 	// Lazy ambulance detail enrichment

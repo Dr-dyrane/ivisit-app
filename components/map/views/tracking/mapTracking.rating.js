@@ -120,6 +120,19 @@ const hasPersistedTrackingRating = (visit) => {
   return Number.isFinite(rating) && rating > 0;
 };
 
+export function isTrackingRatingResolutionFinal(visit) {
+  if (!visit || typeof visit !== "object") return false;
+  if (hasPersistedTrackingRating(visit)) return true;
+
+  const lifecycleState = getTrackingRatingLifecycleState(visit);
+  return (
+    lifecycleState === EMERGENCY_VISIT_LIFECYCLE.RATED ||
+    lifecycleState === EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION ||
+    lifecycleState === EMERGENCY_VISIT_LIFECYCLE.CLEARED ||
+    lifecycleState === EMERGENCY_VISIT_LIFECYCLE.CANCELLED
+  );
+}
+
 export function isTrackingRatingRecoveryEligible(visit) {
   if (!visit || typeof visit !== "object" || hasPersistedTrackingRating(visit)) {
     return false;
@@ -173,12 +186,33 @@ export function shouldPresentTrackingRatingState(ratingState, visits) {
   );
 }
 
+const getActiveTrackingRequestKeys = (activeMapRequest) =>
+  [
+    activeMapRequest?.id,
+    activeMapRequest?.requestId,
+    activeMapRequest?.displayId,
+    activeMapRequest?.record?.id,
+    activeMapRequest?.record?.requestId,
+    activeMapRequest?.record?.displayId,
+  ]
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+    .map((value) => String(value));
+
 export function canPresentTrackingRatingWithActiveRequest(
   activeMapRequest,
-  _visit,
+  visit,
 ) {
   if (!activeMapRequest?.hasActiveRequest) return true;
-  return false;
+  if (!activeMapRequest?.isTerminal || !visit) return false;
+
+  // PULLBACK NOTE: responder-owned terminal handoff
+  // OLD: every mounted terminal request blocked recovery, leaving server-completed
+  // rides on the map without a rating path until a later manual refresh.
+  // NEW: only the same terminal visit may hand off to recovered rating; an
+  // in-flow rating state still wins in useMapHistoryFlow, preventing duplicates.
+  const activeRequestKeys = getActiveTrackingRequestKeys(activeMapRequest);
+  const visitKeys = getTrackingRatingVisitKeys(visit);
+  return activeRequestKeys.some((key) => visitKeys.includes(key));
 }
 
 export function getTrackingRatingRecoveryClaim(visit, claims) {
@@ -201,6 +235,9 @@ export function findPendingTrackingRatingVisit(
       .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
       .map((value) => String(value)),
   );
+  // A populated claim list narrows recovery to an interrupted local handoff.
+  // An empty list must remain unscoped: a fresh device has no local claim, so
+  // canonical completed, unrated Visit truth is the only recovery authority.
   const allowedIds =
     Array.isArray(allowedVisitIds) && allowedVisitIds.length > 0
       ? new Set(
@@ -247,8 +284,19 @@ export function buildRecoveredTrackingRatingState(visit, claim = null) {
   const kind = normalizeTrackingVisitKind(visit);
   const hospitalTitle =
     visit?.hospitalName ?? visit?.hospital ?? claim?.hospitalTitle ?? claim?.hospital ?? null;
-  const providerName =
-    visit?.doctorName ?? visit?.doctor ?? claim?.providerName ?? claim?.provider ?? null;
+  const providerName = kind === "ambulance"
+    ? visit?.responderName ??
+      visit?.responder_name ??
+      claim?.providerName ??
+      claim?.provider ??
+      visit?.doctorName ??
+      visit?.doctor ??
+      null
+    : visit?.doctorName ??
+      visit?.doctor ??
+      claim?.providerName ??
+      claim?.provider ??
+      null;
 
   if (kind === "ambulance" || kind === "bed") {
     return buildTrackingRatingState({
@@ -370,7 +418,6 @@ export async function purgeStaleTrackingRatingClaims(visits) {
 
 export async function resolveTrackingRatingSkip({
 	visitId,
-	updateVisit,
 	deleteRecoveryClaim = deleteTrackingRatingRecoveryClaim,
 }) {
 	if (!visitId) {
@@ -378,10 +425,7 @@ export async function resolveTrackingRatingSkip({
 	}
 
 	try {
-		await updateVisit?.(visitId, {
-			lifecycleState: EMERGENCY_VISIT_LIFECYCLE.POST_COMPLETION,
-			lifecycleUpdatedAt: new Date().toISOString(),
-		});
+		await visitsService.skipRating(visitId);
 		await deleteRecoveryClaim(visitId);
 		return { ok: true, kind: TRACKING_RATING_RESOLUTION_KINDS.SKIPPED };
 	} catch (error) {
@@ -399,7 +443,6 @@ export async function resolveTrackingRatingSubmit({
 	comment,
 	tipAmount,
 	tipCurrency,
-	updateVisit,
 	deleteRecoveryClaim = deleteTrackingRatingRecoveryClaim,
 	processTip = paymentService.processVisitTip,
 }) {
@@ -411,23 +454,15 @@ export async function resolveTrackingRatingSubmit({
 
 	// DOUBLE-RATING FIX (BUG-009/BUG-010): Optimistic pre-write before network call.
 	//
-	// OLD: deleteRecoveryClaim ran AFTER updateVisit. If the app was killed between the
+	// OLD: deleteRecoveryClaim ran after the server write. If the app was killed between the
 	//      network call and the claim delete, the claim survived to the next session.
 	//      purgeStaleTrackingRatingClaims then found the visit still at RATING_PENDING
 	//      (server write also failed), re-surfaced the modal, and the user had to rate
 	//      twice (once per each failed/incomplete ride session).
 	//
-	// NEW (Layer 1 of 2):
-	//   1. Apply RATED optimistically to local visits cache via updateVisit local patch.
-	//      This happens immediately — purgeStaleTrackingRatingClaims will see RATED
-	//      even if the app is killed before the server responds.
-	//   2. Delete the AsyncStorage claim optimistically — same reasoning.
-	//   3. Fire the real server write. If it fails, roll back the claim so the modal
-	//      can re-surface and the user can retry. The local RATED patch stays (prevents
-	//      a phantom re-surface from a stale cache until the next full fetch reconciles).
-	//
-	// Layer 2 (server-side idempotency) lives in visitsService.updateRating — see that
-	// method for the rated_at IS NULL guard that makes duplicate submissions a no-op.
+	// Layer 1 deletes the local recovery claim before the network call and restores
+	// it on failure. Layer 2 is the server-owned rate_visit command, which validates
+	// completion and makes duplicate submissions no-ops across devices.
 
 	// Step 1: optimistic local claim delete (AsyncStorage)
 	const claimDeleteError = await deleteRecoveryClaim(visitId).then(() => null).catch((e) => e);
@@ -436,24 +471,12 @@ export async function resolveTrackingRatingSubmit({
 	}
 
 	try {
-		// Step 2: idempotent server write — rated_at IS NULL guard means a duplicate
-		// submission after network failure is a safe no-op (alreadyRated: true).
+		// Step 2: the idempotent server command owns rating and lifecycle truth.
 		const ratingPayload = {
 			rating,
 			ratingComment: comment,
-			ratedAt: nowIso,
-			lifecycleState: EMERGENCY_VISIT_LIFECYCLE.RATED,
-			lifecycleUpdatedAt: nowIso,
 		};
 		const { alreadyRated } = await visitsService.updateRating(visitId, ratingPayload);
-
-		// Step 3: optimistic local cache patch (keeps visits list in sync).
-		// Always runs regardless of alreadyRated — ensures the local array reflects RATED.
-		try {
-			await updateVisit?.(visitId, ratingPayload);
-		} catch (cacheError) {
-			console.warn("[resolveTrackingRatingSubmit] Local cache patch failed (non-fatal):", cacheError);
-		}
 
 		let tipError = null;
 		if (!alreadyRated && Number(tipAmount) > 0) {

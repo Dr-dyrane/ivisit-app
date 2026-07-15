@@ -3,16 +3,6 @@ import { isValidUUID, resolveEntityId } from "./displayIdService";
 
 const TABLE = "ambulances";
 
-const formatSupabaseError = (error) => {
-    if (!error) return "Unknown Supabase error";
-    return {
-        message: error.message || null,
-        code: error.code || null,
-        details: error.details || null,
-        hint: error.hint || null,
-    };
-};
-
 const mapFromDb = (row) => {
     // Safely handle location which might be GeoJSON object, string, or null
     let location = null;
@@ -68,21 +58,6 @@ const mapFromDb = (row) => {
 };
 
 export const ambulanceService = {
-    async list() {
-        const { data, error } = await supabase
-            .from(TABLE)
-            .select('*');
-
-        if (error) {
-            if (__DEV__) {
-                console.warn("[ambulanceService] Ambulance list unavailable:", formatSupabaseError(error));
-            }
-            return [];
-        }
-
-        return (data || []).map(mapFromDb);
-    },
-
     async getById(id) {
         try {
             if (!id) return null;

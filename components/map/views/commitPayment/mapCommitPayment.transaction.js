@@ -95,6 +95,54 @@ export function reconcileCanonicalPaymentTotal({
 	};
 }
 
+export function createCanonicalPaymentRetry({
+	userId,
+	hospitalId,
+	serviceType,
+	methodKind,
+	initiatedRequest,
+	initiationResult,
+	settlementCost,
+} = {}) {
+	const identifiers = getCommitPaymentRequestIdentifiers(
+		initiationResult,
+		initiatedRequest,
+	);
+	if (
+		!identifiers.requestId ||
+		!toIdentifier(userId) ||
+		!toIdentifier(hospitalId) ||
+		!toIdentifier(serviceType) ||
+		!toIdentifier(methodKind)
+	) {
+		return null;
+	}
+
+	return {
+		...identifiers,
+		userId: toIdentifier(userId),
+		hospitalId: toIdentifier(hospitalId),
+		serviceType: toIdentifier(serviceType),
+		methodKind: toIdentifier(methodKind),
+		initiatedRequest,
+		initiationResult,
+		settlementCost,
+	};
+}
+
+export function canResumeCanonicalPaymentRetry(retry, context = {}) {
+	if (!retry?.requestId || !retry?.initiatedRequest || !retry?.initiationResult) {
+		return false;
+	}
+
+	return (
+		retry.userId === toIdentifier(context.userId) &&
+		retry.hospitalId === toIdentifier(context.hospitalId) &&
+		retry.serviceType === toIdentifier(context.serviceType) &&
+		retry.methodKind === toIdentifier(context.methodKind)
+	);
+}
+
 export function isCommitPaymentIdleState(submissionState) {
 	return submissionState?.kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.IDLE;
 }
@@ -208,6 +256,8 @@ export default {
 	requiresSignedCardConfirmation,
 	requiresWalletSettlement,
 	reconcileCanonicalPaymentTotal,
+	createCanonicalPaymentRetry,
+	canResumeCanonicalPaymentRetry,
 	isCommitPaymentIdleState,
 	isCommitPaymentDismissibleState,
 	isCommitPaymentFailureState,

@@ -69,6 +69,7 @@ export const BOOK_VISIT_SCREEN_COPY = {
     noSpecialties: "No specialties available right now.",
     noProviders: "No available facilities match this specialty.",
     noAvailability: "No times are available for this selection.",
+    slotChanged: "That time is no longer available. Choose another available time.",
   },
 };
 

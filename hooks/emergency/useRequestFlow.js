@@ -17,6 +17,7 @@ import {
 import { useLocationStore } from "../../stores/locationStore";
 import { useEmergencyContactsStore } from "../../stores/emergencyContactsStore";
 import { selectReachableEmergencyContacts } from "../../stores/emergencyContactsSelectors";
+import { resolveAmbulanceDispatchType } from "../../utils/ambulanceType";
 
 // PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
 // OLD: GPS failure in request flow → hardcoded Lagos coords
@@ -64,7 +65,7 @@ const normalizeRequestCostSnapshot = (raw) => {
   if (!raw || typeof raw !== "object") return null;
 
   const baseCost = toFiniteNumber(raw.base_cost ?? raw.baseCost);
-  const grossTotal = toFiniteNumber(
+  const canonicalTotal = toFiniteNumber(
     raw.total_cost ?? raw.totalCost ?? raw.total_amount,
   );
 
@@ -86,26 +87,23 @@ const normalizeRequestCostSnapshot = (raw) => {
     }
   }
 
-  const totalBeforeFee = (() => {
-    if (grossTotal != null && feeAmount != null) {
-      return Number(Math.max(0, grossTotal - feeAmount).toFixed(2));
-    }
-    if (grossTotal != null) return grossTotal;
+  const total = (() => {
+    if (canonicalTotal != null) return canonicalTotal;
     if (baseCost != null) return baseCost;
     return null;
   })();
 
-  if (baseCost == null && totalBeforeFee == null) return null;
+  if (baseCost == null && total == null) return null;
 
   return {
-    base_cost: baseCost ?? totalBeforeFee,
+    base_cost: baseCost ?? total,
     distance_surcharge: toFiniteNumber(raw.distance_surcharge),
     urgency_surcharge: toFiniteNumber(raw.urgency_surcharge),
-    total_cost: totalBeforeFee ?? baseCost,
-    totalCost: totalBeforeFee ?? baseCost,
+    total_cost: total ?? baseCost,
+    totalCost: total ?? baseCost,
     breakdown: Array.isArray(raw.breakdown) ? raw.breakdown : undefined,
     feeAmount,
-    grossTotal,
+    grossTotal: total ?? baseCost,
     source: "modal_pricing_snapshot",
   };
 };
@@ -453,7 +451,13 @@ export const useRequestFlow = (props) => {
               request.serviceType,
               {
                 distance: computedDistanceKm,
+                hospitalId,
+                ambulanceType:
+                  request.serviceType === "ambulance"
+                    ? resolveAmbulanceDispatchType(request?.ambulanceType)
+                    : null,
                 isUrgent: request?.isUrgent || false,
+                requireServerQuote: request.serviceType === "ambulance",
               },
             );
           }
@@ -665,6 +669,9 @@ export const useRequestFlow = (props) => {
           paymentStatus: normalizedPaymentStatus,
           status: createdRequest?.status || null,
           canonicalTotal: createdRequest?.canonicalTotal ?? null,
+          pricing: createdRequest?.pricing ?? null,
+          pricingSource: createdRequest?.pricingSource ?? null,
+          pricingIsFallback: createdRequest?.pricingIsFallback === true,
           currency: createdRequest?.currency || costData?.currency || "USD",
         };
       } catch (err) {

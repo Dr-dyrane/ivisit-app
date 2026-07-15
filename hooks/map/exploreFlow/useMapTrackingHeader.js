@@ -4,6 +4,7 @@
 //       header state effect, 1-second timer, header action request machinery
 
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { useAtomValue } from "jotai";
 import {
   Animated,
   Easing,
@@ -22,6 +23,7 @@ import {
   MAP_EXPLORE_TRACKING_RUNTIME_KEYS,
 } from "../state/mapExploreFlow.runtime";
 import MapHeaderIconButton from "../../../components/map/views/shared/MapHeaderIconButton";
+import { trackingRouteInfoAtom } from "../../../atoms/mapScreenAtoms";
 
 const TRACKING_HEADER_COLLAPSED_HEIGHT = 124;
 
@@ -174,6 +176,7 @@ export function useMapTrackingHeader({
   setHeaderState,
 }) {
   const trackingHeaderNowMs = nowMs;
+  const trackingRouteInfo = useAtomValue(trackingRouteInfoAtom);
 
   const trackingHeaderOwnsCurrentPhase =
     sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
@@ -213,8 +216,17 @@ export function useMapTrackingHeader({
       activeMapRequest,
       ambulanceTelemetryHealth,
       pendingApproval,
+      trackingRouteInfo,
+      nowMs: trackingHeaderNowMs,
     });
-  }, [activeMapRequest, ambulanceTelemetryHealth, pendingApproval, trackingHeaderVisible]);
+  }, [
+    activeMapRequest,
+    ambulanceTelemetryHealth,
+    pendingApproval,
+    trackingHeaderNowMs,
+    trackingHeaderVisible,
+    trackingRouteInfo,
+  ]);
 
   const handleTrackingHeaderOpen = useCallback(() => {
     openTracking();

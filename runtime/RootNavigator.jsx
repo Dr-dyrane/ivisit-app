@@ -39,8 +39,12 @@ export function RootNavigator() {
 
 	// Routing hooks - each owns one concern
 	// NOTE: Auth redirects are handled by route group layouts, not here
-	const { startupPublicRoute, setStartupPublicRoute } = useInitialRoute();
-	useRoutePersistence();
+	const {
+		initialRouteResolved,
+		startupPublicRoute,
+		setStartupPublicRoute,
+	} = useInitialRoute();
+	useRoutePersistence({ initialRouteResolved, startupPublicRoute });
 	useAuthRouting({ startupPublicRoute, setStartupPublicRoute });
 
 	return (

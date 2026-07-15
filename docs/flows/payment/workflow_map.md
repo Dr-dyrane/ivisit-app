@@ -1,7 +1,7 @@
 ---
 status: living
 owner: product
-last_updated: 2026-05-07
+last_updated: 2026-07-15
 ---
 
 # Payment Workflow Map
@@ -47,50 +47,44 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 
 ### Current Emergency Pricing Contract
 
-Current audited truth:
+The server owns the patient price. `resolve_emergency_pricing` is shared by
+`calculate_emergency_cost_v2` and `create_emergency_v4`; the map may use raw
+pricing rows for service capability and labels, never for the payment amount.
 
-- `calculate_emergency_cost_v2` is the base pricing source, but today it returns service subtotal only:
-  - base price
-  - distance surcharge
-  - no explicit service/platform fee row yet
-- legacy emergency payment UI then computes the patient-facing fee client-side from `organizations.ivisit_fee_percentage`
-- `/map` `COMMIT_PAYMENT` must follow that same fee-inclusive display rule until the RPC is hardened
+For ambulance requests, the resolver applies this non-blocking order:
 
-Locked interim money model for emergency checkout:
+1. Hospital-configured exact BLS/ALS/CCT tier.
+2. Global exact tier baseline.
+3. Hospital generic ambulance rate, hospital base price, global generic ambulance rate, then the server default.
 
-- `subtotal`
-  - service subtotal from pricing RPC before service/platform fee
-- `feeAmount`
-  - fee derived from organization `ivisit_fee_percentage`
-  - current legacy-compatible rule applies fee to `base_cost`
-- `grossTotal`
-  - `subtotal + feeAmount`
-  - this is the number the patient should see in the summary, breakdown, and primary CTA
-- `breakdown`
-  - must include the fee row when `feeAmount > 0`
+If an organization has not asserted an exact service price, the selected
+service still proceeds. The server fallback is the definitive user price for
+that request, with `pricing_source`, `pricing_is_fallback`, and resolved tier
+stored in payment metadata and returned to the client.
 
-Current implementation note:
+`create_emergency_v4` persists that same canonical total to both
+`emergency_requests.total_cost` and `payments.amount`. Card, wallet, and cash
+must reconcile to that result; they must never create a client-side substitute.
 
-- shared fee-enrichment now lives in `services/pricingService.augmentEmergencyCostForCheckout(...)`
-- both `EmergencyRequestModal.jsx` and `/map` `MapCommitPaymentStageBase.jsx` use that helper so the visible total stays aligned
+### Fee And Card Lane
 
-### Locked Card Lane
+Current backend/finance truth treats `ivisit_fee_amount` as settlement metadata
+inside the canonical payment amount: organization settlement is reduced by the
+fee and iVisit receives that fee. The patient-facing total is therefore the
+server canonical total, not a client-added surcharge.
 
-Current live truth for the map card lane:
+- `services/pricingService.augmentEmergencyCostForCheckout(...)` preserves the
+  server total and only adapts its display breakdown.
+- `/map` obtains a server quote for the chosen ambulance tier before the payment
+  surface and uses the final server total returned by creation.
+- `create-payment-intent` must charge the existing canonical `payments.amount`.
+- Dispatch is not released on card selection alone; it releases only after
+  Stripe confirmation and webhook finalization via `complete_card_payment`.
 
-- `create_emergency_v4` still starts from the request snapshot subtotal contract so cash approval behavior remains stable
-- `create-payment-intent` then becomes the card-lane source of truth:
-  - it reuses the stored emergency fee amount
-  - it charges the patient-facing gross total
-  - it sets Stripe `application_fee_amount` from the stored fee, not from a second percentage pass on the gross total
-  - it syncs the emergency payment row and request `total_cost` to that gross total before confirmation
-- dispatch is not released on card selection alone
-- dispatch is released only after Stripe confirmation + webhook finalization via `complete_card_payment`
-
-Remaining cleanup, still separate from this lock:
-
-- the request-creation subtotal/gross contract should eventually be unified so the first insert and the Stripe lane no longer need the follow-up total sync
-- wallet checkout inside `/map` commit payment is still intentionally not treated as a truthful live lane here
+Historical April documents described a temporary fee-inclusive UI model. They
+are historical only; changing the long-term fee business policy requires a
+coherent backend, finance, card, cash, wallet, and disclosure change rather
+than another client-side surcharge.
 
 ### Current Billing Currency Truth
 

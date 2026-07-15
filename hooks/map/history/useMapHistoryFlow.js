@@ -23,7 +23,7 @@
 //   - handleBookVisitFromCare — stays in MapScreen (care-history surface, not visit-detail)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import { useAtom, useAtomValue } from "jotai";
 import { paymentService } from "../../../services/paymentService";
 import {
@@ -32,11 +32,17 @@ import {
 } from "../../visits/useVisitHistorySelectors";
 import { useScheduledVisitMutations } from "../../visits/useScheduledVisitMutations";
 import {
+  SCHEDULED_VISIT_CANCELLATION_COPY,
+  shouldUseAppOwnedCancellationConfirmation,
+} from "../../../utils/scheduledVisitCancellation";
+import {
   buildRecoveredTrackingRatingState,
   buildTrackingResolutionToast,
   canPresentTrackingRatingWithActiveRequest,
   findPendingTrackingRatingVisit,
   getTrackingRatingRecoveryClaim,
+  getTrackingRatingVisitKeys,
+  isTrackingRatingResolutionFinal,
   purgeStaleTrackingRatingClaims,
   readTrackingRatingRecoveryClaims,
   resolveTrackingRatingSkip,
@@ -60,7 +66,6 @@ import {
  *
  * @param {Object} params
  * @param {Array}    params.visits
- * @param {Function} params.updateVisit
  * @param {Function} params.showToast
  * @param {Function} params.openTracking
  * @param {Function} params.openVisitDetail
@@ -81,7 +86,6 @@ import {
  */
 export function useMapHistoryFlow({
   visits,
-  updateVisit,
   showToast,
   openTracking,
   openVisitDetail,
@@ -108,6 +112,7 @@ export function useMapHistoryFlow({
   const visitDetailReturnTargetRef = useRef(null);
   const routeManagedVisitDetailRef = useRef(false);
   const historyPaymentRequestVersionRef = useRef(0);
+  const cancelRequestInFlightRef = useRef(false);
 
   // --- Jotai atoms ---
   const [handledRecoveredRatingVersion, setHandledRecoveredRatingVersion] = useAtom(ratingRecoveryVersionAtom);
@@ -121,20 +126,44 @@ export function useMapHistoryFlow({
   const [coldVisit, setColdVisit] = useState(null);
   const [asyncConsultVisit, setAsyncConsultVisit] = useState(null);
   const [rescheduleVisit, setRescheduleVisit] = useState(null);
+  const [cancelConfirmationVisit, setCancelConfirmationVisit] = useState(null);
   const { transitionVisit, isTransitioning } = useScheduledVisitMutations({ userId });
 
   // --- Derived ---
   const selectionVisits = useMemo(() => {
     if (!coldVisit?.id) return visits;
-    const withoutDuplicate = (visits || []).filter(
-      (visit) => String(visit?.id || "") !== String(coldVisit.id),
+    const coldKeys = new Set(
+      [coldVisit.id, coldVisit.requestId, coldVisit.displayId]
+        .filter(Boolean)
+        .map(String),
     );
-    return [...withoutDuplicate, coldVisit];
+    const hasCanonicalListRow = (visits || []).some((visit) =>
+      [visit?.id, visit?.requestId, visit?.displayId]
+        .filter(Boolean)
+        .map(String)
+        .some((key) => coldKeys.has(key)),
+    );
+
+    // PULLBACK NOTE: scheduled lifecycle detail convergence.
+    // OLD: the cold deep-link snapshot replaced newer list/realtime truth forever.
+    // NEW: cold truth only bridges initial hydration; the canonical list wins once present.
+    return hasCanonicalListRow ? visits : [...(visits || []), coldVisit];
   }, [coldVisit, visits]);
   const selectedHistoryVisit = useMemo(
     () => selectHistoryItemByAnyKey(selectionVisits, selectedHistoryVisitKey),
     [selectedHistoryVisitKey, selectionVisits],
   );
+  const resolvedAsyncConsultVisit = useMemo(() => {
+    if (!asyncConsultVisit) return null;
+    const visitKey =
+      asyncConsultVisit.id ||
+      asyncConsultVisit.requestId ||
+      asyncConsultVisit.displayId ||
+      null;
+    return (
+      selectHistoryItemByAnyKey(selectionVisits, visitKey) || asyncConsultVisit
+    );
+  }, [asyncConsultVisit, selectionVisits]);
 
   // PULLBACK NOTE: Moved here (before any useCallback that references them) to prevent TDZ.
   // historyVisitDetailsVisible only needs sheetPhase (a param) — safe to declare early.
@@ -192,6 +221,7 @@ export function useMapHistoryFlow({
     setColdVisit(null);
     setAsyncConsultVisit(null);
     setRescheduleVisit(null);
+    setCancelConfirmationVisit(null);
     // PULLBACK NOTE: VD-C3 (EC-VD-2) — restore origin surface after closing visit detail.
     // PULLBACK NOTE: PASS 19H — restore Recents modal if sourceSurface is "recents"
     // PULLBACK NOTE: PASS 19H FIX — restore surface BEFORE calling closeVisitDetail to avoid timing issues
@@ -457,47 +487,87 @@ export function useMapHistoryFlow({
     selectedHistoryVisit,
   ]);
 
-  const handleCancelHistoryVisit = useCallback(() => {
-    if (!selectedHistoryVisit?.id) return;
+  const cancelScheduledVisit = useCallback(async (visit) => {
+    if (!visit?.id || isTransitioning || cancelRequestInFlightRef.current) {
+      return false;
+    }
 
-    if (selectedHistoryVisit.sourceKind !== "scheduled_visit") {
+    cancelRequestInFlightRef.current = true;
+    try {
+      showToast("Cancelling visit...", "info");
+      const updatedVisit = await transitionVisit({
+        visitId: visit.id,
+        action: "cancel",
+      });
+      setColdVisit(updatedVisit);
+      const updatedItem = toHistoryItem(updatedVisit);
+      if (updatedItem) {
+        openVisitDetail?.(updatedItem, null, visitDetailSourceSurface);
+      }
+      showToast("Visit cancelled.", "success");
+      return true;
+    } catch (error) {
+      console.error("[useMapHistoryFlow] Failed to cancel history visit:", error);
+      showToast(error?.message || "Could not cancel this visit right now.", "error");
+      return false;
+    } finally {
+      cancelRequestInFlightRef.current = false;
+    }
+  }, [
+    isTransitioning,
+    openVisitDetail,
+    showToast,
+    transitionVisit,
+    visitDetailSourceSurface,
+  ]);
+
+  const closeCancelConfirmation = useCallback(() => {
+    setCancelConfirmationVisit(null);
+  }, []);
+
+  const confirmCancelHistoryVisit = useCallback(() => {
+    const visit = cancelConfirmationVisit;
+    if (!visit) return;
+    setCancelConfirmationVisit(null);
+    void cancelScheduledVisit(visit);
+  }, [cancelConfirmationVisit, cancelScheduledVisit]);
+
+  const handleCancelHistoryVisit = useCallback(() => {
+    const visit = selectedHistoryVisit;
+    if (!visit?.id || isTransitioning) return;
+
+    if (visit.sourceKind !== "scheduled_visit") {
       showToast("Manage emergency care from its request details.", "info");
       return;
     }
 
+    if (shouldUseAppOwnedCancellationConfirmation(Platform.OS)) {
+      setCancelConfirmationVisit(visit);
+      return;
+    }
+
     Alert.alert(
-      "Cancel Visit",
-      "Are you sure you want to cancel this visit?",
+      SCHEDULED_VISIT_CANCELLATION_COPY.title,
+      SCHEDULED_VISIT_CANCELLATION_COPY.message,
       [
-        { text: "Keep", style: "cancel" },
         {
-          text: "Cancel Visit",
+          text: SCHEDULED_VISIT_CANCELLATION_COPY.cancelText,
+          style: "cancel",
+        },
+        {
+          text: SCHEDULED_VISIT_CANCELLATION_COPY.confirmText,
           style: "destructive",
-          onPress: async () => {
-            try {
-              showToast("Cancelling visit...", "info");
-              const updatedVisit = await transitionVisit({
-                visitId: selectedHistoryVisit.id,
-                action: "cancel",
-              });
-              setColdVisit(updatedVisit);
-              const updatedItem = toHistoryItem(updatedVisit);
-              if (updatedItem) openVisitDetail?.(updatedItem, null, visitDetailSourceSurface);
-              showToast("Visit cancelled.", "success");
-            } catch (error) {
-              console.error("[useMapHistoryFlow] Failed to cancel history visit:", error);
-              showToast(error?.message || "Could not cancel this visit right now.", "error");
-            }
+          onPress: () => {
+            void cancelScheduledVisit(visit);
           },
         },
       ],
     );
   }, [
-    openVisitDetail,
+    cancelScheduledVisit,
+    isTransitioning,
     selectedHistoryVisit,
     showToast,
-    transitionVisit,
-    visitDetailSourceSurface,
   ]);
 
   // ─── Stale-guard effect: close VISIT_DETAIL if visit deselected ──────────
@@ -514,6 +584,58 @@ export function useMapHistoryFlow({
   const canRecoverTrackingRating =
     sheetPhase === MAP_SHEET_PHASES.EXPLORE_INTENT ||
     sheetPhase === MAP_SHEET_PHASES.TRACKING;
+
+  const resolvedTerminalTrackingVisit = useMemo(() => {
+    if (!activeMapRequest?.isTerminal) return null;
+
+    const activeRequestKeys = new Set(
+      [
+        activeMapRequest?.id,
+        activeMapRequest?.requestId,
+        activeMapRequest?.displayId,
+        activeMapRequest?.record?.id,
+        activeMapRequest?.record?.requestId,
+        activeMapRequest?.record?.displayId,
+      ]
+        .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+        .map((value) => String(value)),
+    );
+    if (activeRequestKeys.size === 0) return null;
+
+    return (
+      visits.find(
+        (visit) =>
+          isTrackingRatingResolutionFinal(visit) &&
+          getTrackingRatingVisitKeys(visit).some((key) => activeRequestKeys.has(key)),
+      ) || null
+    );
+  }, [
+    activeMapRequest?.displayId,
+    activeMapRequest?.id,
+    activeMapRequest?.isTerminal,
+    activeMapRequest?.record?.displayId,
+    activeMapRequest?.record?.id,
+    activeMapRequest?.record?.requestId,
+    activeMapRequest?.requestId,
+    visits,
+  ]);
+
+  useEffect(() => {
+    if (!resolvedTerminalTrackingVisit) return;
+    if (activeMapRequest?.isAmbulance) {
+      stopAmbulanceTrip?.();
+      return;
+    }
+    if (activeMapRequest?.isBed) {
+      stopBedBooking?.();
+    }
+  }, [
+    activeMapRequest?.isAmbulance,
+    activeMapRequest?.isBed,
+    resolvedTerminalTrackingVisit,
+    stopAmbulanceTrip,
+    stopBedBooking,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -621,7 +743,7 @@ export function useMapHistoryFlow({
       closeRecoveredRating();
       return true;
     }
-    const resolution = await resolveTrackingRatingSkip({ visitId, updateVisit });
+    const resolution = await resolveTrackingRatingSkip({ visitId });
     if (!resolution.ok) {
       showToast("Could not close rating right now.", "error");
       return false;
@@ -642,7 +764,6 @@ export function useMapHistoryFlow({
     recoveredRatingState?.serviceType,
     recoveredRatingState?.visitId,
     showToast,
-    updateVisit,
   ]);
 
   const handleSubmitRecoveredRating = useCallback(
@@ -655,7 +776,6 @@ export function useMapHistoryFlow({
         comment,
         tipAmount,
         tipCurrency,
-        updateVisit,
       });
       if (!resolution.ok) {
         showToast("Could not save your rating right now.", "error");
@@ -683,7 +803,6 @@ export function useMapHistoryFlow({
       recoveredRatingState?.serviceType,
       recoveredRatingState?.visitId,
       showToast,
-      updateVisit,
     ],
   );
 
@@ -691,8 +810,9 @@ export function useMapHistoryFlow({
     // State
     selectedHistoryVisit,
     selectedHistoryVisitKey,
-    asyncConsultVisit,
+    asyncConsultVisit: resolvedAsyncConsultVisit,
     rescheduleVisit,
+    cancelConfirmationVisit,
     isScheduledVisitTransitioning: isTransitioning,
     historyPaymentState,
     recoveredRatingState,
@@ -716,12 +836,17 @@ export function useMapHistoryFlow({
     handleRescheduleHistoryVisit,
     closeRescheduleVisit,
     handleRescheduleSuccess,
+    closeCancelConfirmation,
+    confirmCancelHistoryVisit,
     handleBookHistoryAgain,
     handleCancelHistoryVisit,
     // Recovered-rating handlers
     closeRecoveredRating,
     handleSkipRecoveredRating,
     handleSubmitRecoveredRating,
+    // Shared with in-flow resolution so a stale AsyncStorage read cannot
+    // resurrect the same completed visit during terminal cleanup.
+    suppressRecoveredRatingForSession: markRecoveredRatingHandled,
   };
 }
 

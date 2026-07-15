@@ -112,11 +112,14 @@ export async function clearStoredPublicRoute() {
  * - Clear stored route when user navigates to root "/"
  * - No other side effects
  */
-export function useRoutePersistence() {
+export function useRoutePersistence({
+	initialRouteResolved = true,
+	startupPublicRoute = null,
+} = {}) {
 	const pathname = usePathname();
 
 	useEffect(() => {
-		if (!pathname) {
+		if (!initialRouteResolved || !pathname) {
 			return;
 		}
 
@@ -126,8 +129,8 @@ export function useRoutePersistence() {
 			return;
 		}
 
-		if (pathname === "/") {
+		if (pathname === "/" && !startupPublicRoute) {
 			clearStoredPublicRoute().catch(() => {});
 		}
-	}, [pathname]);
+	}, [initialRouteResolved, pathname, startupPublicRoute]);
 }

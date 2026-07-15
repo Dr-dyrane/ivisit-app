@@ -13,10 +13,19 @@ export function useVisitsRealtime({ userId, enabled = true }) {
   useEffect(() => {
     if (!enabled || !userId) return undefined;
 
-    const subscription = visitsService.subscribe(userId, () => {
+    const subscription = visitsService.subscribe(userId, (payload) => {
       queryClient.invalidateQueries({
         queryKey: visitsQueryKeys.list(userId),
+        exact: true,
       });
+
+      const visitId = payload?.new?.id || payload?.old?.id || null;
+      if (visitId) {
+        queryClient.invalidateQueries({
+          queryKey: visitsQueryKeys.detail(visitId, userId),
+          exact: true,
+        });
+      }
     });
 
     return () => {

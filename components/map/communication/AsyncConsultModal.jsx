@@ -72,7 +72,12 @@ export default function AsyncConsultModal({ visible, historyItem, onClose }) {
     eligibleVisit &&
     scheduledVisitReleaseGates.asyncConsult &&
     Boolean(visitId);
-  const attemptedVisitRef = useRef(null);
+  const roomRefreshKey = [
+    visitId,
+    historyItem?.doctorId || "unassigned",
+    historyItem?.lifecycleUpdatedAt || "initial",
+  ].join(":");
+  const attemptedRoomRefreshRef = useRef(null);
   const markedReadRef = useRef(null);
   const [composerText, setComposerText] = useState("");
   const [pendingSendIntent, setPendingSendIntent] = useState(null);
@@ -117,13 +122,13 @@ export default function AsyncConsultModal({ visible, historyItem, onClose }) {
 
   useEffect(() => {
     if (!consultEnabled) {
-      attemptedVisitRef.current = null;
+      attemptedRoomRefreshRef.current = null;
       return;
     }
-    if (attemptedVisitRef.current === visitId) return;
-    attemptedVisitRef.current = visitId;
+    if (attemptedRoomRefreshRef.current === roomRefreshKey) return;
+    attemptedRoomRefreshRef.current = roomRefreshKey;
     ensureRoom({ force: true }).catch(() => {});
-  }, [consultEnabled, ensureRoom, visitId]);
+  }, [consultEnabled, ensureRoom, roomRefreshKey]);
 
   useEffect(() => {
     setComposerText("");
@@ -160,14 +165,14 @@ export default function AsyncConsultModal({ visible, historyItem, onClose }) {
   );
 
   const handleRetryRoom = useCallback(async () => {
-    attemptedVisitRef.current = visitId;
+    attemptedRoomRefreshRef.current = roomRefreshKey;
     await resetRoom();
     try {
       await ensureRoom();
     } catch (_error) {
       // The room state renders the patient-facing retry message.
     }
-  }, [ensureRoom, resetRoom, visitId]);
+  }, [ensureRoom, resetRoom, roomRefreshKey]);
 
   const handleComposerChange = useCallback(
     (nextText) => {

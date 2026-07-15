@@ -448,6 +448,7 @@ export function useMapExploreFlow() {
     selectHospital,
     setFeaturedHospital,
     setSearchSheetMode,
+    setSheetPayload,
     setSheetView,
   });
 

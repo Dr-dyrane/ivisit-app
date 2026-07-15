@@ -23,6 +23,7 @@ import {
 } from "../../../atoms/mapScreenAtoms";
 import {
   areTrackingRouteInfosEqual,
+  buildTrackingRouteRequestSeed,
   buildTrackingRouteSignature,
   hasUsableTrackingStartedAt,
   normalizeTrackingRouteCoordinates,
@@ -147,6 +148,7 @@ export function useMapTrackingSync({
       return;
     }
 
+    const previousRequestKey = previousRequestKeyRef.current;
     previousRequestKeyRef.current = normalizedActiveRequestKey;
     setIsCalculatingRoute(false);
     setRouteCalculationError(null);
@@ -169,24 +171,12 @@ export function useMapTrackingSync({
       // with null leaves the atom empty until the next route change. Prefer: store etaSeconds
       // if present, otherwise keep the live atom value, otherwise null.
       setTrackingRouteInfoState((current) => {
-        const storeDuration =
-          Number.isFinite(activeAmbulanceTrip?.etaSeconds) &&
-          activeAmbulanceTrip.etaSeconds > 0
-            ? Math.round(Number(activeAmbulanceTrip.etaSeconds))
-            : null;
-        const sameRequest = current?.requestKey === normalizedActiveRequestKey;
-        const seededRouteInfo = normalizeTrackingRouteInfo({
-          requestKey: normalizedActiveRequestKey,
-          routeSource: storeDuration
-            ? "trip"
-            : sameRequest
-              ? current?.routeSource
-              : "none",
-          durationSec:
-            storeDuration ??
-            (sameRequest ? current?.durationSec : null) ??
-            null,
-          coordinates: activeAmbulanceTrip?.route,
+        const seededRouteInfo = buildTrackingRouteRequestSeed({
+          currentRouteInfo: current,
+          previousRequestKey,
+          nextRequestKey: normalizedActiveRequestKey,
+          tripEtaSeconds: activeAmbulanceTrip?.etaSeconds,
+          tripRoute: activeAmbulanceTrip?.route,
         });
         return areTrackingRouteInfosEqual(current, seededRouteInfo)
           ? current

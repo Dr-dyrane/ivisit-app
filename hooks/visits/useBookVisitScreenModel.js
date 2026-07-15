@@ -53,9 +53,10 @@ const getNextStepLabel = (step) => {
   }
 };
 
-const buildAvailabilityWindow = () => {
+const buildAvailabilityWindow = (offsetDays = 0) => {
   const from = new Date();
   from.setSeconds(0, 0);
+  from.setDate(from.getDate() + offsetDays);
   const to = new Date(from);
   to.setDate(to.getDate() + 14);
   return { fromAt: from.toISOString(), toAt: to.toISOString() };
@@ -93,6 +94,10 @@ export function useBookVisitScreenModel() {
   const [facilitySearchQuery, setFacilitySearchQuery] = useState("");
   const deferredFacilitySearch = useDeferredValue(facilitySearchQuery.trim());
   const [selectedAvailabilityDayKey, setSelectedAvailabilityDayKey] =
+    useState(null);
+  const [availabilityWindowOffsetDays, setAvailabilityWindowOffsetDays] =
+    useState(0);
+  const [availabilityRecoveryNotice, setAvailabilityRecoveryNotice] =
     useState(null);
   const [submitError, setSubmitError] = useState(null);
 
@@ -134,8 +139,9 @@ export function useBookVisitScreenModel() {
     facilitiesQuery.data?.pages?.[0]?.total ?? availableProviders.length;
 
   const availabilityWindow = useMemo(
-    buildAvailabilityWindow,
+    () => buildAvailabilityWindow(availabilityWindowOffsetDays),
     [
+      availabilityWindowOffsetDays,
       bookingData.hospital?.id,
       bookingData.specialty,
       bookingData.type,
@@ -282,6 +288,8 @@ export function useBookVisitScreenModel() {
       setSpecialtySearchVisible(false);
       setSearchQuery("");
       setFacilitySearchQuery("");
+      setAvailabilityWindowOffsetDays(0);
+      setAvailabilityRecoveryNotice(null);
       mergeDraft({
         specialty,
         hospital: null,
@@ -315,6 +323,8 @@ export function useBookVisitScreenModel() {
       time: null,
     });
     setSelectedAvailabilityDayKey(null);
+    setAvailabilityWindowOffsetDays(0);
+    setAvailabilityRecoveryNotice(null);
     setProviderModalVisible(false);
     transitionStep(BOOK_VISIT_STEPS.DATETIME);
   }, [
@@ -326,6 +336,7 @@ export function useBookVisitScreenModel() {
 
   const handleSelectDate = useCallback(
     (dateKey) => {
+      setAvailabilityRecoveryNotice(null);
       setSelectedAvailabilityDayKey(dateKey);
       updateDraftField("slot", null);
     },
@@ -334,6 +345,7 @@ export function useBookVisitScreenModel() {
 
   const handleSelectTime = useCallback(
     (slot) => {
+      setAvailabilityRecoveryNotice(null);
       updateDraftField("slot", slot);
     },
     [updateDraftField],
@@ -396,8 +408,19 @@ export function useBookVisitScreenModel() {
       setSubmitError(error);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (["slot_unavailable", "overlap"].includes(error?.code)) {
-        await availabilityQuery.refetch();
+        updateDraftField("slot", null);
+        setSelectedAvailabilityDayKey(null);
         setStep(BOOK_VISIT_STEPS.DATETIME);
+        setAvailabilityRecoveryNotice(
+          BOOK_VISIT_SCREEN_COPY.messages.slotChanged,
+        );
+        showToast(BOOK_VISIT_SCREEN_COPY.messages.slotChanged, "info");
+        try {
+          await availabilityQuery.refetch();
+        } catch (_refreshError) {
+          // The availability query owns its retry state; keep the conflict visible.
+        }
+        return;
       }
       showToast(error?.message || BOOK_VISIT_SCREEN_COPY.messages.saveFailed, "error");
     }
@@ -416,8 +439,29 @@ export function useBookVisitScreenModel() {
     setSpecialtySearchVisible,
     setStep,
     showToast,
+    updateDraftField,
     userId,
   ]);
+
+  const handleChangeDates = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAvailabilityRecoveryNotice(null);
+    setSelectedAvailabilityDayKey(null);
+    updateDraftField("slot", null);
+    setAvailabilityWindowOffsetDays((current) => current + 14);
+  }, [updateDraftField]);
+
+  const handleChangeFacility = useCallback(() => {
+    setAvailabilityWindowOffsetDays(0);
+    setAvailabilityRecoveryNotice(null);
+    transitionStep(BOOK_VISIT_STEPS.PROVIDER);
+  }, [transitionStep]);
+
+  const handleChangeSpecialty = useCallback(() => {
+    setAvailabilityWindowOffsetDays(0);
+    setAvailabilityRecoveryNotice(null);
+    transitionStep(BOOK_VISIT_STEPS.SPECIALTY);
+  }, [transitionStep]);
 
   const discardBooking = useCallback(() => {
     Alert.alert(
@@ -474,6 +518,7 @@ export function useBookVisitScreenModel() {
     filteredSpecialties,
     availableProviders,
     availabilityDays,
+    availabilityRecoveryNotice,
     selectedAvailabilityDayKey: effectiveAvailabilityDayKey,
     specialtySearchVisible,
     providerModalVisible,
@@ -519,8 +564,9 @@ export function useBookVisitScreenModel() {
     handleNotesChange,
     handleConfirmDateTime,
     handleBookVisit,
-    handleChangeFacility: () => transitionStep(BOOK_VISIT_STEPS.PROVIDER),
-    handleChangeSpecialty: () => transitionStep(BOOK_VISIT_STEPS.SPECIALTY),
+    handleChangeDates,
+    handleChangeFacility,
+    handleChangeSpecialty,
     discardBooking,
     setSearchQuery,
     setFacilitySearchQuery,

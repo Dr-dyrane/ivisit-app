@@ -21,6 +21,7 @@ import MapHistoryModal from "./history/MapHistoryModal";
 import MapHistoryPaymentModal from "./history/MapHistoryPaymentModal";
 import { EmergencyContactDispatchModal } from "./communication/EmergencyContactDispatchModal";
 import AsyncConsultModal from "./communication/AsyncConsultModal";
+import ScheduledVisitCancelConfirmation from "./visits/ScheduledVisitCancelConfirmation";
 import ScheduledVisitRescheduleModal from "./visits/ScheduledVisitRescheduleModal";
 import { useAtom } from "jotai";
 import {
@@ -113,6 +114,9 @@ export default function MapModalOrchestrator({
   rescheduleVisit,
   closeRescheduleVisit,
   handleRescheduleSuccess,
+  cancelConfirmationVisit,
+  closeCancelConfirmation,
+  confirmCancelHistoryVisit,
   userId,
 
   // Recovered rating
@@ -219,6 +223,12 @@ export default function MapModalOrchestrator({
         onClose={closeRescheduleVisit}
         onSuccess={handleRescheduleSuccess}
         userId={userId}
+      />
+
+      <ScheduledVisitCancelConfirmation
+        visible={Boolean(cancelConfirmationVisit)}
+        onCancel={closeCancelConfirmation}
+        onConfirm={confirmCancelHistoryVisit}
       />
 
       <ServiceRatingModal
