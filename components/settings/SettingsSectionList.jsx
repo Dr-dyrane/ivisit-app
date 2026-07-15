@@ -10,6 +10,7 @@ import {
   SettingsGroup,
   SettingsToggle,
 } from "./SettingsCard";
+import SettingsVersionFooter from "./SettingsVersionFooter";
 
 // PULLBACK NOTE: SettingsSectionList keeps the grouped blade grammar stable while the shell changes.
 // Rows come from the screen model; this component only renders the grouped list surface.
@@ -118,6 +119,7 @@ export default function SettingsSectionList({
           ))}
         </SettingsGroup>
       ))}
+      <SettingsVersionFooter isDarkMode={isDarkMode} />
     </>
   );
 }
