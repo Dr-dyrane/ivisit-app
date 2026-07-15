@@ -468,3 +468,15 @@ EAS production release evidence:
 - iOS: `019f660d-89cc-7b34-9da8-b86a956ed5aa`
 - commit: `f26e2959b668a3775cb9cc9bfe1c0a19ff4f66a9`
 - dashboard: `https://expo.dev/accounts/dyrane/projects/ivisit/updates/d334c57b-7879-4780-aac3-5b370b37bd70`
+
+### Migration Consolidation: 2026-07-15 (deployment shims retired)
+
+The two temporary deployment shims (`20260715124000_emergency_pricing_hospital_commitment`,
+`20260715131500_emergency_hospital_discovery_commitment`) were verified byte-identical to their
+pillar sources (resolve_emergency_pricing, create_emergency_v4 in `20260219000800_emergency_logic`;
+calculate_emergency_cost_v2, nearby_hospitals in `20260219010000_core_rpcs`; REVOKE posture
+matched), then deleted, and the remote migration history repaired
+(`supabase migration repair --status reverted`). Post-repair verification: migration list shows
+pillars only with local == remote, `db push --dry-run` reports the remote database up to date, and
+live read-only probes confirm `resolve_emergency_pricing` (generic-fallback quote returned) and
+`nearby_hospitals` (7 rows) remain live. Same procedure as the 20260714* consolidation (`06d5b01f`).
