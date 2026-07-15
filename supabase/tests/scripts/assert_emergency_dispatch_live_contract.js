@@ -26,12 +26,6 @@ const files = {
   emergency: path.join(appRoot, 'supabase', 'migrations', '20260219000800_emergency_logic.sql'),
   automations: path.join(appRoot, 'supabase', 'migrations', '20260219000900_automations.sql'),
   rpcs: path.join(appRoot, 'supabase', 'migrations', '20260219010000_core_rpcs.sql'),
-  authorityHotfix: path.join(
-    appRoot,
-    'supabase',
-    'migrations',
-    '20260714180000_emergency_dispatch_authority_hotfix.sql'
-  ),
   liveHarness: path.join(
     appRoot,
     'supabase',
@@ -138,13 +132,16 @@ function forbidPatterns(category, key, rules) {
   }
 }
 
-requirePatterns('hotfix', 'authorityHotfix', [
+requirePatterns('authority', 'emergency', [
   {
     id: 'standalone_ambulance_availability_scope',
     pattern:
       /CREATE OR REPLACE FUNCTION public\.get_available_ambulances[\s\S]*?COALESCE\(a\.organization_id, hospital\.organization_id\) = v_actor_org_id/,
     detail: 'Standalone ambulances resolve organization authority without requiring a hospital row.',
   },
+]);
+
+requirePatterns('authority', 'rpcs', [
   {
     id: 'malformed_telemetry_controlled_json',
     pattern:
@@ -169,11 +166,47 @@ requirePatterns('hotfix', 'authorityHotfix', [
       /CREATE OR REPLACE FUNCTION public\.console_complete_emergency[\s\S]*?IF v_is_service_role THEN[\s\S]*?RETURN public\.responder_complete_emergency\(p_request_id\)/,
     detail: 'Service-role Console completion delegates ambulance lifecycle to the canonical responder command.',
   },
+]);
+
+requirePatterns('authority', 'infra', [
   {
     id: 'cleanup_exec_sql_service_only',
     pattern:
       /REVOKE ALL ON FUNCTION public\.exec_sql\(TEXT\) FROM PUBLIC, anon, authenticated;[\s\S]*?GRANT EXECUTE ON FUNCTION public\.exec_sql\(TEXT\) TO service_role;/,
-    detail: 'The hotfix leaves exact graph cleanup callable only by service role.',
+    detail: 'Exact graph cleanup remains callable only by service role.',
+  },
+]);
+
+requirePatterns('authority', 'finance', [
+  {
+    id: 'wallet_settlement_full_signature_requires_patient_actor',
+    pattern:
+      /CREATE OR REPLACE FUNCTION public\.process_wallet_payment\(\s*p_user_id UUID,\s*p_organization_id UUID,[\s\S]*?v_actor_id IS DISTINCT FROM p_user_id[\s\S]*?patient must confirm wallet payment/,
+    detail: 'Authenticated operators cannot settle another patient wallet.',
+  },
+]);
+
+requirePatterns('authority', 'rpcs', [
+  {
+    id: 'wallet_settlement_compat_signature_requires_patient_actor',
+    pattern:
+      /CREATE OR REPLACE FUNCTION public\.process_wallet_payment\(\s*p_user_id UUID,\s*p_amount NUMERIC,[\s\S]*?v_actor_id IS DISTINCT FROM p_user_id[\s\S]*?patient must confirm wallet payment/,
+    detail: 'The compatibility wallet command enforces the same patient-consent boundary.',
+  },
+]);
+
+requirePatterns('authority', 'emergency', [
+  {
+    id: 'cross_patient_wallet_creation_denied',
+    pattern:
+      /CREATE OR REPLACE FUNCTION public\.create_emergency_v4\([\s\S]*?v_payment_method = 'wallet'[\s\S]*?patient must confirm wallet payment/,
+    detail: 'Operator-created requests cannot select a patient wallet.',
+  },
+  {
+    id: 'operator_creation_scoped_to_hospital_org',
+    pattern:
+      /v_actor_role IN \('org_admin', 'dispatcher'\)[\s\S]*?v_actor_org_id IS DISTINCT FROM v_organization_id/,
+    detail: 'Organization operators can create cash/card requests only for their own hospital scope.',
   },
 ]);
 
@@ -221,6 +254,11 @@ requirePatterns('payments', 'finance', [
     pattern: /emergency_requests_payment_id_fkey[\s\S]*?REFERENCES public\.payments\(id\)/,
     detail: 'The request payment pointer is a database relationship.',
   },
+  {
+    id: 'payment_request_relationship_validated',
+    pattern: /VALIDATE CONSTRAINT emergency_requests_payment_id_fkey/,
+    detail: 'The request payment relationship is validated in a fresh pillar rebuild.',
+  },
 ]);
 
 requirePatterns('notifications', 'notifications', [
@@ -233,6 +271,11 @@ requirePatterns('notifications', 'notifications', [
     id: 'notification_event_key',
     pattern: /ADD COLUMN IF NOT EXISTS event_key TEXT/,
     detail: 'Notifications carry an idempotency event key.',
+  },
+  {
+    id: 'notification_recipient_dismissal_receipt',
+    pattern: /ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMPTZ/,
+    detail: 'Recipient dismissal persists without deleting the canonical event row.',
   },
   {
     id: 'notification_event_unique',
@@ -432,6 +475,28 @@ record(
   readinessUsesDestinationOrganization
     ? 'A request without an assigned dispatch organization remains scoped to its destination organization.'
     : 'A null dispatch organization can admit responders from unrelated organizations.',
+  files.rpcs
+);
+const readinessNormalizesAmbulanceTypes = Boolean(
+  readinessSnapshot &&
+    /v_ambulance_type_key/.test(readinessSnapshot) &&
+    /v_requested_type_key/.test(readinessSnapshot) &&
+    /\(ambulance\|basic\|standard\|bls\)/.test(readinessSnapshot) &&
+    /\(advanced\|als\|cardiac\)/.test(readinessSnapshot) &&
+    /\(critical\|icu\|cct\|intensive\)/.test(readinessSnapshot) &&
+    /LOWER\(BTRIM\(COALESCE\(v_request\.ambulance_type, ''\)\)\)\s*=\s*'ambulance'/.test(
+      readinessSnapshot
+    ) &&
+    /v_requested_type_key\s*=\s*v_ambulance_type_key/.test(readinessSnapshot) &&
+    !/ILIKE\s+'%'\s*\|\|\s*v_request\.ambulance_type/.test(readinessSnapshot)
+);
+record(
+  'dispatch-gate',
+  'readiness_normalizes_pricing_and_fleet_type_aliases',
+  readinessNormalizesAmbulanceTypes,
+  readinessNormalizesAmbulanceTypes
+    ? 'Readiness compares canonical basic, advanced, and critical classes instead of raw UI and fleet strings.'
+    : 'Readiness can strand valid pricing/fleet aliases or widen a specific equipment request.',
   files.rpcs
 );
 

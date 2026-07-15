@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     icon TEXT,
     color TEXT,
     read BOOLEAN NOT NULL DEFAULT false,
+    dismissed_at TIMESTAMPTZ,
     priority TEXT DEFAULT 'normal',
     action_type TEXT,
     target_id UUID,
@@ -28,12 +29,22 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 ALTER TABLE public.notifications
     ADD COLUMN IF NOT EXISTS event_key TEXT;
 
+ALTER TABLE public.notifications
+    ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMPTZ;
+
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_recipient_event_key_uidx
     ON public.notifications(user_id, event_key)
     WHERE event_key IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS notifications_recipient_active_created_idx
+    ON public.notifications(user_id, created_at DESC)
+    WHERE dismissed_at IS NULL;
+
 COMMENT ON COLUMN public.notifications.event_key IS
     'Stable backend event identity. Unique per notification recipient when present.';
+
+COMMENT ON COLUMN public.notifications.dismissed_at IS
+    'Recipient-owned inbox dismissal receipt. The canonical event row remains retained.';
 
 -- Internal callers must derive the recipient and payload from canonical server
 -- rows before calling this helper. Client roles have no execute privilege.

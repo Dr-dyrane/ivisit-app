@@ -401,8 +401,8 @@ function sourceUnits() {
     ),
     statementUnit(
       SOURCE.security,
-      'grant notification read-state updates',
-      /^GRANT\s+UPDATE\s*\(\s*read,\s*updated_at\s*\)\s+ON\s+public\.notifications\b/i
+      'grant notification recipient-state updates',
+      /^GRANT\s+UPDATE\s*\(\s*read,\s*dismissed_at,\s*updated_at\s*\)\s+ON\s+public\.notifications\b/i
     ),
     ...policyUnits(SOURCE.security, 'Public read for ambulances', { create: false }),
     ...policyUnits(SOURCE.security, 'Ambulances are visible in role scope'),
@@ -548,8 +548,8 @@ function buildDeployment() {
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent exact-source deployment for emergency dispatch production readiness.',
-    '-- Retained to preserve live migration provenance for the consolidated source delta.',
+    '-- Temporary exact-source deployment for emergency dispatch production readiness.',
+    '-- Delete after live verification, pillar absorption, and remote-history repair.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -594,7 +594,7 @@ function buildAuthorityHotfix() {
     ...aclStatements.map((statement) => ({ statement, label: 'exec_sql authority ACL' })),
   ];
   const migration = [
-    '-- Permanent authority and input-hardening hotfix for emergency dispatch.',
+    '-- Temporary authority and input-hardening deployment for emergency dispatch.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -638,7 +638,7 @@ function buildLintHotfix() {
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent callable-contract and lint repair for production emergency support.',
+    '-- Temporary callable-contract and lint deployment for production emergency support.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -691,7 +691,7 @@ USING (
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent final organization-scope hardening for emergency dispatch.',
+    '-- Temporary final organization-scope hardening deployment for emergency dispatch.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -722,7 +722,7 @@ function buildReadinessNullHotfix() {
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent null-safe readiness evaluation for unassigned ambulances.',
+    '-- Temporary null-safe readiness deployment for unassigned ambulances.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -752,7 +752,7 @@ function buildCompatibilityTelemetryHotfix() {
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent lifecycle guard for the Console telemetry compatibility command.',
+    '-- Temporary lifecycle-guard deployment for the Console telemetry compatibility command.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -796,7 +796,7 @@ function buildCashNotificationHotfix() {
     .digest('hex')
     .slice(0, 16);
   const migration = [
-    '-- Permanent cash-notification authority boundary for emergency dispatch.',
+    '-- Temporary cash-notification authority deployment for emergency dispatch.',
     `-- Source digest: ${digest}`,
     'BEGIN;',
     "SET LOCAL lock_timeout = '5s';",
@@ -967,12 +967,28 @@ const postDeployChecks = [
       AND to_regprocedure('public.fail_stripe_webhook_event(text,uuid,text)') IS NOT NULL`,
   },
   {
-    name: 'canonical notification ownership exists',
+    name: 'emergency payment relationship is validated',
     expression: `EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'notifications' AND column_name = 'event_key'
+      SELECT 1
+      FROM pg_constraint constraint_row
+      WHERE constraint_row.conrelid = 'public.emergency_requests'::regclass
+        AND constraint_row.conname = 'emergency_requests_payment_id_fkey'
+        AND constraint_row.convalidated
+    )`,
+  },
+  {
+    name: 'canonical notification ownership exists',
+    expression: `(SELECT COUNT(*) = 2 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'notifications'
+        AND column_name IN ('event_key', 'dismissed_at')
     )
       AND to_regprocedure('public.emit_canonical_notification(text,uuid,text,text,text,text,text,uuid,jsonb,jsonb,text,text)') IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND indexname = 'notifications_recipient_active_created_idx'
+      )
       AND EXISTS (
         SELECT 1 FROM pg_trigger
         WHERE tgrelid = 'public.payments'::regclass

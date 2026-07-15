@@ -28,6 +28,7 @@ DECLARE
     v_actor_id UUID := auth.uid();
     v_actor_role TEXT;
     v_actor_org_id UUID;
+    v_actor_org_id UUID;
 BEGIN
     SELECT actor.role, actor.organization_id
     INTO v_actor_role, v_actor_org_id
@@ -518,18 +519,41 @@ BEGIN
         RAISE EXCEPTION 'A supported payment method is required';
     END IF;
 
+    v_hospital_id := NULLIF(p_request_data->>'hospital_id', '')::UUID;
+    IF v_hospital_id IS NULL THEN
+        RAISE EXCEPTION 'hospital_id is required';
+    END IF;
+
+    SELECT organization_id INTO v_organization_id
+    FROM public.hospitals
+    WHERE id = v_hospital_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Hospital not found';
+    END IF;
+
     IF NOT v_is_service_role THEN
         IF v_actor_id IS NULL THEN
             RAISE EXCEPTION 'Unauthorized';
         END IF;
 
         IF v_actor_id IS DISTINCT FROM p_user_id THEN
-            SELECT role INTO v_actor_role
+            SELECT role, organization_id
+            INTO v_actor_role, v_actor_org_id
             FROM public.profiles
             WHERE id = v_actor_id;
 
-            IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
+            IF v_actor_role IS NULL OR v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
                 RAISE EXCEPTION 'Unauthorized: cannot create emergency for another user';
+            END IF;
+
+            IF v_payment_method = 'wallet' THEN
+                RAISE EXCEPTION 'Unauthorized: patient must confirm wallet payment';
+            END IF;
+
+            IF v_actor_role IN ('org_admin', 'dispatcher')
+               AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_organization_id) THEN
+                RAISE EXCEPTION 'Unauthorized: emergency request outside actor organization';
             END IF;
         END IF;
     END IF;
@@ -560,17 +584,6 @@ BEGIN
         )::TEXT,
         true
     );
-
-    -- 1. Extract and Resolve IDs
-    v_hospital_id := NULLIF(p_request_data->>'hospital_id', '')::UUID;
-    IF v_hospital_id IS NULL THEN
-        RAISE EXCEPTION 'hospital_id is required';
-    END IF;
-
-    SELECT organization_id INTO v_organization_id FROM public.hospitals WHERE id = v_hospital_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Hospital not found';
-    END IF;
 
     -- Payment release is server-owned. A client cannot assert a completed
     -- card, wallet, or cash settlement while creating the request.
@@ -722,7 +735,7 @@ BEGIN
         'currency', 'USD'
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 🛠️ Stripe webhook finalize card payment after confirmation
 -- BEGIN EMERGENCY_PAYMENT_RELEASE_GATE

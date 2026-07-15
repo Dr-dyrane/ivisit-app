@@ -38,6 +38,15 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 > - `20260601000000_provider_taxonomy` → columns/trigger/nearby_providers RPC/RLS integrated into `0002_org_structure` (Section 7); updated `nearby_hospitals` RPC integrated into `0100_core_rpcs` (Section 1)
 > - Remote history repaired via `migration repair --status reverted`
 
+> **Absorbed deployments (July 2026):**
+> - Emergency dispatch deployment versions `20260714101500`, `20260714180000`, `20260714183000`, `20260714190000`, `20260714193000`, `20260714200000`, and `20260714203000` were generated from the core pillars, verified live, then removed.
+> - Patient wallet authority `20260714210000` was integrated into `0004_finance`, `0008_emergency_logic`, and `0100_core_rpcs`.
+> - Ambulance type compatibility `20260714224500` was integrated into `0100_core_rpcs`.
+> - Notification recipient dismissal `20260714233000` was integrated into `0005_ops_content` and `0007_security`.
+> - All ten remote history rows were repaired as reverted. Local and linked history again contain only the 11 pillars.
+
+Deployment SQL may be emitted temporarily to apply an already-reviewed pillar delta to a live database. It is not permanent migration history. Once the live contract passes, absorb the final SQL into the pillars, delete the deployment file, repair its version as reverted, and rerun the linked contract and cleanup gates.
+
 ### Example
 ❌ `20260219011000_fix_display_ids.sql`
 ✅ Edit `20260219000100_identity.sql` directly

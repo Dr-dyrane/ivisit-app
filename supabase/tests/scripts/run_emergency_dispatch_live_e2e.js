@@ -487,7 +487,7 @@ async function insertAmbulance({ organizationId, hospitalId, label = 'unit' }) {
     .insert({
       organization_id: organizationId,
       hospital_id: hospitalId,
-      type: 'basic',
+      type: 'BLS',
       call_sign: `LIVE-${unitLabel}-${runId.slice(-8)}`,
       vehicle_number: `${unitLabel}-${runId.slice(-6)}`,
       license_plate: `${unitLabel}-${runId.slice(-5)}`,
@@ -596,6 +596,68 @@ async function createCashRequest({ actor, hospital, label }) {
     `emergency_request:${data.request_id}:payment:${data.payment_id}:cash_approval_required`
   );
   return data;
+}
+
+async function createWalletRequest({ actor, hospital, label }) {
+  const { data, error } = await actor.clients[0].rpc('create_emergency_v4', {
+    p_user_id: actor.id,
+    p_request_data: {
+      hospital_id: hospital.id,
+      hospital_name: hospital.name,
+      service_type: 'bed',
+      specialty: 'Emergency Medicine',
+      patient_location: fixturePoint(0.00015, 0.00015),
+      patient_snapshot: { fullName: `${label} ${tag}`, testTag: tag },
+      transition_reason: `live_proof_${label}`,
+    },
+    p_payment_data: {
+      method: 'wallet',
+      method_id: `${tag}-${label}-wallet`,
+      total_amount: 200,
+      currency: 'USD',
+    },
+  });
+  if (error) throw error;
+  assert(data?.success === true, `Wallet emergency creation failed: ${JSON.stringify(data)}`);
+  assert(data.requires_wallet_settlement === true, 'Wallet request did not require patient settlement');
+
+  state.requestIds.add(data.request_id);
+  state.entityIds.add(data.request_id);
+  state.paymentIds.add(data.payment_id);
+  state.entityIds.add(data.payment_id);
+  state.eventKeys.add(`emergency_request:${data.request_id}:created`);
+
+  const { data: visits, error: visitsError } = await admin
+    .from('visits')
+    .select('id')
+    .eq('request_id', data.request_id);
+  if (visitsError) throw visitsError;
+  for (const visit of visits || []) {
+    state.visitIds.add(visit.id);
+    state.entityIds.add(visit.id);
+  }
+
+  return data;
+}
+
+async function trackUnexpectedEmergencyCreation(data) {
+  if (!data?.request_id) return;
+  state.requestIds.add(data.request_id);
+  state.entityIds.add(data.request_id);
+  if (data.payment_id) {
+    state.paymentIds.add(data.payment_id);
+    state.entityIds.add(data.payment_id);
+  }
+
+  const { data: visits, error } = await admin
+    .from('visits')
+    .select('id')
+    .eq('request_id', data.request_id);
+  if (error) throw error;
+  for (const visit of visits || []) {
+    state.visitIds.add(visit.id);
+    state.entityIds.add(visit.id);
+  }
 }
 
 async function getRequest(requestId) {
@@ -928,6 +990,33 @@ async function deleteIds(table, ids) {
   if (error) throw error;
 }
 
+async function removeFixtureWalletLedgerEffects() {
+  const paymentIds = [...state.paymentIds];
+  if (paymentIds.length === 0) return;
+  const ids = uuidSqlList(paymentIds);
+  const sql = `
+WITH fixture_platform_credits AS (
+  SELECT ledger.wallet_id, SUM(ledger.amount) AS amount
+  FROM public.wallet_ledger ledger
+  INNER JOIN public.ivisit_main_wallet wallet ON wallet.id = ledger.wallet_id
+  WHERE ledger.reference_id IN (${ids})
+  GROUP BY ledger.wallet_id
+), reversed_platform_credits AS (
+  UPDATE public.ivisit_main_wallet wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      last_updated = NOW()
+  FROM fixture_platform_credits fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+)
+DELETE FROM public.wallet_ledger
+WHERE reference_id IN (${ids});
+  `;
+  const { data, error } = await admin.rpc('exec_sql', { sql });
+  if (error) throw error;
+  if (!data?.success) throw new Error(data?.error || 'wallet ledger fixture cleanup was rejected');
+}
+
 async function cleanupFixture() {
   for (const probe of [...state.realtimeChannels]) {
     await safely('close exact Realtime proof channel', () => closeRealtimeProbe(probe));
@@ -963,12 +1052,7 @@ async function cleanupFixture() {
     if (error) throw error;
   });
   await safely('delete exact visits', () => deleteIds('visits', state.visitIds));
-  await safely('delete exact wallet ledger rows', async () => {
-    const ids = [...state.paymentIds];
-    if (!ids.length) return;
-    const { error } = await admin.from('wallet_ledger').delete().in('reference_id', ids);
-    if (error) throw error;
-  });
+  await safely('remove exact wallet ledger effects', removeFixtureWalletLedgerEffects);
   await safely('delete exact emergency request graphs', deleteRequestGraphs);
   await safely('delete exact payments', () => deleteIds('payments', state.paymentIds));
   await safely('delete exact patient wallets', () => deleteIds('patient_wallets', state.patientWalletIds));
@@ -1192,6 +1276,9 @@ async function runProof() {
     );
     fixtures.dispatcherB = await check('create cross-scope dispatcher actor', 'fixture', () =>
       createActor({ label: 'dispatcher-b', role: 'dispatcher', organizationId: fixtures.orgB.id })
+    );
+    fixtures.platformAdmin = await check('create platform admin actor', 'fixture', () =>
+      createActor({ label: 'platform-admin', role: 'admin' })
     );
     fixtures.standaloneOrgAdmin = await check('create standalone ambulance org admin', 'fixture', () =>
       createActor({
@@ -1556,6 +1643,230 @@ async function runProof() {
       await fixtures.patientB.clients[0].storage.from('images').remove([publicPath]);
       assert(await storageObjectExists('images', publicPath), 'Cross-owner delete removed public profile media');
       return true;
+    });
+
+    await check('operators cannot create another patient wallet payment', 'finance-authority', async () => {
+      const requestCountBefore = await countRows('emergency_requests', 'user_id', fixtures.patientA.id);
+      const paymentCountBefore = await countRows('payments', 'user_id', fixtures.patientA.id);
+      const visitCountBefore = await countRows('visits', 'user_id', fixtures.patientA.id);
+      const requestData = {
+        hospital_id: fixtures.hospital.id,
+        hospital_name: fixtures.hospital.name,
+        service_type: 'bed',
+        specialty: 'Emergency Medicine',
+        patient_location: fixturePoint(0.00018, 0.00018),
+        patient_snapshot: { fullName: `Wallet Authority ${tag}`, testTag: tag },
+        transition_reason: 'live_proof_cross_patient_wallet_denial',
+      };
+      const walletPaymentData = {
+        method: 'wallet',
+        method_id: `${tag}-operator-wallet`,
+        total_amount: 200,
+        currency: 'USD',
+      };
+
+      for (const [label, actor] of [
+        ['same-org admin', fixtures.orgAdminA],
+        ['same-org dispatcher', fixtures.dispatcherA],
+        ['platform admin', fixtures.platformAdmin],
+        ['cross-org dispatcher', fixtures.dispatcherB],
+      ]) {
+        const result = await actor.clients[0].rpc('create_emergency_v4', {
+          p_user_id: fixtures.patientA.id,
+          p_request_data: requestData,
+          p_payment_data: walletPaymentData,
+        });
+        await trackUnexpectedEmergencyCreation(result.data);
+        expectDenied(result, `${label} cross-patient wallet creation`);
+        assert(
+          /patient must confirm wallet payment/i.test(result.error?.message || ''),
+          `${label} returned an unclear wallet-consent denial`
+        );
+      }
+
+      const crossOrgCash = await fixtures.dispatcherB.clients[0].rpc('create_emergency_v4', {
+        p_user_id: fixtures.patientA.id,
+        p_request_data: {
+          ...requestData,
+          transition_reason: 'live_proof_cross_org_operator_create_denial',
+        },
+        p_payment_data: {
+          method: 'cash',
+          method_id: `${tag}-cross-org-cash`,
+          total_amount: 200,
+          currency: 'USD',
+        },
+      });
+      await trackUnexpectedEmergencyCreation(crossOrgCash.data);
+      expectDenied(crossOrgCash, 'cross-org operator emergency creation');
+
+      assert(
+        (await countRows('emergency_requests', 'user_id', fixtures.patientA.id)) === requestCountBefore,
+        'Denied operator creation left an emergency request'
+      );
+      assert(
+        (await countRows('payments', 'user_id', fixtures.patientA.id)) === paymentCountBefore,
+        'Denied operator creation left a payment'
+      );
+      assert(
+        (await countRows('visits', 'user_id', fixtures.patientA.id)) === visitCountBefore,
+        'Denied operator creation left a visit'
+      );
+      return true;
+    });
+
+    const walletIntent = await check(
+      'patient creates canonical wallet request',
+      'finance-authority',
+      async () => createWalletRequest({ actor: fixtures.patientA, hospital: fixtures.hospital, label: 'wallet-owner' })
+    );
+
+    const fundedPatientWallet = await check('fund isolated patient wallet', 'fixture', async () => {
+      const { data, error } = await admin
+        .from('patient_wallets')
+        .update({ balance: 1000, updated_at: new Date().toISOString() })
+        .eq('user_id', fixtures.patientA.id)
+        .select('id,balance')
+        .single();
+      if (error) throw error;
+      state.patientWalletIds.add(data.id);
+      state.entityIds.add(data.id);
+      return data;
+    });
+
+    await check('all operator roles are denied patient wallet settlement', 'finance-authority', async () => {
+      const amount = Number(walletIntent.canonical_total);
+      const attempts = [
+        [
+          'same-org admin full signature',
+          fixtures.orgAdminA.clients[0],
+          {
+            p_user_id: fixtures.patientA.id,
+            p_organization_id: fixtures.orgA.id,
+            p_emergency_request_id: walletIntent.request_id,
+            p_amount: amount,
+            p_currency: 'USD',
+          },
+        ],
+        [
+          'same-org dispatcher wrapper signature',
+          fixtures.dispatcherA.clients[0],
+          {
+            p_user_id: fixtures.patientA.id,
+            p_amount: amount,
+            p_emergency_request_id: walletIntent.request_id,
+          },
+        ],
+        [
+          'platform admin full signature',
+          fixtures.platformAdmin.clients[0],
+          {
+            p_user_id: fixtures.patientA.id,
+            p_organization_id: fixtures.orgA.id,
+            p_emergency_request_id: walletIntent.request_id,
+            p_amount: amount,
+            p_currency: 'USD',
+          },
+        ],
+        [
+          'cross-org dispatcher full signature',
+          fixtures.dispatcherB.clients[0],
+          {
+            p_user_id: fixtures.patientA.id,
+            p_organization_id: fixtures.orgA.id,
+            p_emergency_request_id: walletIntent.request_id,
+            p_amount: amount,
+            p_currency: 'USD',
+          },
+        ],
+      ];
+
+      for (const [label, client, args] of attempts) {
+        const result = await client.rpc('process_wallet_payment', args);
+        expectDenied(result, label);
+        assert(
+          /patient must confirm wallet payment/i.test(result.error?.message || ''),
+          `${label} returned an unclear wallet-consent denial`
+        );
+      }
+
+      const { data: walletAfterDenials, error: walletError } = await admin
+        .from('patient_wallets')
+        .select('balance')
+        .eq('id', fundedPatientWallet.id)
+        .single();
+      if (walletError) throw walletError;
+      assert(Number(walletAfterDenials.balance) === 1000, 'Denied operator settlement changed wallet balance');
+      assert(
+        (await countRows('wallet_ledger', 'reference_id', walletIntent.payment_id)) === 0,
+        'Denied operator settlement wrote ledger rows'
+      );
+
+      const request = await getRequest(walletIntent.request_id);
+      assert(request.status === 'pending_approval', 'Denied operator settlement changed request status');
+      assert(request.payment_status === 'pending', 'Denied operator settlement changed payment status');
+      return true;
+    });
+
+    await check('two patient sessions converge on one wallet debit', 'finance-concurrency', async () => {
+      const amount = Number(walletIntent.canonical_total);
+      const [fullSignature, wrapperSignature] = await Promise.all([
+        fixtures.patientA.clients[0].rpc('process_wallet_payment', {
+          p_user_id: fixtures.patientA.id,
+          p_organization_id: fixtures.orgA.id,
+          p_emergency_request_id: walletIntent.request_id,
+          p_amount: amount,
+          p_currency: 'USD',
+        }),
+        fixtures.patientA.clients[1].rpc('process_wallet_payment', {
+          p_user_id: fixtures.patientA.id,
+          p_amount: amount,
+          p_emergency_request_id: walletIntent.request_id,
+        }),
+      ]);
+
+      for (const result of [fullSignature, wrapperSignature]) {
+        if (result.error) throw result.error;
+        assert(result.data?.success === true, 'Patient wallet settlement did not succeed');
+      }
+      assert(
+        [fullSignature, wrapperSignature].filter((result) => result.data?.already_completed === true).length === 1,
+        'Concurrent wallet settlement did not resolve as one mutation and one replay'
+      );
+
+      const { data: walletAfterSettlement, error: walletError } = await admin
+        .from('patient_wallets')
+        .select('balance')
+        .eq('id', fundedPatientWallet.id)
+        .single();
+      if (walletError) throw walletError;
+      assert(
+        Number(walletAfterSettlement.balance) === Number((1000 - amount).toFixed(2)),
+        'Concurrent settlement debited the patient wallet more than once'
+      );
+
+      const debitCount = await countRows(
+        'wallet_ledger',
+        'reference_id',
+        walletIntent.payment_id,
+        (query) => query.eq('wallet_id', fundedPatientWallet.id).eq('transaction_type', 'debit')
+      );
+      assert(debitCount === 1, `Expected one patient wallet debit ledger row, found ${debitCount}`);
+
+      const replay = await fixtures.patientA.clients[0].rpc('process_wallet_payment', {
+        p_user_id: fixtures.patientA.id,
+        p_organization_id: fixtures.orgA.id,
+        p_emergency_request_id: walletIntent.request_id,
+        p_amount: amount,
+        p_currency: 'USD',
+      });
+      if (replay.error) throw replay.error;
+      assert(replay.data?.already_completed === true, 'Wallet settlement replay was not idempotent');
+
+      const request = await getRequest(walletIntent.request_id);
+      assert(request.status === 'in_progress', 'Patient wallet settlement did not release the request');
+      assert(request.payment_status === 'completed', 'Patient wallet settlement did not complete payment truth');
+      return { amount, debit_rows: debitCount };
     });
 
     const consoleIntent = await check(

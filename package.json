@@ -36,6 +36,7 @@
     "hardening:pricing-surface-field-guard": "node supabase/tests/scripts/assert_pricing_surface_field_guard.js",
     "hardening:medical-profiles-surface-field-guard": "node supabase/tests/scripts/assert_medical_profiles_surface_field_guard.js",
     "hardening:notifications-surface-field-guard": "node supabase/tests/scripts/assert_notifications_surface_field_guard.js",
+    "hardening:notification-dismissal-live-contract": "node supabase/tests/scripts/run_notification_dismissal_live_e2e.js",
     "hardening:visits-surface-field-guard": "node supabase/tests/scripts/assert_visits_surface_field_guard.js",
     "hardening:scheduled-visits-contract": "node supabase/tests/scripts/assert_scheduled_visits_contract.js",
     "hardening:scheduled-visits-ui-contract": "node tests/scheduledVisitsUiContract.test.cjs && node tests/scheduledVisitsStateBehavior.test.cjs && node tests/authReturnRouteBehavior.test.cjs && node tests/asyncConsultUiContract.test.cjs",

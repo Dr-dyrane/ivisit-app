@@ -1867,6 +1867,7 @@ export type Database = {
           action_type: string | null
           color: string | null
           created_at: string
+          dismissed_at: string | null
           display_id: string | null
           event_key: string | null
           icon: string | null
@@ -1887,6 +1888,7 @@ export type Database = {
           action_type?: string | null
           color?: string | null
           created_at?: string
+          dismissed_at?: string | null
           display_id?: string | null
           event_key?: string | null
           icon?: string | null
@@ -1907,6 +1909,7 @@ export type Database = {
           action_type?: string | null
           color?: string | null
           created_at?: string
+          dismissed_at?: string | null
           display_id?: string | null
           event_key?: string | null
           icon?: string | null

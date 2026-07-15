@@ -535,8 +535,9 @@ CREATE POLICY "Users see own notifications"
 ON public.notifications FOR SELECT
 USING (auth.uid() = user_id);
 
-CREATE POLICY "Users update own notifications (read status)"
+CREATE POLICY "Users update own notifications (recipient state)"
 ON public.notifications FOR UPDATE
+TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
@@ -544,7 +545,7 @@ DROP POLICY IF EXISTS "Users insert own notifications" ON public.notifications;
 
 REVOKE INSERT, UPDATE, DELETE ON public.notifications FROM anon, authenticated;
 GRANT SELECT ON public.notifications TO authenticated;
-GRANT UPDATE (read, updated_at) ON public.notifications TO authenticated;
+GRANT UPDATE (read, dismissed_at, updated_at) ON public.notifications TO authenticated;
 
 -- 6. USER DATA (Preferences & Medical)
 CREATE POLICY "Users manage own preferences"

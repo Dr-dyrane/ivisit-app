@@ -112,7 +112,7 @@ Expected result: `SKIP: live mutation was not approved`, matching linked and URL
 
 ### 5. Separate deployment and verification
 
-The deployment owner must inspect and apply the additive contract before the live proof. This harness neither creates nor executes that deployment. The operator reports that `20260714180000_emergency_dispatch_authority_hotfix.sql` is applied; the live run must still prove its deployed behavior through PostgREST OpenAPI and the isolated fixture matrix. After any deployment, regenerate App and Console types, rerun steps 1 through 4, and require a fully green type-parity result.
+The deployment owner must inspect and apply the additive contract before the live proof. This harness neither creates nor executes that deployment. A deployment file is temporary: after its behavior is proved live, absorb the final SQL into the 11 pillars, delete the file, and repair its remote migration version as reverted. The live run must prove deployed behavior through PostgREST OpenAPI and the isolated fixture matrix. After any deployment, regenerate App and Console types, rerun steps 1 through 4, and require a fully green type-parity result.
 
 ### 6. Explicitly approved live proof
 
@@ -160,12 +160,14 @@ Any cleanup failure is a hard stop even if workflow assertions passed. Inspect t
 ### Deployment state
 
 - Linked project: `dlwtcmhdzoklveihuhjf`.
-- Local and remote migration history match through
-  `20260714203000_emergency_cash_notification_authority_hotfix.sql`.
+- Local and remote migration history contain exactly the 11 core pillars. Ten temporary July
+  deployment versions through `20260714233000` were absorbed and repaired as reverted after
+  live verification.
 - `supabase db push --linked --dry-run` reports `Remote database is up to date`.
-- The deployed emergency pack is additive and includes readiness, role authority,
-  assignment-bound telemetry, responder lifecycle, Console telemetry guards, and
-  cash-notification authority hotfixes.
+- The deployed emergency contract is represented in the core pillars and includes readiness,
+  role authority, patient-consent wallet settlement, assignment-bound telemetry, responder
+  lifecycle, Console telemetry guards, ambulance type compatibility, canonical notifications,
+  and recipient-owned notification dismissal.
 - App and Console generated database types were regenerated from the linked schema and
   synchronized through `supabase/scripts/sync_to_console.js`.
 - Payment Edge functions are deployed at version `34`; the demo bootstrap function is

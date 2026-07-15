@@ -353,12 +353,27 @@ BEGIN
   IF position('v_actor_id IS DISTINCT FROM p_user_id' in v_def) = 0 THEN
     RAISE EXCEPTION 'process_wallet_payment(uuid,numeric,uuid) missing actor ownership gate';
   END IF;
+  IF position('patient must confirm wallet payment' in v_def) = 0 THEN
+    RAISE EXCEPTION 'process_wallet_payment(uuid,numeric,uuid) still permits operator wallet settlement';
+  END IF;
 
   IF to_regprocedure('public.process_wallet_payment(uuid,uuid,uuid,numeric,text)') IS NOT NULL THEN
     SELECT pg_get_functiondef('public.process_wallet_payment(uuid,uuid,uuid,numeric,text)'::regprocedure) INTO v_def;
     IF position('v_actor_id IS DISTINCT FROM p_user_id' in v_def) = 0 THEN
       RAISE EXCEPTION 'process_wallet_payment(uuid,uuid,uuid,numeric,text) missing actor ownership gate';
     END IF;
+    IF position('patient must confirm wallet payment' in v_def) = 0 THEN
+      RAISE EXCEPTION 'process_wallet_payment(uuid,uuid,uuid,numeric,text) still permits operator wallet settlement';
+    END IF;
+  END IF;
+
+  SELECT pg_get_functiondef('public.create_emergency_v4(uuid,jsonb,jsonb)'::regprocedure) INTO v_def;
+  IF position('v_payment_method = ''wallet''' in v_def) = 0
+     OR position('patient must confirm wallet payment' in v_def) = 0 THEN
+    RAISE EXCEPTION 'create_emergency_v4 permits cross-patient wallet creation';
+  END IF;
+  IF position('v_actor_org_id IS DISTINCT FROM v_organization_id' in v_def) = 0 THEN
+    RAISE EXCEPTION 'create_emergency_v4 missing operator hospital organization scope';
   END IF;
 
   SELECT pg_get_functiondef('public.upsert_service_pricing(jsonb)'::regprocedure) INTO v_def;

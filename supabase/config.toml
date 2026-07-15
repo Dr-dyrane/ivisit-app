@@ -409,6 +409,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/demo-approve-cash-payment/index.ts"
 
+[functions.demo-emergency-lifecycle]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/demo-emergency-lifecycle/index.ts"
+
 [functions.demo-dispatch-reply]
 enabled = true
 verify_jwt = false

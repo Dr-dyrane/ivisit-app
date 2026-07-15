@@ -114,6 +114,9 @@ BEGIN
     END IF;
 END
 $$;
+
+ALTER TABLE public.emergency_requests
+    VALIDATE CONSTRAINT emergency_requests_payment_id_fkey;
 -- END EMERGENCY_PAYMENT_IDEMPOTENCY_SCHEMA
 
 -- BEGIN STRIPE_WEBHOOK_EVENT_RECEIPTS
@@ -875,8 +878,6 @@ CREATE OR REPLACE FUNCTION public.process_wallet_payment(
 RETURNS JSONB AS $$
 DECLARE
     v_actor_id UUID := auth.uid();
-    v_actor_role TEXT;
-    v_actor_org_id UUID;
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_request RECORD;
@@ -887,6 +888,16 @@ DECLARE
 BEGIN
     IF p_user_id IS NULL OR p_organization_id IS NULL OR p_emergency_request_id IS NULL OR p_amount IS NULL OR p_amount <= 0 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Invalid wallet payment payload');
+    END IF;
+
+    IF NOT v_is_service_role THEN
+        IF v_actor_id IS NULL THEN
+            RAISE EXCEPTION 'Unauthorized';
+        END IF;
+
+        IF v_actor_id IS DISTINCT FROM p_user_id THEN
+            RAISE EXCEPTION 'Unauthorized: patient must confirm wallet payment';
+        END IF;
     END IF;
 
     SELECT
@@ -914,29 +925,6 @@ BEGIN
             'error', 'Wallet amount does not match canonical request pricing',
             'expected_amount', v_request.total_cost
         );
-    END IF;
-
-    IF NOT v_is_service_role THEN
-        IF v_actor_id IS NULL THEN
-            RAISE EXCEPTION 'Unauthorized';
-        END IF;
-
-        IF v_actor_id IS DISTINCT FROM p_user_id THEN
-            SELECT role, organization_id
-            INTO v_actor_role, v_actor_org_id
-            FROM public.profiles
-            WHERE id = v_actor_id;
-
-            IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
-                RAISE EXCEPTION 'Unauthorized: cannot mutate another user wallet';
-            END IF;
-
-            IF v_actor_role IN ('org_admin', 'dispatcher') THEN
-                IF v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM p_organization_id THEN
-                    RAISE EXCEPTION 'Unauthorized: emergency request outside actor organization';
-                END IF;
-            END IF;
-        END IF;
     END IF;
 
     SELECT payment.*
@@ -1071,7 +1059,7 @@ BEGIN
         'new_balance', (v_balance - v_payment.amount)
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 REVOKE ALL ON FUNCTION public.process_wallet_payment(UUID, UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.process_wallet_payment(UUID, UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;

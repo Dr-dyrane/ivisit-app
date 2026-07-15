@@ -925,6 +925,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     icon TEXT,
     color TEXT,
     read BOOLEAN NOT NULL DEFAULT false,
+    dismissed_at TIMESTAMPTZ,
     priority TEXT DEFAULT 'normal',
     action_type TEXT,
     target_id UUID,
@@ -1116,96 +1117,6 @@ CREATE TABLE IF NOT EXISTS public.room_pricing (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(hospital_id, room_type)
-);
-```
-
-## 📄 20260714101500_emergency_dispatch_readiness.sql
-
-### Table: `emergency_responder_assignments`
-
-```sql
-CREATE TABLE IF NOT EXISTS public.emergency_responder_assignments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    emergency_request_id UUID NOT NULL REFERENCES public.emergency_requests(id) ON DELETE RESTRICT,
-    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
-    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
-    status TEXT NOT NULL DEFAULT 'offered' CHECK (
-        status IN ('offered', 'accepted', 'arrived', 'declined', 'released', 'completed', 'cancelled')
-    ),
-    offered_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds'),
-    decline_reason TEXT,
-    telemetry_sequence BIGINT NOT NULL DEFAULT 0 CHECK (telemetry_sequence >= 0),
-    responder_location GEOMETRY(POINT, 4326),
-    responder_heading DOUBLE PRECISION,
-    location_accuracy_meters DOUBLE PRECISION CHECK (
-        location_accuracy_meters IS NULL OR location_accuracy_meters >= 0
-    ),
-    location_observed_at TIMESTAMPTZ,
-    location_received_at TIMESTAMPTZ,
-    telemetry_lease_expires_at TIMESTAMPTZ,
-    accepted_at TIMESTAMPTZ,
-    arrived_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    ended_at TIMESTAMPTZ,
-    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
-    offered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### Table: `ambulance_staff_assignments`
-
-```sql
-CREATE TABLE IF NOT EXISTS public.ambulance_staff_assignments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ambulance_id UUID NOT NULL REFERENCES public.ambulances(id) ON DELETE RESTRICT,
-    responder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
-    duty_role TEXT NOT NULL DEFAULT 'driver' CHECK (duty_role = 'driver'),
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ended', 'cancelled')),
-    starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ends_at TIMESTAMPTZ,
-    assigned_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    ended_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    end_reason TEXT,
-    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CHECK (ends_at IS NULL OR ends_at > starts_at)
-);
-```
-
-### Table: `stripe_webhook_event_receipts`
-
-```sql
-CREATE TABLE IF NOT EXISTS public.stripe_webhook_event_receipts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    stripe_event_id TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    stripe_account_id TEXT,
-    status TEXT NOT NULL DEFAULT 'processing',
-    attempts INTEGER NOT NULL DEFAULT 1,
-    claim_token UUID,
-    first_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    processing_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    lease_expires_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    failed_at TIMESTAMPTZ,
-    last_error TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT stripe_webhook_event_receipts_event_id_chk
-        CHECK (BTRIM(stripe_event_id) <> ''),
-    CONSTRAINT stripe_webhook_event_receipts_event_type_chk
-        CHECK (BTRIM(event_type) <> ''),
-    CONSTRAINT stripe_webhook_event_receipts_status_chk
-        CHECK (status IN ('processing', 'completed', 'failed')),
-    CONSTRAINT stripe_webhook_event_receipts_attempts_chk
-        CHECK (attempts > 0)
 );
 ```
 
