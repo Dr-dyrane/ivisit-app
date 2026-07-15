@@ -1,10 +1,10 @@
 {
-  "_lastCommitHash": "1f35bb24",
-  "_lastCommitDate": "2026-07-15T14:40:00-07:00",
-  "version": "1.0.6",
+  "_lastCommitHash": "6a4ac48d",
+  "_lastCommitDate": "2026-07-15T15:10:00-07:00",
+  "version": "1.0.7",
   "date": "2026-07-15",
-  "title": "Lifecycle Continuity Update",
-  "summary": "Request-to-visit lifecycle repair: arrival confirmation, visit completion, scheduled-visit continuity, and emergency pricing now flow end-to-end. Release f26e2959 - OTA groups d334c57b (production) / 8cc11b0b (staging).",
+  "title": "Lifecycle Fix - v1.0.7",
+  "summary": "Fresh installable 1.0.7 build so Android testers stranded on the old 1.0.5 preview finally get the fix: arrival confirmation, visit completion, scheduled-visit continuity, and emergency pricing now flow end-to-end. Runtime moved 1.0.6 -> 1.0.7; install this build to receive future over-the-air updates.",
   "changes": [
     {
       "type": "fix",
@@ -20,7 +20,7 @@
     },
     {
       "type": "improvement",
-      "message": "Realtime tracking, payment approval, and hospital discovery hardened across web, Android, and iOS."
+      "message": "New installable build (runtime 1.0.7) so testers off the frozen 1.0.5 preview APK get the fix and future OTAs. Check Settings for the muted build marker."
     }
   ]
 }
