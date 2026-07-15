@@ -296,3 +296,29 @@ One presentation race was found and repaired. A newly committed rating state cou
 The Console tablet maximum-update-depth report was traced to Radix Checkbox Presence inside `TabletRecordRow`. Tablet selection now uses the stateless console-owned checkbox primitive. The restarted server serves chunk `co-0f4842`; reports naming old chunk `co-3490e9` are stale browser instances and require a hard refresh.
 
 On Android resume, Supabase Auth can emit a development LogBox banner for a transient `Network request failed` while TanStack Query refocuses. It is not the product Toast surface and does not ship in EAS production. The refetch recovered, the rating write succeeded, and canonical lifecycle state remained intact. Treat repeated production connectivity failures separately from this development overlay.
+
+### Production Release: 2026-07-15
+
+The repaired lifecycle was released from clean App `main` commit `fb4396c6` after the consolidated Supabase checkpoint `07bc5090`. Console tablet and lifecycle parity reached clean `main` commit `220f3a08` after shared contract checkpoint `06d5b01f`.
+
+Release verification passed:
+
+- all 9 App contract files
+- emergency hardening guards
+- Android production export with 3,188 modules
+- linked Supabase dry-run with no pending migrations
+- Console full suite: 215 suites and 1,437 tests
+- Console data, encoding, UI hardgate, mobile grammar, and optimized production build
+- real-device request `REQ-C6988A` through dispatch, telemetry, arrival acknowledgement, responder completion, and persisted 5-star rating
+
+EAS production release evidence:
+
+- branch: `production`
+- runtime: `1.0.6`
+- group: `9f9ba054-66c6-4b45-bcdf-b15d6d8987ec`
+- Android: `019f639f-44e7-7197-800d-f1df50dbdfea`
+- iOS: `019f639f-44e7-7e0b-8686-c6fefde47556`
+- commit: `fb4396c6b20cf02477f71368a84b64cf16784f76`
+- dashboard: `https://expo.dev/accounts/dyrane/projects/ivisit/updates/9f9ba054-66c6-4b45-bcdf-b15d6d8987ec`
+
+The production branch contains exactly one new group for this release. No AAB or APK was built.
