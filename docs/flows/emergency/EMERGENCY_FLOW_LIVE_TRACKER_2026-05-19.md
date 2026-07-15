@@ -445,3 +445,26 @@ The repair is deliberately narrow:
 4. An already-visible in-flow rating state still wins, so the responder-completion path cannot create a second physical rating modal.
 
 Browser proof after the repair: the terminal pill cleared, exactly one `Rate your transport` modal appeared for the matching completed visit, Skip resolved it through the canonical visit command, and a hard reload showed no duplicate rating modal. The completed request still projects terminal `Complete` truth when it is intentionally retained as context; it no longer presents stale en-route state or blocks rating recovery.
+
+### Production Release: 2026-07-15 (lifecycle polish group)
+
+Released from clean App `main` commit `f26e2959` (scheduled-visit + emergency continuity
+polish across map surfaces, incl. migrations `20260715124000_emergency_pricing_hospital_commitment`
+and `20260715131500_emergency_hospital_discovery_commitment`). Console lifecycle close-out
+reached clean `main` commit `b737587a` (runtime CRUD audit: 92 findings resolved, 0 confirmed
+failures; 484/484 contract tests; merged branches dropped).
+
+Release verification passed:
+
+- App local contract gates: emergency-continuity 7/7; scheduled-visits UI/state/async-consult/auth-return all PASS
+- Console: 484/484 contract suites + 105/105 lifecycle unit tests, data-contract (475 verified column refs), encoding + mojibake clean, optimized production build
+
+EAS production release evidence:
+
+- branch: `production`
+- runtime: `1.0.6`
+- group: `d334c57b-7879-4780-aac3-5b370b37bd70`
+- Android: `019f660d-89cc-7cda-a91a-8edd7a81ed9a`
+- iOS: `019f660d-89cc-7b34-9da8-b86a956ed5aa`
+- commit: `f26e2959b668a3775cb9cc9bfe1c0a19ff4f66a9`
+- dashboard: `https://expo.dev/accounts/dyrane/projects/ivisit/updates/d334c57b-7879-4780-aac3-5b370b37bd70`
