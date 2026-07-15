@@ -471,12 +471,14 @@ async function main() {
         id: 'TP1',
         role: 'dispatcherA',
         rpc: 'complete_trip',
-        expectSuccess: true,
+        expectSuccess: false,
         rpcBoolean: true,
         prepare: async () => ({ requestId: await createRequest(ctx.hospitalA, 'ambulance', 'accepted') }),
         params: (s) => ({ request_uuid: s.requestId }),
         verify: async (s) => {
-          if ((await requestStatus(s.requestId)) !== 'completed') throw new Error('complete_trip did not complete');
+          if ((await requestStatus(s.requestId)) !== 'accepted') {
+            throw new Error('dispatcher complete_trip bypassed assigned responder authority');
+          }
         },
       },
       {

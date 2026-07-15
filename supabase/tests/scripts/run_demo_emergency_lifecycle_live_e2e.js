@@ -593,6 +593,46 @@ try {
     return data;
   });
 
+  const canonicalVisit = await check('request creation atomically exposes one initiated Visit', async () => {
+    const { data, error } = await patient.clients[1]
+      .from('visits')
+      .select('id,display_id,request_id,status,lifecycle_state,rating,rated_at')
+      .eq('request_id', created.request_id)
+      .single();
+    if (error) throw error;
+    assert(data.status === 'pending', `Initial Visit status was ${data.status}`);
+    assert(data.lifecycle_state === 'initiated', `Initial Visit lifecycle was ${data.lifecycle_state}`);
+    state.visitIds.add(data.id);
+    state.entityIds.add(data.id);
+    return data;
+  });
+
+  await check('patient cannot mutate or delete request-derived Visit evidence', async () => {
+    const update = await patient.clients[0]
+      .from('visits')
+      .update({ status: 'completed' })
+      .eq('id', canonicalVisit.id)
+      .select('id');
+    if (update.error) throw update.error;
+    assert((update.data || []).length === 0, 'Patient directly updated request-derived Visit evidence');
+
+    const deletion = await patient.clients[1]
+      .from('visits')
+      .delete()
+      .eq('id', canonicalVisit.id)
+      .select('id');
+    if (deletion.error) throw deletion.error;
+    assert((deletion.data || []).length === 0, 'Patient directly deleted request-derived Visit evidence');
+
+    const { data, error } = await patient.clients[0]
+      .from('visits')
+      .select('id,status,lifecycle_state')
+      .eq('id', canonicalVisit.id)
+      .single();
+    if (error) throw error;
+    assert(data.status === 'pending' && data.lifecycle_state === 'initiated', 'Denied writes changed Visit truth');
+  });
+
   await check('dispatch type compatibility preserves specific equipment requests', async () => {
     const setRequestType = async (ambulanceType) => {
       const { error } = await admin
@@ -717,6 +757,18 @@ try {
     assert(request.status === 'arrived', 'Canonical request did not reach arrived');
   });
 
+  await check('responder completion waits for patient arrival acknowledgement', async () => {
+    const result = await driver.clients[0].rpc('responder_complete_emergency', {
+      p_request_id: created.request_id,
+    });
+    if (result.error) throw result.error;
+    assert(result.data?.success === false, 'Responder completed before patient confirmation');
+    assert(
+      result.data?.code === 'PATIENT_ARRIVAL_ACK_REQUIRED',
+      `Unexpected pre-ack completion result: ${JSON.stringify(result.data)}`,
+    );
+  });
+
   const acknowledgedAt = await check('patient confirm arrival is shared and idempotent', async () => {
     const first = await patient.clients[1].rpc('patient_acknowledge_responder_arrival', {
       p_request_id: created.request_id,
@@ -796,6 +848,49 @@ try {
     );
   });
 
+  await check('completed request converges its linked Visit projection', async () => {
+    const { data, error } = await patient.clients[1]
+      .from('visits')
+      .select('id,request_id,status,lifecycle_state,rating,rated_at')
+      .eq('id', canonicalVisit.id)
+      .single();
+    if (error) throw error;
+    assert(data.request_id === created.request_id, 'Completed Visit lost its request identity');
+    assert(data.status === 'completed', `Completed Visit status was ${data.status}`);
+    assert(data.lifecycle_state === 'completed', `Completed Visit lifecycle was ${data.lifecycle_state}`);
+  });
+
+  await check('rating is canonical, cross-session idempotent, and preserves first truth', async () => {
+    const first = await patient.clients[0].rpc('rate_visit', {
+      p_visit_id: canonicalVisit.id,
+      p_rating: 5,
+      p_comment: `lifecycle proof ${tag}`,
+    });
+    if (first.error) throw first.error;
+    assert(first.data?.success === true && first.data?.already_rated === false, 'Initial rating failed');
+    assert(first.data?.visit?.rating === 5, 'Initial rating did not persist five stars');
+    assert(first.data?.visit?.lifecycle_state === 'rated', 'Initial rating did not close lifecycle');
+
+    const replay = await patient.clients[1].rpc('rate_visit', {
+      p_visit_id: canonicalVisit.id,
+      p_rating: 2,
+      p_comment: 'must not overwrite first rating',
+    });
+    if (replay.error) throw replay.error;
+    assert(replay.data?.success === true && replay.data?.already_rated === true, 'Rating replay was not idempotent');
+    assert(replay.data?.visit?.rating === 5, 'Second session overwrote the canonical rating');
+
+    const { data, error } = await patient.clients[0]
+      .from('visits')
+      .select('status,lifecycle_state,rating,rated_at,rating_comment')
+      .eq('id', canonicalVisit.id)
+      .single();
+    if (error) throw error;
+    assert(data.status === 'completed' && data.lifecycle_state === 'rated', 'Rated Visit lost terminal truth');
+    assert(data.rating === 5 && data.rated_at, 'Rated Visit is missing persisted feedback');
+    assert(data.rating_comment === `lifecycle proof ${tag}`, 'Rating replay changed the first comment');
+  });
+
   await check('accepted, arrived, acknowledged, and completed notifications remain singular', async () => {
     const keys = [
       `emergency_request:${created.request_id}:assignment:${approved.current_responder_assignment_id}:accepted`,
@@ -811,6 +906,109 @@ try {
       if (error) throw error;
       assert(count === 1, `${eventKey} expected one notification, received ${count}`);
     }
+  });
+
+  const retryRequest = await check('create a paid request while its only responder is unavailable', async () => {
+    const offline = await admin
+      .from('ambulances')
+      .update({ status: 'offline', current_call: null, updated_at: new Date().toISOString() })
+      .eq('id', ambulance.id);
+    if (offline.error) throw offline.error;
+
+    const createdRetry = await patient.clients[0].rpc('create_emergency_v4', {
+      p_user_id: patient.id,
+      p_request_data: {
+        hospital_id: hospital.id,
+        hospital_name: hospital.name,
+        service_type: 'ambulance',
+        specialty: 'Emergency Medicine',
+        ambulance_type: 'ambulance',
+        patient_location: { lat: point.lat + 0.00025, lng: point.lng + 0.00025 },
+        patient_snapshot: { fullName: `Retry Patient ${tag}`, testTag: tag },
+      },
+      p_payment_data: {
+        method: 'cash',
+        method_id: `${tag}-retry-cash`,
+        total_amount: 0.01,
+        currency: 'USD',
+      },
+    });
+    if (createdRetry.error) throw createdRetry.error;
+    assert(createdRetry.data?.success === true, 'Retry fixture request creation failed');
+    state.requestIds.add(createdRetry.data.request_id);
+    state.paymentIds.add(createdRetry.data.payment_id);
+    state.entityIds.add(createdRetry.data.request_id);
+    state.entityIds.add(createdRetry.data.payment_id);
+
+    const { data: retryVisit, error: retryVisitError } = await patient.clients[1]
+      .from('visits')
+      .select('id,status,lifecycle_state')
+      .eq('request_id', createdRetry.data.request_id)
+      .single();
+    if (retryVisitError) throw retryVisitError;
+    state.visitIds.add(retryVisit.id);
+    state.entityIds.add(retryVisit.id);
+
+    const approval = await orgAdmin.clients[0].rpc('approve_cash_payment', {
+      p_payment_id: createdRetry.data.payment_id,
+      p_request_id: createdRetry.data.request_id,
+    });
+    if (approval.error) throw approval.error;
+    assert(approval.data?.success === true, `Retry fixture payment failed: ${JSON.stringify(approval.data)}`);
+
+    const request = await getRequest(createdRetry.data.request_id);
+    assert(request.status === 'in_progress', `Retry fixture status was ${request.status}`);
+    assert(request.current_responder_assignment_id === null, 'Unavailable responder was incorrectly offered');
+    return { ...createdRetry.data, visit_id: retryVisit.id };
+  });
+
+  await check('minute worker retries the queue when responder readiness recovers', async () => {
+    const observedAt = new Date().toISOString();
+    const restored = await admin
+      .from('ambulances')
+      .update({
+        status: 'available',
+        current_call: null,
+        location: `SRID=4326;POINT(${point.lng} ${point.lat})`,
+        location_observed_at: observedAt,
+        location_received_at: observedAt,
+        telemetry_sequence: 100,
+        telemetry_lease_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        updated_at: observedAt,
+      })
+      .eq('id', ambulance.id);
+    if (restored.error) throw restored.error;
+
+    const worker = await admin.rpc('expire_responder_offers', { p_limit: 100 });
+    if (worker.error) throw worker.error;
+    assert(worker.data?.success === true && worker.data?.retried >= 1, 'Queue worker did not retry');
+    assert(worker.data?.offered >= 1, `Queue worker did not offer a responder: ${JSON.stringify(worker.data)}`);
+
+    const request = await getRequest(retryRequest.request_id);
+    assert(request.current_responder_assignment_id, 'Recovered request still has no responder offer');
+    assert(request.status === 'in_progress', 'Responder offer falsely advanced request acceptance');
+    state.assignmentIds.add(request.current_responder_assignment_id);
+    state.entityIds.add(request.current_responder_assignment_id);
+  });
+
+  await check('patient cancellation converges the retry request and linked Visit', async () => {
+    const cancellation = await patient.clients[1].rpc('patient_update_emergency_request', {
+      p_request_id: retryRequest.request_id,
+      p_payload: { status: 'cancelled', reason: 'request-to-visit retry proof' },
+    });
+    if (cancellation.error) throw cancellation.error;
+    assert(cancellation.data?.success === true, 'Patient cancellation failed');
+    assert(cancellation.data?.request?.status === 'cancelled', 'Canonical request did not cancel');
+
+    const { data: visit, error } = await patient.clients[0]
+      .from('visits')
+      .select('request_id,status,lifecycle_state')
+      .eq('id', retryRequest.visit_id)
+      .single();
+    if (error) throw error;
+    assert(visit.request_id === retryRequest.request_id, 'Cancelled Visit lost request identity');
+    assert(visit.status === 'cancelled', `Cancelled Visit status was ${visit.status}`);
+    assert(visit.lifecycle_state === 'cancelled', `Cancelled Visit lifecycle was ${visit.lifecycle_state}`);
   });
 } catch (error) {
   failed = error;

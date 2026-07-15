@@ -42,11 +42,12 @@ async function ensureProfile(userId, profilePatch) {
 }
 
 async function createAuthUser({ label, role, organizationId = null, providerType = null }) {
+  const fullName = `Cash Matrix ${label}`;
   const { data, error } = await admin.auth.admin.createUser({
     email: email(label),
     password: PASSWORD,
     email_confirm: true,
-    user_metadata: { role },
+    user_metadata: { full_name: fullName },
   });
   if (error) {
     throw new Error(`createUser(${label}) failed: ${error.message}`);
@@ -55,6 +56,8 @@ async function createAuthUser({ label, role, organizationId = null, providerType
   const patch = {
     role,
     organization_id: organizationId,
+    full_name: fullName,
+    onboarding_status: 'complete',
   };
   if (providerType) {
     patch.provider_type = providerType;
@@ -95,21 +98,77 @@ async function safeRun(label, fn, warnings) {
 }
 
 async function settleActiveEmergencyRequestsForUser(userId) {
+  const { data: activeRequests, error: activeError } = await admin
+    .from('emergency_requests')
+    .select('id')
+    .eq('user_id', userId)
+    .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived']);
+  if (activeError) {
+    throw new Error(`active request lookup failed: ${activeError.message}`);
+  }
+
+  for (const request of activeRequests || []) {
+    const { data, error } = await admin.rpc('console_cancel_emergency', {
+      p_request_id: request.id,
+      p_reason: 'cash role matrix cleanup',
+    });
+    if (error) {
+      throw new Error(`canonical request cleanup failed: ${error.message}`);
+    }
+    if (data?.success === false) {
+      throw new Error(`canonical request cleanup rejected: ${data.error || 'unknown error'}`);
+    }
+  }
+}
+
+async function deleteEmergencyRequestsWithTransitionCascade(requestIds) {
+  const ids = [...new Set((requestIds || []).filter(Boolean))];
+  if (ids.length === 0) return;
+
+  const literals = ids.map((id) => `'${id}'::uuid`).join(', ');
   const sql = `
-    SELECT set_config('ivisit.allow_emergency_status_write', '1', true);
-    UPDATE public.emergency_requests
-    SET status = 'cancelled',
-        cancelled_at = COALESCE(cancelled_at, NOW()),
-        updated_at = NOW()
-    WHERE user_id = '${userId}'
-      AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived');
+DO $$
+BEGIN
+  ALTER TABLE public.emergency_requests
+    DISABLE TRIGGER on_emergency_start_dispatch;
+  ALTER TABLE public.emergency_responder_assignments
+    DISABLE TRIGGER trg_protect_emergency_responder_assignment_history;
+  ALTER TABLE public.emergency_status_transitions
+    DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+
+  DELETE FROM public.emergency_responder_assignments
+  WHERE emergency_request_id IN (${literals});
+
+  DELETE FROM public.emergency_status_transitions
+  WHERE emergency_request_id IN (${literals});
+
+  DELETE FROM public.emergency_requests
+  WHERE id IN (${literals});
+
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  ALTER TABLE public.emergency_responder_assignments
+    ENABLE TRIGGER trg_protect_emergency_responder_assignment_history;
+  ALTER TABLE public.emergency_requests
+    ENABLE TRIGGER on_emergency_start_dispatch;
+EXCEPTION WHEN OTHERS THEN
+  ALTER TABLE public.emergency_status_transitions
+    ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  ALTER TABLE public.emergency_responder_assignments
+    ENABLE TRIGGER trg_protect_emergency_responder_assignment_history;
+  ALTER TABLE public.emergency_requests
+    ENABLE TRIGGER on_emergency_start_dispatch;
+  RAISE;
+END;
+$$;
   `;
+
   const { data, error } = await admin.rpc('exec_sql', { sql });
   if (error) {
-    throw new Error(`exec_sql settle failed: ${error.message}`);
+    throw new Error(`delete emergency request graphs failed: ${error.message}`);
   }
   if (!data?.success) {
-    throw new Error(`exec_sql settle rejected: ${data?.error || 'unknown error'}`);
+    throw new Error(`delete emergency request graphs rejected: ${data?.error || 'unknown error'}`);
   }
 }
 
@@ -135,7 +194,9 @@ async function main() {
     hospitalA: null,
     hospitalB: null,
     requestIds: [],
+    visitIds: [],
     paymentIds: [],
+    mappingEntityIds: [],
   };
 
   const report = {
@@ -150,22 +211,53 @@ async function main() {
     cleanupWarnings: [],
   };
 
+  const trackEntityIds = (...ids) => {
+    ctx.mappingEntityIds.push(...ids.filter(Boolean));
+  };
+
+  const createTrackedAuthUser = async (options) => {
+    const user = await createAuthUser(options);
+    ctx.userIds.push(user.id);
+    trackEntityIds(user.id);
+    return user;
+  };
+
   try {
     const { data: orgA, error: orgAErr } = await admin
       .from('organizations')
-      .insert({ name: `Cash Matrix Org A ${TAG}` })
+      .insert({
+        name: `Cash Matrix Org A ${TAG}`,
+        organization_type: 'hospital',
+        registration_number: `${TAG}-A`,
+        contact_email: email('org-a-contact'),
+        verification_status: 'verified',
+        verified_at: new Date().toISOString(),
+        is_active: true,
+        ivisit_fee_percentage: 0,
+      })
       .select()
       .single();
     if (orgAErr) throw new Error(`orgA create failed: ${orgAErr.message}`);
     ctx.orgA = orgA.id;
+    trackEntityIds(orgA.id);
 
     const { data: orgB, error: orgBErr } = await admin
       .from('organizations')
-      .insert({ name: `Cash Matrix Org B ${TAG}` })
+      .insert({
+        name: `Cash Matrix Org B ${TAG}`,
+        organization_type: 'hospital',
+        registration_number: `${TAG}-B`,
+        contact_email: email('org-b-contact'),
+        verification_status: 'verified',
+        verified_at: new Date().toISOString(),
+        is_active: true,
+        ivisit_fee_percentage: 0,
+      })
       .select()
       .single();
     if (orgBErr) throw new Error(`orgB create failed: ${orgBErr.message}`);
     ctx.orgB = orgB.id;
+    trackEntityIds(orgB.id);
 
     const { data: hospitalA, error: hospitalAErr } = await admin
       .from('hospitals')
@@ -174,6 +266,10 @@ async function main() {
         name: `Cash Matrix Hospital A ${TAG}`,
         address: '1 Cash Matrix Way',
         status: 'available',
+        verified: true,
+        verification_status: 'verified',
+        emergency_eligible: true,
+        dispatch_eligible: true,
         available_beds: 8,
         total_beds: 30,
       })
@@ -181,6 +277,7 @@ async function main() {
       .single();
     if (hospitalAErr) throw new Error(`hospitalA create failed: ${hospitalAErr.message}`);
     ctx.hospitalA = hospitalA.id;
+    trackEntityIds(hospitalA.id);
 
     const { data: hospitalB, error: hospitalBErr } = await admin
       .from('hospitals')
@@ -189,6 +286,10 @@ async function main() {
         name: `Cash Matrix Hospital B ${TAG}`,
         address: '2 Cash Matrix Way',
         status: 'available',
+        verified: true,
+        verification_status: 'verified',
+        emergency_eligible: true,
+        dispatch_eligible: true,
         available_beds: 8,
         total_beds: 30,
       })
@@ -196,61 +297,55 @@ async function main() {
       .single();
     if (hospitalBErr) throw new Error(`hospitalB create failed: ${hospitalBErr.message}`);
     ctx.hospitalB = hospitalB.id;
+    trackEntityIds(hospitalB.id);
 
-    ctx.users.patient = await createAuthUser({ label: 'patient', role: 'patient' });
-    ctx.users.orgAdminA = await createAuthUser({
+    ctx.users.patient = await createTrackedAuthUser({ label: 'patient', role: 'patient' });
+    ctx.users.orgAdminA = await createTrackedAuthUser({
       label: 'orgadmin-a',
       role: 'org_admin',
       organizationId: ctx.orgA,
     });
-    ctx.users.dispatcherA = await createAuthUser({
+    ctx.users.dispatcherA = await createTrackedAuthUser({
       label: 'dispatcher-a',
       role: 'dispatcher',
       organizationId: ctx.orgA,
     });
-    ctx.users.dispatcherB = await createAuthUser({
+    ctx.users.dispatcherB = await createTrackedAuthUser({
       label: 'dispatcher-b',
       role: 'dispatcher',
       organizationId: ctx.orgB,
     });
-    ctx.users.viewerA = await createAuthUser({
+    ctx.users.viewerA = await createTrackedAuthUser({
       label: 'viewer-a',
       role: 'viewer',
       organizationId: ctx.orgA,
     });
-    ctx.users.providerA = await createAuthUser({
+    ctx.users.providerA = await createTrackedAuthUser({
       label: 'provider-a',
       role: 'provider',
       providerType: 'driver',
       organizationId: ctx.orgA,
     });
 
-    ctx.userIds.push(
-      ctx.users.patient.id,
-      ctx.users.orgAdminA.id,
-      ctx.users.dispatcherA.id,
-      ctx.users.dispatcherB.id,
-      ctx.users.viewerA.id,
-      ctx.users.providerA.id
-    );
-
-    const { error: orgWalletAErr } = await admin.from('organization_wallets').upsert(
+    const { data: walletA, error: orgWalletAErr } = await admin.from('organization_wallets').upsert(
       {
         organization_id: ctx.orgA,
         balance: 10000,
       },
       { onConflict: 'organization_id' }
-    );
+    ).select('id').single();
     if (orgWalletAErr) throw new Error(`organization_wallet A upsert failed: ${orgWalletAErr.message}`);
+    trackEntityIds(walletA.id);
 
-    const { error: orgWalletBErr } = await admin.from('organization_wallets').upsert(
+    const { data: walletB, error: orgWalletBErr } = await admin.from('organization_wallets').upsert(
       {
         organization_id: ctx.orgB,
         balance: 10000,
       },
       { onConflict: 'organization_id' }
-    );
+    ).select('id').single();
     if (orgWalletBErr) throw new Error(`organization_wallet B upsert failed: ${orgWalletBErr.message}`);
+    trackEntityIds(walletB.id);
 
     const clients = {
       orgAdminA: await signInAs(email('orgadmin-a')),
@@ -272,6 +367,7 @@ async function main() {
           hospital_id: hospitalId,
           hospital_name: `Cash Matrix Hospital ${TAG}`,
           service_type: 'ambulance',
+          dispatch_organization_id: orgId,
           status,
           payment_status: paymentStatus,
         })
@@ -287,7 +383,7 @@ async function main() {
       if (existingVisitsErr) throw new Error(`visit lookup failed: ${existingVisitsErr.message}`);
 
       if (!existingVisits || existingVisits.length === 0) {
-        const { error: visitErr } = await admin
+        const { data: insertedVisit, error: visitErr } = await admin
           .from('visits')
           .insert({
             user_id: ctx.users.patient.id,
@@ -297,11 +393,20 @@ async function main() {
             date: new Date().toISOString().slice(0, 10),
             time: new Date().toISOString().slice(11, 19),
             type: 'emergency',
-          });
+          })
+          .select('id')
+          .single();
         if (visitErr) throw new Error(`visit create failed: ${visitErr.message}`);
+        ctx.visitIds.push(insertedVisit.id);
+        trackEntityIds(insertedVisit.id);
+      } else {
+        const visitIds = existingVisits.map((visit) => visit.id);
+        ctx.visitIds.push(...visitIds);
+        trackEntityIds(...visitIds);
       }
 
       ctx.requestIds.push(data.id);
+      trackEntityIds(data.id);
       return data.id;
     };
 
@@ -322,6 +427,13 @@ async function main() {
         .single();
       if (error) throw new Error(`payment create failed: ${error.message}`);
       ctx.paymentIds.push(data.id);
+      trackEntityIds(data.id);
+
+      const { error: linkError } = await admin
+        .from('emergency_requests')
+        .update({ payment_id: data.id })
+        .eq('id', requestId);
+      if (linkError) throw new Error(`payment link failed: ${linkError.message}`);
       return data.id;
     };
 
@@ -574,40 +686,84 @@ async function main() {
       );
     }
   } finally {
+    if (ctx.users.patient?.id) {
+      await safeRun(
+        'settle remaining active requests',
+        async () => {
+          await settleActiveEmergencyRequestsForUser(ctx.users.patient.id);
+        },
+        report.cleanupWarnings
+      );
+    }
+
     let emergencyRowsDeleted = true;
     if (ctx.requestIds.length > 0) {
       const reqIds = [...new Set(ctx.requestIds)];
+
       await safeRun(
-        'delete emergency_requests',
+        'capture generated visits and payments',
         async () => {
-          const { error } = await admin.from('emergency_requests').delete().in('id', reqIds);
-          if (error) {
-            emergencyRowsDeleted = false;
-            throw new Error(error.message);
+          const [{ data: visits, error: visitsError }, { data: payments, error: paymentsError }] =
+            await Promise.all([
+              admin.from('visits').select('id').in('request_id', reqIds),
+              admin.from('payments').select('id').in('emergency_request_id', reqIds),
+            ]);
+          if (visitsError) throw new Error(visitsError.message);
+          if (paymentsError) throw new Error(paymentsError.message);
+          const visitIds = (visits || []).map((row) => row.id);
+          const paymentIds = (payments || []).map((row) => row.id);
+          ctx.visitIds.push(...visitIds);
+          ctx.paymentIds.push(...paymentIds);
+          trackEntityIds(...visitIds, ...paymentIds);
+        },
+        report.cleanupWarnings
+      );
+
+      await safeRun(
+        'delete emergency doctor assignments',
+        async () => {
+          const { error } = await admin
+            .from('emergency_doctor_assignments')
+            .delete()
+            .in('emergency_request_id', reqIds);
+          if (error) throw new Error(error.message);
+        },
+        report.cleanupWarnings
+      );
+
+      await safeRun(
+        'delete visits',
+        async () => {
+          const visitIds = [...new Set(ctx.visitIds.filter(Boolean))];
+          if (visitIds.length > 0) {
+            const { error } = await admin.from('visits').delete().in('id', visitIds);
+            if (error) throw new Error(error.message);
           }
         },
         report.cleanupWarnings
       );
 
-      if (emergencyRowsDeleted) {
-        await safeRun(
-          'delete payments',
-          async () => {
-            const { error } = await admin.from('payments').delete().in('emergency_request_id', reqIds);
+      try {
+        await deleteEmergencyRequestsWithTransitionCascade(reqIds);
+      } catch (error) {
+        emergencyRowsDeleted = false;
+        report.cleanupWarnings.push(`delete emergency request graphs: ${error.message}`);
+      }
+
+      await safeRun(
+        'delete payments',
+        async () => {
+          const paymentIds = [...new Set(ctx.paymentIds.filter(Boolean))];
+          if (paymentIds.length > 0) {
+            const { error } = await admin.from('payments').delete().in('id', paymentIds);
             if (error) throw new Error(error.message);
-          },
-          report.cleanupWarnings
-        );
-        await safeRun(
-          'delete visits',
-          async () => {
-            const { error } = await admin.from('visits').delete().in('request_id', reqIds);
-            if (error) throw new Error(error.message);
-          },
-          report.cleanupWarnings
-        );
-      } else {
-        report.cleanupWarnings.push('skipped dependent cleanup because emergency_requests delete failed');
+          }
+        },
+        report.cleanupWarnings
+      );
+
+      if (!emergencyRowsDeleted) {
+        report.cleanupWarnings.push('skipped dependent cleanup because emergency request graph deletion failed');
       }
     }
 
@@ -660,6 +816,62 @@ async function main() {
       report.cleanupWarnings.push('skipped foundation cleanup because emergency_requests delete failed');
     }
 
+    await safeRun(
+      'delete generated notifications',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { data: rows, error: readError } = await admin
+            .from('notifications')
+            .select('id')
+            .in('user_id', ctx.userIds);
+          if (readError) throw new Error(readError.message);
+          trackEntityIds(...(rows || []).map((row) => row.id));
+          const { error } = await admin.from('notifications').delete().in('user_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'delete generated user activity',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { error } = await admin.from('user_activity').delete().in('user_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'delete generated admin audit rows',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { error } = await admin.from('admin_audit_log').delete().in('admin_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'delete generated patient wallets',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { data: rows, error: readError } = await admin
+            .from('patient_wallets')
+            .select('id')
+            .in('user_id', ctx.userIds);
+          if (readError) throw new Error(readError.message);
+          trackEntityIds(...(rows || []).map((row) => row.id));
+          const { error } = await admin.from('patient_wallets').delete().in('user_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
     for (const userId of ctx.userIds) {
       await safeRun(
         `delete auth user ${userId}`,
@@ -671,6 +883,18 @@ async function main() {
       );
     }
 
+    await safeRun(
+      'delete generated identity mappings',
+      async () => {
+        const entityIds = [...new Set(ctx.mappingEntityIds.filter(Boolean))];
+        if (entityIds.length > 0) {
+          const { error } = await admin.from('id_mappings').delete().in('entity_id', entityIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
     report.completedAt = new Date().toISOString();
     const outDir = path.join(__dirname, '..', 'validation');
     fs.mkdirSync(outDir, { recursive: true });
@@ -681,16 +905,14 @@ async function main() {
       `[cash-role-matrix] passed=${report.summary.passed} failed=${report.summary.failed} total=${report.summary.totalCases}`
     );
 
-    if (report.summary.failed > 0) {
-      throw new Error(
-        `cash role-isolation matrix failed: ${report.summary.failed}/${report.summary.totalCases} cases failed`
-      );
+    if (report.summary.failed > 0 || report.cleanupWarnings.length > 0) {
+      process.exitCode = 1;
     }
   }
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => process.exit(process.exitCode || 0))
   .catch((error) => {
     console.error('[cash-role-matrix] FAIL:', error.message);
     process.exit(1);

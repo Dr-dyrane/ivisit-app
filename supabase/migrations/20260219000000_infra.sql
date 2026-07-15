@@ -15,12 +15,35 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION public.generate_display_id(prefix TEXT)
 RETURNS TEXT AS $$
+DECLARE
+    v_prefix TEXT := UPPER(NULLIF(BTRIM(prefix), ''));
+    v_candidate TEXT;
+    v_attempt INTEGER;
 BEGIN
-    -- Generates a prefix + 6 random hex characters (e.g. USR-A1B2C3)
-    -- Statistically unique enough for our scale, and enforced by UNIQUE table constraints.
-    RETURN prefix || '-' || UPPER(SUBSTRING(MD5(GEN_RANDOM_UUID()::TEXT), 1, 6));
+    IF v_prefix IS NULL OR v_prefix !~ '^[A-Z0-9]{2,8}$' THEN
+        RAISE EXCEPTION 'Invalid display ID prefix';
+    END IF;
+
+    -- Keep the established short label while reserving each candidate globally.
+    -- The transaction-scoped candidate lock closes the concurrent allocation race.
+    FOR v_attempt IN 1..64 LOOP
+        v_candidate := v_prefix || '-' || UPPER(SUBSTRING(MD5(GEN_RANDOM_UUID()::TEXT), 1, 6));
+        PERFORM pg_catalog.pg_advisory_xact_lock(
+            pg_catalog.hashtextextended('ivisit-display-id:' || v_candidate, 0)
+        );
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.id_mappings AS mapping
+            WHERE mapping.display_id = v_candidate
+        ) THEN
+            RETURN v_candidate;
+        END IF;
+    END LOOP;
+
+    RAISE EXCEPTION 'Unable to allocate a unique display ID for prefix %', v_prefix;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 -- 🛠️ ADMIN UTILITIES
 CREATE OR REPLACE FUNCTION public.exec_sql(sql TEXT)

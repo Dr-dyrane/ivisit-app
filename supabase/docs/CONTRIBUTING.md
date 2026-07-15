@@ -44,6 +44,10 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 > - Ambulance type compatibility `20260714224500` was integrated into `0100_core_rpcs`.
 > - Notification recipient dismissal `20260714233000` was integrated into `0005_ops_content` and `0007_security`.
 > - All ten remote history rows were repaired as reverted. Local and linked history again contain only the 11 pillars.
+> - Request-to-Visit lifecycle authority `20260715010000` was integrated into `0003_logistics`, `0004_finance`, `0007_security`, `0008_emergency_logic`, `0009_automations`, and `0100_core_rpcs`.
+> - Emergency provider commitment gate `20260715011000` was integrated into `0100_core_rpcs`.
+> - Collision-safe display ID allocation `20260715012000` was integrated into `0000_infra`; its guarded one-time reconciliation repaired 12 labels that resolved to deleted entities without changing application rows.
+> - All three temporary deployment versions were verified live, removed, and repaired as reverted.
 
 Deployment SQL may be emitted temporarily to apply an already-reviewed pillar delta to a live database. It is not permanent migration history. Once the live contract passes, absorb the final SQL into the pillars, delete the deployment file, repair its version as reverted, and rerun the linked contract and cleanup gates.
 

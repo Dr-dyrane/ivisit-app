@@ -370,7 +370,7 @@ RUNTIME_AUDIT_LOOKBACK_HOURS=72 npm run hardening:runtime-data-integrity
 npm run hardening:runtime-data-repair
 
 # Apply deterministic repair actions (fee ledger backfill + visit hospital-name backfill)
-npm run hardening:runtime-data-repair -- --apply
+npm run hardening:runtime-data-repair -- --project-ref=<linked-project-ref> --apply
 ```
 
 ### **Visits Runtime Confidence Gate**

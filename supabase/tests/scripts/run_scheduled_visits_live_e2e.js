@@ -62,6 +62,7 @@ const state = {
   messageIds: new Set(),
   storagePaths: new Set(),
   emergencyRequestIds: new Set(),
+  paymentIds: new Set(),
 };
 
 const report = {
@@ -396,6 +397,17 @@ async function cleanup() {
   }
 
   const emergencyIds = [...state.emergencyRequestIds];
+  const paymentIds = [...state.paymentIds];
+  const notificationTargetIds = [...emergencyIds, ...paymentIds];
+  if (notificationTargetIds.length) {
+    await safely('emergency notifications', async () => {
+      const { error } = await admin
+        .from('notifications')
+        .delete()
+        .in('target_id', notificationTargetIds);
+      if (error) throw error;
+    });
+  }
   if (emergencyIds.length) {
     await safely('emergency-derived visits', async () => {
       const { error } = await admin.from('visits').delete().in('request_id', emergencyIds);
@@ -409,6 +421,13 @@ async function cleanup() {
       if (error) throw error;
     });
     await safely('emergency requests', () => deleteEmergencyRequests(emergencyIds));
+  }
+
+  if (paymentIds.length) {
+    await safely('emergency payments', async () => {
+      const { error } = await admin.from('payments').delete().in('id', paymentIds);
+      if (error) throw error;
+    });
   }
 
   const bookingKeys = [...state.bookingKeys];
@@ -519,6 +538,11 @@ async function cleanup() {
           .in('id', emergencyIds)
       );
     }
+    if (paymentIds.length) {
+      checks.push(
+        admin.from('payments').select('id', { count: 'exact', head: true }).in('id', paymentIds)
+      );
+    }
 
     const results = await Promise.all(checks);
     for (const result of results) {
@@ -536,30 +560,47 @@ async function cleanup() {
   if (errors.length) throw new Error(errors.join('; '));
 }
 
-async function createEmergencyRequest({ userId, hospital }) {
-  const { data, error } = await admin
-    .from('emergency_requests')
-    .insert({
-      user_id: userId,
+async function createEmergencyRequest({ actor, hospital, label }) {
+  const created = await actor.client.rpc('create_emergency_v4', {
+    p_user_id: actor.id,
+    p_request_data: {
       hospital_id: hospital.id,
       hospital_name: hospital.name,
       service_type: 'ambulance',
-      status: 'pending_approval',
-      payment_status: 'completed',
-    })
-    .select('id,status,assigned_doctor_id')
-    .single();
-  if (error) throw error;
-  state.emergencyRequestIds.add(data.id);
-  return data;
-}
-
-async function acceptEmergency(requestId, client) {
-  const command = await client.rpc('console_update_emergency_request', {
-    p_request_id: requestId,
-    p_payload: { status: 'accepted' },
+      specialty: 'Emergency Medicine',
+      patient_snapshot: { fullName: `${label} ${tag}`, testTag: tag },
+      transition_reason: `scheduled_live_${label}`,
+    },
+    p_payment_data: {
+      method: 'card',
+      method_id: `${tag}-${label}-method`,
+      total_amount: 150,
+      currency: 'USD',
+    },
   });
-  if (command.error) throw command.error;
+  if (created.error) throw created.error;
+  assert(created.data?.success === true, `Emergency creation failed: ${JSON.stringify(created.data)}`);
+
+  const requestId = created.data.request_id;
+  const paymentId = created.data.payment_id;
+  state.emergencyRequestIds.add(requestId);
+  state.paymentIds.add(paymentId);
+
+  const paymentIntentId = `pi_${tag.replace(/[^a-zA-Z0-9]/g, '')}_${label}`;
+  const { error: paymentPatchError } = await admin
+    .from('payments')
+    .update({ stripe_payment_intent_id: paymentIntentId })
+    .eq('id', paymentId);
+  if (paymentPatchError) throw paymentPatchError;
+
+  const confirmed = await admin.rpc('complete_card_payment', {
+    p_payment_intent_id: paymentIntentId,
+    p_provider_response: { id: paymentIntentId, status: 'succeeded', testTag: tag },
+    p_fee_amount: 3.75,
+  });
+  if (confirmed.error) throw confirmed.error;
+  assert(confirmed.data?.success === true, 'Card confirmation failed');
+  assert(confirmed.data?.request_status === 'in_progress', 'Payment did not release the emergency');
 
   const { data, error } = await admin
     .from('emergency_requests')
@@ -1164,32 +1205,32 @@ async function main() {
 
     await check('emergency matching prefers schedules and preserves fallback', async () => {
       const first = await createEmergencyRequest({
-        userId: fixtures.patientA.id,
+        actor: fixtures.patientA,
         hospital: fixtures.hospitalA,
+        label: 'scheduled-emergency',
       });
-      const firstAccepted = await acceptEmergency(first.id, fixtures.orgAdminA.client);
       assert(
-        firstAccepted.assigned_doctor_id === fixtures.scheduledEmergencyDoctor.id,
+        first.assigned_doctor_id === fixtures.scheduledEmergencyDoctor.id,
         'Current schedule was not preferred for emergency assignment'
       );
 
       const second = await createEmergencyRequest({
-        userId: fixtures.patientB.id,
+        actor: fixtures.patientB,
         hospital: fixtures.hospitalA,
+        label: 'fallback-emergency',
       });
-      const secondAccepted = await acceptEmergency(second.id, fixtures.orgAdminA.client);
       assert(
-        secondAccepted.assigned_doctor_id === fixtures.fallbackEmergencyDoctor.id,
+        second.assigned_doctor_id === fixtures.fallbackEmergencyDoctor.id,
         'Schedule-less emergency fallback did not assign the next available doctor'
       );
 
       const doctorless = await createEmergencyRequest({
-        userId: fixtures.patientC.id,
+        actor: fixtures.patientC,
         hospital: fixtures.hospitalB,
+        label: 'doctorless-emergency',
       });
-      const doctorlessAccepted = await acceptEmergency(doctorless.id, fixtures.orgAdminB.client);
-      assert(doctorlessAccepted.status === 'accepted', 'Doctor-less emergency could not enter accepted state');
-      assert(doctorlessAccepted.assigned_doctor_id === null, 'Doctor-less emergency invented a clinician');
+      assert(doctorless.status === 'in_progress', 'Doctor-less emergency could not enter the dispatch queue');
+      assert(doctorless.assigned_doctor_id === null, 'Doctor-less emergency invented a clinician');
 
       await cancelEmergency(first.id, fixtures.orgAdminA.client);
       await cancelEmergency(second.id, fixtures.orgAdminA.client);

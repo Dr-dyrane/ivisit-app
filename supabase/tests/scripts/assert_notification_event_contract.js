@@ -200,10 +200,29 @@ function run() {
       'emergency trigger must not bypass canonical notification idempotency'
     );
     check(
-      /FROM\s+public\.hospitals\s+AS\s+hospital\s+JOIN\s+public\.profiles\s+AS\s+profile\s+ON\s+profile\.organization_id\s*=\s*hospital\.organization_id/i.test(
+      /FROM\s+public\.hospitals\s+AS\s+hospital\s+WHERE\s+hospital\.id\s*=\s*NEW\.hospital_id/i.test(
         triggerBody
-      ) && /hospital\.id\s*=\s*NEW\.hospital_id/i.test(triggerBody),
-      'emergency recipients must derive from hospital_id through the canonical organization relationship'
+      ) &&
+        /SELECT\s+NEW\.dispatch_organization_id\s*,\s*FALSE\s+AS\s+facility_scope/i.test(
+          triggerBody
+        ) &&
+        /JOIN\s+public\.profiles\s+AS\s+profile\s+ON\s+profile\.organization_id\s*=\s*target\.organization_id/i.test(
+          triggerBody
+        ),
+      'emergency recipients must derive from canonical facility and dispatch organization relationships'
+    );
+    check(
+      /profile\.role\s+IN\s*\(\s*'org_admin'\s*,\s*'dispatcher'\s*,\s*'admin'\s*\)/i.test(
+        triggerBody
+      ),
+      'emergency organization notifications must include dispatcher recipients'
+    );
+    check(
+      /v_previous_organization_ids/i.test(triggerBody) &&
+        /target\.organization_id\s*=\s*ANY\s*\(\s*v_previous_organization_ids\s*\)/i.test(
+          triggerBody
+        ),
+      'emergency organization updates must notify only newly introduced organizations'
     );
     check(
       !/NEW\.organization_id|profile\.organization_id\s*=\s*NEW\.hospital_id/i.test(triggerBody),
@@ -231,9 +250,10 @@ function run() {
   check(Boolean(triggerDdlMatch), 'on_emergency_notification trigger DDL is missing');
   if (triggerDdlMatch) {
     check(
-      /AFTER\s+INSERT\s+ON\s+public\.emergency_requests/i.test(triggerDdlMatch[0]) &&
-        !/\bUPDATE\b/i.test(triggerDdlMatch[0]),
-      'emergency notification trigger must fire on INSERT only'
+      /AFTER\s+INSERT\s+OR\s+UPDATE\s+OF\s+hospital_id\s*,\s*dispatch_organization_id\s+ON\s+public\.emergency_requests/i.test(
+        triggerDdlMatch[0]
+      ),
+      'emergency notification trigger must cover creation and newly assigned canonical organizations only'
     );
   }
 }

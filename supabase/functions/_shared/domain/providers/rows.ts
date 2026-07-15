@@ -8,6 +8,8 @@ import {
 import { shouldKeepProviderForRequestedCategory } from "./guards.ts";
 import { PROVIDER_TYPES } from "./taxonomy.ts";
 
+export const CANONICAL_EMERGENCY_DISCOVERY_SOURCE = "nearby_hospitals";
+
 const normalizeFacilityText = (value: unknown): string =>
   String(value || "")
     .toLowerCase()
@@ -53,20 +55,17 @@ export const isDemoDatabaseRow = (row: any): boolean => {
 
 export const isDispatchableDatabaseRow = (row: any): boolean => {
   const status = toSafeString(row?.status, "available").toLowerCase();
-  const verificationStatus = toSafeString(
-    row?.verification_status ?? row?.import_status,
-    ""
-  ).toLowerCase();
-
   const providerType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
   if (providerType !== PROVIDER_TYPES.HOSPITAL) return false;
 
+  // PULLBACK NOTE: EMERGENCY_COMMIT_ELIGIBILITY_GATE
+  // OLD: verified, demo, and imported rows could be treated as dispatchable.
+  // NEW: the canonical database/RPC projection must explicitly authorize commitment.
   return (
     status === "available" &&
-    (row?.verified === true ||
-      isDemoDatabaseRow(row) ||
-      verificationStatus === "verified" ||
-      verificationStatus === "not_certified")
+    row?.emergency_discovery_source === CANONICAL_EMERGENCY_DISCOVERY_SOURCE &&
+    row?.emergency_eligible === true &&
+    row?.dispatch_eligible === true
   );
 };
 
@@ -247,7 +246,7 @@ export const evaluateProviderDatabaseSufficiency = ({
     isWithinDistanceKm(row, MAP_LOCAL_NEARBY_RADIUS_KM)
   );
   const categoryFilteredDbResults = isEmergencyMode
-    ? dbRows
+    ? dispatchableDbResults
     : dbRows.filter((row: any) => {
         const rowType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
         return rowType === providerCategory &&

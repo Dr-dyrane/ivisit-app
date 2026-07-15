@@ -215,6 +215,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION public.p_can_read_visit(p_visit_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.visits visit
+        JOIN public.profiles actor ON actor.id = auth.uid()
+        LEFT JOIN public.hospitals hospital ON hospital.id = visit.hospital_id
+        LEFT JOIN public.emergency_requests request ON request.id = visit.request_id
+        LEFT JOIN public.doctors visit_doctor ON visit_doctor.id = visit.doctor_id
+        LEFT JOIN public.doctors request_doctor ON request_doctor.id = request.assigned_doctor_id
+        LEFT JOIN public.emergency_responder_assignments assignment
+          ON assignment.id = request.current_responder_assignment_id
+        WHERE visit.id = p_visit_id
+          AND (
+              visit.user_id = auth.uid()
+              OR actor.role = 'admin'
+              OR (
+                  actor.role = 'org_admin'
+                  AND actor.organization_id IS NOT NULL
+                  AND (
+                      hospital.organization_id = actor.organization_id
+                      OR request.dispatch_organization_id = actor.organization_id
+                  )
+              )
+              OR visit_doctor.profile_id = auth.uid()
+              OR request_doctor.profile_id = auth.uid()
+              OR request.responder_id = auth.uid()
+              OR assignment.responder_id = auth.uid()
+          )
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.p_can_read_visit(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.p_can_read_visit(UUID) TO authenticated, service_role;
+
 -- 🛡️ ENABLE RLS ON ALL TABLES (Explicit List)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preferences ENABLE ROW LEVEL SECURITY;
@@ -745,23 +785,26 @@ TO authenticated
 USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users insert/update own visits" ON public.visits;
-CREATE POLICY "Users insert/update own visits"
+DROP POLICY IF EXISTS "Users manage own standalone visits" ON public.visits;
+CREATE POLICY "Users manage own standalone visits"
 ON public.visits FOR ALL
 TO authenticated
-USING (auth.uid() = user_id AND care_mode IS NULL)
-WITH CHECK (auth.uid() = user_id AND care_mode IS NULL);
+USING (
+    auth.uid() = user_id
+    AND care_mode IS NULL
+    AND request_id IS NULL
+)
+WITH CHECK (
+    auth.uid() = user_id
+    AND care_mode IS NULL
+    AND request_id IS NULL
+);
 
 DROP POLICY IF EXISTS "Console operators see org visits" ON public.visits;
-CREATE POLICY "Console operators see org visits"
+DROP POLICY IF EXISTS "Authorized actors see scoped visits" ON public.visits;
+CREATE POLICY "Authorized actors see scoped visits"
 ON public.visits FOR SELECT TO authenticated
-USING (
-    public.p_is_admin()
-    OR hospital_id IN (
-        SELECT hospital.id
-        FROM public.hospitals hospital
-        WHERE hospital.organization_id = public.p_get_current_org_id()
-    )
-);
+USING (public.p_can_read_visit(id));
 
 -- 8. OPS CONTENT
 CREATE POLICY "Public read for health news" ON public.health_news FOR SELECT USING (published = true);

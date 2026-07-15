@@ -36,24 +36,32 @@ function email(label) {
 }
 
 async function createAuthUser({ label, role, providerType = null }) {
+  const fullName = `Console Matrix ${label}`;
   const { data, error } = await admin.auth.admin.createUser({
     email: email(label),
     password: PASSWORD,
     email_confirm: true,
-    user_metadata: { role },
+    user_metadata: { full_name: fullName },
   });
   if (error) {
     throw new Error(`createUser(${label}) failed: ${error.message}`);
   }
 
+  const profilePatch = {
+    role,
+    full_name: fullName,
+    onboarding_status: 'complete',
+  };
   if (providerType) {
-    const { error: profileErr } = await admin
-      .from('profiles')
-      .update({ role: 'provider', provider_type: providerType })
-      .eq('id', data.user.id);
-    if (profileErr) {
-      throw new Error(`profile provider update(${label}) failed: ${profileErr.message}`);
-    }
+    profilePatch.provider_type = providerType;
+  }
+
+  const { error: profileErr } = await admin
+    .from('profiles')
+    .update(profilePatch)
+    .eq('id', data.user.id);
+  if (profileErr) {
+    throw new Error(`profile role update(${label}) failed: ${profileErr.message}`);
   }
 
   return data.user;
@@ -91,21 +99,26 @@ async function safeRun(label, fn, warnings) {
 }
 
 async function settleActiveEmergencyRequestsForUser(userId) {
-  const sql = `
-    SELECT set_config('ivisit.allow_emergency_status_write', '1', true);
-    UPDATE public.emergency_requests
-    SET status = 'cancelled',
-        cancelled_at = COALESCE(cancelled_at, NOW()),
-        updated_at = NOW()
-    WHERE user_id = '${userId}'
-      AND status IN ('pending_approval', 'in_progress', 'accepted', 'arrived');
-  `;
-  const { data, error } = await admin.rpc('exec_sql', { sql });
-  if (error) {
-    throw new Error(`exec_sql settle failed: ${error.message}`);
+  const { data: activeRequests, error: activeError } = await admin
+    .from('emergency_requests')
+    .select('id')
+    .eq('user_id', userId)
+    .in('status', ['pending_approval', 'in_progress', 'accepted', 'arrived']);
+  if (activeError) {
+    throw new Error(`active request lookup failed: ${activeError.message}`);
   }
-  if (!data?.success) {
-    throw new Error(`exec_sql settle rejected: ${data?.error || 'unknown error'}`);
+
+  for (const request of activeRequests || []) {
+    const { data, error } = await admin.rpc('console_cancel_emergency', {
+      p_request_id: request.id,
+      p_reason: 'console transition matrix cleanup',
+    });
+    if (error) {
+      throw new Error(`canonical request cleanup failed: ${error.message}`);
+    }
+    if (data?.success === false) {
+      throw new Error(`canonical request cleanup rejected: ${data.error || 'unknown error'}`);
+    }
   }
 }
 
@@ -117,17 +130,35 @@ async function deleteEmergencyRequestsWithTransitionCascade(requestIds) {
   const sql = `
 DO $$
 BEGIN
+  ALTER TABLE public.emergency_requests
+    DISABLE TRIGGER on_emergency_start_dispatch;
+  ALTER TABLE public.emergency_responder_assignments
+    DISABLE TRIGGER trg_protect_emergency_responder_assignment_history;
   ALTER TABLE public.emergency_status_transitions
     DISABLE TRIGGER trg_emergency_status_transitions_append_only;
+
+  DELETE FROM public.emergency_responder_assignments
+  WHERE emergency_request_id IN (${literals});
+
+  DELETE FROM public.emergency_status_transitions
+  WHERE emergency_request_id IN (${literals});
 
   DELETE FROM public.emergency_requests
   WHERE id IN (${literals});
 
   ALTER TABLE public.emergency_status_transitions
     ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  ALTER TABLE public.emergency_responder_assignments
+    ENABLE TRIGGER trg_protect_emergency_responder_assignment_history;
+  ALTER TABLE public.emergency_requests
+    ENABLE TRIGGER on_emergency_start_dispatch;
 EXCEPTION WHEN OTHERS THEN
   ALTER TABLE public.emergency_status_transitions
     ENABLE TRIGGER trg_emergency_status_transitions_append_only;
+  ALTER TABLE public.emergency_responder_assignments
+    ENABLE TRIGGER trg_protect_emergency_responder_assignment_history;
+  ALTER TABLE public.emergency_requests
+    ENABLE TRIGGER on_emergency_start_dispatch;
   RAISE;
 END;
 $$;
@@ -754,6 +785,9 @@ async function main() {
     doctorId: null,
     doctorOtherId: null,
     requestIds: [],
+    visitIds: [],
+    paymentIds: [],
+    staffingIds: [],
     lastCaseRequestId: null,
     lastCaseAmbulanceId: null,
     lastCasePaymentId: null,
@@ -812,7 +846,16 @@ async function main() {
 
     const { data: org, error: orgErr } = await admin
       .from('organizations')
-      .insert({ name: `Transition Matrix Org ${TAG}` })
+      .insert({
+        name: `Transition Matrix Org ${TAG}`,
+        organization_type: 'hospital',
+        registration_number: TAG,
+        contact_email: email('organization-contact'),
+        verification_status: 'verified',
+        verified_at: new Date().toISOString(),
+        is_active: true,
+        ivisit_fee_percentage: 0,
+      })
       .select()
       .single();
     if (orgErr) throw new Error(`organization create failed: ${orgErr.message}`);
@@ -857,7 +900,7 @@ async function main() {
         hospital_id: hospital.id,
         organization_id: org.id,
         profile_id: ctx.users.providerAssigned.id,
-        type: 'basic',
+        type: 'BLS',
         call_sign: `MTRX-${String(TS).slice(-6)}`,
         status: 'available',
       })
@@ -897,7 +940,6 @@ async function main() {
           .from('doctors')
           .update({
             hospital_id: hospital.id,
-            name,
             specialization: 'Emergency Medicine',
             status: 'available',
             is_available: true,
@@ -952,6 +994,22 @@ async function main() {
       doctorOther: await signInAs(email('doctor-other')),
     };
 
+    for (const [ambulanceId, responderId] of [
+      [ctx.ambulanceId, ctx.users.providerAssigned.id],
+      [ctx.ambulanceOtherId, ctx.users.providerOther.id],
+    ]) {
+      const { data: staffing, error: staffingError } = await clients.orgAdmin.rpc(
+        'staff_ambulance_responder',
+        {
+          p_ambulance_id: ambulanceId,
+          p_responder_id: responderId,
+        }
+      );
+      if (staffingError) throw new Error(`ambulance staffing failed: ${staffingError.message}`);
+      if (!staffing?.success) throw new Error(staffing?.error || 'ambulance staffing was rejected');
+      if (staffing.staffing_id) ctx.staffingIds.push(staffing.staffing_id);
+    }
+
     // Helper to create isolated request for each case
     const createRequest = async ({
       status,
@@ -965,6 +1023,7 @@ async function main() {
         hospital_id: ctx.hospitalId,
         hospital_name: hospital.name,
         service_type: serviceType,
+        dispatch_organization_id: ctx.orgId,
         status,
         payment_status: status === 'pending_approval' ? 'pending' : 'completed',
         responder_id: responderId,
@@ -987,7 +1046,7 @@ async function main() {
       if (existingVisitsErr) throw new Error(`visit lookup failed: ${existingVisitsErr.message}`);
 
       if (!existingVisits || existingVisits.length === 0) {
-        const { error: visitErr } = await admin
+        const { data: insertedVisit, error: visitErr } = await admin
           .from('visits')
           .insert({
             user_id: ctx.users.patient.id,
@@ -997,8 +1056,13 @@ async function main() {
             date: new Date().toISOString().slice(0, 10),
             time: new Date().toISOString().slice(11, 19),
             type: 'emergency',
-          });
+          })
+          .select('id')
+          .single();
         if (visitErr) throw new Error(`visit create failed: ${visitErr.message}`);
+        ctx.visitIds.push(insertedVisit.id);
+      } else {
+        ctx.visitIds.push(...existingVisits.map((visit) => visit.id));
       }
 
       ctx.requestIds.push(data.id);
@@ -1022,6 +1086,13 @@ async function main() {
       if (paymentErr) {
         throw new Error(`pending payment create failed: ${paymentErr.message}`);
       }
+
+      const { error: linkError } = await admin
+        .from('emergency_requests')
+        .update({ payment_id: payment.id })
+        .eq('id', requestId);
+      if (linkError) throw new Error(`pending payment link failed: ${linkError.message}`);
+      ctx.paymentIds.push(payment.id);
       return payment.id;
     };
 
@@ -1049,6 +1120,188 @@ async function main() {
         .in('id', doctorIds);
     };
 
+    const refreshAmbulanceTelemetry = async (ambulanceId, responderClient, offset = 0) => {
+      const { data: ambulanceRow, error: ambulanceError } = await admin
+        .from('ambulances')
+        .select('telemetry_sequence')
+        .eq('id', ambulanceId)
+        .single();
+      if (ambulanceError) throw new Error(`ambulance telemetry lookup failed: ${ambulanceError.message}`);
+
+      const { data, error } = await responderClient.rpc('report_responder_telemetry', {
+        p_payload: {
+          ambulance_id: ambulanceId,
+          sequence: Number(ambulanceRow.telemetry_sequence || 0) + 1,
+          observed_at: new Date().toISOString(),
+          location: { lat: 6.5244 + offset, lng: 3.3792 + offset },
+          heading: 25 + offset * 100,
+          accuracy_meters: 5,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'ambulance telemetry refresh failed');
+      return data;
+    };
+
+    const createDispatchReadyRequest = async ({ requestOverrides = {} } = {}) => {
+      const requestId = await createRequest({
+        status: 'in_progress',
+        serviceType: 'ambulance',
+        requestOverrides: {
+          ambulance_type: 'ambulance',
+          payment_status: 'completed',
+          ...requestOverrides,
+        },
+      });
+      const paymentId = await createPendingCashPayment(requestId);
+      const { error: paymentError } = await admin
+        .from('payments')
+        .update({
+          status: 'completed',
+          processed_at: new Date().toISOString(),
+          ivisit_fee_amount: 0,
+          metadata: { tag: TAG, source: 'approve_cash_payment', fee_amount: 0 },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', paymentId);
+      if (paymentError) throw new Error(`dispatch payment fixture failed: ${paymentError.message}`);
+
+      const { error: requestError } = await admin
+        .from('emergency_requests')
+        .update({ payment_status: 'completed', payment_id: paymentId, total_cost: 180 })
+        .eq('id', requestId);
+      if (requestError) throw new Error(`dispatch request fixture failed: ${requestError.message}`);
+      return { requestId, paymentId };
+    };
+
+    const prepareOfferedAmbulanceRequest = async ({
+      actorClient = clients.orgAdmin,
+      ambulanceId = ctx.ambulanceId,
+      responderClient = clients.providerAssigned,
+      telemetryOffset = 0,
+    } = {}) => {
+      const request = await createDispatchReadyRequest();
+      await resetAmbulance();
+      await refreshAmbulanceTelemetry(ambulanceId, responderClient, telemetryOffset);
+      const { data, error } = await actorClient.rpc('console_dispatch_emergency', {
+        p_request_id: request.requestId,
+        p_ambulance_id: ambulanceId,
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'responder offer failed');
+      return { ...request, assignmentId: data.assignment_id, offer: data };
+    };
+
+    const prepareAcceptedAmbulanceRequest = async ({
+      ambulanceId = ctx.ambulanceId,
+      responderClient = clients.providerAssigned,
+      telemetryOffset = 0,
+      arrived = false,
+      acknowledged = false,
+    } = {}) => {
+      const prepared = await prepareOfferedAmbulanceRequest({
+        ambulanceId,
+        responderClient,
+        telemetryOffset,
+      });
+      const accepted = await responderClient.rpc('responder_accept_emergency', {
+        p_request_id: prepared.requestId,
+      });
+      if (accepted.error) throw accepted.error;
+      if (!accepted.data?.success) throw new Error(accepted.data?.error || 'responder acceptance failed');
+
+      if (arrived || acknowledged) {
+        const arrival = await responderClient.rpc('responder_arrive_emergency', {
+          p_request_id: prepared.requestId,
+        });
+        if (arrival.error) throw arrival.error;
+        if (!arrival.data?.success) throw new Error(arrival.data?.error || 'responder arrival failed');
+      }
+
+      if (acknowledged) {
+        const acknowledgement = await clients.patient.rpc('patient_acknowledge_responder_arrival', {
+          p_request_id: prepared.requestId,
+        });
+        if (acknowledgement.error) throw acknowledgement.error;
+        if (!acknowledgement.data?.success) {
+          throw new Error(acknowledgement.data?.error || 'patient arrival acknowledgement failed');
+        }
+      }
+
+      return prepared;
+    };
+
+    const prepareReassignedAmbulanceRequest = async () => {
+      const prepared = await prepareAcceptedAmbulanceRequest();
+      const { error: replacementResetError } = await admin
+        .from('ambulances')
+        .update({
+          status: 'available',
+          current_call: null,
+          eta: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ctx.ambulanceOtherId);
+      if (replacementResetError) throw replacementResetError;
+      await refreshAmbulanceTelemetry(ctx.ambulanceOtherId, clients.providerOther, 0.0002);
+
+      const released = await clients.orgAdmin.rpc('dispatcher_release_responder_assignment', {
+        p_request_id: prepared.requestId,
+        p_reason: 'console transition matrix reassignment',
+      });
+      if (released.error) throw released.error;
+      if (!released.data?.success) throw new Error(released.data?.error || 'responder release failed');
+
+      const { data: requestAfterRelease, error: requestAfterReleaseError } = await admin
+        .from('emergency_requests')
+        .select('ambulance_id,current_responder_assignment_id')
+        .eq('id', prepared.requestId)
+        .single();
+      if (requestAfterReleaseError) throw requestAfterReleaseError;
+
+      let replacementAssignmentId = requestAfterRelease.current_responder_assignment_id;
+      if (!replacementAssignmentId) {
+        const offered = await clients.orgAdmin.rpc('assign_ambulance_to_emergency', {
+          p_emergency_request_id: prepared.requestId,
+          p_ambulance_id: ctx.ambulanceOtherId,
+          p_priority: 1,
+        });
+        if (offered.error) throw offered.error;
+        if (!offered.data?.success) throw new Error(offered.data?.error || 'replacement offer failed');
+        replacementAssignmentId = offered.data.assignment_id;
+      } else if (requestAfterRelease.ambulance_id !== ctx.ambulanceOtherId) {
+        throw new Error('automatic reassignment selected an unexpected ambulance');
+      }
+
+      const { data: offeredAmbulance, error: offeredAmbulanceError } = await admin
+        .from('ambulances')
+        .select('id,status,current_call,profile_id')
+        .eq('id', ctx.ambulanceOtherId)
+        .single();
+      if (offeredAmbulanceError) throw offeredAmbulanceError;
+      if (offeredAmbulance.current_call !== prepared.requestId) {
+        throw new Error(
+          `replacement offer lost ambulance ownership before acceptance: ${JSON.stringify(offeredAmbulance)}`
+        );
+      }
+
+      const accepted = await clients.providerOther.rpc('responder_accept_emergency', {
+        p_request_id: prepared.requestId,
+      });
+      if (accepted.error) throw accepted.error;
+      if (!accepted.data?.success) {
+        const { data: failedAmbulance } = await admin
+          .from('ambulances')
+          .select('id,status,current_call,profile_id')
+          .eq('id', ctx.ambulanceOtherId)
+          .maybeSingle();
+        throw new Error(
+          `${accepted.data?.error || 'replacement acceptance failed'}: ${JSON.stringify(failedAmbulance)}`
+        );
+      }
+      return { ...prepared, replacementAssignmentId };
+    };
+
     const cases = [
       {
         caseId: 'D1',
@@ -1057,8 +1310,9 @@ async function main() {
         fromStatus: 'in_progress',
         expectSuccess: true,
         execute: async (client) => {
-          const requestId = await createRequest({ status: 'in_progress' });
+          const { requestId } = await createDispatchReadyRequest();
           await resetAmbulance();
+          await refreshAmbulanceTelemetry(ctx.ambulanceId, clients.providerAssigned);
           return client.rpc('console_dispatch_emergency', {
             p_request_id: requestId,
             p_ambulance_id: ctx.ambulanceId,
@@ -1072,8 +1326,9 @@ async function main() {
         fromStatus: 'in_progress',
         expectSuccess: true,
         execute: async (client) => {
-          const requestId = await createRequest({ status: 'in_progress' });
+          const { requestId } = await createDispatchReadyRequest();
           await resetAmbulance();
+          await refreshAmbulanceTelemetry(ctx.ambulanceId, clients.providerAssigned);
           return client.rpc('console_dispatch_emergency', {
             p_request_id: requestId,
             p_ambulance_id: ctx.ambulanceId,
@@ -1099,12 +1354,9 @@ async function main() {
         role: 'orgAdmin',
         action: 'console_complete_emergency',
         fromStatus: 'accepted',
-        expectSuccess: true,
+        expectSuccess: false,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-          });
+          const { requestId } = await prepareAcceptedAmbulanceRequest();
           return client.rpc('console_complete_emergency', {
             p_request_id: requestId,
           });
@@ -1114,12 +1366,12 @@ async function main() {
         caseId: 'C2',
         role: 'providerAssigned',
         action: 'console_complete_emergency',
-        fromStatus: 'accepted',
+        fromStatus: 'arrived_acknowledged',
         expectSuccess: true,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
+          const { requestId } = await prepareAcceptedAmbulanceRequest({
+            arrived: true,
+            acknowledged: true,
           });
           return client.rpc('console_complete_emergency', {
             p_request_id: requestId,
@@ -1133,10 +1385,7 @@ async function main() {
         fromStatus: 'accepted',
         expectSuccess: false,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-          });
+          const { requestId } = await prepareAcceptedAmbulanceRequest();
           return client.rpc('console_complete_emergency', {
             p_request_id: requestId,
           });
@@ -1180,7 +1429,7 @@ async function main() {
           const requestId = await createRequest({ status: 'in_progress' });
           return client.rpc('console_update_emergency_request', {
             p_request_id: requestId,
-            p_payload: { status: 'arrived' },
+            p_payload: { specialty: 'Trauma' },
           });
         },
       },
@@ -1189,7 +1438,7 @@ async function main() {
         role: 'providerAssigned',
         action: 'console_update_emergency_request',
         fromStatus: 'accepted',
-        expectSuccess: true,
+        expectSuccess: false,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'accepted',
@@ -1247,7 +1496,7 @@ async function main() {
         caseId: 'AP1',
         role: 'orgAdmin',
         action: 'approve_cash_payment',
-        fromStatus: 'pending_approval_to_in_progress_or_accepted',
+        fromStatus: 'pending_approval_to_in_progress_offered',
         expectSuccess: true,
         assertApprovalRealtimeProjection: {
           serviceType: 'ambulance',
@@ -1260,6 +1509,8 @@ async function main() {
             requestOverrides: { payment_status: 'pending' },
           });
           const paymentId = await createPendingCashPayment(requestId);
+          await resetAmbulance();
+          await refreshAmbulanceTelemetry(ctx.ambulanceId, clients.providerAssigned);
           const beforeTransitions = await fetchTransitionAuditRows(requestId);
 
           const { data, error } = await client.rpc('approve_cash_payment', {
@@ -1279,50 +1530,24 @@ async function main() {
             throw new Error(`approved payment status mismatch: expected completed, got ${paymentAfter.status}`);
           }
 
-          let { data: requestAfter, error: requestAfterErr } = await admin
+          const { data: requestAfter, error: requestAfterErr } = await admin
             .from('emergency_requests')
-            .select('id,status,payment_status,ambulance_id,responder_id,responder_name')
+            .select('id,status,payment_status,ambulance_id,responder_id,responder_name,current_responder_assignment_id')
             .eq('id', requestId)
             .single();
           if (requestAfterErr) throw new Error(`approved request lookup failed: ${requestAfterErr.message}`);
-          if (!['in_progress', 'accepted'].includes(requestAfter.status)) {
+          if (requestAfter.status !== 'in_progress') {
             throw new Error(`approved request status mismatch: got ${requestAfter.status}`);
           }
           if (requestAfter.payment_status !== 'completed') {
             throw new Error(`approved request payment_status mismatch: got ${requestAfter.payment_status}`);
           }
 
-          // Ensure the accepted branch is covered deterministically.
-          if (requestAfter.status !== 'accepted') {
-            const interimUiState = evaluatePendingApprovalUiState(requestAfter, 'ambulance');
-            if (interimUiState !== 'awaiting_assignment') {
-              throw new Error(
-                `pending_approval interim UI mismatch: expected awaiting_assignment, got ${interimUiState}`
-              );
-            }
-            await resetAmbulance();
-            const { data: assignData, error: assignErr } = await client.rpc('assign_ambulance_to_emergency', {
-              p_emergency_request_id: requestId,
-              p_ambulance_id: ctx.ambulanceId,
-              p_priority: 1,
-            });
-            if (assignErr) throw assignErr;
-            if (!assignData?.success) throw new Error(assignData?.error || 'post-approval ambulance assignment failed');
-
-            const requestAccepted = await waitFor(
-              async () => {
-                const { data: row, error: rowErr } = await admin
-                  .from('emergency_requests')
-                  .select('id,status,payment_status,ambulance_id,responder_id,responder_name')
-                  .eq('id', requestId)
-                  .maybeSingle();
-                if (rowErr) throw new Error(`accepted request poll failed: ${rowErr.message}`);
-                if (!row) return null;
-                return row.status === 'accepted' ? row : null;
-              },
-              { label: 'approved request accepted status' }
-            );
-            requestAfter = requestAccepted;
+          if (!requestAfter.current_responder_assignment_id || !requestAfter.ambulance_id) {
+            throw new Error('cash approval did not create the canonical responder offer');
+          }
+          if (requestAfter.responder_id !== null) {
+            throw new Error('cash approval exposed responder identity before offer acceptance');
           }
 
           const uiState = evaluatePendingApprovalUiState(requestAfter, 'ambulance');
@@ -1428,20 +1653,9 @@ async function main() {
         role: 'orgAdmin',
         action: 'console_update_responder_location',
         fromStatus: 'accepted',
-        expectSuccess: true,
-        assertTelemetryMirror: true,
-        assertAppRealtimeProjection: true,
+        expectSuccess: false,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
-            requestOverrides: {
-              responder_name: 'Legacy Driver',
-              responder_vehicle_type: 'basic',
-              responder_vehicle_plate: 'OLD-UNIT-01',
-            },
-          });
+          const { requestId } = await prepareAcceptedAmbulanceRequest();
           ctx.lastCaseRequestId = requestId;
           ctx.lastCaseAmbulanceId = ctx.ambulanceId;
           return client.rpc('console_update_responder_location', {
@@ -1460,10 +1674,8 @@ async function main() {
         assertTelemetryMirror: true,
         assertAppRealtimeProjection: true,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'arrived',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
+          const { requestId } = await prepareAcceptedAmbulanceRequest({
+            arrived: true,
           });
           ctx.lastCaseRequestId = requestId;
           ctx.lastCaseAmbulanceId = ctx.ambulanceId;
@@ -1480,21 +1692,9 @@ async function main() {
         action: 'assign_ambulance_to_emergency',
         fromStatus: 'accepted_reassign',
         expectSuccess: true,
-        execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
-          });
-          await resetAmbulance();
-
-          const { data, error } = await client.rpc('assign_ambulance_to_emergency', {
-            p_emergency_request_id: requestId,
-            p_ambulance_id: ctx.ambulanceOtherId,
-            p_priority: 1,
-          });
-          if (error) throw error;
-          if (!data?.success) throw new Error(data?.error || 'reassignment failed');
+        execute: async () => {
+          const prepared = await prepareReassignedAmbulanceRequest();
+          const requestId = prepared.requestId;
 
           const { data: reqAfter, error: reqAfterErr } = await admin
             .from('emergency_requests')
@@ -1541,7 +1741,10 @@ async function main() {
             throw new Error(`new ambulance was not bound to reassigned request`);
           }
 
-          return { data, error: null };
+          return {
+            data: { success: true, assignment_id: prepared.replacementAssignmentId },
+            error: null,
+          };
         },
       },
       {
@@ -1551,25 +1754,7 @@ async function main() {
         fromStatus: 'accepted_reassign_old_driver',
         expectSuccess: false,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
-          });
-          await resetAmbulance();
-
-          const { data: assignData, error: assignError } = await clients.orgAdmin.rpc(
-            'assign_ambulance_to_emergency',
-            {
-              p_emergency_request_id: requestId,
-              p_ambulance_id: ctx.ambulanceOtherId,
-              p_priority: 1,
-            }
-          );
-          if (assignError) throw assignError;
-          if (!assignData?.success) {
-            throw new Error(assignData?.error || 'reassignment setup failed for old driver test');
-          }
+          const { requestId } = await prepareReassignedAmbulanceRequest();
 
           return client.rpc('console_update_responder_location', {
             p_request_id: requestId,
@@ -1587,25 +1772,7 @@ async function main() {
         assertTelemetryMirror: true,
         assertAppRealtimeProjection: true,
         execute: async (client) => {
-          const requestId = await createRequest({
-            status: 'accepted',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
-          });
-          await resetAmbulance();
-
-          const { data: assignData, error: assignError } = await clients.orgAdmin.rpc(
-            'assign_ambulance_to_emergency',
-            {
-              p_emergency_request_id: requestId,
-              p_ambulance_id: ctx.ambulanceOtherId,
-              p_priority: 1,
-            }
-          );
-          if (assignError) throw assignError;
-          if (!assignData?.success) {
-            throw new Error(assignData?.error || 'reassignment setup failed for new driver test');
-          }
+          const { requestId } = await prepareReassignedAmbulanceRequest();
 
           ctx.lastCaseRequestId = requestId;
           ctx.lastCaseAmbulanceId = ctx.ambulanceOtherId;
@@ -1623,26 +1790,7 @@ async function main() {
         fromStatus: 'in_progress_driver_unavailable_mid_flow',
         expectSuccess: true,
         execute: async () => {
-          const requestId = await createRequest({
-            status: 'in_progress',
-            responderId: ctx.users.providerAssigned.id,
-            ambulanceId: ctx.ambulanceId,
-            requestOverrides: {
-              responder_name: 'Primary Driver',
-              responder_vehicle_type: 'basic',
-              responder_vehicle_plate: 'RA4-OLD',
-            },
-          });
-
-          await admin
-            .from('ambulances')
-            .update({
-              status: 'on_trip',
-              current_call: requestId,
-              profile_id: ctx.users.providerAssigned.id,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', ctx.ambulanceId);
+          const { requestId } = await prepareAcceptedAmbulanceRequest();
 
           await admin
             .from('ambulances')
@@ -1653,6 +1801,7 @@ async function main() {
               updated_at: new Date().toISOString(),
             })
             .eq('id', ctx.ambulanceOtherId);
+          await refreshAmbulanceTelemetry(ctx.ambulanceOtherId, clients.providerOther, 0.0002);
 
           const beforeTransitions = await fetchTransitionAuditRows(requestId);
 
@@ -1666,7 +1815,7 @@ async function main() {
             async () => {
               const { data: row, error: rowErr } = await admin
                 .from('emergency_requests')
-                .select('id,status,ambulance_id,responder_id,responder_name,responder_vehicle_type,responder_vehicle_plate')
+                .select('id,status,ambulance_id,responder_id,current_responder_assignment_id')
                 .eq('id', requestId)
                 .maybeSingle();
               if (rowErr) throw new Error(`driver failover request poll failed: ${rowErr.message}`);
@@ -1677,11 +1826,25 @@ async function main() {
             { label: 'driver failover reassignment' }
           );
 
-          if (requestAfter.responder_id !== ctx.users.providerOther.id) {
-            throw new Error('driver failover did not switch responder_id to replacement driver');
+          if (requestAfter.responder_id !== null) {
+            throw new Error('driver failover exposed responder identity before replacement acceptance');
           }
-          if (!['accepted', 'in_progress'].includes(requestAfter.status)) {
+          if (requestAfter.status !== 'in_progress') {
             throw new Error(`driver failover request status unexpected: ${requestAfter.status}`);
+          }
+
+          const { data: replacementAssignment, error: assignmentError } = await admin
+            .from('emergency_responder_assignments')
+            .select('id,status,responder_id,ambulance_id')
+            .eq('id', requestAfter.current_responder_assignment_id)
+            .single();
+          if (assignmentError) throw new Error(`driver failover assignment lookup failed: ${assignmentError.message}`);
+          if (
+            replacementAssignment.status !== 'offered'
+            || replacementAssignment.responder_id !== ctx.users.providerOther.id
+            || replacementAssignment.ambulance_id !== ctx.ambulanceOtherId
+          ) {
+            throw new Error('driver failover did not create the canonical replacement offer');
           }
 
           const { data: oldAmb, error: oldAmbErr } = await admin
@@ -1885,8 +2048,8 @@ async function main() {
         caseId: 'DR6',
         role: 'orgAdmin',
         action: 'assign_ambulance_to_emergency',
-        fromStatus: 'accepted_doctor_closed_loop_reassign',
-        expectSuccess: true,
+        fromStatus: 'accepted_without_responder_release',
+        expectSuccess: false,
         execute: async (client) => {
           const requestId = await createRequest({
             status: 'accepted',
@@ -2267,36 +2430,69 @@ async function main() {
     if (ctx.requestIds.length > 0) {
       const reqIds = [...new Set(ctx.requestIds)];
       await safeRun(
-        'delete emergency_requests',
+        'delete emergency doctor assignments',
         async () => {
-          await deleteEmergencyRequestsWithTransitionCascade(reqIds);
+          const { error } = await admin
+            .from('emergency_doctor_assignments')
+            .delete()
+            .in('emergency_request_id', reqIds);
+          if (error) throw new Error(error.message);
         },
         report.cleanupWarnings
       );
 
-      if (emergencyRowsDeleted) {
-        await safeRun(
-          'delete visits',
-          async () => {
-            const { error } = await admin.from('visits').delete().in('request_id', reqIds);
+      await safeRun(
+        'delete visits',
+        async () => {
+          const visitIds = [...new Set(ctx.visitIds.filter(Boolean))];
+          if (visitIds.length > 0) {
+            const { error } = await admin.from('visits').delete().in('id', visitIds);
             if (error) throw new Error(error.message);
-          },
-          report.cleanupWarnings
-        );
-        await safeRun(
-          'delete payments',
-          async () => {
-            const { error } = await admin.from('payments').delete().in('emergency_request_id', reqIds);
+          }
+        },
+        report.cleanupWarnings
+      );
+
+      try {
+        await deleteEmergencyRequestsWithTransitionCascade(reqIds);
+      } catch (error) {
+        emergencyRowsDeleted = false;
+        report.cleanupWarnings.push(`delete emergency request graphs: ${error.message}`);
+      }
+
+      await safeRun(
+        'delete payments',
+        async () => {
+          const paymentIds = [...new Set(ctx.paymentIds.filter(Boolean))];
+          if (paymentIds.length > 0) {
+            const { error } = await admin.from('payments').delete().in('id', paymentIds);
             if (error) throw new Error(error.message);
-          },
-          report.cleanupWarnings
-        );
-      } else {
-        report.cleanupWarnings.push('skipped dependent cleanup because emergency_requests delete failed');
+          }
+        },
+        report.cleanupWarnings
+      );
+
+      if (!emergencyRowsDeleted) {
+        report.cleanupWarnings.push('skipped dependent cleanup because emergency request graph deletion failed');
       }
     }
 
     if (emergencyRowsDeleted) {
+      await safeRun(
+        'delete ambulance staffing',
+        async () => {
+          const ambulanceIds = [ctx.ambulanceId, ctx.ambulanceOtherId].filter(Boolean);
+          if (ambulanceIds.length > 0) {
+            const { error } = await admin
+              .from('ambulance_staff_assignments')
+              .delete()
+              .in('ambulance_id', ambulanceIds);
+            if (error) throw new Error(error.message);
+          }
+        },
+        report.cleanupWarnings
+      );
+
       await safeRun(
         'delete ambulance',
         async () => {
@@ -2357,6 +2553,39 @@ async function main() {
       report.cleanupWarnings.push('skipped foundation cleanup because emergency_requests delete failed');
     }
 
+    await safeRun(
+      'delete generated notifications',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { error } = await admin.from('notifications').delete().in('user_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'delete generated user activity',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { error } = await admin.from('user_activity').delete().in('user_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
+    await safeRun(
+      'delete generated admin audit rows',
+      async () => {
+        if (ctx.userIds.length > 0) {
+          const { error } = await admin.from('admin_audit_log').delete().in('admin_id', ctx.userIds);
+          if (error) throw new Error(error.message);
+        }
+      },
+      report.cleanupWarnings
+    );
+
     for (const userId of ctx.userIds) {
       await safeRun(
         `delete auth user ${userId}`,
@@ -2378,6 +2607,9 @@ async function main() {
     console.log(
       `[console-transition-matrix] passed=${report.summary.passed} failed=${report.summary.failed} total=${report.summary.totalCases}`
     );
+    if (report.summary.failed > 0 || report.cleanupWarnings.length > 0) {
+      process.exitCode = 1;
+    }
   }
 }
 

@@ -8,7 +8,13 @@ const APP_TYPE_FILE = path.join(ROOT, 'types', 'database.ts');
 const APP_SERVICE_FILE = path.join(ROOT, 'services', 'ambulanceService.js');
 const CONSOLE_ROOT = path.resolve(ROOT, '..', 'ivisit-console', 'frontend');
 const CONSOLE_TYPE_FILE = path.join(CONSOLE_ROOT, 'src', 'types', 'database.ts');
-const CONSOLE_SERVICE_FILE = path.join(CONSOLE_ROOT, 'src', 'services', 'ambulancesService.js');
+const CONSOLE_SERVICE_FILE = path.join(
+  CONSOLE_ROOT,
+  'src',
+  'services',
+  'ambulances',
+  'commands.js'
+);
 
 const OUT_DIR = path.join(ROOT, 'supabase', 'tests', 'validation');
 const OUT_FILE = path.join(OUT_DIR, 'ambulances_surface_field_guard_report.json');

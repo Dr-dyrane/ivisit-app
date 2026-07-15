@@ -37,17 +37,25 @@ const RULES = [
     id: 'payments_wallet_ui_requires_payment_description_desktop',
     mode: 'require',
     file: 'src/components/pages/WalletManagementPage.jsx',
+    pattern: /formatPaymentDescription=\{controller\.formatPaymentDescription\}/g,
+    message:
+      'Wallet desktop route must pass the canonical payment-description formatter to its workspace.',
+  },
+  {
+    id: 'payments_wallet_row_requires_payment_description_desktop',
+    mode: 'require',
+    file: 'src/components/pages/wallet/PaymentsActivity.jsx',
     pattern: /formatPaymentDescription\(item\)/g,
     message:
-      'Wallet desktop payments rows must use formatPaymentDescription(item) for canonical display text.',
+      'Wallet desktop payment rows must consume the canonical payment-description formatter.',
   },
   {
     id: 'payments_wallet_ui_requires_payment_description_mobile',
     mode: 'require',
-    file: 'src/components/mobile/MobileWallet.jsx',
-    pattern: /formatPaymentDescription\(item\)/g,
+    file: 'src/components/mobile/wallet/MobileWalletActivity.jsx',
+    pattern: /getPaymentDescription\(item\)/g,
     message:
-      'Wallet mobile payments rows must use formatPaymentDescription(item) for canonical display text.',
+      'Wallet mobile payment rows must use the canonical payment-description helper.',
   },
   {
     id: 'payments_modal_no_legacy_fee_amount_fallback',

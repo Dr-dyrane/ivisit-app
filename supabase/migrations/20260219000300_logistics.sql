@@ -194,6 +194,15 @@ ALTER TABLE public.emergency_requests
     ADD COLUMN IF NOT EXISTS responder_telemetry_lease_expires_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS patient_acknowledged_arrival_at TIMESTAMPTZ;
 
+CREATE INDEX IF NOT EXISTS idx_emergency_requests_unassigned_dispatch_queue
+ON public.emergency_requests(created_at)
+WHERE service_type = 'ambulance'
+  AND status = 'in_progress'
+  AND payment_status IN ('paid', 'completed')
+  AND current_responder_assignment_id IS NULL
+  AND ambulance_id IS NULL
+  AND responder_id IS NULL;
+
 ALTER TABLE public.emergency_responder_assignments
     ADD COLUMN IF NOT EXISTS offer_expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '90 seconds');
 

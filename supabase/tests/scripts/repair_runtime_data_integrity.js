@@ -20,6 +20,10 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 const APPLY = process.argv.includes('--apply');
+const expectedProjectRef = process.argv
+  .find((argument) => argument.startsWith('--project-ref='))
+  ?.slice('--project-ref='.length);
+const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
 const LOOKBACK_HOURS = Number(process.env.RUNTIME_AUDIT_LOOKBACK_HOURS || 168);
 const PAGE_SIZE = 1000;
 const OUT_DIR = path.join(process.cwd(), 'supabase', 'tests', 'validation');
@@ -28,6 +32,13 @@ const OUT_FILE = path.join(OUT_DIR, 'runtime_data_integrity_repair_report.json')
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+if (APPLY && (!expectedProjectRef || expectedProjectRef !== projectRef)) {
+  console.error(
+    `[runtime-data-repair] Refusing live writes. Pass --project-ref=${projectRef} --apply to confirm the target.`
+  );
+  process.exit(1);
+}
 
 function nowIso() {
   return new Date().toISOString();

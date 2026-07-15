@@ -417,33 +417,47 @@ DECLARE
     v_hospital_phone TEXT;
     v_hospital_image TEXT;
 BEGIN
+    v_visit_status := CASE NEW.status
+        WHEN 'completed' THEN 'completed'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'payment_declined' THEN 'cancelled'
+        WHEN 'in_progress' THEN 'in_progress'
+        WHEN 'accepted' THEN 'in_progress'
+        WHEN 'arrived' THEN 'in_progress'
+        ELSE 'pending'
+    END;
+
+    v_lifecycle_state := CASE NEW.status
+        WHEN 'pending_approval' THEN 'initiated'
+        WHEN 'payment_declined' THEN 'payment_declined'
+        WHEN 'in_progress' THEN 'confirmed'
+        WHEN 'accepted' THEN 'dispatched'
+        WHEN 'arrived' THEN 'arrived'
+        WHEN 'completed' THEN 'completed'
+        WHEN 'cancelled' THEN 'cancelled'
+        ELSE NULL
+    END;
+
     IF NEW.status IS DISTINCT FROM OLD.status
        OR NEW.total_cost IS DISTINCT FROM OLD.total_cost
        OR NEW.hospital_name IS DISTINCT FROM OLD.hospital_name
        OR NEW.hospital_id IS DISTINCT FROM OLD.hospital_id
        OR NEW.assigned_doctor_id IS DISTINCT FROM OLD.assigned_doctor_id
        OR NEW.specialty IS DISTINCT FROM OLD.specialty
-       OR NEW.service_type IS DISTINCT FROM OLD.service_type THEN
-
-        v_visit_status := CASE NEW.status
-            WHEN 'completed' THEN 'completed'
-            WHEN 'cancelled' THEN 'cancelled'
-            WHEN 'in_progress' THEN 'in_progress'
-            WHEN 'accepted' THEN 'in_progress'
-            WHEN 'arrived' THEN 'in_progress'
-            ELSE 'scheduled'
-        END;
-
-        v_lifecycle_state := CASE NEW.status
-            WHEN 'pending_approval' THEN 'initiated'
-            WHEN 'payment_declined' THEN 'payment_declined'
-            WHEN 'in_progress' THEN 'confirmed'
-            WHEN 'accepted' THEN 'dispatched'
-            WHEN 'arrived' THEN 'arrived'
-            WHEN 'completed' THEN 'completed'
-            WHEN 'cancelled' THEN 'cancelled'
-            ELSE NULL
-        END;
+       OR NEW.service_type IS DISTINCT FROM OLD.service_type
+       OR NOT EXISTS (
+            SELECT 1
+            FROM public.visits visit
+            WHERE visit.request_id = NEW.id
+              AND visit.status IS NOT DISTINCT FROM v_visit_status
+              AND (
+                  visit.lifecycle_state IS NOT DISTINCT FROM v_lifecycle_state
+                  OR (
+                      NEW.status = 'completed'
+                      AND visit.lifecycle_state IN ('rated', 'post_completion')
+                  )
+              )
+       ) THEN
 
         SELECT d.name
         INTO v_doctor_name
@@ -451,31 +465,74 @@ BEGIN
         WHERE d.id = NEW.assigned_doctor_id;
 
         SELECT
-            COALESCE(h.google_address, h.address),
-            COALESCE(h.google_phone, h.phone),
+            h.address,
+            h.phone,
             h.image
         INTO v_hospital_address, v_hospital_phone, v_hospital_image
         FROM public.hospitals h
         WHERE h.id = NEW.hospital_id;
 
-        UPDATE public.visits
-        SET
-            user_id = COALESCE(NEW.user_id, user_id),
-            hospital_id = COALESCE(NEW.hospital_id, hospital_id),
-            hospital_name = COALESCE(NEW.hospital_name, hospital_name),
-            hospital_image = COALESCE(v_hospital_image, hospital_image),
-            address = COALESCE(v_hospital_address, address),
-            phone = COALESCE(v_hospital_phone, phone),
-            image = COALESCE(v_hospital_image, image),
-            doctor_name = COALESCE(v_doctor_name, doctor_name),
-            specialty = COALESCE(NEW.specialty, specialty),
-            type = COALESCE(NEW.service_type, type),
-            status = COALESCE(v_visit_status, status),
-            cost = CASE WHEN NEW.total_cost IS NULL THEN cost ELSE NEW.total_cost::TEXT END,
-            lifecycle_state = COALESCE(v_lifecycle_state, lifecycle_state),
+        INSERT INTO public.visits (
+            user_id,
+            hospital_id,
+            request_id,
+            hospital_name,
+            hospital_image,
+            address,
+            phone,
+            image,
+            doctor_name,
+            specialty,
+            date,
+            time,
+            type,
+            status,
+            cost,
+            lifecycle_state,
+            lifecycle_updated_at,
+            updated_at
+        ) VALUES (
+            NEW.user_id,
+            NEW.hospital_id,
+            NEW.id,
+            NEW.hospital_name,
+            v_hospital_image,
+            v_hospital_address,
+            v_hospital_phone,
+            v_hospital_image,
+            v_doctor_name,
+            NEW.specialty,
+            TO_CHAR(COALESCE(NEW.created_at, NOW()), 'YYYY-MM-DD'),
+            TO_CHAR(COALESCE(NEW.created_at, NOW()), 'HH24:MI:SS'),
+            COALESCE(NEW.service_type, 'emergency'),
+            v_visit_status,
+            CASE WHEN NEW.total_cost IS NULL THEN NULL ELSE NEW.total_cost::TEXT END,
+            v_lifecycle_state,
+            NOW(),
+            NOW()
+        )
+        ON CONFLICT (request_id) WHERE request_id IS NOT NULL
+        DO UPDATE SET
+            user_id = COALESCE(EXCLUDED.user_id, visits.user_id),
+            hospital_id = COALESCE(EXCLUDED.hospital_id, visits.hospital_id),
+            hospital_name = COALESCE(EXCLUDED.hospital_name, visits.hospital_name),
+            hospital_image = COALESCE(EXCLUDED.hospital_image, visits.hospital_image),
+            address = COALESCE(EXCLUDED.address, visits.address),
+            phone = COALESCE(EXCLUDED.phone, visits.phone),
+            image = COALESCE(EXCLUDED.image, visits.image),
+            doctor_name = COALESCE(EXCLUDED.doctor_name, visits.doctor_name),
+            specialty = COALESCE(EXCLUDED.specialty, visits.specialty),
+            type = COALESCE(EXCLUDED.type, visits.type),
+            status = EXCLUDED.status,
+            cost = COALESCE(EXCLUDED.cost, visits.cost),
+            lifecycle_state = CASE
+                WHEN EXCLUDED.lifecycle_state = 'completed'
+                 AND visits.lifecycle_state IN ('rated', 'post_completion')
+                    THEN visits.lifecycle_state
+                ELSE COALESCE(EXCLUDED.lifecycle_state, visits.lifecycle_state)
+            END,
             lifecycle_updated_at = NOW(),
-            updated_at = NOW()
-        WHERE request_id = NEW.id;
+            updated_at = NOW();
     END IF;
 
     RETURN NEW;

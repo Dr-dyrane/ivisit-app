@@ -417,31 +417,67 @@ CREATE OR REPLACE FUNCTION public.notify_emergency_events()
 RETURNS TRIGGER AS $$
 DECLARE
     v_recipient RECORD;
+    v_previous_organization_ids UUID[] := ARRAY[]::UUID[];
     v_service_label TEXT := CASE NEW.service_type
         WHEN 'ambulance' THEN 'ambulance'
         WHEN 'bed' THEN 'bed'
         ELSE 'emergency'
     END;
 BEGIN
-    IF TG_OP <> 'INSERT' OR NEW.id IS NULL OR NEW.hospital_id IS NULL THEN
+    IF NEW.id IS NULL THEN
         RETURN NEW;
     END IF;
 
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.hospital_id IS NOT DISTINCT FROM NEW.hospital_id
+           AND OLD.dispatch_organization_id IS NOT DISTINCT FROM NEW.dispatch_organization_id THEN
+            RETURN NEW;
+        END IF;
+
+        SELECT COALESCE(ARRAY_AGG(previous_target.organization_id), ARRAY[]::UUID[])
+        INTO v_previous_organization_ids
+        FROM (
+            SELECT hospital.organization_id
+            FROM public.hospitals AS hospital
+            WHERE hospital.id = OLD.hospital_id
+              AND hospital.organization_id IS NOT NULL
+            UNION
+            SELECT OLD.dispatch_organization_id
+            WHERE OLD.dispatch_organization_id IS NOT NULL
+        ) AS previous_target;
+    END IF;
+
     FOR v_recipient IN
-        SELECT profile.id AS user_id
-        FROM public.hospitals AS hospital
+        WITH target_organizations AS (
+            SELECT hospital.organization_id, TRUE AS facility_scope
+            FROM public.hospitals AS hospital
+            WHERE hospital.id = NEW.hospital_id
+              AND hospital.organization_id IS NOT NULL
+            UNION ALL
+            SELECT NEW.dispatch_organization_id, FALSE AS facility_scope
+            WHERE NEW.dispatch_organization_id IS NOT NULL
+        )
+        SELECT
+            profile.id AS user_id,
+            target.organization_id,
+            BOOL_OR(target.facility_scope) AS facility_scope
+        FROM target_organizations AS target
         JOIN public.profiles AS profile
-          ON profile.organization_id = hospital.organization_id
-        WHERE hospital.id = NEW.hospital_id
-          AND hospital.organization_id IS NOT NULL
-          AND profile.role IN ('org_admin', 'admin')
+          ON profile.organization_id = target.organization_id
+        WHERE profile.role IN ('org_admin', 'dispatcher', 'admin')
+          AND NOT (target.organization_id = ANY(v_previous_organization_ids))
+        GROUP BY profile.id, target.organization_id
     LOOP
         PERFORM public.emit_canonical_notification(
             p_event_key => 'emergency_request:' || NEW.id::TEXT || ':created',
             p_recipient_user_id => v_recipient.user_id,
             p_type => 'emergency',
             p_title => 'New Emergency',
-            p_message => 'A new ' || v_service_label || ' request was created at your facility.',
+            p_message => CASE
+                WHEN v_recipient.facility_scope
+                    THEN 'A new ' || v_service_label || ' request was created at your facility.'
+                ELSE 'A new ' || v_service_label || ' request is ready for dispatch.'
+            END,
             p_priority => 'high',
             p_action_type => 'view_emergency',
             p_target_id => NEW.id,
@@ -452,7 +488,9 @@ BEGIN
             p_metadata => JSONB_BUILD_OBJECT(
                 'eventName', 'emergency_request.created',
                 'requestId', NEW.id,
-                'hospitalId', NEW.hospital_id
+                'hospitalId', NEW.hospital_id,
+                'dispatchOrganizationId', NEW.dispatch_organization_id,
+                'recipientOrganizationId', v_recipient.organization_id
             )
         );
     END LOOP;
@@ -465,7 +503,7 @@ REVOKE ALL ON FUNCTION public.notify_emergency_events() FROM PUBLIC, anon, authe
 
 DROP TRIGGER IF EXISTS on_emergency_notification ON public.emergency_requests;
 CREATE TRIGGER on_emergency_notification
-AFTER INSERT ON public.emergency_requests
+AFTER INSERT OR UPDATE OF hospital_id, dispatch_organization_id ON public.emergency_requests
 FOR EACH ROW EXECUTE PROCEDURE public.notify_emergency_events();
 
 CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.stamp_entity_display_id();

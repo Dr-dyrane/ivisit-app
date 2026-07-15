@@ -45,10 +45,18 @@ export const mergeProviderDiscoveryRows = ({
   prioritizedDbResults: any[];
   providerResults: any[];
 } => {
-  const providerResults = toProviderResultRows(normalizedProviderRows, providerSource);
+  // PULLBACK NOTE: EMERGENCY_COMMIT_ELIGIBILITY_GATE
+  // OLD: the emergency response merged raw Google/Mapbox rows with database rows.
+  // NEW: emergency discovery returns only canonical rows expressly cleared for commitment.
+  const providerResults = isEmergencyMode
+    ? []
+    : toProviderResultRows(normalizedProviderRows, providerSource);
+  const canonicalEmergencyRows = isEmergencyMode
+    ? dbResults.filter((row: any) => isDispatchableDatabaseRow(row))
+    : categoryFilteredDbResults;
   const { merged: finalResults, prioritizedDbRows } =
     mergeCanonicalAndProviderRows({
-      dbRows: isEmergencyMode ? dbResults : categoryFilteredDbResults,
+      dbRows: canonicalEmergencyRows,
       providerRows: providerResults,
       originLat: latitude,
       originLng: longitude,

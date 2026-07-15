@@ -4,7 +4,7 @@
 -- 1. Nearby Hospitals (PostGIS Enabled)
 -- PULLBACK NOTE: EXP-3/EXP-4 (Explore Care Refactor) — absorbed from 20260601000000_provider_taxonomy.sql
 -- OLD: returned any available row regardless of provider_type; return type had no taxonomy fields
--- NEW: filters provider_type='hospital' AND emergency_eligible=true; returns taxonomy fields
+-- NEW: filters commit-eligible hospitals to active, verified organizations; returns taxonomy fields
 -- DROP required because return type gains new columns (PostgreSQL constraint).
 DROP FUNCTION IF EXISTS public.nearby_hospitals(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER);
 
@@ -42,11 +42,16 @@ BEGIN
     h.provider_type, h.emergency_eligible, h.dispatch_eligible,
     h.verification_status, h.provider_source, h.category_confidence
   FROM public.hospitals h
+  JOIN public.organizations organization
+    ON organization.id = h.organization_id
   WHERE
     h.coordinates IS NOT NULL
     AND h.status = 'available'
     AND h.provider_type = 'hospital'
     AND h.emergency_eligible = true
+    AND h.dispatch_eligible = true
+    AND organization.is_active = true
+    AND organization.verification_status = 'verified'
     AND ST_DWithin(
       h.coordinates::geography,
       ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography,
@@ -54,7 +59,7 @@ BEGIN
     )
   ORDER BY distance ASC;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- 1b. Nearby Providers (Explore Care)
 -- Explore mode RPC — no emergency filter, category-aware.
@@ -1361,76 +1366,15 @@ CREATE OR REPLACE FUNCTION public.calculate_emergency_cost_v2(
     p_distance_km NUMERIC DEFAULT 0
 )
 RETURNS JSONB AS $$
-DECLARE
-    v_base_price NUMERIC := 0;
-    v_default_base_price NUMERIC := 100;
-    v_hospital_service_price NUMERIC := NULL;
-    v_hospital_base_price NUMERIC := NULL;
-    v_admin_service_price NUMERIC := NULL;
-    v_distance_surcharge NUMERIC := 0;
-    v_total NUMERIC;
 BEGIN
-    -- Canonical service defaults (used only when DB pricing rows are missing)
-    v_default_base_price := CASE
-        WHEN p_service_type IN ('ambulance', 'emergency', 'emergency_transport') THEN 150
-        WHEN p_service_type IN ('bed', 'bed_booking') THEN 200
-        ELSE 100
-    END;
-
-    -- Pricing hierarchy (payment calculation source of truth):
-    -- 1) Hospital-specific service_pricing (org/hospital managed)
-    -- 2) Hospital.base_price (legacy hospital override)
-    -- 3) Global service_pricing (admin baseline, hospital_id IS NULL)
-    -- 4) Hardcoded service-type default
-    IF p_hospital_id IS NOT NULL THEN
-        SELECT h.base_price
-        INTO v_hospital_base_price
-        FROM public.hospitals h
-        WHERE h.id = p_hospital_id;
-
-        SELECT sp.base_price
-        INTO v_hospital_service_price
-        FROM public.service_pricing sp
-        WHERE sp.hospital_id = p_hospital_id
-          AND sp.service_type = p_service_type
-        ORDER BY sp.updated_at DESC NULLS LAST, sp.created_at DESC
-        LIMIT 1;
-    END IF;
-
-    SELECT sp.base_price
-    INTO v_admin_service_price
-    FROM public.service_pricing sp
-    WHERE sp.hospital_id IS NULL
-      AND sp.service_type = p_service_type
-    ORDER BY sp.updated_at DESC NULLS LAST, sp.created_at DESC
-    LIMIT 1;
-
-    v_base_price := COALESCE(
-        NULLIF(v_hospital_service_price, 0),
-        NULLIF(v_hospital_base_price, 0),
-        NULLIF(v_admin_service_price, 0),
-        v_default_base_price
-    );
-
-    IF COALESCE(v_base_price, 0) = 0 THEN
-        v_base_price := v_default_base_price;
-    END IF;
-    
-    -- Distance surcharge
-    IF p_distance_km > 5 THEN
-        v_distance_surcharge := (p_distance_km - 5) * 2;
-    END IF;
-    
-    v_total := v_base_price + v_distance_surcharge;
-    
-    RETURN jsonb_build_object(
-        'base_cost', v_base_price,
-        'distance_surcharge', v_distance_surcharge,
-        'total_cost', v_total,
-        'currency', 'USD'
+    RETURN public.resolve_emergency_pricing(
+        p_service_type => p_service_type,
+        p_hospital_id => p_hospital_id,
+        p_ambulance_type => p_ambulance_type,
+        p_distance_km => p_distance_km
     );
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- ─── 10. Utility RPCs ───────────────────────────────────
 
@@ -1721,21 +1665,149 @@ CREATE OR REPLACE FUNCTION public.rate_visit(
     p_comment TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_visit public.visits%ROWTYPE;
+    v_now TIMESTAMPTZ := NOW();
 BEGIN
-    UPDATE public.visits
-    SET rating = p_rating,
-        rating_comment = p_comment,
-        rated_at = NOW(),
-        updated_at = NOW()
-    WHERE id = p_visit_id AND user_id = auth.uid();
-
-    IF NOT FOUND THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Visit not found or unauthorized');
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
     END IF;
 
-    RETURN jsonb_build_object('success', true);
+    IF p_rating IS NULL OR p_rating < 1 OR p_rating > 5 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'code', 'INVALID_RATING',
+            'error', 'Rating must be between 1 and 5'
+        );
+    END IF;
+
+    SELECT visit.*
+    INTO v_visit
+    FROM public.visits visit
+    WHERE visit.id = p_visit_id
+      AND visit.user_id = v_actor_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'code', 'VISIT_NOT_FOUND',
+            'error', 'Visit not found or unauthorized'
+        );
+    END IF;
+
+    IF v_visit.rated_at IS NOT NULL
+       OR v_visit.rating IS NOT NULL
+       OR LOWER(COALESCE(v_visit.lifecycle_state, '')) = 'rated' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_rated', true,
+            'visit', to_jsonb(v_visit)
+        );
+    END IF;
+
+    IF LOWER(COALESCE(v_visit.status, '')) <> 'completed'
+       AND LOWER(COALESCE(v_visit.lifecycle_state, '')) NOT IN ('completed', 'rating_pending') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'code', 'VISIT_NOT_COMPLETE',
+            'error', 'Visit must be completed before rating'
+        );
+    END IF;
+
+    UPDATE public.visits
+    SET rating = p_rating,
+        rating_comment = LEFT(NULLIF(BTRIM(p_comment), ''), 2000),
+        rated_at = v_now,
+        lifecycle_state = 'rated',
+        lifecycle_updated_at = v_now,
+        updated_at = v_now
+    WHERE id = p_visit_id
+    RETURNING * INTO v_visit;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'already_rated', false,
+        'visit', to_jsonb(v_visit)
+    );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.skip_visit_rating(
+    p_visit_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_visit public.visits%ROWTYPE;
+    v_now TIMESTAMPTZ := NOW();
+BEGIN
+    IF v_actor_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    SELECT visit.*
+    INTO v_visit
+    FROM public.visits visit
+    WHERE visit.id = p_visit_id
+      AND visit.user_id = v_actor_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'code', 'VISIT_NOT_FOUND',
+            'error', 'Visit not found or unauthorized'
+        );
+    END IF;
+
+    IF v_visit.rated_at IS NOT NULL
+       OR v_visit.rating IS NOT NULL
+       OR LOWER(COALESCE(v_visit.lifecycle_state, '')) = 'rated' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_rated', true,
+            'visit', to_jsonb(v_visit)
+        );
+    END IF;
+
+    IF LOWER(COALESCE(v_visit.lifecycle_state, '')) = 'post_completion' THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_skipped', true,
+            'visit', to_jsonb(v_visit)
+        );
+    END IF;
+
+    IF LOWER(COALESCE(v_visit.status, '')) <> 'completed'
+       AND LOWER(COALESCE(v_visit.lifecycle_state, '')) NOT IN ('completed', 'rating_pending') THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'code', 'VISIT_NOT_COMPLETE',
+            'error', 'Visit must be completed before closing rating'
+        );
+    END IF;
+
+    UPDATE public.visits
+    SET lifecycle_state = 'post_completion',
+        lifecycle_updated_at = v_now,
+        updated_at = v_now
+    WHERE id = p_visit_id
+    RETURNING * INTO v_visit;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'already_skipped', false,
+        'visit', to_jsonb(v_visit)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.rate_visit(UUID, SMALLINT, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.skip_visit_rating(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rate_visit(UUID, SMALLINT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.skip_visit_rating(UUID) TO authenticated;
 
 -- ================================================================
 -- Integrated Fix Pack (2026-03-02): Console/Patient Emergency RPC Boundary
@@ -3062,6 +3134,14 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Responder must arrive before completion');
     END IF;
 
+    IF v_request.patient_acknowledged_arrival_at IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Patient must confirm arrival before completion',
+            'code', 'PATIENT_ARRIVAL_ACK_REQUIRED'
+        );
+    END IF;
+
     PERFORM public.set_emergency_transition_context(
         p_source => 'responder_complete_emergency',
         p_reason => 'responder_completed',
@@ -3671,7 +3751,11 @@ DECLARE
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
     v_is_internal_executor BOOLEAN := session_user IN ('postgres', 'supabase_admin');
     v_offer RECORD;
+    v_request RECORD;
+    v_retry_result JSONB;
     v_expired INTEGER := 0;
+    v_retried INTEGER := 0;
+    v_offered INTEGER := 0;
 BEGIN
     IF NOT v_is_service_role AND NOT v_is_internal_executor THEN
         RAISE EXCEPTION 'Unauthorized';
@@ -3696,7 +3780,39 @@ BEGIN
         v_expired := v_expired + 1;
     END LOOP;
 
-    RETURN jsonb_build_object('success', true, 'expired', v_expired);
+    FOR v_request IN
+        SELECT request.id
+        FROM public.emergency_requests request
+        WHERE request.service_type = 'ambulance'
+          AND request.status = 'in_progress'
+          AND request.payment_status IN ('paid', 'completed')
+          AND request.current_responder_assignment_id IS NULL
+          AND request.ambulance_id IS NULL
+          AND request.responder_id IS NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM public.emergency_responder_assignments assignment
+              WHERE assignment.emergency_request_id = request.id
+                AND assignment.status IN ('offered', 'accepted', 'arrived')
+          )
+        ORDER BY request.created_at
+        LIMIT LEAST(GREATEST(COALESCE(p_limit, 100), 1), 500)
+        FOR UPDATE OF request SKIP LOCKED
+    LOOP
+        v_retry_result := public.auto_assign_ambulance(v_request.id, 50, NULL);
+        v_retried := v_retried + 1;
+        IF COALESCE((v_retry_result->>'success')::BOOLEAN, false)
+           AND COALESCE((v_retry_result->>'auto_assigned')::BOOLEAN, false) THEN
+            v_offered := v_offered + 1;
+        END IF;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'expired', v_expired,
+        'retried', v_retried,
+        'offered', v_offered
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -3906,7 +4022,9 @@ BEGIN
         status,
         date,
         time,
-        type
+        type,
+        lifecycle_state,
+        lifecycle_updated_at
     ) VALUES (
         v_user_id,
         v_hospital_id,
@@ -3914,7 +4032,9 @@ BEGIN
         'pending',
         TO_CHAR(NOW(), 'YYYY-MM-DD'),
         TO_CHAR(NOW(), 'HH24:MI:SS'),
-        'emergency'
+        'emergency',
+        'initiated',
+        NOW()
     )
     RETURNING * INTO v_visit;
 
@@ -4917,6 +5037,7 @@ DECLARE
     v_actor_org_id UUID;
     v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
     v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_is_internal_executor BOOLEAN := session_user IN ('postgres', 'supabase_admin');
     v_is_admin BOOLEAN := public.p_is_admin();
     v_req_status TEXT;
     v_req_hospital_id UUID;
@@ -4955,7 +5076,7 @@ BEGIN
     FROM public.profiles
     WHERE id = v_actor_id;
 
-    IF NOT v_is_service_role AND v_actor_id IS NULL THEN
+    IF NOT v_is_service_role AND NOT v_is_internal_executor AND v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Unauthorized';
     END IF;
 
@@ -5024,7 +5145,7 @@ BEGIN
         END IF;
     END IF;
 
-    IF NOT v_is_service_role AND NOT v_is_admin THEN
+    IF NOT v_is_service_role AND NOT v_is_internal_executor AND NOT v_is_admin THEN
         IF v_actor_role NOT IN ('org_admin', 'dispatcher') THEN
             RAISE EXCEPTION 'Unauthorized';
         END IF;
@@ -5410,11 +5531,6 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_request_id;
 
-    UPDATE public.visits
-    SET status = 'active',
-        updated_at = NOW()
-    WHERE request_id = p_request_id;
-
     IF v_request_service_type = 'ambulance'
        AND EXISTS (
             SELECT 1
@@ -5610,11 +5726,6 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_request_id;
 
-    UPDATE public.visits
-    SET status = 'cancelled',
-        updated_at = NOW()
-    WHERE request_id = p_request_id;
-
     RETURN jsonb_build_object('success', true, 'status', 'declined');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -5808,195 +5919,6 @@ BEGIN
     RETURN FOUND;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION public.complete_trip(request_uuid TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-    v_actor_id UUID := auth.uid();
-    v_actor_role TEXT;
-    v_actor_org_id UUID;
-    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
-    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
-    v_request_id UUID;
-    v_request_org_id UUID;
-    v_service_type TEXT;
-    v_current_status TEXT;
-BEGIN
-    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
-        RETURN FALSE;
-    END IF;
-
-    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
-        v_request_id := request_uuid::UUID;
-    ELSE
-        v_request_id := public.get_entity_id(request_uuid);
-    END IF;
-
-    IF v_request_id IS NULL THEN
-        RETURN FALSE;
-    END IF;
-
-    SELECT h.organization_id, er.service_type, er.status
-    INTO v_request_org_id, v_service_type, v_current_status
-    FROM public.emergency_requests er
-    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
-    WHERE er.id = v_request_id
-    FOR UPDATE OF er;
-
-    IF NOT FOUND THEN
-        RETURN FALSE;
-    END IF;
-
-    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
-    IF v_current_status = 'completed' THEN
-        RETURN TRUE;
-    END IF;
-
-    IF NOT v_is_service_role THEN
-        IF v_actor_id IS NULL THEN
-            RAISE EXCEPTION 'Unauthorized';
-        END IF;
-
-        SELECT role, organization_id
-        INTO v_actor_role, v_actor_org_id
-        FROM public.profiles
-        WHERE id = v_actor_id;
-
-        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
-            RAISE EXCEPTION 'Unauthorized: insufficient role for trip completion';
-        END IF;
-
-        IF v_actor_role IN ('org_admin', 'dispatcher')
-           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
-            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
-        END IF;
-    END IF;
-
-    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'completed') THEN
-        RAISE EXCEPTION 'Illegal emergency status transition: % -> completed', v_current_status;
-    END IF;
-
-    PERFORM public.set_emergency_transition_context(
-        p_source => 'complete_trip',
-        p_reason => 'trip_completed',
-        p_actor_id => v_actor_id,
-        p_actor_role => CASE
-            WHEN v_is_service_role THEN 'service_role'
-            ELSE COALESCE(v_actor_role, 'unknown')
-        END,
-        p_metadata => jsonb_build_object(
-            'request_id', v_request_id,
-            'service_type', v_service_type,
-            'previous_status', v_current_status
-        ),
-        p_allow_status_write => true
-    );
-
-    UPDATE public.emergency_requests
-    SET status = 'completed',
-        updated_at = NOW()
-    WHERE id = v_request_id;
-
-    RETURN FOUND;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION public.cancel_trip(request_uuid TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-    v_actor_id UUID := auth.uid();
-    v_actor_role TEXT;
-    v_actor_org_id UUID;
-    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
-    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
-    v_request_id UUID;
-    v_request_org_id UUID;
-    v_service_type TEXT;
-    v_current_status TEXT;
-BEGIN
-    IF request_uuid IS NULL OR BTRIM(request_uuid) = '' THEN
-        RETURN FALSE;
-    END IF;
-
-    IF request_uuid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
-        v_request_id := request_uuid::UUID;
-    ELSE
-        v_request_id := public.get_entity_id(request_uuid);
-    END IF;
-
-    IF v_request_id IS NULL THEN
-        RETURN FALSE;
-    END IF;
-
-    SELECT h.organization_id, er.service_type, er.status
-    INTO v_request_org_id, v_service_type, v_current_status
-    FROM public.emergency_requests er
-    LEFT JOIN public.hospitals h ON h.id = er.hospital_id
-    WHERE er.id = v_request_id
-    FOR UPDATE OF er;
-
-    IF NOT FOUND THEN
-        RETURN FALSE;
-    END IF;
-
-    v_current_status := public.canonicalize_emergency_status(v_current_status, v_current_status);
-    IF v_current_status = 'cancelled' THEN
-        RETURN TRUE;
-    END IF;
-
-    IF v_current_status = 'completed' THEN
-        RAISE EXCEPTION 'Cannot cancel completed trip';
-    END IF;
-
-    IF NOT v_is_service_role THEN
-        IF v_actor_id IS NULL THEN
-            RAISE EXCEPTION 'Unauthorized';
-        END IF;
-
-        SELECT role, organization_id
-        INTO v_actor_role, v_actor_org_id
-        FROM public.profiles
-        WHERE id = v_actor_id;
-
-        IF v_actor_role NOT IN ('admin', 'org_admin', 'dispatcher') THEN
-            RAISE EXCEPTION 'Unauthorized: insufficient role for trip cancellation';
-        END IF;
-
-        IF v_actor_role IN ('org_admin', 'dispatcher')
-           AND (v_actor_org_id IS NULL OR v_actor_org_id IS DISTINCT FROM v_request_org_id) THEN
-            RAISE EXCEPTION 'Unauthorized: request outside actor organization';
-        END IF;
-    END IF;
-
-    IF NOT public.is_valid_emergency_status_transition(v_current_status, 'cancelled') THEN
-        RAISE EXCEPTION 'Illegal emergency status transition: % -> cancelled', v_current_status;
-    END IF;
-
-    PERFORM public.set_emergency_transition_context(
-        p_source => 'cancel_trip',
-        p_reason => 'trip_cancelled',
-        p_actor_id => v_actor_id,
-        p_actor_role => CASE
-            WHEN v_is_service_role THEN 'service_role'
-            ELSE COALESCE(v_actor_role, 'unknown')
-        END,
-        p_metadata => jsonb_build_object(
-            'request_id', v_request_id,
-            'service_type', v_service_type,
-            'previous_status', v_current_status
-        ),
-        p_allow_status_write => true
-    );
-
-    UPDATE public.emergency_requests
-    SET status = 'cancelled',
-        updated_at = NOW()
-    WHERE id = v_request_id;
-
-    RETURN FOUND;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 
 -- Legacy trip aliases remain for deployed clients, but lifecycle authority is
 -- delegated to the canonical responder/console commands above.

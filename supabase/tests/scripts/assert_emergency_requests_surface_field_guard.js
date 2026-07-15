@@ -26,7 +26,8 @@ const LEGACY_ALIAS_RULES = [
     alias: 'payment_method_id',
     pattern: /\bpayment_method_id\b/g,
     allowedIn: new Set([
-      'src/services/emergencyService.js',
+      'src/services/emergency/payloadNormalization.js',
+      'src/services/emergencyService.test.js',
       'src/utils/emergencyRequestMapper.js',
       'src/utils/emergencyActions.js',
     ]),

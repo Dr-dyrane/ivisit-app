@@ -134,10 +134,20 @@ const checks = [
   ),
   check(
     'ambulance management is organization-scoped',
-    `(${policyIncludes('public', 'ambulances', 'Org Admins manage ambulances', [
+    `(${policyIncludes('public', 'ambulances', 'Org Admins insert ambulances', [
       "actor.role = 'org_admin'",
       'organization_id = p_get_current_org_id()',
       'organization_id is null',
+    ])})
+    AND (${policyIncludes('public', 'ambulances', 'Org Admins update ambulances', [
+      "actor.role = 'org_admin'",
+      'organization_id = p_get_current_org_id()',
+      'organization_id is null',
+    ])})
+    AND (${policyIncludes('public', 'ambulances', 'Org Admins delete idle ambulances', [
+      "actor.role = 'org_admin'",
+      'organization_id is null',
+      'current_call is null',
     ])})`
   ),
   check(
@@ -165,13 +175,19 @@ const checks = [
     )`
   ),
   check(
-    'console operators have visit-backed read projections',
+    'authorized care actors have scoped visit-backed read projections',
     `(${policyIncludes('public', 'medical_profiles', 'Org operators read medical profiles via visits', [
       'hospital_id',
       'organization_id = p_get_current_org_id()',
     ])})
-    AND (${policyIncludes('public', 'visits', 'Console operators see org visits', [
-      'organization_id = p_get_current_org_id()',
+    AND (${functionIncludes('public.p_can_read_visit(uuid)', [
+      "actor.role = 'org_admin'",
+      'visit_doctor.profile_id = auth.uid()',
+      'request.responder_id = auth.uid()',
+    ])})
+    AND (${functionPrivileges('public.p_can_read_visit(uuid)')})
+    AND (${policyIncludes('public', 'visits', 'Authorized actors see scoped visits', [
+      'p_can_read_visit(id)',
     ])})`
   ),
   check(

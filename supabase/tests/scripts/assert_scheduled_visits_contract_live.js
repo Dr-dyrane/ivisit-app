@@ -271,23 +271,39 @@ const postDeployChecks = [
     )})`
   ),
   check(
-    'security helpers and policies are scoped',
-    `(${fn('public.p_is_emergency_chat_participant(uuid)', ["v_channel_type <> 'emergency'"])})
-    AND (${fn('public.p_is_async_consult_participant(uuid)', [
+    'emergency chat participant helper excludes consult channels',
+    fn('public.p_is_emergency_chat_participant(uuid)', ["v_channel_type <> 'emergency'"])
+  ),
+  check(
+    'async consult participant helper requires active membership',
+    fn('public.p_is_async_consult_participant(uuid)', [
       'telemedicine_async',
       'participant.left_at is null',
-    ])})
-    AND (${fn('public.p_can_manage_doctor_schedule(uuid)', ["actor.role = 'org_admin'"])})
-    AND (${policy('public', 'visits', 'Users insert/update own visits', [
+    ])
+  ),
+  check(
+    'doctor schedule manager helper is org-admin scoped',
+    fn('public.p_can_manage_doctor_schedule(uuid)', ["actor.role = 'org_admin'"])
+  ),
+  check(
+    'patient visit write policy excludes scheduled care',
+    policy('public', 'visits', 'Users manage own standalone visits', [
       'auth.uid() = user_id',
       'care_mode is null',
-    ])})
-    AND (${policy('public', 'emergency_chat_messages', 'Users see emergency chat messages in scope', [
+      'request_id is null',
+    ])
+  ),
+  check(
+    'async consult messages are participant scoped',
+    policy('public', 'emergency_chat_messages', 'Users see emergency chat messages in scope', [
       'p_is_async_consult_participant(room_id)',
-    ])})
-    AND (${policy('public', 'doctor_schedules', 'Schedule admins read scoped doctor schedules', [
+    ])
+  ),
+  check(
+    'doctor schedule reads use manager scope',
+    policy('public', 'doctor_schedules', 'Schedule admins read scoped doctor schedules', [
       'p_can_manage_doctor_schedule(doctor_id)',
-    ])})`
+    ])
   ),
   check(
     'direct chat and schedule mutations remain revoked',

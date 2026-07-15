@@ -1047,11 +1047,6 @@ BEGIN
       AND status = 'pending_approval'
       AND payment_status = 'pending';
 
-    UPDATE public.visits
-    SET status = 'active',
-        updated_at = NOW()
-    WHERE request_id = p_emergency_request_id;
-
     RETURN jsonb_build_object(
         'success', true,
         'payment_id', v_payment.id,

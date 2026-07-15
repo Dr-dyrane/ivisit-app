@@ -1,3 +1,5 @@
+import { CANONICAL_EMERGENCY_DISCOVERY_SOURCE } from "./rows.ts";
+
 export const fetchNearbyProviderRows = async ({
   supabaseClient,
   isEmergencyMode,
@@ -25,7 +27,12 @@ export const fetchNearbyProviderRows = async ({
       },
     );
     return {
-      rows: Array.isArray(data) ? data : [],
+      rows: !error && Array.isArray(data)
+        ? data.map((row: any) => ({
+            ...row,
+            emergency_discovery_source: CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
+          }))
+        : [],
       error,
       rpcName: "nearby_hospitals",
     };

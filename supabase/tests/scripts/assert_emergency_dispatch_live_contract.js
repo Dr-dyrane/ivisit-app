@@ -287,6 +287,16 @@ requirePatterns('notifications', 'notifications', [
     pattern: /CREATE TRIGGER notify_payment_status_change[\s\S]*?notify_canonical_payment_status_change/,
     detail: 'Payment status consequences are emitted by the backend.',
   },
+  {
+    id: 'standalone_dispatch_notification_scope',
+    pattern: /CREATE OR REPLACE FUNCTION public\.notify_emergency_events[\s\S]*?SELECT NEW\.dispatch_organization_id, FALSE AS facility_scope[\s\S]*?profile\.role IN \('org_admin', 'dispatcher', 'admin'\)/,
+    detail: 'Standalone dispatch organizations and their dispatchers receive canonical request notifications.',
+  },
+  {
+    id: 'late_dispatch_organization_notification',
+    pattern: /CREATE TRIGGER on_emergency_notification[\s\S]*?AFTER INSERT OR UPDATE OF hospital_id, dispatch_organization_id/,
+    detail: 'A dispatch organization assigned after request creation receives the same canonical event.',
+  },
 ]);
 
 requirePatterns('authorization', 'security', [
@@ -587,6 +597,18 @@ requirePatterns('harness-safety', 'liveHarness', [
     pattern:
       /service role completes ambulance lifecycle through Console command idempotently[\s\S]*?admin\.rpc\('console_complete_emergency'[\s\S]*?already_completed/,
     detail: 'The service-role Console completion path is executed and retried.',
+  },
+  {
+    id: 'autonomous_dispatch_cron_runtime_probe',
+    pattern:
+      /assertAutonomousDispatchJobExists[\s\S]*?cron\.job[\s\S]*?ivisit-expire-responder-offers/,
+    detail: 'The live proof verifies that the canonical dispatch retry cron job exists.',
+  },
+  {
+    id: 'autonomous_dispatch_effect_runtime_probe',
+    pattern:
+      /restored readiness can offer, decline, and requeue without stale assignment[\s\S]*?waitForCurrentAssignment[\s\S]*?Autonomous dispatch did not create a live offer/,
+    detail: 'Restored readiness waits for the scheduled worker instead of invoking dispatch directly.',
   },
   {
     id: 'realtime_scope_runtime_probe',

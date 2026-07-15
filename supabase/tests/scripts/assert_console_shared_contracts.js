@@ -148,10 +148,15 @@ function run() {
     files.automations
   );
   check(
-    'console operators have visit-backed read projections',
+    'authorized care actors have scoped visit-backed read projections',
     includesAll(source.security, [
       'CREATE POLICY "Org operators read medical profiles via visits"',
-      'CREATE POLICY "Console operators see org visits"',
+      'CREATE OR REPLACE FUNCTION public.p_can_read_visit(p_visit_id UUID)',
+      "actor.role = 'org_admin'",
+      'visit_doctor.profile_id = auth.uid()',
+      'request.responder_id = auth.uid()',
+      'CREATE POLICY "Authorized actors see scoped visits"',
+      'USING (public.p_can_read_visit(id))',
     ]),
     files.security
   );

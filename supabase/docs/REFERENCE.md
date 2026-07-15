@@ -6,7 +6,7 @@ Single source of truth for the iVisit schema, ID system, data flows, and critica
 
 ## 1. Core Migration Pillars
 
-The schema is organized into **11 pillar modules** (authoritative) plus targeted post-pillar patch migrations applied in date order.
+The schema is organized into **11 authoritative pillar modules**. A forward deployment migration may exist briefly to apply an already-reviewed pillar delta to an initialized database, but it is removed after live verification and remote-history repair.
 
 ### 1.1 Authoritative Pillars
 
@@ -24,16 +24,16 @@ The schema is organized into **11 pillar modules** (authoritative) plus targeted
 | `0009_automations` | Automations | System Triggers, Cross-Table Hooks, User Init |
 | `0100_core_rpcs` | Core APIs | Production RPCs for App/Console discovery |
 
-### 1.2 Post-Pillar Patches (applied in date order)
+### 1.2 Absorbed Forward Deployments
 
-Targeted patches live as separate migrations instead of touching pillar files. They are not new pillars — table/RPC ownership still belongs to the originating pillar.
+The entries below are historical deployments whose final SQL is already owned by the listed pillar. Their files and remote ledger rows do not remain after the absorb/delete/repair lifecycle described in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 | Migration | Scope | Owner Pillar |
 |---|---|---|
 | `20260412050000_hospital_media_pipeline.sql` | `hospital_media` table + `hospitals.image_*` columns | `org_structure` |
 | `20260423000100_active_request_concurrency_guard.sql` | Unique partial indexes preventing duplicate active ambulance/bed requests per user | `logistics` |
 
-Strict Standard: pillar files stay the source of truth for their domain. New post-pillar patches may add fields, indexes, or guards, but any rename or contract change must land in the pillar.
+Strict standard: pillar files stay the source of truth for their domain. Never rely on editing an applied pillar to update the live database; emit a narrow forward deployment, verify it live, absorb the exact SQL into its owner pillar, remove the temporary file, and repair its remote migration version as reverted.
 
 ---
 

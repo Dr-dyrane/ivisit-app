@@ -81,6 +81,52 @@ function record(name, status, detail = null) {
   }
 }
 
+function createRealtimeProbe(client, userId) {
+  const events = [];
+  let readyResolve;
+  let readyReject;
+  const ready = new Promise((resolve, reject) => {
+    readyResolve = resolve;
+    readyReject = reject;
+  });
+  const channel = client
+    .channel(`notification-dismissal-probe-${runId}-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => events.push(payload),
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') readyResolve();
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        readyReject(new Error(`Realtime subscription failed: ${status}`));
+      }
+    });
+
+  return {
+    events,
+    ready,
+    close: () => client.removeChannel(channel),
+  };
+}
+
+async function waitForRealtimeEvent(probe, notificationId, predicate, timeoutMs = 10000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const event = probe.events.find((candidate) => (
+      candidate?.new?.id === notificationId && predicate(candidate.new)
+    ));
+    if (event) return event;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Realtime update was not received for notification ${notificationId}`);
+}
+
 async function check(name, operation) {
   try {
     const detail = await operation();
@@ -200,17 +246,26 @@ async function run() {
   let owner;
   let other;
   let ownerNotification;
+  let ownerReadNotification;
   let otherNotification;
+  let ownerRealtime;
 
   try {
     owner = await createActor('owner');
     other = await createActor('other');
     ownerNotification = await createCanonicalFixture(owner, 'owner');
+    ownerReadNotification = await createCanonicalFixture(owner, 'owner-read');
     otherNotification = await createCanonicalFixture(other, 'other');
 
     const ownerClient = await signIn(owner);
     const ownerSecondClient = await signIn(owner);
     const otherClient = await signIn(other);
+    ownerRealtime = createRealtimeProbe(ownerSecondClient, owner.id);
+
+    await check('second_session_notification_realtime_subscribes', async () => {
+      await ownerRealtime.ready;
+      return 'SUBSCRIBED';
+    });
 
     await check('recipient_reads_own_notification', async () => {
       const { data, error } = await ownerClient
@@ -244,6 +299,15 @@ async function run() {
       if (error) throw error;
       assert(sameInstant(data?.dismissed_at, dismissedAt), 'Dismissal timestamp did not persist');
       return data.dismissed_at;
+    });
+
+    await check('second_session_receives_dismissal_update', async () => {
+      const event = await waitForRealtimeEvent(
+        ownerRealtime,
+        ownerNotification.id,
+        (row) => sameInstant(row.dismissed_at, dismissedAt),
+      );
+      return event.eventType;
     });
 
     await check('second_session_hides_dismissed_notification', async () => {
@@ -293,6 +357,25 @@ async function run() {
       return true;
     });
 
+    await check('second_session_receives_read_update', async () => {
+      const now = new Date().toISOString();
+      const { data, error } = await ownerClient
+        .from('notifications')
+        .update({ read: true, updated_at: now })
+        .eq('id', ownerReadNotification.id)
+        .select('id,read')
+        .single();
+      if (error) throw error;
+      assert(data.read === true, 'Owner read state did not persist');
+
+      const event = await waitForRealtimeEvent(
+        ownerRealtime,
+        ownerReadNotification.id,
+        (row) => row.read === true && row.dismissed_at == null,
+      );
+      return event.eventType;
+    });
+
     await check('recipient_cannot_edit_canonical_payload', async () => {
       const { error } = await otherClient
         .from('notifications')
@@ -337,6 +420,7 @@ async function run() {
   } catch (error) {
     if (report.failed === 0) record('unhandled_live_contract_error', 'fail', error.message);
   } finally {
+    if (ownerRealtime) await ownerRealtime.close();
     await cleanup();
     report.finished_at = new Date().toISOString();
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });

@@ -229,7 +229,12 @@ function sourceUnits() {
 
   units.push(
     ...policyPair(SOURCE.security, 'visits', 'Users see own visits'),
-    ...policyPair(SOURCE.security, 'visits', 'Users insert/update own visits'),
+    statementUnit(
+      SOURCE.security,
+      'drop legacy patient visit write policy',
+      /DROP\s+POLICY\s+IF\s+EXISTS\s+"Users insert\/update own visits"\s+ON\s+public\.visits/i
+    ),
+    ...policyPair(SOURCE.security, 'visits', 'Users manage own standalone visits'),
     statementUnit(SOURCE.security, 'force private consult media bucket', /UPDATE\s+storage\.buckets\s+SET\s+public\s*=\s*false[\s\S]*?WHERE\s+id\s*=\s*'documents'/i),
     markerUnit(SOURCE.security, 'ASYNC_CONSULT_STORAGE_POLICIES')
   );

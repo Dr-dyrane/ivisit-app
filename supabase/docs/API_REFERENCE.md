@@ -39,6 +39,7 @@ Generated from `20260219010000_core_rpcs.sql` on 7/14/2026
 | `get_service_price` | `p_service_type TEXT, p_hospital_id UUID DEFAULT NULL` | `TABLE (service_name TEXT, price NUMERIC, currency TEXT)` |
 | `get_room_price` | `p_room_type TEXT, p_hospital_id UUID DEFAULT NULL` | `TABLE (room_name TEXT, price NUMERIC, currency TEXT)` |
 | `rate_visit` | `p_visit_id UUID, p_rating SMALLINT, p_comment TEXT DEFAULT NULL` | `JSONB` |
+| `skip_visit_rating` | `p_visit_id UUID` | `JSONB` |
 | `jsonb_to_point_geometry` | `p_location JSONB` | `geometry` |
 | `canonicalize_emergency_status` | `p_status TEXT, p_default TEXT DEFAULT NULL` | `TEXT` |
 | `set_emergency_transition_context` | `p_source TEXT, p_reason TEXT DEFAULT NULL, p_actor_id UUID DEFAULT auth.uid(), p_actor_role TEXT DEFAULT NULL, p_metadata JSONB DEFAULT '{}'::JSONB, p_allow_status_write BOOLEAN DEFAULT true` | `VOID` |

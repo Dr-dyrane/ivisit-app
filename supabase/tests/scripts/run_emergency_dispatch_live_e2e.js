@@ -528,7 +528,7 @@ async function createCardRequest({ actor, hospital, label }) {
   state.entityIds.add(data.request_id);
   state.paymentIds.add(data.payment_id);
   state.entityIds.add(data.payment_id);
-  state.eventKeys.add(`emergency_request:${data.request_id}:created`);
+  state.recipientScopedEventKeys.add(`emergency_request:${data.request_id}:created`);
 
   const { data: scopedRequest, error: scopeError } = await admin
     .from('emergency_requests')
@@ -591,7 +591,7 @@ async function createCashRequest({ actor, hospital, label }) {
   state.entityIds.add(data.request_id);
   state.paymentIds.add(data.payment_id);
   state.entityIds.add(data.payment_id);
-  state.eventKeys.add(`emergency_request:${data.request_id}:created`);
+  state.recipientScopedEventKeys.add(`emergency_request:${data.request_id}:created`);
   state.recipientScopedEventKeys.add(
     `emergency_request:${data.request_id}:payment:${data.payment_id}:cash_approval_required`
   );
@@ -625,7 +625,7 @@ async function createWalletRequest({ actor, hospital, label }) {
   state.entityIds.add(data.request_id);
   state.paymentIds.add(data.payment_id);
   state.entityIds.add(data.payment_id);
-  state.eventKeys.add(`emergency_request:${data.request_id}:created`);
+  state.recipientScopedEventKeys.add(`emergency_request:${data.request_id}:created`);
 
   const { data: visits, error: visitsError } = await admin
     .from('visits')
@@ -715,6 +715,35 @@ async function countRows(table, column, value, extra = null) {
 
 async function eventCount(eventKey) {
   return countRows('notifications', 'event_key', eventKey);
+}
+
+async function assertAutonomousDispatchJobExists() {
+  const sql = `
+DO $proof$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM cron.job
+    WHERE jobname = 'ivisit-expire-responder-offers'
+  ) THEN
+    RAISE EXCEPTION 'Missing ivisit-expire-responder-offers cron job';
+  END IF;
+END;
+$proof$;
+  `;
+  const { data, error } = await admin.rpc('exec_sql', { sql });
+  if (error) throw error;
+  if (!data?.success) throw new Error(data?.error || 'Dispatch retry cron proof was rejected');
+}
+
+async function waitForCurrentAssignment(requestId, timeoutMs = 90_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const request = await getRequest(requestId);
+    if (request.current_responder_assignment_id) return request.current_responder_assignment_id;
+    await delay(1_000);
+  }
+  throw new Error(`Autonomous dispatch did not offer request ${requestId} within ${timeoutMs}ms`);
 }
 
 async function storageObjectExists(bucket, objectPath) {
@@ -1896,7 +1925,7 @@ async function runProof() {
         state.entityIds.add(result.data.request_id);
         state.visitIds.add(result.data.visit_id);
         state.entityIds.add(result.data.visit_id);
-        state.eventKeys.add(`emergency_request:${result.data.request_id}:created`);
+        state.recipientScopedEventKeys.add(`emergency_request:${result.data.request_id}:created`);
 
         const request = await getRequest(result.data.request_id);
         assert(request.status === 'pending_approval', 'Console caller forced a terminal request state');
@@ -2520,6 +2549,57 @@ async function runProof() {
       return retry.data;
     });
 
+    await check('linked visit RLS separates clinical history from dispatch operations', 'role-rls', async () => {
+      expectVisible(
+        await visibleRows(fixtures.patientA.clients[0], 'visits', 'request_id', primary.request_id),
+        'owner patient linked visit read'
+      );
+      expectVisible(
+        await visibleRows(fixtures.platformAdmin.clients[0], 'visits', 'request_id', primary.request_id),
+        'platform admin linked visit read'
+      );
+      expectVisible(
+        await visibleRows(fixtures.orgAdminA.clients[0], 'visits', 'request_id', primary.request_id),
+        'same-org admin linked visit read'
+      );
+      expectVisible(
+        await visibleRows(fixtures.driverA.clients[0], 'visits', 'request_id', primary.request_id),
+        'assigned driver linked visit read'
+      );
+      expectHidden(
+        await visibleRows(fixtures.patientB.clients[0], 'visits', 'request_id', primary.request_id),
+        'other patient linked visit read'
+      );
+      expectHidden(
+        await visibleRows(fixtures.dispatcherA.clients[0], 'visits', 'request_id', primary.request_id),
+        'same-org dispatcher clinical visit read'
+      );
+      expectHidden(
+        await visibleRows(fixtures.driverB.clients[0], 'visits', 'request_id', primary.request_id),
+        'other driver linked visit read'
+      );
+      expectHidden(
+        await visibleRows(fixtures.dispatcherB.clients[0], 'visits', 'request_id', primary.request_id),
+        'cross-org dispatcher linked visit read'
+      );
+
+      const directUpdate = await fixtures.patientA.clients[0]
+        .from('visits')
+        .update({ lifecycle_status: 'rated' })
+        .eq('request_id', primary.request_id)
+        .select('id');
+      expectDeniedOrHidden(directUpdate, 'patient direct linked visit update');
+
+      const directDelete = await fixtures.patientA.clients[0]
+        .from('visits')
+        .delete()
+        .eq('request_id', primary.request_id)
+        .select('id');
+      expectDeniedOrHidden(directDelete, 'patient direct linked visit delete');
+      assert((await countRows('visits', 'request_id', primary.request_id)) === 1, 'Linked visit was mutated away');
+      return true;
+    });
+
     await check('standalone unit can be isolated while its request payment clears', 'fixture', async () => {
       const { error } = await admin
         .from('ambulances')
@@ -2550,6 +2630,34 @@ async function runProof() {
           scoped.dispatch_organization_id === fixtures.standaloneOrg.id,
           'Standalone request did not retain its explicit dispatch organization'
         );
+
+        const createdEventKey = `emergency_request:${request.request_id}:created`;
+        const expectedRecipients = [
+          fixtures.standaloneOrgAdmin.id,
+          fixtures.standaloneDispatcher.id,
+        ];
+        const { data: routedNotifications, error: notificationError } = await admin
+          .from('notifications')
+          .select('user_id,type,action_type,target_id,event_key')
+          .eq('event_key', createdEventKey)
+          .in('user_id', expectedRecipients);
+        if (notificationError) throw notificationError;
+        assert(
+          (routedNotifications || []).length === expectedRecipients.length,
+          'Standalone dispatch organization did not receive one notification per operator recipient'
+        );
+        for (const recipientId of expectedRecipients) {
+          const recipientRows = (routedNotifications || []).filter(
+            (notification) => notification.user_id === recipientId
+          );
+          assert(
+            recipientRows.length === 1 &&
+              recipientRows[0].type === 'emergency' &&
+              recipientRows[0].action_type === 'view_emergency' &&
+              recipientRows[0].target_id === request.request_id,
+            `Standalone emergency notification is invalid for recipient ${recipientId}`
+          );
+        }
 
         const payment = await admin.rpc('complete_card_payment', {
           p_payment_intent_id: request.paymentIntentId,
@@ -2711,6 +2819,18 @@ async function runProof() {
       return result.data;
     });
 
+    await check('standalone patient confirms arrival before service completion', 'lifecycle-idempotency', async () => {
+      const result = await fixtures.patientB.clients[0].rpc('patient_acknowledge_responder_arrival', {
+        p_request_id: fixtures.standaloneRequest.request_id,
+      });
+      if (result.error) throw result.error;
+      assert(result.data?.success === true && result.data?.acknowledged_at, 'Standalone arrival acknowledgement failed');
+      state.eventKeys.add(
+        `emergency_request:${fixtures.standaloneRequest.request_id}:arrival_acknowledged`
+      );
+      return result.data;
+    });
+
     await check('service role completes ambulance lifecycle through Console command idempotently', 'service-role', async () => {
       const first = await admin.rpc('console_complete_emergency', {
         p_request_id: fixtures.standaloneRequest.request_id,
@@ -2789,6 +2909,8 @@ async function runProof() {
     });
 
     await check('restored readiness can offer, decline, and requeue without stale assignment', 'emergency-fallback', async () => {
+      await assertAutonomousDispatchJobExists();
+
       const { error: availableError } = await admin
         .from('ambulances')
         .update({ status: 'available', current_call: null })
@@ -2808,15 +2930,13 @@ async function runProof() {
       if (telemetry.error) throw telemetry.error;
       assert(telemetry.data?.success === true, 'Restored telemetry failed');
 
-      const auto = await admin.rpc('auto_assign_ambulance', {
-        p_emergency_request_id: fixtures.fallback.request_id,
-        p_max_distance_km: 1,
-        p_specialty_required: null,
-      });
-      if (auto.error) throw auto.error;
-      assert(auto.data?.success === true && auto.data?.auto_assigned === true, 'Restored ambulance was not offered');
-      assert(auto.data?.ambulance_id === fixtures.ambulance.id, 'Restored dispatch escaped the fixture organization');
-      const fallbackAssignmentId = auto.data.assignment_id;
+      const fallbackAssignmentId = await waitForCurrentAssignment(fixtures.fallback.request_id);
+      const offeredAssignment = await getAssignment(fallbackAssignmentId);
+      assert(offeredAssignment.status === 'offered', 'Autonomous dispatch did not create a live offer');
+      assert(
+        offeredAssignment.ambulance_id === fixtures.ambulance.id,
+        'Restored dispatch escaped the fixture organization'
+      );
       state.assignmentIds.add(fallbackAssignmentId);
       state.entityIds.add(fallbackAssignmentId);
       state.eventKeys.add(
@@ -2833,8 +2953,8 @@ async function runProof() {
       const request = await getRequest(fixtures.fallback.request_id);
       assert(request.status === 'in_progress', 'Declined request did not remain queued');
       assert(request.current_responder_assignment_id === null, 'Declined assignment remained current');
-      const assignment = await getAssignment(fallbackAssignmentId);
-      assert(assignment.status === 'declined', 'Assignment history did not retain decline');
+      const declinedAssignment = await getAssignment(fallbackAssignmentId);
+      assert(declinedAssignment.status === 'declined', 'Assignment history did not retain decline');
 
       const declineRetry = await fixtures.driverA.clients[1].rpc('responder_decline_emergency', {
         p_request_id: fixtures.fallback.request_id,

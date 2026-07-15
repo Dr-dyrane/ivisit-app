@@ -186,6 +186,7 @@ async function main() {
     transitions,
     notifications,
     userActivity,
+    adminAuditLogs,
     walletLedger,
     servicePricing,
     roomPricing,
@@ -208,6 +209,7 @@ async function main() {
     fetchAll('emergency_status_transitions', 'id,emergency_request_id'),
     fetchAll('notifications', 'id,user_id,target_id'),
     fetchAll('user_activity', 'id,user_id'),
+    fetchAllOptional('admin_audit_log', 'id,admin_id'),
     fetchAll('wallet_ledger', 'id,reference_id,wallet_id'),
     fetchAllOptional('service_pricing', 'id,hospital_id'),
     fetchAllOptional('room_pricing', 'id,hospital_id'),
@@ -330,6 +332,10 @@ async function main() {
     userActivity.filter((a) => testProfileIds.includes(a.user_id)).map((a) => a.id)
   );
 
+  const testAdminAuditLogIds = unique(
+    adminAuditLogs.filter((entry) => testProfileIds.includes(entry.admin_id)).map((entry) => entry.id)
+  );
+
   const safeOrganizationIds = unique(
     candidateOrganizationIds.filter((organizationId) => {
       const hasNonTestHospitals = hospitals.some(
@@ -400,6 +406,7 @@ async function main() {
     emergency_status_transitions: testTransitionIds.length,
     notifications: testNotificationIds.length,
     user_activity: testActivityIds.length,
+    admin_audit_log: testAdminAuditLogIds.length,
     service_pricing: testServicePricingIds.length,
     room_pricing: testRoomPricingIds.length,
     hospital_import_logs: testHospitalImportLogIds.length,
@@ -451,6 +458,12 @@ async function main() {
       report
     );
     report.deleted.user_activity = await deleteByIds('user_activity', testActivityIds, 'id', report);
+    report.deleted.admin_audit_log = await deleteByIds(
+      'admin_audit_log',
+      testAdminAuditLogIds,
+      'id',
+      report
+    );
 
     report.deleted.insurance_billing = await deleteByIds(
       'insurance_billing',
