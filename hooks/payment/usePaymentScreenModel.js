@@ -289,22 +289,34 @@ export function usePaymentScreenModel() {
   const processTopUp = async (amount) => {
     try {
       setIsSaving(true);
-      const result = await paymentService.topUpWallet(amount);
+      // Confirms the Stripe intent against a saved card, then polls for the
+      // webhook wallet credit so the balance shown is server truth.
+      const result = await paymentService.processWalletTopUp(amount, selectedMethod);
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await loadWalletData();
         setShowAddFundsModal(false);
-        Alert.alert(
-          "Success",
-          PAYMENT_SCREEN_COPY.addFunds.success(
-            amount,
-            result.newBalance,
-          ),
-        );
+        if (result.credited) {
+          Alert.alert(
+            "Success",
+            PAYMENT_SCREEN_COPY.addFunds.success(
+              amount,
+              result.balance,
+            ),
+          );
+        } else {
+          Alert.alert(
+            "Top-up Processing",
+            "Your card was charged. The wallet credit is still settling; your balance will update shortly.",
+          );
+        }
       }
     } catch (error) {
       console.error("Top-up error:", error);
-      Alert.alert("Top-up Failed", "Could not process top-up. Please check your card.");
+      Alert.alert(
+        PAYMENT_SCREEN_COPY.addFunds.failed,
+        error.message || PAYMENT_SCREEN_COPY.addFunds.failedMessage,
+      );
     } finally {
       setIsSaving(false);
     }

@@ -3,6 +3,10 @@ export const MAP_COMMIT_PAYMENT_TRANSACTION_STATES = Object.freeze({
 	WAITING_APPROVAL: "waiting_approval",
 	PROCESSING_PAYMENT: "processing_payment",
 	FINALIZING_DISPATCH: "finalizing_dispatch",
+	// OTA1 E5 -- settlement wait timed out: money may have moved, dispatch is
+	// unconfirmed. Dismissible, excluded from isSubmitting; background watch owns
+	// the transition to DISPATCHED/PAYMENT_DECLINED once server truth lands.
+	SETTLEMENT_PENDING: "settlement_pending",
 	DISPATCHED: "dispatched",
 	FAILED: "failed",
 	PAYMENT_DECLINED: "payment_declined",
@@ -152,9 +156,12 @@ export function isCommitPaymentDismissibleState(submissionState, { isSubmitting 
 	// PULLBACK NOTE: PT-C — WAITING_APPROVAL removed from dismissible states (defect PT-6, class 2.14)
 	// OLD: WAITING_APPROVAL || DISPATCHED || (FINALIZING_DISPATCH && !isSubmitting)
 	// NEW: WAITING_APPROVAL is a committed server action — non-dismissible, CTA must stay locked
+	// PULLBACK NOTE: OTA1 E5 -- FINALIZING_DISPATCH && !isSubmitting was unreachable
+	// (UX-D D-6 derives isSubmitting true for finalizing_dispatch); the reachable
+	// dismissible timeout state is SETTLEMENT_PENDING.
 	return (
 		kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED ||
-		(kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH && !isSubmitting)
+		kind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING
 	);
 }
 

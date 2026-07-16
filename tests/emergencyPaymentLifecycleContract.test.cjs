@@ -1197,4 +1197,533 @@ assert.match(handlers, /void queryClient[\s\S]*?\.invalidateQueries/);
 assert.match(trackingController, /showToast\("Arrival confirmed\."/);
 assert.match(trackingController, /Could not confirm arrival right now/);
 
-console.log("PASS emergency payment and patient lifecycle contract");
+// ===========================================================================
+// PAYMENT MONEY-SAFETY CONTRACT (OTA1 E1/E2/E4/E5/E13/E22)
+//
+// Every pin below exercises the real module through loadSourceModule and asserts
+// against an operation log, so a refactor that keeps the identifiers but loses
+// the behavior still reds. Source-text pins are used only where the property is
+// a type or an ordering that has no runtime surface.
+// ===========================================================================
+
+// A Supabase test double that records every query verb in call order. The
+// operation log is the contract surface: "the unset ran before the insert" and
+// "no payment intent was ever created" are order/absence facts, not return
+// values, so no return-value stub can express them.
+function createPaymentSupabaseStub({
+  user = { id: "user-1" },
+  tables = {},
+  rpc = {},
+  invoke = {},
+} = {}) {
+  const operations = [];
+  const rpcCalls = [];
+  const invokeCalls = [];
+
+  const from = (table) => {
+    const state = { table, verb: null, payload: null, filters: [] };
+    const settle = () => {
+      const handler = tables[`${table}.${state.verb}`] || tables[table];
+      const result = typeof handler === "function" ? handler(state) : handler;
+      return Promise.resolve(result || { data: null, error: null });
+    };
+    const builder = {
+      select() {
+        // insert(...).select() must stay an insert in the log
+        if (!state.verb) {
+          state.verb = "select";
+          operations.push(`${table}.select`);
+        }
+        return builder;
+      },
+      insert(payload) {
+        state.verb = "insert";
+        state.payload = payload;
+        operations.push(`${table}.insert`);
+        return builder;
+      },
+      update(payload) {
+        state.verb = "update";
+        state.payload = payload;
+        operations.push(`${table}.update`);
+        return builder;
+      },
+      eq(column, value) {
+        state.filters.push([column, value]);
+        return builder;
+      },
+      order() {
+        return builder;
+      },
+      limit() {
+        return builder;
+      },
+      single() {
+        return settle();
+      },
+      maybeSingle() {
+        return settle();
+      },
+      // thenable so `await supabase.from(t).update(v).eq(c, v)` resolves
+      then(onFulfilled, onRejected) {
+        return settle().then(onFulfilled, onRejected);
+      },
+    };
+    return builder;
+  };
+
+  return {
+    operations,
+    rpcCalls,
+    invokeCalls,
+    supabase: {
+      auth: { getUser: async () => ({ data: { user } }) },
+      from,
+      rpc: async (name, params) => {
+        operations.push(`rpc:${name}`);
+        rpcCalls.push({ name, params });
+        const handler = rpc[name];
+        return (
+          (typeof handler === "function" ? handler(params) : handler) || {
+            data: { success: true },
+            error: null,
+          }
+        );
+      },
+      functions: {
+        invoke: async (name, options) => {
+          operations.push(`functions.invoke:${name}`);
+          invokeCalls.push({ name, options });
+          const handler = invoke[name];
+          return (
+            (typeof handler === "function" ? handler(options) : handler) || {
+              data: {},
+              error: null,
+            }
+          );
+        },
+      },
+    },
+  };
+}
+
+const PAYMENT_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function loadPaymentService(stub, confirmCalls = []) {
+  return loadSourceModule("services/paymentService.js", {
+    "./supabase": { supabase: stub.supabase },
+    "../database": {
+      database: {
+        read: async (_key, fallback = []) => fallback,
+        write: async () => {},
+      },
+      StorageKeys: {
+        PAYMENT_METHODS: "payment_methods",
+        DEFAULT_PAYMENT_METHOD: "default_payment_method",
+      },
+    },
+    "./displayIdService": {
+      resolveEntityId: async (id) => id,
+      isValidUUID: (value) => PAYMENT_UUID_PATTERN.test(String(value || "")),
+    },
+    "./stripeSavedCardConfirmation": {
+      confirmSavedCardPayment: async (...args) => {
+        confirmCalls.push(args);
+        return { status: "succeeded" };
+      },
+    },
+  }).paymentService;
+}
+
+// --- E4: submit lock is acquired after every synchronous guard -------------
+// The canonical-retry mismatch guard returns early. If the lock were taken
+// before it, that return would skip the finally and strand submitLockRef true,
+// bricking the pay CTA for the life of the sheet.
+const handleSubmitStart = controller.indexOf(
+  "const handleSubmit = useCallback(async () => {",
+);
+const handleSubmitEnd = controller.indexOf("  return {", handleSubmitStart);
+assert.ok(
+  handleSubmitStart >= 0 && handleSubmitEnd > handleSubmitStart,
+  "handleSubmit must remain locatable for the submit-lock contract",
+);
+const handleSubmitBlock = controller.slice(handleSubmitStart, handleSubmitEnd);
+const canonicalRetryGuardAt = handleSubmitBlock.indexOf(
+  "!canResumeCanonicalPaymentRetry(pendingCanonicalRetry, retryContext)",
+);
+const lockCheckAt = handleSubmitBlock.indexOf(
+  "if (submitLockRef.current) return;",
+);
+const lockAcquiredAt = handleSubmitBlock.indexOf("submitLockRef.current = true;");
+assert.ok(
+  canonicalRetryGuardAt >= 0 &&
+    lockCheckAt > canonicalRetryGuardAt &&
+    lockAcquiredAt > canonicalRetryGuardAt,
+  "the canonical-retry guard must return lock-free: acquiring the submit lock before it strands the lock on its early return",
+);
+const submitLockReleases = Array.from(
+  handleSubmitBlock.matchAll(/submitLockRef\.current = false;/g),
+  (match) => match.index,
+);
+assert.equal(
+  submitLockReleases.length,
+  1,
+  "the submit lock must have exactly one release inside handleSubmit",
+);
+const submitFinallyAt = handleSubmitBlock.indexOf("} finally {");
+assert.ok(
+  submitFinallyAt >= 0 && submitLockReleases[0] > submitFinallyAt,
+  "the submit lock must be released only in its owning finally, so no early return can leak it",
+);
+
+// --- E5: SETTLEMENT_PENDING is a real, dismissible, unlocked state ---------
+assert.equal(
+  transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING,
+  "settlement_pending",
+);
+assert.equal(
+  transaction.isCommitPaymentDismissibleState(
+    transaction.createCommitPaymentSubmissionState(
+      transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING,
+    ),
+    { isSubmitting: false },
+  ),
+  true,
+  "a settlement that timed out must leave the sheet closable",
+);
+assert.equal(
+  transaction.isCommitPaymentDismissibleState(
+    transaction.createCommitPaymentSubmissionState(
+      transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.FINALIZING_DISPATCH,
+    ),
+    { isSubmitting: true },
+  ),
+  false,
+  "an in-flight settlement must stay non-dismissible",
+);
+
+// The submission-state union is a type, so it has no runtime surface; pin the
+// source directly or a state the reducer never names could still be dispatched.
+assert.match(
+  read("atoms/paymentAtoms.ts"),
+  /\|\s*"settlement_pending"/,
+  "SubmissionStateKind must name settlement_pending",
+);
+
+// Evaluate the derived atom live rather than reading its source: the exclusion
+// only matters as the value the CTA actually reads.
+const { createStore } = require("jotai/vanilla");
+const paymentAtoms = loadSourceModule("atoms/paymentAtoms.ts");
+const paymentAtomStore = createStore();
+const readIsSubmittingFor = (kind) => {
+  paymentAtomStore.set(paymentAtoms.paymentSubmissionStateAtom, {
+    kind,
+    display: "",
+    dismissible: false,
+  });
+  return paymentAtomStore.get(paymentAtoms.isSubmittingPaymentAtom);
+};
+assert.equal(
+  readIsSubmittingFor("settlement_pending"),
+  false,
+  "settlement_pending must be excluded from isSubmittingPaymentAtom or the timed-out sheet stays locked",
+);
+assert.equal(readIsSubmittingFor("finalizing_dispatch"), true);
+assert.equal(readIsSubmittingFor("processing_payment"), true);
+assert.equal(readIsSubmittingFor("waiting_approval"), true);
+assert.equal(readIsSubmittingFor("dispatched"), false);
+
+// --- E5: settlement_pending copy must never present the DISPATCHED promise --
+const commitPaymentContent = loadSourceModule(
+  "components/map/views/commitPayment/mapCommitPayment.content.js",
+);
+const commitPaymentPresentation = loadSourceModule(
+  "components/map/views/commitPayment/mapCommitPayment.presentation.js",
+  { "./mapCommitPayment.transaction": transaction },
+);
+const buildStatusConfigFor = (submissionKind) =>
+  commitPaymentPresentation.buildCommitPaymentStatusConfig({
+    submissionKind,
+    isBedFlow: false,
+    accentColor: "accent",
+    warningColor: "warning",
+    errorColor: "error",
+    infoColor: "info",
+    statusCopy: commitPaymentContent.MAP_COMMIT_PAYMENT_COPY,
+  });
+const settlementPendingStatus = buildStatusConfigFor(
+  transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING,
+);
+const dispatchedStatus = buildStatusConfigFor(
+  transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
+);
+assert.equal(
+  settlementPendingStatus.title,
+  commitPaymentContent.MAP_COMMIT_PAYMENT_COPY.STATUS_SETTLEMENT_PENDING_TITLE,
+);
+assert.notEqual(
+  settlementPendingStatus.title,
+  dispatchedStatus.title,
+  "an unconfirmed settlement must not wear the dispatched title",
+);
+assert.notEqual(
+  settlementPendingStatus.description,
+  dispatchedStatus.description,
+  "an unconfirmed settlement must not claim the hospital is responding",
+);
+
+// --- E5: both settlement-timeout branches recover identically --------------
+const walletBranchStart = controller.indexOf("if (isWalletSelected) {");
+const cardBranchStart = controller.indexOf("if (isCardSelected) {", walletBranchStart);
+assert.ok(
+  walletBranchStart >= 0 && cardBranchStart > walletBranchStart,
+  "the wallet and card settlement branches must remain locatable",
+);
+const walletBranch = controller.slice(walletBranchStart, cardBranchStart);
+const cardBranch = controller.slice(cardBranchStart, handleSubmitEnd);
+const sliceSettlementTimeout = (branch, label) => {
+  const start = branch.indexOf("if (!settlementResult?.success) {");
+  const end = branch.indexOf(
+    "const completionPayload = buildCommitPaymentCompletionPayload({",
+    start,
+  );
+  assert.ok(
+    start >= 0 && end > start,
+    `${label} settlement-timeout branch must remain locatable`,
+  );
+  return branch.slice(start, end);
+};
+for (const [label, timeoutBranch] of [
+  ["wallet", sliceSettlementTimeout(walletBranch, "wallet")],
+  ["card", sliceSettlementTimeout(cardBranch, "card")],
+]) {
+  const invalidateAt = timeoutBranch.indexOf("await invalidateActiveTrip();");
+  const settlementPendingAt = timeoutBranch.indexOf(
+    "MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING",
+  );
+  const watchAt = timeoutBranch.indexOf(
+    "watchPendingSettlement(initiationResult.requestId);",
+  );
+  assert.ok(
+    settlementPendingAt >= 0,
+    `the ${label} settlement timeout must move the sheet to SETTLEMENT_PENDING instead of stranding a locked FINALIZING_DISPATCH sheet after money moved`,
+  );
+  assert.ok(
+    invalidateAt >= 0 && invalidateAt < settlementPendingAt,
+    `the ${label} settlement timeout must await invalidateActiveTrip() before surfacing the pending state, so the sheet reflects server truth`,
+  );
+  assert.ok(
+    watchAt > settlementPendingAt,
+    `the ${label} settlement timeout must hand off to watchPendingSettlement so late server truth still resolves the trip`,
+  );
+}
+
+// --- E5 reviewer fix: a declined wallet settlement is not "pending" --------
+// SETTLEMENT_PENDING copy says "Payment went through". Routing a decline there
+// tells the patient their money moved when it did not. The card branch already
+// pre-checks PAYMENT_DECLINED; the wallet branch must mirror it.
+const walletTimeoutBranch = sliceSettlementTimeout(walletBranch, "wallet");
+const walletDeclinedAt = walletTimeoutBranch.indexOf(
+  'settlementResult?.code === "PAYMENT_DECLINED"',
+);
+const walletDeclinedStateAt = walletTimeoutBranch.indexOf(
+  "MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED",
+);
+const walletPendingStateAt = walletTimeoutBranch.indexOf(
+  "MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING",
+);
+assert.ok(
+  walletDeclinedAt >= 0 &&
+    walletDeclinedStateAt > walletDeclinedAt &&
+    walletDeclinedStateAt < walletPendingStateAt,
+  "a declined wallet settlement must route to PAYMENT_DECLINED before the SETTLEMENT_PENDING branch, never claiming payment succeeded",
+);
+assert.match(
+  commitPaymentContent.MAP_COMMIT_PAYMENT_COPY.STATUS_SETTLEMENT_PENDING_DESCRIPTION,
+  /Payment went through/,
+  "this pin is only load-bearing while the pending copy asserts payment succeeded",
+);
+
+// --- E1 source pins: the top-up screen reports server truth ----------------
+const paymentScreenModel = read("hooks/payment/usePaymentScreenModel.js");
+assert.match(
+  paymentScreenModel,
+  /paymentService\.processWalletTopUp\(/,
+  "the top-up screen must go through the charge-gated lane, not the bare intent creator",
+);
+assert.doesNotMatch(
+  paymentScreenModel,
+  /result\.newBalance/,
+  "topUpWallet never returned a balance; reading result.newBalance printed undefined as the user's money",
+);
+
+// STAGED-LANE PIN: this call is unreachable while
+// WALLET_TOP_UP_CREDIT_RECEIVER_AVAILABLE is false (the guard rejects first).
+// It is pinned so the confirmation implementation survives refactors until the
+// server-side wallet-credit receiver ships and the gate flips true.
+assert.match(
+  paymentService,
+  /confirmSavedCardPayment\(intent\.clientSecret/,
+  "the staged card-confirmation lane must keep confirming the intent it created",
+);
+
+// --- E22 source pin: the fail-open cash path is gone -----------------------
+assert.doesNotMatch(
+  paymentService,
+  /Cannot resolve org for cash check, allowing/,
+  "an unresolvable org must never fall through to allowing cash",
+);
+
+const paymentContractChecks = (async () => {
+  // --- E2: processVisitTip survives being called detached -----------------
+  // components/map/views/tracking/mapTracking.rating.js:447 injects
+  // `processTip = paymentService.processVisitTip` as a default parameter and
+  // calls it at :484, which severs `this`. A `this.resolveVisitUuid` hop there
+  // throws before the RPC, so every tip on a rated trip was silently lost.
+  const tipVisitUuid = "11111111-1111-4111-8111-111111111111";
+  const tipStub = createPaymentSupabaseStub({
+    tables: { visits: () => ({ data: { id: tipVisitUuid }, error: null }) },
+    rpc: { process_visit_tip: { data: { success: true }, error: null } },
+  });
+  const tipService = loadPaymentService(tipStub);
+  const detachedProcessTip = tipService.processVisitTip;
+  await detachedProcessTip(tipVisitUuid, 5, "USD");
+  assert.deepEqual(
+    tipStub.rpcCalls.map((call) => call.name),
+    ["process_visit_tip"],
+    "a detached processVisitTip must still reach the tip RPC",
+  );
+  assert.deepEqual(tipStub.rpcCalls[0].params, {
+    p_visit_id: tipVisitUuid,
+    p_tip_amount: 5,
+    p_currency: "USD",
+  });
+
+  const cashTipStub = createPaymentSupabaseStub({
+    tables: { visits: () => ({ data: { id: tipVisitUuid }, error: null }) },
+    rpc: { record_visit_cash_tip: { data: { success: true }, error: null } },
+  });
+  const detachedRecordCashTip = loadPaymentService(cashTipStub).recordVisitCashTip;
+  await detachedRecordCashTip(tipVisitUuid, 5, "USD");
+  assert.deepEqual(
+    cashTipStub.rpcCalls.map((call) => call.name),
+    ["record_visit_cash_tip"],
+    "the detached cash-tip fallback must survive the same severed this",
+  );
+
+  // --- E13: the new default card unsets the old one before inserting -------
+  const addCardStub = createPaymentSupabaseStub({
+    tables: {
+      "payment_methods.update": { data: null, error: null },
+      "payment_methods.insert": { data: { id: "pm-row-1" }, error: null },
+    },
+  });
+  const addCardService = loadPaymentService(addCardStub);
+  await addCardService.addPaymentMethod({
+    id: "pm_live_1",
+    last4: "4242",
+    brand: "visa",
+    expiry_month: 12,
+    expiry_year: 2030,
+    metadata: {},
+  });
+  assert.deepEqual(
+    addCardStub.operations,
+    ["payment_methods.update", "payment_methods.insert"],
+    "the existing defaults must be unset before the new default card is inserted, or two rows claim is_default and checkout picks by row order",
+  );
+
+  // --- E22: cash fails closed when the org cannot be resolved --------------
+  const cashStub = createPaymentSupabaseStub({
+    tables: {
+      organizations: { data: null, error: { message: "not found" } },
+      hospitals: { data: null, error: null },
+    },
+  });
+  const cashService = loadPaymentService(cashStub);
+  assert.equal(
+    await cashService.checkCashEligibility(
+      "22222222-2222-4222-8222-222222222222",
+      100,
+    ),
+    false,
+    "cash must fail closed when no org wallet can be verified to cover the platform fee",
+  );
+
+  // --- E1: NO MONEY MOVES while the wallet-credit receiver is missing ------
+  // The most important pin in this block. Nothing server-side credits
+  // patient_wallets for an is_top_up payment, so confirming the intent would
+  // take real money and credit nothing, with no refund path. The gate at
+  // services/paymentService.js WALLET_TOP_UP_CREDIT_RECEIVER_AVAILABLE must
+  // reject before any intent exists.
+  const topUpStub = createPaymentSupabaseStub({
+    tables: {
+      patient_wallets: { data: { balance: 50, currency: "USD" }, error: null },
+    },
+    invoke: {
+      "create-payment-intent": {
+        data: { clientSecret: "cs_test_1", paymentIntentId: "pi_test_1" },
+        error: null,
+      },
+    },
+  });
+  const topUpConfirmCalls = [];
+  const topUpService = loadPaymentService(topUpStub, topUpConfirmCalls);
+  await assert.rejects(
+    () => topUpService.processWalletTopUp(25, { id: "pm_live_1" }),
+    /temporarily unavailable/,
+    "wallet top-up must fail closed while no server-side credit receiver exists",
+  );
+  assert.deepEqual(
+    topUpConfirmCalls,
+    [],
+    "a blocked top-up must never confirm a card: confirming charges the patient and credits nothing",
+  );
+  assert.deepEqual(
+    topUpStub.operations.filter((operation) =>
+      operation.includes("create-payment-intent"),
+    ),
+    [],
+    "a blocked top-up must not even create a payment intent",
+  );
+
+  // --- E1: a settlement timeout reports server truth, never a guess --------
+  // Baseline 50 with the server reporting 12.5: the timeout must surface the
+  // last balance the server actually returned, not the optimistic baseline.
+  const settlementStub = createPaymentSupabaseStub({
+    tables: {
+      patient_wallets: { data: { balance: 12.5, currency: "USD" }, error: null },
+    },
+  });
+  const settlementService = loadPaymentService(settlementStub);
+  assert.deepEqual(
+    await settlementService.waitForWalletTopUpCredit(50, {
+      timeoutMs: 30,
+      pollIntervalMs: 5,
+    }),
+    { credited: false, balance: 12.5, currency: "USD" },
+    "a top-up settlement timeout must report credited:false with the last server-truth balance",
+  );
+
+  const creditedStub = createPaymentSupabaseStub({
+    tables: {
+      patient_wallets: { data: { balance: 75, currency: "USD" }, error: null },
+    },
+  });
+  const creditedService = loadPaymentService(creditedStub);
+  assert.deepEqual(
+    await creditedService.waitForWalletTopUpCredit(50, {
+      timeoutMs: 200,
+      pollIntervalMs: 5,
+    }),
+    { credited: true, balance: 75, currency: "USD" },
+    "a landed credit must be reported as credited (guards the timeout pin against vacuity)",
+  );
+})();
+
+// PASS must never print ahead of the async pins: an awaited failure has to red
+// the run, not race a success line onto stdout.
+paymentContractChecks.then(() => {
+  console.log("PASS emergency payment and patient lifecycle contract");
+});

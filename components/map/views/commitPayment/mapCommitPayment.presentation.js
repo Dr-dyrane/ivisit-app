@@ -105,6 +105,16 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
+	// OTA1 E5 -- without this branch settlement_pending would fall through to the
+	// DISPATCHED copy and fabricate a live request the server has not confirmed.
+	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING) {
+		return {
+			accentColor: infoColor,
+			title: statusCopy.STATUS_SETTLEMENT_PENDING_TITLE,
+			description: statusCopy.STATUS_SETTLEMENT_PENDING_DESCRIPTION,
+		};
+	}
+
 	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.WAITING_APPROVAL) {
 		return {
 			accentColor: warningColor,

@@ -7,6 +7,7 @@
 import { supabase } from './supabase';
 import { database, StorageKeys } from '../database';
 import { resolveEntityId, isValidUUID } from './displayIdService';
+import { confirmSavedCardPayment } from './stripeSavedCardConfirmation';
 
 // Payment method types
 export const PAYMENT_METHODS = {
@@ -45,6 +46,31 @@ const SERVICE_PRICING = {
 };
 
 const missingHospitalOrganizationWarnings = new Set();
+
+// MONEY SAFETY -- wallet top-up is charge-gated until a server credit receiver exists.
+//
+// Nothing in this system credits patient_wallets for a top-up. Verified:
+//   - process_payment_distribution (the only trigger on payments, attached at
+//     supabase/migrations/20260219000400_finance.sql:1368) returns early for
+//     is_top_up rows (:751-756) and only ever credits organization_wallets /
+//     ivisit_main_wallet (:808, :845).
+//   - The stripe-webhook non-emergency lane only flips the payments row to
+//     'completed' (supabase/functions/webhooks/stripe-webhook/index.ts:236-252).
+//   - No edge function references patient_wallets at all.
+//   - Both patient_wallets writers in migrations are DEBITS (:1017 emergency
+//     payment, :1189 visit tip). No 'balance + ' credit exists for a patient.
+//   - Even the legacy schema routed a null-org top-up to ivisit_main_wallet,
+//     never to the payer's wallet.
+//
+// Confirming the intent therefore takes real money from the card and credits
+// nothing, with no refund path -- strictly worse than the pre-fix flow, which
+// created an intent, never confirmed it, and so never charged. The settlement
+// poll below cannot rescue this: the credit never lands, so every top-up ends
+// in "still settling" forever while the charge stands.
+//
+// Flip this to true in the same change that ships the server-side credit
+// receiver (and its idempotency guard keyed on stripe_payment_intent_id).
+const WALLET_TOP_UP_CREDIT_RECEIVER_AVAILABLE = false;
 
 export const paymentService = {
   supabase,
@@ -214,6 +240,12 @@ export const paymentService = {
       if (!user) throw new Error('User not authenticated');
 
       const resolvedOrgId = await this.resolveId(paymentMethod.organizationId);
+
+      // Unset all defaults for user so the new card is the only default
+      await supabase
+        .from('payment_methods')
+        .update({ is_default: false })
+        .eq('user_id', user.id);
 
       const newMethod = {
         user_id: user.id,
@@ -770,12 +802,120 @@ export const paymentService = {
       return {
         success: true,
         clientSecret: data.clientSecret,
-        paymentIntentId: data.paymentIntentId
+        paymentIntentId: data.paymentIntentId,
+        paymentId: data.paymentId || null
       };
     } catch (error) {
       console.error('Error topping up wallet:', error);
       throw error;
     }
+  },
+
+  /**
+   * Charge a saved card for a wallet top-up and wait for the webhook credit.
+   * Mirrors the card checkout lane: create intent -> confirmSavedCardPayment
+   * -> bounded settlement poll (see useMapCommitPaymentController card flow).
+   */
+  async processWalletTopUp(amount, paymentMethod = null, settlementOptions = {}) {
+    // Fail closed before any intent exists, so no money can move while the
+    // wallet credit receiver is missing. See the constant above for evidence.
+    if (!WALLET_TOP_UP_CREDIT_RECEIVER_AVAILABLE) {
+      console.warn(
+        '[paymentService] Wallet top-up blocked: no server-side credit receiver for is_top_up payments'
+      );
+      throw new Error(
+        'Wallet top-up is temporarily unavailable. Your card has not been charged.'
+      );
+    }
+
+    const topUpAmount = parseFloat(amount);
+    if (!Number.isFinite(topUpAmount) || topUpAmount <= 0) {
+      throw new Error('Top-up amount must be greater than zero');
+    }
+
+    let stripePaymentMethodId = paymentService.getStripePaymentMethodId(paymentMethod);
+    if (!stripePaymentMethodId) {
+      const methods = await paymentService.getPaymentMethods();
+      const chargeableCard = (methods || []).find(
+        (method) => paymentService.getStripePaymentMethodId(method)
+      );
+      stripePaymentMethodId = paymentService.getStripePaymentMethodId(chargeableCard);
+    }
+    if (!stripePaymentMethodId) {
+      throw new Error('Add a card linked to Stripe before topping up your wallet');
+    }
+
+    // The settlement baseline must be verifiable BEFORE any charge: the
+    // lenient getWalletBalance() maps read errors to balance 0, which would
+    // let a pre-existing positive balance masquerade as a landed credit.
+    // Failing here is safe -- no intent exists yet, so no money has moved.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    const { data: walletBefore, error: walletBeforeError } = await supabase
+      .from('patient_wallets')
+      .select('balance, currency')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (walletBeforeError) {
+      throw new Error(
+        `Could not read wallet balance before top-up: ${walletBeforeError.message}`
+      );
+    }
+    const balanceBefore = walletBefore || { balance: 0, currency: 'USD' };
+
+    const intent = await paymentService.topUpWallet(topUpAmount);
+
+    await confirmSavedCardPayment(intent.clientSecret, stripePaymentMethodId);
+
+    const settlement = await paymentService.waitForWalletTopUpCredit(
+      balanceBefore?.balance,
+      settlementOptions
+    );
+
+    return {
+      success: true,
+      credited: settlement.credited,
+      balance: settlement.balance,
+      currency: settlement.currency,
+      paymentIntentId: intent.paymentIntentId,
+      paymentId: intent.paymentId || null
+    };
+  },
+
+  /**
+   * Bounded poll for the Stripe webhook wallet credit after a confirmed top-up.
+   * Reports server truth only: a timeout returns credited: false so callers
+   * show honest pending copy instead of a fabricated balance.
+   */
+  async waitForWalletTopUpCredit(
+    previousBalance,
+    {
+      timeoutMs = 20000,
+      pollIntervalMs = 1200,
+    } = {}
+  ) {
+    const startedAt = Date.now();
+    const baseline = Number(previousBalance);
+    const baselineBalance = Number.isFinite(baseline) ? baseline : 0;
+    let lastKnown = null;
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const wallet = await paymentService.getWalletBalance();
+      const balance = Number(wallet?.balance);
+      if (Number.isFinite(balance)) {
+        lastKnown = { balance, currency: wallet?.currency || 'USD' };
+        if (balance > baselineBalance) {
+          return { credited: true, balance, currency: lastKnown.currency };
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    return {
+      credited: false,
+      balance: lastKnown ? lastKnown.balance : baselineBalance,
+      currency: lastKnown?.currency || 'USD',
+    };
   },
 
   /**
@@ -840,7 +980,9 @@ export const paymentService = {
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error('tipAmount must be greater than zero');
       }
-      const resolvedVisitId = await this.resolveVisitUuid(visitId);
+      // Explicit self-reference: call sites pass this method around detached
+      // (default-parameter injection), which severs `this`.
+      const resolvedVisitId = await paymentService.resolveVisitUuid(visitId);
       if (!resolvedVisitId) {
         throw new Error(`Unable to resolve visit UUID from "${visitId}"`);
       }
@@ -874,7 +1016,9 @@ export const paymentService = {
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error('tipAmount must be greater than zero');
       }
-      const resolvedVisitId = await this.resolveVisitUuid(visitId);
+      // Explicit self-reference: keeps the cash fallback safe when detached,
+      // matching processVisitTip above.
+      const resolvedVisitId = await paymentService.resolveVisitUuid(visitId);
       if (!resolvedVisitId) {
         throw new Error(`Unable to resolve visit UUID from "${visitId}"`);
       }
@@ -1036,8 +1180,9 @@ export const paymentService = {
           return this.checkCashEligibility(hospital.organization_id, estimatedAmount);
         }
 
-        console.warn('[paymentService] Cannot resolve org for cash check, allowing');
-        return true;
+        // Fail closed: cash needs a verifiable org wallet to cover the fee
+        console.warn('[paymentService] Cannot resolve org for cash check, blocking cash');
+        return false;
       }
 
       if (!org.is_active) {

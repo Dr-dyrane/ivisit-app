@@ -96,6 +96,7 @@ export type SubmissionStateKind =
   | "waiting_approval"
   | "processing_payment"
   | "finalizing_dispatch"
+  | "settlement_pending"
   | "dispatched"
   | "failed"
   | "payment_declined";
@@ -122,6 +123,9 @@ export const paymentSubmissionStateAtom = atom<SubmissionState>({
  * OLD: atom(false) — set imperatively via setIsSubmitting() in useMapCommitPaymentController
  * NEW: derived — true when state is processing_payment, finalizing_dispatch, or waiting_approval
  *   (WAITING_APPROVAL included to preserve PT-C lock: CTA stays locked during approval window)
+ * OTA1 E5: settlement_pending is deliberately excluded -- after the settlement wait
+ *   times out the sheet must unlock and stay dismissible while the background watch
+ *   keeps polling server truth.
  */
 export const isSubmittingPaymentAtom = atom((get) => {
   const kind = get(paymentSubmissionStateAtom).kind;

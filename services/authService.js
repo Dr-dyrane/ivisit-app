@@ -29,6 +29,10 @@ const deriveUsernameFromEmail = (email, fallbackId = "") => {
     return `user${normalized || idFallback || "ivisit"}`;
 };
 
+// Supabase OTP codes expire after one hour; a profile created inside this
+// window belongs to the signup attempt currently being verified.
+const OTP_SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+
 // ============================================
 // AUTH SERVICE METHODS
 // ============================================
@@ -703,31 +707,48 @@ const authService = {
 
         if (error) return { success: false, error: handleSupabaseError(error).message };
 
-        let profile = await this.ensureDefaultUsernameForProfile(
+        // The handle_new_user DB trigger pre-creates a profile (with a
+        // generated username) the moment requestOtp creates the auth user, so
+        // username presence cannot signal an existing account. Decide newness
+        // from the pre-defaulting snapshot instead: onboarding data or a
+        // profile older than the OTP validity window means the account
+        // predates this OTP request.
+        const profileSnapshot = await this.getUserProfile(data.user.id);
+        const hasOnboardedProfile = Boolean(
+            profileSnapshot.firstName ||
+            profileSnapshot.lastName ||
+            profileSnapshot.dateOfBirth
+        );
+        // getUserProfile returns {} for BOTH "row absent" and "read failed", so
+        // the profile timestamp alone would misread an established account as
+        // new whenever the profiles read transiently fails. Fall back to the
+        // auth user's own created_at: it ships in this same verifyOtp response,
+        // so it cannot fail independently of the verification that just
+        // succeeded.
+        const accountCreatedAt = profileSnapshot.createdAt || data.user.created_at;
+        const accountCreatedAtMs = accountCreatedAt
+            ? new Date(accountCreatedAt).getTime()
+            : NaN;
+        const createdBeforeOtpWindow =
+            Number.isFinite(accountCreatedAtMs) &&
+            Date.now() - accountCreatedAtMs > OTP_SIGNUP_WINDOW_MS;
+        const isExistingUser = hasOnboardedProfile || createdBeforeOtpWindow;
+
+        const profile = await this.ensureDefaultUsernameForProfile(
             data.user,
-            await this.getUserProfile(data.user.id),
+            profileSnapshot,
         );
         if (!profile.createdAt) {
             console.log("[authService] Profile not yet available, continuing with defaults");
         }
 
-        const isExistingUser = !!profile.username;
-
+        // Insurance status mirrors login(): read-only, no client-side enroll.
         let hasInsurance = false;
         try {
             const policies = await insuranceService.list();
             hasInsurance = policies && policies.length > 0;
         } catch (e) {
             console.warn("Failed to fetch insurance status during OTP verify:", e);
-        }
-
-        if (!hasInsurance) {
-            try {
-                await insuranceService.enrollBasicScheme();
-                hasInsurance = true;
-            } catch (insError) {
-                console.warn("[authService] Failed to auto-enroll in insurance (OTP):", insError);
-            }
         }
 
         const user = await this._decorateCurrentUser(

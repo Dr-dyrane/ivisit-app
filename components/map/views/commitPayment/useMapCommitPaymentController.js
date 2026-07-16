@@ -642,9 +642,6 @@ export function useMapCommitPaymentController({
       return;
     }
 
-    if (submitLockRef.current) return;
-    submitLockRef.current = true;
-
     const isCardSelected = requiresSignedCardConfirmation(
       submitContract.methodKind,
     );
@@ -672,6 +669,14 @@ export function useMapCommitPaymentController({
       showToast(nextMessage, "error");
       return;
     }
+
+    // PULLBACK NOTE: OTA1 E4 -- lock acquired after every synchronous guard above
+    // OLD: lock taken before the canonical-retry mismatch guard, whose early return
+    //      skipped finally and left submitLockRef stuck true (pay CTA bricked until unmount)
+    // NEW: guards return lock-free (same placement grammar as the submitContract guard);
+    //      release stays single-owner in finally
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
 
     // UX-D D-6: isSubmitting derived from state machine; PROCESSING_PAYMENT / WAITING_APPROVAL drives UI lock
     setErrorMessage("");
@@ -811,6 +816,87 @@ export function useMapCommitPaymentController({
       canonicalPaymentRetryRef.current = null;
 
       clearCommitFlow?.();
+
+      // PULLBACK NOTE: OTA1 E5 -- settlement-timeout recovery. When the awaited
+      // settlement wait times out the sheet moves to dismissible SETTLEMENT_PENDING
+      // and this watch keeps polling server truth in the background. A late success
+      // runs the same tracking handoff grammar as the demo cash auto-approval
+      // recovery below: handleRequestComplete -> invalidateActiveTrip ->
+      // DISPATCHED -> success toast -> onConfirm.
+      const watchPendingSettlement = (settlementRequestId) => {
+        void paymentService
+          .waitForEmergencyPaymentSettlement(settlementRequestId, {
+            timeoutMs: 60000,
+            pollIntervalMs: 2000,
+          })
+          .then(async (lateSettlement) => {
+            if (!lateSettlement?.success) {
+              if (lateSettlement?.code === "PAYMENT_DECLINED") {
+                setTransactionState(
+                  MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
+                  transactionRequestIds,
+                );
+                if (isMountedRef.current) {
+                  // OTA1 E5 review -- clear the SETTLEMENT_PENDING info line; leaving
+                  // "Payment was received" beside a declined result is contradictory
+                  // money copy (error wins the render, but the atom persists).
+                  setInfoMessage("");
+                  setErrorMessage(
+                    "Payment was declined. Choose another card or cash.",
+                  );
+                  showToast(
+                    "Payment was declined. Choose another card or cash.",
+                    "error",
+                  );
+                }
+              }
+              return;
+            }
+            const lateCompletionPayload = buildCommitPaymentCompletionPayload({
+              initiatedRequest,
+              result: {
+                ...initiationResult,
+                request: lateSettlement.request || null,
+                requestId:
+                  lateSettlement.request?.id || initiationResult.requestId,
+                displayId:
+                  lateSettlement.request?.display_id ||
+                  initiationResult.displayId,
+                estimatedArrival:
+                  lateSettlement.request?.estimated_arrival ||
+                  initiationResult.estimatedArrival,
+              },
+              hospital,
+            });
+            await handleRequestComplete(lateCompletionPayload);
+            await invalidateActiveTrip();
+            // OTA1 E5 review -- the SETTLEMENT_PENDING info line ("Dispatch is still
+            // finalizing") must not survive under the DISPATCHED card. This is the only
+            // DISPATCHED path reached with an info message already set.
+            if (isMountedRef.current) {
+              setInfoMessage("");
+            }
+            setTransactionState(
+              MAP_COMMIT_PAYMENT_TRANSACTION_STATES.DISPATCHED,
+              {
+                displayId: lateCompletionPayload.displayId,
+                requestId: lateCompletionPayload.requestId,
+              },
+            );
+            showToast(
+              isBedFlow
+                ? "Payment received. Booking is live."
+                : "Payment received. Dispatching now.",
+              "success",
+            );
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                onConfirm?.();
+              }
+            }, 800);
+          })
+          .catch(() => null);
+      };
 
       if (isCashSelected && initiationResult.requiresApproval) {
         const pendingApprovalState = buildPendingApprovalState({
@@ -965,8 +1051,36 @@ export function useMapCommitPaymentController({
           );
 
         if (!settlementResult?.success) {
+          // PULLBACK NOTE: OTA1 E5 review -- declined is not pending. Mirror the card
+          // branch's PAYMENT_DECLINED pre-check so the SETTLEMENT_PENDING copy
+          // ("Payment went through") is never shown for a declined wallet settlement.
+          if (settlementResult?.code === "PAYMENT_DECLINED") {
+            setTransactionState(
+              MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
+              transactionRequestIds,
+            );
+            setErrorMessage(
+              "Payment was declined. Choose another card or cash.",
+            );
+            showToast(
+              "Payment was declined. Choose another card or cash.",
+              "error",
+            );
+            return;
+          }
+
+          // PULLBACK NOTE: OTA1 E5 -- timeout must not strand a non-dismissible
+          // FINALIZING_DISPATCH sheet after money moved
+          // OLD: state stayed finalizing_dispatch (isSubmitting=true, no close control)
+          // NEW: surface server truth, unlock dismissal, keep settlement watch alive
+          await invalidateActiveTrip();
+          setTransactionState(
+            MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING,
+            transactionRequestIds,
+          );
           setInfoMessage("Wallet payment is still finalizing dispatch.");
           showToast("Wallet payment is still finalizing dispatch.", "info");
+          watchPendingSettlement(initiationResult.requestId);
           return;
         }
 
@@ -1087,11 +1201,19 @@ export function useMapCommitPaymentController({
             return;
           }
 
+          // PULLBACK NOTE: OTA1 E5 -- same timeout recovery as the wallet branch:
+          // dismissible SETTLEMENT_PENDING + background settlement watch
+          await invalidateActiveTrip();
+          setTransactionState(
+            MAP_COMMIT_PAYMENT_TRANSACTION_STATES.SETTLEMENT_PENDING,
+            transactionRequestIds,
+          );
           setInfoMessage("Payment was received. Dispatch is still finalizing.");
           showToast(
             "Payment was received. Dispatch is still finalizing.",
             "info",
           );
+          watchPendingSettlement(initiationResult.requestId);
           return;
         }
 

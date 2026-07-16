@@ -14,7 +14,6 @@ import {
   insuranceShowAddModalAtom,
   insuranceWizardStepAtom,
 } from "../../atoms/uiEphemeral.atoms";
-import { notificationDispatcher } from "../../services/notificationDispatcher";
 import { insuranceService } from "../../services/insuranceService";
 import { ocrService } from "../../services/ocrService";
 import { INSURANCE_SCREEN_COPY } from "../../components/insurance/insuranceScreen.content";
@@ -240,9 +239,6 @@ export function useInsuranceScreenModel() {
             onPress: async () => {
               try {
                 await insuranceService.delete(id);
-                await notificationDispatcher.dispatchInsuranceEvent("deleted", {
-                  id,
-                });
                 await refreshPolicies();
                 await syncUserData?.();
                 showToast(INSURANCE_SCREEN_COPY.messages.deleted, "success");
@@ -386,11 +382,8 @@ export function useInsuranceScreenModel() {
       if (editingId) {
         await insuranceService.update(editingId, finalData);
       } else {
-        const newPolicy = await insuranceService.create(finalData);
-        await notificationDispatcher.dispatchInsuranceEvent(
-          "created",
-          newPolicy,
-        );
+        // insuranceService.create dispatches the "created" notification itself.
+        await insuranceService.create(finalData);
       }
 
       await refreshPolicies();
