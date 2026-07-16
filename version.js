@@ -15,7 +15,7 @@ const VERSION = "1.0.7";
 // Monotonic: increments on every release push, whether a native build (`eas build`)
 // or an over-the-air update (`npm run ota:bump && eas update`). A tester reads
 // `1.0.7.<N>` in Settings and knows a higher N = a fresher fix.
-export const OTA_BUILD = 51;
+export const OTA_BUILD = 52;
 
 // e.g. "1.0.7.51" -- runtime + build counter, for display surfaces (Settings footer).
 export const FULL_VERSION = `${VERSION}.${OTA_BUILD}`;
