@@ -398,6 +398,9 @@ const styles = StyleSheet.create({
 	primaryButtonFlex: {
 		flex: 1,
 		minWidth: 0,
+		// Hard cap: the CTA can never spill past its share of the footer row,
+		// whatever the sheet/container is doing upstream (overlap fix, 2026-07-15).
+		maxWidth: "72%",
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 18,
 	},
