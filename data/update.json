@@ -1,34 +1,14 @@
 {
-  "_lastCommitHash": "c566d7ff",
-  "_lastCommitDate": "2026-07-16T12:45:00-07:00",
+  "_lastCommitHash": "2ca00b43",
+  "_lastCommitDate": "2026-07-16T13:30:00-07:00",
   "version": "1.0.8",
   "date": "2026-07-16",
-  "title": "Notifications and Web Fixes - 1.0.8.56",
-  "summary": "Notification sounds actually play, urgent cash approvals can be approved from the notification itself, and confirmation prompts on the web now work instead of doing nothing. Plus sign-in links, tips, and payment recovery all behave.",
+  "title": "Account Deletion Honesty - 1.0.8.57",
+  "summary": "If deleting your account does not work, the app now tells you instead of claiming it succeeded.",
   "changes": [
     {
       "type": "fix",
-      "message": "Notification sounds and haptics now play when something arrives - the Settings toggle was never wired to anything."
-    },
-    {
-      "type": "fix",
-      "message": "Urgent cash approvals can be approved or declined straight from the notification instead of opening a screen with no buttons."
-    },
-    {
-      "type": "fix",
-      "message": "On the web, confirmation prompts (clearing notifications, removing insurance, payment confirms) now actually appear instead of silently doing nothing."
-    },
-    {
-      "type": "fix",
-      "message": "Sign-in and sign-up links open the right screen instead of bouncing you to the map, and invite links no longer get mistaken for sign-in links."
-    },
-    {
-      "type": "fix",
-      "message": "A declined payment can be retried with another method instead of leaving you stuck."
-    },
-    {
-      "type": "improvement",
-      "message": "Live bed counts stay fresh, your medical and insurance details are cleared properly on sign-out, and the app checks for updates when you return to it."
+      "message": "Deleting your account now reports honestly. If the deletion cannot complete, you are told plainly instead of being shown a success message while the account is still there."
     }
   ]
 }
