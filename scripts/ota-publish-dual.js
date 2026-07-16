@@ -20,7 +20,12 @@
 // crashes at map mount (Resources$NotFoundException #0x0, MapMarker.setImage:370;
 // see docs/audit/map/ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md). If a 1.0.7 hotfix
 // is ever needed, publish it from the pre-marker-fix lineage (0aacc6bd), never main.
-const { execSync } = require("child_process");
+//
+// The HARD LAW above is now MACHINE-ENFORCED: scripts/assert-marker-density-law.js
+// runs in --ota mode before any `eas update` and aborts the publish if the Android
+// marker asset set drifted from the last shipped build's manifest.
+const { execSync, spawnSync } = require("child_process");
+const path = require("path");
 
 const SUPPORTED_RUNTIMES = ["1.0.8"];
 
@@ -30,6 +35,23 @@ const message = messageParts.join(" ").trim();
 if (!branch || !message) {
   console.error('Usage: node scripts/ota-publish-dual.js <branch> "<message>"');
   process.exit(1);
+}
+
+// ANDROID MARKER DENSITY LAW gate -- BEFORE any eas update, never after.
+// An OTA that references a drawable the target runtime's embedded build never
+// compiled crashes every install at map mount (Resources$NotFoundException #0x0,
+// MapMarker.setImage:370). That shipped once as 1.0.7.53 and was rolled back on
+// all branches. This gate exists so it cannot ship twice.
+{
+  const guard = path.join(__dirname, "assert-marker-density-law.js");
+  const result = spawnSync(process.execPath, [guard, "--ota"], { stdio: "inherit" });
+  if (result.status !== 0) {
+    console.error("\n[ota:publish-dual] ABORTED before `eas update`: the ANDROID MARKER DENSITY LAW gate failed.");
+    console.error("[ota:publish-dual] Nothing was published. Android marker asset changes are BUILD-ONLY --");
+    console.error("[ota:publish-dual] ship a build + bump the runtime instead of publishing this bundle OTA.");
+    console.error("[ota:publish-dual] Authority: docs/audit/map/ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md");
+    process.exit(1);
+  }
 }
 
 // Staging carries the App-Review demo-auth env; preserve it so review sign-in never regresses.
