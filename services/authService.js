@@ -608,22 +608,30 @@ const authService = {
      * Delete current user's account
      * @returns {Promise<boolean>}
      */
+    // PULLBACK NOTE: AUDIT-N1-2026-07-16
+    // OLD: the catch swallowed every failure and `return true`d, so a failed deletion
+    // reported success. delete_user() RAISES on FK RESTRICT -- which fires for any
+    // patient who ever had a responder offered (emergency_responder_assignments
+    // .emergency_request_id is ON DELETE RESTRICT) -- so those users were told
+    // "Account deleted successfully" while their account was fully intact, and the
+    // failure was invisible to us. The caller (AuthContext.deleteAccount) already
+    // owns an honest failure path incl. the local logout; it was unreachable dead
+    // code because nothing ever threw.
+    // NEW: let the failure propagate. Deletion is not a thing we may lie about.
+    // NOTE: this does NOT make deletion correct -- delete_user() still removes only
+    // the profiles row, stranding the auth.users row as a phantom account, and that
+    // half returns no error at all. See docs/audit/planning/DB_CHANGE_BACKLOG_2026-07-16.md
+    // (the fix is a soft-delete redesign, not a client change).
     async deleteUser() {
-        try {
-            const { error } = await supabase.rpc('delete_user');
+        const { error } = await supabase.rpc('delete_user');
 
-            if (error) {
-                console.error("Delete user RPC failed:", error);
-                throw handleSupabaseError(error);
-            }
-
-            await this.logout();
-            return true;
-        } catch (error) {
-            console.warn("Delete user failed or not fully supported:", error);
-            await this.logout();
-            return true; // We return true to allow UI to proceed to logout screen
+        if (error) {
+            console.error("[authService] delete_user RPC failed:", error);
+            throw handleSupabaseError(error);
         }
+
+        await this.logout();
+        return true;
     },
 
     // ============================================
