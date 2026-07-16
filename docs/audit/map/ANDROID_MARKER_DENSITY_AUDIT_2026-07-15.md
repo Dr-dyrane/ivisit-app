@@ -78,14 +78,39 @@ structurally, not procedurally).
   size beside the same blue pin. Screenshots in session records.
 - Metro/iOS/web: no-regression pass (original asset path untouched on those platforms).
 
-## Delivery semantics
+## Delivery semantics — CORRECTED after the 1.0.7.53 OTA crash incident
 
-- OTA (`eas update`) DELIVERS this fix to existing installs: the asset bytes changed,
-  so they are downloaded and served over the Fresco `file://` branch, which selects the
-  density-matched variant — correct size there too. Unchanged assets would have been
-  deduped to the (broken) embedded copies; that is why merely republishing old assets
-  could never fix it.
-- Fresh installs inherit the fix in the next `eas build` (embedded buckets).
+The paragraph originally written here claimed the fix could ship OTA. **It could not,
+and shipping it OTA crashed the app at startup on installed builds.** Proven on the
+preview-channel repro rig (vc30 APK + `.53` OTA, adb logcat):
+
+```
+FATAL EXCEPTION: expo-updates-error-recovery
+JSApplicationIllegalArgumentException: Error while updating property 'image' of a
+view managed by: AIRMapMarker
+Caused by: android.content.res.Resources$NotFoundException: Resource ID #0x0
+    at com.rnmaps.maps.MapMarker.setImage(MapMarker.java:370)
+```
+
+Mechanism: on an OTA launch the multi-scale (@2x/@3x) lookup in expo-updates' local
+asset map misses, and RN falls back to resolving the marker as an Android RESOURCE
+NAME — but builds older than this fix never compiled `assets/map/android/*` into
+`res/drawable-*`, so `getIdentifier` returns 0 and `MapMarker.setImage` throws at map
+mount (the map is the home screen -> crash at startup). The `.53` OTA was rolled back
+on all branches (production/staging republished `.52` groups; preview rolled back to
+embedded).
+
+**THE LAW: density-variant native asset changes are BUILD-ONLY. Never OTA a bundle
+that references new drawable resources to a runtime whose embedded builds predate
+them.** Enforcement: runtime bumped to 1.0.8 with the first fixed build (vc32), and
+`scripts/ota-publish-dual.js` SUPPORTED_RUNTIMES reduced to ["1.0.8"] — runtimes
+1.0.7/1.0.6 are closed to main-code OTAs (a hotfix for them must be published from
+the pre-marker-fix lineage, 0aacc6bd).
+
+- Fresh installs / store updates (vc32+, runtime 1.0.8): fix embedded, verified on
+  the release rig.
+- Existing 1.0.7/1.0.6 installs: remain on stable `.52` code (giant markers, alive)
+  until they update from the store.
 
 ## Guardrail (supersedes the May guardrail's blind spot)
 

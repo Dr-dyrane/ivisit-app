@@ -1,26 +1,26 @@
 {
-  "_lastCommitHash": "6a4ac48d",
-  "_lastCommitDate": "2026-07-15T15:10:00-07:00",
-  "version": "1.0.7",
+  "_lastCommitHash": "78815dcf",
+  "_lastCommitDate": "2026-07-15T20:45:00-07:00",
+  "version": "1.0.8",
   "date": "2026-07-15",
-  "title": "Lifecycle Fix - v1.0.7",
-  "summary": "Fresh installable 1.0.7 build so Android testers stranded on the old 1.0.5 preview finally get the fix: arrival confirmation, visit completion, scheduled-visit continuity, and emergency pricing now flow end-to-end. Runtime moved 1.0.6 -> 1.0.7; install this build to receive future over-the-air updates.",
+  "title": "Map Marker Fix - v1.0.8",
+  "summary": "New installable build (runtime 1.0.8) with correctly sized map markers on Android - hospital pins, provider pins, and the ambulance now render at their intended size on installed builds. Includes the full request-to-visit lifecycle continuity fixes.",
   "changes": [
     {
       "type": "fix",
-      "message": "Confirm arrival and complete visits reliably - the full emergency lifecycle now syncs from dispatch through completion and rating."
-    },
-    {
-      "type": "feature",
-      "message": "Scheduled visits gained a live lifecycle card, cancel confirmation, and recovery notice on the map visit detail."
+      "message": "Map markers render at the correct size on Android installed builds - hospital pins, provider pins, and the live ambulance are no longer oversized."
     },
     {
       "type": "fix",
-      "message": "Emergency pricing never blocks intake - a server-owned fallback quote applies when an exact service tier is missing."
+      "message": "Confirm arrival and complete visits reliably - the full emergency lifecycle syncs from dispatch through completion and rating."
+    },
+    {
+      "type": "feature",
+      "message": "Scheduled visits: live lifecycle card, cancel confirmation, and recovery notices on the map visit detail."
     },
     {
       "type": "improvement",
-      "message": "New installable build (runtime 1.0.7) so testers off the frozen 1.0.5 preview APK get the fix and future OTAs. Check Settings for the muted build marker."
+      "message": "Cleaner transport selection footer, realtime tracking hardening, and a version marker at the bottom of Settings."
     }
   ]
 }

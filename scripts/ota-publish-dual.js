@@ -11,11 +11,18 @@
 // The Settings footer reads the LIVE runtime (expo-updates), so each install shows
 // its own "runtime.<OTA_BUILD>" from the same bundle.
 //
-// Keep SUPPORTED_RUNTIMES in sync with the runtimes that still have live installs.
-// Drop a runtime here once its installs have all migrated to a newer build.
+// Keep SUPPORTED_RUNTIMES in sync with the runtimes whose EMBEDDED builds contain
+// every native resource the CURRENT main bundle references.
+//
+// HARD LAW (2026-07-15, OTA crash incident): runtimes 1.0.7 and 1.0.6 are CLOSED to
+// main-code OTAs. Main now requires assets/map/android/* as Android RESOURCES, which
+// builds vc31 and older never compiled in -- an OTA from main to those runtimes
+// crashes at map mount (Resources$NotFoundException #0x0, MapMarker.setImage:370;
+// see docs/audit/map/ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md). If a 1.0.7 hotfix
+// is ever needed, publish it from the pre-marker-fix lineage (0aacc6bd), never main.
 const { execSync } = require("child_process");
 
-const SUPPORTED_RUNTIMES = ["1.0.7", "1.0.6"];
+const SUPPORTED_RUNTIMES = ["1.0.8"];
 
 const [, , branch, ...messageParts] = process.argv;
 const message = messageParts.join(" ").trim();
