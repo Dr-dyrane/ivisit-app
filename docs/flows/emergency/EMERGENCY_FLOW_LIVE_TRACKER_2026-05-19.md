@@ -480,3 +480,22 @@ matched), then deleted, and the remote migration history repaired
 pillars only with local == remote, `db push --dry-run` reports the remote database up to date, and
 live read-only probes confirm `resolve_emergency_pricing` (generic-fallback quote returned) and
 `nearby_hospitals` (7 rows) remain live. Same procedure as the 20260714* consolidation (`06d5b01f`).
+
+### Build Release: 2026-07-15 (1.0.7.52 - footer cap + doctor alignment)
+
+Released from clean App `main` commit `b9dc8a35` (marker 1.0.7.52) on top of `23bac300`
+(Select Transportation footer CTA maxWidth cap; SDK-54 patch alignment, expo doctor 18/18;
+mlkit-ocr excluded with migration TODO). Tracking sheet untouched (ETA re-anchor attempt
+reverted after live regression despite green contracts -- data-layer plan documented).
+
+Artifacts (both runtime 1.0.7, embedded 1.0.7.52):
+- Android APK versionCode 30 (preview, sideload): build 2e70ebf9, saved at
+  artifacts/eas-builds/android-preview-1.0.7-build-30/
+- Android AAB versionCode 31 (production, Play Console manual upload): build a1bc3c5d,
+  saved at artifacts/eas-builds/android-production-1.0.7-build-31/
+
+OTA parity: 1.0.7.52 published to production (47969d6f rt1.0.7 / 99c29246 rt1.0.6) and
+staging (9a1b0e3e rt1.0.7 / 697f8e2f rt1.0.6); web deployed from the same push.
+
+Open investigation: intermittent giant map markers on installed APKs only (Metro/web
+render correctly; marker code unchanged since June) -- verify on build 30 sideload.
