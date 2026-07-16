@@ -21,7 +21,11 @@ import { COLORS } from "../../../constants/colors";
 import useMarkerRenderPulse from "../../../hooks/map/useMarkerRenderPulse";
 import { normalizeCoordinate } from "../../../utils/emergencyContextHelpers";
 
-const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
+// ANDROID MARKER LAW (2026-07-15): density-variant set on Android (see
+// EmergencyLocationPreviewMap.jsx + marker-defect audit); originals on iOS/web.
+const HOSPITAL_MARKER_IMAGE = Platform.OS === "android"
+	? require("../../../assets/map/android/selected_hospital.png")
+	: require("../../../assets/map/selected_hospital.png");
 /*
 HOSPITAL_MARKER_SIZE_CHECKPOINT={
   "baseCommit":"2afd31c793a315018aa76843190197d0bd50a7e8",

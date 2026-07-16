@@ -20,7 +20,20 @@ import { PROVIDER_TYPES } from "../../constants/providerTypes";
 
 // Pre-colored static PNGs per provider type — generated from hospital.png base
 // Each pair: normal (54x91) and selected (68x114), matching hospital marker dimensions
-const PROVIDER_MARKER_IMAGES = {
+// ANDROID MARKER LAW (2026-07-15, marker-defect audit): Android installed builds
+// require the density-variant set under assets/map/android/ (@3x = byte-copy of
+// the proven bitmaps) because fromResource density-scales mdpi resources -> giant
+// pins. iOS/web keep the originals (shared variants regressed iOS tiny in May).
+const PROVIDER_MARKER_IMAGES = Platform.OS === "android" ? {
+  [PROVIDER_TYPES.PHARMACY]:     { normal: require("../../assets/map/android/provider-markers/pharmacy.png"),      selected: require("../../assets/map/android/provider-markers/selected_pharmacy.png") },
+  [PROVIDER_TYPES.LAB]:          { normal: require("../../assets/map/android/provider-markers/lab.png"),           selected: require("../../assets/map/android/provider-markers/selected_lab.png") },
+  [PROVIDER_TYPES.RADIOLOGY]:    { normal: require("../../assets/map/android/provider-markers/radiology.png"),     selected: require("../../assets/map/android/provider-markers/selected_radiology.png") },
+  [PROVIDER_TYPES.URGENT_CARE]:  { normal: require("../../assets/map/android/provider-markers/urgent_care.png"),   selected: require("../../assets/map/android/provider-markers/selected_urgent_care.png") },
+  [PROVIDER_TYPES.CLINIC]:       { normal: require("../../assets/map/android/provider-markers/clinic.png"),        selected: require("../../assets/map/android/provider-markers/selected_clinic.png") },
+  [PROVIDER_TYPES.MENTAL_HEALTH]:{ normal: require("../../assets/map/android/provider-markers/mental_health.png"), selected: require("../../assets/map/android/provider-markers/selected_mental_health.png") },
+  [PROVIDER_TYPES.WOMENS_CARE]:  { normal: require("../../assets/map/android/provider-markers/womens_care.png"),   selected: require("../../assets/map/android/provider-markers/selected_womens_care.png") },
+  [PROVIDER_TYPES.PEDIATRICS]:   { normal: require("../../assets/map/android/provider-markers/pediatrics.png"),    selected: require("../../assets/map/android/provider-markers/selected_pediatrics.png") },
+} : {
   [PROVIDER_TYPES.PHARMACY]:     { normal: require("../../assets/map/provider-markers/pharmacy.png"),      selected: require("../../assets/map/provider-markers/selected_pharmacy.png") },
   [PROVIDER_TYPES.LAB]:          { normal: require("../../assets/map/provider-markers/lab.png"),           selected: require("../../assets/map/provider-markers/selected_lab.png") },
   [PROVIDER_TYPES.RADIOLOGY]:    { normal: require("../../assets/map/provider-markers/radiology.png"),     selected: require("../../assets/map/provider-markers/selected_radiology.png") },

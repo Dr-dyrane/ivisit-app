@@ -1,8 +1,21 @@
 import React, { memo } from "react";
 import { Marker } from "./MapComponents";
 
-const LOGO_MARKER_IMAGE = require("../../assets/map/hospital.png");
-const LOGO_MARKER_IMAGE_SELECTED = require("../../assets/map/selected_hospital.png");
+// ANDROID MARKER LAW (2026-07-15, marker-defect audit): installed Android builds
+// load Marker image= via BitmapDescriptorFactory.fromResource, which density-scales
+// mdpi resources (single-scale PNGs bucket into drawable-mdpi -> ~3x giant on
+// device). Android therefore requires the density-variant set under
+// assets/map/android/ (1x/@2x/@3x, where @3x is a byte-copy of the proven bitmap).
+// iOS/web keep the original single-scale assets -- the May 2026 saga (beb444fe ->
+// 4acbc0f2 rollback) proved shared variants regress iOS to tiny.
+import { Platform } from "react-native";
+
+const LOGO_MARKER_IMAGE = Platform.OS === "android"
+	? require("../../assets/map/android/hospital.png")
+	: require("../../assets/map/hospital.png");
+const LOGO_MARKER_IMAGE_SELECTED = Platform.OS === "android"
+	? require("../../assets/map/android/selected_hospital.png")
+	: require("../../assets/map/selected_hospital.png");
 /*
 HOSPITAL_MARKER_SIZE_CHECKPOINT={
   "baseCommit":"2afd31c793a315018aa76843190197d0bd50a7e8",

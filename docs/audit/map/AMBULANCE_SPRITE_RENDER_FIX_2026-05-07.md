@@ -1,10 +1,18 @@
 ---
 status: historical
 owner: architecture
-last_updated: 2026-05-24
+last_updated: 2026-07-15
 ---
 
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+> **AMENDMENT 2026-07-15:** the 90x90 single-scale sprites below rendered giant on
+> INSTALLED Android builds (mdpi bucket + `fromResource` density scaling — the same
+> defect as the hospital pins). Android now loads a density-variant sprite set from
+> `assets/map/android/ambulance-sprites/` (@3x = byte-copy of these 90x90 bitmaps)
+> behind a `Platform.OS === "android"` require split in `RouteLayer.jsx`; iOS/web keep
+> the sprites below unchanged. Details + guardrail:
+> [ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md](./ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md)
 
 ---
 

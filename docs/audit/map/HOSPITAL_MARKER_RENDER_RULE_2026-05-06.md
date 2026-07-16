@@ -1,10 +1,24 @@
 ---
 status: historical
 owner: architecture
-last_updated: 2026-05-24
+last_updated: 2026-07-15
 ---
 
 > **Reconciliation 2026-05-24:** See [docs/audit/RECONCILIATION_2026-05-24.md](../RECONCILIATION_2026-05-24.md) for current status of the findings below and any carryforward.
+
+> **AMENDMENT 2026-07-15 — rule 2 below was HALF-right and shipped a latent defect.**
+> "Native sizing is asset-driven" holds only on the Fresco path (Metro `http://` and
+> OTA-downloaded `file://` assets = raw pixels). On INSTALLED builds, embedded assets
+> load via `BitmapDescriptorFactory.fromResource`, which density-scales `drawable-mdpi`
+> resources — single-scale PNGs rendered ~3x giant on real devices. The May "Expo native
+> and APK" validation was actually republished via `eas update` (OTA/Fresco), so the
+> embedded path was never exercised. Fixed 2026-07-15 with Android-only density-variant
+> assets (`assets/map/android/**`, @3x = byte-copy of the proven bitmaps) behind
+> `Platform.OS === "android"` requires — iOS/web keep the assets below unchanged.
+> Marker owners now also include `ProviderMarkers.jsx` and `RouteLayer.jsx`. Any future
+> marker change MUST be verified on an installed release build (local `assembleRelease`
+> rig), not Metro/OTA alone. Full chain, timeline, and rollback:
+> [ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md](./ANDROID_MARKER_DENSITY_AUDIT_2026-07-15.md)
 
 ---
 

@@ -21,7 +21,29 @@ const getAmbulanceSpriteDimensions = () =>
 		? AMBULANCE_SPRITE_DIMENSIONS.web
 		: AMBULANCE_SPRITE_DIMENSIONS.native;
 
-const AMBULANCE_SPRITES = [
+// ANDROID MARKER LAW (2026-07-15, marker-defect audit): Android installed builds
+// need the density-variant sprite set (assets/map/android/, @3x = byte-copy of the
+// proven 90x90 bitmaps) because fromResource density-scales mdpi resources ->
+// giant sprites. iOS/web keep the original single-scale sprites (May 2026 saga:
+// shared variants regressed iOS tiny; see beb444fe -> 4acbc0f2).
+const AMBULANCE_SPRITES = Platform.OS === "android" ? [
+	require("../../assets/map/android/ambulance-sprites/ambulance_00.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_01.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_02.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_03.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_04.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_05.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_06.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_07.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_08.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_09.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_10.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_11.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_12.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_13.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_14.png"),
+	require("../../assets/map/android/ambulance-sprites/ambulance_15.png"),
+] : [
 	require("../../assets/map/ambulance-sprites/ambulance_00.png"),
 	require("../../assets/map/ambulance-sprites/ambulance_01.png"),
 	require("../../assets/map/ambulance-sprites/ambulance_02.png"),

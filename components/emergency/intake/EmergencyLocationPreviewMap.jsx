@@ -56,8 +56,16 @@ HOSPITAL_MARKER_SIZE_CHECKPOINT={
   "web":{"normal":"28x48","selected":"38x64"}
 }
 */
-const HOSPITAL_MARKER_IMAGE = require("../../../assets/map/hospital.png");
-const SELECTED_HOSPITAL_MARKER_IMAGE = require("../../../assets/map/selected_hospital.png");
+// ANDROID MARKER LAW (2026-07-15, marker-defect audit): Android uses the
+// density-variant set (assets/map/android/, @3x = byte-copy of the proven bitmap)
+// because fromResource density-scales mdpi resources -> giant pins on installed
+// builds. iOS/web keep the originals (shared variants regressed iOS tiny in May).
+const HOSPITAL_MARKER_IMAGE = Platform.OS === "android"
+  ? require("../../../assets/map/android/hospital.png")
+  : require("../../../assets/map/hospital.png");
+const SELECTED_HOSPITAL_MARKER_IMAGE = Platform.OS === "android"
+  ? require("../../../assets/map/android/selected_hospital.png")
+  : require("../../../assets/map/selected_hospital.png");
 const HOSPITAL_MARKER_DIMENSIONS = {
   native: {
     normal: { width: 54, height: 91 },
