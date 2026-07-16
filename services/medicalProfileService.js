@@ -104,17 +104,27 @@ export const medicalProfileService = {
       }
     }
 
-    // Fallback to local storage
-    const [cachedSnapshot, stored] = await Promise.all([
-      database.read(StorageKeys.MEDICAL_PROFILE_CACHE, null),
-      database.read(StorageKeys.MEDICAL_PROFILE, null),
-    ]);
-    if (cachedSnapshot?.profile && typeof cachedSnapshot.profile === "object") {
+    // Fallback to local storage. PHI is only served back when the cached snapshot
+    // provably belongs to the caller: an ownerless cache (legacy StorageKeys.
+    // MEDICAL_PROFILE) could belong to a previous account on this device.
+    if (!userId) return { ...DEFAULT_MEDICAL_PROFILE };
+
+    const cachedSnapshot = await database.read(
+      StorageKeys.MEDICAL_PROFILE_CACHE,
+      null,
+    );
+    const isOwnedByCaller =
+      cachedSnapshot?.ownerUserId &&
+      String(cachedSnapshot.ownerUserId) === String(userId);
+    if (
+      isOwnedByCaller &&
+      cachedSnapshot?.profile &&
+      typeof cachedSnapshot.profile === "object"
+    ) {
       return normalizeMedicalProfile(cachedSnapshot.profile);
     }
-    if (!stored || typeof stored !== "object")
-      return { ...DEFAULT_MEDICAL_PROFILE };
-    return normalizeMedicalProfile(stored);
+
+    return { ...DEFAULT_MEDICAL_PROFILE };
   },
 
   async update(updates, options = {}) {
@@ -205,8 +215,12 @@ export const medicalProfileService = {
       }
     }
 
-    // Update Local Cache regardless of DB error (for offline support)
-    const current = await this.get();
+    // Update Local Cache regardless of DB error (for offline support).
+    // Pass the already-resolved userId: get() now returns DEFAULT_MEDICAL_PROFILE
+    // when it cannot prove the caller's identity, and bare get() would re-resolve
+    // via a networked auth.getUser() that fails offline -- merging this update onto
+    // an empty base and wiping every field the update does not mention.
+    const current = await this.get({ userId });
     const next =
       updates && typeof updates === "object"
         ? normalizeMedicalProfile({

@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { preferencesService } from "../services/preferencesService";
-import { soundService } from "../services/soundService";
+// soundService.js has no named `soundService` export -- the named import bound
+// undefined, so init/loadSounds/setSoundEnabled threw on every call.
+import soundService from "../services/soundService";
 
 const PreferencesContext = createContext();
 
@@ -27,8 +29,17 @@ export function PreferencesProvider({ children }) {
 		(async () => {
 			setIsLoading(true);
 			try {
-				await soundService.init();
-				await soundService.loadSounds();
+				// Audio bootstrap is best-effort and must never block preference
+				// loading: a throw here previously left preferences null app-wide.
+				try {
+					await soundService.init();
+					await soundService.loadSounds();
+				} catch (soundError) {
+					// Sound stays unavailable; preferences still load. Logged rather
+					// than swallowed: a silent audio failure is exactly what hid the
+					// broken soundService import for an entire release.
+					console.warn("[PreferencesContext] Sound bootstrap failed:", soundError);
+				}
 
 				// Only fetch from DB if user is authenticated
 				const { data: { user } } = await (await import('../services/supabase')).supabase.auth.getUser();

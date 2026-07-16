@@ -1,3 +1,4 @@
+import * as Updates from "expo-updates";
 import { supabase } from "./supabase";
 
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
@@ -11,8 +12,20 @@ const REVIEW_DEMO_EMAIL = normalizeEmail(
 	process.env.EXPO_PUBLIC_REVIEW_DEMO_AUTH_EMAIL || "support@ivisit.ng"
 );
 
+// The env flag alone is not a safe gate: it is baked in at publish time, so any OTA
+// cut from a machine that exports EXPO_PUBLIC_REVIEW_DEMO_AUTH_ENABLED would carry
+// static-code sign-in into production. Channel is read LIVE from the running build.
+// eas.json: the review/store profile "staging" -> channel "staging" (it carries the
+// demo env); "production" -> channel "production" with no demo env. Channel is null
+// on Expo Go / dev clients, which __DEV__ covers.
+const isReviewDemoChannel = () => {
+	if (__DEV__) return true;
+	return Updates?.channel === "staging";
+};
+
 export const reviewDemoAuthService = {
 	isEnabled() {
+		if (!isReviewDemoChannel()) return false;
 		return isTruthyEnv(process.env.EXPO_PUBLIC_REVIEW_DEMO_AUTH_ENABLED);
 	},
 

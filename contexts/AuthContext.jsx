@@ -35,6 +35,11 @@ export const AuthProvider = ({ children }) => {
 			database.delete(StorageKeys.EMERGENCY_STATE),
 			database.delete(StorageKeys.TRACKING_VISUALIZATION),
 			database.delete(StorageKeys.TRACKING_RATING_RECOVERY),
+			// PHI is cleared here too, not only in authService.logout(): this path is
+			// the unconditional one and still runs when remote sign-out throws.
+			database.delete(StorageKeys.MEDICAL_PROFILE),
+			database.delete(StorageKeys.MEDICAL_PROFILE_CACHE),
+			database.delete(StorageKeys.INSURANCE_POLICIES),
 		]);
 	}, []);
 
@@ -233,6 +238,10 @@ export const AuthProvider = ({ children }) => {
 				address: user?.address || null,
 				gender: user?.gender || null,
 				dateOfBirth: user?.dateOfBirth || null,
+				// formatUser spreads the profile (which carries `role`) into the user
+				// state, but this allow-list dropped it, so every useAuth() consumer
+				// read role === undefined. Passed through like the fields above.
+				role: user?.role || null,
 				id: user?.id || null,
 				createdAt: user?.createdAt || null,
 				updatedAt: user?.updatedAt || null,

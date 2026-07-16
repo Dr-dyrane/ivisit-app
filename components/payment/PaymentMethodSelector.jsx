@@ -10,10 +10,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   Modal,
   Animated
 } from 'react-native';
+import { showAlert } from '../../utils/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -158,7 +158,7 @@ const PaymentMethodSelector = ({
       invalidateWalletBalance();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      Alert.alert('System Error', error.message);
+      showAlert('System Error', error.message);
     } finally {
       setAddingMethod(false);
     }
@@ -171,9 +171,9 @@ const PaymentMethodSelector = ({
       loadPaymentMethods();
       invalidatePaymentMethods();
       invalidateWalletBalance();
-      Alert.alert("Success", "Default payment method updated");
+      showAlert("Success", "Default payment method updated");
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message);
     }
   };
 
@@ -194,7 +194,7 @@ const PaymentMethodSelector = ({
   }, [getScaleAnim]);
 
   const handleDeleteMethod = async (method) => {
-    Alert.alert(
+    showAlert(
       "Remove Card",
       `Are you sure you want to remove ${method.brand} ending in ${method.last4}?`,
       [
@@ -213,7 +213,7 @@ const PaymentMethodSelector = ({
                 onMethodSelect(null, { source: "user" });
               }
             } catch (error) {
-              Alert.alert('Error', error.message);
+              showAlert('Error', error.message);
             }
           }
         }

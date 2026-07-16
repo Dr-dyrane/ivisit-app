@@ -8,6 +8,8 @@ import * as Linking from "expo-linking";
 import {
 	getProtectedAuthReturnRouteFromUrl,
 	getPublicAuthRouteFromUrl,
+	hasExplicitLaunchPathname,
+	isAuthCallbackUrl,
 	isBaseAppUrl,
 	isNormalizedPublicRouteActive,
 	normalizeStoredPublicRoute,
@@ -68,9 +70,7 @@ export function useInitialRoute() {
 			if (!url) return;
 
 			const isResetPassword = url.includes("auth/reset-password");
-			const isAuthCallback =
-				!isResetPassword &&
-				(url.includes("auth/callback") || url.includes("code=") || url.includes("access_token="));
+			const isAuthCallback = !isResetPassword && isAuthCallbackUrl(url);
 			const isAlreadyOnResetPasswordRoute = pathnameRef.current === "/auth/reset-password";
 			const isAlreadyOnAuthCallbackRoute = pathnameRef.current === "/auth/callback";
 
@@ -130,6 +130,11 @@ export function useInitialRoute() {
 				}
 
 				if (initialUrlHandled) return;
+
+				// An explicit launch pathname (/login, /signup, /onboarding) is the
+				// destination the link asked for, so it passes through untouched.
+				// Only a URL that names no route may fall back to a stored route.
+				if (url && hasExplicitLaunchPathname(url)) return;
 
 				// Check stored public routes as a fallback when the launch URL did not
 				// identify a destination. Protected intent is left for auth routing.

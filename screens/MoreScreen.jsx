@@ -14,11 +14,11 @@ import {
 	Platform,
 	Animated,
 	Linking,
-	Alert,
 	Pressable,
 	Modal,
 	Dimensions
 } from "react-native";
+import { showAlert } from "../utils/platformAlert";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -294,7 +294,7 @@ const MoreScreen = () => {
 
 	const handleSeedData = async () => {
 		Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-		Alert.alert(
+		showAlert(
 			"Seed Database",
 			"This will add mock data (Visits, Notifications, FAQs) to your account. Continue?",
 			[

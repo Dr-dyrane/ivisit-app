@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
-import { Alert } from "react-native";
+import { showAlert } from "../../utils/platformAlert";
 import { useAtom } from "jotai";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -464,7 +464,7 @@ export function useBookVisitScreenModel() {
   }, [transitionStep]);
 
   const discardBooking = useCallback(() => {
-    Alert.alert(
+    showAlert(
       "Discard booking",
       "Your saved booking progress will be cleared.",
       [

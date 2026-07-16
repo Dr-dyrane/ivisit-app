@@ -596,6 +596,11 @@ const authService = {
         await database.delete(StorageKeys.AUTH_TOKEN);
         await database.delete(StorageKeys.CURRENT_USER);
         await database.delete(StorageKeys.PROFILE_COMPLETION_DEFERRED);
+        // PHI must not survive the session: the next account on this device would
+        // otherwise read the previous owner's medical/insurance cache.
+        await database.delete(StorageKeys.MEDICAL_PROFILE);
+        await database.delete(StorageKeys.MEDICAL_PROFILE_CACHE);
+        await database.delete(StorageKeys.INSURANCE_POLICIES);
         return true;
     },
 

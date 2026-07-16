@@ -336,6 +336,64 @@ const projectTripFromCanonicalRows = (prevTrip, requestRecord, ambulanceRecord) 
 	return projected;
 };
 
+const parseBedCount = (value) => {
+	const parsed = typeof value === "number" ? value : (typeof value === "string" ? Number(value) : NaN);
+	if (!Number.isFinite(parsed) || parsed < 0) return null;
+	return Math.floor(parsed);
+};
+
+// Patches one entry of the ["hospitals", ...] query cache from a hospitals
+// realtime record. Two hooks share that key prefix with different shapes:
+// useHospitalsQuery caches a bare array, useEmergencyHospitalsQuery caches
+// { allHospitals, displayHospitals, categories }. Unrecognised shapes and
+// records without a usable available_beds are returned untouched rather than
+// defaulted, so a partial payload never fabricates a bed count.
+const applyBedAvailabilityToHospitalsCache = (entry, record) => {
+	const hospitalId = record?.id ?? null;
+	const availableBeds = parseBedCount(record?.available_beds);
+	if (!hospitalId || availableBeds === null) return entry;
+
+	const patchList = (list) => {
+		if (!Array.isArray(list)) return list;
+		let changed = false;
+		const next = list.map((hospital) => {
+			if (!hospital || hospital.id !== hospitalId) return hospital;
+			if (hospital.availableBeds === availableBeds) return hospital;
+			changed = true;
+			return { ...hospital, availableBeds };
+		});
+		return changed ? next : list;
+	};
+
+	if (Array.isArray(entry)) return patchList(entry);
+	if (!entry || typeof entry !== "object") return entry;
+
+	const allHospitals = patchList(entry.allHospitals);
+	const displayHospitals = patchList(entry.displayHospitals);
+
+	let categories = entry.categories;
+	if (categories && typeof categories === "object" && !Array.isArray(categories)) {
+		let categoriesChanged = false;
+		const nextCategories = {};
+		for (const [key, value] of Object.entries(categories)) {
+			const patched = patchList(value);
+			if (patched !== value) categoriesChanged = true;
+			nextCategories[key] = patched;
+		}
+		if (categoriesChanged) categories = nextCategories;
+	}
+
+	if (
+		allHospitals === entry.allHospitals &&
+		displayHospitals === entry.displayHospitals &&
+		categories === entry.categories
+	) {
+		return entry;
+	}
+
+	return { ...entry, allHospitals, displayHospitals, categories };
+};
+
 module.exports = {
 	TERMINAL_EMERGENCY_STATUSES,
 	REMOVED_EMERGENCY_STATUSES,
@@ -349,4 +407,5 @@ module.exports = {
 	mergeEmergencyRealtimeTrip,
 	mergeAmbulanceRealtimeTrip,
 	projectTripFromCanonicalRows,
+	applyBedAvailabilityToHospitalsCache,
 };

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Animated,
   LayoutAnimation,
   Platform,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { COLORS } from "../../constants/colors";
+import { showAlert } from "../../utils/platformAlert";
 import {
   getMiniProfileColors,
   getMiniProfileLayout,
@@ -439,7 +439,7 @@ const ContactCard = ({
 
           <TouchableOpacity
             onPress={() => {
-              Alert.alert(
+              showAlert(
                 "Delete Contact",
                 "Are you sure you want to delete this contact?",
                 [

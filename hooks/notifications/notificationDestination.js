@@ -46,6 +46,12 @@ const NOTIFICATION_ACTION_DESTINATIONS = Object.freeze({
     destination: "payment",
     label: "Open payment",
   },
+  // The org-admin cash approval is actioned on the details surface itself,
+  // which hosts the Approve/Decline affordance.
+  approve_cash_payment: {
+    destination: "notification_detail",
+    label: "Review cash payment",
+  },
   view_appointment: {
     destination: "visit",
     label: "Open visit",
@@ -117,6 +123,24 @@ export function getNotificationVisitKey(notification) {
   return null;
 }
 
+// Org-admin cash approval needs both canonical UUIDs to reach the RPCs.
+// A notification missing either cannot be actioned and stays read-only.
+export function getNotificationCashApproval(notification) {
+  if (notification?.actionType !== "approve_cash_payment") return null;
+  const actionData = notification?.actionData ?? {};
+  const paymentId =
+    typeof actionData?.paymentId === "string" ? actionData.paymentId.trim() : "";
+  const requestId =
+    typeof actionData?.requestId === "string" ? actionData.requestId.trim() : "";
+  if (!paymentId || !requestId) return null;
+  return {
+    paymentId,
+    requestId,
+    displayId:
+      typeof actionData?.displayId === "string" ? actionData.displayId : null,
+  };
+}
+
 export function getNotificationPrimaryActionLabel(notification) {
   const actionType = notification?.actionType ?? null;
   const actionDestination = getNotificationActionDestination(actionType);
@@ -179,6 +203,16 @@ export function routeNotificationDestination({
   if (actionDestination?.destination === "insurance") {
     navigateToInsurance({ router, method });
     return "insurance";
+  }
+
+  if (actionDestination?.destination === "notification_detail") {
+    if (!notification?.id) return null;
+    navigateToNotificationDetails({
+      router,
+      notificationId: notification.id,
+      method,
+    });
+    return "notification_detail";
   }
 
   if (!fallbackToDetails || !notification?.id) {

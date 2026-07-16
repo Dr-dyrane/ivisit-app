@@ -8,7 +8,7 @@ import { formatMoney } from "../utils/formatMoney";
  * Universal notification dispatcher for all app events.
  * Creates notifications in the database via notificationsService.
  * 
- * Haptic/sound feedback is triggered by the useNotificationsData subscription,
+ * Haptic/sound feedback is triggered by the useNotificationsRealtime subscription,
  * NOT by this dispatcher (to ensure real-time feedback across all devices).
  * 
  * Responsibilities:

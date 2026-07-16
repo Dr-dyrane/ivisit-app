@@ -1,18 +1,27 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "../../contexts/AuthContext";
 import { useNotifications } from "../../contexts/NotificationsContext";
+import { useToast } from "../../contexts/ToastContext";
 import { useVisits } from "../../contexts/VisitsContext";
 import { useModeStore } from "../../stores/modeStore";
 import { getPriorityColor, getRelativeTime } from "../../constants/notifications";
+import { paymentService } from "../../services/paymentService";
 import { selectHistoryItemByAnyKey } from "../visits/useVisitHistorySelectors";
 import { navigateToNotifications, navigateToVisitDetails } from "../../utils/navigationHelpers";
 import {
+  getNotificationCashApproval,
   getNotificationPrimaryActionLabel,
   getNotificationVisitKey,
   routeNotificationDestination,
 } from "./notificationDestination";
 import { NOTIFICATION_DETAILS_COPY } from "../../components/notifications/details/notificationDetails.content";
+
+// The approve/decline RPCs are granted to `authenticated` and carry no role
+// check of their own, so this gate is an affordance, not an authority boundary.
+// It mirrors the audience notificationDispatcher notifies for cash approval.
+const CASH_APPROVAL_ROLES = ["org_admin", "admin"];
 
 // PULLBACK NOTE: Notification details screen model.
 // Owns: param lookup, mark-read-on-open, linked-visit derivation, and primary destination routing.
@@ -36,6 +45,8 @@ export function useNotificationDetailsScreenModel() {
   const params = useLocalSearchParams();
   const notificationId = toParamString(params?.id);
   const setEmergencyMode = useModeStore((state) => state.setMode);
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const {
     notifications,
     isLoading,
@@ -44,6 +55,8 @@ export function useNotificationDetailsScreenModel() {
     getNotificationById,
   } = useNotifications();
   const { visits = [] } = useVisits();
+  const [cashApprovalPending, setCashApprovalPending] = useState(null);
+  const [cashApprovalOutcome, setCashApprovalOutcome] = useState(null);
 
   const notification =
     getNotificationById?.(notificationId) ||
@@ -57,9 +70,22 @@ export function useNotificationDetailsScreenModel() {
     [linkedVisitKey, visits],
   );
 
-  const primaryActionLabel =
-    getNotificationPrimaryActionLabel(notification) ||
-    (linkedVisitKey ? NOTIFICATION_DETAILS_COPY.rows.openVisit : null);
+  const cashApproval = useMemo(
+    () => getNotificationCashApproval(notification),
+    [notification],
+  );
+  const canActOnCashApproval =
+    Boolean(cashApproval) && CASH_APPROVAL_ROLES.includes(user?.role);
+
+  // The details surface owns the approve/decline affordance, so its destination
+  // resolves to this same screen. Keyed off the action type rather than a usable
+  // cashApproval so a payload missing its ids cannot render a self-routing CTA.
+  const isCashApprovalNotification =
+    notification?.actionType === "approve_cash_payment";
+  const primaryActionLabel = isCashApprovalNotification
+    ? null
+    : getNotificationPrimaryActionLabel(notification) ||
+      (linkedVisitKey ? NOTIFICATION_DETAILS_COPY.rows.openVisit : null);
 
   const detailLoading = isLoading && !notification;
   const missing = !detailLoading && !notification;
@@ -115,6 +141,67 @@ export function useNotificationDetailsScreenModel() {
     });
   }, [linkedVisitKey, router]);
 
+  const runCashApproval = useCallback(
+    async (intent) => {
+      if (!cashApproval || !canActOnCashApproval) return;
+      if (cashApprovalPending || cashApprovalOutcome) return;
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setCashApprovalPending(intent);
+      try {
+        // paymentService throws unless the RPC returned success: true.
+        if (intent === "approve") {
+          await paymentService.approveCashPayment(
+            cashApproval.paymentId,
+            cashApproval.requestId,
+          );
+        } else {
+          await paymentService.declineCashPayment(
+            cashApproval.paymentId,
+            cashApproval.requestId,
+          );
+        }
+        setCashApprovalOutcome(intent === "approve" ? "approved" : "declined");
+        showToast(
+          intent === "approve"
+            ? NOTIFICATION_DETAILS_COPY.messages.cashApproved
+            : NOTIFICATION_DETAILS_COPY.messages.cashDeclined,
+          "success",
+        );
+        await refreshNotifications();
+      } catch (error) {
+        // No outcome is recorded: the server never confirmed one.
+        showToast(
+          error?.message ||
+            (intent === "approve"
+              ? NOTIFICATION_DETAILS_COPY.messages.cashApproveFailed
+              : NOTIFICATION_DETAILS_COPY.messages.cashDeclineFailed),
+          "error",
+        );
+      } finally {
+        setCashApprovalPending(null);
+      }
+    },
+    [
+      canActOnCashApproval,
+      cashApproval,
+      cashApprovalOutcome,
+      cashApprovalPending,
+      refreshNotifications,
+      showToast,
+    ],
+  );
+
+  const approveCashPayment = useCallback(
+    () => runCashApproval("approve"),
+    [runCashApproval],
+  );
+
+  const declineCashPayment = useCallback(
+    () => runCashApproval("decline"),
+    [runCashApproval],
+  );
+
   const handlePrimaryAction = useCallback(() => {
     if (!notification) {
       openInbox();
@@ -159,6 +246,12 @@ export function useNotificationDetailsScreenModel() {
     openInbox,
     openLinkedVisit,
     onPrimaryAction: handlePrimaryAction,
+    cashApproval,
+    canActOnCashApproval,
+    cashApprovalPending,
+    cashApprovalOutcome,
+    approveCashPayment,
+    declineCashPayment,
   };
 }
 

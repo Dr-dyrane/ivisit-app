@@ -36,6 +36,107 @@ function isCanonicalWebRoot(url) {
 	}
 }
 
+const AUTH_CALLBACK_PATH = "auth/callback";
+// Supabase returns the session either as a PKCE "code" or as implicit-flow
+// tokens, and the tokens may arrive on the URL fragment instead of the query.
+const OAUTH_SESSION_KEYS = ["access_token", "refresh_token"];
+const OAUTH_CODE_SIBLING_KEYS = [
+	"state",
+	"token_type",
+	"expires_in",
+	"provider_token",
+	"provider_refresh_token",
+];
+
+function getAuthPathCandidates(url, parsed) {
+	const parsedPath = normalizeParsedPath(parsed?.path);
+	const parsedHostname = normalizeParsedPath(parsed?.hostname);
+	// ivisit://auth/callback parses as hostname "auth" + path "callback".
+	const candidates = [
+		parsedPath,
+		parsedHostname && parsedPath ? `${parsedHostname}/${parsedPath}` : null,
+	];
+
+	try {
+		const standardUrl = new URL(url);
+		const standardPath = normalizeParsedPath(standardUrl.pathname);
+		const standardHostname = normalizeParsedPath(standardUrl.hostname);
+		candidates.push(standardPath);
+		if (standardHostname && standardPath) {
+			candidates.push(`${standardHostname}/${standardPath}`);
+		}
+	} catch {
+		// Linking.parse remains the source for Expo-specific URL shapes.
+	}
+
+	return candidates.filter(Boolean);
+}
+
+function getUrlParamKeys(url, parsed) {
+	const paramKeys = new Set(Object.keys(parsed?.queryParams || {}));
+
+	try {
+		const standardUrl = new URL(url);
+		standardUrl.searchParams.forEach((_value, key) => paramKeys.add(key));
+		const hash = standardUrl.hash?.startsWith("#")
+			? standardUrl.hash.slice(1)
+			: standardUrl.hash || "";
+		if (hash) {
+			new URLSearchParams(hash).forEach((_value, key) => paramKeys.add(key));
+		}
+	} catch {
+		// Custom-scheme URLs fall back to the Linking.parse query params above.
+	}
+
+	return paramKeys;
+}
+
+/**
+ * Identify a genuine OAuth callback URL.
+ * Substring matching on "code=" also captured invite_code/promo_code links, so
+ * the callback path and exact OAuth param keys are the only accepted signals.
+ * @param {string} url - The URL to check
+ * @returns {boolean}
+ */
+export function isAuthCallbackUrl(url) {
+	if (typeof url !== "string" || !url) return false;
+
+	let parsed = null;
+	try {
+		parsed = Linking.parse(url);
+	} catch (error) {
+		console.warn("[DeepLink] Failed to parse callback URL:", error?.message || error);
+	}
+
+	if (getAuthPathCandidates(url, parsed).includes(AUTH_CALLBACK_PATH)) return true;
+
+	const paramKeys = getUrlParamKeys(url, parsed);
+	if (OAUTH_SESSION_KEYS.some((key) => paramKeys.has(key))) return true;
+
+	return (
+		paramKeys.has("code") &&
+		OAUTH_CODE_SIBLING_KEYS.some((key) => paramKeys.has(key))
+	);
+}
+
+/**
+ * Report whether a launch URL names its own destination. An explicit pathname
+ * is the destination the user asked for, so a stored route must not replace it.
+ * @param {string} url - The launch URL
+ * @returns {boolean}
+ */
+export function hasExplicitLaunchPathname(url) {
+	if (typeof url !== "string" || !url) return false;
+
+	try {
+		const parsed = Linking.parse(url);
+		return Boolean(normalizeParsedPath(parsed?.path));
+	} catch (error) {
+		console.warn("[DeepLink] Failed to parse launch URL:", error?.message || error);
+		return false;
+	}
+}
+
 /**
  * Extract public auth route from deep link URL
  * @param {string} url - The URL to parse

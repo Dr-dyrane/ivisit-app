@@ -238,4 +238,77 @@ assert.equal(
   "Open visit",
 );
 
+// E7: the org-admin cash approval promises "Tap to approve or decline". It must
+// resolve to the details surface that hosts the Approve/Decline affordance
+// instead of falling through to an unlabelled, actionless details route.
+proveRoute({
+  actionType: "approve_cash_payment",
+  actionData: { paymentId: "payment-9", requestId: "request-9" },
+  label: "Review cash payment",
+  destination: "notification_detail",
+  helperName: "navigateToNotificationDetails",
+  expectedArgs: {
+    router,
+    notificationId: "notification-approve_cash_payment",
+    method,
+  },
+});
+
+const cashApproval = loadNotificationDestination();
+assert.deepEqual(
+  cashApproval.getNotificationCashApproval({
+    actionType: "approve_cash_payment",
+    actionData: {
+      paymentId: " payment-9 ",
+      requestId: " request-9 ",
+      displayId: "EMR-1",
+    },
+  }),
+  { paymentId: "payment-9", requestId: "request-9", displayId: "EMR-1" },
+);
+assert.equal(
+  cashApproval.getNotificationCashApproval({
+    actionType: "approve_cash_payment",
+    actionData: { requestId: "request-9" },
+  }),
+  null,
+  "a cash approval without a paymentId cannot reach the RPC and stays read-only",
+);
+assert.equal(
+  cashApproval.getNotificationCashApproval({
+    actionType: "approve_cash_payment",
+    actionData: { paymentId: "payment-9" },
+  }),
+  null,
+  "a cash approval without a requestId cannot reach the RPC and stays read-only",
+);
+assert.equal(
+  cashApproval.getNotificationCashApproval({
+    actionType: "view_payment",
+    actionData: { paymentId: "payment-9", requestId: "request-9" },
+  }),
+  null,
+  "only approve_cash_payment yields a cash approval action",
+);
+
+// The approve/decline RPCs must never be reachable from a routing decision.
+const cashRoute = loadNotificationDestination();
+cashRoute.routeNotificationDestination({
+  notification: {
+    id: "notification-cash",
+    actionType: "approve_cash_payment",
+    actionData: { paymentId: "payment-9", requestId: "request-9" },
+  },
+  router,
+  setEmergencyMode,
+  method,
+  fallbackToDetails: false,
+});
+assert.deepEqual(cashRoute.calls, [
+  {
+    helperName: "navigateToNotificationDetails",
+    args: { router, notificationId: "notification-cash", method },
+  },
+]);
+
 console.log("PASS notification destination routing and labels");

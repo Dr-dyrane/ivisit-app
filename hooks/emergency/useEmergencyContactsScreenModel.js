@@ -1,6 +1,6 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
-import { Alert } from "react-native";
+import { showAlert } from "../../utils/platformAlert";
 import * as Haptics from "expo-haptics";
 import { useToast } from "../../contexts/ToastContext";
 import { isValidName, isValidPhone } from "../../utils/validation";
@@ -273,7 +273,7 @@ export function useEmergencyContactsScreenModel() {
   const bulkDelete = useCallback(() => {
     if (selectedIds.length === 0) return;
 
-    Alert.alert(
+    showAlert(
       `Delete ${selectedIds.length} contact${selectedIds.length > 1 ? "s" : ""}`,
       "These contacts will be removed from your emergency profile.",
       [

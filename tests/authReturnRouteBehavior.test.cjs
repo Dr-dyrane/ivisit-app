@@ -59,9 +59,11 @@ const {
   isProtectedAuthReturnRoute,
   normalizeProtectedAuthReturnRoute,
 } = loadAuthReturnRouteHelpers();
-const { getProtectedAuthReturnRouteFromUrl } = loadDeepLinkHelpers(
-  loadAuthReturnRouteHelpers(),
-);
+const {
+  getProtectedAuthReturnRouteFromUrl,
+  hasExplicitLaunchPathname,
+  isAuthCallbackUrl,
+} = loadDeepLinkHelpers(loadAuthReturnRouteHelpers());
 
 const visitKey = "550e8400-e29b-41d4-a716-446655440000";
 const upperVisitKey = visitKey.toUpperCase();
@@ -95,6 +97,56 @@ assert.equal(
   ),
   canonicalRoute,
 );
+
+// A deep link is an auth callback only on the callback path or on exact OAuth
+// param keys. Substring matching on "code=" also captured referral links.
+const authCallbackUrls = [
+  "https://ivisit.app/auth/callback",
+  "https://ivisit.app/auth/callback?code=abc123",
+  "ivisit://auth/callback?code=abc123",
+  "https://ivisit.app/?code=abc123&state=xyz",
+  "https://ivisit.app/#access_token=token123&refresh_token=refresh123",
+  "https://ivisit.app/?access_token=token123",
+];
+
+for (const url of authCallbackUrls) {
+  assert.equal(
+    isAuthCallbackUrl(url),
+    true,
+    `expected auth callback url: ${url}`,
+  );
+}
+
+const nonAuthCallbackUrls = [
+  "https://ivisit.app/signup?inviteCode=ABC123",
+  "https://ivisit.app/signup?promoCode=SUMMER",
+  "https://ivisit.app/signup?invite_code=ABC123",
+  "https://ivisit.app/referral?promo_code=SUMMER",
+  "https://ivisit.app/checkout?discount_code=SAVE20",
+  "https://ivisit.app/login",
+  "https://ivisit.app/",
+];
+
+for (const url of nonAuthCallbackUrls) {
+  assert.equal(
+    isAuthCallbackUrl(url),
+    false,
+    `expected non-callback url to pass through: ${url}`,
+  );
+}
+
+// An explicit launch pathname is the destination the link asked for, so it
+// must never be replaced by a stored public route.
+assert.equal(hasExplicitLaunchPathname("https://ivisit.app/login"), true);
+assert.equal(hasExplicitLaunchPathname("https://ivisit.app/signup"), true);
+assert.equal(hasExplicitLaunchPathname("https://ivisit.app/onboarding"), true);
+assert.equal(
+  hasExplicitLaunchPathname("https://ivisit.app/signup?inviteCode=ABC123"),
+  true,
+);
+assert.equal(hasExplicitLaunchPathname("https://ivisit.app/"), false);
+assert.equal(hasExplicitLaunchPathname(""), false);
+assert.equal(hasExplicitLaunchPathname(null), false);
 
 const rejectedRoutes = [
   `https://evil.example/(user)?mapSheet=visit_detail&visitKey=${visitKey}`,
@@ -161,6 +213,30 @@ assert.match(
   initialRoute,
   /storedAuthReturnRoute && !storedAuthPublicRoute\) return/,
   "startup hydration must leave protected intent for authenticated routing",
+);
+assert.doesNotMatch(
+  initialRoute,
+  /url\.includes\("code="\)|url\.includes\("access_token="\)/,
+  "auth callbacks must be parsed, not substring-matched on referral params",
+);
+assert.match(
+  initialRoute,
+  /isAuthCallbackUrl\(url\)/,
+  "auth callback detection must route through the parsed helper",
+);
+const explicitPathnameGuardIndex = initialRoute.indexOf(
+  "hasExplicitLaunchPathname(url)) return",
+);
+const storedRouteRestoreIndex = initialRoute.indexOf(
+  "readStoredPublicRoute()",
+);
+assert.ok(
+  explicitPathnameGuardIndex >= 0,
+  "an explicit launch pathname must pass through startup hydration",
+);
+assert.ok(
+  storedRouteRestoreIndex > explicitPathnameGuardIndex,
+  "explicit launch pathnames must be honored before stored-route restore",
 );
 
 const authGateIndex = authRouting.indexOf(

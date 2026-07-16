@@ -123,12 +123,14 @@ export function buildCommitPaymentStatusConfig({
 		};
 	}
 
+	// OTA2 E11 -- copy moved to the content module beside its siblings. The old
+	// inline description offered to "switch payment method"; this sheet has no
+	// selector in any non-idle state and no safe resume to give it one.
 	if (submissionKind === MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED) {
 		return {
 			accentColor: errorColor,
-			title: "Payment declined",
-			description:
-				"That payment was not accepted. Try again or switch payment method.",
+			title: statusCopy.STATUS_PAYMENT_DECLINED_TITLE,
+			description: statusCopy.STATUS_PAYMENT_DECLINED_DESCRIPTION,
 		};
 	}
 

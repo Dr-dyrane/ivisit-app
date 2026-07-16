@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert } from "react-native";
+import { showAlert } from "../../utils/platformAlert";
 import { useRouter } from "expo-router";
 import { useAtom } from "jotai";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -221,14 +221,14 @@ export function useInsuranceScreenModel() {
   const deletePolicy = useCallback(
     (id, isDefault) => {
       if (isDefault) {
-        Alert.alert(
+        showAlert(
           "Default policy",
           INSURANCE_SCREEN_COPY.messages.deleteDefaultBlocked,
         );
         return;
       }
 
-      Alert.alert(
+      showAlert(
         INSURANCE_SCREEN_COPY.messages.deleteTitle,
         INSURANCE_SCREEN_COPY.messages.deleteBody,
         [
@@ -263,7 +263,7 @@ export function useInsuranceScreenModel() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== "granted") {
-        Alert.alert(
+        showAlert(
           INSURANCE_SCREEN_COPY.messages.cameraPermissionTitle,
           INSURANCE_SCREEN_COPY.messages.cameraPermissionBody,
           [
@@ -323,7 +323,7 @@ export function useInsuranceScreenModel() {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (status !== "granted") {
-          Alert.alert(
+          showAlert(
             INSURANCE_SCREEN_COPY.messages.libraryPermissionTitle,
             INSURANCE_SCREEN_COPY.messages.libraryPermissionBody,
             [

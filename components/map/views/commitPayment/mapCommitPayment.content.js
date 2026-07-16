@@ -20,6 +20,16 @@ export const MAP_COMMIT_PAYMENT_COPY = {
 	STATUS_SETTLEMENT_PENDING_TITLE: "Taking longer than usual",
 	STATUS_SETTLEMENT_PENDING_DESCRIPTION:
 		"Payment went through. Close this - it updates on its own.",
+	// OTA2 E11 -- the declined sheet renders no method selector and no CTA, and it
+	// cannot safely gain one: complete_card_payment skips the request advance while
+	// status is 'payment_declined', so paying again on the same request captures the
+	// card and never dispatches. retry_payment_with_different_method is the only
+	// sanctioned resume and no client path calls it. Copy promises only the close
+	// the sheet actually offers. Same numberOfLines={1} budget as the pair above.
+	STATUS_PAYMENT_DECLINED_TITLE: "Payment declined",
+	STATUS_PAYMENT_DECLINED_DESCRIPTION: "Close this and start a new request.",
+	PAYMENT_DECLINED_MESSAGE:
+		"Payment was declined. Close this and start a new request.",
 	STATUS_WAITING_TITLE: "Waiting for approval",
 	STATUS_WAITING_DESCRIPTION:
 		"Cash request sent to the hospital.",

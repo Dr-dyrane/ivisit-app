@@ -114,4 +114,60 @@ const detailState = read("components/map/views/visitDetail/MapVisitDetailRouteSt
 assert.match(detailState, />Try again</);
 assert.match(detailState, /accessibilityLabel="Close visit details"/);
 
+// Legacy (non-scheduled) visit day labels. formatTimeLabel is module-private and
+// reads the real clock, so drive it through toHistoryItem with clock-relative dates.
+const originalJsLoader = require.extensions[".js"];
+require.extensions[".js"] = (loadedModule, filename) => {
+  if (filename.includes("node_modules")) {
+    return originalJsLoader(loadedModule, filename);
+  }
+  const transformed = babel.transformSync(fs.readFileSync(filename, "utf8"), {
+    filename,
+    presets: [require.resolve("babel-preset-expo")],
+    babelrc: false,
+    configFile: false,
+  });
+  return loadedModule._compile(transformed.code, filename);
+};
+
+try {
+  const { toHistoryItem } = require(
+    path.join(ROOT, "hooks/visits/useVisitHistorySelectors.js"),
+  );
+  const HOUR = 60 * 60 * 1000;
+  const legacyVisitAt = (date) => ({
+    id: "legacy-1",
+    status: "completed",
+    type: "ambulance",
+    date: date.toISOString(),
+  });
+  const labelAt = (offsetMs) => {
+    const now = new Date();
+    const item = toHistoryItem(legacyVisitAt(new Date(now.getTime() + offsetMs)), now);
+    return String(item?.timeLabel || "");
+  };
+
+  assert.match(labelAt(-2 * HOUR), /^Today, /, "a past same-day visit stays Today");
+  assert.match(labelAt(-26 * HOUR), /^Yesterday, /, "the prior day stays Yesterday");
+  // E29: an unbounded isToday labelled every future date "Today".
+  assert.match(
+    labelAt(26 * HOUR),
+    /^Tomorrow, /,
+    "a next-day visit must not be labelled Today",
+  );
+  const farFuture = labelAt(20 * 24 * HOUR);
+  assert.doesNotMatch(
+    farFuture,
+    /^Today, /,
+    "a far-future visit must not be labelled Today",
+  );
+  assert.doesNotMatch(
+    farFuture,
+    /^Tomorrow, /,
+    "a far-future visit must not be labelled Tomorrow",
+  );
+} finally {
+  require.extensions[".js"] = originalJsLoader;
+}
+
 console.log("PASS scheduled visits post-booking state behavior");

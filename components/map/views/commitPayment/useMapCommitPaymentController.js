@@ -841,11 +841,9 @@ export function useMapCommitPaymentController({
                   // "Payment was received" beside a declined result is contradictory
                   // money copy (error wins the render, but the atom persists).
                   setInfoMessage("");
-                  setErrorMessage(
-                    "Payment was declined. Choose another card or cash.",
-                  );
+                  setErrorMessage(MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE);
                   showToast(
-                    "Payment was declined. Choose another card or cash.",
+                    MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE,
                     "error",
                   );
                 }
@@ -1059,11 +1057,9 @@ export function useMapCommitPaymentController({
               MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
               transactionRequestIds,
             );
-            setErrorMessage(
-              "Payment was declined. Choose another card or cash.",
-            );
+            setErrorMessage(MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE);
             showToast(
-              "Payment was declined. Choose another card or cash.",
+              MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE,
               "error",
             );
             return;
@@ -1152,11 +1148,9 @@ export function useMapCommitPaymentController({
               MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
               transactionRequestIds,
             );
-            setErrorMessage(
-              "Payment was declined. Choose another card or cash.",
-            );
+            setErrorMessage(MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE);
             showToast(
-              "Payment was declined. Choose another card or cash.",
+              MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE,
               "error",
             );
             return;
@@ -1191,11 +1185,9 @@ export function useMapCommitPaymentController({
               MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
               transactionRequestIds,
             );
-            setErrorMessage(
-              "Payment was declined. Choose another card or cash.",
-            );
+            setErrorMessage(MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE);
             showToast(
-              "Payment was declined. Choose another card or cash.",
+              MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE,
               "error",
             );
             return;

@@ -72,10 +72,25 @@ function formatChangeType(type) {
     return map[String(type || '').toLowerCase()] || 'Update';
 }
 
+function formatUpdateDate(value) {
+    if (value === null || value === undefined) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    try {
+        return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+        }).format(date);
+    } catch (_error) {
+        return date.toLocaleDateString();
+    }
+}
+
 /**
  * @param {Object} props
  * @param {boolean} props.visible - Whether the modal is visible
  * @param {'available' | 'completed'} props.variant - Modal variant type
+ * @param {{ id: string | null, createdAt: unknown } | null} props.update - Incoming update manifest (available variant)
  * @param {() => void} props.onRestart - Called when user taps Restart (available variant)
  * @param {() => void} props.onLater - Called when user taps Later/dismiss
  * @param {() => void} props.onDismiss - Called when user dismisses (completed variant)
@@ -83,6 +98,7 @@ function formatChangeType(type) {
 export default function UpdateAvailableModal({
     visible,
     variant = 'available',
+    update = null,
     onRestart,
     onLater,
     onDismiss,
@@ -171,6 +187,16 @@ export default function UpdateAvailableModal({
         closeBg: isDarkMode ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.64)",
     };
 
+    const incomingUpdateId =
+        typeof update?.id === "string" && update.id ? update.id.slice(0, 8) : null;
+    const incomingUpdateDate = formatUpdateDate(update?.createdAt);
+    const incomingSummary = [
+        incomingUpdateId ? `Update ${incomingUpdateId}` : null,
+        incomingUpdateDate,
+    ]
+        .filter(Boolean)
+        .join(" - ");
+
     const modalContent = (
         <>
             <View style={styles.indicator} />
@@ -213,13 +239,22 @@ export default function UpdateAvailableModal({
                 <Text style={[styles.description, { color: colors.subtext }]}>
                     {isCompleted
                         ? `Now running: ${UPDATE_METADATA?.title || "the latest update"} - v${VERSION}${UPDATE_METADATA?.date ? ` - ${UPDATE_METADATA.date}` : ""}`
-                        : (UPDATE_METADATA?.title || "Restart to apply the latest improvements.")
+                        : "Restart to apply the latest improvements."
                     }
                 </Text>
 
-                {/* Changelog — shown in BOTH variants so the applied update is verifiable
-                    on-device (the completed sheet proves which release actually landed). */}
-                {UPDATE_METADATA?.changes?.length > 0 && (
+                {/* The incoming release's notes are not on-device yet, so the available sheet
+                    identifies it by manifest only. Bundled metadata describes the RUNNING
+                    build and would misdescribe the update the user is about to install. */}
+                {!isCompleted && incomingSummary ? (
+                    <Text style={[styles.updateMetaText, { color: colors.subtext }]}>
+                        {incomingSummary}
+                    </Text>
+                ) : null}
+
+                {/* Changelog: bundled metadata describes the running build, so it is only
+                    honest on the completed sheet (it proves which release actually landed). */}
+                {isCompleted && UPDATE_METADATA?.changes?.length > 0 && (
                     <View style={styles.changelogContainer}>
                         <ScrollView
                             showsVerticalScrollIndicator={true}
@@ -370,6 +405,14 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 10,
+    },
+    updateMetaText: {
+        marginTop: -12,
+        marginBottom: 20,
+        textAlign: "center",
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: "500",
     },
     changelogContainer: {
         width: '100%',

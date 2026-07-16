@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Share } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useSetAtom } from "jotai";
 import { useToast } from "../../../../contexts/ToastContext";
 import {
@@ -126,21 +127,40 @@ export function useMapTrackingController({
   ]);
 
   const handleShareEta = useCallback(async () => {
+    const sharePayload = buildTrackingSharePayload({
+      telemetryWarningLabel,
+      etaLabel,
+      serviceLabel,
+      distanceLabel,
+      pickupLabel,
+      hospitalName,
+      responderName,
+      responderPlate,
+    });
+
     try {
-      await Share.share(
-        buildTrackingSharePayload({
-          telemetryWarningLabel,
-          etaLabel,
-          serviceLabel,
-          distanceLabel,
-          pickupLabel,
-          hospitalName,
-          responderName,
-          responderPlate,
-        }),
-      );
-    } catch (_error) {
-      // Native share can be cancelled by the user; no UI error needed.
+      await Share.share(sharePayload);
+    } catch (error) {
+      // Share can be cancelled by the user; no UI error needed.
+      if (error?.name === "AbortError") return;
+      // Browsers without the Web Share API reject instead, so the ETA still
+      // reaches the clipboard rather than disappearing silently.
+      try {
+        // On web a failed copy RESOLVES false (expo-clipboard falls back to
+        // execCommand and reports the result) instead of throwing, so the
+        // return value -- not just the catch -- decides what the user is told.
+        // Native resolves true, so only an explicit false is a failure.
+        const copiedToClipboard = await Clipboard.setStringAsync(
+          sharePayload.message,
+        );
+        if (copiedToClipboard === false) {
+          showToast("Could not share the ETA right now.", "error");
+          return;
+        }
+        showToast("ETA copied to clipboard.", "success");
+      } catch (_clipboardError) {
+        showToast("Could not share the ETA right now.", "error");
+      }
     }
   }, [
     distanceLabel,
@@ -150,6 +170,7 @@ export function useMapTrackingController({
     responderName,
     responderPlate,
     serviceLabel,
+    showToast,
     telemetryWarningLabel,
   ]);
 

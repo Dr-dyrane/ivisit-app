@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, ScrollView, StyleSheet, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import InputModal from "../../ui/InputModal";
 import ProfileField from "../../form/ProfileField";
 import { COLORS } from "../../../constants/colors";
@@ -24,7 +25,6 @@ export default function PersonalInfoSheet({
     gender,
     setGender,
     email,
-    setEmail,
     phone,
     setPhone,
     address,
@@ -85,13 +85,34 @@ export default function PersonalInfoSheet({
             onChange={setGender}
             iconName="transgender-outline"
           />
+          {/* Email is read-only: authService.updateUser has no email handler, so
+              an editable field would silently discard the edit. Changing a sign-in
+              email needs a verification round-trip that does not exist yet. */}
           <ProfileField
             label="Email Address"
             value={email}
-            onChange={setEmail}
+            onChange={() => {}}
+            editable={false}
             iconName="mail-outline"
             keyboardType="email-address"
+            rightElement={
+              <Ionicons
+                name="lock-closed"
+                size={14}
+                color={isDarkMode ? COLORS.textMutedDark : COLORS.textMuted}
+                style={styles.lockIcon}
+              />
+            }
           />
+          <Text
+            style={[
+              styles.helperText,
+              { color: isDarkMode ? COLORS.textMutedDark : COLORS.textMuted },
+            ]}
+          >
+            Your email is your sign-in and cannot be changed here. Contact support
+            to update it.
+          </Text>
           <ProfileField
             label="Phone Number"
             value={phone}
@@ -120,5 +141,14 @@ export default function PersonalInfoSheet({
 const styles = StyleSheet.create({
   content: {
     gap: 16,
+  },
+  lockIcon: {
+    marginRight: 6,
+  },
+  helperText: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: -12,
+    marginHorizontal: 12,
   },
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
+import { showAlert } from '../../utils/platformAlert';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { paymentService } from '../../services/paymentService';
 import { insuranceService } from '../../services/insuranceService';
@@ -189,7 +189,7 @@ export function usePaymentScreenModel() {
 
     // If in Linking Mode (from Insurance), selecting a card links it
     if (params.isLinking === 'true' && params.policyId) {
-      Alert.alert(
+      showAlert(
         "Link Payment Method",
         `Do you want to link ${method.brand} •••• ${method.last4} to your ${params.providerName || 'insurance'} policy?`,
         [
@@ -207,11 +207,11 @@ export function usePaymentScreenModel() {
                   expiry_year: method.expiry_year
                 });
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Success", "Payment method linked to policy.", [
+                showAlert("Success", "Payment method linked to policy.", [
                   { text: "OK", onPress: () => router.back() }
                 ]);
               } catch (error) {
-                Alert.alert("Error", "Failed to link card to policy.");
+                showAlert("Error", "Failed to link card to policy.");
               } finally {
                 setIsSaving(false);
               }
@@ -228,7 +228,7 @@ export function usePaymentScreenModel() {
   const handlePayment = async () => {
     if (!selectedMethod) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Selection Required', 'Please choose a payment method to continue.');
+      showAlert('Selection Required', 'Please choose a payment method to continue.');
       return;
     }
 
@@ -254,7 +254,7 @@ export function usePaymentScreenModel() {
 
       if (result.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
+        showAlert(
           'Payment Successful',
           'Your request has been processed securely. Track your service real-time.',
           [
@@ -276,7 +276,7 @@ export function usePaymentScreenModel() {
     } catch (error) {
       console.error('Payment failure:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Payment Failed', error.message || 'Something went wrong. Please try another card.');
+      showAlert('Payment Failed', error.message || 'Something went wrong. Please try another card.');
     } finally {
       setIsSaving(false);
     }
@@ -297,7 +297,7 @@ export function usePaymentScreenModel() {
         await loadWalletData();
         setShowAddFundsModal(false);
         if (result.credited) {
-          Alert.alert(
+          showAlert(
             "Success",
             PAYMENT_SCREEN_COPY.addFunds.success(
               amount,
@@ -305,15 +305,15 @@ export function usePaymentScreenModel() {
             ),
           );
         } else {
-          Alert.alert(
-            "Top-up Processing",
-            "Your card was charged. The wallet credit is still settling; your balance will update shortly.",
+          showAlert(
+            PAYMENT_SCREEN_COPY.addFunds.processing,
+            PAYMENT_SCREEN_COPY.addFunds.processingMessage,
           );
         }
       }
     } catch (error) {
       console.error("Top-up error:", error);
-      Alert.alert(
+      showAlert(
         PAYMENT_SCREEN_COPY.addFunds.failed,
         error.message || PAYMENT_SCREEN_COPY.addFunds.failedMessage,
       );
@@ -342,17 +342,17 @@ export function usePaymentScreenModel() {
           expiry_month: paymentMethod.expiry_month,
           expiry_year: paymentMethod.expiry_year
         });
-        Alert.alert("Success", "New card added and linked to policy.", [
+        showAlert("Success", "New card added and linked to policy.", [
           { text: "OK", onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert("Success", "Payment method linked successfully.");
+        showAlert("Success", "Payment method linked successfully.");
         if (isManagementMode) {
           loadWalletData();
         }
       }
     } catch (error) {
-      Alert.alert('System Error', error.message);
+      showAlert('System Error', error.message);
     } finally {
       setIsSaving(false);
     }

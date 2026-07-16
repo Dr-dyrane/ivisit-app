@@ -10,10 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Keyboard,
-  Alert
+  Keyboard
 } from 'react-native';
 import { useWindowDimensions } from 'react-native';
+import { showAlert } from '../../utils/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -65,7 +65,7 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
 
   const handleSecureAdd = async () => {
     if (!cardDetails?.complete) {
-      Alert.alert("Incomplete Details", "Please fill in all card information.");
+      showAlert("Incomplete Details", "Please fill in all card information.");
       return;
     }
 
@@ -105,7 +105,7 @@ const AddPaymentMethodModal = ({ onClose, onAdd, loading }) => {
       }
     } catch (err) {
       console.error('Secure Card Add Error:', err);
-      Alert.alert("Security Error", err.message);
+      showAlert("Security Error", err.message);
     } finally {
       setIsProcessing(false);
     }

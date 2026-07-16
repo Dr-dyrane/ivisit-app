@@ -590,84 +590,6 @@ export const visitsService = {
     };
   },
 
-  async ensureExists({
-    id,
-    requestId,
-    hospitalId,
-    hospital,
-    specialty,
-    type,
-    status,
-    date,
-    time,
-    lifecycleState,
-  }) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not logged in");
-    if (!id) throw new Error("Missing visit id");
-
-    const nowIso = new Date().toISOString();
-    const base = {
-      id: String(id),
-      user_id: user.id,
-      request_id: requestId ?? String(id),
-      hospital_id: hospitalId ?? null,
-      hospital_name: hospital ?? null,
-      specialty: specialty ?? null,
-      type: type ?? null,
-      status: status ?? "upcoming",
-      lifecycle_state: lifecycleState ?? null,
-      lifecycle_updated_at: nowIso,
-      date: date ?? nowIso.slice(0, 10),
-      time:
-        time ??
-        new Date().toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        }),
-      updated_at: nowIso,
-    };
-
-    let upsertBase = base;
-    if (supportsExtendedEmergencyColumns === false) {
-      upsertBase = stripExtendedEmergencyColumns(upsertBase);
-    }
-
-    let data;
-    let error;
-    ({ data, error } = await supabase
-      .from(TABLE)
-      .upsert(upsertBase, { onConflict: "id" })
-      .select()
-      .single());
-
-    if (
-      error &&
-      supportsExtendedEmergencyColumns !== false &&
-      shouldDisableExtendedColumns(error)
-    ) {
-      supportsExtendedEmergencyColumns = false;
-      const retryBase = stripExtendedEmergencyColumns(upsertBase);
-      ({ data, error } = await supabase
-        .from(TABLE)
-        .upsert(retryBase, { onConflict: "id" })
-        .select()
-        .single());
-    }
-
-    if (error) {
-      if (error?.code === "PGRST204") {
-        throw error;
-      }
-      console.error(`[visitsService] ensureExists error for ${id}:`, error);
-      throw error;
-    }
-
-    return normalizeVisit(mapFromDb(data));
-  },
-
   async create(visit) {
     const {
       data: { user },
@@ -771,84 +693,20 @@ export const visitsService = {
       throw error;
     }
     if (!data || data.length === 0) {
-      // Never invent visit rows from emergency request keys; DB sync owns those rows.
-      if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
-        console.warn(
-          `[visitsService] No visit matched key ${lookupId}; skipping upsert fallback`,
-        );
-        return normalizeVisit(
-          mapFromDb({
-            ...(resolvedVisitRow || {}),
-            id: targetId,
-            request_id:
-              resolvedVisitRow?.request_id ??
-              resolvedEmergencyRequestId ??
-              null,
-            ...dbUpdates,
-          }),
-        );
-      }
-      let upserted;
-      let upsertError;
-      ({ data: upserted, error: upsertError } = await supabase
-        .from(TABLE)
-        .upsert(
-          {
-            id: targetId,
-            user_id: user.id,
-            ...dbUpdates,
-          },
-          { onConflict: "id" },
-        )
-        .select()
-        .single());
-
-      if (
-        upsertError &&
-        supportsExtendedEmergencyColumns !== false &&
-        shouldDisableExtendedColumns(upsertError)
-      ) {
-        supportsExtendedEmergencyColumns = false;
-        const retryUpsert = stripExtendedEmergencyColumns({
+      // Never invent visit rows; DB sync owns row creation. An update that matches
+      // nothing is a no-op projection, not a reason to mint a row.
+      console.warn(
+        `[visitsService] No visit matched key ${lookupId}; skipping upsert fallback`,
+      );
+      return normalizeVisit(
+        mapFromDb({
+          ...(resolvedVisitRow || {}),
           id: targetId,
-          user_id: user.id,
+          request_id:
+            resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
           ...dbUpdates,
-        });
-        ({ data: upserted, error: upsertError } = await supabase
-          .from(TABLE)
-          .upsert(retryUpsert, { onConflict: "id" })
-          .select()
-          .single());
-      }
-
-      if (upsertError) {
-        console.error(
-          `[visitsService] Upsert fallback failed for ${lookupId}:`,
-          upsertError,
-        );
-        throw upsertError;
-      }
-
-      if (__DEV__) {
-        console.log("[visitsService] Update fallback upserted missing visit:", {
-          id: targetId,
-        });
-      }
-
-      const result = normalizeVisit(mapFromDb(upserted));
-      try {
-        await notificationDispatcher.dispatchVisitUpdate(
-          result,
-          "updated",
-          updates,
-        );
-      } catch (notifError) {
-        console.error(
-          `[visitsService] Failed to create notification for visit update ${lookupId}:`,
-          notifError,
-        );
-      }
-      return result;
+        }),
+      );
     }
     const result = normalizeVisit(mapFromDb(data[0]));
 
@@ -880,6 +738,14 @@ export const visitsService = {
     ]);
     const targetId = resolvedVisitRow?.id ?? lookupId;
 
+    // Scheduled/care-mode visits are cancelled by the server-side visit transition,
+    // which owns slot release and lifecycle truth. A blind status write would diverge.
+    if (resolvedVisitRow && resolvedVisitRow.care_mode != null) {
+      throw new Error(
+        "Scheduled visits must be cancelled through the visit transition path",
+      );
+    }
+
     const dbUpdates = {
       status: "cancelled",
       updated_at: new Date().toISOString(),
@@ -894,39 +760,20 @@ export const visitsService = {
       throw error;
     }
     if (!data || data.length === 0) {
-      // Don't try to ensureExists with display IDs — backend trigger handles creation
-      if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
-        console.warn(
-          `[visitsService] No visit matched key ${lookupId}; cancel skipped without upsert`,
-        );
-        return normalizeVisit(
-          mapFromDb({
-            ...(resolvedVisitRow || {}),
-            id: targetId,
-            request_id:
-              resolvedVisitRow?.request_id ??
-              resolvedEmergencyRequestId ??
-              null,
-            ...dbUpdates,
-          }),
-        );
-      }
-      const ensured = await this.ensureExists({
-        id: targetId,
-        requestId: resolvedEmergencyRequestId ?? String(targetId),
-        status: "cancelled",
-      });
-
-      try {
-        await notificationDispatcher.dispatchVisitUpdate(ensured, "cancelled");
-      } catch (notifError) {
-        console.error(
-          `[visitsService] Failed to create notification for visit cancellation ${lookupId}:`,
-          notifError,
-        );
-      }
-
-      return ensured;
+      // Never invent visit rows; backend triggers own creation. Cancelling a row
+      // that does not exist must not bring one into being.
+      console.warn(
+        `[visitsService] No visit matched key ${lookupId}; cancel skipped without upsert`,
+      );
+      return normalizeVisit(
+        mapFromDb({
+          ...(resolvedVisitRow || {}),
+          id: targetId,
+          request_id:
+            resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
+          ...dbUpdates,
+        }),
+      );
     }
     const result = normalizeVisit(mapFromDb(data[0]));
 
@@ -968,38 +815,20 @@ export const visitsService = {
       throw error;
     }
     if (!data || data.length === 0) {
-      if (resolvedEmergencyRequestId || !isValidUUID(targetId)) {
-        console.warn(
-          `[visitsService] No visit matched key ${lookupId}; complete skipped without upsert`,
-        );
-        return normalizeVisit(
-          mapFromDb({
-            ...(resolvedVisitRow || {}),
-            id: targetId,
-            request_id:
-              resolvedVisitRow?.request_id ??
-              resolvedEmergencyRequestId ??
-              null,
-            ...dbUpdates,
-          }),
-        );
-      }
-      const ensured = await this.ensureExists({
-        id: targetId,
-        requestId: resolvedEmergencyRequestId ?? String(targetId),
-        status: "completed",
-      });
-
-      try {
-        await notificationDispatcher.dispatchVisitUpdate(ensured, "completed");
-      } catch (notifError) {
-        console.error(
-          `[visitsService] Failed to create notification for visit completion ${lookupId}:`,
-          notifError,
-        );
-      }
-
-      return ensured;
+      // Never invent visit rows; backend triggers own creation. Completing a row
+      // that does not exist must not bring one into being.
+      console.warn(
+        `[visitsService] No visit matched key ${lookupId}; complete skipped without upsert`,
+      );
+      return normalizeVisit(
+        mapFromDb({
+          ...(resolvedVisitRow || {}),
+          id: targetId,
+          request_id:
+            resolvedVisitRow?.request_id ?? resolvedEmergencyRequestId ?? null,
+          ...dbUpdates,
+        }),
+      );
     }
     const result = normalizeVisit(mapFromDb(data[0]));
 

@@ -691,11 +691,24 @@ const requestFlow = read("hooks/emergency/useRequestFlow.js");
 assert.match(requestFlow, /const awaitsPaymentConfirmation = isCardPayment;/);
 assert.doesNotMatch(requestFlow, /request\?\.deferDispatchUntilPayment === true/);
 const completeStart = requestFlow.indexOf("const handleRequestComplete");
-const quickStart = requestFlow.indexOf("const handleQuickEmergency", completeStart);
-const completeFlow = requestFlow.slice(completeStart, quickStart);
+const completeFlow = requestFlow.slice(completeStart);
 assert.doesNotMatch(completeFlow, /status:\s*EmergencyRequestStatus\.ACCEPTED/);
 assert.doesNotMatch(completeFlow, /setRequestStatus/);
 assert.doesNotMatch(completeFlow, /updateVisit/);
+
+// handleQuickEmergency was DELETED (audit E24). It was dead -- referenced only by
+// its own definition and the returned object -- and it carried three defects at
+// once: it deadlocked on the inflight guard its own nested handleRequestInitiated
+// sets, it fabricated a success result on that block, and because quick ran the
+// initiate half with no handleRequestComplete after it, the flag it stranded true
+// refused every later request as IN_FLIGHT. A dead function has no caller to
+// define its correct semantics, so it is removed rather than repaired: whoever
+// wants a quick-emergency lane must design one against a real call site.
+assert.doesNotMatch(
+  requestFlow,
+  /handleQuickEmergency/,
+  "the dead, deadlock-prone quick-emergency lane must not return: build it against a real caller instead",
+);
 
 const handlers = read("hooks/emergency/useEmergencyHandlers.js");
 const ambulanceCompleteStart = handlers.indexOf("const onCompleteAmbulanceTrip");
@@ -773,6 +786,47 @@ const ratingCommands = visitsService.slice(updateRatingStart, deleteVisitStart);
 assert.match(ratingCommands, /supabase\.rpc\("rate_visit"/);
 assert.match(ratingCommands, /supabase\.rpc\("skip_visit_rating"/);
 assert.doesNotMatch(ratingCommands, /\.from\(TABLE\)\.update/);
+
+// No parallel truth: patient-side visit commands must never mint visit rows.
+assert.doesNotMatch(
+  visitsService,
+  /async ensureExists\(/,
+  "the row-minting ensureExists primitive must not exist",
+);
+const visitUpdateStart = visitsService.indexOf("async update(id, updates)");
+const visitCancelStart = visitsService.indexOf("async cancel(", visitUpdateStart);
+const visitCompleteStart = visitsService.indexOf("async complete(", visitCancelStart);
+const visitUpdateRatingStart = visitsService.indexOf(
+  "async updateRating",
+  visitCompleteStart,
+);
+assert.ok(
+  visitUpdateStart >= 0 &&
+    visitCancelStart > visitUpdateStart &&
+    visitCompleteStart > visitCancelStart &&
+    visitUpdateRatingStart > visitCompleteStart,
+  "visit lifecycle commands must remain in update -> cancel -> complete order",
+);
+const lifecycleCommands = visitsService.slice(
+  visitUpdateStart,
+  visitUpdateRatingStart,
+);
+assert.doesNotMatch(
+  lifecycleCommands,
+  /\.upsert\(/,
+  "update/cancel/complete must not upsert a missing visit row into existence",
+);
+assert.doesNotMatch(
+  lifecycleCommands,
+  /this\.ensureExists\(/,
+  "update/cancel/complete must not ensure a missing visit row into existence",
+);
+const cancelCommand = visitsService.slice(visitCancelStart, visitCompleteStart);
+assert.match(
+  cancelCommand,
+  /resolvedVisitRow\.care_mode != null/,
+  "cancel must refuse care-mode visits owned by the server-side transition",
+);
 
 const visitSecurity = read("supabase/migrations/20260219000700_security.sql");
 assert.match(
@@ -1545,6 +1599,81 @@ assert.match(
   "this pin is only load-bearing while the pending copy asserts payment succeeded",
 );
 
+// --- OTA2 E11: the declined sheet must not promise what it cannot do -------
+// PAYMENT_DECLINED renders the status card only: the method selector lives in
+// the isIdleState branch and footerSlot is `isIdleState ? footer : null`, so the
+// old "Choose another card or cash" named two controls that are not on screen.
+// It cannot safely gain an in-sheet resume either -- see the receiver pin below.
+const declinedStatus = buildStatusConfigFor(
+  transaction.MAP_COMMIT_PAYMENT_TRANSACTION_STATES.PAYMENT_DECLINED,
+);
+assert.equal(
+  declinedStatus.title,
+  commitPaymentContent.MAP_COMMIT_PAYMENT_COPY.STATUS_PAYMENT_DECLINED_TITLE,
+  "declined copy must resolve from the content module, not an inline literal",
+);
+assert.equal(
+  declinedStatus.description,
+  commitPaymentContent.MAP_COMMIT_PAYMENT_COPY.STATUS_PAYMENT_DECLINED_DESCRIPTION,
+);
+for (const [label, copy] of [
+  ["status description", declinedStatus.description],
+  [
+    "inline/toast message",
+    commitPaymentContent.MAP_COMMIT_PAYMENT_COPY.PAYMENT_DECLINED_MESSAGE,
+  ],
+]) {
+  assert.doesNotMatch(
+    copy,
+    /another card|switch payment method|choose another|or cash/i,
+    `the declined ${label} must not offer a method switch this sheet renders no control for`,
+  );
+}
+assert.doesNotMatch(
+  controller,
+  /Choose another card or cash/,
+  "declined copy must not be inlined in the controller",
+);
+
+// Why the resume is not built client-side: complete_card_payment marks the
+// payments row completed unconditionally, then skips the request advance while
+// status is 'payment_declined'. Charging again on the same request would capture
+// the card and leave the request undispatched -- and waitForEmergencyPaymentSettlement
+// would read payment_declined back and report the paid card as declined.
+// Boundary pin: `NOT IN ('completed', 'cancelled', 'payment_declined')` appears
+// twice in this migration, so a missing boundary (indexOf -> -1) would slice a
+// superset and let the assert below pass off the OTHER occurrence -- a gate that
+// still reports green while guarding nothing. Fail loudly instead.
+const completeCardPaymentStart = emergencyLogic.indexOf(
+  "CREATE OR REPLACE FUNCTION public.complete_card_payment",
+);
+const completeCardPaymentEnd = emergencyLogic.indexOf(
+  "CREATE OR REPLACE FUNCTION public.fail_card_payment",
+);
+assert.ok(
+  completeCardPaymentStart >= 0 &&
+    completeCardPaymentEnd > completeCardPaymentStart,
+  "complete_card_payment/fail_card_payment slice boundaries moved; re-anchor this pin before trusting it",
+);
+const completeCardPayment = emergencyLogic.slice(
+  completeCardPaymentStart,
+  completeCardPaymentEnd,
+);
+assert.match(
+  completeCardPayment,
+  /NOT IN \('completed', 'cancelled', 'payment_declined'\)/,
+  "complete_card_payment skips a declined request; any in-sheet retry on that same request captures the card without dispatching",
+);
+// The one sanctioned resume clears the declined state before a new charge.
+// Pinned so a future E11 implementation is built on this receiver, not on a
+// bare re-charge of the declined request.
+const financeMigration = read("supabase/migrations/20260219000400_finance.sql");
+assert.match(
+  financeMigration,
+  /CREATE OR REPLACE FUNCTION public\.retry_payment_with_different_method[\s\S]*?SET status = 'pending_approval',\s*\n\s*payment_status = 'pending',/,
+  "retry_payment_with_different_method must clear payment_declined before a retry charge",
+);
+
 // --- E1 source pins: the top-up screen reports server truth ----------------
 const paymentScreenModel = read("hooks/payment/usePaymentScreenModel.js");
 assert.match(
@@ -1556,6 +1685,26 @@ assert.doesNotMatch(
   paymentScreenModel,
   /result\.newBalance/,
   "topUpWallet never returned a balance; reading result.newBalance printed undefined as the user's money",
+);
+
+// OTA2 convention debt: the top-up settling copy was the last string in this
+// model inlined at its call site while every sibling resolves from the content
+// module. Relocation only -- the branch stays dead behind the top-up gate.
+const paymentScreenContent = loadSourceModule(
+  "components/payment/paymentScreen.content.js",
+);
+assert.equal(
+  paymentScreenContent.PAYMENT_SCREEN_COPY.addFunds.processing,
+  "Top-up Processing",
+);
+assert.match(
+  paymentScreenContent.PAYMENT_SCREEN_COPY.addFunds.processingMessage,
+  /still settling/,
+);
+assert.doesNotMatch(
+  paymentScreenModel,
+  /"Top-up Processing"/,
+  "top-up copy must resolve from paymentScreen.content.js, not an inline literal",
 );
 
 // STAGED-LANE PIN: this call is unreachable while

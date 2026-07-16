@@ -36,6 +36,9 @@ export const PAYMENT_SCREEN_COPY = {
       `Added ${formatMoney(amount, { currency: "USD" })} to your wallet. Your new balance is ${formatMoney(newBalance, { currency: "USD" })}`,
     failed: "Top-up Failed",
     failedMessage: "Could not process top-up. Please check your card.",
+    processing: "Top-up Processing",
+    processingMessage:
+      "Your card was charged. The wallet credit is still settling; your balance will update shortly.",
   },
 
   // Payment Method Linking

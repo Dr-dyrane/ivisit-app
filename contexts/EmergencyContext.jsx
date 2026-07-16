@@ -88,8 +88,6 @@ export function EmergencyProvider({ children }) {
 		userLocationRef,
 		setActiveAmbulanceTrip,
 		setActiveBedBooking,
-		updateHospitals,
-		hospitals,
 		syncActiveTripsFromServer,
 	});
 

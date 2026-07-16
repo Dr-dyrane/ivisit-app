@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Location from "expo-location";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../services/supabase";
 import { emergencyRequestsService, EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
@@ -18,6 +19,7 @@ import {
 	mergeEmergencyRealtimeTrip,
 	mergeAmbulanceRealtimeTrip,
 	parseRecordTimestampMs,
+	applyBedAvailabilityToHospitalsCache,
 } from "../../utils/emergencyRealtimeProjection";
 import { safeRemoveLocationSubscription } from "../../utils/locationSubscriptions";
 import {
@@ -36,10 +38,9 @@ export function useEmergencyRealtime({
 	userLocationRef,
 	setActiveAmbulanceTrip,
 	setActiveBedBooking,
-	updateHospitals,
-	hospitals,
 	syncActiveTripsFromServer,
 }) {
+	const queryClient = useQueryClient();
 	const realtimeStatusRef = useRef({});
 	const lastRealtimeSyncMsRef = useRef(0);
 	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
@@ -201,10 +202,11 @@ export function useEmergencyRealtime({
 
 		let unsubscribeEmergency = null;
 		let unsubscribeAmbulance = null;
+		let isCancelled = false;
 
 		const setup = async () => {
 			try {
-				unsubscribeEmergency = await emergencyRequestsService.subscribeToEmergencyUpdates(
+				const emergencyUnsubscribe = await emergencyRequestsService.subscribeToEmergencyUpdates(
 					subscriptionKey,
 					(payload) => {
 						if (!payload.new) return;
@@ -219,7 +221,13 @@ export function useEmergencyRealtime({
 					(status) => handleRealtimeStatus("active_emergency_request", status)
 				);
 
-				unsubscribeAmbulance = await emergencyRequestsService.subscribeToAmbulanceLocation(
+				if (isCancelled) {
+					if (typeof emergencyUnsubscribe === "function") emergencyUnsubscribe();
+					return;
+				}
+				unsubscribeEmergency = emergencyUnsubscribe;
+
+				const ambulanceUnsubscribe = await emergencyRequestsService.subscribeToAmbulanceLocation(
 					subscriptionKey,
 					(payload) => {
 						if (!payload.new?.location) return;
@@ -231,6 +239,12 @@ export function useEmergencyRealtime({
 					},
 					(status) => handleRealtimeStatus("active_ambulance_location", status)
 				);
+
+				if (isCancelled) {
+					if (typeof ambulanceUnsubscribe === "function") ambulanceUnsubscribe();
+					return;
+				}
+				unsubscribeAmbulance = ambulanceUnsubscribe;
 			} catch (error) {
 				console.warn("[useEmergencyRealtime] Failed to setup subscriptions:", error);
 			}
@@ -238,6 +252,7 @@ export function useEmergencyRealtime({
 
 		setup();
 		return () => {
+			isCancelled = true;
 			if (typeof unsubscribeEmergency === "function") unsubscribeEmergency();
 			if (typeof unsubscribeAmbulance === "function") unsubscribeAmbulance();
 		};
@@ -248,30 +263,39 @@ export function useEmergencyRealtime({
 	useEffect(() => {
 		if (!activeBedBooking?.hospitalId) return;
 		let unsubscribeBeds = null;
+		let isCancelled = false;
 
 		const setup = async () => {
 			try {
-				unsubscribeBeds = await emergencyRequestsService.subscribeToHospitalBeds(
+				const bedsUnsubscribe = await emergencyRequestsService.subscribeToHospitalBeds(
 					activeBedBooking.hospitalId,
 					(payload) => {
-						if (payload.new) {
-							updateHospitals(
-								hospitals.map((h) =>
-									h.id === payload.new.id ? { ...h, availableBeds: payload.new.available_beds } : h
-								)
-							);
-						}
+						if (!payload.new) return;
+						// updateHospitals cannot propagate: it derives a value and drops it.
+						// The query cache is the only convergence layer, so patch it directly.
+						queryClient.setQueriesData({ queryKey: ["hospitals"] }, (entry) =>
+							applyBedAvailabilityToHospitalsCache(entry, payload.new)
+						);
 					},
 					(status) => handleRealtimeStatus("active_hospital_beds", status)
 				);
+
+				if (isCancelled) {
+					if (typeof bedsUnsubscribe === "function") bedsUnsubscribe();
+					return;
+				}
+				unsubscribeBeds = bedsUnsubscribe;
 			} catch (error) {
 				console.warn("[useEmergencyRealtime] Failed to setup bed subscription:", error);
 			}
 		};
 
 		setup();
-		return () => { if (typeof unsubscribeBeds === "function") unsubscribeBeds(); };
-	}, [activeBedBooking?.hospitalId, handleRealtimeStatus, hospitals, updateHospitals]);
+		return () => {
+			isCancelled = true;
+			if (typeof unsubscribeBeds === "function") unsubscribeBeds();
+		};
+	}, [activeBedBooking?.hospitalId, handleRealtimeStatus, queryClient]);
 
 	// ─── Live patient location sync during active trip ─────────────────────────
 

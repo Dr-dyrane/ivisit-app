@@ -239,18 +239,18 @@ function buildInsuranceWritePayload(
 
 export const insuranceService = {
   async list() {
-    const local = await database.read(StorageKeys.INSURANCE_POLICIES, []);
-    const localNormalized = Array.isArray(local) ? local.map(normalizeInsurancePolicy) : [];
-
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session?.user) return localNormalized;
+    // An anonymous caller gets nothing rather than whatever policies the previous
+    // account on this device left in the cache.
+    if (!session?.user) return [];
 
+    const userId = String(session.user.id);
     const { data, error } = await supabase
       .from(TABLE_NAME)
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -260,7 +260,12 @@ export const insuranceService = {
       return normalized;
     }
 
-    return localNormalized;
+    // Offline fallback: only rows this user provably owns.
+    const local = await database.read(StorageKeys.INSURANCE_POLICIES, []);
+    if (!Array.isArray(local)) return [];
+    return local
+      .filter((policy) => policy && String(policy.user_id || "") === userId)
+      .map(normalizeInsurancePolicy);
   },
 
   async getPolicies() {

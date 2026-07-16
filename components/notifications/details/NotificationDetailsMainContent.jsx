@@ -17,17 +17,26 @@ function SkeletonBlock({ width, height, theme, radius = 14 }) {
   );
 }
 
-function ActionButton({ label, onPress, theme, destructive = false }) {
+function ActionButton({
+  label,
+  onPress,
+  theme,
+  destructive = false,
+  disabled = false,
+}) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       style={({ pressed }) => ({
         height: 54,
         borderRadius: 18,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: destructive ? "#86100E" : theme.actionSurface,
-        opacity: pressed ? 0.88 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
       })}
     >
       <Text
@@ -41,6 +50,76 @@ function ActionButton({ label, onPress, theme, destructive = false }) {
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function CashApprovalCard({ model, theme, metrics }) {
+  const outcome = model.cashApprovalOutcome;
+  const isBusy = model.cashApprovalPending !== null;
+
+  return (
+    <DetailCard theme={theme} metrics={metrics}>
+      <Text
+        style={{
+          color: theme.text,
+          fontSize: 18,
+          fontWeight: "700",
+          letterSpacing: -0.2,
+        }}
+      >
+        {NOTIFICATION_DETAILS_COPY.center.cashApprovalLabel}
+      </Text>
+
+      {outcome ? (
+        <Text
+          style={{
+            color: theme.textMuted,
+            fontSize: 15,
+            lineHeight: 22,
+            fontWeight: "600",
+          }}
+        >
+          {outcome === "approved"
+            ? NOTIFICATION_DETAILS_COPY.messages.cashApprovedOutcome
+            : NOTIFICATION_DETAILS_COPY.messages.cashDeclinedOutcome}
+        </Text>
+      ) : !model.canActOnCashApproval ? (
+        <Text
+          style={{
+            color: theme.textMuted,
+            fontSize: 15,
+            lineHeight: 22,
+            fontWeight: "400",
+          }}
+        >
+          {NOTIFICATION_DETAILS_COPY.messages.cashReadOnly}
+        </Text>
+      ) : (
+        <>
+          <ActionButton
+            label={
+              model.cashApprovalPending === "approve"
+                ? NOTIFICATION_DETAILS_COPY.rows.approvingCash
+                : NOTIFICATION_DETAILS_COPY.rows.approveCash
+            }
+            onPress={model.approveCashPayment}
+            theme={theme}
+            disabled={isBusy}
+            destructive
+          />
+          <ActionButton
+            label={
+              model.cashApprovalPending === "decline"
+                ? NOTIFICATION_DETAILS_COPY.rows.decliningCash
+                : NOTIFICATION_DETAILS_COPY.rows.declineCash
+            }
+            onPress={model.declineCashPayment}
+            theme={theme}
+            disabled={isBusy}
+          />
+        </>
+      )}
+    </DetailCard>
   );
 }
 
@@ -233,6 +312,10 @@ export default function NotificationDetailsMainContent({
           theme={theme}
         />
       </DetailCard>
+
+      {model.cashApproval ? (
+        <CashApprovalCard model={model} theme={theme} metrics={metrics} />
+      ) : null}
 
       {model.linkedVisit ? (
         <DetailCard theme={theme} metrics={metrics}>

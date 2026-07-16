@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { Alert } from "react-native";
+import { showAlert } from "../../utils/platformAlert";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
 import * as Haptics from "expo-haptics";
@@ -305,7 +305,7 @@ export function useNotificationsScreenModel() {
   const clearSelected = useCallback(() => {
     if (selectedCount === 0) return;
 
-    Alert.alert(
+    showAlert(
       "Clear notifications",
       `Remove ${selectedCount} notification${selectedCount === 1 ? "" : "s"} from your inbox?`,
       [

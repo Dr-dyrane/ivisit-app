@@ -20,6 +20,7 @@ export function OTAModalLayer() {
 	const {
 		showModal,
 		showSuccessModal,
+		availableUpdate,
 		handleRestart,
 		handleLater,
 		handleDismissSuccess,
@@ -31,6 +32,7 @@ export function OTAModalLayer() {
 			<UpdateAvailableModal
 				visible={showModal}
 				variant="available"
+				update={availableUpdate}
 				onRestart={handleRestart}
 				onLater={handleLater}
 			/>

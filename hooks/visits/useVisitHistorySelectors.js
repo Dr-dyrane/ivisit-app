@@ -313,15 +313,23 @@ const formatTimeLabel = (date, visit) => {
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
-	
-	const isToday = date >= today;
+	const tomorrow = new Date(today);
+	tomorrow.setDate(tomorrow.getDate() + 1);
+	const dayAfterTomorrow = new Date(today);
+	dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+	// Bounded above: an unbounded lower bound labelled every future date "Today".
+	const isToday = date >= today && date < tomorrow;
 	const isYesterday = date >= yesterday && date < today;
-	
+	const isTomorrow = date >= tomorrow && date < dayAfterTomorrow;
+
 	let datePrefix = "";
 	if (isToday) {
 		datePrefix = "Today";
 	} else if (isYesterday) {
 		datePrefix = "Yesterday";
+	} else if (isTomorrow) {
+		datePrefix = "Tomorrow";
 	} else {
 		datePrefix = new Intl.DateTimeFormat(undefined, {
 			month: "short",

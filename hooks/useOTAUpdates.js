@@ -12,6 +12,7 @@ export function useOTAUpdates() {
     return {
         isChecking: context.isChecking,
         updateAvailable: context.updateAvailable,
+        availableUpdate: context.availableUpdate,
         showModal: context.showModal,
         showSuccessModal: context.showSuccessModal,
         handleRestart: context.handleRestart,
