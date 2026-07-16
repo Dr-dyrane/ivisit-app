@@ -13,6 +13,7 @@
     "ota:publish-dual": "node scripts/ota-publish-dual.js",
     "assert:marker-law": "node scripts/assert-marker-density-law.js",
     "assert:marker-law:update-baseline": "node scripts/assert-marker-density-law.js --update-baseline",
+    "assert:no-service-role": "node scripts/assert-no-service-role-in-bundle.js",
     "hardening:cleanup-apply": "node supabase/tests/scripts/cleanup_test_side_effects.js --apply",
     "hardening:cleanup-dry-run-guard": "node supabase/tests/scripts/assert_cleanup_dry_run_zero.js",
     "hardening:inventory-refresh": "node supabase/tests/scripts/export_live_schema_inventory.js",

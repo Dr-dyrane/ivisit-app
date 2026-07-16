@@ -54,6 +54,21 @@ if (!branch || !message) {
   }
 }
 
+// SERVICE-ROLE KEY gate -- an OTA is a publish, and a published bundle is public.
+// EXPO_PUBLIC_* values are inlined at export, so a bundled reference to the
+// service-role key would ship the production database's master key to every
+// device. Nothing may go out over the wire until the bundle is proven clean.
+{
+  const guard = path.join(__dirname, "assert-no-service-role-in-bundle.js");
+  const result = spawnSync(process.execPath, [guard], { stdio: "inherit" });
+  if (result.status !== 0) {
+    console.error("\n[ota:publish-dual] ABORTED before `eas update`: bundled code references a service-role key.");
+    console.error("[ota:publish-dual] Nothing was published. Publishing this bundle would leak full,");
+    console.error("[ota:publish-dual] RLS-bypassing database access to every install.");
+    process.exit(1);
+  }
+}
+
 // Staging carries the App-Review demo-auth env; preserve it so review sign-in never regresses.
 const stagingEnv =
   branch === "staging"
