@@ -640,6 +640,16 @@ Rating modal follow-up:
     - Guard: a pickup-key change must enter structural loading unless that exact
       key already has cache; commit payment must retain the clicked hospital.
 
+11. **Sequential recovered-rating replay**
+    - Symptom: Skip succeeds on one rating sheet and another sheet immediately
+      appears, although only one modal renderer exists.
+    - Cause: the server-owned skip command reached `post_completion`, but the
+      recovered handler closed before Visit refetch and the next render used
+      stale history.
+    - Guard: refetch canonical Visit truth before recovered-modal close and
+      invalidate recovered visibility when the matching Visit is no longer
+      rating-eligible.
+
 ## Flat Verification Matrix
 
 | Case | Payment lane | Expected first tracking state | Must not require reload | Key fields to log |
@@ -656,6 +666,7 @@ Rating modal follow-up:
 | Telemetry arrives before lifecycle event | accepted | lifecycle still advances to arrived | yes | separate request/ambulance gate versions |
 | Pickup changes before payment | decision | displayed hospital and quote remain identical in payment | yes | pickup query key, hospital UUID, quote total |
 | Arrival elapsed | active | arrived visual + confirm CTA | yes | stage, `canConfirmArrival`, status |
+| Rating skip/submit settles | completed | no second recovered sheet | yes | visit id/request id, lifecycle state, refetch result |
 
 ## Instrumentation Points For Next Pass
 

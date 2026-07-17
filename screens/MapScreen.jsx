@@ -422,6 +422,7 @@ export default function MapScreen() {
     discoveredHospitals,
     router,
     userId: user?.id || null,
+    onAfterRatingResolution: refreshVisits,
   });
 
   // PULLBACK NOTE: MapScreen decomposition Pass 6 — FAB management extracted

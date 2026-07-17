@@ -146,6 +146,25 @@ async function run() {
     completed.id,
     "completed emergency visit must be selected without patient completion writes",
   );
+  const recoveredState = {
+    visible: true,
+    visitId: completed.id,
+  };
+  assert.equal(
+    api.shouldPresentRecoveredTrackingRatingState(recoveredState, [completed]),
+    true,
+    "an eligible completed visit must keep its recovered rating visible",
+  );
+  assert.equal(
+    api.shouldPresentRecoveredTrackingRatingState(recoveredState, [
+      completedEmergency({
+        id: completed.id,
+        lifecycleState: LIFECYCLE.POST_COMPLETION,
+      }),
+    ]),
+    false,
+    "canonical post-completion truth must close a stale recovered rating",
+  );
   assert.equal(
     api.canPresentTrackingRatingWithActiveRequest(null, completed),
     true,
@@ -405,6 +424,32 @@ async function run() {
     mapScreenSource,
     /suppressRecoveredRatingForSession,\s*\n\s*visits,/,
     "MapScreen must wire the recovery guard into the tracking rating flow",
+  );
+  assert.match(
+    mapScreenSource,
+    /onAfterRatingResolution:\s*refreshVisits/,
+    "MapScreen must give recovered rating resolution a canonical Visit refresh",
+  );
+  const recoveredSkipStart = historyFlowSource.indexOf(
+    "const handleSkipRecoveredRating = useCallback",
+  );
+  const recoveredSkipRefreshAt = historyFlowSource.indexOf(
+    "await onAfterRatingResolution?.();",
+    recoveredSkipStart,
+  );
+  const recoveredSkipCloseAt = historyFlowSource.indexOf(
+    "closeRecoveredRating();",
+    recoveredSkipRefreshAt,
+  );
+  assert.ok(
+    recoveredSkipRefreshAt > recoveredSkipStart &&
+      recoveredSkipCloseAt > recoveredSkipRefreshAt,
+    "recovered rating skip must refresh canonical Visit truth before exposing the map again",
+  );
+  assert.match(
+    historyFlowSource,
+    /shouldPresentRecoveredTrackingRatingState\(recoveredRatingState,\s*visits\)/,
+    "recovered rating visibility must be validated against canonical Visit lifecycle",
   );
   assert.equal(
     (modalOrchestratorSource.match(/<ServiceRatingModal\b/g) || []).length,

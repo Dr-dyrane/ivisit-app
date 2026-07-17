@@ -43,6 +43,7 @@ import {
   getTrackingRatingRecoveryClaim,
   getTrackingRatingVisitKeys,
   isTrackingRatingResolutionFinal,
+  shouldPresentRecoveredTrackingRatingState,
   purgeStaleTrackingRatingClaims,
   readTrackingRatingRecoveryClaims,
   resolveTrackingRatingSkip,
@@ -104,6 +105,7 @@ export function useMapHistoryFlow({
   discoveredHospitals,
   router,
   userId,
+  onAfterRatingResolution,
 }) {
   // --- Refs ---
   const handledRecoveredRatingVisitIdsRef = useRef(new Set());
@@ -698,6 +700,22 @@ export function useMapHistoryFlow({
   // Without this guard, both modals fire simultaneously when a trip ends while a
   // RATING_PENDING visit also exists in the history lane.
   const inFlowRatingVisible = useAtomValue(trackingRatingStateAtom)?.visible ?? false;
+  const validatedRecoveredRatingState = useMemo(
+    () =>
+      shouldPresentRecoveredTrackingRatingState(recoveredRatingState, visits)
+        ? recoveredRatingState
+        : null,
+    [recoveredRatingState, visits],
+  );
+
+  useEffect(() => {
+    if (!recoveredRatingState?.visible || validatedRecoveredRatingState) return;
+    setRecoveredRatingState(null);
+  }, [
+    recoveredRatingState?.visible,
+    setRecoveredRatingState,
+    validatedRecoveredRatingState,
+  ]);
 
   useEffect(() => {
     if (recoveredRatingState?.visible || inFlowRatingVisible || !pendingRecoveredRatingVisit) return;
@@ -749,6 +767,11 @@ export function useMapHistoryFlow({
       return false;
     }
     markRecoveredRatingHandled(visitId);
+    try {
+      await onAfterRatingResolution?.();
+    } catch (error) {
+      console.warn("[useMapHistoryFlow] Rating refresh failed after skip:", error);
+    }
     closeRecoveredRating();
     const skipToast = buildTrackingResolutionToast({
       action: "skipped",
@@ -760,6 +783,7 @@ export function useMapHistoryFlow({
   }, [
     closeRecoveredRating,
     markRecoveredRatingHandled,
+    onAfterRatingResolution,
     recoveredRatingState?.serviceDetails?.hospital,
     recoveredRatingState?.serviceType,
     recoveredRatingState?.visitId,
@@ -785,6 +809,11 @@ export function useMapHistoryFlow({
         console.warn("[useMapHistoryFlow] Recovered rating tip processing failed:", resolution.tipError);
       }
       markRecoveredRatingHandled(visitId);
+      try {
+        await onAfterRatingResolution?.();
+      } catch (error) {
+        console.warn("[useMapHistoryFlow] Rating refresh failed after submit:", error);
+      }
       closeRecoveredRating();
       const successToast = buildTrackingResolutionToast({
         action: "rated",
@@ -799,6 +828,7 @@ export function useMapHistoryFlow({
     [
       closeRecoveredRating,
       markRecoveredRatingHandled,
+      onAfterRatingResolution,
       recoveredRatingState?.serviceDetails?.hospital,
       recoveredRatingState?.serviceType,
       recoveredRatingState?.visitId,
@@ -815,7 +845,7 @@ export function useMapHistoryFlow({
     cancelConfirmationVisit,
     isScheduledVisitTransitioning: isTransitioning,
     historyPaymentState,
-    recoveredRatingState,
+    recoveredRatingState: validatedRecoveredRatingState,
     ratingRecoveryClaims,
     historyVisitDetailsVisible,
     historyFocusedHospital,
