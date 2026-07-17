@@ -57,3 +57,27 @@ BEGIN
   LIMIT result_limit;
 END;
 $function$;
+
+ALTER FUNCTION public.nearby_providers(
+  double precision,
+  double precision,
+  text,
+  integer,
+  integer
+) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.nearby_providers(
+  double precision,
+  double precision,
+  text,
+  integer,
+  integer
+) FROM PUBLIC, anon, authenticated, service_role;
+
+GRANT EXECUTE ON FUNCTION public.nearby_providers(
+  double precision,
+  double precision,
+  text,
+  integer,
+  integer
+) TO PUBLIC, anon, authenticated, service_role;

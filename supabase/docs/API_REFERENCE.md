@@ -1,6 +1,6 @@
 # 📡 API Reference (Core RPCs)
 
-Generated from `20260219010000_core_rpcs.sql` on 7/14/2026
+Generated from `20260219010000_core_rpcs.sql` on 7/17/2026
 
 | Function | Parameters | Returns |
 |---|---|---|
