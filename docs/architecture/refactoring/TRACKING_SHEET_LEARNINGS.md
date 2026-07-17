@@ -913,6 +913,48 @@ The history explains why the defect became visible:
 
 ---
 
+### 2.26 Pickup changes must not borrow the previous discovery lane (2026-07-17)
+
+**Pattern**: A location-keyed TanStack query uses `placeholderData(previousData)`
+to avoid an empty frame. The previous result is visually relabeled and routed
+from the new pickup while the new query is still running.
+
+**Symptoms**:
+
+- after changing pickup, the transportation sheet briefly shows one hospital
+  and price, then payment opens for a different hospital and price;
+- the destination can change between a DOM snapshot and the CTA click;
+- the problem is intermittent because it depends on cache warmth, discovery
+  latency, demo bootstrap invalidation, and the moment of interaction;
+- refresh appears to "fix" the screen because only the settled query remains.
+
+**Diagnosis**: The May 7 location audit established that a meaningful pickup
+change is a state-reset boundary and must clear stale hospital focus. The May 17
+TanStack migration (`f2af061b`) correctly moved emergency discovery to a
+location-keyed query, but added `placeholderData: previousData`. That
+reintroduced the exact cross-pickup ownership leak the earlier pass had closed.
+The deployed reproduction showed San Gorgonio at `$160` in the decision sheet
+and then Hemet Valley Medical Center at `$190.65` in payment.
+
+**Fix recipe**:
+
+1. Keep pickup coordinates in the emergency hospital query key.
+2. Do not project the previous key's hospitals into a new pickup key.
+3. Let the existing structural map-loading state represent an uncached pickup.
+4. Preserve normal same-key cached data and background refresh behavior.
+5. Pass the canonical explore snap state into the pickup source-return builder.
+6. Keep the explicit hospital object from the clicked decision through the
+   commit transition; do not re-resolve payment from ambient nearest-hospital
+   state.
+7. Test the actual browser sequence: change pickup, wait through discovery,
+   click the displayed hospital/price, and assert payment shows the same pair.
+
+**General rule**: Loading continuity may reuse data only when its identity key
+is still valid. A believable skeleton is safer than confidently rendering data
+owned by another pickup, request, account, or organization.
+
+---
+
 ## 6. Update This Document
 
 Every future pass that uncovers a new defect class should append to this file. This is the canonical record of "lessons we paid for."

@@ -633,6 +633,13 @@ Rating modal follow-up:
      compared through one event gate, allowing a newer GPS row to reject a
      valid lifecycle transition from the other table.
 
+10. **Cross-pickup discovery placeholder**
+    - Symptom: transportation displays hospital A, but payment opens hospital B.
+    - Cause: the location-keyed emergency query projected the previous pickup's
+      hospitals through `placeholderData` while the new pickup query settled.
+    - Guard: a pickup-key change must enter structural loading unless that exact
+      key already has cache; commit payment must retain the clicked hospital.
+
 ## Flat Verification Matrix
 
 | Case | Payment lane | Expected first tracking state | Must not require reload | Key fields to log |
@@ -647,6 +654,7 @@ Rating modal follow-up:
 | App reload after tracking active | active | same progress/ETA | yes | `startedAt`, eta source, route key |
 | Realtime ambulance movement | active | marker/location updates | yes | subscription key, `current_call`, event gate |
 | Telemetry arrives before lifecycle event | accepted | lifecycle still advances to arrived | yes | separate request/ambulance gate versions |
+| Pickup changes before payment | decision | displayed hospital and quote remain identical in payment | yes | pickup query key, hospital UUID, quote total |
 | Arrival elapsed | active | arrived visual + confirm CTA | yes | stage, `canConfirmArrival`, status |
 
 ## Instrumentation Points For Next Pass

@@ -196,6 +196,9 @@ export function useMapExploreFlow() {
     setSheetView,
     setRuntimeSlice,
   } = flowActions;
+  const defaultExploreSnapState = usesSidebarLayout
+    ? MAP_SHEET_SNAP_STATES.EXPANDED
+    : MAP_SHEET_SNAP_STATES.HALF;
   // PULLBACK NOTE: EXP-7 — clear provider atoms on location change
   // OLD: clearLocationScopedMapState only cleared hospital selection
   // NEW: also clears exploreProviderCategory + exploreProviderId
@@ -237,6 +240,7 @@ export function useMapExploreFlow() {
     preferences,
     setManualLocation,
     sheetPayload,
+    defaultExploreSnapState,
     setSheetView,
     clearLocationScopedMapState,
     setMapReadiness,
@@ -256,9 +260,6 @@ export function useMapExploreFlow() {
     nearbyCoverageCounts,
     hasDemoHospitalsNearby,
   });
-  const defaultExploreSnapState = usesSidebarLayout
-    ? MAP_SHEET_SNAP_STATES.EXPANDED
-    : MAP_SHEET_SNAP_STATES.HALF;
   const isBootstrappingDemo = useMapExploreDemoBootstrap({
     activeLocation,
     coverageModePreferenceLoaded,

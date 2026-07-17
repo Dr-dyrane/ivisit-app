@@ -556,3 +556,48 @@ Verification:
 
 Local behavior is closed. Deployed web remains intentionally unsigned until
 this source change is published and the same journey passes without refresh.
+
+### Deployed Follow-up: Pickup-to-payment hospital identity race - 2026-07-17
+
+The first deployed journey on merged App `main` was cancelled before request
+creation because it exposed a stale discovery handoff:
+
+1. payment for Hemet Valley Medical Center was closed;
+2. pickup was changed through the Location sheet;
+3. the transportation sheet displayed San Gorgonio Memorial Hospital at
+   `$160.00`;
+4. `Confirm & continue` opened payment for the prior Hemet Valley Medical
+   Center selection at `$190.65`.
+
+Git history tied this to a regression in the May location migration:
+
+- the May 7 audit and implementation made a meaningful pickup change a
+  hospital-state reset boundary;
+- the May 17 TanStack migration (`f2af061b`) added
+  `placeholderData(previousData)` to the location-keyed emergency hospital
+  query;
+- that placeholder allowed one pickup's hospital lane to render under another
+  pickup until discovery settled.
+
+The repair removes cross-key placeholder reuse while keeping same-key TanStack
+cache/background refresh behavior. It also restores
+`defaultExploreSnapState` at the `useMapLocation` call boundary.
+
+Local browser proof after the repair:
+
+`LifeStream decision ($200.84) -> Confirm & continue -> LifeStream payment
+($200.84, cash)`
+
+The surrounding map hospital set refreshed during the handoff, but the explicit
+clicked hospital and quote remained stable in payment. No request or payment
+was created during this identity test.
+
+Verification:
+
+- emergency continuity contract: 7/7;
+- emergency discovery contract includes a no-cross-pickup-placeholder guard;
+- local web runtime booted and the pickup-to-payment identity sequence passed.
+
+Production lifecycle sign-off still requires publishing this repair, then
+running the fresh no-refresh request through approval, accepted, arrived,
+Confirm Arrival, completion, single rating, and hard-refresh recovery.
