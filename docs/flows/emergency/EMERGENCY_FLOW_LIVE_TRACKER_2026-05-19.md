@@ -626,5 +626,20 @@ refetch used by the in-flow path and validates recovered visibility against
 canonical lifecycle truth. The emergency continuity contract remains 7/7.
 Local hard refresh now shows neither active tracking nor a stale rating sheet.
 
-Production and EAS sign-off remain gated on publishing this follow-up and
-repeating the one-modal dismissal sequence.
+Production closure:
+
+- App PR `#3` merged as `221693bf`;
+- fresh request `056394c0-102d-4b1b-a08a-dca50be29b56` /
+  `REQ-514070` preserved Visiting Nurse Association of Inland and `$160`
+  through payment;
+- the mounted production page advanced through accepted, arrived, Confirm
+  Arrival, completed, one rating modal, one Skip, and a clean hard refresh;
+- Supabase recorded payment `completed`, a non-null
+  `patient_acknowledged_arrival_at`, Visit `post_completion`, and transitions
+  `pending_approval -> in_progress -> accepted -> arrived -> completed`;
+- App PR `#4` merged the display marker `1.0.8.58` as `d5ab1f06`;
+- EAS production update group
+  `54dca1a6-8052-40b8-b995-cb04028b3584` serves Android and iOS runtime
+  `1.0.8`.
+
+No native build, runtime bump, or 1.0.9 backlog item was included.
