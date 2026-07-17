@@ -1686,6 +1686,38 @@ Verification:
 - no production mutation, function deployment, EAS update, APK, or AAB during
   this backend-only pass.
 
+### SCC-060: Hospital Claim And Verification Authority
+Objective:
+- Complete the canonical provider onboarding review chain for new facilities
+  and existing unowned-facility claims while preserving App eligibility gates.
+
+Locked scope:
+- keep the eleven migration pillars;
+- add the facility-claim lifecycle only to `org_structure`;
+- add RLS/direct-write denial only to `security`;
+- add onboarding and platform-admin review commands only to `core_rpcs`;
+- never transfer a facility already linked to another organization;
+- keep evidence, claim, organization, and facility decisions separate;
+- do not alter patient discovery or emergency eligibility semantics;
+- do not deploy or publish EAS/native artifacts during the contract pass.
+
+Deliverables:
+- owner-pillar schema, policy, and RPC updates;
+- generated App/Console type parity;
+- Console onboarding selection plus review-lane adoption;
+- expanded rollback and disposable live E2E matrices;
+- field-agent go/no-go record in the existing Console Pass 4 plan;
+- detailed contract in
+  `docs/project_state/context/scc/SCC-060_HOSPITAL_CLAIM_VERIFICATION_AUTHORITY_2026-07-17.md`.
+
+Verification:
+- onboarding rollback contract and SQL parse;
+- App/Console migration and type parity;
+- Console targeted tests and production build;
+- cleanup and contract-drift guards;
+- after separately reviewed deployment, disposable live create/claim/review/App
+  consequence E2E with deterministic cleanup.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

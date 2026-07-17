@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.organizations (
     address TEXT,
     city TEXT,
     state TEXT,
-    verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'rejected')),
+    verification_status TEXT NOT NULL DEFAULT 'pending' CHECK (verification_status IN ('pending', 'changes_requested', 'verified', 'rejected')),
     verified_at TIMESTAMPTZ,
     verified_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     rejection_reason TEXT,
@@ -61,7 +61,7 @@ ALTER TABLE public.organizations
     DROP CONSTRAINT IF EXISTS organizations_verification_status_check;
 ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_verification_status_check
-    CHECK (verification_status IN ('pending', 'verified', 'rejected'));
+    CHECK (verification_status IN ('pending', 'changes_requested', 'verified', 'rejected'));
 
 CREATE INDEX IF NOT EXISTS idx_organizations_registration_number
     ON public.organizations (LOWER(registration_number))
@@ -114,31 +114,91 @@ CREATE TABLE IF NOT EXISTS public.hospitals (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Existing-facility ownership is a reviewed workflow. A claim can attach only
+-- to an unowned facility; approval links ownership but never verifies the
+-- organization or facility.
+-- BEGIN CONSOLE_ONBOARDING_EVIDENCE_SCHEMA
+CREATE TABLE IF NOT EXISTS public.organization_facility_claims (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    facility_id UUID NOT NULL REFERENCES public.hospitals(id) ON DELETE RESTRICT,
+    submitted_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'changes_requested', 'approved', 'rejected', 'withdrawn')),
+    claim_note TEXT,
+    review_note TEXT,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (organization_id, facility_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_facility_claims_active_facility
+    ON public.organization_facility_claims (facility_id)
+    WHERE status IN ('pending', 'changes_requested', 'approved');
+
+CREATE INDEX IF NOT EXISTS idx_facility_claims_org_status
+    ON public.organization_facility_claims (organization_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_facility_claims_reviewer
+    ON public.organization_facility_claims (reviewed_by, reviewed_at DESC);
+
 -- Private evidence submitted during organization registration. Storage object
 -- paths stay separate from the public.documents data-room boundary.
--- BEGIN CONSOLE_ONBOARDING_EVIDENCE_SCHEMA
 CREATE TABLE IF NOT EXISTS public.organization_verification_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
     facility_id UUID REFERENCES public.hospitals(id) ON DELETE SET NULL,
+    facility_claim_id UUID REFERENCES public.organization_facility_claims(id) ON DELETE SET NULL,
     uploaded_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
     document_type TEXT NOT NULL CHECK (document_type IN ('registration', 'license', 'identity', 'other')),
     storage_path TEXT NOT NULL UNIQUE,
     original_name TEXT NOT NULL,
     mime_type TEXT NOT NULL,
     size_bytes BIGINT NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 10485760),
-    review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'accepted', 'rejected')),
+    review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'changes_requested', 'accepted', 'rejected')),
     reviewed_at TIMESTAMPTZ,
     reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     rejection_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.organization_verification_documents
+    ADD COLUMN IF NOT EXISTS facility_claim_id UUID;
+
+DO $onboarding_evidence_claim_fk$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'organization_verification_documents_facility_claim_id_fkey'
+          AND conrelid = 'public.organization_verification_documents'::regclass
+    ) THEN
+        ALTER TABLE public.organization_verification_documents
+            ADD CONSTRAINT organization_verification_documents_facility_claim_id_fkey
+            FOREIGN KEY (facility_claim_id)
+            REFERENCES public.organization_facility_claims(id)
+            ON DELETE SET NULL;
+    END IF;
+END;
+$onboarding_evidence_claim_fk$;
+
+ALTER TABLE public.organization_verification_documents
+    DROP CONSTRAINT IF EXISTS organization_verification_documents_review_status_check;
+ALTER TABLE public.organization_verification_documents
+    ADD CONSTRAINT organization_verification_documents_review_status_check
+    CHECK (review_status IN ('pending', 'changes_requested', 'accepted', 'rejected'));
+
 CREATE INDEX IF NOT EXISTS idx_org_verification_documents_org
     ON public.organization_verification_documents (organization_id, review_status, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_org_verification_documents_uploader
     ON public.organization_verification_documents (uploaded_by, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_org_verification_documents_claim
+    ON public.organization_verification_documents (facility_claim_id, review_status, created_at DESC)
+    WHERE facility_claim_id IS NOT NULL;
 -- END CONSOLE_ONBOARDING_EVIDENCE_SCHEMA
 
 -- PULLBACK NOTE: FIX-DUPLICATE-LOCATIONS — Location-based unique constraint

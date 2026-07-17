@@ -265,6 +265,7 @@ ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hospitals ENABLE ROW LEVEL SECURITY;
 -- BEGIN CONSOLE_ONBOARDING_EVIDENCE_RLS
+ALTER TABLE public.organization_facility_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organization_verification_documents ENABLE ROW LEVEL SECURITY;
 -- END CONSOLE_ONBOARDING_EVIDENCE_RLS
 ALTER TABLE public.hospital_import_logs ENABLE ROW LEVEL SECURITY;
@@ -464,6 +465,21 @@ USING (
     OR public.p_is_admin()
 );
 
+DROP POLICY IF EXISTS "Facility claims are readable in scope" ON public.organization_facility_claims;
+CREATE POLICY "Facility claims are readable in scope"
+ON public.organization_facility_claims FOR SELECT
+TO authenticated
+USING (
+    submitted_by = auth.uid()
+    OR organization_id = public.p_get_current_org_id()
+    OR public.p_is_admin()
+);
+
+REVOKE INSERT, UPDATE, DELETE ON public.organization_facility_claims
+    FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.organization_verification_documents
+    FROM anon, authenticated;
+GRANT SELECT ON public.organization_facility_claims TO authenticated;
 GRANT SELECT ON public.organization_verification_documents TO authenticated;
 -- END CONSOLE_ONBOARDING_READ_POLICIES
 

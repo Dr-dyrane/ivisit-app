@@ -1935,10 +1935,82 @@ export type Database = {
           },
         ]
       }
+      organization_facility_claims: {
+        Row: {
+          claim_note: string | null
+          created_at: string
+          facility_id: string
+          id: string
+          organization_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          claim_note?: string | null
+          created_at?: string
+          facility_id: string
+          id?: string
+          organization_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          claim_note?: string | null
+          created_at?: string
+          facility_id?: string
+          id?: string
+          organization_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_facility_claims_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_facility_claims_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_facility_claims_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_facility_claims_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_verification_documents: {
         Row: {
           created_at: string
           document_type: string
+          facility_claim_id: string | null
           facility_id: string | null
           id: string
           mime_type: string
@@ -1955,6 +2027,7 @@ export type Database = {
         Insert: {
           created_at?: string
           document_type: string
+          facility_claim_id?: string | null
           facility_id?: string | null
           id?: string
           mime_type: string
@@ -1971,6 +2044,7 @@ export type Database = {
         Update: {
           created_at?: string
           document_type?: string
+          facility_claim_id?: string | null
           facility_id?: string | null
           id?: string
           mime_type?: string
@@ -1985,6 +2059,13 @@ export type Database = {
           uploaded_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organization_verification_documents_facility_claim_id_fkey"
+            columns: ["facility_claim_id"]
+            isOneToOne: false
+            referencedRelation: "organization_facility_claims"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organization_verification_documents_facility_id_fkey"
             columns: ["facility_id"]
@@ -4324,6 +4405,22 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      review_console_facility_claim: {
+        Args: { p_claim_id: string; p_decision: string; p_note?: string }
+        Returns: Json
+      }
+      review_console_organization: {
+        Args: {
+          p_decision: string
+          p_note?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      review_organization_verification_document: {
+        Args: { p_decision: string; p_document_id: string; p_note?: string }
+        Returns: Json
+      }
       rate_visit: {
         Args: { p_comment?: string; p_rating: number; p_visit_id: string }
         Returns: Json
@@ -4391,8 +4488,11 @@ export type Database = {
         Args: { p_query: string }
         Returns: {
           address: string
+          claim_status: string | null
+          claimable: boolean
           id: string
           name: string
+          ownership_state: string
           provider_type: string
           requires_support: boolean
           verification_status: string
