@@ -186,6 +186,23 @@ export function shouldPresentTrackingRatingState(ratingState, visits) {
   );
 }
 
+export function shouldPresentRecoveredTrackingRatingState(ratingState, visits) {
+  if (!ratingState?.visible || !ratingState?.visitId) return false;
+  if (!Array.isArray(visits) || visits.length === 0) return true;
+
+  const visitId = String(ratingState.visitId);
+  const matchingVisit = visits.find((visit) =>
+    getTrackingRatingVisitKeys(visit).includes(visitId),
+  );
+
+  // Recovery may open before the refreshed Visit row reaches the client.
+  // Once that row is present, canonical eligibility owns whether the modal
+  // remains visible; post_completion/rated/cancelled rows must close it.
+  return matchingVisit
+    ? isTrackingRatingRecoveryEligible(matchingVisit)
+    : true;
+}
+
 const getActiveTrackingRequestKeys = (activeMapRequest) =>
   [
     activeMapRequest?.id,

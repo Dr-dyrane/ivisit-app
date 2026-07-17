@@ -601,3 +601,30 @@ Verification:
 Production lifecycle sign-off still requires publishing this repair, then
 running the fresh no-refresh request through approval, accepted, arrived,
 Confirm Arrival, completion, single rating, and hard-refresh recovery.
+
+### Deployed Follow-up: Sequential recovered-rating replay - 2026-07-17
+
+Fresh request `1bf12fd6-ba3b-4587-9b00-7e84f9290cb0` / `REQ-4B9E4B`
+proved the repaired payment-to-tracking handoff on deployed web:
+
+- Visiting Nurse Association of Inland remained `$160` from decision through
+  cash payment;
+- payment completion advanced to accepted tracking and populated the top pill
+  without refresh;
+- canonical responder arrival changed the mounted app to `Arrived`;
+- Confirm Arrival wrote `patient_acknowledged_arrival_at` and the demo
+  responder completed the request.
+
+The journey then reproduced the historical rating complaint more precisely:
+only one modal existed at a time, but Skip closed one recovered rating and
+stale Visit cache immediately exposed another. Read-only Supabase proof showed
+the new and preceding test visits were already `post_completion`; the second
+sheet was client recovery residue, not a duplicate backend visit.
+
+The local repair gives recovered Skip/Submit the same post-command Visit
+refetch used by the in-flow path and validates recovered visibility against
+canonical lifecycle truth. The emergency continuity contract remains 7/7.
+Local hard refresh now shows neither active tracking nor a stale rating sheet.
+
+Production and EAS sign-off remain gated on publishing this follow-up and
+repeating the one-modal dismissal sequence.

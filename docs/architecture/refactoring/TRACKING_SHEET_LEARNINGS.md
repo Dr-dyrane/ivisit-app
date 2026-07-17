@@ -955,6 +955,52 @@ owned by another pickup, request, account, or organization.
 
 ---
 
+### 2.27 Rating exclusivity includes sequential recovery handoffs (2026-07-17)
+
+**Pattern**: One physical rating renderer chooses between live-tracking and
+recovered-rating state, but resolving a recovered rating closes the modal
+before the refreshed Visit lifecycle reaches the client. Stale history can
+immediately supply another modal state, so users see two rating sheets in
+sequence even though only one exists in the DOM at a time.
+
+**Symptoms**:
+
+- completion opens one rating sheet;
+- pressing Skip succeeds and shows the completion toast;
+- another rating sheet is immediately visible;
+- a hard refresh removes the second sheet because Supabase already holds
+  `post_completion`.
+
+**Diagnosis**: The May 3 fixes correctly consolidated rendering and guarded
+live-tracking versus recovered-rating visibility. The July 15 lifecycle repair
+correctly moved skip/rate writes to server-owned commands, but removed the
+optimistic Visit-cache update. The in-flow handler retained a canonical
+`refreshVisits()` callback; the recovered handler did not. It therefore closed
+its atom against stale Visit history, and recovered modal visibility was not
+revalidated when the matching Visit later became `post_completion`.
+
+**Fix recipe**:
+
+1. Keep one physical `ServiceRatingModal`.
+2. After recovered Skip or Submit succeeds, refetch canonical Visit truth
+   before closing the modal.
+3. Treat refresh failure as a cache-reconciliation warning, not a failed
+   server resolution.
+4. Validate recovered visibility against the matching Visit on every visits
+   update.
+5. Close recovered state when the Visit is `post_completion`, `rated`,
+   `cleared`, or `cancelled`.
+6. Preserve recovery when the Visit row has not arrived yet; absence is not
+   proof of resolution.
+7. Test sequential behavior: one modal, one Skip, no second sheet, then hard
+   refresh with no rating or tracking residue.
+
+**General rule**: A single renderer does not guarantee a single user moment.
+Mutually exclusive state owners must also converge before ownership is handed
+off.
+
+---
+
 ## 6. Update This Document
 
 Every future pass that uncovers a new defect class should append to this file. This is the canonical record of "lessons we paid for."
