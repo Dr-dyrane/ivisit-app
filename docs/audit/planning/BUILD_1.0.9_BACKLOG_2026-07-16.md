@@ -1,7 +1,7 @@
 ---
 status: active
 owner: architecture
-last_updated: 2026-07-16
+last_updated: 2026-07-17
 ---
 
 # Build 1.0.9 Backlog — build-required findings (do NOT ship these via OTA)
@@ -58,8 +58,38 @@ last_updated: 2026-07-16
 - **Fix:** decide intent at build cut: delete the key (automatic applies), or install
   expo-system-ui deliberately and document the asymmetry.
 
+## T1 — Retire the public-prefixed service-role environment alias
+
+- **Fact:** bundled App roots do not reference a service-role variable and
+  `npm run assert:no-service-role` passes. There is therefore no current evidence that the
+  production service-role value entered an App bundle.
+- **Remaining risk:** ignored maintainer environment files and many historical/admin scripts still
+  use or accept `EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`. Expo public variables are eligible for
+  client substitution whenever bundled code references them, so the name itself is an avoidable
+  trap. The 2026-07-17 `nearby_providers` capture script now accepts only
+  `SUPABASE_SERVICE_ROLE_KEY` and intentionally fails under the legacy alias.
+- **Delivery class:** coordinated repository/CI/EAS secret migration, not a native-module change.
+  It does not require an APK/AAB by itself because shipped code has no service-role consumer, but
+  execute it with the 1.0.9 release-preparation program so maintainer, CI, Vercel, and EAS
+  environments are inventoried together. Do not silently rename one environment and strand
+  cleanup/audit tooling.
+- **Migration order:**
+  1. inventory variable names (never values) across ignored local env files, CI, Vercel, and every
+     EAS environment;
+  2. migrate active maintainer/test scripts to `SUPABASE_SERVICE_ROLE_KEY`; archived scripts remain
+     historical and must not be invoked;
+  3. add the private name to each authorized server/maintainer environment, validate read-only
+     contract and cleanup dry-run commands, then remove the public alias;
+  4. rerun `npm run assert:no-service-role`, production web export, emergency continuity, live
+     contract assertions, and Console shared-contract checks;
+  5. rotate the Supabase service-role credential only if exposure evidence or security policy
+     requires it, then update all authorized server-side consumers atomically.
+- **Current release implication:** the tracking/realtime patch remains web/OTA-compatible and does
+  not consume this secret. T1 must not be bundled into an emergency tracking release as an
+  unreviewed environment change.
+
 ## Cross-references
 - OTA-safe remediation (running separately): E1..E29 in the classified plan artifact.
 - Server-side companions: N1 (delete_user), N2 (insurance storage policy), N3 (reschedule
   self-exclusion), N4 (push fan-out, pairs with B1).
-- Repo tooling: T1 (EXPO_PUBLIC_ service-role rename), T2 (marker-density law guard script).
+- Repo tooling: T1 above; T2 (marker-density law guard script).

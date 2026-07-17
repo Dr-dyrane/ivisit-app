@@ -315,7 +315,12 @@ const mergeAmbulanceRealtimeTrip = (prevTrip, ambulanceRecord) => {
 			ambulanceRecord.telemetry_lease_expires_at ??
 			prevTrip.responderTelemetryLeaseExpiresAt ??
 			null,
-		updatedAt: ambulanceRecord.updated_at ?? prevTrip.updatedAt ?? null,
+		// `updatedAt` is the emergency_requests lifecycle version. Keeping the
+		// ambulance row timestamp in that field advances the wrong event gate and
+		// can make accepted/arrived updates look stale until a hard refresh.
+		updatedAt: prevTrip.updatedAt ?? null,
+		ambulanceUpdatedAt:
+			ambulanceRecord.updated_at ?? prevTrip.ambulanceUpdatedAt ?? null,
 		assignedAmbulance: {
 			...(prevTrip.assignedAmbulance || {}),
 			id: ambulanceRecord.id ?? prevTrip?.assignedAmbulance?.id ?? null,

@@ -97,9 +97,78 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(emergencyContext, /\t\tupdateHospitals,\n\t\thospitals,\n/);
 
+// --- E17: lifecycle and telemetry ordering must remain independent ---
+
+assert.match(realtime, /const emergencyRequestEventRef = useRef\(/);
+assert.match(realtime, /const ambulanceLocationEventRef = useRef\(/);
+assert.doesNotMatch(realtime, /\bshouldApplyAmbulanceEvent\b/);
+assert.match(
+  realtime,
+  /shouldApplyEmergencyRequestEvent\(prev, newRecord\)/,
+  "the user-scoped request channel must use the lifecycle event gate",
+);
+assert.match(
+  perTripSubscription,
+  /shouldApplyEmergencyRequestEvent\(prev, payload\.new\)/,
+  "the request-id channel must use the lifecycle event gate",
+);
+assert.match(
+  perTripSubscription,
+  /shouldApplyAmbulanceLocationEvent\(prev, payload\.new\)/,
+  "ambulance telemetry must use its own event gate",
+);
+
 const {
   applyBedAvailabilityToHospitalsCache,
+  mergeAmbulanceRealtimeTrip,
+  shouldApplyTripEvent,
 } = require("../utils/emergencyRealtimeProjection");
+
+const requestId = "11111111-1111-4111-8111-111111111111";
+const tripBeforeTelemetry = {
+  id: requestId,
+  requestId,
+  status: "accepted",
+  updatedAt: "2026-07-17T21:00:00.000Z",
+  assignedAmbulance: { id: "ambulance-1" },
+};
+const telemetryRow = {
+  id: "ambulance-1",
+  current_call: requestId,
+  location: "POINT(-117.0 33.7)",
+  updated_at: "2026-07-17T21:00:10.000Z",
+};
+const arrivedRequestRow = {
+  id: requestId,
+  status: "arrived",
+  updated_at: "2026-07-17T21:00:05.000Z",
+};
+const telemetryDecision = shouldApplyTripEvent(
+  { requestKey: requestId, versionMs: 0 },
+  tripBeforeTelemetry,
+  telemetryRow,
+);
+assert.equal(telemetryDecision.apply, true);
+const tripAfterTelemetry = mergeAmbulanceRealtimeTrip(
+  tripBeforeTelemetry,
+  telemetryRow,
+);
+assert.equal(
+  tripAfterTelemetry.updatedAt,
+  tripBeforeTelemetry.updatedAt,
+  "ambulance telemetry must not advance the emergency-request lifecycle version",
+);
+assert.equal(tripAfterTelemetry.ambulanceUpdatedAt, telemetryRow.updated_at);
+const lifecycleDecision = shouldApplyTripEvent(
+  { requestKey: requestId, versionMs: Date.parse(tripBeforeTelemetry.updatedAt) },
+  tripAfterTelemetry,
+  arrivedRequestRow,
+);
+assert.equal(
+  lifecycleDecision.apply,
+  true,
+  "a lifecycle event must remain fresh even when a newer telemetry row arrived first",
+);
 
 // useEmergencyHospitalsQuery caches an object; useHospitalsQuery caches a bare
 // array. Both live under the ["hospitals", ...] prefix the patch sweeps.

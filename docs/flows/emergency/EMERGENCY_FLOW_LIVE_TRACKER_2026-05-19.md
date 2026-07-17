@@ -499,3 +499,60 @@ staging (9a1b0e3e rt1.0.7 / 697f8e2f rt1.0.6); web deployed from the same push.
 
 Open investigation: intermittent giant map markers on installed APKs only (Metro/web
 render correctly; marker code unchanged since June) -- verify on build 30 sideload.
+
+### Cross-Stream Realtime Ordering Repair: 2026-07-17
+
+The fresh web journey required by the release gate reproduced an intermittent
+stale tracking state on `REQ-99F595`. Responder telemetry and the route remained
+active, but the top pill/sheet retained an earlier dispatch projection until a
+hard refresh. The canonical database lifecycle was ahead of the mounted App.
+
+Git history shows a latent ownership error rather than a new visual regression:
+
+```text
+2ba4f8fb  2026-03-04  generic realtime timestamp guard and telemetry projection
+00a793d0  2026-04-26  EmergencyContext extraction; one shared event-gate ref
+4e1408b2  2026-04-28  realtime/projection gap repair
+a75b4265  2026-07-14  canonical responder lifecycle and telemetry authority
+fb4396c6  2026-07-14  demo responder continuity and recovery
+f26e2959  2026-07-15  payment/tracking/rating continuity polish
+c566d7ff  2026-07-16  realtime cleanup and OTA lifecycle hygiene
+```
+
+The stale-event guard was valid within one source, but the hook applied one
+clock to two sources. A newer `ambulances.updated_at` could advance the shared
+gate and cause a valid `emergency_requests.updated_at` lifecycle transition to
+be discarded. `mergeAmbulanceRealtimeTrip()` also copied the ambulance row time
+into the trip's lifecycle `updatedAt`, allowing the contamination to survive
+later renders.
+
+The repair preserves the five-layer architecture:
+
+1. Supabase remains canonical for request lifecycle and responder telemetry.
+2. Realtime still patches an existing trip and query/refetch remains recovery.
+3. Zustand still owns the persistent active-trip snapshot.
+4. XState still receives canonical lifecycle legality.
+5. Jotai still owns request-scoped tracking presentation.
+
+Only the Layer 1 ordering boundary changed: emergency-request events and
+ambulance-location events now have separate gates, and ambulance timestamps
+are stored as `ambulanceUpdatedAt` instead of overwriting lifecycle
+`updatedAt`.
+
+Verification:
+
+- the focused emergency continuity suite passed 7/7;
+- the new adversarial test proves telemetry at `T+10` cannot reject an arrived
+  request event at `T+5`;
+- production web export passed;
+- the live browser journey completed Confirm Arrival successfully, the CTA
+  immediately became `Arrival confirmed`, responder-owned completion followed,
+  exactly one rating modal rendered, Skip resolved it, and hard refresh showed
+  neither a stale tracking request nor a duplicate rating;
+- read-only database proof for UUID
+  `152df5be-29cc-443b-ba51-5952a437380a` showed one completed request, one
+  completed/post-completion Visit, a non-null
+  `patient_acknowledged_arrival_at`, and the full ordered transition chain.
+
+Local behavior is closed. Deployed web remains intentionally unsigned until
+this source change is published and the same journey passes without refresh.

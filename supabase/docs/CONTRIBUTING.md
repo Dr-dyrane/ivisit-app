@@ -34,9 +34,13 @@ Migration workflow, service patterns, and scalability rules for both codebases.
 > - `20260423000100_active_request_concurrency_guard` → integrated into `0003_logistics` (concurrency guard block)
 > - Remote history for both repaired via `migration repair --status reverted`
 
-> **Absorbed migrations (June 2026):**
-> - `20260601000000_provider_taxonomy` → columns/trigger/nearby_providers RPC/RLS integrated into `0002_org_structure` (Section 7); updated `nearby_hospitals` RPC integrated into `0100_core_rpcs` (Section 1)
-> - Remote history repaired via `migration repair --status reverted`
+> **Provider taxonomy reconciliation (June-July 2026):**
+> - Historical notes attributed provider taxonomy deployment to
+>   `20260601000000_provider_taxonomy`, but that migration artifact is absent from Git history.
+> - Taxonomy columns/trigger/RLS remain integrated into `0002_org_structure` (Section 7), and
+>   provider/hospital discovery RPCs remain integrated into `0100_core_rpcs` (Section 1).
+> - The deployed 20-field `nearby_providers` definition was captured on 2026-07-17 under
+>   `supabase/docs/live-contracts` and reconciled into the pillar without changing production.
 
 > **Absorbed deployments (July 2026):**
 > - Emergency dispatch deployment versions `20260714101500`, `20260714180000`, `20260714183000`, `20260714190000`, `20260714193000`, `20260714200000`, and `20260714203000` were generated from the core pillars, verified live, then removed.

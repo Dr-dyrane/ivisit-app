@@ -2,7 +2,8 @@
 -- Critical functions for Edge Functions, Console, and App Discovery
 
 -- 1. Nearby Hospitals (PostGIS Enabled)
--- PULLBACK NOTE: EXP-3/EXP-4 (Explore Care Refactor) — absorbed from 20260601000000_provider_taxonomy.sql
+-- PULLBACK NOTE: EXP-3/EXP-4 (Explore Care Refactor) — provider taxonomy contract;
+-- the historically cited 20260601000000 deployment artifact is absent from Git.
 -- OLD: returned any available row regardless of provider_type; return type had no taxonomy fields
 -- NEW: filters commit-eligible hospitals to active, verified organizations; returns taxonomy fields
 -- DROP required because return type gains new columns (PostgreSQL constraint).
@@ -63,6 +64,17 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- 1b. Nearby Providers (Explore Care)
 -- Explore mode RPC — no emergency filter, category-aware.
+-- The discovery contract intentionally returns only app-facing hospital/provider
+-- projection fields. Organization-owned detail must come from a separately
+-- verified onboarding contract, not generic category templates.
+DROP FUNCTION IF EXISTS public.nearby_providers(
+  DOUBLE PRECISION,
+  DOUBLE PRECISION,
+  TEXT,
+  INTEGER,
+  INTEGER
+);
+
 CREATE OR REPLACE FUNCTION public.nearby_providers(
   user_lat DOUBLE PRECISION,
   user_lng DOUBLE PRECISION,
@@ -90,15 +102,7 @@ RETURNS TABLE (
   phone TEXT,
   rating DOUBLE PRECISION,
   image TEXT,
-  place_id TEXT,
-  provider_services JSONB,
-  provider_specialties JSONB,
-  insurance_accepted TEXT[],
-  structured_hours JSONB,
-  appointment_required BOOLEAN,
-  report_turnaround TEXT,
-  age_range TEXT,
-  crisis_line TEXT
+  place_id TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -111,17 +115,8 @@ BEGIN
     h.verified, h.status, h.display_id,
     h.provider_type, h.emergency_eligible, h.dispatch_eligible, h.booking_eligible,
     h.verification_status, h.provider_source, h.category_confidence,
-    h.phone, h.rating, h.image, h.place_id,
-    p.provider_services,
-    p.provider_specialties,
-    p.insurance_accepted,
-    p.structured_hours,
-    p.appointment_required,
-    p.report_turnaround,
-    p.age_range,
-    p.crisis_line
+    h.phone, h.rating, h.image, h.place_id
   FROM public.hospitals h
-  LEFT JOIN public.providers p ON h.id = p.hospital_id AND h.provider_type = p.provider_type
   WHERE
     h.coordinates IS NOT NULL
     AND h.status = 'available'
@@ -134,7 +129,15 @@ BEGIN
   ORDER BY distance ASC
   LIMIT result_limit;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE;
+
+GRANT EXECUTE ON FUNCTION public.nearby_providers(
+  DOUBLE PRECISION,
+  DOUBLE PRECISION,
+  TEXT,
+  INTEGER,
+  INTEGER
+) TO anon, authenticated, service_role;
 
 -- 2. Nearby Ambulances (PostGIS Enabled)
 -- BEGIN CONSOLE_NEARBY_AMBULANCES_RPC
