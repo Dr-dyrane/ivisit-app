@@ -171,6 +171,13 @@ async function cleanup(state) {
 
   const organizationIds = [...state.organizationIds];
   if (organizationIds.length) {
+    await safely('test facility claims', async () => {
+      const { error } = await admin
+        .from('organization_facility_claims')
+        .delete()
+        .in('organization_id', organizationIds);
+      if (error) throw error;
+    });
     await safely('test facilities', async () => {
       const { error } = await admin.from('hospitals').delete().in('organization_id', organizationIds);
       if (error) throw error;
