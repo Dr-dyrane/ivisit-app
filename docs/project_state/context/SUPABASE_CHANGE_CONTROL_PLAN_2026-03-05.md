@@ -1718,6 +1718,13 @@ Verification:
 - after separately reviewed deployment, disposable live create/claim/review/App
   consequence E2E with deterministic cleanup.
 
+Status (2026-07-17):
+- validated in production on project `dlwtcmhdzoklveihuhjf`;
+- temporary deployment history repaired back to the eleven pillars;
+- no EAS/native release required because patient discovery and eligibility
+  behavior did not change;
+- authenticated operator UI rehearsal remains the field-agent rollout gate.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`
