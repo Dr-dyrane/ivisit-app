@@ -144,6 +144,31 @@ async function cleanup(state) {
     });
   }
 
+  for (const onboardingUserId of state.additionalOnboardingUserIds) {
+    await safely(`verification evidence ${onboardingUserId}`, async () => {
+      const { error } = await admin
+        .from('organization_verification_documents')
+        .delete()
+        .eq('uploaded_by', onboardingUserId);
+      if (error) throw error;
+    });
+    await safely(`organization lookup ${onboardingUserId}`, async () => {
+      const { data, error } = await admin
+        .from('organizations')
+        .select('id')
+        .eq('created_by', onboardingUserId);
+      if (error) throw error;
+      data.forEach((organization) => state.organizationIds.add(organization.id));
+    });
+    await safely(`profile scope reset ${onboardingUserId}`, async () => {
+      const { error } = await admin
+        .from('profiles')
+        .update({ organization_id: null, role: 'patient', onboarding_status: 'pending' })
+        .eq('id', onboardingUserId);
+      if (error) throw error;
+    });
+  }
+
   const organizationIds = [...state.organizationIds];
   if (organizationIds.length) {
     await safely('test facilities', async () => {
@@ -163,9 +188,23 @@ async function cleanup(state) {
     });
   }
 
+  if (state.claimFacilityId) {
+    await safely('claim test facility', async () => {
+      const { error } = await admin.from('hospitals').delete().eq('id', state.claimFacilityId);
+      if (error) throw error;
+    });
+  }
+
   if (state.userId) {
     await safely('Auth user', async () => {
       const { error } = await admin.auth.admin.deleteUser(state.userId);
+      if (error && !/not found/i.test(error.message)) throw error;
+    });
+  }
+
+  for (const authUserId of state.additionalAuthUserIds) {
+    await safely(`Auth user ${authUserId}`, async () => {
+      const { error } = await admin.auth.admin.deleteUser(authUserId);
       if (error && !/not found/i.test(error.message)) throw error;
     });
   }
@@ -182,6 +221,24 @@ async function cleanup(state) {
     if (orgError) throw orgError;
     if (profiles.length || organizations.length) {
       throw new Error('temporary rows remain');
+    }
+
+    if (state.claimFacilityId) {
+      const { data: claimFacilities, error: claimFacilityError } = await admin
+        .from('hospitals')
+        .select('id')
+        .eq('id', state.claimFacilityId);
+      if (claimFacilityError) throw claimFacilityError;
+      if (claimFacilities.length) throw new Error('temporary claim facility remains');
+    }
+
+    for (const authUserId of state.additionalAuthUserIds) {
+      const { data: additionalProfiles, error: additionalProfileError } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('id', authUserId);
+      if (additionalProfileError) throw additionalProfileError;
+      if (additionalProfiles.length) throw new Error(`temporary profile ${authUserId} remains`);
     }
 
     if (state.inviteEmail) {
@@ -210,6 +267,265 @@ async function cleanup(state) {
   }
 }
 
+async function createAuthenticatedTestClient({ email, password, fullName, state, onboardingUser = false }) {
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, role: 'admin' },
+  });
+  if (createError) throw createError;
+  state.additionalAuthUserIds.add(created.user.id);
+  if (onboardingUser) state.additionalOnboardingUserIds.add(created.user.id);
+
+  const profile = await waitForProfile(created.user.id);
+  assert(profile.role === 'patient', `${fullName} inherited authority from public metadata`);
+
+  const { data: signIn, error: signInError } = await publicClient.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signInError) throw signInError;
+
+  return {
+    userId: created.user.id,
+    client: createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${signIn.session.access_token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    }),
+  };
+}
+
+async function runClaimVerificationFlow({ runId, state, tinyPng }) {
+  const claimantPassword = `Claimant!${crypto.randomBytes(12).toString('base64url')}`;
+  const reviewerPassword = `Reviewer!${crypto.randomBytes(12).toString('base64url')}`;
+  const claimantEmail = `console-claimant-live-${runId}@ivisit-e2e.local`;
+  const reviewerEmail = `console-reviewer-live-${runId}@ivisit-e2e.local`;
+  const claimOrganizationName = `Console Live Claim Organization ${runId}`;
+  const claimFacilityName = `Console Live Claim Facility ${runId}`;
+  const claimLatitude = 34.05;
+  const claimLongitude = -118.25;
+
+  const claimant = await createAuthenticatedTestClient({
+    email: claimantEmail,
+    password: claimantPassword,
+    fullName: 'Console Live Claimant',
+    state,
+    onboardingUser: true,
+  });
+  const reviewer = await createAuthenticatedTestClient({
+    email: reviewerEmail,
+    password: reviewerPassword,
+    fullName: 'Console Live Reviewer',
+    state,
+  });
+
+  const { error: reviewerRoleError } = await admin
+    .from('profiles')
+    .update({ role: 'admin', onboarding_status: 'complete' })
+    .eq('id', reviewer.userId);
+  if (reviewerRoleError) throw reviewerRoleError;
+
+  const { data: claimFacility, error: claimFacilityError } = await admin
+    .from('hospitals')
+    .insert({
+      name: claimFacilityName,
+      address: '700 Live Claim Avenue, Los Angeles, California',
+      latitude: claimLatitude,
+      longitude: claimLongitude,
+      coordinates: `SRID=4326;POINT(${claimLongitude} ${claimLatitude})`,
+      verified: false,
+      verification_status: 'pending',
+      status: 'available',
+      organization_id: null,
+      provider_type: 'hospital',
+      emergency_eligible: true,
+      booking_eligible: true,
+      provider_source: 'manual_seed',
+    })
+    .select('id')
+    .single();
+  if (claimFacilityError) throw claimFacilityError;
+  state.claimFacilityId = claimFacility.id;
+
+  const { data: searchResults, error: searchError } = await claimant.client.rpc(
+    'search_onboarding_facilities',
+    { p_query: claimFacilityName }
+  );
+  if (searchError) throw searchError;
+  const discovered = searchResults.find((facility) => facility.id === claimFacility.id);
+  assert(discovered?.ownership_state === 'unowned', 'Unowned facility search state was not reflected');
+  assert(discovered?.claimable === true, 'Unowned facility was not claimable');
+  assert(discovered?.requires_support === true, 'Claim correctly requiring review was hidden');
+
+  const initialPath = `onboarding/${claimant.userId}/${crypto.randomUUID()}.png`;
+  const correctedPath = `onboarding/${claimant.userId}/${crypto.randomUUID()}.png`;
+  state.storagePaths.add(initialPath);
+  state.storagePaths.add(correctedPath);
+  const { error: initialUploadError } = await claimant.client.storage
+    .from('documents')
+    .upload(initialPath, tinyPng, { contentType: 'image/png', upsert: false });
+  if (initialUploadError) throw initialUploadError;
+
+  const basePayload = {
+    organizationType: 'hospital',
+    organizationName: claimOrganizationName,
+    registrationNumber: `LIVE-CLAIM-${runId}`,
+    contactEmail: claimantEmail,
+    phone: '+1 555 0177',
+    address: '702 Live Claim Avenue',
+    city: 'Los Angeles',
+    state: 'California',
+    termsAccepted: true,
+    existingFacilityId: claimFacility.id,
+    claimNote: 'Disposable live ownership claim contract.',
+  };
+  const { data: provisioned, error: provisionError } = await claimant.client.rpc(
+    'provision_console_organization',
+    {
+      p_payload: {
+        ...basePayload,
+        documents: [{
+          storagePath: initialPath,
+          documentType: 'registration',
+          originalName: 'claim-registration.png',
+          mimeType: 'image/png',
+          sizeBytes: tinyPng.length,
+        }],
+      },
+    }
+  );
+  if (provisionError) throw provisionError;
+  const claimOrganizationId = provisioned?.organization?.id;
+  const claimId = provisioned?.claim?.id;
+  state.organizationIds.add(claimOrganizationId);
+  assert(provisioned?.claim?.status === 'pending', 'Ownership claim skipped review');
+  assert(provisioned?.facility?.ownershipState === 'claim_pending', 'Claim pending state was not reflected');
+
+  const { data: initialEvidence, error: initialEvidenceError } = await admin
+    .from('organization_verification_documents')
+    .select('id, review_status')
+    .eq('organization_id', claimOrganizationId)
+    .eq('facility_claim_id', claimId)
+    .eq('storage_path', initialPath)
+    .single();
+  if (initialEvidenceError) throw initialEvidenceError;
+
+  const { data: preLinkFacility, error: preLinkError } = await admin
+    .from('hospitals')
+    .select('organization_id, verified, dispatch_eligible')
+    .eq('id', claimFacility.id)
+    .single();
+  if (preLinkError) throw preLinkError;
+  assert(preLinkFacility.organization_id === null, 'Claim submission transferred ownership prematurely');
+  assert(preLinkFacility.verified === false, 'Claim submission verified the facility prematurely');
+  assert(preLinkFacility.dispatch_eligible === false, 'Claim submission enabled dispatch prematurely');
+
+  const { error: prematureClaimApproval } = await reviewer.client.rpc(
+    'review_console_facility_claim',
+    { p_claim_id: claimId, p_decision: 'approve' }
+  );
+  assert(prematureClaimApproval, 'Claim approval bypassed accepted evidence');
+
+  for (const [rpc, args] of [
+    ['review_organization_verification_document', {
+      p_document_id: initialEvidence.id,
+      p_decision: 'request_changes',
+      p_note: 'Upload the current registration page.',
+    }],
+    ['review_console_facility_claim', {
+      p_claim_id: claimId,
+      p_decision: 'request_changes',
+      p_note: 'Current ownership evidence is required.',
+    }],
+    ['review_console_organization', {
+      p_organization_id: claimOrganizationId,
+      p_decision: 'request_changes',
+      p_note: 'Complete the requested evidence update.',
+    }],
+  ]) {
+    const { error } = await reviewer.client.rpc(rpc, args);
+    if (error) throw error;
+  }
+
+  const { error: correctedUploadError } = await claimant.client.storage
+    .from('documents')
+    .upload(correctedPath, tinyPng, { contentType: 'image/png', upsert: false });
+  if (correctedUploadError) throw correctedUploadError;
+  const { data: requeued, error: requeueError } = await claimant.client.rpc(
+    'provision_console_organization',
+    {
+      p_payload: {
+        ...basePayload,
+        documents: [{
+          storagePath: correctedPath,
+          documentType: 'registration',
+          originalName: 'claim-registration-current.png',
+          mimeType: 'image/png',
+          sizeBytes: tinyPng.length,
+        }],
+      },
+    }
+  );
+  if (requeueError) throw requeueError;
+  assert(requeued?.organization?.id === claimOrganizationId, 'Correction duplicated the organization');
+  assert(requeued?.claim?.id === claimId, 'Correction duplicated the ownership claim');
+  assert(requeued?.claim?.status === 'pending', 'Corrected evidence did not requeue the claim');
+
+  const { data: correctedEvidence, error: correctedEvidenceError } = await admin
+    .from('organization_verification_documents')
+    .select('id')
+    .eq('organization_id', claimOrganizationId)
+    .eq('facility_claim_id', claimId)
+    .eq('storage_path', correctedPath)
+    .single();
+  if (correctedEvidenceError) throw correctedEvidenceError;
+
+  const { error: evidenceApprovalError } = await reviewer.client.rpc(
+    'review_organization_verification_document',
+    { p_document_id: correctedEvidence.id, p_decision: 'accept' }
+  );
+  if (evidenceApprovalError) throw evidenceApprovalError;
+  const { data: approvedClaim, error: claimApprovalError } = await reviewer.client.rpc(
+    'review_console_facility_claim',
+    { p_claim_id: claimId, p_decision: 'approve' }
+  );
+  if (claimApprovalError) throw claimApprovalError;
+  assert(approvedClaim?.facilityOwnershipLinked === true, 'Claim approval did not link ownership');
+
+  const readNearby = async () => {
+    const { data, error } = await publicClient.rpc('nearby_hospitals', {
+      user_lat: claimLatitude,
+      user_lng: claimLongitude,
+      radius_km: 5,
+    });
+    if (error) throw error;
+    return data.some((facility) => facility.id === claimFacility.id);
+  };
+  assert(!(await readNearby()), 'Ownership approval bypassed App emergency eligibility');
+
+  const { error: organizationApprovalError } = await reviewer.client.rpc(
+    'review_console_organization',
+    { p_organization_id: claimOrganizationId, p_decision: 'approve' }
+  );
+  if (organizationApprovalError) throw organizationApprovalError;
+  assert(!(await readNearby()), 'Organization approval bypassed facility verification');
+
+  const { error: facilityApprovalError } = await reviewer.client.rpc(
+    'update_hospital_by_admin',
+    {
+      target_hospital_id: claimFacility.id,
+      payload: { verified: true, verification_status: 'verified' },
+    }
+  );
+  if (facilityApprovalError) throw facilityApprovalError;
+  assert(await readNearby(), 'Fully approved facility did not enter App emergency eligibility');
+
+  console.log(
+    '[console-onboarding-live-e2e] Claim, evidence correction, ownership, organization, facility, and App eligibility assertions passed.'
+  );
+}
+
 async function main() {
   const runId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const password = `Contract!${crypto.randomBytes(12).toString('base64url')}`;
@@ -224,6 +540,9 @@ async function main() {
     storagePaths: new Set(),
     inviteEmail,
     invitedUserIds: new Set(),
+    additionalOnboardingUserIds: new Set(),
+    additionalAuthUserIds: new Set(),
+    claimFacilityId: null,
   };
   let testError = null;
 
@@ -467,7 +786,11 @@ async function main() {
       'Invitation stored an elevated role in public Auth metadata'
     );
 
-    console.log('[console-onboarding-live-e2e] All live Auth, Storage, RPC, invite, and reflection assertions passed.');
+    await runClaimVerificationFlow({ runId, state, tinyPng });
+
+    console.log(
+      '[console-onboarding-live-e2e] All live Auth, Storage, RPC, invite, claim, verification, App eligibility, and reflection assertions passed.'
+    );
   } catch (error) {
     testError = error;
   }
