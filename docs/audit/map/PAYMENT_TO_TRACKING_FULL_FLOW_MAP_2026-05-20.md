@@ -461,6 +461,8 @@ Risk:
 - it is a patch stream, not a creation stream
 - subscription key flips when `activeAmbulanceTrip.id` appears later
 - event gates compare trip keys to record keys, but cannot repair a bad query overwrite
+- lifecycle and telemetry timestamps are separate clocks; they must never share
+  one stale-event gate or one generic `updatedAt`
 
 ## Map And Route Flow
 
@@ -624,6 +626,13 @@ Rating modal follow-up:
    - Symptom: user re-clicks or closes while approval/settlement is in flight.
    - Cause: transaction state and UI disabled/dismissible model diverge.
 
+9. **Cross-stream realtime ordering**
+   - Symptom: responder marker/telemetry moves, but the top pill or tracking
+     stage stays stale until refresh.
+   - Cause: `emergency_requests.updated_at` and `ambulances.updated_at` were
+     compared through one event gate, allowing a newer GPS row to reject a
+     valid lifecycle transition from the other table.
+
 ## Flat Verification Matrix
 
 | Case | Payment lane | Expected first tracking state | Must not require reload | Key fields to log |
@@ -637,6 +646,7 @@ Rating modal follow-up:
 | App reload during waiting approval | cash/card pending | pending approval | yes | hydrated store + query result |
 | App reload after tracking active | active | same progress/ETA | yes | `startedAt`, eta source, route key |
 | Realtime ambulance movement | active | marker/location updates | yes | subscription key, `current_call`, event gate |
+| Telemetry arrives before lifecycle event | accepted | lifecycle still advances to arrived | yes | separate request/ambulance gate versions |
 | Arrival elapsed | active | arrived visual + confirm CTA | yes | stage, `canConfirmArrival`, status |
 
 ## Instrumentation Points For Next Pass
@@ -695,3 +705,36 @@ Safe direction:
 - make same-trip helpers alias-aware
 - restore/replace `enabled: hydrated` for active-trip query
 - keep immediate tracking open, but render `pending_approval`/`assigning` until tracking-ready data exists
+
+## Runtime Closure: Cross-Stream Realtime Race - 2026-07-17
+
+Fresh request `152df5be-29cc-443b-ba51-5952a437380a` /
+`REQ-99F595` reproduced the intermittent stale UI. Before refresh, responder
+telemetry was active while the top pill/sheet retained an earlier dispatch
+projection. Refresh immediately hydrated the canonical accepted/arrived truth.
+
+The surgical repair:
+
+- splits lifecycle and ambulance-location event gates in
+  `useEmergencyRealtime.js`;
+- preserves `activeAmbulanceTrip.updatedAt` as the
+  `emergency_requests` lifecycle version;
+- records ambulance-row time separately as `ambulanceUpdatedAt`;
+- adds an adversarial ordering test where telemetry at `T+10` cannot reject an
+  arrived request row at `T+5`.
+
+The completed local browser proof covered:
+
+`cash request -> pending_approval -> in_progress -> accepted -> arrived ->
+Confirm Arrival -> responder completion -> exactly one rating modal -> Skip ->
+hard refresh`
+
+Read-only database verification showed one request, one completed Visit, a
+non-null `patient_acknowledged_arrival_at`, and ordered canonical transitions
+through `pending_approval`, `in_progress`, `accepted`, `arrived`, and
+`completed`. After Skip, the Visit was `post_completion`; hard refresh showed
+no active tracking identity and no duplicate rating modal.
+
+This closes local source and browser proof. Deployed sign-off still requires
+publishing the App change and repeating the same no-refresh transition on the
+deployed web artifact.

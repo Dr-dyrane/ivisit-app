@@ -43,23 +43,43 @@ export function useEmergencyRealtime({
 	const queryClient = useQueryClient();
 	const realtimeStatusRef = useRef({});
 	const lastRealtimeSyncMsRef = useRef(0);
-	const activeAmbulanceEventRef = useRef({ requestKey: null, versionMs: 0 });
+	// PULLBACK NOTE: Emergency realtime cross-stream ordering.
+	// OLD: emergency_requests lifecycle rows and ambulances telemetry rows shared
+	//      one timestamp gate, so a newer GPS update could reject a later-arriving
+	//      accepted/arrived lifecycle event from the other table as "stale".
+	// NEW: each canonical stream owns its own ordering gate.
+	const emergencyRequestEventRef = useRef({ requestKey: null, versionMs: 0 });
+	const ambulanceLocationEventRef = useRef({ requestKey: null, versionMs: 0 });
 
 	// ─── Event gate helpers ───────────────────────────────────────────────────
 
 	const resetAmbulanceEventVersion = useCallback(() => {
-		activeAmbulanceEventRef.current = { requestKey: null, versionMs: 0 };
+		emergencyRequestEventRef.current = { requestKey: null, versionMs: 0 };
+		ambulanceLocationEventRef.current = { requestKey: null, versionMs: 0 };
 	}, []);
 
-	const shouldApplyAmbulanceEvent = useCallback((trip, record) => {
+	const shouldApplyEmergencyRequestEvent = useCallback((trip, record) => {
 		const decision = shouldApplyTripEvent(
-			activeAmbulanceEventRef.current,
+			emergencyRequestEventRef.current,
 			trip,
 			record,
 			Date.now()
 		);
 		if (decision.apply) {
-			activeAmbulanceEventRef.current = decision.nextGateState;
+			emergencyRequestEventRef.current = decision.nextGateState;
+		}
+		return decision.apply;
+	}, []);
+
+	const shouldApplyAmbulanceLocationEvent = useCallback((trip, record) => {
+		const decision = shouldApplyTripEvent(
+			ambulanceLocationEventRef.current,
+			trip,
+			record,
+			Date.now()
+		);
+		if (decision.apply) {
+			ambulanceLocationEventRef.current = decision.nextGateState;
 		}
 		return decision.apply;
 	}, []);
@@ -100,8 +120,8 @@ export function useEmergencyRealtime({
 			{ updated_at: activeAmbulanceTrip?.updatedAt ?? null },
 			0
 		);
-		const currentVersion = activeAmbulanceEventRef.current?.versionMs ?? 0;
-		activeAmbulanceEventRef.current = {
+		const currentVersion = emergencyRequestEventRef.current?.versionMs ?? 0;
+		emergencyRequestEventRef.current = {
 			requestKey: String(requestKey),
 			versionMs: Math.max(currentVersion, persistedVersion),
 		};
@@ -150,7 +170,7 @@ export function useEmergencyRealtime({
 						});
 
 						setActiveAmbulanceTrip((prev) => {
-							if (!prev || !shouldApplyAmbulanceEvent(prev, newRecord)) return prev;
+							if (!prev || !shouldApplyEmergencyRequestEvent(prev, newRecord)) return prev;
 							const mergedTrip = mergeEmergencyRealtimeTrip(prev, newRecord);
 							if (!mergedTrip) resetAmbulanceEventVersion();
 							return mergedTrip;
@@ -189,7 +209,7 @@ export function useEmergencyRealtime({
 		resetAmbulanceEventVersion,
 		setActiveAmbulanceTrip,
 		setActiveBedBooking,
-		shouldApplyAmbulanceEvent,
+		shouldApplyEmergencyRequestEvent,
 		syncActiveTripsFromServer,
 		userId,
 	]);
@@ -212,7 +232,7 @@ export function useEmergencyRealtime({
 						if (!payload.new) return;
 						setActiveAmbulanceTrip((prev) => {
 							if (!prev) return prev;
-							if (!shouldApplyAmbulanceEvent(prev, payload.new)) return prev;
+							if (!shouldApplyEmergencyRequestEvent(prev, payload.new)) return prev;
 							const merged = mergeEmergencyRealtimeTrip(prev, payload.new);
 							if (!merged) resetAmbulanceEventVersion();
 							return merged;
@@ -233,7 +253,7 @@ export function useEmergencyRealtime({
 						if (!payload.new?.location) return;
 						setActiveAmbulanceTrip((prev) => {
 							if (!prev) return prev;
-							if (!shouldApplyAmbulanceEvent(prev, payload.new)) return prev;
+							if (!shouldApplyAmbulanceLocationEvent(prev, payload.new)) return prev;
 							return mergeAmbulanceRealtimeTrip(prev, payload.new);
 						});
 					},
@@ -256,7 +276,7 @@ export function useEmergencyRealtime({
 			if (typeof unsubscribeEmergency === "function") unsubscribeEmergency();
 			if (typeof unsubscribeAmbulance === "function") unsubscribeAmbulance();
 		};
-	}, [activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId, handleRealtimeStatus, setActiveAmbulanceTrip, shouldApplyAmbulanceEvent, resetAmbulanceEventVersion]);
+	}, [activeAmbulanceTrip?.id, activeAmbulanceTrip?.requestId, handleRealtimeStatus, setActiveAmbulanceTrip, shouldApplyAmbulanceLocationEvent, shouldApplyEmergencyRequestEvent, resetAmbulanceEventVersion]);
 
 	// ─── Bed subscription ─────────────────────────────────────────────────────
 
@@ -344,6 +364,5 @@ export function useEmergencyRealtime({
 	return {
 		handleRealtimeStatus,
 		resetAmbulanceEventVersion,
-		shouldApplyAmbulanceEvent,
 	};
 }

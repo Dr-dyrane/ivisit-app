@@ -28,7 +28,7 @@ last_updated: 2026-05-24
 
 ```
 "When X changes, I need Y"
-         â”‚
+         │
          ▼
 Is Y a value derived from X?
   → YES → useMemo / inline const — no hook needed
@@ -510,7 +510,7 @@ Based on these learnings, the following codebase sweeps are warranted (each is i
 3. Never put a derived computed value in a `useEffect` dependency array if that value is also set by another `useEffect` in the same hook. Extract it to TanStack Query or a stable `useMemo`.
 4. Loading UI must gate on `isLoading && !data` (first load only). Once data is present, show it — even while a background refetch runs.
 
-**Concrete site**: `useMapCommitPaymentController.js` — `refreshPaymentMethodSnapshot` re-fires because `totalCostValue` (set by `loadCost` effect) is in its `useCallback` dep array. Fix: adopt `usePaymentMethodsQuery` + `usePaymentCostCalculation` from stash (â³ PENDING in STASH_AUDIT.md).
+**Concrete site**: `useMapCommitPaymentController.js` — `refreshPaymentMethodSnapshot` re-fires because `totalCostValue` (set by `loadCost` effect) is in its `useCallback` dep array. Fix: adopt `usePaymentMethodsQuery` + `usePaymentCostCalculation` from stash (⏳ PENDING in STASH_AUDIT.md).
 
 ---
 
@@ -875,6 +875,41 @@ first active-trip query refetch.
 - `@docs/audit/map/PAYMENT_TO_TRACKING_FULL_FLOW_MAP_2026-05-20.md`
 
 **General rule**: Reload fixing tracking is evidence of a missed live-state handoff. Preserve the settled backend shape, but make the first optimistic tracking state converge into that shape without remounting.
+
+---
+
+### 2.25 Realtime ordering gates must be stream-scoped (2026-07-17)
+
+**Pattern**: Two independently versioned Supabase tables update one runtime trip, but both subscriptions share one timestamp gate. The code compares timestamps as if every row came from a single ordered log.
+
+**Symptoms**:
+
+- The top tracking pill or sheet remains at `Dispatch confirmed`, `En route`, or an old ETA after the backend has advanced.
+- Ambulance movement can remain live while the lifecycle status is stale.
+- A hard refresh immediately reveals the correct `accepted` or `arrived` state.
+- The defect is intermittent because it depends on whether a GPS/telemetry row with a newer `updated_at` reaches the client before the lifecycle row.
+
+**Diagnosis**: `shouldApplyTripEvent()` was correct for one ordered source, but `useEmergencyRealtime()` used one ref for both `emergency_requests.updated_at` and `ambulances.updated_at`. A newer ambulance row could advance that gate past an emergency request transition and reject the valid lifecycle event as stale. `mergeAmbulanceRealtimeTrip()` also copied the ambulance timestamp into the trip's generic `updatedAt`, so the effect that primes the lifecycle gate could reproduce the same contamination.
+
+The history explains why the defect became visible:
+
+1. `2ba4f8fb` introduced the generic timestamp guard and telemetry projection.
+2. `00a793d0` extracted the realtime hook with one shared active-ambulance event ref.
+3. `4e1408b2` repaired subscription and projection gaps without splitting source clocks.
+4. `a75b4265` made responder telemetry and lifecycle authority canonical, increasing the chance that the two clocks interleaved.
+5. `fb4396c6`, `f26e2959`, and `c566d7ff` improved accepted-state continuity, recovery, and channel cleanup but preserved the shared ordering assumption.
+
+**Fix recipe**:
+
+1. Keep a dedicated event gate for `emergency_requests`.
+2. Keep a separate event gate for `ambulances`.
+3. Prime the lifecycle gate only from the canonical emergency-request `updatedAt`.
+4. Store ambulance-row time separately as `ambulanceUpdatedAt`; never write it into lifecycle `updatedAt`.
+5. Continue using identity matching inside each stream.
+6. Prove the adversarial order in a unit contract: a telemetry row at `T+10` must not reject an `arrived` lifecycle row at `T+5`.
+7. Run a fresh no-refresh browser journey through accepted, arrived, patient acknowledgement, responder completion, and one rating modal.
+
+**General rule**: Timestamp ordering is meaningful only inside the source that owns the clock. Rows from different tables, services, devices, or domains are not one total order merely because they all have `updated_at`.
 
 ---
 
