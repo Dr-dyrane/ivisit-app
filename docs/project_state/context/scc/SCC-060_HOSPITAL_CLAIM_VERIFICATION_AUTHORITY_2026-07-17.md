@@ -22,8 +22,10 @@ organization and facility eligibility gates are both satisfied.
 - Evidence, claim, organization, and facility decisions remain distinct.
 - `nearby_hospitals` and emergency matching continue requiring a verified
   organization and dispatch-eligible facility.
-- No production database mutation, EAS update, APK, or AAB is part of this
-  contract pass.
+- Production deployment must use exact SQL emitted from the reviewed pillar
+  markers, followed by live proof, cleanup, temporary-history repair, and drift
+  validation. No EAS update, APK, or AAB is required because patient behavior
+  is unchanged.
 
 ## Required Proof Chain
 
@@ -55,5 +57,24 @@ nearby/emergency eligibility`
 - generated type and App/Console pillar parity;
 - Console service/controller tests and production build;
 - cleanup and contract-drift guards;
-- only after separately approved deployment: disposable live Auth, Storage,
-  organization, claim, evidence, decision, App visibility, and cleanup E2E.
+- disposable live Auth, Storage, organization, claim, evidence correction,
+  decision, App visibility, and cleanup E2E.
+
+## Production Proof
+
+- App/backend PR `#6` merged as `dda2aa49`; Console PR `#3` merged as
+  `22f10ff3`.
+- Exact-source deployment `20260717234000` applied to project
+  `dlwtcmhdzoklveihuhjf`, verified, removed locally, and repaired as reverted.
+- Rollback contract passed 71 statements with no residue.
+- Cross-repository drift guard passed with zero missing tables, columns, RPCs,
+  or stale signatures.
+- Live run `1784331764953-555d656a` passed onboarding, evidence correction,
+  ownership, organization, facility, App eligibility ordering, Storage/Auth,
+  invitation, reflection, and deterministic cleanup.
+- Cleanup dry-run guard returned zero planned side effects after live proof.
+- Deployed Console `/onboarding` rendered cleanly at desktop and 390 x 844
+  mobile viewports with no browser console errors.
+- Backend contract is `validated`. A field-agent rollout still requires one
+  authenticated operator UI rehearsal of the claim and Approvals click path;
+  the same receivers are already proven live by the disposable E2E.
