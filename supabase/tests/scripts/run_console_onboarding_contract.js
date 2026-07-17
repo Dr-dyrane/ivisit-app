@@ -37,6 +37,7 @@ const sourceBlocks = [
   ['supabase/migrations/20260219000900_automations.sql', 'CONSOLE_NEW_USER_FUNCTION'],
   ['supabase/migrations/20260219000900_automations.sql', 'CONSOLE_ORG_WALLET_FUNCTION'],
   ['supabase/migrations/20260219010000_core_rpcs.sql', 'CONSOLE_USER_STATISTICS_SCOPE'],
+  ['supabase/migrations/20260219010000_core_rpcs.sql', 'CONSOLE_HOSPITAL_UPDATE_RPC'],
   ['supabase/migrations/20260219010000_core_rpcs.sql', 'CONSOLE_PROFILE_ADMIN_RPC'],
   ['supabase/migrations/20260219010000_core_rpcs.sql', 'CONSOLE_ONBOARDING_RPCS'],
 ];
@@ -199,6 +200,11 @@ DECLARE
     v_org_id UUID;
     v_facility_id UUID;
     v_ambulance_org_id UUID;
+    v_claim_org_id UUID;
+    v_claim_facility_id UUID;
+    v_claim_id UUID;
+    v_claim_evidence_id UUID;
+    v_retry_evidence_id UUID;
     v_result JSONB;
     v_projection JSONB;
     v_stats JSONB;
@@ -513,6 +519,106 @@ BEGIN
         RAISE EXCEPTION 'CONTRACT_ASSERTION: duplicate facility registration was accepted';
     END IF;
 
+    INSERT INTO public.hospitals (
+        name,
+        address,
+        latitude,
+        longitude,
+        coordinates,
+        verified,
+        verification_status,
+        status,
+        organization_id,
+        provider_type,
+        emergency_eligible,
+        booking_eligible,
+        provider_source
+    ) VALUES (
+        ${sqlString(test.claimFacilityName)},
+        '700 Claimable Avenue, Los Angeles, California',
+        34.0500,
+        -118.2500,
+        ST_SetSRID(ST_MakePoint(-118.2500, 34.0500), 4326),
+        false,
+        'pending',
+        'available',
+        NULL,
+        'hospital',
+        true,
+        true,
+        'manual_seed'
+    )
+    RETURNING id INTO v_claim_facility_id;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.search_onboarding_facilities(${sqlString(test.claimFacilityName)})
+        WHERE id = v_claim_facility_id
+          AND ownership_state = 'unowned'
+          AND claim_status IS NULL
+          AND claimable IS TRUE
+          AND requires_support IS TRUE
+    ) THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: unowned facility was not projected as reviewable';
+    END IF;
+
+    v_result := public.provision_console_organization(jsonb_build_object(
+        'organizationType', 'hospital',
+        'organizationName', ${sqlString(test.claimOrganizationName)},
+        'registrationNumber', ${sqlString(test.claimRegistrationNumber)},
+        'contactEmail', ${sqlString(test.emailB)},
+        'address', '702 Claimable Avenue',
+        'city', 'Los Angeles',
+        'state', 'California',
+        'termsAccepted', true,
+        'existingFacilityId', v_claim_facility_id,
+        'claimNote', 'Authorized representative requests ownership review.',
+        'documents', jsonb_build_array(jsonb_build_object(
+            'storagePath', ${sqlString(test.claimStoragePath)},
+            'documentType', 'registration',
+            'originalName', 'claim-registration.png',
+            'mimeType', 'image/png',
+            'sizeBytes', 68
+        ))
+    ));
+
+    v_claim_org_id := (v_result->'organization'->>'id')::UUID;
+    v_claim_id := (v_result->'claim'->>'id')::UUID;
+
+    SELECT id INTO v_claim_evidence_id
+    FROM public.organization_verification_documents
+    WHERE organization_id = v_claim_org_id
+      AND facility_claim_id = v_claim_id
+      AND storage_path = ${sqlString(test.claimStoragePath)};
+
+    IF v_claim_org_id IS NULL
+       OR v_claim_id IS NULL
+       OR v_claim_evidence_id IS NULL
+       OR v_result->'claim'->>'status' <> 'pending'
+       OR v_result->'facility'->>'ownershipState' <> 'claim_pending'
+       OR EXISTS (
+           SELECT 1
+           FROM public.hospitals
+           WHERE id = v_claim_facility_id
+             AND organization_id IS NOT NULL
+       )
+       OR (
+           SELECT COUNT(*) FROM public.hospitals
+           WHERE name = ${sqlString(test.claimFacilityName)}
+       ) <> 1 THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: claim submission duplicated or prematurely linked the facility';
+    END IF;
+
+    v_denied := false;
+    BEGIN
+        PERFORM public.review_console_facility_claim(v_claim_id, 'approve', NULL);
+    EXCEPTION WHEN OTHERS THEN
+        v_denied := SQLERRM = 'PLATFORM_ADMIN_REQUIRED';
+    END;
+    IF NOT v_denied THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: organization admin reviewed a facility claim';
+    END IF;
+
     PERFORM set_config(
         'request.jwt.claims',
         jsonb_build_object('sub', v_user_c::TEXT, 'role', 'authenticated')::TEXT,
@@ -545,6 +651,145 @@ BEGIN
         SELECT 1 FROM public.organization_wallets WHERE organization_id = v_ambulance_org_id
     ) THEN
         RAISE EXCEPTION 'CONTRACT_ASSERTION: ambulance registration missed its wallet';
+    END IF;
+
+    UPDATE public.profiles
+    SET role = 'admin'
+    WHERE id = v_user_d;
+
+    PERFORM set_config(
+        'request.jwt.claims',
+        jsonb_build_object('sub', v_user_d::TEXT, 'role', 'authenticated')::TEXT,
+        true
+    );
+    PERFORM set_config('request.jwt.claim.sub', v_user_d::TEXT, true);
+
+    v_denied := false;
+    BEGIN
+        PERFORM public.review_console_facility_claim(v_claim_id, 'approve', NULL);
+    EXCEPTION WHEN OTHERS THEN
+        v_denied := SQLERRM = 'ACCEPTED_CLAIM_EVIDENCE_REQUIRED';
+    END;
+    IF NOT v_denied THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: claim approval bypassed accepted evidence';
+    END IF;
+
+    PERFORM public.review_organization_verification_document(
+        v_claim_evidence_id,
+        'request_changes',
+        'Upload a current registration page.'
+    );
+    PERFORM public.review_console_facility_claim(
+        v_claim_id,
+        'request_changes',
+        'The ownership evidence needs a current registration page.'
+    );
+    PERFORM public.review_console_organization(
+        v_claim_org_id,
+        'request_changes',
+        'Complete the requested evidence update.'
+    );
+
+    PERFORM set_config(
+        'request.jwt.claims',
+        jsonb_build_object('sub', v_user_b::TEXT, 'role', 'authenticated')::TEXT,
+        true
+    );
+    PERFORM set_config('request.jwt.claim.sub', v_user_b::TEXT, true);
+
+    v_result := public.provision_console_organization(jsonb_build_object(
+        'organizationType', 'hospital',
+        'organizationName', ${sqlString(test.claimOrganizationName)},
+        'contactEmail', ${sqlString(test.emailB)},
+        'address', '702 Claimable Avenue',
+        'city', 'Los Angeles',
+        'state', 'California',
+        'termsAccepted', true,
+        'existingFacilityId', v_claim_facility_id,
+        'documents', jsonb_build_array(jsonb_build_object(
+            'storagePath', ${sqlString(test.retryStoragePath)},
+            'documentType', 'registration',
+            'originalName', 'claim-registration-current.png',
+            'mimeType', 'image/png',
+            'sizeBytes', 68
+        ))
+    ));
+
+    SELECT id INTO v_retry_evidence_id
+    FROM public.organization_verification_documents
+    WHERE organization_id = v_claim_org_id
+      AND facility_claim_id = v_claim_id
+      AND storage_path = ${sqlString(test.retryStoragePath)};
+
+    IF v_retry_evidence_id IS NULL
+       OR v_result->'claim'->>'status' <> 'pending'
+       OR v_result->'organization'->>'verificationStatus' <> 'pending' THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: corrected evidence did not requeue the same claim and organization';
+    END IF;
+
+    PERFORM set_config(
+        'request.jwt.claims',
+        jsonb_build_object('sub', v_user_d::TEXT, 'role', 'authenticated')::TEXT,
+        true
+    );
+    PERFORM set_config('request.jwt.claim.sub', v_user_d::TEXT, true);
+
+    v_result := public.review_organization_verification_document(
+        v_retry_evidence_id,
+        'accept',
+        NULL
+    );
+    IF v_result->>'status' <> 'accepted' THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: evidence decision was not reflected';
+    END IF;
+
+    v_result := public.review_console_facility_claim(v_claim_id, 'approve', NULL);
+    IF v_result->>'status' <> 'approved'
+       OR COALESCE((v_result->>'facilityOwnershipLinked')::BOOLEAN, false) IS NOT TRUE
+       OR NOT EXISTS (
+           SELECT 1 FROM public.hospitals
+           WHERE id = v_claim_facility_id
+             AND organization_id = v_claim_org_id
+             AND verified IS FALSE
+             AND dispatch_eligible IS FALSE
+       ) THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: approved claim did not link ownership safely';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.nearby_hospitals(34.0500, -118.2500, 5)
+        WHERE id = v_claim_facility_id
+    ) THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: ownership approval bypassed App eligibility';
+    END IF;
+
+    v_result := public.review_console_organization(v_claim_org_id, 'approve', NULL);
+    IF v_result->>'status' <> 'verified' THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: organization decision was not reflected';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.nearby_hospitals(34.0500, -118.2500, 5)
+        WHERE id = v_claim_facility_id
+    ) THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: organization approval bypassed facility verification';
+    END IF;
+
+    PERFORM public.update_hospital_by_admin(
+        v_claim_facility_id,
+        '{"verified":true,"verification_status":"verified"}'::JSONB
+    );
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.nearby_hospitals(34.0500, -118.2500, 5)
+        WHERE id = v_claim_facility_id
+          AND dispatch_eligible IS TRUE
+          AND verification_status = 'verified'
+    ) THEN
+        RAISE EXCEPTION 'CONTRACT_ASSERTION: fully approved facility did not enter App eligibility';
     END IF;
 
     RAISE EXCEPTION 'IVISIT_ONBOARDING_CONTRACT_OK';
@@ -637,9 +882,14 @@ async function main() {
     emailD: `console-onboarding-d-${runId}@ivisit-e2e.local`,
     hospitalName: `Onboarding Contract Hospital ${runId}`,
     ambulanceName: `Onboarding Contract Ambulance ${runId}`,
+    claimFacilityName: `Onboarding Claim Facility ${runId}`,
+    claimOrganizationName: `Onboarding Claim Organization ${runId}`,
     registrationNumber: `ONBOARD-${runId}`,
+    claimRegistrationNumber: `CLAIM-${runId}`,
   };
   test.storagePath = `onboarding/${test.userA}/${crypto.randomUUID()}.png`;
+  test.claimStoragePath = `onboarding/${test.userB}/${crypto.randomUUID()}.png`;
+  test.retryStoragePath = `onboarding/${test.userB}/${crypto.randomUUID()}.png`;
 
   if (deploymentOutput) {
     emitDeployment(deploymentOutput);
@@ -661,6 +911,14 @@ async function main() {
       .from('documents')
       .upload(test.storagePath, tinyPng, { contentType: 'image/png', upsert: false });
     if (uploadError) throw uploadError;
+    const { error: claimUploadError } = await admin.storage
+      .from('documents')
+      .upload(test.claimStoragePath, tinyPng, { contentType: 'image/png', upsert: false });
+    if (claimUploadError) throw claimUploadError;
+    const { error: retryUploadError } = await admin.storage
+      .from('documents')
+      .upload(test.retryStoragePath, tinyPng, { contentType: 'image/png', upsert: false });
+    if (retryUploadError) throw retryUploadError;
 
     const { data, error } = await admin.rpc('exec_sql', { sql: bundle.sql });
     if (error) throw error;
@@ -672,6 +930,8 @@ async function main() {
     console.log('[console-onboarding-contract] All assertions passed and database changes rolled back.');
   } finally {
     await removeEvidenceObject(test.storagePath);
+    await removeEvidenceObject(test.claimStoragePath);
+    await removeEvidenceObject(test.retryStoragePath);
   }
 }
 

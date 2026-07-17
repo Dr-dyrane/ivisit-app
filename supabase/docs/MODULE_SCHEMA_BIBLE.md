@@ -28,7 +28,7 @@ Canonical ownership map for the 11 migration pillars, with runtime touchpoints f
 |---|---|---:|---:|---:|
 | `20260219000000_infra.sql` | `infra` | 0 | 3 | 0 |
 | `20260219000100_identity.sql` | `identity` | 8 | 7 | 7 |
-| `20260219000200_org_structure.sql` | `org_structure` | 5 | 0 | 7 |
+| `20260219000200_org_structure.sql` | `org_structure` | 6 | 0 | 7 |
 | `20260219000300_logistics.sql` | `logistics` | 7 | 5 | 10 |
 | `20260219000400_finance.sql` | `finance` | 8 | 6 | 9 |
 | `20260219000500_ops_content.sql` | `ops_content` | 5 | 4 | 5 |
@@ -36,7 +36,7 @@ Canonical ownership map for the 11 migration pillars, with runtime touchpoints f
 | `20260219000700_security.sql` | `security` | 0 | 4 | 0 |
 | `20260219000800_emergency_logic.sql` | `emergency_logic` | 2 | 24 | 5 |
 | `20260219000900_automations.sql` | `automations` | 0 | 11 | 11 |
-| `20260219010000_core_rpcs.sql` | `core_rpcs` | 0 | 55 | 1 |
+| `20260219010000_core_rpcs.sql` | `core_rpcs` | 0 | 58 | 1 |
 
 ## Post-Pillar Patches
 Date-ordered migrations that extend a pillar without owning its contract. Ownership still belongs to the originating pillar.
@@ -62,6 +62,7 @@ Rule: post-pillar patches may add columns, indexes, or guards. Contract renames,
 
 ### `org_structure`
 - `organizations`
+- `organization_facility_claims`
 - `organization_verification_documents`
 - `hospitals` (unique constraint on `latitude, longitude` to prevent duplicate locations)
 - `doctors`
@@ -126,6 +127,7 @@ Counts below are app/console service file references from `static_supabase_usage
 | `emergency_chat_messages` | `logistics` | 0 | 0 |
 | `hospitals` | `org_structure` | 5 | 10 |
 | `organizations` | `org_structure` | 1 | 0 |
+| `organization_facility_claims` | `org_structure` | 0 | 1 |
 | `organization_verification_documents` | `org_structure` | 0 | 1 |
 | `insurance_policies` | `finance` | 4 | 0 |
 | `payments` | `finance` | 1 | 0 |

@@ -330,6 +330,23 @@ BEGIN
         RAISE EXCEPTION 'Hospital not found';
     END IF;
 
+    IF v_is_platform_admin
+       AND (
+           COALESCE((payload->>'verified')::BOOLEAN, false) IS TRUE
+           OR LOWER(COALESCE(payload->>'verification_status', '')) = 'verified'
+       )
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.hospitals hospital
+           JOIN public.organizations organization
+             ON organization.id = hospital.organization_id
+           WHERE hospital.id = target_hospital_id
+             AND organization.is_active = true
+             AND organization.verification_status = 'verified'
+       ) THEN
+        RAISE EXCEPTION 'ORGANIZATION_VERIFICATION_REQUIRED';
+    END IF;
+
     -- Preserve arrays when a partial payload omits the key, while an explicit []
     -- still clears the corresponding array. This is the live-proven July 8 fix.
     v_features := CASE WHEN payload ? 'features'
@@ -8498,6 +8515,7 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.search_onboarding_facilities(TEXT);
 CREATE OR REPLACE FUNCTION public.search_onboarding_facilities(p_query TEXT)
 RETURNS TABLE (
     id UUID,
@@ -8505,6 +8523,9 @@ RETURNS TABLE (
     address TEXT,
     provider_type TEXT,
     verification_status TEXT,
+    ownership_state TEXT,
+    claim_status TEXT,
+    claimable BOOLEAN,
     requires_support BOOLEAN
 )
 LANGUAGE plpgsql
@@ -8541,8 +8562,23 @@ BEGIN
         hospital.address,
         hospital.provider_type,
         hospital.verification_status,
+        CASE
+            WHEN hospital.organization_id IS NOT NULL THEN 'owned'
+            WHEN active_claim.status IS NOT NULL THEN 'claim_pending'
+            ELSE 'unowned'
+        END,
+        active_claim.status,
+        hospital.organization_id IS NULL AND active_claim.status IS NULL,
         TRUE
     FROM public.hospitals hospital
+    LEFT JOIN LATERAL (
+        SELECT claim.status
+        FROM public.organization_facility_claims claim
+        WHERE claim.facility_id = hospital.id
+          AND claim.status IN ('pending', 'changes_requested', 'approved')
+        ORDER BY claim.created_at DESC
+        LIMIT 1
+    ) active_claim ON TRUE
     WHERE hospital.name ILIKE '%' || v_query || '%'
        OR hospital.address ILIKE '%' || v_query || '%'
     ORDER BY
@@ -8563,6 +8599,7 @@ DECLARE
     v_profile public.profiles%ROWTYPE;
     v_org public.organizations%ROWTYPE;
     v_facility public.hospitals%ROWTYPE;
+    v_claim public.organization_facility_claims%ROWTYPE;
     v_org_type TEXT := LOWER(BTRIM(COALESCE(p_payload->>'organizationType', '')));
     v_org_name TEXT := BTRIM(COALESCE(p_payload->>'organizationName', ''));
     v_registration_number TEXT := NULLIF(BTRIM(COALESCE(p_payload->>'registrationNumber', '')), '');
@@ -8574,6 +8611,9 @@ DECLARE
     v_full_address TEXT;
     v_latitude DOUBLE PRECISION;
     v_longitude DOUBLE PRECISION;
+    v_existing_facility_text TEXT := NULLIF(BTRIM(COALESCE(p_payload->>'existingFacilityId', '')), '');
+    v_existing_facility_id UUID;
+    v_claim_note TEXT := NULLIF(BTRIM(COALESCE(p_payload->>'claimNote', '')), '');
     v_documents JSONB := COALESCE(p_payload->'documents', '[]'::JSONB);
     v_document JSONB;
     v_document_path TEXT;
@@ -8584,9 +8624,22 @@ DECLARE
     v_size_bytes BIGINT;
     v_wallet_ready BOOLEAN;
     v_evidence_count INTEGER;
+    v_inserted_count INTEGER;
+    v_new_evidence_count INTEGER := 0;
 BEGIN
     IF v_actor_id IS NULL THEN
         RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    IF v_existing_facility_text IS NOT NULL THEN
+        IF v_existing_facility_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
+            RAISE EXCEPTION 'FACILITY_SELECTION_INVALID';
+        END IF;
+        v_existing_facility_id := v_existing_facility_text::UUID;
+    END IF;
+
+    IF v_claim_note IS NOT NULL AND LENGTH(v_claim_note) > 1000 THEN
+        RAISE EXCEPTION 'CLAIM_NOTE_INVALID';
     END IF;
 
     PERFORM pg_advisory_xact_lock(hashtextextended(v_actor_id::TEXT, 0));
@@ -8615,6 +8668,20 @@ BEGIN
         WHERE organization_id = v_org.id
         ORDER BY (org_admin_id = v_actor_id) DESC, created_at ASC
         LIMIT 1;
+
+        IF NOT FOUND THEN
+            SELECT * INTO v_claim
+            FROM public.organization_facility_claims
+            WHERE organization_id = v_org.id
+            ORDER BY created_at ASC
+            LIMIT 1;
+
+            IF FOUND THEN
+                SELECT * INTO v_facility
+                FROM public.hospitals
+                WHERE id = v_claim.facility_id;
+            END IF;
+        END IF;
     ELSE
         IF v_profile.role NOT IN ('patient', 'viewer')
            OR COALESCE(v_profile.onboarding_status, '') NOT IN ('pending', 'skipped') THEN
@@ -8627,6 +8694,11 @@ BEGIN
 
         IF v_org_type NOT IN ('hospital', 'clinic', 'ambulance_service') THEN
             RAISE EXCEPTION 'ORGANIZATION_TYPE_INVALID';
+        END IF;
+
+        IF v_existing_facility_id IS NOT NULL
+           AND v_org_type NOT IN ('hospital', 'clinic') THEN
+            RAISE EXCEPTION 'FACILITY_SELECTION_INVALID';
         END IF;
 
         IF LENGTH(v_org_name) < 2 OR LENGTH(v_org_name) > 160 THEN
@@ -8681,7 +8753,31 @@ BEGIN
 
         v_full_address := CONCAT_WS(', ', v_address, v_city, v_state);
 
-        IF v_org_type IN ('hospital', 'clinic') AND EXISTS (
+        IF v_existing_facility_id IS NOT NULL THEN
+            PERFORM pg_advisory_xact_lock(hashtextextended(v_existing_facility_id::TEXT, 1));
+
+            SELECT * INTO v_facility
+            FROM public.hospitals
+            WHERE id = v_existing_facility_id
+            FOR UPDATE;
+
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'FACILITY_SELECTION_NOT_FOUND';
+            END IF;
+
+            IF v_facility.organization_id IS NOT NULL THEN
+                RAISE EXCEPTION 'FACILITY_ALREADY_OWNED';
+            END IF;
+
+            IF EXISTS (
+                SELECT 1
+                FROM public.organization_facility_claims claim
+                WHERE claim.facility_id = v_existing_facility_id
+                  AND claim.status IN ('pending', 'changes_requested', 'approved')
+            ) THEN
+                RAISE EXCEPTION 'FACILITY_CLAIM_ALREADY_ACTIVE';
+            END IF;
+        ELSIF v_org_type IN ('hospital', 'clinic') AND EXISTS (
             SELECT 1
             FROM public.hospitals hospital
             WHERE LOWER(BTRIM(hospital.name)) = LOWER(v_org_name)
@@ -8718,40 +8814,57 @@ BEGIN
         RETURNING * INTO v_org;
 
         IF v_org_type IN ('hospital', 'clinic') THEN
-            INSERT INTO public.hospitals (
-                name,
-                address,
-                phone,
-                type,
-                latitude,
-                longitude,
-                verified,
-                verification_status,
-                status,
-                org_admin_id,
-                organization_id,
-                provider_type,
-                emergency_eligible,
-                booking_eligible,
-                provider_source
-            ) VALUES (
-                v_org_name,
-                v_full_address,
-                v_phone,
-                CASE WHEN v_org_type = 'clinic' THEN 'clinic' ELSE 'standard' END,
-                v_latitude,
-                v_longitude,
-                false,
-                'pending',
-                'available',
-                v_actor_id,
-                v_org.id,
-                v_org_type,
-                v_org_type = 'hospital',
-                true,
-                'manual_seed'
-            )
-            RETURNING * INTO v_facility;
+            IF v_existing_facility_id IS NOT NULL THEN
+                INSERT INTO public.organization_facility_claims (
+                    organization_id,
+                    facility_id,
+                    submitted_by,
+                    status,
+                    claim_note
+                ) VALUES (
+                    v_org.id,
+                    v_existing_facility_id,
+                    v_actor_id,
+                    'pending',
+                    v_claim_note
+                )
+                RETURNING * INTO v_claim;
+            ELSE
+                INSERT INTO public.hospitals (
+                    name,
+                    address,
+                    phone,
+                    type,
+                    latitude,
+                    longitude,
+                    verified,
+                    verification_status,
+                    status,
+                    org_admin_id,
+                    organization_id,
+                    provider_type,
+                    emergency_eligible,
+                    booking_eligible,
+                    provider_source
+                ) VALUES (
+                    v_org_name,
+                    v_full_address,
+                    v_phone,
+                    CASE WHEN v_org_type = 'clinic' THEN 'clinic' ELSE 'standard' END,
+                    v_latitude,
+                    v_longitude,
+                    false,
+                    'pending',
+                    'available',
+                    v_actor_id,
+                    v_org.id,
+                    v_org_type,
+                    v_org_type = 'hospital',
+                    true,
+                    'manual_seed'
+                )
+                RETURNING * INTO v_facility;
+            END IF;
         END IF;
 
         UPDATE public.profiles
@@ -8763,6 +8876,11 @@ BEGIN
             updated_at = NOW()
         WHERE id = v_actor_id
         RETURNING * INTO v_profile;
+    END IF;
+
+    IF v_existing_facility_id IS NOT NULL
+       AND v_facility.id IS DISTINCT FROM v_existing_facility_id THEN
+        RAISE EXCEPTION 'FACILITY_SELECTION_CONFLICT';
     END IF;
 
     IF jsonb_typeof(v_documents) <> 'array' OR jsonb_array_length(v_documents) > 3 THEN
@@ -8805,6 +8923,7 @@ BEGIN
         INSERT INTO public.organization_verification_documents (
             organization_id,
             facility_id,
+            facility_claim_id,
             uploaded_by,
             document_type,
             storage_path,
@@ -8814,6 +8933,7 @@ BEGIN
         ) VALUES (
             v_org.id,
             v_facility.id,
+            v_claim.id,
             v_actor_id,
             v_document_type,
             v_document_path,
@@ -8822,7 +8942,34 @@ BEGIN
             v_size_bytes
         )
         ON CONFLICT (storage_path) DO NOTHING;
+
+        GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+        v_new_evidence_count := v_new_evidence_count + v_inserted_count;
     END LOOP;
+
+    IF v_new_evidence_count > 0 THEN
+        IF v_claim.status = 'changes_requested' THEN
+            UPDATE public.organization_facility_claims
+            SET status = 'pending',
+                review_note = NULL,
+                reviewed_at = NULL,
+                reviewed_by = NULL,
+                updated_at = NOW()
+            WHERE id = v_claim.id
+            RETURNING * INTO v_claim;
+        END IF;
+
+        IF v_org.verification_status = 'changes_requested' THEN
+            UPDATE public.organizations
+            SET verification_status = 'pending',
+                rejection_reason = NULL,
+                verified_at = NULL,
+                verified_by = NULL,
+                updated_at = NOW()
+            WHERE id = v_org.id
+            RETURNING * INTO v_org;
+        END IF;
+    END IF;
 
     SELECT EXISTS (
         SELECT 1
@@ -8860,7 +9007,17 @@ BEGIN
             'id', v_facility.id,
             'display_id', v_facility.display_id,
             'verificationStatus', v_facility.verification_status,
-            'dispatchEligible', v_facility.dispatch_eligible
+            'dispatchEligible', v_facility.dispatch_eligible,
+            'ownershipState', CASE
+                WHEN v_facility.organization_id = v_org.id THEN 'owned'
+                WHEN v_claim.id IS NOT NULL THEN 'claim_pending'
+                ELSE 'unowned'
+            END
+        ) END,
+        'claim', CASE WHEN v_claim.id IS NULL THEN NULL ELSE jsonb_build_object(
+            'id', v_claim.id,
+            'facilityId', v_claim.facility_id,
+            'status', v_claim.status
         ) END,
         'verification', jsonb_build_object(
             'lane', 'organization',
@@ -8870,6 +9027,287 @@ BEGIN
             'count', v_evidence_count,
             'status', CASE WHEN v_evidence_count > 0 THEN 'submitted' ELSE 'not_submitted' END
         )
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.review_organization_verification_document(
+    p_document_id UUID,
+    p_decision TEXT,
+    p_note TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_decision TEXT := LOWER(BTRIM(COALESCE(p_decision, '')));
+    v_note TEXT := NULLIF(BTRIM(COALESCE(p_note, '')), '');
+    v_status TEXT;
+    v_document public.organization_verification_documents%ROWTYPE;
+BEGIN
+    IF v_actor_id IS NULL OR NOT public.p_is_admin() THEN
+        RAISE EXCEPTION 'PLATFORM_ADMIN_REQUIRED';
+    END IF;
+
+    v_status := CASE v_decision
+        WHEN 'accept' THEN 'accepted'
+        WHEN 'approve' THEN 'accepted'
+        WHEN 'reject' THEN 'rejected'
+        WHEN 'request_changes' THEN 'changes_requested'
+        ELSE NULL
+    END;
+
+    IF v_status IS NULL THEN
+        RAISE EXCEPTION 'EVIDENCE_DECISION_INVALID';
+    END IF;
+    IF LENGTH(COALESCE(v_note, '')) > 1000 THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_INVALID';
+    END IF;
+    IF v_status IN ('rejected', 'changes_requested') AND v_note IS NULL THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_REQUIRED';
+    END IF;
+
+    SELECT * INTO v_document
+    FROM public.organization_verification_documents
+    WHERE id = p_document_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'EVIDENCE_NOT_FOUND';
+    END IF;
+
+    UPDATE public.organization_verification_documents
+    SET review_status = v_status,
+        reviewed_at = NOW(),
+        reviewed_by = v_actor_id,
+        rejection_reason = CASE
+            WHEN v_status IN ('rejected', 'changes_requested') THEN v_note
+            ELSE NULL
+        END
+    WHERE id = p_document_id
+    RETURNING * INTO v_document;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'documentId', v_document.id,
+        'organizationId', v_document.organization_id,
+        'facilityClaimId', v_document.facility_claim_id,
+        'status', v_document.review_status,
+        'reviewedAt', v_document.reviewed_at,
+        'reviewedBy', v_document.reviewed_by
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.review_console_facility_claim(
+    p_claim_id UUID,
+    p_decision TEXT,
+    p_note TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_decision TEXT := LOWER(BTRIM(COALESCE(p_decision, '')));
+    v_note TEXT := NULLIF(BTRIM(COALESCE(p_note, '')), '');
+    v_status TEXT;
+    v_claim public.organization_facility_claims%ROWTYPE;
+    v_facility public.hospitals%ROWTYPE;
+    v_org public.organizations%ROWTYPE;
+BEGIN
+    IF v_actor_id IS NULL OR NOT public.p_is_admin() THEN
+        RAISE EXCEPTION 'PLATFORM_ADMIN_REQUIRED';
+    END IF;
+
+    v_status := CASE v_decision
+        WHEN 'approve' THEN 'approved'
+        WHEN 'reject' THEN 'rejected'
+        WHEN 'request_changes' THEN 'changes_requested'
+        ELSE NULL
+    END;
+
+    IF v_status IS NULL THEN
+        RAISE EXCEPTION 'CLAIM_DECISION_INVALID';
+    END IF;
+    IF LENGTH(COALESCE(v_note, '')) > 1000 THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_INVALID';
+    END IF;
+    IF v_status IN ('rejected', 'changes_requested') AND v_note IS NULL THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_REQUIRED';
+    END IF;
+
+    SELECT * INTO v_claim
+    FROM public.organization_facility_claims
+    WHERE id = p_claim_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'FACILITY_CLAIM_NOT_FOUND';
+    END IF;
+
+    SELECT * INTO v_org
+    FROM public.organizations
+    WHERE id = v_claim.organization_id
+    FOR UPDATE;
+
+    SELECT * INTO v_facility
+    FROM public.hospitals
+    WHERE id = v_claim.facility_id
+    FOR UPDATE;
+
+    IF v_status = 'approved' THEN
+        IF v_org.verification_status = 'rejected' THEN
+            RAISE EXCEPTION 'ORGANIZATION_REJECTED';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.organization_verification_documents evidence
+            WHERE evidence.organization_id = v_claim.organization_id
+              AND evidence.facility_claim_id = v_claim.id
+              AND evidence.review_status = 'accepted'
+        ) THEN
+            RAISE EXCEPTION 'ACCEPTED_CLAIM_EVIDENCE_REQUIRED';
+        END IF;
+        IF v_facility.organization_id IS NOT NULL
+           AND v_facility.organization_id IS DISTINCT FROM v_claim.organization_id THEN
+            RAISE EXCEPTION 'FACILITY_ALREADY_OWNED';
+        END IF;
+
+        UPDATE public.hospitals
+        SET organization_id = v_claim.organization_id,
+            org_admin_id = COALESCE(org_admin_id, v_claim.submitted_by),
+            updated_at = NOW()
+        WHERE id = v_claim.facility_id
+        RETURNING * INTO v_facility;
+    END IF;
+
+    UPDATE public.organization_facility_claims
+    SET status = v_status,
+        review_note = v_note,
+        reviewed_at = NOW(),
+        reviewed_by = v_actor_id,
+        updated_at = NOW()
+    WHERE id = p_claim_id
+    RETURNING * INTO v_claim;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'claimId', v_claim.id,
+        'organizationId', v_claim.organization_id,
+        'facilityId', v_claim.facility_id,
+        'status', v_claim.status,
+        'facilityOwnershipLinked',
+            v_status = 'approved'
+            AND v_facility.organization_id = v_claim.organization_id,
+        'organizationVerificationStatus', v_org.verification_status,
+        'facilityVerificationStatus', v_facility.verification_status,
+        'facilityDispatchEligible', v_facility.dispatch_eligible
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.review_console_organization(
+    p_organization_id UUID,
+    p_decision TEXT,
+    p_note TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor_id UUID := auth.uid();
+    v_decision TEXT := LOWER(BTRIM(COALESCE(p_decision, '')));
+    v_note TEXT := NULLIF(BTRIM(COALESCE(p_note, '')), '');
+    v_status TEXT;
+    v_org public.organizations%ROWTYPE;
+    v_facility_count INTEGER;
+    v_dispatch_ready_count INTEGER;
+BEGIN
+    IF v_actor_id IS NULL OR NOT public.p_is_admin() THEN
+        RAISE EXCEPTION 'PLATFORM_ADMIN_REQUIRED';
+    END IF;
+
+    v_status := CASE v_decision
+        WHEN 'approve' THEN 'verified'
+        WHEN 'reject' THEN 'rejected'
+        WHEN 'request_changes' THEN 'changes_requested'
+        ELSE NULL
+    END;
+
+    IF v_status IS NULL THEN
+        RAISE EXCEPTION 'ORGANIZATION_DECISION_INVALID';
+    END IF;
+    IF LENGTH(COALESCE(v_note, '')) > 1000 THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_INVALID';
+    END IF;
+    IF v_status IN ('rejected', 'changes_requested') AND v_note IS NULL THEN
+        RAISE EXCEPTION 'REVIEW_NOTE_REQUIRED';
+    END IF;
+
+    SELECT * INTO v_org
+    FROM public.organizations
+    WHERE id = p_organization_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'ORGANIZATION_NOT_FOUND';
+    END IF;
+
+    IF v_status = 'verified' THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.organization_verification_documents evidence
+            WHERE evidence.organization_id = v_org.id
+              AND evidence.review_status = 'accepted'
+        ) THEN
+            RAISE EXCEPTION 'ACCEPTED_ORGANIZATION_EVIDENCE_REQUIRED';
+        END IF;
+
+        IF v_org.organization_type IN ('hospital', 'clinic')
+           AND NOT EXISTS (
+               SELECT 1
+               FROM public.hospitals facility
+               WHERE facility.organization_id = v_org.id
+           ) THEN
+            RAISE EXCEPTION 'ORGANIZATION_FACILITY_REQUIRED';
+        END IF;
+    END IF;
+
+    UPDATE public.organizations
+    SET verification_status = v_status,
+        verified_at = CASE WHEN v_status = 'verified' THEN NOW() ELSE NULL END,
+        verified_by = CASE WHEN v_status = 'verified' THEN v_actor_id ELSE NULL END,
+        rejection_reason = CASE
+            WHEN v_status IN ('rejected', 'changes_requested') THEN v_note
+            ELSE NULL
+        END,
+        updated_at = NOW()
+    WHERE id = p_organization_id
+    RETURNING * INTO v_org;
+
+    SELECT
+        COUNT(*)::INTEGER,
+        COUNT(*) FILTER (WHERE dispatch_eligible = true)::INTEGER
+    INTO v_facility_count, v_dispatch_ready_count
+    FROM public.hospitals
+    WHERE organization_id = v_org.id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'organizationId', v_org.id,
+        'status', v_org.verification_status,
+        'verifiedAt', v_org.verified_at,
+        'verifiedBy', v_org.verified_by,
+        'facilityCount', v_facility_count,
+        'dispatchReadyFacilityCount', v_dispatch_ready_count
     );
 END;
 $$;
@@ -8983,12 +9421,18 @@ $$;
 REVOKE ALL ON FUNCTION public.get_console_identity_projection() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.search_onboarding_facilities(TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.provision_console_organization(JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.review_organization_verification_document(UUID, TEXT, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.review_console_facility_claim(UUID, TEXT, TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.review_console_organization(UUID, TEXT, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.complete_console_user_invitation(UUID, UUID, UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.update_profile_by_admin(UUID, JSONB) FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.get_console_identity_projection() TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.search_onboarding_facilities(TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.provision_console_organization(JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.review_organization_verification_document(UUID, TEXT, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.review_console_facility_claim(UUID, TEXT, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.review_console_organization(UUID, TEXT, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.complete_console_user_invitation(UUID, UUID, UUID, TEXT, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_profile_by_admin(UUID, JSONB) TO authenticated, service_role;
 -- END CONSOLE_ONBOARDING_RPCS
