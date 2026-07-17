@@ -754,6 +754,35 @@ through `pending_approval`, `in_progress`, `accepted`, `arrived`, and
 `completed`. After Skip, the Visit was `post_completion`; hard refresh showed
 no active tracking identity and no duplicate rating modal.
 
-This closes local source and browser proof. Deployed sign-off still requires
-publishing the App change and repeating the same no-refresh transition on the
-deployed web artifact.
+This closed local source and browser proof; the production closure immediately
+below records the subsequent deployed no-refresh transition.
+
+## Production Closure: Payment, Tracking, Arrival, and Rating - 2026-07-17
+
+The final production journey used request
+`056394c0-102d-4b1b-a08a-dca50be29b56` / `REQ-514070`.
+
+Observed without reload:
+
+`Visiting Nurse Association $160 decision -> matching cash payment ->
+pending approval -> accepted tracking/top pill -> arrived -> Confirm Arrival ->
+completed -> one rating modal -> Skip -> no second modal`
+
+Hard refresh then showed no active tracking or rating residue. Read-only
+Supabase verification showed:
+
+- request/payment status `completed`;
+- `patient_acknowledged_arrival_at` populated;
+- one Visit linked by `request_id`, lifecycle `post_completion`;
+- ordered append-only transitions from `pending_approval` through `completed`.
+
+Release:
+
+- rating fix: App PR `#3`, merge `221693bf`;
+- OTA marker: App PR `#4`, merge `d5ab1f06`, display `1.0.8.58`;
+- EAS production update group:
+  `54dca1a6-8052-40b8-b995-cb04028b3584`;
+- runtime/platforms: `1.0.8`, Android and iOS.
+
+This repair is JS/state-only. The 1.0.9 build backlog and native asset/runtime
+boundaries remain unchanged.
