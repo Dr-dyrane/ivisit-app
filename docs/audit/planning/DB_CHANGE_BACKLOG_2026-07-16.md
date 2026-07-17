@@ -16,6 +16,31 @@ review_depth_required: high
 > the July incident happened. This backlog is deliberately NOT a to-do list -- it is the input to
 > a deeper review that must run with multiple contexts and perspectives before anything ships.
 
+## 2026-07-17 nearby_providers resolution
+
+The live contract was captured read-only with `pg_get_functiondef` and catalog ACL metadata before
+any source edit. The recovered SQL is preserved at
+`supabase/docs/live-contracts/nearby_providers_2026-07-17.sql`, and the reproducible capture probe is
+`scripts/capture_live_nearby_providers_contract.js`.
+
+The deployed function is a stable, invoker-rights, 20-field discovery projection over
+`public.hospitals`. It does not join `public.providers`. Live execution is available to `PUBLIC`,
+`anon`, `authenticated`, and `service_role`. The generated App and Console database types already
+described this 20-field result.
+
+Resolution:
+
+- the core RPC pillar and API/schema documentation now describe the captured 20-field live shape;
+- no live SQL was applied because production already has the selected contract;
+- no EAS build, runtime bump, OTA, or App JavaScript change is required;
+- the proposed 28-field replacement is rejected because its extra values can originate from
+  category templates rather than organization-asserted facts;
+- provider detail is now explicitly a future onboarding/claim/verification contract. Discovery
+  may continue rendering honest unavailable states until verified organization-owned values exist.
+
+This closes the `nearby_providers` source/live drift. It does not claim that provider-detail
+onboarding is complete, and it does not unpark the other four changes in this document.
+
 ---
 
 ## 0. READ THIS FIRST - the baseline is not trustworthy yet
@@ -23,11 +48,10 @@ review_depth_required: high
 The analysis surfaced hard evidence that **the deployed database has drifted from this repo in
 ways no migration records**:
 
-- **`nearby_providers`**: the LIVE function returns a 20-column shape. The pillar
-  (`supabase/migrations/20260219010000_core_rpcs.sql:66-137`) declares 28. `git log -S` proves
-  **only 28-col versions were ever authored in either repo** -- the deployed 20-col body exists
-  in NO COMMIT. It was hand-applied through the Dashboard SQL editor. **Its source is not
-  recoverable from git; only `pg_get_functiondef` on the live DB can produce it.**
+- **`nearby_providers` (closed 2026-07-17)**: the LIVE function returned a 20-column shape while
+  the pillar declared 28. `git log -S` proved only 28-column versions had been authored. The live
+  body and ACL have now been recovered with `pg_get_functiondef`, preserved under
+  `supabase/docs/live-contracts`, and adopted into the pillar/docs without mutating production.
 - **`20260601000000_provider_taxonomy`**: credited in `supabase/docs/CONTRIBUTING.md` with
   deploying `nearby_providers`. **It does not exist in git history at all.**
 - Three separate documents state three different column counts for the same function
@@ -49,7 +73,7 @@ Waiting is the right call, but it is not free. Two of these are actively harming
 |---|---|
 | `insurance-storage-policy` | **Active data loss.** Every native insurance-card attach throws (`services/insuranceService.js:462`), which aborts `savePolicy` -- the user loses the whole POLICY, not just the photo. Identical on 1.0.6, 1.0.7, 1.0.8. Frozen runtimes can NEVER receive a client-side fix; a server policy is the only repair they can get. |
 | `delete-user` | **Already broken, in two opposite directions, unobserved.** `emergency_responder_assignments.emergency_request_id` is ON DELETE RESTRICT, so for any patient who ever had a responder offered, deletion ALREADY aborts -- and `authService.js:611-621` returns `true` from its catch, so they are told "deleted" while fully intact. Others lose their profile row and get a permanent phantom account (`handle_new_user` fires on INSERT only, so re-login never restores it). Nobody has ever seen either failure. |
-| `nearby-providers-shim` | Explore Care provider detail renders empty on every runtime. Cosmetic-ish; the honest "not listed" copy is arguably better than the alternative (see below). |
+| `nearby-providers-shim` | Source/live drift is closed. Provider detail remains honestly unavailable until onboarding/claim/verification owns organization-asserted values. |
 | `reschedule-self-exclusion` | The picker hides the slots you most want when rescheduling. Annoying, not harmful; the server would accept those times. |
 | `wallet-top-up-receiver` | **Zero cost. Safe indefinitely.** Top-up is gated client-side (`services/paymentService.js` `WALLET_TOP_UP_CREDIT_RECEIVER_AVAILABLE = false`) and fails closed BEFORE any Stripe intent exists, so no card is charged. Waiting here is free. |
 
@@ -93,20 +117,22 @@ Add `p_exclude_visit_id UUID DEFAULT NULL` to `get_book_visit_availability`.
   book and reschedule collide on one 30s cache entry and the BOOK picker offers taken slots.
   **Never ship the OTA before the DB:** a 6-key body against a 5-arg function is PGRST202.
 
-### 2.3 `nearby-providers-shim` - additive, CONTAINED (but see 0)
-Deploy the pillar's 28-col definition over the live 20-col one.
-- **Answer two questions BEFORE considering this:** (1) what is the row count of
-  `public.providers`? (2) which `provider_type` was the empty-detail bug actually seen on? If
-  providers is empty or the answer is 'hospital', the join adds 8 NULL columns and **Explore Care
-  stays exactly as empty** -- you would take DROP risk on production for a no-op.
-- **Capture `SELECT pg_get_functiondef('public.nearby_providers(double precision,double precision,text,integer,integer)'::regprocedure);` and COMMIT the output BEFORE any DROP.** The live body
-  is in no commit (see §0). Without this there is no rollback.
-- **Product call, on the record:** the 8 detail fields are hardcoded category templates from a
-  `switch` (`supabase/functions/.../persistence.ts:66-96`) -- every lab would get "Appointment
-  required: Yes" and "2-3 days". Today the UI honestly says "Turnaround not listed". Shipping
-  invented specifics to frozen bundles is irreversible. The real fix may be at
-  `persistence.ts:147-152`, not in the RPC.
-- Add the missing DROP to the pillar itself or this drift recurs.
+### 2.3 `nearby-providers-shim` - RESOLVED AS SOURCE RECONCILIATION
+
+The live body and ACL were captured on 2026-07-17. `public.providers` contains 763 rows, so the
+original row-count question is answered, but the detail rows can still contain generic
+category-derived values. The 28-field replacement therefore remains the wrong product contract.
+
+The safe resolution was to preserve the deployed 20-field discovery projection and reconcile the
+pillar/docs to it. The pillar now includes an explicit signature drop for clean rebuilds, recreates
+the invoker-rights function, and grants its read contract. Production required no mutation because
+it already matched the selected definition.
+
+Provider-specific services, specialties, insurance, hours, appointment requirements, turnaround,
+age range, and crisis line must be promoted later through the organization onboarding,
+facility-claim, and verification chain. Those values must be attributable to the claiming
+organization and reflected only after the agreed verification state; category templates are not
+provider truth.
 
 ### 2.4 `wallet-top-up-receiver` - mixed, MODERATE. Receiver may land; FLAG MUST NOT FLIP.
 Credit `patient_wallets` for `is_top_up` payments.

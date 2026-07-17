@@ -150,7 +150,7 @@
       "name": "nearby_providers",
       "file": "20260219000200_org_structure.sql",
       "definition": "CREATE OR REPLACE FUNCTION public.nearby_providers(user_lat DOUBLE PRECISION, user_lng DOUBLE PRECISION, provider_type_filter TEXT DEFAULT NULL, radius_km INTEGER DEFAULT 15, result_limit INTEGER DEFAULT 20)",
-      "notes": "EXP-3 + EXPLORE-CARE-PERMANENT-FIX: Explore mode RPC. Returns provider-specific fields via LEFT JOIN with providers table. No emergency_eligible filter — all provider types returned."
+      "notes": "Explore mode RPC. Returns the canonical 20-field discovery projection from hospitals with no emergency_eligible filter. Organization-owned provider detail requires a separately verified onboarding contract."
     },
     {
       "name": "normalize_hospital_bed_state",
