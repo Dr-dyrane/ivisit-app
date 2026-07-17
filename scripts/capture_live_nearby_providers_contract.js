@@ -11,9 +11,7 @@ dotenv.config({ path: path.join(ROOT, ".env") });
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProjectRef = process.argv
   .find((argument) => argument.startsWith("--project-ref="))
   ?.slice("--project-ref=".length);
@@ -177,15 +175,33 @@ async function run() {
       "LANGUAGE plpgsql STABLE;",
       "GRANT EXECUTE ON FUNCTION public.nearby_providers",
       "TO anon, authenticated, service_role;",
-      "h.coordinates IS NOT NULL",
-      "h.status = 'available'",
-      "provider_type_filter IS NULL OR h.provider_type = provider_type_filter",
-      "LIMIT result_limit",
     ];
     for (const fragment of requiredSourceFragments) {
       if (!sourceBlock.includes(fragment)) {
         throw new Error(
           `[nearby-providers-capture] Canonical pillar is missing: ${fragment}`,
+        );
+      }
+    }
+
+    const normalizeSql = (value) =>
+      value.replace(/\s+/g, " ").trim().toLowerCase();
+    const liveSql = normalizeSql(definition);
+    const pillarSql = normalizeSql(sourceBlock);
+    const requiredQueryFragments = [
+      "from public.hospitals h",
+      "h.coordinates IS NOT NULL",
+      "h.status = 'available'",
+      "provider_type_filter IS NULL OR h.provider_type = provider_type_filter",
+      "st_dwithin(",
+      "radius_km * 1000.0",
+      "order by distance asc",
+      "LIMIT result_limit",
+    ].map((fragment) => fragment.toLowerCase());
+    for (const fragment of requiredQueryFragments) {
+      if (!liveSql.includes(fragment) || !pillarSql.includes(fragment)) {
+        throw new Error(
+          `[nearby-providers-capture] Live/pillar query semantics differ or omit: ${fragment}`,
         );
       }
     }

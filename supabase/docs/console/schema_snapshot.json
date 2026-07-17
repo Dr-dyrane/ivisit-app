@@ -133,7 +133,7 @@
   },
   "functions": {
     "nearby_providers": {
-      "file": "20260219000200_org_structure.sql",
+      "file": "20260219010000_core_rpcs.sql",
       "description": "Explore mode RPC — no emergency filter, category-aware, canonical 20-field discovery projection",
       "addedBy": "EXP-3",
       "mutatedBy": "2026-07-17 live-contract reconciliation",
