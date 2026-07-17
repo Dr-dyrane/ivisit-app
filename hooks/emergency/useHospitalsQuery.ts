@@ -166,7 +166,12 @@ export function useEmergencyHospitalsQuery({
     staleTime: 2 * 60 * 1000,  // 2 min — mirrors previous HOSPITAL_CACHE_TTL_MS
     gcTime: 5 * 60 * 1000,     // 5 min — survive unmount/remount (instant re-load)
     refetchOnWindowFocus: false,
-    placeholderData: (prev: any) => prev, // keep prior location's data during transition
+    // PULLBACK NOTE: A pickup change is an emergency-discovery identity boundary.
+    // OLD: placeholderData reused the previous pickup's hospitals while the new
+    //      query loaded, allowing a visible decision/CTA to change underneath
+    //      the user and hand the prior hospital into payment.
+    // NEW: a new location key enters the structural loading state until its own
+    //      hospital lane resolves. Same-key cached/background refreshes remain.
   });
 
   const allHospitals = useMemo(() => data?.allHospitals ?? [], [data]);

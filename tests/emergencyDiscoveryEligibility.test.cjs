@@ -525,6 +525,25 @@ try {
     /raw\.filter\(\(h: any\) => h\?\.isDispatchReady === true\)/,
     "the emergency UI must fail closed instead of restoring raw discovery rows",
   );
+  const emergencyQueryBlock = emergencyHospitalQuery.match(
+    /export function useEmergencyHospitalsQuery\([\s\S]*?^}/m,
+  )?.[0];
+  assert.ok(
+    emergencyQueryBlock,
+    "the emergency hospital query contract must remain readable",
+  );
+  assert.doesNotMatch(
+    emergencyQueryBlock,
+    /placeholderData\s*:/,
+    "a new pickup query must not render hospitals owned by the previous pickup while discovery is pending",
+  );
+
+  const mapExploreFlow = read("hooks/map/exploreFlow/useMapExploreFlow.js");
+  assert.match(
+    mapExploreFlow,
+    /useMapLocation\(\{[\s\S]*?sheetPayload,\s*defaultExploreSnapState,\s*setSheetView,/,
+    "pickup source-return must receive the canonical explore snap state",
+  );
 
   for (const migration of ["supabase/migrations/20260219000800_emergency_logic.sql"]) {
     const createEmergency = read(migration);
