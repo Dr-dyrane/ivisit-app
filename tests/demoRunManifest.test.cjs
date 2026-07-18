@@ -13,10 +13,7 @@ const {
   registerResource,
   saveManifest,
 } = require('../supabase/tests/scripts/demo_run_manifest');
-const {
-  assertCleanupCoverage,
-  countPlan,
-} = require('../supabase/tests/scripts/cleanup_demo_run');
+const { countPlan } = require('../supabase/tests/scripts/cleanup_demo_run');
 
 const createManifest = () =>
   createDemoRunManifest({
@@ -133,13 +130,14 @@ test('counts only exact manifest cleanup targets', () => {
   );
 });
 
-test('fails closed when a manifest contains a lifecycle resource not yet covered', () => {
+test('tracks lifecycle resources in the same exact run manifest', () => {
   const manifest = createManifest();
   registerResource(manifest, 'emergencyRequestIds', 'request-1');
-  assert.throws(
-    () => assertCleanupCoverage(manifest),
-    /Exact cleanup is not implemented/
-  );
+  registerResource(manifest, 'paymentIds', 'payment-1');
+  registerResource(manifest, 'visitIds', 'visit-1');
+  assert.deepEqual(manifest.resources.emergencyRequestIds, ['request-1']);
+  assert.deepEqual(manifest.resources.paymentIds, ['payment-1']);
+  assert.deepEqual(manifest.resources.visitIds, ['visit-1']);
 });
 
 test('live runner never deletes facilities by organization ownership', () => {
@@ -161,4 +159,25 @@ test('live runner never deletes facilities by organization ownership', () => {
   assert.match(runner, /state\.createdFacilityIds/);
   assert.match(runner, /place_id: `e2e:\$\{runId\}:facility:claim`/);
   assert.doesNotMatch(runner, /provider_source: 'demo_bootstrap'/);
+});
+
+test('emergency matrix persists lifecycle identities and performs double cleanup', () => {
+  const runner = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '..',
+      'supabase',
+      'tests',
+      'scripts',
+      'run_e2e_flow_matrix.js'
+    ),
+    'utf8'
+  );
+  assert.match(runner, /createDemoRunManifest/);
+  assert.match(runner, /createTrackedSet\(ctx, 'emergencyRequestIds'\)/);
+  assert.match(runner, /createTrackedSet\(ctx, 'paymentIds'\)/);
+  assert.match(runner, /createTrackedSet\(ctx, 'visitIds'\)/);
+  assert.match(runner, /runManifestCleanupPass\(ctx, 2\)/);
+  assert.match(runner, /second manifest cleanup was not a no-op/);
+  assert.match(runner, /place_id: `e2e:\$\{TAG\}:facility:flow-matrix`/);
 });
