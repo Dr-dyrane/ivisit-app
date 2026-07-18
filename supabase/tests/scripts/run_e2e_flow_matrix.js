@@ -1,7 +1,20 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  createDemoRunManifest,
+  defaultManifestPath,
+  markCleanupAttempt,
+  registerResource,
+  saveManifest,
+} = require('./demo_run_manifest');
+const {
+  applyCleanupPlan,
+  buildCleanupPlan,
+  countPlan,
+} = require('./cleanup_demo_run');
 
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
@@ -22,7 +35,8 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const TS = Date.now();
-const TAG = `flow-matrix-${TS}`;
+const TAG = `flow-matrix-${TS}-${crypto.randomBytes(4).toString('hex')}`;
+const PROJECT_REF = new URL(supabaseUrl).hostname.split('.')[0];
 
 function nowIso() {
   return new Date().toISOString();
@@ -34,6 +48,26 @@ function unique(values) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function persistManifest(ctx) {
+  saveManifest(ctx.manifest, ctx.manifestPath);
+}
+
+function trackManifestResource(ctx, resourceKey, value) {
+  registerResource(ctx.manifest, resourceKey, value);
+  persistManifest(ctx);
+  return value;
+}
+
+function createTrackedSet(ctx, resourceKey) {
+  const values = new Set();
+  values.add = (value) => {
+    Set.prototype.add.call(values, value);
+    trackManifestResource(ctx, resourceKey, value);
+    return values;
+  };
+  return values;
 }
 
 function email(role) {
@@ -357,7 +391,7 @@ async function cleanup(ctx, report) {
   for (const userId of userIds) {
     await safe(`delete auth user ${userId}`, async () => {
       const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
+      if (error && !/not found/i.test(error.message || '')) throw error;
     });
   }
 
@@ -373,7 +407,21 @@ async function cleanup(ctx, report) {
   report.cleanupPassed = warnings.length === 0;
 }
 
+async function runManifestCleanupPass(ctx, pass) {
+  const plan = await buildCleanupPlan(supabase, ctx.manifest);
+  const planned = countPlan(plan);
+  await applyCleanupPlan(supabase, plan);
+  const residue = countPlan(await buildCleanupPlan(supabase, ctx.manifest));
+  assert(
+    Object.values(residue).every((count) => count === 0),
+    `manifest cleanup pass ${pass} left residue: ${JSON.stringify(residue)}`
+  );
+  await assertZeroResidue(ctx);
+  return { pass, planned, residue, zeroResidue: true };
+}
+
 async function createFoundation(ctx) {
+  const runLabel = TAG.slice(-8);
   const patient = await createAuthUser({
     email: email('patient'),
     role: 'patient',
@@ -409,7 +457,7 @@ async function createFoundation(ctx) {
   const { data: org, error: orgErr } = await supabase
     .from('organizations')
     .insert({
-      name: `E2E Org ${TAG}`,
+      name: `[DEMO ${runLabel}] Flow Matrix Organization`,
       organization_type: 'hospital',
       registration_number: TAG,
       contact_email: email('organization-contact'),
@@ -421,6 +469,7 @@ async function createFoundation(ctx) {
     .single();
   if (orgErr) throw new Error(`org create failed: ${orgErr.message}`);
   ctx.orgId = org.id;
+  trackManifestResource(ctx, 'organizationIds', org.id);
 
   const orgAdmin = await createAuthUser({
     email: email('org-admin'),
@@ -445,8 +494,11 @@ async function createFoundation(ctx) {
     .from('hospitals')
     .insert({
       organization_id: org.id,
-      name: `E2E Hospital ${TAG}`,
+      name: `[DEMO ${runLabel}] Flow Matrix Hospital`,
       address: '1 E2E Validation Ave',
+      place_id: `e2e:${TAG}:facility:flow-matrix`,
+      features: [`demo_scope:${TAG}`],
+      provider_source: 'manual_seed',
       status: 'available',
       verified: true,
       verification_status: 'verified',
@@ -461,6 +513,7 @@ async function createFoundation(ctx) {
     .single();
   if (hospErr) throw new Error(`hospital create failed: ${hospErr.message}`);
   ctx.hospitalId = hospital.id;
+  trackManifestResource(ctx, 'createdFacilityIds', hospital.id);
 
   const { error: driverScopeError } = await supabase
     .from('profiles')
@@ -778,24 +831,34 @@ async function runCanonicalAmbulanceLifecycle({
 }
 
 async function run() {
+  const manifest = createDemoRunManifest({
+    runId: TAG,
+    suite: 'emergency-flow-matrix',
+    projectRef: PROJECT_REF,
+  });
+  const manifestPath = defaultManifestPath(path.resolve(__dirname, '..', '..', '..'), TAG);
   const ctx = {
-    userIds: new Set(),
-    doctorIds: new Set(),
-    ambulanceIds: new Set(),
-    requestIds: new Set(),
-    paymentIds: new Set(),
-    assignmentIds: new Set(),
-    staffingIds: new Set(),
-    visitIds: new Set(),
-    patientWalletIds: new Set(),
-    organizationWalletIds: new Set(),
-    activityIds: new Set(),
-    adminAuditIds: new Set(),
+    manifest,
+    manifestPath,
     orgId: null,
     hospitalId: null
   };
+  ctx.userIds = createTrackedSet(ctx, 'authUserIds');
+  ctx.doctorIds = createTrackedSet(ctx, 'doctorIds');
+  ctx.ambulanceIds = createTrackedSet(ctx, 'ambulanceIds');
+  ctx.requestIds = createTrackedSet(ctx, 'emergencyRequestIds');
+  ctx.paymentIds = createTrackedSet(ctx, 'paymentIds');
+  ctx.assignmentIds = createTrackedSet(ctx, 'responderAssignmentIds');
+  ctx.staffingIds = createTrackedSet(ctx, 'staffingIds');
+  ctx.visitIds = createTrackedSet(ctx, 'visitIds');
+  ctx.patientWalletIds = createTrackedSet(ctx, 'patientWalletIds');
+  ctx.organizationWalletIds = createTrackedSet(ctx, 'organizationWalletIds');
+  ctx.activityIds = createTrackedSet(ctx, 'activityIds');
+  ctx.adminAuditIds = createTrackedSet(ctx, 'adminAuditIds');
+  persistManifest(ctx);
   const report = {
     tag: TAG,
+    manifestPath,
     startedAt: nowIso(),
     foundation: {},
     scenarios: {},
@@ -1022,6 +1085,49 @@ async function run() {
       }
     };
     completedAmbulanceVisitId = visitAfterComplete.id;
+
+    const firstRating = await runJsonRpc(
+      foundation.patientClient,
+      'rate_visit',
+      {
+        p_visit_id: visitAfterComplete.id,
+        p_rating: 5,
+        p_comment: `Flow matrix rating ${TAG}`,
+      },
+      'first visit rating'
+    );
+    const repeatedRating = await runJsonRpc(
+      foundation.patientClient,
+      'rate_visit',
+      {
+        p_visit_id: visitAfterComplete.id,
+        p_rating: 1,
+        p_comment: 'This replay must not overwrite the first rating.',
+      },
+      'repeated visit rating'
+    );
+    const ratedVisit = await qOne(
+      'visits',
+      'id,rating,rating_comment,rated_at,lifecycle_state',
+      'id',
+      visitAfterComplete.id
+    );
+    report.scenarios.rating = {
+      visitId: visitAfterComplete.id,
+      firstRating,
+      repeatedRating,
+      visit: ratedVisit,
+      assertions: {
+        firstWriteAccepted: firstRating.already_rated === false,
+        replayConverged: repeatedRating.already_rated === true,
+        originalRatingPreserved:
+          Number(ratedVisit.rating) === 5
+          && ratedVisit.rating_comment === `Flow matrix rating ${TAG}`,
+        ratedOnce:
+          !!ratedVisit.rated_at
+          && ratedVisit.lifecycle_state === 'rated',
+      },
+    };
 
     // Scenario C: operator cash approval releases the same canonical responder lifecycle.
     const cashCreate = await createEmergencyViaRpc({
@@ -1408,7 +1514,40 @@ async function run() {
     primaryError = error;
     report.error = error.message;
   } finally {
-    await cleanup(ctx, report);
+    try {
+      report.cleanupPasses = [];
+      await collectGeneratedFixtureIds(ctx);
+      const firstCleanup = await runManifestCleanupPass(ctx, 1);
+      if (!primaryError) {
+        assert(
+          Object.values(firstCleanup.planned).some((count) => count > 0),
+          'first manifest cleanup did not capture the live fixture graph'
+        );
+      }
+      report.cleanupPasses.push(firstCleanup);
+      markCleanupAttempt(manifest);
+      persistManifest(ctx);
+
+      const secondCleanup = await runManifestCleanupPass(ctx, 2);
+      assert(
+        Object.values(secondCleanup.planned).every((count) => count === 0),
+        `second manifest cleanup was not a no-op: ${JSON.stringify(secondCleanup.planned)}`
+      );
+      report.cleanupPasses.push(secondCleanup);
+      markCleanupAttempt(manifest);
+      persistManifest(ctx);
+      report.cleanupWarnings = [];
+      report.cleanupPassed = true;
+      report.zeroResiduePassed = true;
+    } catch (cleanupError) {
+      await cleanup(ctx, report);
+      markCleanupAttempt(manifest, cleanupError);
+      persistManifest(ctx);
+      primaryError = primaryError
+        ? new Error(`${primaryError.message}; ${cleanupError.message}`)
+        : cleanupError;
+      report.error = primaryError.message;
+    }
     report.completedAt = nowIso();
     report.passed = primaryError === null && report.cleanupPassed && report.zeroResiduePassed;
     const outDir = path.join(__dirname, '..', 'validation');

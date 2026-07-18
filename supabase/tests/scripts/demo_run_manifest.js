@@ -15,6 +15,13 @@ const RESOURCE_KEYS = Object.freeze([
   'responderAssignmentIds',
   'paymentIds',
   'visitIds',
+  'doctorIds',
+  'ambulanceIds',
+  'staffingIds',
+  'patientWalletIds',
+  'organizationWalletIds',
+  'activityIds',
+  'adminAuditIds',
 ]);
 
 function assertSafeRunId(runId) {

@@ -211,10 +211,8 @@ those values authorize stable preview coverage to bypass ordinary dispatch
 eligibility gates. Real imported/discovered hospitals remain claim-catalog
 truth and must not be renamed or deleted by cleanup.
 
-If an onboarding run is interrupted, preview its exact cleanup plan before
-applying it. The command fails closed if a manifest contains emergency,
-responder, payment, or visit resources until their dependency cleanup is
-implemented:
+If an onboarding or emergency-flow run is interrupted, preview its exact
+cleanup plan before applying it:
 
 ```bash
 node supabase/tests/scripts/cleanup_demo_run.js \
@@ -234,6 +232,14 @@ manifest contract itself is checked with:
 ```bash
 npm run hardening:demo-run-manifest-contract
 ```
+
+`run_e2e_flow_matrix.js` uses the same manifest for Auth, organization,
+facility, doctor, ambulance, staffing, request, responder assignment, payment,
+wallet, visit, activity, audit, notification, billing, transition, and display
+mapping cleanup. Wallet-ledger credits are reversed before their exact ledger
+rows are removed, and append-only emergency history triggers are disabled only
+inside the validated UUID-scoped cleanup transaction. Its first cleanup must
+capture a non-empty live graph; its second cleanup must plan zero actions.
 
 ### **Preferences Surface Field Guard**
 ```bash

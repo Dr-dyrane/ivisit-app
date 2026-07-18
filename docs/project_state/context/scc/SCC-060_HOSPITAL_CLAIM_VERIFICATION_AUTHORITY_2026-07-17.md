@@ -135,3 +135,21 @@ Initial repeatability proof:
   invitation, reflection, and two cleanup applications;
 - the recovery CLI previewed zero resources, applied again successfully, and
   previewed zero afterward; the global cleanup guard remained zero.
+
+Emergency lifecycle manifest adoption:
+
+- the final matrix covers card confirmation, cash approval, bed reservation,
+  dispatch offer/acceptance, telemetry, responder arrival, patient arrival
+  acknowledgement, completion, resource release, visit synchronization, tips,
+  transition audit, and rating;
+- rating replay is idempotent: the first five-star write persists, the replay
+  reports `already_rated`, and cannot overwrite the original value or comment;
+- nonzero recovery rehearsal `flow-matrix-1784335652915-9c405b47` correctly
+  failed after exposing five omitted staffing/wallet display mappings; its
+  fallback cleanup left global residue at zero;
+- corrected final runs `flow-matrix-1784335771609-67916700`,
+  `flow-matrix-1784335859230-7e2301a5`, and
+  `flow-matrix-1784335909079-03becf97` passed consecutively;
+- each final run captured 21 non-empty dependency classes, reduced every class
+  to zero on the first manifest cleanup, planned zero actions on the second,
+  and left the global cleanup guard at zero.
