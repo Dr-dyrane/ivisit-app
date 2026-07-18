@@ -456,6 +456,16 @@ async function run() {
     1,
     "map modal orchestration must keep one physical rating-modal renderer",
   );
+  assert.match(
+    modalOrchestratorSource,
+    /const presentedRatingState = ratingState \?\? lastVisibleRatingStateRef\.current;/,
+    "the single rating renderer must retain its service presentation during close animation",
+  );
+  assert.match(
+    modalOrchestratorSource,
+    /title=\{presentedRatingState\?\.title \|\| "Rate your visit"\}/,
+    "the closing rating sheet must not fall back from transport copy to generic visit copy",
+  );
 
   const reloadEligible = completedEmergency({ id: "reload-eligible" });
   const alreadyRated = completedEmergency({

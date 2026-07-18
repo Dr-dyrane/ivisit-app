@@ -24,6 +24,7 @@ const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const TEST_USER_PASSWORD = 'password123!';
+const PREPARE_BROWSER_FIXTURE = process.argv.includes('--prepare-browser-fixture');
 
 if (!supabaseUrl || !serviceRoleKey || !anonKey) {
   console.error('Missing Supabase credentials.');
@@ -422,6 +423,11 @@ async function runManifestCleanupPass(ctx, pass) {
 
 async function createFoundation(ctx) {
   const runLabel = TAG.slice(-8);
+  const coordinateSeed = crypto.createHash('sha256').update(TAG).digest();
+  const hospitalLatitude = 6.525
+    + (coordinateSeed.readUInt32BE(0) / 0xffffffff) * 0.001;
+  const hospitalLongitude = 3.38
+    + (coordinateSeed.readUInt32BE(4) / 0xffffffff) * 0.001;
   const patient = await createAuthUser({
     email: email('patient'),
     role: 'patient',
@@ -441,6 +447,17 @@ async function createFoundation(ctx) {
   ctx.userIds.add(patient.id);
   ctx.userIds.add(driver.id);
   ctx.userIds.add(doctorUser.id);
+
+  const { data: patientWallet, error: patientWalletError } = await supabase
+    .from('patient_wallets')
+    .update({ balance: 1000, updated_at: nowIso() })
+    .eq('user_id', patient.id)
+    .select('id')
+    .single();
+  if (patientWalletError) {
+    throw new Error(`patient wallet funding failed: ${patientWalletError.message}`);
+  }
+  ctx.patientWalletIds.add(patientWallet.id);
 
   const { error: driverRoleError } = await supabase
     .from('profiles')
@@ -496,6 +513,9 @@ async function createFoundation(ctx) {
       organization_id: org.id,
       name: `[DEMO ${runLabel}] Flow Matrix Hospital`,
       address: '1 E2E Validation Ave',
+      latitude: hospitalLatitude,
+      longitude: hospitalLongitude,
+      coordinates: `SRID=4326;POINT(${hospitalLongitude} ${hospitalLatitude})`,
       place_id: `e2e:${TAG}:facility:flow-matrix`,
       features: [`demo_scope:${TAG}`],
       provider_source: 'manual_seed',
@@ -531,7 +551,7 @@ async function createFoundation(ctx) {
   // Ensure org wallet can pay platform fees during cash approvals.
   const { data: orgWallet, error: orgWalletError } = await supabase
     .from('organization_wallets')
-    .update({ balance: 100, updated_at: nowIso() })
+    .update({ balance: 10000, updated_at: nowIso() })
     .eq('organization_id', org.id)
     .select('id')
     .single();
@@ -833,7 +853,9 @@ async function runCanonicalAmbulanceLifecycle({
 async function run() {
   const manifest = createDemoRunManifest({
     runId: TAG,
-    suite: 'emergency-flow-matrix',
+    suite: PREPARE_BROWSER_FIXTURE
+      ? 'emergency-browser-fixture'
+      : 'emergency-flow-matrix',
     projectRef: PROJECT_REF,
   });
   const manifestPath = defaultManifestPath(path.resolve(__dirname, '..', '..', '..'), TAG);
@@ -869,6 +891,7 @@ async function run() {
   let completedAmbulanceVisitId = null;
   let completedBedVisitId = null;
   let primaryError = null;
+  let retainBrowserFixture = false;
 
   try {
     const foundation = await createFoundation(ctx);
@@ -891,6 +914,22 @@ async function run() {
         ambulanceDispatchReady: foundation.readiness.ready === true
       }
     };
+
+    if (PREPARE_BROWSER_FIXTURE) {
+      retainBrowserFixture = true;
+      report.browserHandoff = {
+        runId: TAG,
+        manifestPath,
+        patientEmail: foundation.patient.email,
+        driverEmail: foundation.driver.email,
+        orgAdminEmail: foundation.orgAdmin.email,
+        hospitalName: foundation.hospital.name,
+        status: 'prepared',
+        cleanupRequired: true,
+      };
+      console.log('[flow-matrix] Browser fixture prepared:', JSON.stringify(report.browserHandoff));
+      return;
+    }
 
     // Scenario A: card intent stays gated until backend confirmation releases dispatch.
     const cardCreate = await createEmergencyViaRpc({
@@ -1514,45 +1553,54 @@ async function run() {
     primaryError = error;
     report.error = error.message;
   } finally {
-    try {
-      report.cleanupPasses = [];
-      await collectGeneratedFixtureIds(ctx);
-      const firstCleanup = await runManifestCleanupPass(ctx, 1);
-      if (!primaryError) {
-        assert(
-          Object.values(firstCleanup.planned).some((count) => count > 0),
-          'first manifest cleanup did not capture the live fixture graph'
-        );
-      }
-      report.cleanupPasses.push(firstCleanup);
-      markCleanupAttempt(manifest);
-      persistManifest(ctx);
+    if (!retainBrowserFixture) {
+      try {
+        report.cleanupPasses = [];
+        await collectGeneratedFixtureIds(ctx);
+        const firstCleanup = await runManifestCleanupPass(ctx, 1);
+        if (!primaryError) {
+          assert(
+            Object.values(firstCleanup.planned).some((count) => count > 0),
+            'first manifest cleanup did not capture the live fixture graph'
+          );
+        }
+        report.cleanupPasses.push(firstCleanup);
+        markCleanupAttempt(manifest);
+        persistManifest(ctx);
 
-      const secondCleanup = await runManifestCleanupPass(ctx, 2);
-      assert(
-        Object.values(secondCleanup.planned).every((count) => count === 0),
-        `second manifest cleanup was not a no-op: ${JSON.stringify(secondCleanup.planned)}`
-      );
-      report.cleanupPasses.push(secondCleanup);
-      markCleanupAttempt(manifest);
-      persistManifest(ctx);
-      report.cleanupWarnings = [];
-      report.cleanupPassed = true;
-      report.zeroResiduePassed = true;
-    } catch (cleanupError) {
-      await cleanup(ctx, report);
-      markCleanupAttempt(manifest, cleanupError);
-      persistManifest(ctx);
-      primaryError = primaryError
-        ? new Error(`${primaryError.message}; ${cleanupError.message}`)
-        : cleanupError;
-      report.error = primaryError.message;
+        const secondCleanup = await runManifestCleanupPass(ctx, 2);
+        assert(
+          Object.values(secondCleanup.planned).every((count) => count === 0),
+          `second manifest cleanup was not a no-op: ${JSON.stringify(secondCleanup.planned)}`
+        );
+        report.cleanupPasses.push(secondCleanup);
+        markCleanupAttempt(manifest);
+        persistManifest(ctx);
+        report.cleanupWarnings = [];
+        report.cleanupPassed = true;
+        report.zeroResiduePassed = true;
+      } catch (cleanupError) {
+        await cleanup(ctx, report);
+        markCleanupAttempt(manifest, cleanupError);
+        persistManifest(ctx);
+        primaryError = primaryError
+          ? new Error(`${primaryError.message}; ${cleanupError.message}`)
+          : cleanupError;
+        report.error = primaryError.message;
+      }
     }
     report.completedAt = nowIso();
-    report.passed = primaryError === null && report.cleanupPassed && report.zeroResiduePassed;
+    report.passed = retainBrowserFixture
+      ? primaryError === null && report.browserHandoff?.status === 'prepared'
+      : primaryError === null && report.cleanupPassed && report.zeroResiduePassed;
     const outDir = path.join(__dirname, '..', 'validation');
     fs.mkdirSync(outDir, { recursive: true });
-    const outFile = path.join(outDir, 'e2e_flow_matrix_report.json');
+    const outFile = path.join(
+      outDir,
+      retainBrowserFixture
+        ? 'browser_emergency_fixture_report.json'
+        : 'e2e_flow_matrix_report.json'
+    );
     fs.writeFileSync(outFile, JSON.stringify(report, null, 2));
     console.log('[flow-matrix] Report written:', outFile);
   }

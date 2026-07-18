@@ -241,6 +241,35 @@ rows are removed, and append-only emergency history triggers are disabled only
 inside the validated UUID-scoped cleanup transaction. Its first cleanup must
 capture a non-empty live graph; its second cleanup must plan zero actions.
 
+For a rendered browser lifecycle, prepare the same foundation without running
+or cleaning the lifecycle:
+
+```bash
+npm run hardening:browser-emergency-fixture:prepare
+```
+
+The command prints a disposable patient, responder, and organization-admin
+handoff and writes its exact recovery manifest before returning. It does not
+store the shared test password in the manifest. During the browser journey,
+register and advance only the newest request owned by that manifest:
+
+```bash
+node supabase/tests/scripts/browser_emergency_fixture.js \
+  --manifest=supabase/tests/artifacts/demo-runs/<run-id>.json \
+  --action=status
+```
+
+Allowed coordinator actions are `status`, `approve-cash`, `dispatch`, `accept`,
+`telemetry`, `arrive`, and `complete`. `dispatch` refreshes the disposable
+responder telemetry lease before calling the canonical Console dispatch RPC,
+so a deliberately delayed browser rehearsal can recover without a direct
+lifecycle write. Mutation actions call only their
+canonical RPC owners; the coordinator performs no direct table writes.
+`complete` fails closed until the patient has confirmed arrival through the
+rendered App. After exactly one rendered rating, apply the manifest cleanup
+twice and require a final zero-resource preview. Never use an existing browser
+session or its visits as lifecycle test data.
+
 ### **Preferences Surface Field Guard**
 ```bash
 # Detect preferences app/console type parity + relationship parity and
