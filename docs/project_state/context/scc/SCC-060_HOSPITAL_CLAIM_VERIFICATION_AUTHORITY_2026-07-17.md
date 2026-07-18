@@ -75,6 +75,17 @@ nearby/emergency eligibility`
 - Cleanup dry-run guard returned zero planned side effects after live proof.
 - Deployed Console `/onboarding` rendered cleanly at desktop and 390 x 844
   mobile viewports with no browser console errors.
-- Backend contract is `validated`. A field-agent rollout still requires one
-  authenticated operator UI rehearsal of the claim and Approvals click path;
-  the same receivers are already proven live by the disposable E2E.
+- Authenticated deployed-Console rehearsal
+  `1784332419231-847df363` passed the complete visible operator path: claimant
+  sign-in, unowned-facility search and selection, separate organization
+  details, evidence upload, submission, admin evidence acceptance, ownership
+  approval, organization approval, and final facility approval.
+- The UI kept the final facility action disabled until the preceding gates were
+  reflected. The facility then left Needs review, entered the Approved count,
+  and became visible through `nearby_hospitals`.
+- Browser errors were zero. Tagged Auth, profile, organization, wallet,
+  facility, claim, evidence, and Storage artifacts were removed; the global
+  cleanup and contract-drift guards both passed afterward.
+- Backend contract and authenticated operator workflow are `validated`.
+  Controlled field onboarding may proceed under the documented no-transfer
+  boundary; existing owned-facility transfer remains a manual/legal workflow.

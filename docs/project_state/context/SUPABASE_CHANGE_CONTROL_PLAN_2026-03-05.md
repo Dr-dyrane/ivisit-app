@@ -1723,7 +1723,11 @@ Status (2026-07-17):
 - temporary deployment history repaired back to the eleven pillars;
 - no EAS/native release required because patient discovery and eligibility
   behavior did not change;
-- authenticated operator UI rehearsal remains the field-agent rollout gate.
+- authenticated deployed-Console operator run `1784332419231-847df363`
+  completed the visible claim and ordered Approvals path, proved final App
+  eligibility, emitted zero browser errors, and cleaned all tagged artifacts;
+- controlled field onboarding is Go for new registrations and unowned-facility
+  claims. Existing owned-facility transfer remains excluded.
 
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
