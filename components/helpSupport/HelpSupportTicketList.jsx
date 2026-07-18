@@ -14,9 +14,7 @@ function TicketStatusPill({ status, theme }) {
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 999,
-        backgroundColor: isOpen
-          ? theme.pillActive
-          : theme.cardMuted,
+        backgroundColor: isOpen ? theme.pillActive : theme.cardMuted,
       }}
     >
       <Text
@@ -125,7 +123,9 @@ function TicketRow({
         >
           <Text
             style={{
-              color: ticket?.adminResponse ? COLORS.brandPrimary : theme.textMuted,
+              color: ticket?.adminResponse
+                ? COLORS.brandPrimary
+                : theme.textMuted,
               fontSize: 12,
               fontWeight: "600",
               letterSpacing: 0.15,
@@ -216,6 +216,7 @@ export default function HelpSupportTicketList({
   formatTicketDate,
   onToggleTicket,
   onOpenComposer,
+  composerActionPrimary = true,
 }) {
   if (loading) {
     return <TicketsSkeleton theme={theme} metrics={metrics} />;
@@ -278,13 +279,15 @@ export default function HelpSupportTicketList({
               borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: COLORS.brandPrimary,
+              backgroundColor: composerActionPrimary
+                ? COLORS.brandPrimary
+                : theme.card,
               opacity: pressed ? 0.9 : 1,
             })}
           >
             <Text
               style={{
-                color: "#FFFFFF",
+                color: composerActionPrimary ? "#FFFFFF" : COLORS.brandPrimary,
                 fontSize: 15,
                 lineHeight: 20,
                 fontWeight: "700",
@@ -310,7 +313,9 @@ export default function HelpSupportTicketList({
                 key={ticket.id}
                 ticket={ticket}
                 expanded={expandedTicketIds.has(ticket.id)}
-                highlighted={String(highlightedTicketId || "") === String(ticket.id)}
+                highlighted={
+                  String(highlightedTicketId || "") === String(ticket.id)
+                }
                 onPress={() => onToggleTicket(ticket.id)}
                 formatTicketDate={formatTicketDate}
                 theme={theme}

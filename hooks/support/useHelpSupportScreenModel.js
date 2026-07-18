@@ -5,6 +5,9 @@ import { useCallback, useMemo } from "react";
 import { useHelpSupport } from "../../contexts/HelpSupportContext";
 import {
   helpSupportCanSubmitAtom,
+  helpSupportAskFeedbackByProposalAtom,
+  helpSupportAskQueryAtom,
+  helpSupportAskSubmittedQueryAtom,
   helpSupportComposeVisibleAtom,
   helpSupportExpandedFaqIdsAtom,
   helpSupportExpandedTicketIdsAtom,
@@ -12,6 +15,7 @@ import {
   helpSupportSubjectAtom,
 } from "../../atoms/helpSupportAtoms";
 import { HELP_SUPPORT_SCREEN_COPY } from "../../components/helpSupport/helpSupport.content";
+import { createHelpSupportAnswerProposal } from "../../services/helpSupportAnswerProposalService";
 
 const OPEN_TICKET_STATES = new Set(["open", "pending"]);
 
@@ -74,7 +78,30 @@ export function useHelpSupportScreenModel() {
   const [expandedTicketIds, setExpandedTicketIds] = useAtom(
     helpSupportExpandedTicketIdsAtom,
   );
+  const [askQuery, setAskQuery] = useAtom(helpSupportAskQueryAtom);
+  const [askSubmittedQuery, setAskSubmittedQuery] = useAtom(
+    helpSupportAskSubmittedQueryAtom,
+  );
+  const [askFeedbackByProposal, setAskFeedbackByProposal] = useAtom(
+    helpSupportAskFeedbackByProposalAtom,
+  );
   const canSubmit = useAtomValue(helpSupportCanSubmitAtom);
+
+  const askProposal = useMemo(
+    () =>
+      createHelpSupportAnswerProposal({ question: askSubmittedQuery, faqs }),
+    [askSubmittedQuery, faqs],
+  );
+  const askProposalKey = useMemo(
+    () =>
+      askProposal.kind === "idle"
+        ? null
+        : `${askProposal.kind}:${askProposal.source?.id || "none"}:${askProposal.question}`,
+    [askProposal],
+  );
+  const askFeedback = askProposalKey
+    ? askFeedbackByProposal[askProposalKey] || null
+    : null;
 
   const highlightedTicketId = normalizeRouteTicketId(ticketId);
   const expandedTicketIdSet = useMemo(() => {
@@ -145,6 +172,43 @@ export function useHelpSupportScreenModel() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setComposeVisible(true);
   }, [setComposeVisible]);
+
+  const submitAsk = useCallback(() => {
+    if (!askQuery.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAskSubmittedQuery(askQuery);
+  }, [askQuery, setAskSubmittedQuery]);
+
+  const changeAskQuery = useCallback(
+    (nextValue) => {
+      setAskQuery(nextValue);
+      if (askSubmittedQuery) setAskSubmittedQuery("");
+    },
+    [askSubmittedQuery, setAskQuery, setAskSubmittedQuery],
+  );
+
+  const setAskFeedback = useCallback(
+    (value) => {
+      if (!askProposalKey || (value !== "useful" && value !== "not_useful")) {
+        return;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setAskFeedbackByProposal((current) => ({
+        ...(current || {}),
+        [askProposalKey]: value,
+      }));
+    },
+    [askProposalKey, setAskFeedbackByProposal],
+  );
+
+  const escalateAsk = useCallback(() => {
+    const draft = askProposal.escalationDraft;
+    if (!draft) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSubject(draft.subject);
+    setMessage(draft.message);
+    setComposeVisible(true);
+  }, [askProposal.escalationDraft, setComposeVisible, setMessage, setSubject]);
 
   const hideComposer = useCallback(() => {
     setComposeVisible(false);
@@ -222,6 +286,9 @@ export function useHelpSupportScreenModel() {
     message,
     canSubmit,
     isSubmitting,
+    askQuery,
+    askProposal,
+    askFeedback,
     expandedFaqIds: new Set(expandedFaqIds),
     expandedTicketIds: expandedTicketIdSet,
     highlightedTicketId,
@@ -243,6 +310,10 @@ export function useHelpSupportScreenModel() {
     onSubmitComposer: submitComposer,
     onSubjectChange: setSubject,
     onMessageChange: setMessage,
+    onAskQueryChange: changeAskQuery,
+    onAskSubmit: submitAsk,
+    onAskFeedback: setAskFeedback,
+    onEscalateAsk: escalateAsk,
     onToggleFaq: toggleFaq,
     onToggleTicket: toggleTicket,
   };

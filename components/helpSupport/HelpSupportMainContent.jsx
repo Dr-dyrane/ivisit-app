@@ -1,11 +1,19 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { COLORS } from "../../constants/colors";
+import HelpSupportAskIVisit from "./HelpSupportAskIVisit";
 import HelpSupportFaqList from "./HelpSupportFaqList";
 import { HELP_SUPPORT_SCREEN_COPY } from "./helpSupport.content";
 import HelpSupportTicketList from "./HelpSupportTicketList";
 
-function SectionShell({ title, actionLabel, onAction, theme, metrics, children }) {
+function SectionShell({
+  title,
+  actionLabel,
+  onAction,
+  theme,
+  metrics,
+  children,
+}) {
   return (
     <View
       style={{
@@ -114,10 +122,20 @@ export default function HelpSupportMainContent({
         paddingHorizontal: contentPaddingHorizontal,
       }}
     >
+      <HelpSupportAskIVisit
+        query={model.askQuery}
+        proposal={model.askProposal}
+        feedback={model.askFeedback}
+        onQueryChange={model.onAskQueryChange}
+        onSubmit={model.onAskSubmit}
+        onFeedback={model.onAskFeedback}
+        onEscalate={model.onEscalateAsk}
+        theme={theme}
+        metrics={metrics}
+      />
+
       <SectionShell
         title={HELP_SUPPORT_SCREEN_COPY.center.title}
-        actionLabel={HELP_SUPPORT_SCREEN_COPY.center.newRequest}
-        onAction={model.onOpenComposer}
         theme={theme}
         metrics={metrics}
       >
@@ -142,6 +160,7 @@ export default function HelpSupportMainContent({
           formatTicketDate={model.formatTicketDate}
           onToggleTicket={model.onToggleTicket}
           onOpenComposer={model.onOpenComposer}
+          composerActionPrimary={false}
         />
       </SectionShell>
 
