@@ -181,3 +181,50 @@ test('emergency matrix persists lifecycle identities and performs double cleanup
   assert.match(runner, /second manifest cleanup was not a no-op/);
   assert.match(runner, /place_id: `e2e:\$\{TAG\}:facility:flow-matrix`/);
 });
+
+test('browser fixture handoff retains only an explicitly prepared manifest graph', () => {
+  const runner = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '..',
+      'supabase',
+      'tests',
+      'scripts',
+      'run_e2e_flow_matrix.js'
+    ),
+    'utf8'
+  );
+  assert.match(runner, /--prepare-browser-fixture/);
+  assert.match(runner, /suite: PREPARE_BROWSER_FIXTURE/);
+  assert.match(runner, /retainBrowserFixture = true/);
+  assert.match(runner, /cleanupRequired: true/);
+  assert.match(runner, /if \(!retainBrowserFixture\)/);
+});
+
+test('browser fixture coordinator is allowlisted, RPC-owned, and manifest-tracked', () => {
+  const coordinator = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '..',
+      'supabase',
+      'tests',
+      'scripts',
+      'browser_emergency_fixture.js'
+    ),
+    'utf8'
+  );
+  for (const action of ['status', 'approve-cash', 'dispatch', 'accept', 'telemetry', 'arrive', 'complete']) {
+    assert.match(coordinator, new RegExp(`'${action}'`));
+  }
+  assert.match(coordinator, /registerResource/);
+  assert.match(coordinator, /approve_cash_payment/);
+  assert.match(coordinator, /console_dispatch_emergency/);
+  assert.match(coordinator, /responder_accept_emergency/);
+  assert.match(coordinator, /report_responder_telemetry/);
+  assert.match(coordinator, /responder_arrive_emergency/);
+  assert.match(coordinator, /responder_complete_emergency/);
+  assert.doesNotMatch(coordinator, /\.insert\(/);
+  assert.doesNotMatch(coordinator, /\.update\(/);
+  assert.doesNotMatch(coordinator, /\.delete\(/);
+  assert.doesNotMatch(coordinator, /\.upsert\(/);
+});

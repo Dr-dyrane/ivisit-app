@@ -153,3 +153,100 @@ Emergency lifecycle manifest adoption:
 - each final run captured 21 non-empty dependency classes, reduced every class
   to zero on the first manifest cleanup, planned zero actions on the second,
   and left the global cleanup guard at zero.
+
+### Live-readiness continuation - 2026-07-18
+
+- Recovery audit found one manifest still marked incomplete from the intentional
+  nonzero rehearsal `flow-matrix-1784335652915-9c405b47`. An exact-run preview
+  found zero remaining rows or Storage objects across every cleanup class.
+  Applying the same manifest cleanup completed with zero actions and a second
+  preview remained zero. No protected or discovered facility was selected,
+  renamed, or deleted.
+- The deployed patient web app at `https://app.ivisit.ng` reached `/map` in the
+  existing authenticated browser session. The map, care choices, hospital
+  history, and rating entry labels rendered. The session was not created by the
+  current run manifest, so no request, arrival, completion, or rating action was
+  performed against it.
+- The deployed smoke recorded one location-permission timeout while the manual
+  map/care surface remained available. It also recorded the existing Expo AV,
+  web native-driver, and Google Maps legacy-marker warnings. This is not yet
+  evidence of a payment/tracking regression.
+- **Next incomplete lane:** provision a disposable patient/responder/operator
+  browser fixture whose identities and lifecycle rows are registered before UI
+  interaction, retain it only for the rendered desktop/mobile journey, then
+  exercise payment confirmation, tracking pill/sheet/ETA, realtime reconnect,
+  Confirm Arrival, responder completion, and exactly one rating before applying
+  the exact manifest cleanup twice. The current flow-matrix runner proves the
+  backend lifecycle but always cleans its fixture in `finally`; it does not
+  expose a safe browser-fixture handoff. Do not reuse the authenticated browser
+  session or its unrated visits as test data.
+
+### Rendered emergency lifecycle proof - 2026-07-18
+
+- The flow-matrix runner now has an explicit `--prepare-browser-fixture`
+  handoff. It retains only the exact manifest-owned graph, funds the disposable
+  patient wallet, places the temporary facility inside the live nearby query,
+  and prints disposable patient, responder, and organization-admin identities.
+  The companion coordinator advances only the manifest's newest request through
+  canonical RPC owners. It never writes lifecycle columns directly.
+- Desktop run `flow-matrix-1784378365723-ddda6923` passed wallet payment,
+  immediate Assigning render, canonical delayed-dispatch recovery, En Route
+  realtime state, ETA/distance telemetry, page reload/reconnect, Arrived,
+  rendered Confirm Arrival, responder completion, one five-star rating, no
+  rating after reload, and idempotent repeat completion/dispatch.
+- Mobile run `flow-matrix-1784378984298-4c026dee` repeated the same lifecycle at
+  390 x 844. Confirm Arrival changed the rendered sheet and backend
+  `patient_acknowledged_arrival_at` without refresh. Completion produced one
+  rating write (`rating = 5`), reload produced no rating dialog, and repeat
+  completion returned `already_completed`.
+- Both manifests were applied twice. Each first cleanup removed its exact Auth,
+  profile, organization, facility, staffing, responder, request, transition,
+  payment, wallet, visit, notification, activity, audit, billing, doctor
+  assignment, and display-mapping graph. Every second application and final
+  preview planned zero resources. Older retained browser fixtures were also
+  exact-cleaned twice. No discovered or otherwise unowned hospital was changed.
+- A slow human rehearsal can outlive the disposable responder's telemetry lease.
+  The request then remains honestly in Assigning until the coordinator refreshes
+  that same responder lease and calls `console_dispatch_emergency`. The recovered
+  sheet, pill, ETA, and request state converged live without a hard refresh.
+- The mobile care chooser currently permits Ambulance before its nearby
+  candidate query has settled. That early tap opens an honest but avoidable
+  `No dispatch candidate yet` dead end; returning to the map and waiting
+  recovers. Gate the CTA with the query loading/ready owner in a separate UI
+  patch rather than inventing a fallback hospital.
+- Cash preflight remains a captured shared-contract migration. The patient
+  client directly reads `organization_wallets.balance`, while production RLS
+  correctly restricts that balance to organization admins. The existing
+  `check_cash_eligibility` RPC is Console-oriented and exposes balance/fee
+  details without accepting the payable amount. The safe receiver is a new
+  patient-safe RPC that returns generic eligibility from canonical pricing and
+  the same predicates used by `approve_cash_payment`; do not weaken wallet RLS.
+  Shipping that shared client change to native is an OTA/EAS Update concern and
+  remains outside the no-EAS 1.0.8 readiness pack.
+- Browser proof found one close-animation copy regression: after a successful
+  transport rating, the single physical modal briefly fell back from `Rate your
+  transport` to `Rate your visit` while saving. Git history confirmed one
+  renderer and the prior dual-owner guards; the defect was presentation props
+  being cleared before `MapModalShell` finished its exit. The orchestrator now
+  retains the last visible service presentation for the closing frame, with a
+  recovery contract assertion.
+- Console Copilot P1-P3 was independently audited, rebased onto current main,
+  hardened so confirmed actions cannot execute a different command or mint
+  over-broad receipts, and merged through Console PR `#9` as
+  `dbce47734320f37175ae9c33ced37b9cf49c453e`.
+
+Final mobile sign-off run `flow-matrix-1784380129981-7b722a56` repeated wallet
+payment, Assigning, canonical dispatch/acceptance, realtime En Route ETA,
+Arrived, rendered Confirm Arrival, completion, five-star submission, reload,
+and idempotent repeat completion. Nine rendered samples from submit through
+2.4 seconds proved the closing sheet retained `Rate your transport` in every
+visible/saving frame; `Rate your visit` never appeared. Backend truth contained
+one rating (`rating = 5`), reload contained no rating dialog, and repeat
+completion returned `already_completed`. Exact cleanup removed the owned graph
+on its first application; the second application and final preview contained
+zero resources.
+
+The rendered payment-to-tracking-to-arrival-to-completion-to-single-rating lane
+is signed off for this pack. The early Ambulance CTA loading gate and the
+patient-safe cash-preflight RPC remain separately captured 1.0.9 work; do not
+publish an EAS update from this pack.

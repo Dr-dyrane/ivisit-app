@@ -24,6 +24,7 @@ import AsyncConsultModal from "./communication/AsyncConsultModal";
 import ScheduledVisitCancelConfirmation from "./visits/ScheduledVisitCancelConfirmation";
 import ScheduledVisitRescheduleModal from "./visits/ScheduledVisitRescheduleModal";
 import { useAtom } from "jotai";
+import { useRef } from "react";
 import {
   emergencyChatModalVisibleAtom,
   activeEmergencyChatRequestIdAtom,
@@ -143,6 +144,14 @@ export default function MapModalOrchestrator({
     : recoveredRatingState?.visible
       ? recoveredRatingState
       : null;
+  const lastVisibleRatingStateRef = useRef(null);
+  if (ratingState?.visible) {
+    lastVisibleRatingStateRef.current = ratingState;
+  }
+  // MapModalShell keeps its content mounted during the close animation. Preserve
+  // the resolved service copy for that final frame so a completed transport
+  // cannot visually fall back to the generic "Rate your visit" presentation.
+  const presentedRatingState = ratingState ?? lastVisibleRatingStateRef.current;
   const ratingHandlers = trackingRatingState?.visible
     ? {
         onClose: closeTrackingRating,
@@ -233,10 +242,10 @@ export default function MapModalOrchestrator({
 
       <ServiceRatingModal
         visible={Boolean(ratingState?.visible)}
-        serviceType={ratingState?.serviceType || "visit"}
-        title={ratingState?.title || "Rate your visit"}
-        subtitle={ratingState?.subtitle || null}
-        serviceDetails={ratingState?.serviceDetails || null}
+        serviceType={presentedRatingState?.serviceType || "visit"}
+        title={presentedRatingState?.title || "Rate your visit"}
+        subtitle={presentedRatingState?.subtitle || null}
+        serviceDetails={presentedRatingState?.serviceDetails || null}
         onClose={ratingHandlers.onClose}
         onSkip={ratingHandlers.onSkip}
         onSubmit={ratingHandlers.onSubmit}
