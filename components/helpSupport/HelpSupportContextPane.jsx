@@ -123,13 +123,13 @@ export default function HelpSupportContextPane({
           borderRadius: 20,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: COLORS.brandPrimary,
+          backgroundColor: theme.cardMuted,
           opacity: pressed ? 0.92 : 1,
         })}
       >
         <Text
           style={{
-            color: "#FFFFFF",
+            color: COLORS.brandPrimary,
             fontSize: 16,
             lineHeight: 20,
             fontWeight: "700",

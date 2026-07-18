@@ -110,17 +110,12 @@ export default function HelpSupportActionIsland({
           value={latestStatusLabel}
           theme={theme}
         />
-        <IslandStat
-          label={copy.faqLabel}
-          value={faqCountLabel}
-          theme={theme}
-        />
+        <IslandStat label={copy.faqLabel} value={faqCountLabel} theme={theme} />
 
         <IslandButton
           label={copy.composeAction}
           onPress={onOpenComposer}
           theme={theme}
-          primary
         />
         <IslandButton
           label={hasError ? copy.retryAction : copy.refreshAction}

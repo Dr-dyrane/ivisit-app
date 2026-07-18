@@ -13,6 +13,18 @@ export const HELP_SUPPORT_SCREEN_COPY = {
     emptyFaqTitle: "No answers yet",
     emptyFaqBody: "Refresh and try again.",
   },
+  ask: {
+    title: "Ask iVisit",
+    body: "Get a quick answer from the support FAQs.",
+    inputLabel: "Ask a support question",
+    placeholder: "Ask about your account, coverage, or SOS",
+    askAction: "Find an FAQ answer",
+    sourceLabel: "Source",
+    feedbackPrompt: "Was this useful?",
+    usefulAction: "Useful",
+    notUsefulAction: "Not useful",
+    escalateAction: "Review a support request",
+  },
   context: {
     title: "Support desk",
     body: "Open a request or check quick answers before you wait.",
