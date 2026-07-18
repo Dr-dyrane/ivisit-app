@@ -153,3 +153,30 @@ Emergency lifecycle manifest adoption:
 - each final run captured 21 non-empty dependency classes, reduced every class
   to zero on the first manifest cleanup, planned zero actions on the second,
   and left the global cleanup guard at zero.
+
+### Live-readiness continuation - 2026-07-18
+
+- Recovery audit found one manifest still marked incomplete from the intentional
+  nonzero rehearsal `flow-matrix-1784335652915-9c405b47`. An exact-run preview
+  found zero remaining rows or Storage objects across every cleanup class.
+  Applying the same manifest cleanup completed with zero actions and a second
+  preview remained zero. No protected or discovered facility was selected,
+  renamed, or deleted.
+- The deployed patient web app at `https://app.ivisit.ng` reached `/map` in the
+  existing authenticated browser session. The map, care choices, hospital
+  history, and rating entry labels rendered. The session was not created by the
+  current run manifest, so no request, arrival, completion, or rating action was
+  performed against it.
+- The deployed smoke recorded one location-permission timeout while the manual
+  map/care surface remained available. It also recorded the existing Expo AV,
+  web native-driver, and Google Maps legacy-marker warnings. This is not yet
+  evidence of a payment/tracking regression.
+- **Next incomplete lane:** provision a disposable patient/responder/operator
+  browser fixture whose identities and lifecycle rows are registered before UI
+  interaction, retain it only for the rendered desktop/mobile journey, then
+  exercise payment confirmation, tracking pill/sheet/ETA, realtime reconnect,
+  Confirm Arrival, responder completion, and exactly one rating before applying
+  the exact manifest cleanup twice. The current flow-matrix runner proves the
+  backend lifecycle but always cleans its fixture in `finally`; it does not
+  expose a safe browser-fixture handoff. Do not reuse the authenticated browser
+  session or its unrated visits as test data.
