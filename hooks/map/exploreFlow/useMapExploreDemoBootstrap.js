@@ -16,6 +16,7 @@ export function useMapExploreDemoBootstrap({
 }) {
 	const [isBootstrappingDemo, setIsBootstrappingDemo] = useState(false);
 	const demoBootstrapKeyRef = useRef(null);
+	const activeBootstrapRef = useRef(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -26,7 +27,7 @@ export function useMapExploreDemoBootstrap({
 		if (!activeLocation?.latitude || !activeLocation?.longitude) {
 			return undefined;
 		}
-		if (isLoadingHospitals || isBootstrappingDemo) {
+		if (isLoadingHospitals) {
 			return undefined;
 		}
 		if (!shouldBootstrapDemoCoverage) {
@@ -49,6 +50,8 @@ export function useMapExploreDemoBootstrap({
 		}
 
 		demoBootstrapKeyRef.current = bootstrapKey;
+		const bootstrapToken = {};
+		activeBootstrapRef.current = bootstrapToken;
 		setIsBootstrappingDemo(true);
 
 		(async () => {
@@ -61,16 +64,24 @@ export function useMapExploreDemoBootstrap({
 					radiusKm: 50,
 					force: shouldForceDemoBootstrap,
 				});
+				if (cancelled) return;
 				await refreshHospitals?.();
 
-				if (!bootstrapResult?.bootstrapped && shouldForceDemoBootstrap) {
+				if (
+					!bootstrapResult?.bootstrapped &&
+					shouldForceDemoBootstrap &&
+					demoBootstrapKeyRef.current === bootstrapKey
+				) {
 					demoBootstrapKeyRef.current = null;
 				}
 			} catch (error) {
-				demoBootstrapKeyRef.current = null;
+				if (demoBootstrapKeyRef.current === bootstrapKey) {
+					demoBootstrapKeyRef.current = null;
+				}
 				console.warn("[useMapExploreFlow] Demo bootstrap skipped for /map", error);
 			} finally {
-				if (!cancelled) {
+				if (activeBootstrapRef.current === bootstrapToken) {
+					activeBootstrapRef.current = null;
 					setIsBootstrappingDemo(false);
 				}
 			}
@@ -78,6 +89,10 @@ export function useMapExploreDemoBootstrap({
 
 		return () => {
 			cancelled = true;
+			if (activeBootstrapRef.current === bootstrapToken) {
+				activeBootstrapRef.current = null;
+				setIsBootstrappingDemo(false);
+			}
 		};
 	}, [
 		activeLocation,
@@ -85,7 +100,6 @@ export function useMapExploreDemoBootstrap({
 		coverageStatus,
 		effectiveDemoModeEnabled,
 		hasComfortableNearbyCoverage,
-		isBootstrappingDemo,
 		isLoadingHospitals,
 		nearbyCoverageCounts?.allNearby,
 		nearbyCoverageCounts?.demoNearby,

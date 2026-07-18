@@ -16,6 +16,14 @@ function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function chunks(values, size = 100) {
+  const result = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+}
+
 function argumentValue(name, argv = process.argv.slice(2)) {
   return argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 }
@@ -110,22 +118,32 @@ WHERE reference_id IN (${ids});
 
 async function selectByIds(admin, table, columns, ids, idColumn = 'id') {
   if (!ids.length) return [];
-  const { data, error } = await admin
-    .from(table)
-    .select(columns)
-    .in(idColumn, ids);
-  if (error) throw new Error(`${table} lookup failed: ${error.message}`);
-  return data || [];
+  const rows = [];
+  for (const idChunk of chunks(unique(ids))) {
+    const { data, error } = await admin
+      .from(table)
+      .select(columns)
+      .in(idColumn, idChunk);
+    if (error) throw new Error(`${table} lookup failed: ${error.message}`);
+    rows.push(...(data || []));
+  }
+  return rows;
 }
 
 async function selectByForeignIds(admin, table, columns, values, column) {
   if (!values.length) return [];
-  const { data, error } = await admin
-    .from(table)
-    .select(columns)
-    .in(column, values);
-  if (error) throw new Error(`${table}.${column} lookup failed: ${error.message}`);
-  return data || [];
+  const rows = [];
+  for (const valueChunk of chunks(unique(values))) {
+    const { data, error } = await admin
+      .from(table)
+      .select(columns)
+      .in(column, valueChunk);
+    if (error) {
+      throw new Error(`${table}.${column} lookup failed: ${error.message}`);
+    }
+    rows.push(...(data || []));
+  }
+  return rows;
 }
 
 async function findStoragePaths(admin, paths) {
@@ -144,23 +162,103 @@ async function findStoragePaths(admin, paths) {
   return found;
 }
 
+async function deleteAuthUsers(admin, userIds) {
+  for (const userIdChunk of chunks(unique(userIds), 25)) {
+    const ids = uuidSqlList(userIdChunk);
+    await executeSql(
+      admin,
+      `
+DELETE FROM auth.users
+WHERE id IN (${ids});
+
+DO $cleanup$
+BEGIN
+  IF EXISTS (SELECT 1 FROM auth.users WHERE id IN (${ids})) THEN
+    RAISE EXCEPTION 'Captured demo Auth identities remain';
+  END IF;
+END;
+$cleanup$;
+      `,
+      'Captured demo Auth cleanup'
+    );
+  }
+}
+
+async function deleteUserActivityByUsers(admin, userIds) {
+  const ids = uuidSqlList(userIds);
+  if (!ids) return;
+  await executeSql(
+    admin,
+    `
+SET LOCAL statement_timeout = '120s';
+DELETE FROM public.user_activity
+WHERE user_id IN (${ids});
+
+DO $cleanup$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.user_activity
+    WHERE user_id IN (${ids})
+  ) THEN
+    RAISE EXCEPTION 'Captured demo user activity remains';
+  END IF;
+END;
+$cleanup$;
+    `,
+    'Demo user activity cleanup'
+  );
+}
+
+async function assertAuthUsersAbsent(admin, userIds) {
+  for (const userIdChunk of chunks(unique(userIds), 25)) {
+    const ids = uuidSqlList(userIdChunk);
+    await executeSql(
+      admin,
+      `
+DO $cleanup$
+BEGIN
+  IF EXISTS (SELECT 1 FROM auth.users WHERE id IN (${ids})) THEN
+    RAISE EXCEPTION 'Captured demo Auth identities remain';
+  END IF;
+END;
+$cleanup$;
+      `,
+      'Captured demo Auth residue assertion'
+    );
+  }
+}
+
 async function assertProtectedFacilities(admin, manifest) {
-  for (const snapshot of manifest.protectedFacilities) {
+  const snapshots = manifest.protectedFacilities || [];
+  const demoOrganizationIds = new Set(manifest.resources.organizationIds || []);
+  const chunkSize = 200;
+  for (let index = 0; index < snapshots.length; index += chunkSize) {
+    const chunk = snapshots.slice(index, index + chunkSize);
     const { data, error } = await admin
       .from('hospitals')
       .select(
         'id,organization_id,verified,verification_status,dispatch_eligible,status,provider_source,place_id'
       )
-      .eq('id', snapshot.id)
-      .single();
+      .in('id', chunk.map((snapshot) => snapshot.id));
     if (error) {
-      throw new Error(`Protected facility ${snapshot.id} lookup failed: ${error.message}`);
+      throw new Error(`Protected facility lookup failed: ${error.message}`);
     }
-    assertProtectedFacilityUnchanged(snapshot, data);
+    const rowsById = new Map((data || []).map((row) => [row.id, row]));
+    for (const snapshot of chunk) {
+      const row = rowsById.get(snapshot.id);
+      if (!row) {
+        throw new Error(`Protected facility ${snapshot.id} is missing`);
+      }
+      const expectedSnapshot = demoOrganizationIds.has(snapshot.organization_id)
+        ? { ...snapshot, organization_id: null }
+        : snapshot;
+      assertProtectedFacilityUnchanged(expectedSnapshot, row);
+    }
   }
 }
 
-async function buildCleanupPlan(admin, manifest) {
+async function buildCleanupPlan(admin, manifest, options = {}) {
   await assertProtectedFacilities(admin, manifest);
 
   const authUserIds = manifest.resources.authUserIds;
@@ -195,6 +293,7 @@ async function buildCleanupPlan(admin, manifest) {
     organizationWallets,
     organizations,
     profiles,
+    facilityAdminLinks,
   ] = await Promise.all([
     selectByIds(
       admin,
@@ -253,6 +352,7 @@ async function buildCleanupPlan(admin, manifest) {
     ),
     selectByIds(admin, 'organizations', 'id', organizationIds),
     selectByIds(admin, 'profiles', 'id', authUserIds),
+    selectByForeignIds(admin, 'hospitals', 'id', authUserIds, 'org_admin_id'),
   ]);
 
   const evidenceRows = [...exactEvidence, ...userEvidence, ...organizationEvidence];
@@ -284,6 +384,8 @@ async function buildCleanupPlan(admin, manifest) {
     requestPayments,
     exactVisits,
     requestVisits,
+    visitChatRooms,
+    requestChatRooms,
     doctorAssignments,
     insuranceBilling,
     statusTransitions,
@@ -295,7 +397,6 @@ async function buildCleanupPlan(admin, manifest) {
     exactPatientWallets,
     userPatientWallets,
     exactActivity,
-    userActivity,
     exactAudit,
     userAudit,
     userNotifications,
@@ -326,6 +427,20 @@ async function buildCleanupPlan(admin, manifest) {
     ),
     selectByIds(admin, 'visits', 'id', manifest.resources.visitIds),
     selectByForeignIds(admin, 'visits', 'id', emergencyRequestIds, 'request_id'),
+    selectByForeignIds(
+      admin,
+      'emergency_chat_rooms',
+      'id',
+      manifest.resources.visitIds,
+      'visit_id'
+    ),
+    selectByForeignIds(
+      admin,
+      'emergency_chat_rooms',
+      'id',
+      emergencyRequestIds,
+      'emergency_request_id'
+    ),
     selectByForeignIds(
       admin,
       'emergency_doctor_assignments',
@@ -377,7 +492,6 @@ async function buildCleanupPlan(admin, manifest) {
     ),
     selectByForeignIds(admin, 'patient_wallets', 'id', authUserIds, 'user_id'),
     selectByIds(admin, 'user_activity', 'id', manifest.resources.activityIds),
-    selectByForeignIds(admin, 'user_activity', 'id', authUserIds, 'user_id'),
     selectByIds(admin, 'admin_audit_log', 'id', manifest.resources.adminAuditIds),
     selectByForeignIds(admin, 'admin_audit_log', 'id', authUserIds, 'admin_id'),
     selectByForeignIds(admin, 'notifications', 'id', authUserIds, 'user_id'),
@@ -387,9 +501,10 @@ async function buildCleanupPlan(admin, manifest) {
   const assignments = [...exactAssignments, ...requestAssignments];
   const paymentRows = [...exactPayments, ...requestPayments];
   const visitRows = [...exactVisits, ...requestVisits];
+  const chatRooms = [...visitChatRooms, ...requestChatRooms];
   const staffing = [...exactStaffing, ...ambulanceStaffing, ...responderStaffing];
   const patientWallets = [...exactPatientWallets, ...userPatientWallets];
-  const activity = [...exactActivity, ...userActivity];
+  const activity = exactActivity;
   const audit = [...exactAudit, ...userAudit];
   const notifications = [...userNotifications, ...targetNotifications];
   const storagePaths = await findStoragePaths(admin, [
@@ -397,14 +512,10 @@ async function buildCleanupPlan(admin, manifest) {
     ...evidenceRows.map((row) => row.storage_path),
   ]);
 
-  const authUsers = [];
-  for (const userId of authUserIds) {
-    const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (error && !/not found/i.test(error.message)) {
-      throw new Error(`Auth lookup failed for ${userId}: ${error.message}`);
-    }
-    if (data?.user) authUsers.push(userId);
-  }
+  const authUsers =
+    options.authUsersExpectedAbsent || manifest.cleanup.complete
+      ? []
+      : authUserIds;
 
   return {
     runId: manifest.runId,
@@ -417,6 +528,7 @@ async function buildCleanupPlan(admin, manifest) {
     adminAuditIds: unique(audit.map((row) => row.id)),
     insuranceBillingIds: unique(insuranceBilling.map((row) => row.id)),
     doctorAssignmentIds: unique(doctorAssignments.map((row) => row.id)),
+    chatRoomIds: unique(chatRooms.map((row) => row.id)),
     visitIds: unique(visitRows.map((row) => row.id)),
     paymentIds: unique(paymentRows.map((row) => row.id)),
     walletLedgerReferenceIds: unique(paymentRows.map((row) => row.id)),
@@ -430,6 +542,7 @@ async function buildCleanupPlan(admin, manifest) {
     createdFacilityIds: unique(facilities.map((row) => row.id)),
     walletIds: unique(wallets.map((row) => row.id)),
     organizationIds: unique(organizations.map((row) => row.id)),
+    facilityAdminReleaseIds: unique(facilityAdminLinks.map((row) => row.id)),
     idMappingIds: unique(idMappings.map((row) => row.id)),
     profileIds: unique(profiles.map((row) => row.id)),
     authUserIds: authUsers,
@@ -446,17 +559,20 @@ function countPlan(plan) {
 
 async function deleteByIds(admin, table, ids) {
   if (!ids.length) return;
-  const { error } = await admin.from(table).delete().in('id', ids);
-  if (error) throw new Error(`${table} cleanup failed: ${error.message}`);
+  for (const idChunk of chunks(unique(ids))) {
+    const { error } = await admin.from(table).delete().in('id', idChunk);
+    if (error) throw new Error(`${table} cleanup failed: ${error.message}`);
+  }
 }
 
-async function applyCleanupPlan(admin, plan) {
+async function applyCleanupPlan(admin, plan, authUserIds = []) {
   if (plan.storagePaths.length) {
     const { error } = await admin.storage.from('documents').remove(plan.storagePaths);
     if (error) throw new Error(`Storage cleanup failed: ${error.message}`);
   }
 
   await deleteByIds(admin, 'notifications', plan.notificationIds);
+  await deleteUserActivityByUsers(admin, authUserIds);
   await deleteByIds(admin, 'user_activity', plan.activityIds);
   await deleteByIds(admin, 'admin_audit_log', plan.adminAuditIds);
   await deleteByIds(admin, 'insurance_billing', plan.insuranceBillingIds);
@@ -465,6 +581,7 @@ async function applyCleanupPlan(admin, plan) {
     'emergency_doctor_assignments',
     plan.doctorAssignmentIds
   );
+  await deleteByIds(admin, 'emergency_chat_rooms', plan.chatRoomIds);
   await deleteByIds(admin, 'visits', plan.visitIds);
   await removeWalletLedgerEffects(admin, plan.walletLedgerReferenceIds);
   await deleteEmergencyRequestGraphs(admin, plan.emergencyRequestIds);
@@ -478,27 +595,37 @@ async function applyCleanupPlan(admin, plan) {
   await deleteByIds(admin, 'hospitals', plan.createdFacilityIds);
   await deleteByIds(admin, 'organization_wallets', plan.walletIds);
 
+  if (plan.facilityAdminReleaseIds.length) {
+    for (const facilityChunk of chunks(plan.facilityAdminReleaseIds)) {
+      const { error } = await admin
+        .from('hospitals')
+        .update({ org_admin_id: null })
+        .in('id', facilityChunk);
+      if (error) {
+        throw new Error(`Facility demo-admin release failed: ${error.message}`);
+      }
+    }
+  }
+
   if (plan.profileIds.length) {
-    const { error } = await admin
-      .from('profiles')
-      .update({
-        organization_id: null,
-        role: 'patient',
-        onboarding_status: 'pending',
-      })
-      .in('id', plan.profileIds);
-    if (error) throw new Error(`Profile scope cleanup failed: ${error.message}`);
+    for (const profileChunk of chunks(unique(plan.profileIds))) {
+      const { error } = await admin
+        .from('profiles')
+        .update({
+          organization_id: null,
+          role: 'patient',
+          onboarding_status: 'pending',
+        })
+        .in('id', profileChunk);
+      if (error) throw new Error(`Profile scope cleanup failed: ${error.message}`);
+    }
   }
 
   await deleteByIds(admin, 'organizations', plan.organizationIds);
   await deleteByIds(admin, 'id_mappings', plan.idMappingIds);
+  await deleteByIds(admin, 'profiles', plan.profileIds);
 
-  for (const userId of plan.authUserIds) {
-    const { error } = await admin.auth.admin.deleteUser(userId);
-    if (error && !/not found/i.test(error.message)) {
-      throw new Error(`Auth cleanup failed for ${userId}: ${error.message}`);
-    }
-  }
+  await deleteAuthUsers(admin, plan.authUserIds);
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -544,7 +671,7 @@ async function main(argv = process.argv.slice(2)) {
         manifest: manifestPath,
         runId: manifest.runId,
         projectRef,
-        protectedFacilityIds: manifest.protectedFacilities.map((row) => row.id),
+        protectedFacilityCount: manifest.protectedFacilities.length,
         counts: countPlan(plan),
       },
       null,
@@ -555,8 +682,11 @@ async function main(argv = process.argv.slice(2)) {
   if (!apply) return;
 
   try {
-    await applyCleanupPlan(admin, plan);
-    const residue = await buildCleanupPlan(admin, manifest);
+    await applyCleanupPlan(admin, plan, manifest.resources.authUserIds);
+    await assertAuthUsersAbsent(admin, manifest.resources.authUserIds);
+    const residue = await buildCleanupPlan(admin, manifest, {
+      authUsersExpectedAbsent: true,
+    });
     const residueCounts = countPlan(residue);
     if (Object.values(residueCounts).some((count) => count !== 0)) {
       throw new Error(`Cleanup residue remains: ${JSON.stringify(residueCounts)}`);

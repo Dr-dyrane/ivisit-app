@@ -107,6 +107,7 @@ export default function MapScreen() {
     handleUseCurrentLocation,
     featuredHospitals,
     isMapFrameReady,
+    isCareDiscoveryPending,
     loadingBackgroundImageUri,
     mapLoadingState,
     isSignedIn,
@@ -724,6 +725,7 @@ export default function MapScreen() {
           }
           onOpenHospitals={openHospitalList}
           onChooseCare={handleChooseCare}
+          isCareDiscoveryPending={isCareDiscoveryPending}
           onOpenProfile={handleOpenProfile}
           onOpenCareHistory={() => setCareHistoryVisible(true)}
           onOpenAmbulanceHospitals={openAmbulanceHospitalList}

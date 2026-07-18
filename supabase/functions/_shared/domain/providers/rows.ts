@@ -53,6 +53,23 @@ export const isDemoDatabaseRow = (row: any): boolean => {
   );
 };
 
+const DEMO_EXPIRY_FEATURE_PREFIX = "demo_expires_at:";
+
+export const isExpiredDemoDatabaseRow = (
+  row: any,
+  nowMs = Date.now(),
+): boolean => {
+  if (!isDemoDatabaseRow(row)) return false;
+  const expiryTag = toSafeStringArray(row?.features).find((feature) =>
+    feature.toLowerCase().startsWith(DEMO_EXPIRY_FEATURE_PREFIX)
+  );
+  if (!expiryTag) return false;
+  const expiryEpochMs = Number(
+    expiryTag.slice(DEMO_EXPIRY_FEATURE_PREFIX.length),
+  );
+  return Number.isFinite(expiryEpochMs) && expiryEpochMs <= nowMs;
+};
+
 export const isDispatchableDatabaseRow = (row: any): boolean => {
   const status = toSafeString(row?.status, "available").toLowerCase();
   const providerType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
@@ -239,7 +256,10 @@ export const evaluateProviderDatabaseSufficiency = ({
   localComfortTarget: number;
   hasEnoughDbResults: boolean;
 } => {
-  const dispatchableDbResults = dbRows.filter((row: any) =>
+  const activeDbRows = dbRows.filter((row: any) =>
+    !isExpiredDemoDatabaseRow(row)
+  );
+  const dispatchableDbResults = activeDbRows.filter((row: any) =>
     isDispatchableDatabaseRow(row)
   );
   const localDispatchableDbResults = dispatchableDbResults.filter((row: any) =>
@@ -247,7 +267,7 @@ export const evaluateProviderDatabaseSufficiency = ({
   );
   const categoryFilteredDbResults = isEmergencyMode
     ? dispatchableDbResults
-    : dbRows.filter((row: any) => {
+    : activeDbRows.filter((row: any) => {
         const rowType = toSafeString(row?.provider_type, PROVIDER_TYPES.HOSPITAL).toLowerCase();
         return rowType === providerCategory &&
           shouldKeepProviderForRequestedCategory(row, providerCategory);

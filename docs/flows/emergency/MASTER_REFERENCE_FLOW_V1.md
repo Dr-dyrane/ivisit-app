@@ -105,8 +105,9 @@ Purpose: start the system instantly.
 - [WelcomeScreen.jsx](../../../screens/WelcomeScreen.jsx) may pre-warm emergency discovery, but it must not silently trigger demo bootstrap.
 - [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and normalized place label.
 - [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx) should consume that app-owned location and nearby hospitals, not run a competing first-load location lookup.
-- explicit demo backfill belongs to the intake flow in [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx), where coverage quality is known and the user has already entered emergency intent.
-- in the `/map` flow, demo bootstrap belongs to [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js) only after nearby coverage quality is evaluated.
+- [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx) is a retained legacy seam and must remain non-provisioning.
+- automatic sparse-coverage recovery belongs only to [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js), after `/map` evaluates nearby coverage quality.
+- the explicit coverage-mode command is the only other provisioning owner; ordinary queries, prewarm, refresh, and deprecated entry screens remain read-only.
 
 ```text
 [ Animated visual ]

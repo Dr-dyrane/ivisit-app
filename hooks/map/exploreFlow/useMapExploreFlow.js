@@ -34,13 +34,14 @@ import { useMapCommitFlow } from "./useMapCommitFlow";
 import { useMapSheetNavigation } from "./useMapSheetNavigation";
 import { useMapServiceDetail } from "./useMapServiceDetail";
 import { useMapLoadingState } from "./useMapLoadingState";
+import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
+import { isEmergencyCareDiscoveryPending } from "./mapExploreFlow.loading";
 import { useMapTracking } from "./useMapTracking";
 import { useMapDerivedData } from "./useMapDerivedData";
 import { useMapComputedBooleans } from "./useMapComputedBooleans";
 import { useMapCallbacks } from "./useMapCallbacks";
 import { useMapUserData } from "./useMapUserData";
 import { useMapEffects } from "./useMapEffects";
-import { useMapExploreDemoBootstrap } from "./useMapExploreDemoBootstrap";
 import { useMapExploreGuestProfileFab } from "./useMapExploreGuestProfileFab";
 // PULLBACK NOTE: MapScreen decomposition Pass 9 — location intent race condition fix
 import { useMapLocationIntent } from "./useMapLocationIntent";
@@ -271,6 +272,10 @@ export function useMapExploreFlow() {
     refreshHospitals,
     shouldBootstrapDemoCoverage,
     userId: user?.id,
+  });
+  const isCareDiscoveryPending = isEmergencyCareDiscoveryPending({
+    coverageModePreferenceLoaded,
+    isLoadingHospitals,
   });
 
   // Pass 15: navigation lifecycle effects extracted to useMapEffects
@@ -587,6 +592,7 @@ export function useMapExploreFlow() {
     handleMapReadinessChange,
   } = useMapCallbacks({
     isSignedIn,
+    isCareDiscoveryPending,
     mapReadiness,
     handleOpenFeaturedHospitalBase,
     openAmbulanceDecision,
@@ -713,6 +719,7 @@ export function useMapExploreFlow() {
     hospitalListVisible,
     serviceDetailVisible,
     isBootstrappingDemo,
+    isCareDiscoveryPending,
     isLoadingHospitals,
     isLocationOffTerminal,
     isMapFrameReady,

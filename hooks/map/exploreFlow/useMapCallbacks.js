@@ -14,6 +14,7 @@ import { useCallback } from "react";
  */
 export function useMapCallbacks({
   isSignedIn,
+  isCareDiscoveryPending,
   mapReadiness,
   handleOpenFeaturedHospitalBase,
   openAmbulanceDecision,
@@ -26,12 +27,23 @@ export function useMapCallbacks({
 }) {
   const handleChooseCare = useCallback(
     (mode) => {
+      if (
+        isCareDiscoveryPending &&
+        (mode === "ambulance" || mode === "both")
+      ) {
+        return;
+      }
       setSelectedCare(mode);
       if (mode === "ambulance") { openAmbulanceDecision(); return; }
       if (mode === "bed") { openBedDecision(null, "bed"); return; }
       if (mode === "both") { openAmbulanceDecision(); }
     },
-    [openAmbulanceDecision, openBedDecision, setSelectedCare],
+    [
+      isCareDiscoveryPending,
+      openAmbulanceDecision,
+      openBedDecision,
+      setSelectedCare,
+    ],
   );
 
   const handleOpenFeaturedHospital = useCallback(

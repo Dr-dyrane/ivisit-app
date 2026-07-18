@@ -73,8 +73,9 @@ Current runtime doctrine:
 
 - [GlobalLocationContext.jsx](../../../contexts/GlobalLocationContext.jsx) is the single owner of initial device location and resolved place label
 - [EmergencyContext.jsx](../../../contexts/EmergencyContext.jsx) consumes that location for hospital discovery
-- explicit demo backfill belongs to [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx), not the background welcome prewarm path
-- in the `/map` flow, demo backfill is owned by [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js) only after location and nearby-coverage quality are known
+- [RequestAmbulanceScreen.jsx](../../../screens/RequestAmbulanceScreen.jsx) is a retained legacy seam and must not provision demo coverage
+- automatic sparse-coverage recovery is owned only by [useMapExploreDemoBootstrap.js](../../../hooks/map/exploreFlow/useMapExploreDemoBootstrap.js), after `/map` knows the location and nearby-coverage quality
+- the only other provisioning owner is the explicit coverage-mode command; ordinary queries, welcome prewarm, refresh, and deprecated entry screens remain read-only
 
 ## Location Search Modal Phase
 

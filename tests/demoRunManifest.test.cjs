@@ -7,6 +7,7 @@ const test = require('node:test');
 const {
   assertProtectedFacilityUnchanged,
   createDemoRunManifest,
+  isManifestExpired,
   loadManifest,
   markCleanupAttempt,
   registerProtectedFacility,
@@ -33,6 +34,18 @@ test('deduplicates exact resources without broad name matching', () => {
   assert.deepEqual(manifest.resources.storagePaths, [
     'onboarding/user-1/evidence.png',
   ]);
+});
+
+test('owns and expires disposable fixtures without a database schema field', () => {
+  const manifest = createManifest();
+  assert.deepEqual(manifest.owner, {
+    kind: 'test_run',
+    id: 'demo-20260720-a7f3',
+    source: 'hospital-live-readiness',
+  });
+  assert.equal(manifest.disposition, 'hard_delete_exact_run');
+  assert.equal(isManifestExpired(manifest, '2026-07-21T08:59:59.000Z'), false);
+  assert.equal(isManifestExpired(manifest, '2026-07-27T09:00:00.000Z'), true);
 });
 
 test('keeps protected discovered facilities separate from disposable fixtures', () => {
@@ -227,4 +240,53 @@ test('browser fixture coordinator is allowlisted, RPC-owned, and manifest-tracke
   assert.doesNotMatch(coordinator, /\.update\(/);
   assert.doesNotMatch(coordinator, /\.delete\(/);
   assert.doesNotMatch(coordinator, /\.upsert\(/);
+});
+
+test('only canonical coverage owners may provision demo coverage', () => {
+  const explicitOwner = fs.readFileSync(
+    path.resolve(__dirname, '..', 'hooks', 'emergency', 'useEmergencyCoverageMode.js'),
+    'utf8'
+  );
+  assert.match(explicitOwner, /ensureDemoEcosystemForLocation/);
+  const mapFallbackOwner = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '..',
+      'hooks',
+      'map',
+      'exploreFlow',
+      'useMapExploreDemoBootstrap.js'
+    ),
+    'utf8'
+  );
+  assert.match(mapFallbackOwner, /ensureDemoEcosystemForLocation/);
+  assert.doesNotMatch(
+    mapFallbackOwner,
+    /\bisBootstrappingDemo,\s*\n\s*isLoadingHospitals,/,
+    'the map fallback effect must not cancel itself when its pending state changes'
+  );
+  assert.match(mapFallbackOwner, /activeBootstrapRef\.current === bootstrapToken/);
+
+  for (const relativePath of [
+    ['hooks', 'emergency', 'useHospitalsQuery.ts'],
+    ['screens', 'MapEntryLoadingScreen.jsx'],
+    ['screens', 'RequestAmbulanceScreen.jsx'],
+  ]) {
+    const source = fs.readFileSync(path.resolve(__dirname, '..', ...relativePath), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /ensureDemoEcosystemForLocation/,
+      `${relativePath.join('/')} must remain read-only`
+    );
+  }
+
+  const hospitalQuery = fs.readFileSync(
+    path.resolve(__dirname, '..', 'hooks', 'emergency', 'useHospitalsQuery.ts'),
+    'utf8'
+  );
+  assert.doesNotMatch(hospitalQuery, /removeQueries\(\{\s*queryKey\s*\}\)/);
+  assert.match(
+    hospitalQuery,
+    /\(\)\s*=>\s*refetch\(\{\s*cancelRefetch:\s*false\s*\}\)/
+  );
 });

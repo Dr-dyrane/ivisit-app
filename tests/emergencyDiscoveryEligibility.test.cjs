@@ -49,6 +49,7 @@ try {
     CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
     evaluateProviderDatabaseSufficiency,
     isDispatchableDatabaseRow,
+    isExpiredDemoDatabaseRow,
   } = require("../supabase/functions/_shared/domain/providers/rows.ts");
   const {
     fetchNearbyProviderRows,
@@ -543,6 +544,83 @@ try {
     mapExploreFlow,
     /useMapLocation\(\{[\s\S]*?sheetPayload,\s*defaultExploreSnapState,\s*setSheetView,/,
     "pickup source-return must receive the canonical explore snap state",
+  );
+
+  const expiredDemoHospital = {
+    ...eligibleHospital,
+    id: "hospital-expired-demo",
+    place_id: "demo:expired:hospital",
+    features: ["demo_seed", "demo_expires_at:1000"],
+  };
+  assert.equal(isExpiredDemoDatabaseRow(expiredDemoHospital, 1001), true);
+  const expirySufficiency = evaluateProviderDatabaseSufficiency({
+    dbRows: [expiredDemoHospital, eligibleHospital],
+    isEmergencyMode: true,
+    providerCategory: "hospital",
+    mode: "nearby",
+    limit: 2,
+    mergeWithDatabase: true,
+    nearbyComfortThreshold: 2,
+    localNearbyComfortThreshold: 2,
+  });
+  assert.deepEqual(
+    expirySufficiency.dispatchableDbResults.map((row) => row.id),
+    [eligibleHospital.id],
+    "expired demo fixtures must not satisfy emergency coverage",
+  );
+  assert.match(
+    mapExploreFlow,
+    /isEmergencyCareDiscoveryPending\(\{[\s\S]*?coverageModePreferenceLoaded,[\s\S]*?isLoadingHospitals,/,
+    "the map flow must derive emergency CTA readiness from the canonical preference and query owners",
+  );
+  assert.doesNotMatch(
+    mapExploreFlow.match(
+      /isEmergencyCareDiscoveryPending\(\{[\s\S]*?\}\);/,
+    )?.[0] || "",
+    /isBootstrappingDemo/,
+    "background demo provisioning must not block an emergency CTA after live discovery settles",
+  );
+
+  const mapCallbacks = read("hooks/map/exploreFlow/useMapCallbacks.js");
+  assert.match(
+    mapCallbacks,
+    /isCareDiscoveryPending[\s\S]*?mode === "ambulance"[\s\S]*?mode === "both"[\s\S]*?return;/,
+    "the navigation callback must reject early Ambulance and Compare taps while discovery is pending",
+  );
+  const { isEmergencyCareDiscoveryPending } = loadSourceModule(
+    "hooks/map/exploreFlow/mapExploreFlow.loading.js",
+  );
+  assert.equal(
+    isEmergencyCareDiscoveryPending({
+      coverageModePreferenceLoaded: false,
+      isLoadingHospitals: false,
+    }),
+    true,
+  );
+  assert.equal(
+    isEmergencyCareDiscoveryPending({
+      coverageModePreferenceLoaded: true,
+      isLoadingHospitals: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isEmergencyCareDiscoveryPending({
+      coverageModePreferenceLoaded: true,
+      isLoadingHospitals: false,
+      isBootstrappingDemo: true,
+    }),
+    false,
+    "background demo provisioning cannot hold the patient emergency gate",
+  );
+
+  const careSection = read(
+    "components/map/views/exploreIntent/MapExploreIntentCareSection.jsx",
+  );
+  assert.equal(
+    (careSection.match(/disabled=\{isCareDiscoveryPending\}/g) || []).length,
+    6,
+    "Ambulance and Compare must be gated in panel, web-mobile, and canonical layouts",
   );
 
   for (const migration of ["supabase/migrations/20260219000800_emergency_logic.sql"]) {

@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const MANIFEST_VERSION = 1;
+const DEFAULT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+const CLEANUP_DISPOSITIONS = Object.freeze([
+  'hard_delete_exact_run',
+  'retire_then_prune',
+]);
 const RUN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{7,95}$/;
 const RESOURCE_KEYS = Object.freeze([
   'authUserIds',
@@ -51,10 +56,22 @@ function normalizeFacilitySnapshot(snapshot) {
   };
 }
 
-function createDemoRunManifest({ runId, suite, projectRef, createdAt = new Date().toISOString() }) {
+function createDemoRunManifest({
+  runId,
+  suite,
+  projectRef,
+  createdAt = new Date().toISOString(),
+  expiresAt,
+  owner,
+  disposition = 'hard_delete_exact_run',
+}) {
   assertSafeRunId(runId);
   if (!suite) throw new Error('Demo run suite is required');
   if (!projectRef) throw new Error('Demo run project reference is required');
+
+  const createdAtMs = Date.parse(createdAt);
+  const resolvedExpiresAt = expiresAt
+    || new Date(createdAtMs + DEFAULT_EXPIRY_MS).toISOString();
 
   return {
     version: MANIFEST_VERSION,
@@ -63,6 +80,13 @@ function createDemoRunManifest({ runId, suite, projectRef, createdAt = new Date(
     projectRef: String(projectRef),
     createdAt,
     updatedAt: createdAt,
+    expiresAt: resolvedExpiresAt,
+    owner: owner || {
+      kind: 'test_run',
+      id: runId,
+      source: String(suite),
+    },
+    disposition,
     resources: Object.fromEntries(RESOURCE_KEYS.map((key) => [key, []])),
     protectedFacilities: [],
     cleanup: {
@@ -81,6 +105,36 @@ function validateManifest(manifest) {
   assertSafeRunId(manifest.runId);
   if (!manifest.suite || !manifest.projectRef) {
     throw new Error('Demo run manifest is missing suite or project reference');
+  }
+  const createdAtMs = Date.parse(manifest.createdAt);
+  if (!manifest.expiresAt && Number.isFinite(createdAtMs)) {
+    manifest.expiresAt = new Date(createdAtMs + DEFAULT_EXPIRY_MS).toISOString();
+  }
+  if (!manifest.owner) {
+    manifest.owner = {
+      kind: 'test_run',
+      id: manifest.runId,
+      source: String(manifest.suite),
+    };
+  }
+  if (!manifest.disposition) manifest.disposition = 'hard_delete_exact_run';
+  const expiresAtMs = Date.parse(manifest.expiresAt);
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(expiresAtMs)) {
+    throw new Error('Demo run manifest requires valid createdAt and expiresAt timestamps');
+  }
+  if (expiresAtMs <= createdAtMs) {
+    throw new Error('Demo run manifest expiry must be after creation');
+  }
+  if (
+    !manifest.owner
+    || !['test_run', 'preview_pack'].includes(manifest.owner.kind)
+    || !String(manifest.owner.id || '').trim()
+    || !String(manifest.owner.source || '').trim()
+  ) {
+    throw new Error('Demo run manifest requires a valid owner');
+  }
+  if (!CLEANUP_DISPOSITIONS.includes(manifest.disposition)) {
+    throw new Error(`Unsupported demo cleanup disposition: ${manifest.disposition}`);
   }
 
   for (const key of RESOURCE_KEYS) {
@@ -193,8 +247,21 @@ function assertProtectedFacilityUnchanged(snapshot, current) {
   }
 }
 
+function isManifestExpired(manifest, now = Date.now()) {
+  validateManifest(manifest);
+  const nowMs = now instanceof Date
+    ? now.getTime()
+    : typeof now === 'string'
+      ? Date.parse(now)
+      : Number(now);
+  if (!Number.isFinite(nowMs)) throw new Error('Demo expiry check requires a valid time');
+  return Date.parse(manifest.expiresAt) <= nowMs;
+}
+
 module.exports = {
   MANIFEST_VERSION,
+  CLEANUP_DISPOSITIONS,
+  DEFAULT_EXPIRY_MS,
   RESOURCE_KEYS,
   RUN_ID_PATTERN,
   assertProtectedFacilityUnchanged,
@@ -202,6 +269,7 @@ module.exports = {
   createDemoRunManifest,
   defaultManifestPath,
   loadManifest,
+  isManifestExpired,
   markCleanupAttempt,
   registerProtectedFacility,
   registerResource,

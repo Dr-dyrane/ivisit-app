@@ -1,4 +1,7 @@
-import { CANONICAL_EMERGENCY_DISCOVERY_SOURCE } from "./rows.ts";
+import {
+  CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
+  isExpiredDemoDatabaseRow,
+} from "./rows.ts";
 
 export const fetchNearbyProviderRows = async ({
   supabaseClient,
@@ -26,13 +29,35 @@ export const fetchNearbyProviderRows = async ({
         radius_km: radiusKm,
       },
     );
+    const canonicalRows = !error && Array.isArray(data)
+      ? data.map((row: any) => ({
+          ...row,
+          emergency_discovery_source: CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
+        }))
+      : [];
+    const ids = canonicalRows
+      .map((row: any) => row?.id)
+      .filter((id: unknown) => typeof id === "string" && id.length > 0);
+    let enrichedRows = canonicalRows;
+    if (ids.length > 0 && typeof supabaseClient?.from === "function") {
+      const { data: lifecycleRows, error: lifecycleError } =
+        await supabaseClient
+          .from("hospitals")
+          .select("id,features,place_id,verification_status,status")
+          .in("id", ids);
+      if (!lifecycleError) {
+        const lifecycleById = new Map(
+          (Array.isArray(lifecycleRows) ? lifecycleRows : [])
+            .map((row: any) => [row.id, row]),
+        );
+        enrichedRows = canonicalRows.map((row: any) => ({
+          ...(lifecycleById.get(row.id) || {}),
+          ...row,
+        }));
+      }
+    }
     return {
-      rows: !error && Array.isArray(data)
-        ? data.map((row: any) => ({
-            ...row,
-            emergency_discovery_source: CANONICAL_EMERGENCY_DISCOVERY_SOURCE,
-          }))
-        : [],
+      rows: enrichedRows.filter((row: any) => !isExpiredDemoDatabaseRow(row)),
       error,
       rpcName: "nearby_hospitals",
     };

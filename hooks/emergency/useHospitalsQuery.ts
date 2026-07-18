@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useEffect, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { hospitalsService } from "../../services/hospitalsService";
-import { demoEcosystemService } from "../../services/demoEcosystemService";
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const REFETCH_INTERVAL = 30 * 1000; // 30 seconds for live availability
@@ -133,10 +132,7 @@ interface UseEmergencyHospitalsQueryOptions {
 export function useEmergencyHospitalsQuery({
   location = null,
   demoModeEnabled = true,
-  userId = null,
 }: UseEmergencyHospitalsQueryOptions = {}) {
-  const queryClient = useQueryClient();
-
   const lat = location?.latitude;
   const lng = location?.longitude;
   const latBucket = bucketCoord(lat);
@@ -178,35 +174,10 @@ export function useEmergencyHospitalsQuery({
   const hospitals = useMemo(() => data?.displayHospitals ?? [], [data]);
   const categories = useMemo(() => data?.categories ?? {}, [data]);
 
-  // Demo bootstrap — real side-effect (external provisioning), correct useEffect use.
-  // bootstrapKeyRef deduplicates so it only fires once per location+user combination.
-  const bootstrapKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!demoModeEnabled || !hasLocation || !userId) return;
-    const key = `${latBucket}:${lngBucket}:${userId}`;
-    if (bootstrapKeyRef.current === key) return;
-    bootstrapKeyRef.current = key;
-    (async () => {
-      try {
-        const provisioningUserId = await demoEcosystemService.getProvisioningUserId(userId);
-        await demoEcosystemService.ensureDemoEcosystemForLocation({
-          userId: provisioningUserId,
-          latitude: lat,
-          longitude: lng,
-          radiusKm: 50,
-          onProgress: undefined,
-        });
-        queryClient.invalidateQueries({ queryKey: ["hospitals", latBucket, lngBucket] });
-      } catch (err) {
-        console.warn("[useEmergencyHospitalsQuery] Demo bootstrap skipped:", err);
-      }
-    })();
-  }, [demoModeEnabled, hasLocation, latBucket, lngBucket, userId, lat, lng, queryClient]);
-
-  const manualRefetch = useCallback(() => {
-    queryClient.removeQueries({ queryKey });
-    refetch();
-  }, [queryClient, queryKey, refetch]);
+  const manualRefetch = useCallback(
+    () => refetch({ cancelRefetch: false }),
+    [refetch]
+  );
 
   return {
     hospitals,

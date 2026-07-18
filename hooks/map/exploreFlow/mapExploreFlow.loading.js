@@ -1,3 +1,13 @@
+export function isEmergencyCareDiscoveryPending({
+	coverageModePreferenceLoaded,
+	isLoadingHospitals,
+}) {
+	return (
+		!coverageModePreferenceLoaded ||
+		Boolean(isLoadingHospitals)
+	);
+}
+
 export function buildMapLoadingState({
 	coverageModePreferenceLoaded,
 	expectsRoute,

@@ -14,6 +14,7 @@ export const MAP_EXPLORE_INTENT_COPY = {
 	WIDER_CARE: "Wider area",
 	CHOOSE_CARE: "Choose care",
 	AMBULANCE: "Ambulance",
+	DISCOVERY_PENDING: "Checking nearby options",
 	BED_SPACE: "Bed space",
 	BOOK_VISIT: "Book visit",
 	BOOK_VISIT_SUBTEXT: "Clinic care",

@@ -369,7 +369,11 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
       booking_eligible: true,
       provider_source: 'manual_seed',
       place_id: `e2e:${runId}:facility:claim`,
-      features: [`demo_scope:${runId}`],
+      features: [
+        `demo_scope:${runId}`,
+        `demo_owner:${state.manifest.owner.id}`,
+        `demo_expires_at:${Date.parse(state.manifest.expiresAt)}`,
+      ],
     })
     .select('id')
     .single();

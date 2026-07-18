@@ -20,6 +20,7 @@ export default function IntentCard({
 	hierarchy = "secondary",
 	panelBias = "neutral",
 	onPress,
+	disabled = false,
 	isSelected = false,
 	showSubtext = true,
 	pulseProgress = null,
@@ -156,15 +157,18 @@ export default function IntentCard({
 	return (
 		<Pressable
 			onPress={onPress}
+			disabled={disabled}
 			// Heavy haptic on card press
 			onPressIn={() => triggerPress("heavy")}
 			// Accessibility label + hint for VoiceOver
 			accessibilityRole="button"
 			accessibilityLabel={label}
 			accessibilityHint={showSubtext && subtext ? subtext : undefined}
+			accessibilityState={{ disabled, selected: isSelected }}
 			style={({ pressed }) => [
 				intentCardStyles.pressable,
-				pressed ? intentCardStyles.cardPressed : null,
+				pressed && !disabled ? intentCardStyles.cardPressed : null,
+				disabled ? { opacity: 0.58 } : null,
 			]}
 		>
 			<Animated.View

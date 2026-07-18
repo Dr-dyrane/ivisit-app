@@ -660,6 +660,8 @@ export const ensureDemoHospitals = async (
       ...DEMO_FEATURE_FLAGS,
       DEMO_SHARED_FLAG,
       `demo_scope:${ctx.coverageKey}`,
+      `demo_owner:${ctx.userSlug}`,
+      `demo_expires_at:${ctx.expiresAtEpochMs}`,
       ...toSafeStringArray(seed.features).filter(
         (feature) => !isBootstrapDemoFeature(feature),
       ),

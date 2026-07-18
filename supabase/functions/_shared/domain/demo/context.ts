@@ -5,7 +5,10 @@ export type DemoContext = {
   latitude: number;
   longitude: number;
   radiusKm: number;
+  expiresAtEpochMs: number;
 };
+
+const DEMO_PREVIEW_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const toSafeUserSlug = (value: string) => {
   const normalized = value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
@@ -32,6 +35,7 @@ export const buildDemoContext = (
   latitude,
   longitude,
   radiusKm,
+  expiresAtEpochMs: Date.now() + DEMO_PREVIEW_TTL_MS,
 });
 
 export const resolveDemoSeedScopeKey = (ctx: DemoContext): string => {

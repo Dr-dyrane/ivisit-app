@@ -12,6 +12,12 @@ export const styles = StyleSheet.create({
 		paddingBottom: 8,
 		gap: 0,
 	},
+	specialtyRail: {
+		flexGrow: 0,
+		flexShrink: 0,
+		height: 50,
+		maxHeight: 50,
+	},
 	sectionHeader: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -30,6 +36,7 @@ export const styles = StyleSheet.create({
 		fontWeight: "500",
 	},
 	specialtyRailContent: {
+		alignItems: "center",
 		paddingHorizontal: 2,
 		paddingRight: 8,
 		paddingBottom: 14,

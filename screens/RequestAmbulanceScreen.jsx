@@ -32,8 +32,6 @@ import EmergencyRequestModal from "../components/emergency/EmergencyRequestModal
 import EmergencyIntakeOrchestrator from "../components/emergency/intake/EmergencyIntakeOrchestrator";
 import { navigateBack, ROUTES } from "../utils/navigationHelpers";
 import { triageService } from "../services/triageService";
-import { demoEcosystemService } from "../services/demoEcosystemService";
-import { COVERAGE_POOR_THRESHOLD } from "../services/coverageModeService";
 import { database } from "../database";
 
 const MIN_FINDING_NEARBY_HELP_MS = 1600;
@@ -105,8 +103,6 @@ export default function RequestAmbulanceScreen() {
 	const intakeBackActionRef = useRef(null);
 	const persistTimerRef = useRef(null);
 	const persistHashRef = useRef("");
-	const demoBootstrapKeyRef = useRef("");
-	const demoBootstrapInFlightRef = useRef(false);
 	const [intakeHeaderState, setIntakeHeaderState] = useState({
 		title: "Finding location...",
 		subtitle: "",
@@ -150,11 +146,9 @@ export default function RequestAmbulanceScreen() {
 		selectHospital,
 		clearSelectedHospital,
 		setMode,
-		setCoverageMode,
 		refreshHospitals,
 		setUserLocation,
 		isLoadingHospitals,
-		coverageStatus,
 		coverageModeOperation,
 		effectiveDemoModeEnabled,
 	} = useEmergency();
@@ -252,9 +246,6 @@ export default function RequestAmbulanceScreen() {
 			).length,
 		[hospitalRecommendation.alternativeHospitals],
 	);
-	const recommendedHospitalIsComplete = isHospitalExperienceComplete(
-		hospitalRecommendation.recommendedHospital,
-	);
 	const hospitalChoiceState = useMemo(() => {
 		const totalOptions = hospitalRecommendation.alternativeHospitals.length;
 		const verifiedOptions = completeHospitalCount;
@@ -296,16 +287,6 @@ export default function RequestAmbulanceScreen() {
 		hospitalRecommendation.alternativeHospitals.length,
 		isLoadingHospitals,
 	]);
-	const shouldBackfillDemoExperience = Boolean(
-		activeIntakeLocation &&
-			!matchedTripState &&
-			(!recommendedHospitalIsComplete || completeHospitalCount < COVERAGE_POOR_THRESHOLD),
-	);
-	const shouldForceDemoBootstrap = Boolean(
-		activeIntakeLocation &&
-			!matchedTripState &&
-			completeHospitalCount < COVERAGE_POOR_THRESHOLD,
-	);
 	const intakePhaseStorageKey = useMemo(
 		() => buildEmergencyIntakePhaseStorageKey(user?.id),
 		[user?.id],
@@ -625,72 +606,6 @@ export default function RequestAmbulanceScreen() {
 			"manual",
 		);
 	}, [activeIntakeLocation, setUserLocation]);
-
-	useEffect(() => {
-		if (!showResponsiveIntakeBase || !shouldBackfillDemoExperience || !activeIntakeLocation) {
-			return;
-		}
-		if (coverageModeOperation?.isPending || demoBootstrapInFlightRef.current) {
-			return;
-		}
-
-		const bootstrapKey = [
-			activeIntakeLocation.latitude.toFixed(4),
-			activeIntakeLocation.longitude.toFixed(4),
-			coverageStatus,
-			effectiveDemoModeEnabled ? "demo" : "live",
-		].join(":");
-		if (demoBootstrapKeyRef.current === bootstrapKey) {
-			return;
-		}
-
-		demoBootstrapKeyRef.current = bootstrapKey;
-		demoBootstrapInFlightRef.current = true;
-		let cancelled = false;
-
-		const ensureCompleteDemoExperience = async () => {
-			try {
-				const bootstrapResult = await demoEcosystemService.ensureDemoEcosystemForLocation({
-					userId: user?.id || "guest",
-					latitude: activeIntakeLocation.latitude,
-					longitude: activeIntakeLocation.longitude,
-					radiusKm: 50,
-					force: shouldForceDemoBootstrap,
-				});
-
-				if (cancelled) return;
-
-				if (!effectiveDemoModeEnabled) {
-					await setCoverageMode?.("hybrid");
-				} else if (bootstrapResult?.bootstrapped) {
-					await refreshHospitals?.();
-				}
-			} catch (error) {
-				if (__DEV__) {
-					console.warn("[RequestAmbulanceScreen] Demo backfill failed:", error);
-				}
-			} finally {
-				demoBootstrapInFlightRef.current = false;
-			}
-		};
-
-		void ensureCompleteDemoExperience();
-
-		return () => {
-			cancelled = true;
-		};
-	}, [
-		activeIntakeLocation,
-		coverageModeOperation?.isPending,
-		coverageStatus,
-		effectiveDemoModeEnabled,
-		refreshHospitals,
-		setCoverageMode,
-		showResponsiveIntakeBase,
-		shouldBackfillDemoExperience,
-		shouldForceDemoBootstrap,
-		user?.id,
-	]);
 
 	const handleScroll = useCallback(
 		(event) => {

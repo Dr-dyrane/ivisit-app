@@ -128,6 +128,20 @@ const isLegacySyntheticDemoHospital = (hospital) => {
 		/^Coverage\s+.+\s+Zone\s+\d+$/i.test(address)
 	);
 };
+const DEMO_EXPIRY_FEATURE_PREFIX = "demo_expires_at:";
+const getDemoExpiryEpochMs = (hospital) => {
+	const expiryTag = toTextArray(hospital?.features).find((feature) =>
+		feature.toLowerCase().startsWith(DEMO_EXPIRY_FEATURE_PREFIX)
+	);
+	if (!expiryTag) return null;
+	const parsed = Number(expiryTag.slice(DEMO_EXPIRY_FEATURE_PREFIX.length));
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+export const isExpiredDemoFixture = (hospital, nowMs = Date.now()) => {
+	if (!isDemoLikeHospital(hospital)) return false;
+	const expiryEpochMs = getDemoExpiryEpochMs(hospital);
+	return Number.isFinite(expiryEpochMs) && expiryEpochMs <= Number(nowMs);
+};
 const CANONICAL_EMERGENCY_DISCOVERY_SOURCE = "nearby_hospitals";
 const markCanonicalEmergencyDiscoveryRows = (rows = []) =>
 	(Array.isArray(rows) ? rows : []).map((row) => ({
@@ -219,18 +233,19 @@ const dedupeHospitalRows = (rows = []) => {
 	return Array.from(buckets.values());
 };
 const filterLegacySyntheticDemoRows = (rows = []) => {
+	const activeRows = rows.filter((row) => !isExpiredDemoFixture(row));
 	const rowsWithRealReplacement = new Set(
-		rows
+		activeRows
 			.filter((row) => row && !isLegacySyntheticDemoHospital(row))
 			.map((row) => hospitalCoordinateKey(row))
 			.filter(Boolean)
 	);
 
 	if (rowsWithRealReplacement.size === 0) {
-		return rows;
+		return activeRows;
 	}
 
-	return rows.filter((row) => {
+	return activeRows.filter((row) => {
 		if (!isLegacySyntheticDemoHospital(row)) return true;
 		const coordinateKey = hospitalCoordinateKey(row);
 		return !coordinateKey || !rowsWithRealReplacement.has(coordinateKey);
@@ -539,6 +554,7 @@ export const hospitalsService = {
 			flag.toLowerCase().startsWith("demo_owner:")
 		);
 		const demoOwner = demoOwnerTag ? demoOwnerTag.split(":")[1] || "" : "";
+		const demoExpiresAtEpochMs = getDemoExpiryEpochMs(h);
 		const isDemoSeed =
 			featureList.some((flag) => flag.toLowerCase().includes("demo")) ||
 			toText(h?.verification_status).toLowerCase().startsWith("demo") ||
@@ -707,6 +723,10 @@ export const hospitalsService = {
 			isMapboxOnly: importedFromMapbox,
 			isDemo: isDemoSeed,
 			demoOwner,
+			demoExpiresAt: demoExpiresAtEpochMs
+				? new Date(demoExpiresAtEpochMs).toISOString()
+				: null,
+			isDemoExpired: isExpiredDemoFixture(h),
 			// Backwards-compat: keep emergencyLevel as raw string for existing UI consumers
 			emergencyLevelRaw: rawEmergencyLevel,
 			// EXP-10: Monetization flags — featured = partner placement, sponsored = paid slot
@@ -727,7 +747,9 @@ export const hospitalsService = {
 				.order("name");
 
 			if (error) throw error;
-			return (data || []).map(h => this._mapHospital(h));
+			return (data || [])
+				.filter((hospital) => !isExpiredDemoFixture(hospital))
+				.map(h => this._mapHospital(h));
 		} catch (err) {
 			console.error("hospitalsService.list error:", err);
 			throw err;

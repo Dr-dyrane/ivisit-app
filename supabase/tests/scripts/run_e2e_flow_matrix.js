@@ -517,7 +517,11 @@ async function createFoundation(ctx) {
       longitude: hospitalLongitude,
       coordinates: `SRID=4326;POINT(${hospitalLongitude} ${hospitalLatitude})`,
       place_id: `e2e:${TAG}:facility:flow-matrix`,
-      features: [`demo_scope:${TAG}`],
+      features: [
+        `demo_scope:${TAG}`,
+        `demo_owner:${ctx.manifest.owner.id}`,
+        `demo_expires_at:${Date.parse(ctx.manifest.expiresAt)}`,
+      ],
       provider_source: 'manual_seed',
       status: 'available',
       verified: true,

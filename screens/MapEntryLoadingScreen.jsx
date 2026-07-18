@@ -11,18 +11,8 @@ import { useScrollAwareHeader } from "../contexts/ScrollAwareHeaderContext";
 import { useHeaderState } from "../contexts/HeaderStateContext";
 import { useGlobalLocation } from "../contexts/GlobalLocationContext";
 import { useEmergency } from "../contexts/EmergencyContext";
-import { useAuth } from "../contexts/AuthContext";
-import { demoEcosystemService } from "../services/demoEcosystemService";
 
 const MIN_ENTRY_LOADING_MS = 320;
-
-function buildDemoBootstrapKey(location, userId) {
-	return [
-		Number(location?.latitude).toFixed(3),
-		Number(location?.longitude).toFixed(3),
-		userId || "guest",
-	].join(":");
-}
 
 export default function MapEntryLoadingScreen() {
 	const router = useRouter();
@@ -30,7 +20,6 @@ export default function MapEntryLoadingScreen() {
 	const { height } = useAuthViewport();
 	const { resetHeader } = useScrollAwareHeader();
 	const { setHeaderState } = useHeaderState();
-	const { user } = useAuth();
 	const {
 		userLocation: globalUserLocation,
 		isLoadingLocation,
@@ -42,16 +31,13 @@ export default function MapEntryLoadingScreen() {
 		userLocation: emergencyUserLocation,
 		isLoadingHospitals,
 		refreshHospitals,
-		effectiveDemoModeEnabled,
 		coverageModePreferenceLoaded,
 	} = useEmergency();
 
 	const [hasAttemptedHospitalLoad, setHasAttemptedHospitalLoad] = useState(false);
-	const [isBootstrappingDemo, setIsBootstrappingDemo] = useState(false);
 	const entryStartedAtRef = useRef(Date.now());
 	const hasNavigatedRef = useRef(false);
 	const hasRequestedRefreshRef = useRef(false);
-	const demoBootstrapKeyRef = useRef(null);
 
 	const discoveredHospitals = useMemo(() => {
 		if (Array.isArray(allHospitals) && allHospitals.length > 0) {
@@ -129,65 +115,6 @@ export default function MapEntryLoadingScreen() {
 		refreshHospitals,
 	]);
 
-	useEffect(() => {
-		let cancelled = false;
-
-		if (!coverageModePreferenceLoaded || !effectiveDemoModeEnabled) {
-			return undefined;
-		}
-		if (!hasLocation || !hasAttemptedHospitalLoad) {
-			return undefined;
-		}
-		if (isLoadingHospitals || isBootstrappingDemo) {
-			return undefined;
-		}
-		if (Array.isArray(discoveredHospitals) && discoveredHospitals.length > 0) {
-			return undefined;
-		}
-
-		const bootstrapKey = buildDemoBootstrapKey(activeLocation, user?.id);
-		if (demoBootstrapKeyRef.current === bootstrapKey) {
-			return undefined;
-		}
-
-		demoBootstrapKeyRef.current = bootstrapKey;
-		setIsBootstrappingDemo(true);
-
-		(async () => {
-			try {
-				const provisioningUserId = await demoEcosystemService.getProvisioningUserId(user?.id);
-				await demoEcosystemService.ensureDemoEcosystemForLocation({
-					userId: provisioningUserId,
-					latitude: activeLocation.latitude,
-					longitude: activeLocation.longitude,
-					radiusKm: 50,
-				});
-				await refreshHospitals?.();
-			} catch (error) {
-				console.warn("[MapEntryLoading] Demo bootstrap skipped", error);
-			} finally {
-				if (!cancelled) {
-					setIsBootstrappingDemo(false);
-				}
-			}
-		})();
-
-		return () => {
-			cancelled = true;
-		};
-	}, [
-		activeLocation,
-		coverageModePreferenceLoaded,
-		discoveredHospitals,
-		effectiveDemoModeEnabled,
-		hasAttemptedHospitalLoad,
-		hasLocation,
-		isBootstrappingDemo,
-		isLoadingHospitals,
-		refreshHospitals,
-		user?.id,
-	]);
-
 	const coreDataResolved = useMemo(() => {
 		if (!coverageModePreferenceLoaded || !hasLocation || isLoadingLocation) {
 			return false;
@@ -195,23 +122,18 @@ export default function MapEntryLoadingScreen() {
 		if (Array.isArray(discoveredHospitals) && discoveredHospitals.length > 0) {
 			return true;
 		}
-		if (isLoadingHospitals || isBootstrappingDemo) {
+		if (isLoadingHospitals) {
 			return false;
 		}
 		if (!hasAttemptedHospitalLoad) {
 			return false;
 		}
-		if (!effectiveDemoModeEnabled) {
-			return true;
-		}
-		return Boolean(demoBootstrapKeyRef.current);
+		return true;
 	}, [
 		coverageModePreferenceLoaded,
 		discoveredHospitals,
-		effectiveDemoModeEnabled,
 		hasAttemptedHospitalLoad,
 		hasLocation,
-		isBootstrappingDemo,
 		isLoadingHospitals,
 		isLoadingLocation,
 	]);

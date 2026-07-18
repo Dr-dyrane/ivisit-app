@@ -21,6 +21,7 @@ export default function IntentOrb({
 	actionBias = "neutral",
 	containerStyle = null,
 	onPress,
+	disabled = false,
 	isSelected = false,
 	titleColor,
 	mutedColor,
@@ -82,6 +83,7 @@ export default function IntentOrb({
 	return (
 		<Pressable
 			onPress={onPress}
+			disabled={disabled}
 			// Heavy haptic on orb press
 			onPressIn={() => triggerPress("heavy")}
 			hitSlop={8}
@@ -89,12 +91,19 @@ export default function IntentOrb({
 			accessibilityRole="button"
 			accessibilityLabel={label}
 			accessibilityHint={subtext}
+			accessibilityState={{ disabled, selected: isSelected }}
 			style={({ pressed }) => [
 				intentOrbStyles.action,
 				responsiveStyles?.actionStyle,
 				containerStyle,
-				pressed ? intentOrbStyles.actionPressed : null,
-				{ opacity: pressed ? Math.max(wrapperOpacity - 0.08, 0.54) : wrapperOpacity },
+				pressed && !disabled ? intentOrbStyles.actionPressed : null,
+				{
+					opacity: disabled
+						? Math.min(wrapperOpacity, 0.58)
+						: pressed
+							? Math.max(wrapperOpacity - 0.08, 0.54)
+							: wrapperOpacity,
+				},
 			]}
 		>
 			<View

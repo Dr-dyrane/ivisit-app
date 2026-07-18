@@ -123,6 +123,7 @@ export function buildMapExploreIntentScreenSections({
 	totalAvailableBeds,
 	nearbyBedHospitals,
 	selectedCare,
+	isCareDiscoveryPending,
 	onUseCurrentLocation,
 	onOpenHospitals,
 	onOpenLocationSearch,
@@ -170,6 +171,7 @@ export function buildMapExploreIntentScreenSections({
 				<MapExploreIntentCareSection
 					layoutMode={careLayoutMode}
 					selectedCare={selectedCare}
+					isCareDiscoveryPending={isCareDiscoveryPending}
 					onChooseCare={onChooseCare}
 					onBookVisit={onBookVisit}
 					onOpenCareHistory={onOpenCareHistory}

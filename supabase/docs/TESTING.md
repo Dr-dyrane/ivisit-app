@@ -200,7 +200,11 @@ It verifies public-signup role safety, private Storage, canonical organization/p
 Each live run now writes an ignored recovery manifest under
 `supabase/tests/artifacts/demo-runs/<run-id>.json`. The manifest records exact
 Auth, organization, disposable facility, claim, evidence, and Storage
-identities. Test-created facilities and protected discovered facilities are
+identities. It also records a seven-day `expiresAt`, explicit `owner`, and
+cleanup `disposition` without adding database columns. Test-created facilities
+carry matching `demo_owner:*` and `demo_expires_at:<epoch-ms>` feature tags so
+expired fixtures disappear from Edge discovery sufficiency and App projections
+before asynchronous cleanup. Test-created facilities and protected discovered facilities are
 mutually exclusive: cleanup may delete only `createdFacilityIds`, never every
 hospital currently linked to a test organization.
 
@@ -210,6 +214,14 @@ not use `demo:*`, `demo_bootstrap`, or a `demo*` verification status because
 those values authorize stable preview coverage to bypass ordinary dispatch
 eligibility gates. Real imported/discovered hospitals remain claim-catalog
 truth and must not be renamed or deleted by cleanup.
+
+Hospital queries and deprecated route/intake screens are read-only. They must
+never call `bootstrap-demo-ecosystem`. Preview coverage has two canonical
+owners: the explicit coverage-mode command and the coverage-aware `/map`
+orchestrator after live discovery has settled below its comfort threshold.
+This preserves sparse-region recovery without allowing ordinary query
+refetches or legacy routes to multiply demo organizations, hospitals, drivers,
+doctors, or ambulances. A canonical bootstrap refreshes the pack expiry.
 
 If an onboarding or emergency-flow run is interrupted, preview its exact
 cleanup plan before applying it:
@@ -227,7 +239,11 @@ node supabase/tests/scripts/cleanup_demo_run.js \
 
 Run the apply command a second time. The second plan must contain zero
 resources and must succeed without changing any protected facility. The
-manifest contract itself is checked with:
+cleanup receiver deletes `user_activity` by the manifest's exact Auth UUIDs
+inside a bounded service-only SQL operation; it does not depend on a broad or
+potentially timing-out activity-table lookup. The operation asserts that no
+activity remains for those captured identities before profile/Auth deletion.
+The manifest contract itself is checked with:
 
 ```bash
 npm run hardening:demo-run-manifest-contract

@@ -300,6 +300,7 @@ export default function MapHospitalListContent({
 				<ScrollView
 					horizontal
 					showsHorizontalScrollIndicator={false}
+					style={styles.specialtyRail}
 					contentContainerStyle={styles.specialtyRailContent}
 				>
 					<Pressable

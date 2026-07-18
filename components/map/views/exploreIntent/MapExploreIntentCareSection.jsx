@@ -12,6 +12,7 @@ const CHOOSE_CARE_HEADER_HIT_SLOP = { top: 14, right: 18, bottom: 14, left: 18 }
 export default function MapExploreIntentCareSection({
 	layoutMode = "canonical",
 	selectedCare,
+	isCareDiscoveryPending = false,
 	onChooseCare,
 	onOpenCareHistory,
 	nearbyHospitalCount = 0,
@@ -30,7 +31,9 @@ export default function MapExploreIntentCareSection({
 	const careRowStyle = responsiveMetrics?.care?.rowStyle || null;
 	const bedSubtext = getBedSpaceSubtext(totalAvailableBeds, nearbyBedHospitals);
 	const ambulanceSubtext =
-		nearbyHospitalCount > 0
+		isCareDiscoveryPending
+			? MAP_EXPLORE_INTENT_COPY.DISCOVERY_PENDING
+			: nearbyHospitalCount > 0
 			? `${nearbyHospitalCount} nearby`
 			: MAP_EXPLORE_INTENT_COPY.WIDER_HELP;
 	const usesCanonicalOrbLayout =
@@ -86,6 +89,7 @@ export default function MapExploreIntentCareSection({
 							hierarchy="primary"
 							panelBias="primary"
 							onPress={() => onChooseCare("ambulance")}
+							disabled={isCareDiscoveryPending}
 							isSelected={selectedCare === "ambulance"}
 							showSubtext={false}
 							pulseProgress={!selectedCare ? pulseProgress : null}
@@ -122,6 +126,7 @@ export default function MapExploreIntentCareSection({
 								hierarchy="tertiary"
 								panelBias="trailing"
 								onPress={() => onChooseCare("both")}
+								disabled={isCareDiscoveryPending}
 								isSelected={selectedCare === "both"}
 								showSubtext={false}
 								pulseProgress={!selectedCare ? pulseProgress : null}
@@ -161,6 +166,7 @@ export default function MapExploreIntentCareSection({
 						hierarchy="primary"
 						panelBias="primary"
 						onPress={() => onChooseCare("ambulance")}
+						disabled={isCareDiscoveryPending}
 						isSelected={selectedCare === "ambulance"}
 						responsiveMetrics={responsiveMetrics?.care}
 					/>
@@ -192,6 +198,7 @@ export default function MapExploreIntentCareSection({
 								hierarchy="tertiary"
 								panelBias="trailing"
 								onPress={() => onChooseCare("both")}
+								disabled={isCareDiscoveryPending}
 								isSelected={selectedCare === "both"}
 								responsiveMetrics={responsiveMetrics?.care}
 							/>
@@ -238,6 +245,7 @@ export default function MapExploreIntentCareSection({
 					actionBias="primary"
 					containerStyle={styles.careActionPrimaryBias}
 					onPress={() => onChooseCare("ambulance")}
+					disabled={isCareDiscoveryPending}
 					isSelected={selectedCare === "ambulance"}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
@@ -267,6 +275,7 @@ export default function MapExploreIntentCareSection({
 					actionBias="trailing"
 					containerStyle={[styles.careActionTrailingBias, notReadyStyle]}
 					onPress={() => onChooseCare("both")}
+					disabled={isCareDiscoveryPending}
 					isSelected={selectedCare === "both"}
 					titleColor={titleColor}
 					mutedColor={mutedColor}
