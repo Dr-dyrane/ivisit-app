@@ -235,8 +235,18 @@ Emergency lifecycle manifest adoption:
   over-broad receipts, and merged through Console PR `#9` as
   `dbce47734320f37175ae9c33ced37b9cf49c453e`.
 
-**Next incomplete lane:** rerun one disposable mobile completion to visually
-confirm the rating close-animation copy fix, then gate the early Ambulance CTA
-at its canonical nearby-query owner. Plan the patient-safe cash preflight RPC
-as a separately reviewed backend/client migration aligned with the 1.0.9 OTA
-boundary; do not publish an EAS update from this pack.
+Final mobile sign-off run `flow-matrix-1784380129981-7b722a56` repeated wallet
+payment, Assigning, canonical dispatch/acceptance, realtime En Route ETA,
+Arrived, rendered Confirm Arrival, completion, five-star submission, reload,
+and idempotent repeat completion. Nine rendered samples from submit through
+2.4 seconds proved the closing sheet retained `Rate your transport` in every
+visible/saving frame; `Rate your visit` never appeared. Backend truth contained
+one rating (`rating = 5`), reload contained no rating dialog, and repeat
+completion returned `already_completed`. Exact cleanup removed the owned graph
+on its first application; the second application and final preview contained
+zero resources.
+
+The rendered payment-to-tracking-to-arrival-to-completion-to-single-rating lane
+is signed off for this pack. The early Ambulance CTA loading gate and the
+patient-safe cash-preflight RPC remain separately captured 1.0.9 work; do not
+publish an EAS update from this pack.
