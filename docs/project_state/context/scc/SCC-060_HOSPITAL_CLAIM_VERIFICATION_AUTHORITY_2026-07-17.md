@@ -89,3 +89,49 @@ nearby/emergency eligibility`
 - Backend contract and authenticated operator workflow are `validated`.
   Controlled field onboarding may proceed under the documented no-transfer
   boundary; existing owned-facility transfer remains a manual/legal workflow.
+
+## One-Week Repeatability Gate
+
+The live-readiness campaign must preserve the provider catalog while allowing
+new clean demos:
+
+- real imported/discovered hospitals are permanent claim-catalog truth;
+- an unowned discovered hospital may be searched and selected, but a disposable
+  run must never delete or rename it;
+- stable demo coverage is reset to a documented baseline;
+- ephemeral facilities are visibly labeled `[DEMO <short-run-id>]` and carry
+  `e2e:<run-id>` plus `demo_scope:<run-id>` provenance; they must not use the
+  stable-preview `demo:*` eligibility bypass;
+- every mutating run writes an exact recovery manifest before continuing;
+- cleanup deletes exact manifest resources in dependency order, then runs a
+  second time and proves zero residue;
+- a facility cannot be both protected and test-created in one manifest.
+
+Execution order:
+
+1. manifest and cleanup safety, including interrupted-run recovery;
+2. new-facility and existing-unowned-facility onboarding retries;
+3. evidence, claim, organization, and facility review ordering;
+4. App eligibility before and after the final gate;
+5. payment, dispatch, tracking, arrival, completion, visit, and one-rating
+   lifecycle;
+6. multi-tab, double-submit, offline/reconnect, and delayed-realtime recovery;
+7. three consecutive fresh-run passes, double cleanup, global zero-residue,
+   contract-drift, and eleven-pillar sign-off.
+
+Idempotency has four separate proofs: the same command/key does not duplicate,
+a fresh run remains isolated, interrupted clients converge on backend truth,
+and cleanup can be applied repeatedly without touching protected catalog data.
+
+Initial repeatability proof:
+
+- run `1784334104297-7b38c565` intentionally failed the pending-eligibility
+  assertion after its ephemeral fixture used the stable-preview `demo:*`
+  encoding; exact cleanup still ran twice and global residue was zero;
+- the collision was removed by reserving `e2e:*`/`demo_scope:*` for ephemeral
+  fixtures while retaining a visible `[DEMO]` label;
+- run `1784334199571-2d9f6608` then passed Auth, Storage, onboarding,
+  correction/retry, evidence, claim, organization, facility, App eligibility,
+  invitation, reflection, and two cleanup applications;
+- the recovery CLI previewed zero resources, applied again successfully, and
+  previewed zero afterward; the global cleanup guard remained zero.

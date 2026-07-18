@@ -197,6 +197,44 @@ node supabase/tests/scripts/run_console_onboarding_live_e2e.js --project-ref=<ex
 
 It verifies public-signup role safety, private Storage, canonical organization/profile/wallet/evidence provisioning, idempotency and duplicate rejection, complete facility identity reflection, organization-scoped user statistics, no-auth and role-scope invitation denial, successful Auth invitation, service-only profile assignment, and cleanup. The runner must remove every temporary Auth identity, row, and Storage object in its final cleanup path.
 
+Each live run now writes an ignored recovery manifest under
+`supabase/tests/artifacts/demo-runs/<run-id>.json`. The manifest records exact
+Auth, organization, disposable facility, claim, evidence, and Storage
+identities. Test-created facilities and protected discovered facilities are
+mutually exclusive: cleanup may delete only `createdFacilityIds`, never every
+hospital currently linked to a test organization.
+
+New ephemeral live fixtures use a visible `[DEMO <short-run-id>]` label plus
+`place_id=e2e:<run-id>:...` and `demo_scope:<run-id>`. They deliberately do
+not use `demo:*`, `demo_bootstrap`, or a `demo*` verification status because
+those values authorize stable preview coverage to bypass ordinary dispatch
+eligibility gates. Real imported/discovered hospitals remain claim-catalog
+truth and must not be renamed or deleted by cleanup.
+
+If an onboarding run is interrupted, preview its exact cleanup plan before
+applying it. The command fails closed if a manifest contains emergency,
+responder, payment, or visit resources until their dependency cleanup is
+implemented:
+
+```bash
+node supabase/tests/scripts/cleanup_demo_run.js \
+  --manifest=supabase/tests/artifacts/demo-runs/<run-id>.json \
+  --project-ref=<expected-project-ref>
+
+node supabase/tests/scripts/cleanup_demo_run.js \
+  --manifest=supabase/tests/artifacts/demo-runs/<run-id>.json \
+  --project-ref=<expected-project-ref> \
+  --apply
+```
+
+Run the apply command a second time. The second plan must contain zero
+resources and must succeed without changing any protected facility. The
+manifest contract itself is checked with:
+
+```bash
+npm run hardening:demo-run-manifest-contract
+```
+
 ### **Preferences Surface Field Guard**
 ```bash
 # Detect preferences app/console type parity + relationship parity and

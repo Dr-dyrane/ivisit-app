@@ -16,6 +16,7 @@
     "assert:no-service-role": "node scripts/assert-no-service-role-in-bundle.js",
     "hardening:cleanup-apply": "node supabase/tests/scripts/cleanup_test_side_effects.js --apply",
     "hardening:cleanup-dry-run-guard": "node supabase/tests/scripts/assert_cleanup_dry_run_zero.js",
+    "hardening:demo-run-manifest-contract": "node --test tests/demoRunManifest.test.cjs",
     "hardening:inventory-refresh": "node supabase/tests/scripts/export_live_schema_inventory.js",
     "hardening:inventory-guard": "node supabase/tests/scripts/assert_live_inventory_coverage.js",
     "hardening:rpc-authority-guard": "node supabase/tests/scripts/assert_rpc_authority_map.js",
