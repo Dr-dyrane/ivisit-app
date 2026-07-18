@@ -2,6 +2,13 @@ const crypto = require('crypto');
 const path = require('path');
 const dotenv = require('dotenv');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  createDemoRunManifest,
+  defaultManifestPath,
+  markCleanupAttempt,
+  registerResource,
+  saveManifest,
+} = require('./demo_run_manifest');
 
 const appRoot = path.resolve(__dirname, '..', '..', '..');
 dotenv.config({ path: path.join(appRoot, '.env.local') });
@@ -41,6 +48,19 @@ const publicClient = createClient(supabaseUrl, anonKey, {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function persistManifest(state) {
+  if (!state.manifest || !state.manifestPath) return;
+  saveManifest(state.manifest, state.manifestPath);
+}
+
+function trackResource(state, setKey, manifestKey, value) {
+  if (!value) throw new Error(`Cannot track empty ${manifestKey}`);
+  state[setKey].add(value);
+  registerResource(state.manifest, manifestKey, value);
+  persistManifest(state);
+  return value;
 }
 
 function buildInviteAlias(email, runId) {
@@ -178,10 +198,6 @@ async function cleanup(state) {
         .in('organization_id', organizationIds);
       if (error) throw error;
     });
-    await safely('test facilities', async () => {
-      const { error } = await admin.from('hospitals').delete().in('organization_id', organizationIds);
-      if (error) throw error;
-    });
     await safely('test wallets', async () => {
       const { error } = await admin
         .from('organization_wallets')
@@ -195,9 +211,9 @@ async function cleanup(state) {
     });
   }
 
-  if (state.claimFacilityId) {
-    await safely('claim test facility', async () => {
-      const { error } = await admin.from('hospitals').delete().eq('id', state.claimFacilityId);
+  for (const createdFacilityId of state.createdFacilityIds) {
+    await safely(`test-created facility ${createdFacilityId}`, async () => {
+      const { error } = await admin.from('hospitals').delete().eq('id', createdFacilityId);
       if (error) throw error;
     });
   }
@@ -230,13 +246,15 @@ async function cleanup(state) {
       throw new Error('temporary rows remain');
     }
 
-    if (state.claimFacilityId) {
-      const { data: claimFacilities, error: claimFacilityError } = await admin
+    for (const createdFacilityId of state.createdFacilityIds) {
+      const { data: createdFacilities, error: createdFacilityError } = await admin
         .from('hospitals')
         .select('id')
-        .eq('id', state.claimFacilityId);
-      if (claimFacilityError) throw claimFacilityError;
-      if (claimFacilities.length) throw new Error('temporary claim facility remains');
+        .eq('id', createdFacilityId);
+      if (createdFacilityError) throw createdFacilityError;
+      if (createdFacilities.length) {
+        throw new Error(`temporary facility ${createdFacilityId} remains`);
+      }
     }
 
     for (const authUserId of state.additionalAuthUserIds) {
@@ -282,7 +300,7 @@ async function createAuthenticatedTestClient({ email, password, fullName, state,
     user_metadata: { full_name: fullName, role: 'admin' },
   });
   if (createError) throw createError;
-  state.additionalAuthUserIds.add(created.user.id);
+  trackResource(state, 'additionalAuthUserIds', 'authUserIds', created.user.id);
   if (onboardingUser) state.additionalOnboardingUserIds.add(created.user.id);
 
   const profile = await waitForProfile(created.user.id);
@@ -304,12 +322,13 @@ async function createAuthenticatedTestClient({ email, password, fullName, state,
 }
 
 async function runClaimVerificationFlow({ runId, state, tinyPng }) {
+  const runLabel = runId.slice(-8);
   const claimantPassword = `Claimant!${crypto.randomBytes(12).toString('base64url')}`;
   const reviewerPassword = `Reviewer!${crypto.randomBytes(12).toString('base64url')}`;
   const claimantEmail = `console-claimant-live-${runId}@ivisit-e2e.local`;
   const reviewerEmail = `console-reviewer-live-${runId}@ivisit-e2e.local`;
-  const claimOrganizationName = `Console Live Claim Organization ${runId}`;
-  const claimFacilityName = `Console Live Claim Facility ${runId}`;
+  const claimOrganizationName = `[DEMO ${runLabel}] Console Claim Organization`;
+  const claimFacilityName = `[DEMO ${runLabel}] Console Claim Facility`;
   const claimLatitude = 34.05;
   const claimLongitude = -118.25;
 
@@ -349,11 +368,13 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
       emergency_eligible: true,
       booking_eligible: true,
       provider_source: 'manual_seed',
+      place_id: `e2e:${runId}:facility:claim`,
+      features: [`demo_scope:${runId}`],
     })
     .select('id')
     .single();
   if (claimFacilityError) throw claimFacilityError;
-  state.claimFacilityId = claimFacility.id;
+  trackResource(state, 'createdFacilityIds', 'createdFacilityIds', claimFacility.id);
 
   const { data: searchResults, error: searchError } = await claimant.client.rpc(
     'search_onboarding_facilities',
@@ -367,8 +388,8 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
 
   const initialPath = `onboarding/${claimant.userId}/${crypto.randomUUID()}.png`;
   const correctedPath = `onboarding/${claimant.userId}/${crypto.randomUUID()}.png`;
-  state.storagePaths.add(initialPath);
-  state.storagePaths.add(correctedPath);
+  trackResource(state, 'storagePaths', 'storagePaths', initialPath);
+  trackResource(state, 'storagePaths', 'storagePaths', correctedPath);
   const { error: initialUploadError } = await claimant.client.storage
     .from('documents')
     .upload(initialPath, tinyPng, { contentType: 'image/png', upsert: false });
@@ -405,7 +426,9 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
   if (provisionError) throw provisionError;
   const claimOrganizationId = provisioned?.organization?.id;
   const claimId = provisioned?.claim?.id;
-  state.organizationIds.add(claimOrganizationId);
+  trackResource(state, 'organizationIds', 'organizationIds', claimOrganizationId);
+  registerResource(state.manifest, 'claimIds', claimId);
+  persistManifest(state);
   assert(provisioned?.claim?.status === 'pending', 'Ownership claim skipped review');
   assert(provisioned?.facility?.ownershipState === 'claim_pending', 'Claim pending state was not reflected');
 
@@ -417,6 +440,8 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
     .eq('storage_path', initialPath)
     .single();
   if (initialEvidenceError) throw initialEvidenceError;
+  registerResource(state.manifest, 'evidenceIds', initialEvidence.id);
+  persistManifest(state);
 
   const { data: preLinkFacility, error: preLinkError } = await admin
     .from('hospitals')
@@ -487,6 +512,8 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
     .eq('storage_path', correctedPath)
     .single();
   if (correctedEvidenceError) throw correctedEvidenceError;
+  registerResource(state.manifest, 'evidenceIds', correctedEvidence.id);
+  persistManifest(state);
 
   const { error: evidenceApprovalError } = await reviewer.client.rpc(
     'review_organization_verification_document',
@@ -535,12 +562,21 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
 
 async function main() {
   const runId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const runLabel = runId.slice(-8);
   const password = `Contract!${crypto.randomBytes(12).toString('base64url')}`;
   const email = `console-onboarding-live-${runId}@ivisit-e2e.local`;
-  const organizationName = `Console Live Contract Hospital ${runId}`;
+  const organizationName = `[DEMO ${runLabel}] Console Contract Hospital`;
   const registrationNumber = `LIVE-${runId}`;
   const inviteEmail = buildInviteAlias(inviteTestMailbox, runId);
+  const manifest = createDemoRunManifest({
+    runId,
+    suite: 'console-onboarding-live-e2e',
+    projectRef,
+  });
+  const manifestPath = defaultManifestPath(appRoot, runId);
   const state = {
+    manifest,
+    manifestPath,
     userId: null,
     organizationName,
     organizationIds: new Set(),
@@ -549,8 +585,10 @@ async function main() {
     invitedUserIds: new Set(),
     additionalOnboardingUserIds: new Set(),
     additionalAuthUserIds: new Set(),
-    claimFacilityId: null,
+    createdFacilityIds: new Set(),
   };
+  registerResource(manifest, 'invitedEmails', inviteEmail);
+  persistManifest(state);
   let testError = null;
 
   console.log(`[console-onboarding-live-e2e] target=${projectRef} run=${runId}`);
@@ -564,6 +602,8 @@ async function main() {
     });
     if (createError) throw createError;
     state.userId = created.user.id;
+    registerResource(manifest, 'authUserIds', state.userId);
+    persistManifest(state);
 
     const initialProfile = await waitForProfile(state.userId);
     assert(initialProfile.role === 'patient', 'Public Auth metadata elevated the live test user');
@@ -598,8 +638,8 @@ async function main() {
 
     const ownPath = `onboarding/${state.userId}/${crypto.randomUUID()}.png`;
     const otherPath = `onboarding/${crypto.randomUUID()}/${crypto.randomUUID()}.png`;
-    state.storagePaths.add(ownPath);
-    state.storagePaths.add(otherPath);
+    trackResource(state, 'storagePaths', 'storagePaths', ownPath);
+    trackResource(state, 'storagePaths', 'storagePaths', otherPath);
     const tinyPng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       'base64'
@@ -641,6 +681,10 @@ async function main() {
       { p_payload: payload }
     );
     if (provisionError) throw provisionError;
+    const organizationId = provisioned?.organization?.id;
+    const facilityId = provisioned?.facility?.id;
+    trackResource(state, 'organizationIds', 'organizationIds', organizationId);
+    trackResource(state, 'createdFacilityIds', 'createdFacilityIds', facilityId);
     assert(provisioned?.success === true, 'Live provisioning did not return success');
     assert(provisioned?.provisioningVerified === true, 'Live provisioning was not backend-reflected');
     assert(provisioned?.role === 'org_admin', 'Live provisioning returned the wrong role');
@@ -649,10 +693,8 @@ async function main() {
     assert(provisioned?.facility?.verificationStatus === 'pending', 'Facility skipped review');
     assert(provisioned?.facility?.dispatchEligible === false, 'Pending facility became dispatch eligible');
 
-    const organizationId = provisioned.organization.id;
-    state.organizationIds.add(organizationId);
     assert(
-      organizationId !== provisioned.facility.id,
+      organizationId !== facilityId,
       'Organization and facility identity collapsed in the live receiver'
     );
 
@@ -778,6 +820,8 @@ async function main() {
       .single();
     if (invitedProfileError) throw invitedProfileError;
     state.invitedUserIds.add(invitedProfile.id);
+    registerResource(manifest, 'authUserIds', invitedProfile.id);
+    persistManifest(state);
     assert(invitedProfile.role === 'viewer', 'Invited profile received the wrong role');
     assert(invitedProfile.organization_id === organizationId, 'Invited profile received the wrong organization');
     assert(invitedProfile.onboarding_status === 'complete', 'Invited profile was sent through self-registration');
@@ -804,8 +848,17 @@ async function main() {
 
   try {
     await cleanup(state);
-    console.log('[console-onboarding-live-e2e] Temporary live data and Storage objects were removed.');
+    markCleanupAttempt(manifest);
+    persistManifest(state);
+    await cleanup(state);
+    markCleanupAttempt(manifest);
+    persistManifest(state);
+    console.log(
+      `[console-onboarding-live-e2e] Temporary live data and Storage objects were removed twice; manifest=${manifestPath}.`
+    );
   } catch (cleanupError) {
+    markCleanupAttempt(manifest, cleanupError);
+    persistManifest(state);
     if (testError) {
       throw new Error(`${testError.message}; ${cleanupError.message}`);
     }
