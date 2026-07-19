@@ -556,3 +556,22 @@ as its own 1.0.9 contract, migration, verification, and release decision.
   captured requests, and zero ledger entries for the retired IDs.
 - This is test-data hygiene and cleanup-tool hardening only; it requires no
   schema change, production contract change, or EAS update.
+
+### Historical Synthetic Ledger Retirement (2026-07-19)
+
+- After payment retirement, a read-only audit found 79 orphaned ledger rows:
+  46 false platform-fee entries and their matching synthetic organization
+  audit effects. None referenced a remaining payment or emergency request.
+- An exact ledger-ID manifest removed only those 79 entries. The platform
+  wallet was a live, uniquely owned receiver, so its false fee credits were
+  reversed by the signed ledger total: `$100,201.00` to `$100,120.75`
+  (`$80.25`). The counterpart wallet rows were evidence-only because their
+  historical wallet owners no longer existed; no nonexistent balance was
+  invented or altered.
+- The cleanup remains fail-closed for ambiguous wallet ownership. It may
+  delete an exact manifest-owned ledger row with no surviving wallet owner,
+  while reversing balances only for uniquely resolved organization, patient,
+  or platform wallets.
+- First apply reported zero residue; second apply was a no-op; the final
+  `wallet_ledger` count is zero. This does not reset the platform's seeded
+  opening balance, which would be a separate product/accounting decision.

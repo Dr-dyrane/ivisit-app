@@ -247,11 +247,23 @@ test('reverses exact payment ledger effects across every supported wallet owner'
     path.resolve(__dirname, '..', 'supabase', 'tests', 'scripts', 'cleanup_demo_run.js'),
     'utf8'
   );
-  assert.match(cleanup, /Refusing to reverse ledger effects for an unknown or ambiguous wallet/);
+  assert.match(cleanup, /Refusing to reverse ledger effects for an ambiguous wallet/);
   assert.match(cleanup, /public\.organization_wallets/);
   assert.match(cleanup, /public\.patient_wallets/);
   assert.match(cleanup, /public\.ivisit_main_wallet/);
   assert.match(cleanup, /balance = COALESCE\(wallet\.balance, 0\) - fixture\.amount/);
+  assert.match(cleanup, /WHERE ledger\.id IN/);
+  assert.match(cleanup, /WHERE id IN/);
+});
+
+test('allows a manifest to own exact orphaned ledger rows', () => {
+  const manifest = createDemoRunManifest({
+    runId: 'ledger-retirement-1234',
+    suite: 'ledger-retirement',
+    projectRef: 'project-ref',
+  });
+  registerResource(manifest, 'walletLedgerIds', 'ledger-row-id');
+  assert.deepEqual(manifest.resources.walletLedgerIds, ['ledger-row-id']);
 });
 
 test('only canonical coverage owners may provision demo coverage', () => {

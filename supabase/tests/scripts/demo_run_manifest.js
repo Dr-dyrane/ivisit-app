@@ -19,6 +19,7 @@ const RESOURCE_KEYS = Object.freeze([
   'emergencyRequestIds',
   'responderAssignmentIds',
   'paymentIds',
+  'walletLedgerIds',
   'visitIds',
   'doctorIds',
   'ambulanceIds',

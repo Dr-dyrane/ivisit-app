@@ -89,8 +89,8 @@ $cleanup$;
   );
 }
 
-async function removeWalletLedgerEffects(admin, paymentIds) {
-  const ids = uuidSqlList(paymentIds);
+async function removeWalletLedgerEffects(admin, walletLedgerIds) {
+  const ids = uuidSqlList(walletLedgerIds);
   if (!ids) return;
   await executeSql(
     admin,
@@ -101,7 +101,7 @@ BEGIN
     WITH fixture_wallets AS (
       SELECT DISTINCT ledger.wallet_id
       FROM public.wallet_ledger ledger
-      WHERE ledger.reference_id IN (${ids})
+      WHERE ledger.id IN (${ids})
     ), wallet_ownership AS (
       SELECT wallet.id AS wallet_id
       FROM public.organization_wallets wallet
@@ -122,9 +122,9 @@ BEGIN
       FROM wallet_ownership
       GROUP BY wallet_id
     ) owner ON owner.wallet_id = fixture.wallet_id
-    WHERE COALESCE(owner.owner_count, 0) <> 1
+    WHERE COALESCE(owner.owner_count, 0) > 1
   ) THEN
-    RAISE EXCEPTION 'Refusing to reverse ledger effects for an unknown or ambiguous wallet';
+    RAISE EXCEPTION 'Refusing to reverse ledger effects for an ambiguous wallet';
   END IF;
 END;
 $cleanup$;
@@ -132,7 +132,7 @@ $cleanup$;
 WITH fixture_wallet_effects AS (
   SELECT ledger.wallet_id, SUM(ledger.amount) AS amount
   FROM public.wallet_ledger ledger
-  WHERE ledger.reference_id IN (${ids})
+  WHERE ledger.id IN (${ids})
   GROUP BY ledger.wallet_id
 ), reversed_organization_wallets AS (
   UPDATE public.organization_wallets wallet
@@ -157,7 +157,7 @@ WITH fixture_wallet_effects AS (
   RETURNING wallet.id
 )
 DELETE FROM public.wallet_ledger
-WHERE reference_id IN (${ids});
+WHERE id IN (${ids});
     `,
     'Wallet ledger cleanup'
   );
@@ -433,6 +433,8 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
     requestVisits,
     visitChatRooms,
     requestChatRooms,
+    exactWalletLedger,
+    paymentWalletLedger,
     doctorAssignments,
     doctorSchedules,
     insuranceBilling,
@@ -488,6 +490,14 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
       'id',
       emergencyRequestIds,
       'emergency_request_id'
+    ),
+    selectByIds(admin, 'wallet_ledger', 'id', manifest.resources.walletLedgerIds),
+    selectByForeignIds(
+      admin,
+      'wallet_ledger',
+      'id',
+      manifest.resources.paymentIds,
+      'reference_id'
     ),
     selectByForeignIds(
       admin,
@@ -555,6 +565,7 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
   ]);
   const assignments = [...exactAssignments, ...requestAssignments];
   const paymentRows = [...exactPayments, ...requestPayments];
+  const walletLedger = [...exactWalletLedger, ...paymentWalletLedger];
   const visitRows = [...exactVisits, ...requestVisits];
   const chatRooms = [...visitChatRooms, ...requestChatRooms];
   const staffing = [...exactStaffing, ...ambulanceStaffing, ...responderStaffing];
@@ -587,7 +598,7 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
     chatRoomIds: unique(chatRooms.map((row) => row.id)),
     visitIds: unique(visitRows.map((row) => row.id)),
     paymentIds: unique(paymentRows.map((row) => row.id)),
-    walletLedgerReferenceIds: unique(paymentRows.map((row) => row.id)),
+    walletLedgerIds: unique(walletLedger.map((row) => row.id)),
     responderAssignmentIds: unique(assignments.map((row) => row.id)),
     statusTransitionIds: unique(statusTransitions.map((row) => row.id)),
     emergencyRequestIds: unique(requests.map((row) => row.id)),
@@ -640,7 +651,7 @@ async function applyCleanupPlan(admin, plan, authUserIds = []) {
   await deleteByIds(admin, 'doctor_schedules', plan.doctorScheduleIds);
   await deleteByIds(admin, 'emergency_chat_rooms', plan.chatRoomIds);
   await deleteByIds(admin, 'visits', plan.visitIds);
-  await removeWalletLedgerEffects(admin, plan.walletLedgerReferenceIds);
+  await removeWalletLedgerEffects(admin, plan.walletLedgerIds);
   await deleteEmergencyRequestGraphs(admin, plan.emergencyRequestIds);
   await deleteByIds(admin, 'payments', plan.paymentIds);
   await deleteByIds(admin, 'patient_wallets', plan.patientWalletIds);
