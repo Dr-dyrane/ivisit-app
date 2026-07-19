@@ -40,6 +40,7 @@ export default function MapSheetOrchestrator({
 	nearestHospital,
 	nearestHospitalMeta = [],
 	selectedCare = null,
+	isHospitalsLoading = false,
 	onOpenSearch,
 	onOpenHospitals,
 	onChooseCare,
@@ -427,6 +428,7 @@ export default function MapSheetOrchestrator({
 						onSelectHospital={onSelectHospital}
 						onChangeLocation={onChangeHospitalLocation}
 						onSnapStateChange={onSnapStateChange}
+						isLoading={isHospitalsLoading}
 					/>
 				</MapPhaseTransitionView>
 			);

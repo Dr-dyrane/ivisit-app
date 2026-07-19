@@ -10,30 +10,50 @@ import { EmergencyRequestStatus } from "../../services/emergencyRequestsService"
 import { serviceCostService } from "../../services/serviceCostService";
 import { triageService } from "../../services/triageService";
 import { demoEcosystemService } from "../../services/demoEcosystemService";
-import {
-  DEFAULT_APP_COORDINATES,
-  toPointWkt,
-} from "../../constants/locationDefaults";
+import { toPointWkt } from "../../constants/locationDefaults";
 import { useLocationStore } from "../../stores/locationStore";
 import { useEmergencyContactsStore } from "../../stores/emergencyContactsStore";
 import { selectReachableEmergencyContacts } from "../../stores/emergencyContactsSelectors";
 import { resolveAmbulanceDispatchType } from "../../utils/ambulanceType";
 
-// PULLBACK NOTE: Location fallback priority: stored last-known → DEFAULT_APP_COORDINATES
-// OLD: GPS failure in request flow → hardcoded Lagos coords
-// NEW: use persisted last-known location first; Lagos only on true cold install
-const getRequestLocationFallback = () => {
-  const stored = useLocationStore.getState().userLocation;
-  const lat = Number(stored?.latitude);
-  const lng = Number(stored?.longitude);
-  if (stored && Number.isFinite(lat) && Number.isFinite(lng)) return stored;
-  return { ...DEFAULT_APP_COORDINATES };
-};
-
 const toFiniteNumber = (value) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 };
+
+const getFiniteLocation = (candidate) => {
+  if (!candidate || typeof candidate !== "object") return null;
+
+  const rawLatitude = candidate.latitude ?? candidate.lat;
+  const rawLongitude = candidate.longitude ?? candidate.lng ?? candidate.lon;
+  if (
+    rawLatitude === null ||
+    rawLatitude === undefined ||
+    rawLatitude === "" ||
+    rawLongitude === null ||
+    rawLongitude === undefined ||
+    rawLongitude === ""
+  ) {
+    return null;
+  }
+
+  const latitude = toFiniteNumber(rawLatitude);
+  const longitude = toFiniteNumber(rawLongitude);
+  if (
+    latitude == null ||
+    longitude == null ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+  return { latitude, longitude };
+};
+
+const getStoredRequestLocation = () =>
+  getFiniteLocation(useLocationStore.getState().userLocation);
 
 const getRequestUserCheckin = (request) => {
   if (!request || typeof request !== "object") return null;
@@ -110,27 +130,7 @@ const normalizeRequestCostSnapshot = (raw) => {
 
 const getRequestedLocation = (request) => {
   if (!request || typeof request !== "object") return null;
-  const candidate = request.patientLocation ?? request.location ?? null;
-  if (!candidate) return null;
-
-  if (
-    Number.isFinite(candidate.latitude) &&
-    Number.isFinite(candidate.longitude)
-  ) {
-    return {
-      latitude: Number(candidate.latitude),
-      longitude: Number(candidate.longitude),
-    };
-  }
-
-  if (Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng)) {
-    return {
-      latitude: Number(candidate.lat),
-      longitude: Number(candidate.lng),
-    };
-  }
-
-  return null;
+  return getFiniteLocation(request.patientLocation ?? request.location ?? null);
 };
 
 const hasActiveRequestRecord = (record) => {
@@ -381,20 +381,30 @@ export const useRequestFlow = (props) => {
         if (!liveUserLocation) {
           try {
             const currentLocation = await Location.getCurrentPositionAsync({});
-            liveUserLocation = {
-              latitude: currentLocation.coords.latitude,
-              longitude: currentLocation.coords.longitude,
-            };
-            patientLocation = `POINT(${currentLocation.coords.longitude} ${currentLocation.coords.latitude})`;
+            liveUserLocation = getFiniteLocation(currentLocation?.coords);
+            if (!liveUserLocation) {
+              throw new Error("Device location did not include valid coordinates.");
+            }
+            patientLocation = toPointWkt(liveUserLocation);
           } catch (locationError) {
             console.warn(
               "[useRequestFlow] Could not get user location:",
               locationError,
             );
-            // PULLBACK NOTE: OLD: DEFAULT_APP_COORDINATES — NEW: stored last-known → DEFAULT_APP_COORDINATES
-            const fallback = getRequestLocationFallback();
-            liveUserLocation = fallback;
-            patientLocation = toPointWkt(fallback);
+            // PULLBACK NOTE: location commit authority
+            // OLD: GPS failure could commit a hard-coded fallback city.
+            // NEW: only a finite persisted location may recover the commit; otherwise
+            // return the existing recoverable manual-pickup failure before createRequest.
+            liveUserLocation = getStoredRequestLocation();
+            if (!liveUserLocation) {
+              inflightByTypeRef.current[request.serviceType] = false;
+              return blockResult("MISSING_LOCATION", {
+                serviceType: request.serviceType,
+                recoverable: true,
+                locationAction: "manual_entry",
+              });
+            }
+            patientLocation = toPointWkt(liveUserLocation);
           }
         }
 

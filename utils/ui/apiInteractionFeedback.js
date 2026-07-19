@@ -21,6 +21,7 @@ const API_ERROR_COPY = Object.freeze({
 	CONCURRENCY_DB: "You already have this request in progress on another session.",
 	IN_FLIGHT: "This request is already being submitted.",
 	MISSING_HOSPITAL: "Choose a hospital before continuing.",
+	MISSING_LOCATION: "Choose a pickup location before continuing.",
 	INVALID_SERVICE_TYPE: "Choose a valid service before continuing.",
 	NO_HOSPITALS: "No nearby hospitals are ready yet.",
 });
