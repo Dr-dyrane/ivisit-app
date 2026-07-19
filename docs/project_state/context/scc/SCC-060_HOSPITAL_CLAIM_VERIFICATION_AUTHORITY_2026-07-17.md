@@ -523,7 +523,19 @@ publishing an EAS Update.
   App commits `cf8a1a34` and `b15e5f4c` isolate the invitation contract and the
   bootstrap/location repair from the still-dirty payment/RPC 1.0.9 pack.
 
-**Next incomplete lane:** push the two isolated App commits, verify the deployed
-web bundle against the sparse-region and missing-location contracts, then
-evaluate the gated OTA separately from the unresolved payment/RPC production
-contract.
+### Release Closure (2026-07-19)
+
+- App commits `cf8a1a34`, `b15e5f4c`, and `530e82b9` were pushed to `main`.
+  The pre-existing payment/RPC and migration work remained unstaged.
+- A clean worktree at exact commit `530e82b9` passed the Android marker-density
+  OTA law, service-role bundle guard, focused bootstrap/location tests, and a
+  2,833-module web export.
+- The deployed patient web bundle renders the authoritative hospital sheet and
+  contains the recoverable missing-location contract.
+- Production OTA group `24202178-4aaa-4916-8180-90844048f10b` was published for
+  runtime `1.0.8` on Android and iOS from exact commit `530e82b9`. Expo reports
+  it as the current production update.
+
+**Next incomplete lane:** the bootstrap/location and invitation incident is
+closed. Treat the still-dirty patient cash-eligibility RPC and payment UI work
+as its own 1.0.9 contract, migration, verification, and release decision.
