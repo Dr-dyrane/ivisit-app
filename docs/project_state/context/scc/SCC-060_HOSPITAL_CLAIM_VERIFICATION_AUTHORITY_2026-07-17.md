@@ -603,3 +603,41 @@ as its own 1.0.9 contract, migration, verification, and release decision.
   and rating with zero graph residue. A harness cleanup defect that left a
   `$4.50` real-fee probe balance was caught, exactly reversed, and repaired;
   final platform balance and ledger count are both zero.
+
+### Current Demo and Financial-State Inventory (2026-07-19)
+
+- The zero-residue proof above applies to the exact live-test manifest and to
+  real-money receivers. It must not be interpreted as a claim that the shared
+  database contains no historical demo coverage fixtures.
+- A read-only inventory found seven active, expiry-tagged coverage-demo
+  organizations, 46 demo hospitals, 29 available demo ambulances, 29 active
+  responder assignments, 95 demo profiles, and 61 demo doctors. Their expiry
+  tags all currently resolve to 2026-07-26; no demo-hospital emergency request
+  is active. Discovered hospitals remain outside this set and are preserved for
+  future organization claims.
+- The platform wallet is `$0.00` and `wallet_ledger` is empty. Demo patient
+  wallets also total `$0.00`. Five historical demo organization wallets still
+  hold a combined synthetic `$125,000.00`; this is legacy bootstrap residue,
+  not payment settlement, and requires a separate exact ownership/retirement
+  manifest before any write.
+- `insurance_billing` has 220 historical pending rows totaling `$10,635.00`.
+  211 are fully unlinked from request, hospital, and user; the remaining nine
+  are zero-dollar links. They are not valid receivables and must be quarantined
+  from operational totals, then retired only through an exact-ID manifest after
+  the related historical request evidence is classified.
+
+### Exact Historical Finance and Notification Retirement (2026-07-19)
+
+- The product owner authorized the retirement of the identified synthetic
+  residues. A preflight manifest selected exactly five known demo organization
+  wallet IDs at `$25,000.00 USD` each, 220 historical `insurance_billing` IDs,
+  and 29 notification IDs whose recipients were all proven demo profiles.
+- The manifest reset only those five wallet balances to `$0.00`, deleted the
+  220 non-receivable billing artifacts, and deleted the 29 demo notifications.
+  It did not target profiles, Auth users, discovered hospitals, claims,
+  emergency requests, visits, audit/activity records, or ID mappings.
+- The same manifest was immediately re-applied as an idempotency proof:
+  zero wallet updates, zero billing deletions, and zero notification deletions.
+  Post-checks found zero non-zero target-wallet balances and zero manifest
+  billing/notification rows. The 46 active expiry-tagged demo hospitals and 29
+  demo ambulances were preserved unchanged for seamless fallback coverage.
