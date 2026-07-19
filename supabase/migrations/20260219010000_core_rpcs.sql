@@ -5311,6 +5311,123 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Demo-only settlement receiver. It preserves the same payment-to-dispatch
+-- lifecycle handoff as cash approval without posting a fee or touching wallets.
+CREATE OR REPLACE FUNCTION public.approve_demo_cash_payment(
+    p_payment_id UUID,
+    p_request_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_payment RECORD;
+    v_request RECORD;
+BEGIN
+    IF NOT v_is_service_role THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    SELECT p.*
+    INTO v_payment
+    FROM public.payments p
+    WHERE p.id = p_payment_id
+      AND p.emergency_request_id = p_request_id
+    FOR UPDATE;
+
+    IF v_payment.id IS NULL OR COALESCE(v_payment.payment_method, '') <> 'cash' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Demo cash payment/request pair not found');
+    END IF;
+
+    SELECT er.*, h.place_id, h.verification_status, h.features
+    INTO v_request
+    FROM public.emergency_requests er
+    INNER JOIN public.hospitals h ON h.id = er.hospital_id
+    WHERE er.id = p_request_id
+    FOR UPDATE OF er;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Demo emergency request not found');
+    END IF;
+
+    IF NOT (
+        COALESCE(v_request.place_id, '') ILIKE 'demo:%'
+        OR COALESCE(v_request.verification_status, '') ILIKE 'demo%'
+        OR COALESCE(v_request.features, ARRAY[]::TEXT[]) && ARRAY['demo_seed', 'demo_verified', 'demo_complete', 'ivisit_demo']::TEXT[]
+        OR EXISTS (
+            SELECT 1
+            FROM unnest(COALESCE(v_request.features, ARRAY[]::TEXT[])) feature
+            WHERE feature ILIKE 'demo_scope:%' OR feature ILIKE 'demo_owner:%'
+        )
+    ) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Demo settlement is only available for demo hospitals');
+    END IF;
+
+    IF COALESCE(v_payment.status, '') = 'completed'
+       AND COALESCE(v_request.payment_status, '') IN ('paid', 'completed') THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'already_completed', true,
+            'demo', true,
+            'settlement', 'simulated',
+            'payment_id', p_payment_id,
+            'request_id', p_request_id
+        );
+    END IF;
+
+    IF COALESCE(v_payment.status, '') <> 'pending'
+       OR public.canonicalize_emergency_status(v_request.status, v_request.status) <> 'pending_approval'
+       OR COALESCE(v_request.payment_status, 'pending') NOT IN ('pending', 'requires_approval') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Demo cash payment is not awaiting approval');
+    END IF;
+
+    PERFORM public.set_emergency_transition_context(
+        p_source => 'approve_demo_cash_payment',
+        p_reason => 'demo_cash_payment_auto_approved',
+        p_actor_id => NULL,
+        p_actor_role => 'service_role',
+        p_metadata => jsonb_build_object(
+            'payment_id', p_payment_id,
+            'request_id', p_request_id,
+            'demo', true,
+            'settlement', 'simulated'
+        ),
+        p_allow_status_write => true
+    );
+
+    UPDATE public.payments
+    SET status = 'completed',
+        processed_at = NOW(),
+        ivisit_fee_amount = 0,
+        metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+            'source', 'approve_demo_cash_payment',
+            'demo', true,
+            'settlement', 'simulated',
+            'original_fee_amount', COALESCE(v_payment.ivisit_fee_amount, 0),
+            'fee_amount', 0,
+            'fee', 0
+        ),
+        updated_at = NOW()
+    WHERE id = p_payment_id;
+
+    UPDATE public.emergency_requests
+    SET status = 'in_progress',
+        payment_status = 'completed',
+        updated_at = NOW()
+    WHERE id = p_request_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'demo', true,
+        'settlement', 'simulated',
+        'fee_deducted', 0,
+        'new_balance', NULL,
+        'payment_id', p_payment_id,
+        'request_id', p_request_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION public.approve_cash_payment(
     p_payment_id UUID,
     p_request_id UUID
@@ -8369,6 +8486,7 @@ REVOKE ALL ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) FROM
 REVOKE ALL ON FUNCTION public.assign_ambulance_to_emergency(UUID, UUID, INTEGER) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.auto_assign_ambulance(UUID, INTEGER, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.approve_demo_cash_payment(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.approve_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.decline_cash_payment(UUID, UUID) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) FROM PUBLIC, anon;
@@ -8396,6 +8514,7 @@ GRANT EXECUTE ON FUNCTION public.patient_update_emergency_request(UUID, JSONB) T
 GRANT EXECUTE ON FUNCTION public.assign_ambulance_to_emergency(UUID, UUID, INTEGER) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.auto_assign_ambulance(UUID, INTEGER, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.create_emergency_v4(UUID, JSONB, JSONB) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.approve_demo_cash_payment(UUID, UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION public.approve_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.decline_cash_payment(UUID, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_cash_payment_v2(UUID, UUID, NUMERIC, TEXT) TO authenticated, service_role;

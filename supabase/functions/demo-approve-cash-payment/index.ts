@@ -206,7 +206,7 @@ serve(async (req) => {
     }
 
     const { data: approvalResult, error: approvalError } = await adminClient.rpc(
-      "approve_cash_payment",
+      "approve_demo_cash_payment",
       {
         p_payment_id: paymentId,
         p_request_id: requestId,

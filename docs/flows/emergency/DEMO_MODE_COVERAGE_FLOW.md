@@ -29,6 +29,24 @@ Source of truth: Edge Function `bootstrap-demo-ecosystem` (idempotent, phase-bas
 - Demo rows are safe to distinguish from live production rows.
 - Demo mode is user-level via `preferences.demo_mode_enabled`.
 
+## Finance Isolation And Rollback (2026-07-19)
+
+- Demo bootstrap must never create, fund, top up, or require a shared
+  organization or platform wallet. Demo readiness is simulated so the patient
+  flow remains seamless without creating operational money.
+- `demo-approve-cash-payment` is the only patient demo auto-approval entry. It
+  calls the service-role-only `approve_demo_cash_payment` receiver, which
+  verifies demo-hospital provenance and advances the canonical payment/request
+  handoff without posting `wallet_ledger` entries or changing wallet balances.
+- The real `approve_cash_payment` receiver remains unchanged for production
+  cash approval and explicit finance-contract tests. Do not route ordinary
+  demo UI through it.
+- Rollback is one deploy rollback: restore the previous `bootstrap-demo-ecosystem`
+  and `demo-approve-cash-payment` Edge revisions, then restore the previous
+  `approve_demo_cash_payment` definition from Git. No data migration or EAS
+  update is involved. Before any rollback, first disable the demo auto-approval
+  receiver so a partial rollback cannot send demo traffic into real settlement.
+
 ## UX Rules
 
 - Coverage modal shows `Switch To Demo Experience` when live verified coverage is poor/none.

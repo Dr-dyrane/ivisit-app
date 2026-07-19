@@ -359,6 +359,45 @@ async function deleteIds(table, ids) {
   if (error) throw error;
 }
 
+async function reverseAndDeleteFixtureLedger() {
+  const paymentIds = [...state.paymentIds];
+  if (!paymentIds.length) return;
+  const sqlIds = paymentIds.map((id) => `'${id}'::uuid`).join(',');
+  const sql = `
+WITH fixture_effects AS (
+  SELECT wallet_id, SUM(amount) AS amount
+  FROM public.wallet_ledger
+  WHERE reference_id IN (${sqlIds})
+  GROUP BY wallet_id
+), reversed_organization_wallets AS (
+  UPDATE public.organization_wallets wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      updated_at = NOW()
+  FROM fixture_effects fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+), reversed_patient_wallets AS (
+  UPDATE public.patient_wallets wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      updated_at = NOW()
+  FROM fixture_effects fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+), reversed_platform_wallets AS (
+  UPDATE public.ivisit_main_wallet wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      last_updated = NOW()
+  FROM fixture_effects fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+)
+DELETE FROM public.wallet_ledger
+WHERE reference_id IN (${sqlIds});`;
+  const { data, error } = await admin.rpc('exec_sql', { sql });
+  if (error) throw error;
+  if (!data?.success) throw new Error(data?.error || 'Fixture ledger cleanup failed');
+}
+
 async function cleanup() {
   for (const probe of state.channels) {
     await safely('close realtime channel', () => probe.client.removeChannel(probe.channel));
@@ -375,11 +414,7 @@ async function cleanup() {
   await safely('delete fixture admin audit rows', () =>
     deleteIds('admin_audit_log', state.adminAuditIds));
   await safely('delete fixture visits', () => deleteIds('visits', state.visitIds));
-  await safely('delete fixture wallet ledger', async () => {
-    if (!state.paymentIds.size) return;
-    const { error } = await admin.from('wallet_ledger').delete().in('reference_id', [...state.paymentIds]);
-    if (error) throw error;
-  });
+  await safely('reverse and delete fixture wallet ledger', reverseAndDeleteFixtureLedger);
   await safely('delete fixture request graphs', deleteRequestGraphs);
   await safely('delete fixture payments', () => deleteIds('payments', state.paymentIds));
   await safely('delete patient wallets', async () => {

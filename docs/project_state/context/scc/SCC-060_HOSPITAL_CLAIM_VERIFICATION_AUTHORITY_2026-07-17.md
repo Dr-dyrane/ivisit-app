@@ -583,3 +583,23 @@ as its own 1.0.9 contract, migration, verification, and release decision.
   only the verified platform wallet ID at that exact balance and set it to
   `$0.00 USD`; read-back confirmed the result. No ledger, organization,
   hospital, profile, patient, or schema record was changed.
+
+### Seamless Demo Finance Isolation (2026-07-19)
+
+- The ordinary patient demo remains seamless: its cash confirmation advances
+  into dispatch, live tracking, arrival, completion, and one canonical rating.
+  It now uses a service-role-only `approve_demo_cash_payment` receiver that
+  requires demo-hospital provenance and records `demo = true`,
+  `settlement = simulated`; it cannot write a platform/org wallet or ledger.
+- `bootstrap-demo-ecosystem` no longer seeds or tops up either shared wallet.
+  Demo readiness is simulated; real `approve_cash_payment` and the
+  manifest-owned finance-contract harness remain the only fee-settlement lane.
+- The payment-readiness projection recognizes only that explicit simulated
+  demo proof, so an arbitrary completed cash row cannot bypass the dispatch
+  gate. The receiver, real cash approval, and mobile UI are independently
+  reversible; no EAS update is involved.
+- Deployed proof: the manifest-owned live demo lifecycle ran 30 checks through
+  auto-approval, realtime dispatch/ETA, arrival acknowledgement, completion,
+  and rating with zero graph residue. A harness cleanup defect that left a
+  `$4.50` real-fee probe balance was caught, exactly reversed, and repaired;
+  final platform balance and ledger count are both zero.

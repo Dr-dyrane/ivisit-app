@@ -1,8 +1,4 @@
 import {
-  DEMO_ORG_WALLET_TARGET_BALANCE,
-  DEMO_PLATFORM_WALLET_MIN_BALANCE,
-} from "./finance.ts";
-import {
   ROOM_PRICING_BASELINES,
   SERVICE_PRICING_BASELINES,
 } from "./pricing.ts";
@@ -124,10 +120,9 @@ export const getDemoSummary = async (
     servicePricingCount >=
       hospitals.length * SERVICE_PRICING_BASELINES.length &&
     roomPricingCount >= hospitals.length * ROOM_PRICING_BASELINES.length;
-  const financialReady =
-    orgWalletBalance >= DEMO_ORG_WALLET_TARGET_BALANCE &&
-    platformWalletBalance >= DEMO_PLATFORM_WALLET_MIN_BALANCE &&
-    orgFeePercentage > 0;
+  // Demo dispatch has simulated settlement. Never require or create shared
+  // organization/platform funding merely to make the patient demo seamless.
+  const financialReady = orgFeePercentage > 0;
   const dispatchReady = hospitalsReady && staffingReady && financialReady;
   const cleanCycleReady = dispatchReady && pricingReady;
 

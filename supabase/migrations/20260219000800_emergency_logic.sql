@@ -1061,6 +1061,11 @@ BEGIN
                 )
             WHEN 'cash' THEN
                 v_payment.metadata->>'source' = 'approve_cash_payment'
+                OR (
+                    v_payment.metadata->>'source' = 'approve_demo_cash_payment'
+                    AND COALESCE((v_payment.metadata->>'demo')::BOOLEAN, FALSE)
+                    AND v_payment.metadata->>'settlement' = 'simulated'
+                )
             ELSE false
         END;
     END IF;

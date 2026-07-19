@@ -45,6 +45,16 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
    - Approve: RPC `approve_cash_payment` -> request moves forward
    - Decline: RPC `decline_cash_payment` -> request becomes `payment_declined`
 
+### Demo Cash Approval Boundary
+
+The patient demo flow preserves the same visible confirmation and tracking
+handoff but does not settle money. `demo-approve-cash-payment` is restricted to
+demo hospitals and invokes service-role-only `approve_demo_cash_payment`, which
+marks the demo payment/request ready for dispatch with `settlement = simulated`.
+It must never call `approve_cash_payment`, write `wallet_ledger`, or alter an
+organization/platform wallet. Real fee behavior remains covered by the explicit
+manifest-owned finance-contract test lane.
+
 ### Current Emergency Pricing Contract
 
 The server owns the patient price. `resolve_emergency_pricing` is shared by
