@@ -95,17 +95,64 @@ async function removeWalletLedgerEffects(admin, paymentIds) {
   await executeSql(
     admin,
     `
-WITH fixture_platform_credits AS (
+DO $cleanup$
+BEGIN
+  IF EXISTS (
+    WITH fixture_wallets AS (
+      SELECT DISTINCT ledger.wallet_id
+      FROM public.wallet_ledger ledger
+      WHERE ledger.reference_id IN (${ids})
+    ), wallet_ownership AS (
+      SELECT wallet.id AS wallet_id
+      FROM public.organization_wallets wallet
+      INNER JOIN fixture_wallets fixture ON fixture.wallet_id = wallet.id
+      UNION ALL
+      SELECT wallet.id AS wallet_id
+      FROM public.patient_wallets wallet
+      INNER JOIN fixture_wallets fixture ON fixture.wallet_id = wallet.id
+      UNION ALL
+      SELECT wallet.id AS wallet_id
+      FROM public.ivisit_main_wallet wallet
+      INNER JOIN fixture_wallets fixture ON fixture.wallet_id = wallet.id
+    )
+    SELECT 1
+    FROM fixture_wallets fixture
+    LEFT JOIN (
+      SELECT wallet_id, COUNT(*) AS owner_count
+      FROM wallet_ownership
+      GROUP BY wallet_id
+    ) owner ON owner.wallet_id = fixture.wallet_id
+    WHERE COALESCE(owner.owner_count, 0) <> 1
+  ) THEN
+    RAISE EXCEPTION 'Refusing to reverse ledger effects for an unknown or ambiguous wallet';
+  END IF;
+END;
+$cleanup$;
+
+WITH fixture_wallet_effects AS (
   SELECT ledger.wallet_id, SUM(ledger.amount) AS amount
   FROM public.wallet_ledger ledger
-  INNER JOIN public.ivisit_main_wallet wallet ON wallet.id = ledger.wallet_id
   WHERE ledger.reference_id IN (${ids})
   GROUP BY ledger.wallet_id
-), reversed_platform_credits AS (
+), reversed_organization_wallets AS (
+  UPDATE public.organization_wallets wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      updated_at = NOW()
+  FROM fixture_wallet_effects fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+), reversed_patient_wallets AS (
+  UPDATE public.patient_wallets wallet
+  SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
+      updated_at = NOW()
+  FROM fixture_wallet_effects fixture
+  WHERE wallet.id = fixture.wallet_id
+  RETURNING wallet.id
+), reversed_platform_wallets AS (
   UPDATE public.ivisit_main_wallet wallet
   SET balance = COALESCE(wallet.balance, 0) - fixture.amount,
       last_updated = NOW()
-  FROM fixture_platform_credits fixture
+  FROM fixture_wallet_effects fixture
   WHERE wallet.id = fixture.wallet_id
   RETURNING wallet.id
 )
@@ -387,6 +434,7 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
     visitChatRooms,
     requestChatRooms,
     doctorAssignments,
+    doctorSchedules,
     insuranceBilling,
     statusTransitions,
     exactDoctors,
@@ -447,6 +495,13 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
       'id',
       emergencyRequestIds,
       'emergency_request_id'
+    ),
+    selectByForeignIds(
+      admin,
+      'doctor_schedules',
+      'id',
+      manifest.resources.doctorIds,
+      'doctor_id'
     ),
     selectByForeignIds(
       admin,
@@ -528,6 +583,7 @@ async function buildCleanupPlan(admin, manifest, options = {}) {
     adminAuditIds: unique(audit.map((row) => row.id)),
     insuranceBillingIds: unique(insuranceBilling.map((row) => row.id)),
     doctorAssignmentIds: unique(doctorAssignments.map((row) => row.id)),
+    doctorScheduleIds: unique(doctorSchedules.map((row) => row.id)),
     chatRoomIds: unique(chatRooms.map((row) => row.id)),
     visitIds: unique(visitRows.map((row) => row.id)),
     paymentIds: unique(paymentRows.map((row) => row.id)),
@@ -581,6 +637,7 @@ async function applyCleanupPlan(admin, plan, authUserIds = []) {
     'emergency_doctor_assignments',
     plan.doctorAssignmentIds
   );
+  await deleteByIds(admin, 'doctor_schedules', plan.doctorScheduleIds);
   await deleteByIds(admin, 'emergency_chat_rooms', plan.chatRoomIds);
   await deleteByIds(admin, 'visits', plan.visitIds);
   await removeWalletLedgerEffects(admin, plan.walletLedgerReferenceIds);

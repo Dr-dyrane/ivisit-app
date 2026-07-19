@@ -242,6 +242,18 @@ test('browser fixture coordinator is allowlisted, RPC-owned, and manifest-tracke
   assert.doesNotMatch(coordinator, /\.upsert\(/);
 });
 
+test('reverses exact payment ledger effects across every supported wallet owner', () => {
+  const cleanup = fs.readFileSync(
+    path.resolve(__dirname, '..', 'supabase', 'tests', 'scripts', 'cleanup_demo_run.js'),
+    'utf8'
+  );
+  assert.match(cleanup, /Refusing to reverse ledger effects for an unknown or ambiguous wallet/);
+  assert.match(cleanup, /public\.organization_wallets/);
+  assert.match(cleanup, /public\.patient_wallets/);
+  assert.match(cleanup, /public\.ivisit_main_wallet/);
+  assert.match(cleanup, /balance = COALESCE\(wallet\.balance, 0\) - fixture\.amount/);
+});
+
 test('only canonical coverage owners may provision demo coverage', () => {
   const explicitOwner = fs.readFileSync(
     path.resolve(__dirname, '..', 'hooks', 'emergency', 'useEmergencyCoverageMode.js'),
@@ -265,7 +277,7 @@ test('only canonical coverage owners may provision demo coverage', () => {
     /\bisBootstrappingDemo,\s*\n\s*isLoadingHospitals,/,
     'the map fallback effect must not cancel itself when its pending state changes'
   );
-  assert.match(mapFallbackOwner, /activeBootstrapRef\.current === bootstrapToken/);
+  assert.match(mapFallbackOwner, /activeBootstrapRef\.current === bootstrapTask/);
 
   for (const relativePath of [
     ['hooks', 'emergency', 'useHospitalsQuery.ts'],

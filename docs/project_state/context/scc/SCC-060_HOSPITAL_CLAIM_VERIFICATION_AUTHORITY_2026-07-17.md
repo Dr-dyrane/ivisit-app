@@ -539,3 +539,20 @@ publishing an EAS Update.
 **Next incomplete lane:** the bootstrap/location and invitation incident is
 closed. Treat the still-dirty patient cash-eligibility RPC and payment UI work
 as its own 1.0.9 contract, migration, verification, and release decision.
+
+### Historical Test-Payment Retirement (2026-07-19)
+
+- The product owner confirmed that every historical payment record was test
+  data. An exact manifest retired 28 payment rows and the 19 request graphs
+  they funded; it did not select hospitals, organizations, profiles, Auth
+  users, or wallets as cleanup targets.
+- The cleanup removed only dependent evidence owned by those exact request or
+  payment IDs: 22 wallet-ledger entries, 19 visits, 25 status transitions,
+  eight billing rows, 14 notifications, one chat room, and associated ID
+  mappings. Wallet effects were reversed by signed ledger amount and only
+  after proving each affected wallet has exactly one supported owner.
+- The first application reported zero residue. A second application was a
+  no-op, proving repeat safety. Read-back confirmed zero payments, zero
+  captured requests, and zero ledger entries for the retired IDs.
+- This is test-data hygiene and cleanup-tool hardening only; it requires no
+  schema change, production contract change, or EAS update.
