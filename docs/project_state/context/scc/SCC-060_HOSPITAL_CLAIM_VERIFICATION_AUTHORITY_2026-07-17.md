@@ -575,3 +575,11 @@ as its own 1.0.9 contract, migration, verification, and release decision.
 - First apply reported zero residue; second apply was a no-op; the final
   `wallet_ledger` count is zero. This does not reset the platform's seeded
   opening balance, which would be a separate product/accounting decision.
+
+### Synthetic Platform Opening-Balance Correction (2026-07-19)
+
+- The product owner confirmed that the remaining `$100,120.75` platform
+  opening balance was also test money. A one-time guarded correction targeted
+  only the verified platform wallet ID at that exact balance and set it to
+  `$0.00 USD`; read-back confirmed the result. No ledger, organization,
+  hospital, profile, patient, or schema record was changed.
