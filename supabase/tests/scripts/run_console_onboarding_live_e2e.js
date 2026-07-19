@@ -5,7 +5,9 @@ const { createClient } = require('@supabase/supabase-js');
 const {
   createDemoRunManifest,
   defaultManifestPath,
+  loadManifest,
   markCleanupAttempt,
+  registerProtectedFacility,
   registerResource,
   saveManifest,
 } = require('./demo_run_manifest');
@@ -21,6 +23,8 @@ const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABAS
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 const inviteTestMailbox = process.env.IVISIT_TEST_ADMIN_EMAIL;
+const expectedConsoleInviteRedirect =
+  process.env.CONSOLE_INVITE_REDIRECT || 'https://console.ivisit.ng/set-password';
 const expectedProjectRef = process.argv
   .find((arg) => arg.startsWith('--project-ref='))
   ?.slice('--project-ref='.length);
@@ -69,6 +73,14 @@ function buildInviteAlias(email, runId) {
   const local = email.slice(0, at).split('+')[0];
   const domain = email.slice(at + 1);
   return `${local}+console-invite-${runId}@${domain}`;
+}
+
+function buildInviteRedirectProbeAlias(email, runId) {
+  const at = email.lastIndexOf('@');
+  if (at <= 0) throw new Error('The configured invite test mailbox is invalid');
+  const local = email.slice(0, at).split('+')[0];
+  const domain = email.slice(at + 1);
+  return `${local}+console-invite-redirect-${runId}@${domain}`;
 }
 
 async function describeFunctionError(error) {
@@ -564,7 +576,271 @@ async function runClaimVerificationFlow({ runId, state, tinyPng }) {
   );
 }
 
+async function prepareBrowserFixture({ runId, state }) {
+  const runLabel = runId.slice(-8);
+  const claimantPassword = `Claimant!${crypto.randomBytes(12).toString('base64url')}`;
+  const reviewerPassword = `Reviewer!${crypto.randomBytes(12).toString('base64url')}`;
+  const claimantEmail = `console-claimant-browser-${runId}@ivisit-e2e.local`;
+  const reviewerEmail = `console-reviewer-browser-${runId}@ivisit-e2e.local`;
+
+  const claimant = await createAuthenticatedTestClient({
+    email: claimantEmail,
+    password: claimantPassword,
+    fullName: 'Console Browser Claimant',
+    state,
+    onboardingUser: true,
+  });
+  const reviewer = await createAuthenticatedTestClient({
+    email: reviewerEmail,
+    password: reviewerPassword,
+    fullName: 'Console Browser Reviewer',
+    state,
+  });
+
+  const { error: reviewerRoleError } = await admin
+    .from('profiles')
+    .update({ role: 'admin', onboarding_status: 'complete' })
+    .eq('id', reviewer.userId);
+  if (reviewerRoleError) throw reviewerRoleError;
+
+  const { data: candidates, error: candidateError } = await admin
+    .from('hospitals')
+    .select('id,name,organization_id,verified,verification_status,dispatch_eligible,status,provider_source,place_id,features')
+    .is('organization_id', null)
+    .order('created_at', { ascending: true })
+    .limit(250);
+  if (candidateError) throw candidateError;
+
+  const isDisposable = (facility) => {
+    const placeId = String(facility.place_id || '').toLowerCase();
+    const providerSource = String(facility.provider_source || '').toLowerCase();
+    const features = Array.isArray(facility.features)
+      ? facility.features.map((feature) => String(feature || '').toLowerCase())
+      : [];
+    return (
+      placeId.startsWith('demo:')
+      || placeId.startsWith('e2e:')
+      || providerSource === 'demo_bootstrap'
+      || features.some((feature) => (
+        feature === 'ivisit_demo'
+        || feature === 'demo_seed'
+        || feature.startsWith('demo_owner:')
+        || feature.startsWith('demo_scope:')
+        || feature.startsWith('demo_expires_at:')
+      ))
+    );
+  };
+
+  let facility = null;
+  for (const candidate of candidates || []) {
+    if (!candidate.name || isDisposable(candidate)) continue;
+    const { data, error } = await claimant.client.functions.invoke(
+      'search-onboarding-facilities',
+      { body: { query: candidate.name } }
+    );
+    if (error) continue;
+    const visible = (Array.isArray(data?.data) ? data.data : [])
+      .find((result) => result.id === candidate.id && result.claimable === true);
+    if (visible) {
+      facility = candidate;
+      break;
+    }
+  }
+  assert(facility, 'No protected claimable discovered facility was available for browser rehearsal');
+
+  registerProtectedFacility(state.manifest, facility);
+  persistManifest(state);
+
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64'
+  );
+  const evidencePath = `onboarding/${claimant.userId}/${crypto.randomUUID()}.png`;
+  trackResource(state, 'storagePaths', 'storagePaths', evidencePath);
+  const { error: uploadError } = await claimant.client.storage
+    .from('documents')
+    .upload(evidencePath, tinyPng, { contentType: 'image/png', upsert: false });
+  if (uploadError) throw uploadError;
+
+  const organizationName = `[DEMO ${runLabel}] Console Claim Organization`;
+  const { data: provisioned, error: provisionError } = await claimant.client.rpc(
+    'provision_console_organization',
+    {
+      p_payload: {
+        organizationType: 'hospital',
+        organizationName,
+        registrationNumber: `BROWSER-CLAIM-${runId}`,
+        contactEmail: claimantEmail,
+        phone: '+1 555 0182',
+        address: facility.address || '600 Browser Claim Avenue',
+        city: facility.city || 'Banning',
+        state: facility.state || 'California',
+        termsAccepted: true,
+        existingFacilityId: facility.id,
+        claimNote: 'Authorized browser rehearsal for organization claiming.',
+        documents: [{
+          storagePath: evidencePath,
+          documentType: 'registration',
+          originalName: 'browser-claim-registration.png',
+          mimeType: 'image/png',
+          sizeBytes: tinyPng.length,
+        }],
+      },
+    }
+  );
+  if (provisionError) throw provisionError;
+  assert(provisioned?.claim?.status === 'pending', 'Browser fixture claim was not pending');
+  trackResource(state, 'organizationIds', 'organizationIds', provisioned.organization.id);
+  registerResource(state.manifest, 'claimIds', provisioned.claim.id);
+
+  const { data: evidence, error: evidenceError } = await admin
+    .from('organization_verification_documents')
+    .select('id')
+    .eq('organization_id', provisioned.organization.id)
+    .eq('facility_claim_id', provisioned.claim.id)
+    .eq('storage_path', evidencePath)
+    .single();
+  if (evidenceError) throw evidenceError;
+  registerResource(state.manifest, 'evidenceIds', evidence.id);
+  persistManifest(state);
+
+  console.log(JSON.stringify({
+    mode: 'browser_fixture_ready',
+    runId,
+    runLabel,
+    manifestPath: state.manifestPath,
+    claimant: {
+      email: claimantEmail,
+      password: claimantPassword,
+    },
+    reviewer: {
+      email: reviewerEmail,
+      password: reviewerPassword,
+    },
+    facility: {
+      id: facility.id,
+      name: facility.name,
+    },
+    organizationId: provisioned.organization.id,
+    claimId: provisioned.claim.id,
+    evidenceId: evidence.id,
+  }, null, 2));
+}
+
+async function retryBrowserFixture({ manifestPath, claimantPassword }) {
+  const manifest = loadManifest(manifestPath);
+  assert(manifest.projectRef === projectRef, 'Browser retry manifest targets another project');
+  const runId = manifest.runId;
+  const claimantEmail = `console-claimant-browser-${runId}@ivisit-e2e.local`;
+  const organizationId = manifest.resources.organizationIds[0];
+  const claimId = manifest.resources.claimIds[0];
+  assert(organizationId && claimId, 'Browser retry manifest is missing organization or claim ownership');
+
+  const { data: signIn, error: signInError } = await publicClient.auth.signInWithPassword({
+    email: claimantEmail,
+    password: claimantPassword,
+  });
+  if (signInError) throw signInError;
+  const claimant = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${signIn.session.access_token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const [{ data: organization, error: organizationError }, { data: claim, error: claimError }] =
+    await Promise.all([
+      claimant
+        .from('organizations')
+        .select('name,organization_type,registration_number,contact_email,contact_phone,address,city,state')
+        .eq('id', organizationId)
+        .single(),
+      claimant
+        .from('organization_facility_claims')
+        .select('id,facility_id,claim_note')
+        .eq('id', claimId)
+        .single(),
+    ]);
+  if (organizationError) throw organizationError;
+  if (claimError) throw claimError;
+
+  const correctedPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64'
+  );
+  const evidencePath = `onboarding/${signIn.user.id}/${crypto.randomUUID()}.png`;
+  registerResource(manifest, 'storagePaths', evidencePath);
+  saveManifest(manifest, manifestPath);
+  const { error: uploadError } = await claimant.storage
+    .from('documents')
+    .upload(evidencePath, correctedPng, { contentType: 'image/png', upsert: false });
+  if (uploadError) throw uploadError;
+
+  const { data: requeued, error: retryError } = await claimant.rpc(
+    'provision_console_organization',
+    {
+      p_payload: {
+        organizationType: organization.organization_type,
+        organizationName: organization.name,
+        registrationNumber: organization.registration_number,
+        contactEmail: organization.contact_email || claimantEmail,
+        phone: organization.contact_phone,
+        address: organization.address,
+        city: organization.city,
+        state: organization.state,
+        termsAccepted: true,
+        existingFacilityId: claim.facility_id,
+        claimNote: claim.claim_note,
+        documents: [{
+          storagePath: evidencePath,
+          documentType: 'registration',
+          originalName: 'browser-claim-registration-current.png',
+          mimeType: 'image/png',
+          sizeBytes: correctedPng.length,
+        }],
+      },
+    }
+  );
+  if (retryError) throw retryError;
+  assert(requeued?.organization?.id === organizationId, 'Browser correction duplicated the organization');
+  assert(requeued?.claim?.id === claimId, 'Browser correction duplicated the facility claim');
+  assert(requeued?.claim?.status === 'pending', 'Browser correction did not requeue the claim');
+
+  const { data: evidence, error: evidenceError } = await admin
+    .from('organization_verification_documents')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('facility_claim_id', claimId)
+    .eq('storage_path', evidencePath)
+    .single();
+  if (evidenceError) throw evidenceError;
+  registerResource(manifest, 'evidenceIds', evidence.id);
+  saveManifest(manifest, manifestPath);
+
+  console.log(JSON.stringify({
+    mode: 'browser_fixture_requeued',
+    runId,
+    organizationId,
+    claimId,
+    evidenceId: evidence.id,
+  }, null, 2));
+}
+
 async function main() {
+  const prepareBrowser = process.argv.includes('--prepare-browser-fixture');
+  const retryManifestPath = process.argv
+    .find((arg) => arg.startsWith('--retry-browser-manifest='))
+    ?.slice('--retry-browser-manifest='.length);
+  const claimantPassword = process.argv
+    .find((arg) => arg.startsWith('--claimant-password='))
+    ?.slice('--claimant-password='.length);
+  if (retryManifestPath) {
+    assert(claimantPassword, 'Pass --claimant-password for the exact browser fixture');
+    await retryBrowserFixture({
+      manifestPath: path.resolve(retryManifestPath),
+      claimantPassword,
+    });
+    return;
+  }
+
   const runId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const runLabel = runId.slice(-8);
   const password = `Contract!${crypto.randomBytes(12).toString('base64url')}`;
@@ -598,6 +874,11 @@ async function main() {
   console.log(`[console-onboarding-live-e2e] target=${projectRef} run=${runId}`);
 
   try {
+    if (prepareBrowser) {
+      await prepareBrowserFixture({ runId, state });
+      return;
+    }
+
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
       password,
@@ -816,6 +1097,49 @@ async function main() {
     assert(invitation?.delivery?.emailQueued === true, 'Invitation delivery was not queued');
     assert(invitation?.delivery?.roleGranted === true, 'Invitation role was not assigned');
     assert(invitation?.delivery?.organizationLinked === true, 'Invitation organization was not linked');
+    assert(
+      invitation?.delivery?.redirectTarget === expectedConsoleInviteRedirect,
+      `Invitation targeted ${invitation?.delivery?.redirectTarget || 'no receiver'} instead of ${expectedConsoleInviteRedirect}`
+    );
+
+    const redirectProbeEmail = buildInviteRedirectProbeAlias(inviteTestMailbox, runId);
+    registerResource(manifest, 'invitedEmails', redirectProbeEmail);
+    persistManifest(state);
+    const { data: redirectProbe, error: redirectProbeError } = await admin.auth.admin.generateLink({
+      type: 'invite',
+      email: redirectProbeEmail,
+      options: {
+        redirectTo: expectedConsoleInviteRedirect,
+        data: { invitation_surface: 'console' },
+      },
+    });
+    if (redirectProbeError || !redirectProbe?.properties?.action_link || !redirectProbe?.user?.id) {
+      throw redirectProbeError || new Error('Auth redirect probe link was not generated');
+    }
+    state.invitedUserIds.add(redirectProbe.user.id);
+    registerResource(manifest, 'authUserIds', redirectProbe.user.id);
+    persistManifest(state);
+
+    const redirectProbeResponse = await fetch(redirectProbe.properties.action_link, {
+      method: 'GET',
+      redirect: 'manual',
+    });
+    const redirectLocation = redirectProbeResponse.headers.get('location');
+    assert(
+      redirectProbeResponse.status >= 300 && redirectProbeResponse.status < 400 && redirectLocation,
+      'Auth invite verification did not return a redirect'
+    );
+    const verifiedRedirect = new URL(redirectLocation);
+    const expectedRedirect = new URL(expectedConsoleInviteRedirect);
+    assert(
+      verifiedRedirect.origin === expectedRedirect.origin
+        && verifiedRedirect.pathname === expectedRedirect.pathname,
+      'Auth invite verification escaped the Console password receiver'
+    );
+    assert(
+      verifiedRedirect.protocol !== 'ivisit:',
+      'Auth invite verification fell back to the patient-app callback'
+    );
 
     const { data: invitedProfile, error: invitedProfileError } = await admin
       .from('profiles')

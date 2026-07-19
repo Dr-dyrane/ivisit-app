@@ -14,6 +14,24 @@ const respond = (body: Record<string, unknown>, status: number) => new Response(
 
 const ALLOWED_ROLES = new Set(['provider', 'viewer', 'dispatcher', 'org_admin', 'sponsor'])
 const ORG_ADMIN_ROLES = new Set(['provider', 'viewer', 'dispatcher'])
+const CONSOLE_INVITE_PATH = '/set-password'
+
+const resolveConsoleInviteUrl = () => {
+  const configuredUrl = String(Deno.env.get('CONSOLE_URL') || '').trim()
+  if (!configuredUrl) return null
+
+  try {
+    const parsed = new URL(configuredUrl)
+    const localDevelopmentHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+    const validProtocol = parsed.protocol === 'https:' || (localDevelopmentHost && parsed.protocol === 'http:')
+    const rootOnly = parsed.pathname === '/' && !parsed.search && !parsed.hash
+
+    if (!validProtocol || !rootOnly || parsed.username || parsed.password) return null
+    return `${parsed.origin}${CONSOLE_INVITE_PATH}`
+  } catch {
+    return null
+  }
+}
 
 serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -25,7 +43,13 @@ serve(async (request) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-  const consoleUrl = (Deno.env.get('CONSOLE_URL') || 'https://console.ivisit.ng').replace(/\/$/, '')
+  // PULLBACK NOTE: Console invitation product boundary, July 2026.
+  // OLD: A missing secret silently fell back to a URL that shared Auth could replace with the patient-app Site URL.
+  // NEW: Fail closed unless an explicit Console origin produces the one allowed password receiver.
+  const consoleInviteUrl = resolveConsoleInviteUrl()
+  if (!consoleInviteUrl) {
+    return respond({ error: 'Invitation delivery is not configured.' }, 503)
+  }
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
@@ -86,8 +110,11 @@ serve(async (request) => {
   if (organizationError || !organization?.is_active) return respond({ error: 'Organization is invalid.' }, 400)
 
   const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${consoleUrl}/set-password`,
-    data: { invited_by: userData.user.id },
+    redirectTo: consoleInviteUrl,
+    data: {
+      invited_by: userData.user.id,
+      invitation_surface: 'console',
+    },
   })
 
   if (inviteError || !invitation.user?.id) {
@@ -111,6 +138,11 @@ serve(async (request) => {
 
   return respond({
     success: true,
-    delivery: { emailQueued: true, roleGranted: true, organizationLinked: true },
+    delivery: {
+      emailQueued: true,
+      roleGranted: true,
+      organizationLinked: true,
+      redirectTarget: consoleInviteUrl,
+    },
   }, 200)
 })

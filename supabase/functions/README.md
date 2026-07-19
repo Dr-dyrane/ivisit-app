@@ -140,6 +140,7 @@ Sends a Console invitation and assigns a proved organization-scoped role through
 - Authentication: platform admin or organization admin required
 - Organization admins: limited to their own organization and provider, viewer, or dispatcher roles
 - Success reflection: email queued, role granted, and organization linked must all be true
+- Redirect boundary: requires `CONSOLE_URL` and targets only `{CONSOLE_URL}/set-password`; it never falls back to the patient-app Auth callback
 
 ## Webhook Functions
 
@@ -169,6 +170,7 @@ supabase functions deploy invite-user
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+CONSOLE_URL=https://console.ivisit.ng
 
 ANTHROPIC_API_KEY=your_anthropic_api_key
 ANTHROPIC_MODEL=your_anthropic_model

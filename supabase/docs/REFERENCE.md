@@ -155,6 +155,7 @@ Source of truth: `stamp_entity_display_id()` trigger body in [`supabase/migratio
 |---|---|---|
 | `get_entity_id(display_id)` | Identity | Resolves human-readable ID to UUID |
 | `create_emergency_v4(...)` | Emergency | Atomic creation of request + payment intent |
+| `check_patient_cash_eligibility(...)` | Emergency | Patient-safe boolean cash preflight from canonical pricing; never exposes organization wallet or fee details |
 | `nearby_hospitals(lat, lng)` | Core RPCs | PostGIS-powered discovery |
 | `nearby_ambulances(lat, lng)` | Core RPCs | PostGIS-powered ambulance lookup |
 | `get_console_identity_projection()` | Core RPCs | Returns backend-confirmed Console role, organization, complete `facilityIds` scope, onboarding, and wallet reflection |
@@ -176,7 +177,7 @@ Source of truth: `stamp_entity_display_id()` trigger body in [`supabase/migratio
 - Public onboarding can create a new canonical organization or submit a reviewed claim for an existing unowned facility through `provision_console_organization`. Claim approval links ownership only; evidence, organization, and facility verification remain separate platform-admin decisions.
 - Facilities already linked to an organization are never transferred by the onboarding claim receiver.
 - Onboarding evidence is private in `documents/onboarding/{auth.uid()}/*` and becomes immutable to the submitter after the provisioning RPC links it to `organization_verification_documents`.
-- Console invitation email is sent by the `invite-user` Edge Function. The service-only invitation RPC validates the actor, role, organization scope, invited Auth user, and reflected profile assignment.
+- Console invitation email is sent by the `invite-user` Edge Function. The function requires an explicit `CONSOLE_URL`, targets only `{CONSOLE_URL}/set-password`, and labels Auth metadata with `invitation_surface = console`; it must never fall back to the patient-app Auth callback. The service-only invitation RPC validates the actor, role, organization scope, invited Auth user, and reflected profile assignment.
 - The retired `check-user` endpoint returns HTTP 410 and must not be restored as an account-existence or password-state oracle.
 
 ---
