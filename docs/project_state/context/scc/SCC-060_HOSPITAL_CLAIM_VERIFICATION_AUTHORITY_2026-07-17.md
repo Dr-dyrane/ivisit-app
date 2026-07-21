@@ -691,3 +691,31 @@ as its own 1.0.9 contract, migration, verification, and release decision.
 tests and the production build, commit and push only that coherent pack, deploy
 Console, then repeat the adverse-decision claimant redirect on the deployed
 bundle. No schema, migration, patient contract, or EAS update is involved.
+
+### Day 5 closure: deployed correction recovery (2026-07-21)
+
+- Console commit `cca63dc1` adopted the correction recovery, owner-bound draft,
+  exact queue-count, and shared review-gate pack on `main`. The Git-linked
+  Vercel deployment completed successfully.
+- Focused verification passed 17 onboarding tests and 40 verification tests;
+  the production build also passed encoding, mojibake, data-contract,
+  UI-hardgate, mobile-grammar, and optimized compilation checks.
+- The final deployed rehearsal used exact manifest
+  `1784658135711-4ae9a5b1`. It established that claim-level
+  `changes_requested` and organization-level `changes_requested` are distinct
+  contracts: a claim correction requeues ownership evidence, while the
+  organization decision is what places the account back into onboarding.
+- After the reviewer requested organization changes, the already-authenticated
+  claimant reloaded directly into `Submit requested changes` on `/onboarding`.
+  The correction view restored the same organization and claim identifiers and
+  required replacement evidence; it did not create a parallel owner.
+- The protected discovered hospital was restored to its exact captured snapshot
+  before cleanup. The owned fixture graph was removed, and a second preview
+  reported zero resources in every disposable class while retaining the
+  protected hospital for future claiming.
+
+**Next incomplete lane:** none for this Day 5 payment-to-tracking and hospital
+claim/verification gate. The separate short-lived responder telemetry limitation
+in the pre-created `ready` browser fixture remains a test-harness improvement;
+it is not evidence of a production lifecycle regression. No EAS update is
+required for this Console-only closure.
