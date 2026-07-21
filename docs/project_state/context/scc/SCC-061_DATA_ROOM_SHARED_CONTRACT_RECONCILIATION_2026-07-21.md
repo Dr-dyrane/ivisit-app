@@ -43,10 +43,15 @@ App EAS update was published because the patient runtime is unchanged.
   claim, realtime approval, same-user replay, reconnect, revocation, and
   approved/revoked notification idempotency, followed by double cleanup and
   zero exact-run residue;
-- the canonical `https://docs.ivisit.ng` shell rendered without browser errors,
-  and its Google OAuth handoff preserved
-  `https://docs.ivisit.ng/auth/callback?next=...` through the hosted Supabase
-  callback rather than falling back to the patient deep link.
+- the canonical `https://docs.ivisit.ng` shell initially rendered cleanly, but a
+  completed Google OAuth handoff later proved that the query-bearing callback
+  was not covered by the hosted redirect allowlist and fell back to the patient
+  `ivisit://` Site URL;
+- the hosted allowlist was therefore extended narrowly with
+  `https://docs.ivisit.ng/auth/callback*`, preserving the patient Site URL while
+  allowing the Data Room's internal `next` return path;
+- the web manifest's nonexistent `/logo.svg` entry and false 512x512 declaration
+  were removed in favor of the existing 218x218 PNG asset.
 
 ## Read-only live proof
 
