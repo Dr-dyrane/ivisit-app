@@ -50,8 +50,9 @@ App EAS update was published because the patient runtime is unchanged.
 - the hosted allowlist was therefore extended narrowly with
   `https://docs.ivisit.ng/auth/callback*`, preserving the patient Site URL while
   allowing the Data Room's internal `next` return path;
-- the web manifest's nonexistent `/logo.svg` entry and false 512x512 declaration
-  were removed in favor of the existing 218x218 PNG asset.
+- the web manifest's undeployed `/logo.svg` and `/logo.png` entries and false
+  512x512 declaration were removed in favor of the tracked, deployed 218x218
+  Next `/icon.png` asset.
 
 ## Read-only live proof
 
