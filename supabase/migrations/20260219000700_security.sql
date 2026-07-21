@@ -1036,18 +1036,10 @@ GRANT SELECT (
 ) ON TABLE public.documents TO authenticated;
 
 REVOKE ALL ON TABLE public.access_requests FROM PUBLIC, anon, authenticated;
-GRANT SELECT (
-    id,
-    user_id,
-    document_id,
-    status,
-    nda_signed_at,
-    signer_name,
-    signer_entity,
-    signer_title,
-    created_at,
-    updated_at
-) ON TABLE public.access_requests TO authenticated;
+-- Realtime Postgres Changes requires table-level SELECT. Every column in this
+-- table belongs to the user's own access projection, and RLS remains the row
+-- boundary; documents and invite secrets remain column/table denied above.
+GRANT SELECT ON TABLE public.access_requests TO authenticated;
 
 REVOKE ALL ON TABLE public.document_invites FROM PUBLIC, anon, authenticated;
 -- END DATA_ROOM_ACCESS_RLS

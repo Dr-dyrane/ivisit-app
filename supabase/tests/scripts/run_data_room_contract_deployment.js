@@ -190,6 +190,9 @@ ${body}
        OR has_table_privilege('authenticated', 'public.access_requests', 'DELETE') THEN
         RAISE EXCEPTION 'Direct access-request writes remain available';
     END IF;
+    IF NOT has_table_privilege('authenticated', 'public.access_requests', 'SELECT') THEN
+        RAISE EXCEPTION 'Access-request realtime read grant is missing';
+    END IF;
     IF has_table_privilege('authenticated', 'public.document_invites', 'SELECT')
        OR has_table_privilege('anon', 'public.document_invites', 'SELECT') THEN
         RAISE EXCEPTION 'Invite enumeration remains available';

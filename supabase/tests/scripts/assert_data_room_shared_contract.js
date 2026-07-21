@@ -70,6 +70,7 @@ function run() {
       'GRANT SELECT (',
       ') ON TABLE public.documents TO authenticated;',
       'REVOKE ALL ON TABLE public.access_requests FROM PUBLIC, anon, authenticated;',
+      'GRANT SELECT ON TABLE public.access_requests TO authenticated;',
       'REVOKE ALL ON TABLE public.document_invites FROM PUBLIC, anon, authenticated;',
     ]) &&
       !/GRANT\s+SELECT\s*\([\s\S]*?\bcontent\b[\s\S]*?\)\s+ON\s+TABLE\s+public\.documents/i.test(

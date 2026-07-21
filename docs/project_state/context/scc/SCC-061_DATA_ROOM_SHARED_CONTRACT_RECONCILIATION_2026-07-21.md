@@ -23,7 +23,7 @@ App EAS update was published because the patient runtime is unchanged.
 - Vercel reported the exact private Data Room commit `fdaaee8` successful on the
   production branch before database privileges were narrowed.
 - the final atomic cutover extracted 41 statements only from the four canonical
-  Data Room marker blocks; source digest `d022db6151bec513`;
+  Data Room marker blocks; source digest `2352b81439742b57`;
 - production row counts remained 22 documents, 8 access rows, and 0 invites
   before and after deployment;
 - anonymous document-content and invite reads are denied;
@@ -36,7 +36,17 @@ App EAS update was published because the patient runtime is unchanged.
 - replay initially exposed a missing drop for the canonical access-read policy;
   the failed replay rolled back, the mirror was repaired, and two subsequent
   full applies passed with unchanged row counts;
-- the signed-out production shell rendered without browser warnings or errors.
+- authenticated lifecycle runs then exposed that Realtime Postgres Changes
+  requires table-level `SELECT`; `access_requests` now grants that read while
+  RLS remains the row boundary and documents/invites remain denied;
+- two consecutive exact-run lifecycle passes proved email mismatch, expiry,
+  claim, realtime approval, same-user replay, reconnect, revocation, and
+  approved/revoked notification idempotency, followed by double cleanup and
+  zero exact-run residue;
+- the canonical `https://docs.ivisit.ng` shell rendered without browser errors,
+  and its Google OAuth handoff preserved
+  `https://docs.ivisit.ng/auth/callback?next=...` through the hosted Supabase
+  callback rather than falling back to the patient deep link.
 
 ## Read-only live proof
 
@@ -109,9 +119,10 @@ not create competing versions.
 5. Synchronized the generated App and Console function contracts and verified
    the Data Room build against the resulting contract.
 6. Deployed the matching Data Room build before narrowing database privileges.
-7. Remaining release gate: run admin, viewer, sponsor, lawyer, CTO, developer, pending, approved,
-   revoked, email-mismatch, expiry, replay, reconnect, notification-idempotency,
-   export, and content-hash-drift lanes on desktop and mobile.
+7. Authenticated receiver lanes for pending, approved, revoked, email mismatch,
+   expiry, replay, reconnect, and notification idempotency are complete.
+   Remaining release gate: signed-in admin/viewer/sponsor/lawyer/CTO/developer
+   visual acceptance plus export and content-hash-drift checks on desktop/mobile.
 
 No temporary migration-history row was created; the deployment harness invoked
 the canonical pillar blocks atomically through the service-only SQL receiver.
