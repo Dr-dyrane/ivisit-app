@@ -641,3 +641,53 @@ as its own 1.0.9 contract, migration, verification, and release decision.
   Post-checks found zero non-zero target-wallet balances and zero manifest
   billing/notification rows. The 46 active expiry-tagged demo hospitals and 29
   demo ambulances were preserved unchanged for seamless fallback coverage.
+
+## Day 5 Rendered Lifecycle And Onboarding Repeat (2026-07-21)
+
+- The manifest gate found 34 exact-run manifests. None was expired and none
+  used `retire_then_prune`, so no expiry-driven cleanup was applied before the
+  run.
+- The self-cleaning live emergency suite passed all 30 checks, including demo
+  cash approval, two-session realtime convergence, arrival acknowledgement,
+  completion ordering, one-rating idempotency, retry recovery, and zero
+  residue.
+- Rendered run `flow-matrix-1784656361449-7313241e` proved the mounted App at
+  desktop and 390 x 844 mobile-web sizes. Responder acceptance changed
+  `Assigning` to `En Route` without reload; the pill, sheet, responder, ETA,
+  and route agreed. Reload restored the same lifecycle graph. Arrival changed
+  the pill and sheet immediately, rendered `Confirm Arrival`, and the patient
+  action showed pending feedback before reflecting `Arrival confirmed`.
+- Repeating arrival acknowledgement returned `already_acknowledged`.
+  Completion rendered exactly one transport-rating dialog. One five-star
+  submission produced `rating = 5` and one `rated_at`; reload rendered zero
+  rating dialogs. Exact cleanup removed the complete owned graph and the
+  second preview reported zero resources in every class.
+- The live Console contract run `1784656636220-d40cb757` passed Auth, private
+  evidence, invitation redirect, organization provisioning, facility claim,
+  review ordering, App eligibility, failure recovery, and double cleanup.
+- Deployed Console browser run `1784656693733-3bda49c3` used protected
+  discovered facility `8bc06c7d-a47e-489a-8ec8-a0e0cdac60b6`. The reviewer
+  accepted evidence, requested ownership changes, accepted replacement
+  evidence, then approved ownership, organization, and facility in order.
+  Needs-review changed from 962 to 961, Approved from 38 to 39, and the exact
+  facility became visible through `nearby_hospitals` only after the final gate.
+- The claimant correction receiver worked and requeued the same organization
+  and claim. The deployed frontend did not route the claimant into the
+  correction wizard; direct `/onboarding` redirected to Today. Git history and
+  the worktree showed the July 18 correction UI, owner-bound draft storage,
+  safe correction projection, and exact queue-count repair were preserved
+  locally but not adopted into the deployed bundle. Protected-route onboarding
+  detection also lacked the `changes_requested` organization state.
+- Cleanup correctly stopped when the protected facility differed from its
+  captured snapshot. After an exact current-state assertion, the five captured
+  eligibility/ownership fields were restored to the pre-run snapshot. Exact
+  cleanup then removed two Auth users, two profiles, one organization, one
+  claim, two evidence rows, two Storage objects, the owned wallet graph, and
+  mappings. The second preview was all zero while the discovered hospital
+  remained present, unowned, pending, and non-dispatch-eligible.
+
+**Next incomplete lane:** adopt the preserved Console correction pack plus the
+`changes_requested` protected-route guard, run focused onboarding/verification
+tests and the production build, commit and push only that coherent pack, deploy
+Console, then repeat the adverse-decision claimant redirect on the deployed
+bundle. No schema, migration, patient contract, or EAS update is involved.
