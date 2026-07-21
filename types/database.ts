@@ -3641,6 +3641,10 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      claim_document_invite: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       claim_stripe_webhook_event: {
         Args: {
           p_event_type: string

@@ -1,6 +1,6 @@
 # SCC-061: Data Room Shared Contract Reconciliation
 
-Status: source implemented; production cutover pending separate review
+Status: production contract cut over; signed-in role/content release matrix pending
 
 Owner: App Supabase pillars with private Data Room receiver adoption
 
@@ -14,9 +14,29 @@ the authority for document revision, factual date, lifecycle, external sharing,
 export, and content hash.
 
 This pass restores the deployed Data Room tables to their canonical pillar
-owners and implements a fail-closed receiver boundary. It does not apply SQL to
-production, regenerate post-cutover types, deploy the Data Room, or publish an
-App EAS update.
+owners and implements a fail-closed receiver boundary. The matching private Data
+Room build and the reviewed App-owned contract were deployed on 2026-07-21. No
+App EAS update was published because the patient runtime is unchanged.
+
+## Production cutover evidence
+
+- Vercel reported the exact private Data Room commit `fdaaee8` successful on the
+  production branch before database privileges were narrowed.
+- the final atomic cutover extracted 41 statements only from the four canonical
+  Data Room marker blocks; source digest `d022db6151bec513`;
+- production row counts remained 22 documents, 8 access rows, and 0 invites
+  before and after deployment;
+- anonymous document-content and invite reads are denied;
+- authenticated document-content, `file_path`, and invite reads are denied;
+- authenticated direct self-approval insert is denied;
+- `claim_document_invite(TEXT)` is live and rejects an unknown token without
+  exposing invite truth;
+- the exact disposable authentication fixture was removed with zero access-row
+  residue;
+- replay initially exposed a missing drop for the canonical access-read policy;
+  the failed replay rolled back, the mirror was repaired, and two subsequent
+  full applies passed with unchanged row counts;
+- the signed-out production shell rendered without browser warnings or errors.
 
 ## Read-only live proof
 
@@ -78,25 +98,27 @@ not create competing versions.
   than `.maybeSingle()`.
 - invite API responses distinguish invite creation from email-delivery truth.
 
-## Cutover sequence
+## Completed cutover sequence
 
-1. Review the exact pillar delta and rollback SQL.
-2. Emit one narrow temporary forward deployment from the approved pillar delta.
-3. Apply column grants/RLS and receiver-compatible SQL atomically; refresh the
+1. Reviewed the exact pillar delta and retained a fail-closed containment path.
+2. Generated one narrow deployment directly from the approved pillar markers.
+3. Applied column grants/RLS and receiver-compatible SQL atomically; refreshed the
    PostgREST schema cache.
-4. Prove unauthenticated/authenticated content denial, self-approval denial, and
+4. Proved unauthenticated/authenticated content denial, self-approval denial, and
    invite non-enumeration before publishing any document.
-5. Regenerate App types, sync the canonical pillars/types to Console, and verify
+5. Synchronized the generated App and Console function contracts and verified
    the Data Room build against the resulting contract.
-6. Deploy the matching Data Room build.
-7. Run admin, viewer, sponsor, lawyer, CTO, developer, pending, approved,
+6. Deployed the matching Data Room build before narrowing database privileges.
+7. Remaining release gate: run admin, viewer, sponsor, lawyer, CTO, developer, pending, approved,
    revoked, email-mismatch, expiry, replay, reconnect, notification-idempotency,
    export, and content-hash-drift lanes on desktop and mobile.
-8. Remove the temporary deployment file and repair its migration-history row
-   only after live proof passes.
+
+No temporary migration-history row was created; the deployment harness invoked
+the canonical pillar blocks atomically through the service-only SQL receiver.
 
 ## Release decision
 
-Production Data Room external access is No-Go until the cutover above is
-completed. The App patient experience is unchanged, so this work does not
+The three live authorization bypasses are closed. External document publication
+remains No-Go until human content/legal approvals and the signed-in role matrix
+are complete. The App patient experience is unchanged, so this work does not
 require an EAS update.

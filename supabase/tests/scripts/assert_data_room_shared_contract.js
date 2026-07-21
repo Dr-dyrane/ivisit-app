@@ -82,6 +82,7 @@ function run() {
     'direct self-approval and invite enumeration policies are removed',
     includesAll(source.security, [
       'DROP POLICY IF EXISTS "Users can create their own requests"',
+      'DROP POLICY IF EXISTS "Users read own access requests"',
       'DROP POLICY IF EXISTS "Anyone can view invites by token"',
       'DROP POLICY IF EXISTS "Authenticated users can claim invites"',
     ]) && !source.security.includes('CREATE POLICY "Users can create their own requests"'),
@@ -117,9 +118,14 @@ function run() {
   );
 
   check(
-    'generated live types retain all three Data Room tables',
+    'generated live types retain Data Room tables and invite receiver',
     [source.types, source.consoleTypes].every((types) =>
-      includesAll(types, ['access_requests: {', 'document_invites: {', 'documents: {'])
+      includesAll(types, [
+        'access_requests: {',
+        'document_invites: {',
+        'documents: {',
+        'claim_document_invite: {',
+      ])
     ),
     `${sources.types}; ${sources.consoleTypes}`
   );

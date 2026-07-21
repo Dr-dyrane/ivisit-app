@@ -1012,6 +1012,7 @@ DROP POLICY IF EXISTS "Users can view their own requests" ON public.access_reque
 DROP POLICY IF EXISTS "Users can create their own requests" ON public.access_requests;
 DROP POLICY IF EXISTS "Admin can view all access requests" ON public.access_requests;
 DROP POLICY IF EXISTS "Admin can update access requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Users read own access requests" ON public.access_requests;
 CREATE POLICY "Users read own access requests"
 ON public.access_requests FOR SELECT
 TO authenticated
