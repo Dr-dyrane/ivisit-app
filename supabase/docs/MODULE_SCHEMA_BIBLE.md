@@ -100,6 +100,13 @@ owns encounter truth.
 - `support_faqs`
 - `health_news`
 - `documents`
+- `access_requests`
+- `document_invites`
+
+Data Room content bodies remain release-governed by the private `iVisit-docs`
+manifest. Supabase is the runtime projection. Authenticated clients receive only
+eligible metadata columns; `documents.content`, access mutations, and invite
+rows remain server-receiver boundaries.
 
 ### `analytics`
 - `admin_audit_log`

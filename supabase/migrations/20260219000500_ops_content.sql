@@ -401,13 +401,61 @@ CREATE TABLE IF NOT EXISTS public.documents (
     title TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     description TEXT,
-    file_path TEXT,
-    tier TEXT DEFAULT 'confidential', -- 'public', 'confidential', 'restricted'
+    file_path TEXT NOT NULL,
+    tier TEXT DEFAULT 'confidential' CHECK (tier IN ('public', 'confidential', 'restricted')),
+    icon TEXT DEFAULT 'file-text',
     visibility TEXT[] DEFAULT '{admin}',
     content TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- BEGIN DATA_ROOM_ACCESS_CONTRACT
+CREATE TABLE IF NOT EXISTS public.access_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'revoked')),
+    nda_signed_at TIMESTAMPTZ,
+    signer_name TEXT,
+    signer_entity TEXT,
+    signer_title TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (user_id, document_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.document_invites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+    claimed BOOLEAN DEFAULT false,
+    claimed_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_requests_user ON public.access_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_document ON public.access_requests(document_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_status ON public.access_requests(status);
+CREATE INDEX IF NOT EXISTS idx_document_invites_token ON public.document_invites(token);
+CREATE INDEX IF NOT EXISTS idx_document_invites_email ON public.document_invites(LOWER(email));
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_publication_tables
+        WHERE pubname = 'supabase_realtime'
+          AND schemaname = 'public'
+          AND tablename = 'access_requests'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.access_requests;
+    END IF;
+END;
+$$;
+-- END DATA_ROOM_ACCESS_CONTRACT
 
 -- 🛠️ AUTOMATION: OPS HOOKS
 -- Notify organization administrators when a canonical emergency request is created.
@@ -512,6 +560,7 @@ CREATE TRIGGER stamp_ntf_display_id BEFORE INSERT ON public.notifications FOR EA
 CREATE TRIGGER handle_note_updated_at BEFORE UPDATE ON public.notifications FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_ticket_updated_at BEFORE UPDATE ON public.support_tickets FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE TRIGGER handle_doc_updated_at BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+CREATE TRIGGER handle_access_request_updated_at BEFORE UPDATE ON public.access_requests FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 🛡️ Insurance Validation RPC Functions
 -- Part of Master System Improvement Plan - Phase 2 Important System Enhancements

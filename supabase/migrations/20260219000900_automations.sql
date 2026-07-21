@@ -320,6 +320,115 @@ BEGIN
 END
 $$;
 
+-- BEGIN DATA_ROOM_ACCESS_AUTOMATIONS
+CREATE OR REPLACE FUNCTION public.notify_data_room_access_request()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+    v_document_title TEXT;
+    v_requester_email TEXT;
+    v_admin RECORD;
+BEGIN
+    SELECT document.title INTO v_document_title
+    FROM public.documents AS document
+    WHERE document.id = NEW.document_id;
+
+    SELECT account.email INTO v_requester_email
+    FROM auth.users AS account
+    WHERE account.id = NEW.user_id;
+
+    FOR v_admin IN
+        SELECT DISTINCT profile.id AS user_id
+        FROM public.profiles AS profile
+        LEFT JOIN public.user_roles AS role_row ON role_row.user_id = profile.id
+        WHERE profile.role = 'admin' OR role_row.role = 'admin'
+    LOOP
+        PERFORM public.emit_canonical_notification(
+            'data-room:access-request:' || NEW.id::TEXT || ':admin:' || v_admin.user_id::TEXT,
+            v_admin.user_id,
+            'access_request',
+            'New access request',
+            COALESCE(v_requester_email, 'A Data Room user') ||
+                ' requested access to "' || COALESCE(v_document_title, 'a document') || '".',
+            'high',
+            'created',
+            NEW.id,
+            JSONB_BUILD_OBJECT('document_id', NEW.document_id),
+            JSONB_BUILD_OBJECT('surface', 'data_room'),
+            'Shield',
+            'warning'
+        );
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.notify_data_room_access_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+    v_document_title TEXT;
+    v_title TEXT;
+    v_message TEXT;
+    v_color TEXT;
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status
+       OR NEW.status NOT IN ('approved', 'revoked') THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT document.title INTO v_document_title
+    FROM public.documents AS document
+    WHERE document.id = NEW.document_id;
+
+    v_title := CASE NEW.status WHEN 'approved' THEN 'Access granted' ELSE 'Access revoked' END;
+    v_message := CASE NEW.status
+        WHEN 'approved' THEN 'You can now open "' || COALESCE(v_document_title, 'the document') || '".'
+        ELSE 'Your access to "' || COALESCE(v_document_title, 'the document') || '" was revoked.'
+    END;
+    v_color := CASE NEW.status WHEN 'approved' THEN 'success' ELSE 'danger' END;
+
+    PERFORM public.emit_canonical_notification(
+        'data-room:access-request:' || NEW.id::TEXT || ':status:' || NEW.status,
+        NEW.user_id,
+        'access_request',
+        v_title,
+        v_message,
+        'normal',
+        NEW.status,
+        NEW.id,
+        JSONB_BUILD_OBJECT('document_id', NEW.document_id),
+        JSONB_BUILD_OBJECT('surface', 'data_room'),
+        CASE NEW.status WHEN 'approved' THEN 'Unlock' ELSE 'Lock' END,
+        v_color
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.notify_data_room_access_request() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_data_room_access_change() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_notify_access_request ON public.access_requests;
+DROP TRIGGER IF EXISTS trg_notify_admin_access_request ON public.access_requests;
+CREATE TRIGGER trg_notify_admin_access_request
+AFTER INSERT ON public.access_requests
+FOR EACH ROW EXECUTE FUNCTION public.notify_data_room_access_request();
+
+DROP TRIGGER IF EXISTS trg_notify_user_access_change ON public.access_requests;
+CREATE TRIGGER trg_notify_user_access_change
+AFTER UPDATE OF status ON public.access_requests
+FOR EACH ROW EXECUTE FUNCTION public.notify_data_room_access_change();
+-- END DATA_ROOM_ACCESS_AUTOMATIONS
+
 DO $$
 DECLARE
     v_group RECORD;

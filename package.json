@@ -25,6 +25,7 @@
     "hardening:display-id-registry-live": "node supabase/tests/scripts/assert_display_id_registry_live.js",
     "hardening:finance-rpc-contract-guard": "node supabase/tests/scripts/assert_finance_rpc_contract.js",
     "hardening:console-shared-contract-guard": "node supabase/tests/scripts/assert_console_shared_contracts.js",
+    "hardening:data-room-shared-contract": "node supabase/tests/scripts/assert_data_room_shared_contract.js",
     "hardening:payment-retry-live-contract": "node supabase/tests/scripts/run_payment_retry_concurrency_contract.js",
     "hardening:automation-contract-guard": "node supabase/tests/scripts/assert_automation_contract.js",
     "hardening:cash-fee-contract-guard": "node supabase/tests/scripts/assert_cash_fee_deduction_contract.js",

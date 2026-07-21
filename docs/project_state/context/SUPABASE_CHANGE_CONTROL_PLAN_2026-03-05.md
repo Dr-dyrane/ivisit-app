@@ -1729,6 +1729,38 @@ Status (2026-07-17):
 - controlled field onboarding is Go for new registrations and unowned-facility
   claims. Existing owned-facility transfer remains excluded.
 
+### SCC-061: Data Room Shared Contract And Content Isolation
+
+Objective:
+- Restore the historically deployed Data Room tables to the eleven-pillar
+  source of truth and close direct content, self-approval, and invite-token
+  bypasses before the private Data Room is released.
+
+Locked scope:
+- `ops_content` owns documents, access requests, and document invites;
+- `security` owns metadata-only authenticated grants and direct-write denial;
+- `automations` owns idempotent access notification triggers;
+- `core_rpcs` owns atomic invite claim;
+- the private `iVisit-docs` manifest owns document revision, lifecycle,
+  external-share, export, and hash approval;
+- no twelfth pillar, no independent Data Room migration apply, no production
+  mutation, and no App EAS update during source reconciliation.
+
+Acceptance gates:
+- authenticated PostgREST cannot select `documents.content`;
+- authenticated users cannot insert or update access approval state;
+- anon/authenticated users cannot enumerate document invite rows;
+- claim rejects email mismatch, missing signature, expiry, revocation, and
+  cross-user replay while same-user approved replay is idempotent;
+- protected content is read by a service client only after receiver
+  authorization and approved-manifest hash verification;
+- App pillar, generated type, Console mirror, and Data Room receiver guards pass;
+- live remediation, type regeneration, sync, deployment, and role/browser
+  matrices remain a separately reviewed cutover.
+
+Detailed evidence:
+- `docs/project_state/context/scc/SCC-061_DATA_ROOM_SHARED_CONTRACT_RECONCILIATION_2026-07-21.md`.
+
 ## Required Validation Gate Per Item
 At minimum, before closing an item:
 1. `npm run hardening:cleanup-dry-run-guard`

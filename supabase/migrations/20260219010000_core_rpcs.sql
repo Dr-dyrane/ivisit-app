@@ -9555,3 +9555,109 @@ GRANT EXECUTE ON FUNCTION public.review_console_organization(UUID, TEXT, TEXT) T
 GRANT EXECUTE ON FUNCTION public.complete_console_user_invitation(UUID, UUID, UUID, TEXT, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_profile_by_admin(UUID, JSONB) TO authenticated, service_role;
 -- END CONSOLE_ONBOARDING_RPCS
+
+-- BEGIN DATA_ROOM_INVITE_RPC
+CREATE OR REPLACE FUNCTION public.claim_document_invite(p_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth
+AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_token TEXT := NULLIF(BTRIM(COALESCE(p_token, '')), '');
+    v_user_email TEXT;
+    v_invite public.document_invites%ROWTYPE;
+    v_access public.access_requests%ROWTYPE;
+    v_document_slug TEXT;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+    IF v_token IS NULL OR LENGTH(v_token) < 32 OR LENGTH(v_token) > 256 THEN
+        RAISE EXCEPTION 'Invite not found';
+    END IF;
+
+    SELECT LOWER(account.email)
+    INTO v_user_email
+    FROM auth.users AS account
+    WHERE account.id = v_user_id;
+
+    IF v_user_email IS NULL THEN
+        RAISE EXCEPTION 'Invite does not belong to this account';
+    END IF;
+
+    SELECT invite.*
+    INTO v_invite
+    FROM public.document_invites AS invite
+    WHERE invite.token = v_token
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invite not found';
+    END IF;
+    IF LOWER(v_invite.email) IS DISTINCT FROM v_user_email THEN
+        RAISE EXCEPTION 'Invite does not belong to this account';
+    END IF;
+
+    SELECT request.*
+    INTO v_access
+    FROM public.access_requests AS request
+    WHERE request.user_id = v_user_id
+      AND request.document_id = v_invite.document_id
+    FOR UPDATE;
+
+    IF v_invite.claimed THEN
+        IF v_invite.claimed_by IS DISTINCT FROM v_user_id THEN
+            RAISE EXCEPTION 'Invite already claimed';
+        END IF;
+        IF NOT FOUND OR v_access.status IS DISTINCT FROM 'approved' THEN
+            RAISE EXCEPTION 'Invite access is no longer approved';
+        END IF;
+
+        SELECT document.slug INTO v_document_slug
+        FROM public.documents AS document
+        WHERE document.id = v_invite.document_id;
+
+        RETURN JSONB_BUILD_OBJECT(
+            'document_id', v_invite.document_id,
+            'document_slug', v_document_slug,
+            'status', 'approved',
+            'replayed', true
+        );
+    END IF;
+
+    IF v_invite.expires_at IS NULL OR v_invite.expires_at <= NOW() THEN
+        RAISE EXCEPTION 'Invite expired';
+    END IF;
+    IF NOT FOUND OR v_access.nda_signed_at IS NULL THEN
+        RAISE EXCEPTION 'Signed access agreement required';
+    END IF;
+    IF v_access.status = 'revoked' THEN
+        RAISE EXCEPTION 'Access was revoked';
+    END IF;
+
+    UPDATE public.access_requests
+    SET status = 'approved', updated_at = NOW()
+    WHERE id = v_access.id;
+
+    UPDATE public.document_invites
+    SET claimed = true, claimed_by = v_user_id
+    WHERE id = v_invite.id;
+
+    SELECT document.slug INTO v_document_slug
+    FROM public.documents AS document
+    WHERE document.id = v_invite.document_id;
+
+    RETURN JSONB_BUILD_OBJECT(
+        'document_id', v_invite.document_id,
+        'document_slug', v_document_slug,
+        'status', 'approved',
+        'replayed', false
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.claim_document_invite(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.claim_document_invite(TEXT) TO authenticated, service_role;
+-- END DATA_ROOM_INVITE_RPC

@@ -53,6 +53,9 @@ Every table uses `UUID` for internal identity. No exceptions.
 | `organization_verification_documents` | `id` (UUID) | `organization_id`, `facility_id`, `facility_claim_id`, `uploaded_by`, `reviewed_by` | - |
 | `doctors` | `id` (UUID) | `organization_id`, `profile_id` | `DOC-` |
 | `payments` | `id` (UUID) | `user_id`, `emergency_request_id` | `PAY-` |
+| `documents` | `id` (UUID) | - | - |
+| `access_requests` | `id` (UUID) | `user_id`, `document_id` | - |
+| `document_invites` | `id` (UUID) | `document_id`, `claimed_by` | - |
 
 ---
 
@@ -167,6 +170,22 @@ Source of truth: `stamp_entity_display_id()` trigger body in [`supabase/migratio
 | `review_console_organization(...)` | Core RPCs | Platform-admin organization decision; approval requires accepted evidence and required facility linkage |
 | `complete_console_user_invitation(...)` | Core RPCs | Service-only invited-profile role and organization assignment after Auth delivery |
 | `log_user_activity(...)` | Analytics | Structured audit logging |
+| `claim_document_invite(token)` | Core RPCs | Atomically claims an email-bound, unexpired Data Room invite after a signed access request |
+
+### 6.2 Data Room Boundary
+
+- `ops_content` owns `documents`, `access_requests`, and `document_invites`.
+- The private `iVisit-docs` manifest owns revision, lifecycle, external-share,
+  export, and content-hash approval. Database rows are a projection.
+- Authenticated users may query only eligible document metadata columns and
+  their own access-request projection. They cannot select `documents.content`,
+  create approved requests, or enumerate invite tokens.
+- Data Room Next server receivers own access requests, approvals, document
+  drafts, invite delivery, and protected content delivery. The authenticated
+  `claim_document_invite` RPC owns the atomic email/expiry/signature/replay
+  transition.
+- Data Room notification automations call the canonical idempotent notification
+  helper; they do not create a competing notifications schema.
 
 ### 6.1 Console Onboarding And Invitation Boundary
 

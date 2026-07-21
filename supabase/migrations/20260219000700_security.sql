@@ -293,6 +293,8 @@ ALTER TABLE public.support_faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.health_news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.access_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_invites ENABLE ROW LEVEL SECURITY;
 
 -- Analytics Tables (UPDATED for 0006)
 ALTER TABLE public.user_activity ENABLE ROW LEVEL SECURITY;
@@ -975,9 +977,79 @@ USING (auth.uid() = user_id OR public.p_is_admin())
 WITH CHECK (auth.uid() = user_id OR public.p_is_admin());
 -- END CONSOLE_SUPPORT_TICKET_RLS
 
--- Documents: public reads public tier, admins read all
-CREATE POLICY "Public read public documents" ON public.documents FOR SELECT
-USING (tier = 'public' OR public.p_is_admin());
+-- BEGIN DATA_ROOM_ACCESS_RLS
+-- Metadata may be read only by authenticated eligible users. The content
+-- column is deliberately excluded from authenticated column grants below.
+DROP POLICY IF EXISTS "Public read public documents" ON public.documents;
+DROP POLICY IF EXISTS "Anyone can view document metadata" ON public.documents;
+DROP POLICY IF EXISTS "Users can view eligible document metadata" ON public.documents;
+CREATE POLICY "Users can view eligible document metadata"
+ON public.documents FOR SELECT
+TO authenticated
+USING (
+    tier = 'public'
+    OR public.p_is_admin()
+    OR EXISTS (
+        SELECT 1
+        FROM public.user_roles AS role_row
+        WHERE role_row.user_id = auth.uid()
+          AND role_row.role = ANY(COALESCE(documents.visibility, ARRAY[]::TEXT[]))
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM public.access_requests AS request
+        WHERE request.user_id = auth.uid()
+          AND request.document_id = documents.id
+          AND request.status = 'approved'
+    )
+);
+
+DROP POLICY IF EXISTS "Admin can insert documents" ON public.documents;
+DROP POLICY IF EXISTS "Admin can update documents" ON public.documents;
+DROP POLICY IF EXISTS "Admin can delete documents" ON public.documents;
+
+DROP POLICY IF EXISTS "Users can view their own requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Users can create their own requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Admin can view all access requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Admin can update access requests" ON public.access_requests;
+CREATE POLICY "Users read own access requests"
+ON public.access_requests FOR SELECT
+TO authenticated
+USING (user_id = auth.uid() OR public.p_is_admin());
+
+DROP POLICY IF EXISTS "Anyone can view invites by token" ON public.document_invites;
+DROP POLICY IF EXISTS "Authenticated users can claim invites" ON public.document_invites;
+DROP POLICY IF EXISTS "Admins manage invites" ON public.document_invites;
+
+REVOKE ALL ON TABLE public.documents FROM PUBLIC, anon, authenticated;
+GRANT SELECT (
+    id,
+    slug,
+    title,
+    description,
+    tier,
+    icon,
+    visibility,
+    created_at,
+    updated_at
+) ON TABLE public.documents TO authenticated;
+
+REVOKE ALL ON TABLE public.access_requests FROM PUBLIC, anon, authenticated;
+GRANT SELECT (
+    id,
+    user_id,
+    document_id,
+    status,
+    nda_signed_at,
+    signer_name,
+    signer_entity,
+    signer_title,
+    created_at,
+    updated_at
+) ON TABLE public.access_requests TO authenticated;
+
+REVOKE ALL ON TABLE public.document_invites FROM PUBLIC, anon, authenticated;
+-- END DATA_ROOM_ACCESS_RLS
 
 -- Shared Storage canon. Public profile media is readable by URL, while writes
 -- stay inside the authenticated owner's UUID folder. Onboarding evidence uses
