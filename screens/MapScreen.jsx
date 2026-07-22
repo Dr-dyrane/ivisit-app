@@ -685,7 +685,7 @@ export default function MapScreen() {
             : trackingRouteInfo?.coordinates
         }
         telemetryHealth={ambulanceTelemetryHealth}
-        placeLabel={currentLocationDetails?.primaryText}
+        placeLabel={trackingLocationDetails?.primaryText}
         interactive={isMapFrameReady}
         onReadinessChange={handleMapReadinessChange}
         onRouteInfoChange={setTrackingRouteInfo}

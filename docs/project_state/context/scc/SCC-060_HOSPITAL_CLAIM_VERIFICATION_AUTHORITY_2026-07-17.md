@@ -805,7 +805,9 @@ only if the final patient JavaScript diff is intentionally released before
   the tracking model, map origin, responder bearing, route calculation, and
   sheet copy. Non-tracking discovery continues to use the user's current map
   location. A stable coordinate memo prevents the shared tracking clock from
-  causing route recalculation every second.
+  causing route recalculation every second. The final deployed observation also
+  caught and corrected the pickup marker's stale discovery label after its
+  coordinate had already moved to the request location.
 - All seven emergency continuity contracts and the production web export pass.
   The deployed Console login shell also passed at desktop and 390 x 844 with
   zero horizontal overflow and correct mobile recomposition. No schema,

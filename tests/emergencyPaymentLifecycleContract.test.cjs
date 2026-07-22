@@ -1157,6 +1157,7 @@ assert.equal(focusedRequestState.mapHospitals[0].id, requestOwnedHospital.id);
 assert.equal(focusedRequestState.mapFocusedHospital.id, requestOwnedHospital.id);
 const mapScreen = read("screens/MapScreen.jsx");
 assert.match(mapScreen, /location=\{mapCanvasLocation\}/);
+assert.match(mapScreen, /placeLabel=\{trackingLocationDetails\?\.primaryText\}/);
 assert.match(mapScreen, /currentLocation=\{trackingLocationDetails\}/);
 const emergencyActions = read("hooks/emergency/useEmergencyActions.js");
 assert.match(emergencyActions, /"report_telemetry"/);
