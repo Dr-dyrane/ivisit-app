@@ -356,14 +356,29 @@ export function buildActiveMapRequestModel({
 		fallbackHospital?.id ||
 		nearestHospital?.id ||
 		null;
+	const requestOwnsHospital = Boolean(record?.hospitalId);
+	const requestHospital = requestOwnsHospital
+		? [
+			record?.hospital,
+			payload?.hospital,
+			findHospitalById(knownHospitals, hospitalId),
+			preferredHospital,
+			fallbackHospital,
+			nearestHospital,
+		].find((candidate) => candidate?.id === hospitalId) || {
+			id: hospitalId,
+			name: record?.hospitalName || "Hospital",
+		}
+		: null;
 	const hospital =
+		requestHospital ||
 		preferredHospital ||
 		payload?.hospital ||
 		findHospitalById(knownHospitals, hospitalId) ||
 		fallbackHospital ||
 		nearestHospital ||
 		null;
-	const hospitalName = hospital?.name || record?.hospitalName || "Hospital";
+	const hospitalName = record?.hospitalName || hospital?.name || "Hospital";
 	const serviceLabel = resolveServiceLabel({ kind, pendingKind, record });
 	const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
 	const statusLabel = resolveStatusLabel({

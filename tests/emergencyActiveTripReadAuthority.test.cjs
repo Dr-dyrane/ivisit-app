@@ -106,6 +106,23 @@ async function run() {
     /ambulanceId: assignedAmbulance\?\.id \?\? trip\.ambulanceId \?\? null/,
     "trip persistence must keep a missing ambulance identity null",
   );
+  assert.match(
+    activeTripProjection,
+    /hospitalName: activeAmbulance\.hospitalName \?\? null/,
+    "active-trip recovery must preserve the request-owned hospital name across reloads",
+  );
+  assert.match(
+    activeTripProjection,
+    /requestHospital = await hospitalsService\.getById\(activeAmbulance\.hospitalId\)/,
+    "active-trip recovery must hydrate the request-owned facility instead of using map selection",
+  );
+
+  const activeRequestModel = read("components/map/core/mapActiveRequestModel.js");
+  assert.match(
+    activeRequestModel,
+    /requestOwnsHospital[\s\S]*?candidate\?\.id === hospitalId/,
+    "active request rendering must reject unrelated cached hospital candidates",
+  );
 
   const success = createHarness({
     user: { id: "user-1" },

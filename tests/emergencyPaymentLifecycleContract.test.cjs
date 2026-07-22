@@ -1028,6 +1028,7 @@ const activeTripReconciliation = loadSourceModule(
       EmergencyRequestStatus: statusConstants,
     },
     "../../services/ambulanceService": { ambulanceService: {} },
+    "../../services/hospitalsService": { hospitalsService: {} },
     "./bedBookingRuntime": { normalizeBedBookingRuntimeState: (value) => value },
     "../../utils/emergencyRealtimeProjection": {
       parsePointGeometry: (value) => value,

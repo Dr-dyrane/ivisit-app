@@ -86,6 +86,33 @@ const routeInfo = {
   ],
 };
 
+const requestHospital = {
+  id: "hospital-request-owned",
+  name: "Canonical Request Hospital",
+  address: "1 Canonical Way",
+};
+const mismatchedCachedHospital = {
+  id: "hospital-cached-map-selection",
+  name: "Unrelated Cached Hospital",
+  address: "99 Stale Map Road",
+};
+const canonicalRequestModel = activeRequestModel.buildActiveMapRequestModel({
+  activeAmbulanceTrip: {
+    id: "request-hospital-identity",
+    requestId: "request-hospital-identity",
+    hospitalId: requestHospital.id,
+    hospitalName: requestHospital.name,
+    hospital: requestHospital,
+    status: EmergencyRequestStatus.ACCEPTED,
+  },
+  preferredHospital: mismatchedCachedHospital,
+  hospitals: [mismatchedCachedHospital],
+  allHospitals: [mismatchedCachedHospital],
+  nowMs,
+});
+assert.equal(canonicalRequestModel.hospital.id, requestHospital.id);
+assert.equal(canonicalRequestModel.hospitalName, requestHospital.name);
+
 function buildAmbulanceState({
   status,
   patientAcknowledgedArrivalAt = null,

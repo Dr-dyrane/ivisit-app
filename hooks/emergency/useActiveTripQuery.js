@@ -23,6 +23,7 @@ import { useEffect } from "react";
 import { supabase } from "../../services/supabase";
 import { emergencyRequestsService, EmergencyRequestStatus } from "../../services/emergencyRequestsService";
 import { ambulanceService } from "../../services/ambulanceService";
+import { hospitalsService } from "../../services/hospitalsService";
 import { normalizeBedBookingRuntimeState } from "./bedBookingRuntime";
 import { parsePointGeometry } from "../../utils/emergencyRealtimeProjection";
 import {
@@ -137,6 +138,18 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 			fullAmbulance = null;
 		}
 	}
+	let requestHospital =
+		isSameAmbulanceTrip &&
+		previousAmbulanceTrip?.hospital?.id === activeAmbulance?.hospitalId
+			? previousAmbulanceTrip.hospital
+			: null;
+	if (!requestHospital && activeAmbulance?.hospitalId) {
+		try {
+			requestHospital = await hospitalsService.getById(activeAmbulance.hospitalId);
+		} catch (_error) {
+			requestHospital = null;
+		}
+	}
 
 	const hydratedAtMs = Date.now();
 	const normalizedStatus = String(activeAmbulance?.status ?? "").toLowerCase();
@@ -202,6 +215,19 @@ export async function buildAmbulanceTripSnapshot(activeAmbulance, previousAmbula
 	return {
 		id: activeAmbulance.id ?? null,
 		hospitalId: activeAmbulance.hospitalId,
+		hospitalName: activeAmbulance.hospitalName ?? null,
+		hospital: requestHospital
+			? {
+					...requestHospital,
+					id: activeAmbulance.hospitalId,
+					name: activeAmbulance.hospitalName || requestHospital.name || "Hospital",
+			  }
+			: activeAmbulance.hospitalId
+				? {
+						id: activeAmbulance.hospitalId,
+						name: activeAmbulance.hospitalName || "Hospital",
+				  }
+				: null,
 		requestId: activeAmbulance.id ?? activeAmbulance.requestId ?? null,
 		displayId: activeAmbulance.displayId ?? activeAmbulance.requestId ?? null,
 		status: activeAmbulance.status,

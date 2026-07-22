@@ -768,3 +768,42 @@ desktop/mobile click-through remains an explicit release observation rather
 than an inferred pass. Publish an App EAS OTA only after that observation and
 only if the final patient JavaScript diff is intentionally released before
 1.0.9.
+
+## Day 6 Deployed Browser Lifecycle And Facility Identity Repair (2026-07-21)
+
+- The deployed App passed the unauthenticated map and ambulance-decision lane
+  at 1280 x 720 and 390 x 844. Both layouts had zero horizontal overflow; the
+  mobile decision sheet rendered the selected hospital, Everyday care,
+  `$160.00`, responder/crew facts, and one `Confirm & continue` action.
+- Exact run `flow-matrix-1784683977169-816bf0ba` then proved the authenticated
+  live lifecycle. A telemetry event changed `Tracking delayed` to `Approaching`
+  without reload. Responder arrival changed the top pill and sheet to
+  `Arrived` without reload and exposed `Confirm Arrival`. The patient action
+  immediately persisted `patient_acknowledged_arrival_at` and changed the
+  sheet to `Arrival confirmed`.
+- Responder completion produced exactly one rating dialog. One five-star
+  submission persisted `rating = 5` and one `rated_at`; reload rendered zero
+  rating dialogs. The manifest-owned graph was then removed, and a second
+  cleanup pass found zero resources in every disposable class.
+- That cross-session fixture also exposed a previously masked facility-identity
+  defect. The request truth was `[DEMO 816bf0ba] Flow Matrix Hospital`, but the
+  tracking sheet and map rendered the browser's prior Banning map selection.
+  Git history traced both causes to original extractions rather than a recent
+  database change: `mapActiveRequestModel` had preferred local map selection
+  over `record.hospitalId` since `0cd9f485` (2026-04-22), and the active-trip
+  projection had omitted `hospitalName` since `8bdce65d` (2026-04-26).
+- The surgical repair makes the request-owned hospital ID authoritative,
+  hydrates that exact facility once through `hospitalsService`, preserves it
+  across same-request refreshes, and falls back to an ID/name-only object when
+  facility hydration is unavailable. It will no longer route or label an
+  active emergency with an unrelated cached hospital.
+- All seven emergency continuity contracts and the production web export pass.
+  The deployed Console login shell also passed at desktop and 390 x 844 with
+  zero horizontal overflow and correct mobile recomposition. No schema,
+  migration, RPC, payment receiver, or Console contract changed in this pack.
+
+**Next incomplete lane:** commit and push the request-owned facility repair,
+wait for the Git-linked App web deployment, then repeat a fresh exact accepted
+request across desktop/reload to prove the deployed hospital label, address,
+and route no longer inherit the prior map selection. Publish EAS only after
+that post-deploy proof passes.
