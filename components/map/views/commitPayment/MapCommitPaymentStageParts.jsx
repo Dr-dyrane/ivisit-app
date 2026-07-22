@@ -407,7 +407,9 @@ export function MapCommitPaymentSelectorCard({
 	onExpandedChange,
 	cost,
 	hospitalId,
-	organizationId,
+	serviceType,
+	ambulanceType,
+	distanceKm,
 	simulatePayments,
 	demoCashOnly,
 }) {
@@ -468,7 +470,9 @@ export function MapCommitPaymentSelectorCard({
 						onMethodSelect={handleSelectMethod}
 						cost={cost}
 						hospitalId={hospitalId}
-						organizationId={organizationId}
+						serviceType={serviceType}
+						ambulanceType={ambulanceType}
+						distanceKm={distanceKm}
 						simulatePayments={simulatePayments}
 						preferCashFirst={simulatePayments}
 						demoCashOnly={demoCashOnly}

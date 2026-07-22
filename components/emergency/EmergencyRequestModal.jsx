@@ -1264,44 +1264,28 @@ const EmergencyRequestModal = React.memo(({
 		if (selectedPaymentMethod.is_cash && !demoSimulatedPaymentActive) {
 			try {
 				setIsRequesting(true);
-				let targetOrgId = requestHospital.organization_id || requestHospital.organizationId;
-
-				// SANITY CHECK: If Org ID matches Hospital ID, it's likely a mapping error or partial data.
-				if (targetOrgId && targetOrgId === requestHospital.id) {
-					console.warn('[EmergencyRequestModal] ⚠️ Detected Org ID matches Hospital ID. Assuming malformed data. Clearing to force fetch.');
-					targetOrgId = null;
-				}
-
-				// SAFETY FALLBACK: If hospital object missing Org ID (or cleared above), re-fetch hospital record
-				if (!targetOrgId) {
-					console.log('[EmergencyRequestModal] ⚠️ Missing/Invalid Org ID. Re-fetching fresh record from Service...');
-					const freshHospital = await hospitalsService.getById(requestHospital.id);
-					targetOrgId = freshHospital?.organizationId;
-				}
-
-				if (!targetOrgId) {
-					console.warn('[EmergencyRequestModal] ❌ Fatal: Could not resolve Organization linking for this hospital.');
-					setErrorMessage("This provider is not currently part of an active organization. Cash payment unavailable.");
-					showToast("Provider connection missing", "error");
-					setIsRequesting(false);
-					return;
-				}
-
-				const isEligible = await paymentService.checkCashEligibility(
-					targetOrgId,
-					estimatedCost?.totalCost || 0
-				);
+				const isEligible = await paymentService.checkCashEligibility({
+					hospitalId: requestHospital.id,
+					serviceType: mode === "booking" ? "bed" : "ambulance",
+					ambulanceType:
+						selectedAmbulanceType?.tierKey ||
+						selectedAmbulanceType?.service_type ||
+						selectedAmbulanceType?.serviceType ||
+						selectedAmbulanceType?.id ||
+						null,
+					distanceKm: 0,
+				});
 
 				if (!isEligible) {
-					setErrorMessage("Cash payment not available for this medical center (insufficient organizational wallet balance)");
-					showToast("Hospital low on collateral", "error");
+					setErrorMessage("Cash payment is not available for this provider right now.");
+					showToast("Choose another payment method", "info");
 					setIsRequesting(false);
 					return;
 				}
 			} catch (error) {
 				console.error("[EmergencyRequestModal] 🚨 Cash eligibility check failed:", error);
-				setErrorMessage("Failed to verify cash payment eligibility. Error code: " + (error.code || 'UNKNOWN'));
-				showToast("Verification failed", "error");
+				setErrorMessage("We could not verify cash payment right now.");
+				showToast("Choose another payment method", "info");
 				setIsRequesting(false);
 				return;
 			}
@@ -2173,7 +2157,14 @@ const EmergencyRequestModal = React.memo(({
 									onMethodSelect={setSelectedPaymentMethod}
 									cost={estimatedCost}
 									hospitalId={requestHospital?.id}
-									organizationId={estimatedCost?.orgFee?.organizationId}
+									serviceType={mode === "booking" ? "bed" : "ambulance"}
+									ambulanceType={
+										selectedAmbulanceType?.tierKey ||
+										selectedAmbulanceType?.service_type ||
+										selectedAmbulanceType?.serviceType ||
+										selectedAmbulanceType?.id ||
+										null
+									}
 									simulatePayments={demoSimulatedPaymentActive}
 									preferCashFirst={demoSimulatedPaymentActive}
 									demoCashOnly={demoSimulatedPaymentActive}

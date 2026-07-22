@@ -13,7 +13,10 @@ import useMapAndroidExpandedCollapse from "../shared/useMapAndroidExpandedCollap
 import useMapStageSurfaceLayout from "../shared/useMapStageSurfaceLayout";
 import { MapCommitDetailsTopSlot } from "../commitDetails/MapCommitDetailsStageParts";
 import { MAP_COMMIT_PAYMENT_COPY } from "./mapCommitPayment.content";
-import { buildCommitPaymentPickupLabel } from "./mapCommitPayment.helpers";
+import {
+	buildCommitPaymentDistanceKm,
+	buildCommitPaymentPickupLabel,
+} from "./mapCommitPayment.helpers";
 import {
 	buildCommitPaymentFooterLabels,
 	buildCommitPaymentStatusConfig,
@@ -480,7 +483,18 @@ export default function MapCommitPaymentStageBase({
 							onExpandedChange={setPaymentSelectorExpanded}
 							cost={estimatedCost}
 							hospitalId={hospital?.id || null}
-							organizationId={hospital?.organization_id || hospital?.organizationId || null}
+							serviceType={isBedFlow ? "bed" : "ambulance"}
+							ambulanceType={
+								transport?.tierKey ||
+								transport?.service_type ||
+								transport?.serviceType ||
+								null
+							}
+							distanceKm={buildCommitPaymentDistanceKm(
+								hospital,
+								currentLocation,
+								transport,
+							)}
 							simulatePayments={demoCashOnly}
 							demoCashOnly={demoCashOnly}
 							refreshTrigger={paymentMethodsRefreshKey}

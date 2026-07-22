@@ -26,7 +26,9 @@ This map covers both emergency in-flow payments and wallet/payment-management fl
 1. User selects payment method in emergency modal.
 2. If `cash`, client checks org eligibility:
    - `paymentService.checkCashEligibility`
-   - Reads `organizations.ivisit_fee_percentage` + `organization_wallets.balance`
+   - RPC `check_patient_cash_eligibility` recomputes canonical pricing and the
+     platform fee, evaluates the organization wallet server-side, and returns
+     only a boolean. The patient never receives balance or fee details.
 3. Request creation call:
    - `useRequestFlow.handleRequestInitiated` -> `emergencyRequestsService.create`
    - RPC `create_emergency_v4` creates `emergency_requests` + `payments` (+ `visits`)
@@ -166,7 +168,9 @@ Guardrail at this stage:
 - `approve_cash_payment`
 - `decline_cash_payment`
 - `notify_cash_approval_org_admins`
-- `check_cash_eligibility` (exists in API, client uses direct query fallback)
+- `check_cash_eligibility` (Console finance projection for authorized admins)
+- `check_patient_cash_eligibility` (patient-safe canonical-price preflight;
+  boolean only)
 
 ### Edge Functions
 

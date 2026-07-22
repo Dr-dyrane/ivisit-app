@@ -342,6 +342,7 @@ node supabase/tests/scripts/test_runner.js [task_name]
 |---|---|---|---|
 | `process_wallet_payment()` | Finance | Process wallet payments | paymentService.js |
 | `process_cash_payment_v2()` | Emergency Logic | Process manual cash payments | paymentService.js |
+| `check_patient_cash_eligibility()` | Emergency Logic | Patient-safe boolean cash preflight using canonical pricing | paymentService.js |
 | `approve_cash_payment()` | Emergency Logic | Approve cash payments | paymentService.js |
 | `decline_cash_payment()` | Emergency Logic | Decline cash payments | paymentService.js |
 | `nearby_hospitals()` | Core RPCs | Find nearby hospitals | discoveryService.js |

@@ -730,6 +730,78 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 REVOKE EXECUTE ON FUNCTION public.resolve_emergency_pricing(TEXT, UUID, TEXT, NUMERIC)
 FROM PUBLIC, anon, authenticated;
 
+-- Patient-safe cash preflight. The client supplies only the same pricing
+-- context used by request creation; finance details never cross the boundary.
+CREATE OR REPLACE FUNCTION public.check_patient_cash_eligibility(
+    p_service_type TEXT,
+    p_hospital_id UUID,
+    p_ambulance_type TEXT DEFAULT NULL,
+    p_distance_km NUMERIC DEFAULT 0
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_claims JSONB := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::JSONB;
+    v_is_service_role BOOLEAN := COALESCE(v_claims->>'role', '') = 'service_role';
+    v_organization_id UUID;
+    v_organization_active BOOLEAN;
+    v_fee_percentage NUMERIC;
+    v_wallet_balance NUMERIC;
+    v_pricing JSONB;
+    v_total_amount NUMERIC;
+    v_fee_amount NUMERIC;
+BEGIN
+    IF NOT v_is_service_role AND auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    IF p_hospital_id IS NULL OR NULLIF(BTRIM(COALESCE(p_service_type, '')), '') IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    SELECT hospital.organization_id,
+           organization.is_active,
+           COALESCE(NULLIF(organization.ivisit_fee_percentage, 0), 2.5)
+    INTO v_organization_id, v_organization_active, v_fee_percentage
+    FROM public.hospitals hospital
+    LEFT JOIN public.organizations organization
+      ON organization.id = hospital.organization_id
+    WHERE hospital.id = p_hospital_id;
+
+    IF v_organization_id IS NULL OR COALESCE(v_organization_active, FALSE) IS NOT TRUE THEN
+        RETURN FALSE;
+    END IF;
+
+    v_pricing := public.resolve_emergency_pricing(
+        p_service_type => p_service_type,
+        p_hospital_id => p_hospital_id,
+        p_ambulance_type => p_ambulance_type,
+        p_distance_km => GREATEST(COALESCE(p_distance_km, 0), 0)
+    );
+    v_total_amount := NULLIF(v_pricing->>'total_cost', '')::NUMERIC;
+
+    IF v_total_amount IS NULL OR v_total_amount < 0 THEN
+        RETURN FALSE;
+    END IF;
+
+    v_fee_amount := ROUND(
+        v_total_amount * (COALESCE(v_fee_percentage, 2.5) / 100.0),
+        2
+    );
+
+    SELECT wallet.balance
+    INTO v_wallet_balance
+    FROM public.organization_wallets wallet
+    WHERE wallet.organization_id = v_organization_id;
+
+    RETURN COALESCE(v_wallet_balance, 0) >= COALESCE(v_fee_amount, 0);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC)
+TO authenticated, service_role;
+
 -- 🛠️ ATOMIC: Create Emergency with Integrated Payment (Fluid v4)
 CREATE OR REPLACE FUNCTION public.create_emergency_v4(
     p_user_id UUID,

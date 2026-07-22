@@ -857,6 +857,36 @@ assert.match(
 );
 
 const emergencyLogic = read("supabase/migrations/20260219000800_emergency_logic.sql");
+for (const patientCashContractSource of [emergencyLogic, coreRpcs]) {
+  const patientCashStart = patientCashContractSource.indexOf(
+    "CREATE OR REPLACE FUNCTION public.check_patient_cash_eligibility",
+  );
+  const patientCashEnd = patientCashContractSource.indexOf(
+    "GRANT EXECUTE ON FUNCTION public.check_patient_cash_eligibility",
+    patientCashStart,
+  );
+  assert.ok(
+    patientCashStart >= 0 && patientCashEnd > patientCashStart,
+    "both maintained RPC pillars must include the patient-safe cash receiver",
+  );
+  const patientCashContract = patientCashContractSource.slice(
+    patientCashStart,
+    patientCashEnd + 180,
+  );
+  assert.match(patientCashContract, /RETURNS BOOLEAN/);
+  assert.match(patientCashContract, /public\.resolve_emergency_pricing/);
+  assert.match(patientCashContract, /organization\.is_active/);
+  assert.match(
+    patientCashContract,
+    /COALESCE\(v_wallet_balance, 0\) >= COALESCE\(v_fee_amount, 0\)/,
+  );
+  assert.doesNotMatch(patientCashContract, /jsonb_build_object/);
+  assert.doesNotMatch(patientCashContract, /'balance'|'fee_percentage'/);
+  assert.match(
+    patientCashContract,
+    /FROM PUBLIC, anon;[\s\S]*?TO authenticated, service_role;/,
+  );
+}
 const createEmergency = emergencyLogic.slice(
   emergencyLogic.indexOf("CREATE OR REPLACE FUNCTION public.create_emergency_v4"),
   emergencyLogic.indexOf("-- BEGIN EMERGENCY_PAYMENT_RELEASE_GATE"),
@@ -899,6 +929,21 @@ assert.match(requestService, /emergency_status_transitions/);
 assert.match(requestService, /distance_km/);
 assert.match(requestService, /canonicalTotal/);
 assert.match(requestService, /requireEmergencyUser\(user\)/);
+const paymentServiceSource = read("services/paymentService.js");
+const cashPreflightStart = paymentServiceSource.indexOf(
+  "async checkCashEligibility",
+);
+const cashPreflightEnd = paymentServiceSource.indexOf(
+  "async approveCashPayment",
+  cashPreflightStart,
+);
+const cashPreflightSource = paymentServiceSource.slice(
+  cashPreflightStart,
+  cashPreflightEnd,
+);
+assert.match(cashPreflightSource, /check_patient_cash_eligibility/);
+assert.doesNotMatch(cashPreflightSource, /\.from\('organization_wallets'\)/);
+assert.doesNotMatch(cashPreflightSource, /estimatedAmount|organizationId/);
 const requestListStart = requestService.indexOf("async list()");
 const requestCreateStart = requestService.indexOf("async create(request)", requestListStart);
 const requestList = requestService.slice(requestListStart, requestCreateStart);
@@ -1783,21 +1828,41 @@ const paymentContractChecks = (async () => {
     "the existing defaults must be unset before the new default card is inserted, or two rows claim is_default and checkout picks by row order",
   );
 
-  // --- E22: cash fails closed when the org cannot be resolved --------------
+  // --- E22: patient cash preflight uses the generic server receiver --------
   const cashStub = createPaymentSupabaseStub({
-    tables: {
-      organizations: { data: null, error: { message: "not found" } },
-      hospitals: { data: null, error: null },
+    rpc: {
+      check_patient_cash_eligibility: {
+        data: null,
+        error: { code: "PGRST202", message: "receiver unavailable" },
+      },
     },
   });
   const cashService = loadPaymentService(cashStub);
   assert.equal(
-    await cashService.checkCashEligibility(
-      "22222222-2222-4222-8222-222222222222",
-      100,
+    await cashService.checkCashEligibility({
+      hospitalId: "22222222-2222-4222-8222-222222222222",
+      serviceType: "ambulance",
+      ambulanceType: "ambulance_advanced",
+      distanceKm: 8,
+    }),
+    false,
+    "cash must fail closed when the patient-safe receiver is unavailable",
+  );
+  assert.deepEqual(cashStub.rpcCalls[0], {
+    name: "check_patient_cash_eligibility",
+    params: {
+      p_service_type: "ambulance",
+      p_hospital_id: "22222222-2222-4222-8222-222222222222",
+      p_ambulance_type: "ambulance_advanced",
+      p_distance_km: 8,
+    },
+  });
+  assert.equal(
+    cashStub.operations.some((operation) =>
+      operation.startsWith("organization_wallets"),
     ),
     false,
-    "cash must fail closed when no org wallet can be verified to cover the platform fee",
+    "patient cash preflight must not read organization_wallets directly",
   );
 
   // --- E1: NO MONEY MOVES while the wallet-credit receiver is missing ------

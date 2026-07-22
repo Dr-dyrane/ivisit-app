@@ -167,7 +167,7 @@ Use the audit artifact for full table coverage. This section tracks high-surface
 
 ### Active Runtime RPC Surfaces
 Key RPCs called directly by app/console services:
-- App-heavy: `create_emergency_v4`, `process_wallet_payment`, `process_cash_payment_v2`, `calculate_emergency_cost_v2`, `notify_cash_approval_org_admins`, `reload_schema`
+- App-heavy: `create_emergency_v4`, `process_wallet_payment`, `process_cash_payment_v2`, `calculate_emergency_cost_v2`, `check_patient_cash_eligibility`, `notify_cash_approval_org_admins`, `reload_schema`
 - Console-heavy: `console_*`, `get_console_identity_projection`, `get_user_statistics`, `search_onboarding_facilities`, `provision_console_organization`, `complete_console_user_invitation`, `cancel_trip`, `complete_trip`, `cancel_bed_reservation`, `discharge_patient`, `check_cash_eligibility`, `search_auth_users`, `update_profile_by_admin`, `update_hospital_by_admin`
 - Contact Dispatch: `ensure_emergency_chat_room`, `send_emergency_chat_message`, `mark_emergency_chat_room_read`
 - Scheduled-care backend contract (runtime adoption pending):

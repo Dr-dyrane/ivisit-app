@@ -49,6 +49,15 @@ const pricingHospitalHotfixOutput = process.argv
 const hospitalEligibilityHotfixOutput = process.argv
   .find((value) => value.startsWith('--emit-hospital-eligibility-hotfix='))
   ?.slice('--emit-hospital-eligibility-hotfix='.length);
+const patientCashPreflightHotfixOutput = process.argv
+  .find((value) => value.startsWith('--emit-patient-cash-preflight-hotfix='))
+  ?.slice('--emit-patient-cash-preflight-hotfix='.length);
+const applyPatientCashPreflightHotfix = process.argv.includes(
+  '--apply-patient-cash-preflight-hotfix'
+);
+const rollbackPatientCashPreflightHotfix = process.argv.includes(
+  '--rollback-patient-cash-preflight-hotfix'
+);
 const preflightOnly = process.argv.includes('--preflight-only');
 const postDeployOnly = process.argv.includes('--post-deploy-only');
 
@@ -426,6 +435,17 @@ function sourceUnits() {
       SOURCE.emergency,
       'revoke direct emergency pricing resolver access',
       /^REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.resolve_emergency_pricing\b/i
+    ),
+    functionUnit(SOURCE.emergency, 'check_patient_cash_eligibility'),
+    statementUnit(
+      SOURCE.emergency,
+      'revoke public patient cash preflight access',
+      /^REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.check_patient_cash_eligibility\b/i
+    ),
+    statementUnit(
+      SOURCE.emergency,
+      'grant authenticated patient cash preflight access',
+      /^GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.check_patient_cash_eligibility\b/i
     ),
     functionUnit(SOURCE.emergency, 'create_emergency_v4'),
     markerUnit(SOURCE.emergency, 'EMERGENCY_PAYMENT_RELEASE_GATE'),
@@ -1046,6 +1066,84 @@ function buildHospitalEligibilityHotfix() {
   };
 }
 
+function buildPatientCashPreflightHotfix() {
+  const units = [
+    functionUnit(SOURCE.emergency, 'check_patient_cash_eligibility'),
+    statementUnit(
+      SOURCE.emergency,
+      'revoke public patient cash preflight access',
+      /^REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.check_patient_cash_eligibility\b/i
+    ),
+    statementUnit(
+      SOURCE.emergency,
+      'grant authenticated patient cash preflight access',
+      /^GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.check_patient_cash_eligibility\b/i
+    ),
+  ];
+  const statementEntries = units.flatMap((unit) =>
+    splitSql(unit.sql).map((statement) => ({ statement, label: unit.label }))
+  );
+  const digest = crypto
+    .createHash('sha256')
+    .update(units.map((unit) => `${unit.file}:${unit.label}\n${unit.sql}`).join('\n'))
+    .digest('hex')
+    .slice(0, 16);
+  const migration = [
+    '-- Temporary exact-source deployment for the patient-safe cash preflight receiver.',
+    `-- Source digest: ${digest}`,
+    '-- Exact rollback: DROP FUNCTION IF EXISTS public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC);',
+    'BEGIN;',
+    "SET LOCAL lock_timeout = '5s';",
+    "SET LOCAL statement_timeout = '60s';",
+    ...units.map((unit) => `\n-- Source: ${unit.file} (${unit.label})\n${unit.sql.trim()}\n`),
+    'COMMIT;',
+  ].join('\n');
+  return {
+    digest,
+    migration,
+    statementEntries,
+    statements: statementEntries.map((entry) => entry.statement),
+    units,
+  };
+}
+
+const patientCashPreflightPostDeployChecks = [
+  {
+    name: 'patient cash preflight receiver exists with scoped execution',
+    expression: `to_regprocedure('public.check_patient_cash_eligibility(text,uuid,text,numeric)') IS NOT NULL
+      AND NOT has_function_privilege(
+        'anon',
+        'public.check_patient_cash_eligibility(text,uuid,text,numeric)',
+        'EXECUTE'
+      )
+      AND has_function_privilege(
+        'authenticated',
+        'public.check_patient_cash_eligibility(text,uuid,text,numeric)',
+        'EXECUTE'
+      )
+      AND has_function_privilege(
+        'service_role',
+        'public.check_patient_cash_eligibility(text,uuid,text,numeric)',
+        'EXECUTE'
+      )`,
+  },
+  {
+    name: 'patient cash preflight derives price and returns only eligibility',
+    expression: `position(
+        'resolve_emergency_pricing'
+        in pg_get_functiondef('public.check_patient_cash_eligibility(text,uuid,text,numeric)'::regprocedure)
+      ) > 0
+      AND position(
+        'organization_wallets'
+        in pg_get_functiondef('public.check_patient_cash_eligibility(text,uuid,text,numeric)'::regprocedure)
+      ) > 0
+      AND position(
+        'RETURNS BOOLEAN'
+        in upper(pg_get_functiondef('public.check_patient_cash_eligibility(text,uuid,text,numeric)'::regprocedure))
+      ) > 0`,
+  },
+];
+
 const preflightChecks = [
   {
     name: 'required emergency owner tables exist',
@@ -1265,6 +1363,7 @@ const postDeployChecks = [
         in pg_get_functiondef('public.calculate_emergency_cost_v2(text,uuid,text,numeric)'::regprocedure)
       ) > 0`,
   },
+  ...patientCashPreflightPostDeployChecks,
   {
     name: 'emergency commitment enforces hospital eligibility and server pricing',
     expression: `position(
@@ -1478,6 +1577,21 @@ END
 $ivisit_emergency_bundle$;`;
 }
 
+function applySql(bundle, checks) {
+  const body = bundle.statementEntries
+    .map((entry, indexValue) => dynamicStatement(entry.statement, indexValue, entry.label))
+    .join('\n');
+  const assertions = checks.map(dynamicCheck).join('\n');
+  return `DO $ivisit_emergency_apply_bundle$
+DECLARE
+  v_pass BOOLEAN;
+BEGIN
+${body}
+${assertions}
+END
+$ivisit_emergency_apply_bundle$;`;
+}
+
 function probeSql(check, indexValue, lane) {
   const normalizedLane = lane.toUpperCase().replaceAll('-', '_');
   const tag = `$ivisit_emergency_${lane.replaceAll('-', '_')}_${indexValue}$`;
@@ -1678,6 +1792,53 @@ async function run() {
     fs.writeFileSync(output, `${hotfix.migration}\n`, 'utf8');
     console.log(
       `[emergency-dispatch-deployment] hospital-eligibility-hotfix=${hotfix.digest} units=${hotfix.units.length} statements=${hotfix.statements.length} rollback=passed emitted=${output}`
+    );
+    return;
+  }
+
+  if (
+    patientCashPreflightHotfixOutput ||
+    applyPatientCashPreflightHotfix ||
+    rollbackPatientCashPreflightHotfix
+  ) {
+    const hotfix = buildPatientCashPreflightHotfix();
+    const { data: rollbackData, error: rollbackError } = await admin.rpc('exec_sql', {
+      sql: rollbackSql(hotfix),
+    });
+    if (rollbackError) throw rollbackError;
+    if (!String(rollbackData?.error || '').includes('IVISIT_EMERGENCY_DEPLOYMENT_ROLLBACK_OK')) {
+      throw new Error(
+        rollbackData?.error || 'Patient cash preflight rollback parse did not return its success marker'
+      );
+    }
+
+    if (patientCashPreflightHotfixOutput) {
+      const output = path.resolve(ROOT, patientCashPreflightHotfixOutput);
+      fs.writeFileSync(output, `${hotfix.migration}\n`, 'utf8');
+      console.log(
+        `[emergency-dispatch-deployment] patient-cash-preflight-hotfix=${hotfix.digest} units=${hotfix.units.length} statements=${hotfix.statements.length} rollback=passed emitted=${output}`
+      );
+      return;
+    }
+
+    if (rollbackPatientCashPreflightHotfix) {
+      const { data, error } = await admin.rpc('exec_sql', {
+        sql: 'DROP FUNCTION IF EXISTS public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC);',
+      });
+      if (error || data?.error) throw error || new Error(data.error);
+      console.log(
+        `[emergency-dispatch-deployment] patient-cash-preflight-hotfix=${hotfix.digest} rollback=applied`
+      );
+      return;
+    }
+
+    const { data, error } = await admin.rpc('exec_sql', {
+      sql: applySql(hotfix, patientCashPreflightPostDeployChecks),
+    });
+    if (error || data?.error) throw error || new Error(data.error);
+    await runChecks(patientCashPreflightPostDeployChecks, 'patient-cash-preflight-post-deploy');
+    console.log(
+      `[emergency-dispatch-deployment] patient-cash-preflight-hotfix=${hotfix.digest} apply=passed exact_rollback=available`
     );
     return;
   }

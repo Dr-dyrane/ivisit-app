@@ -29,7 +29,9 @@ const PaymentMethodSelector = ({
   onMethodSelect,
   cost,
   hospitalId = null,
-  organizationId = null,
+  serviceType = null,
+  ambulanceType = null,
+  distanceKm = 0,
   simulatePayments = false,
   preferCashFirst = false,
   demoCashOnly = false,
@@ -58,7 +60,17 @@ const PaymentMethodSelector = ({
 
   useEffect(() => {
     loadPaymentMethods();
-  }, [refreshTrigger, hospitalId, cost?.totalCost, simulatePayments, preferCashFirst, demoCashOnly]);
+  }, [
+    refreshTrigger,
+    hospitalId,
+    serviceType,
+    ambulanceType,
+    distanceKm,
+    cost?.totalCost,
+    simulatePayments,
+    preferCashFirst,
+    demoCashOnly,
+  ]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -97,8 +109,12 @@ const PaymentMethodSelector = ({
       } else if (hospitalId && cost?.totalCost > 0) {
         setCheckingCash(true);
         try {
-          const checkId = organizationId || hospitalId;
-          const eligible = await paymentService.checkCashEligibility(checkId, cost.totalCost);
+          const eligible = await paymentService.checkCashEligibility({
+            hospitalId,
+            serviceType,
+            ambulanceType,
+            distanceKm,
+          });
           setIsCashEligible(eligible);
         } catch (e) {
           setIsCashEligible(false);
@@ -243,7 +259,7 @@ const PaymentMethodSelector = ({
       : method.is_cash
         ? (simulatePayments
             ? cashReadyCopy
-            : (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'VERIFYING...' : 'UNAVAILABLE (LOW COLLATERAL)')))
+            : (isCashEligible ? 'PAY ON ARRIVAL' : (checkingCash ? 'CHECKING...' : 'UNAVAILABLE')))
         : (simulatePayments
             ? (demoCashOnly ? unavailableCopy : cardCheckoutCopy)
             : `EXPIRES ${method.expiry_month}/${method.expiry_year}`);

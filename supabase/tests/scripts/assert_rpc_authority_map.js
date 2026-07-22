@@ -5,6 +5,10 @@ const MIGRATIONS_DIR = path.join(__dirname, '..', '..', 'migrations');
 const REPORT_FILE = path.join(__dirname, '..', 'validation', 'rpc_authority_guard_report.json');
 
 const ALLOWED_CROSS_FILE_DUPLICATES = {
+  'check_patient_cash_eligibility#4': {
+    canonicalOwner: '20260219010000_core_rpcs.sql',
+    allowedOwners: ['20260219000800_emergency_logic.sql', '20260219010000_core_rpcs.sql'],
+  },
   'approve_cash_payment#2': {
     canonicalOwner: '20260219010000_core_rpcs.sql',
     allowedOwners: ['20260219000800_emergency_logic.sql', '20260219010000_core_rpcs.sql'],

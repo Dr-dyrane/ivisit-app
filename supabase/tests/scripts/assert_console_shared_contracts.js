@@ -14,6 +14,10 @@ const files = {
   emergency: 'supabase/migrations/20260219000800_emergency_logic.sql',
   automations: 'supabase/migrations/20260219000900_automations.sql',
   core: 'supabase/migrations/20260219010000_core_rpcs.sql',
+  consoleEmergency:
+    '../ivisit-console/frontend/supabase/migrations/20260219000800_emergency_logic.sql',
+  consoleCore:
+    '../ivisit-console/frontend/supabase/migrations/20260219010000_core_rpcs.sql',
   supportService: 'services/helpSupportService.js',
 };
 
@@ -46,6 +50,12 @@ function run() {
   const nearby = sqlFunction(source.core, 'nearby_ambulances');
   const updateHospital = sqlFunction(source.core, 'update_hospital_by_admin');
   const createEmergency = sqlFunction(source.core, 'console_create_emergency_request');
+  const patientCashBodies = [
+    sqlFunction(source.emergency, 'check_patient_cash_eligibility'),
+    sqlFunction(source.core, 'check_patient_cash_eligibility'),
+    sqlFunction(source.consoleEmergency, 'check_patient_cash_eligibility'),
+    sqlFunction(source.consoleCore, 'check_patient_cash_eligibility'),
+  ];
   const checks = [];
 
   const check = (name, pass, evidence) => {
@@ -235,6 +245,22 @@ function run() {
       'GRANT EXECUTE ON FUNCTION public.check_cash_eligibility(UUID) TO authenticated, service_role;',
     ]),
     files.core
+  );
+  check(
+    'patient cash preflight is generic and identical across App and Console pillars',
+      patientCashBodies.every(Boolean) &&
+      patientCashBodies.every((body) => body === patientCashBodies[0]) &&
+      includesAll(patientCashBodies[0], [
+        'public.resolve_emergency_pricing',
+        'organization.is_active',
+        'COALESCE(v_wallet_balance, 0) >= COALESCE(v_fee_amount, 0)',
+      ]) &&
+      !patientCashBodies[0].includes('jsonb_build_object') &&
+      includesAll(source.core, [
+        'REVOKE ALL ON FUNCTION public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC)',
+        'GRANT EXECUTE ON FUNCTION public.check_patient_cash_eligibility(TEXT, UUID, TEXT, NUMERIC)',
+      ]),
+    `${files.emergency}; ${files.core}; ${files.consoleEmergency}; ${files.consoleCore}`
   );
 
   const failures = checks.filter((item) => !item.pass);

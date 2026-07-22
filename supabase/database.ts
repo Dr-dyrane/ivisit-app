@@ -3616,6 +3616,15 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      check_patient_cash_eligibility: {
+        Args: {
+          p_ambulance_type?: string
+          p_distance_km?: number
+          p_hospital_id: string
+          p_service_type: string
+        }
+        Returns: boolean
+      }
       claim_document_invite: {
         Args: { p_token: string }
         Returns: Json

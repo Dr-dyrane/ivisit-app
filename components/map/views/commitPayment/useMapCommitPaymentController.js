@@ -334,12 +334,20 @@ export function useMapCommitPaymentController({
         let cashEligible = true;
         if (!demoCashOnly && hospital?.id && checkoutTotal > 0) {
           try {
-            cashEligible = await paymentService.checkCashEligibility(
-              hospital?.organization_id ||
-                hospital?.organizationId ||
-                hospital.id,
-              checkoutTotal,
-            );
+            cashEligible = await paymentService.checkCashEligibility({
+              hospitalId: hospital.id,
+              serviceType: isBedFlow ? "bed" : "ambulance",
+              ambulanceType:
+                transport?.tierKey ||
+                transport?.service_type ||
+                transport?.serviceType ||
+                null,
+              distanceKm: buildCommitPaymentDistanceKm(
+                hospital,
+                currentLocation,
+                transport,
+              ),
+            });
           } catch {
             cashEligible = false;
           }
@@ -411,8 +419,12 @@ export function useMapCommitPaymentController({
       // NEW: totalCostValue removed — ref is always current, no stale closure, no churn
       demoCashOnly,
       hospital?.id,
-      hospital?.organizationId,
-      hospital?.organization_id,
+      isBedFlow,
+      transport?.tierKey,
+      transport?.service_type,
+      transport?.serviceType,
+      currentLocation?.latitude,
+      currentLocation?.longitude,
       user?.id,
     ],
   );

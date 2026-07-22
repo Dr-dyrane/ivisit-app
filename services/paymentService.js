@@ -1139,84 +1139,40 @@ export const paymentService = {
   },
 
   /**
-   * Check if organization is eligible for cash payment.
-   * Uses direct table queries instead of RPC (avoids PGRST202 schema cache issues).
-   * 
-   * Logic: Org wallet balance must be >= (estimatedAmount × fee_percentage / 100)
-   * This ensures the org can cover the platform fee when user pays cash.
+   * Check cash availability without exposing organization finance data.
+   * The server owns canonical pricing, fee calculation, and the boolean result.
    */
-  async checkCashEligibility(organizationId, estimatedAmount) {
+  async checkCashEligibility({
+    hospitalId,
+    serviceType,
+    ambulanceType = null,
+    distanceKm = 0,
+  } = {}) {
     try {
-      if (!organizationId) {
-        console.warn('[paymentService] Missing organizationId for cash check');
+      if (!hospitalId || !serviceType) {
+        console.warn('[paymentService] Missing pricing context for cash check');
         return false;
       }
 
-      const amount = parseFloat(estimatedAmount) || 0;
-      console.log('[paymentService] Checking Cash Eligibility (direct query):', {
-        org: organizationId,
-        amount
-      });
+      const { data, error } = await supabase.rpc(
+        'check_patient_cash_eligibility',
+        {
+          p_service_type: serviceType,
+          p_hospital_id: hospitalId,
+          p_ambulance_type: ambulanceType,
+          p_distance_km: Math.max(Number(distanceKm) || 0, 0),
+        },
+      );
 
-      // 1. Get organization fee percentage
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('ivisit_fee_percentage, is_active')
-        .eq('id', organizationId)
-        .single();
-
-      if (orgError) {
-        console.error('[paymentService] Error fetching org:', orgError);
-        // If we can't find the org, try querying by hospital_id 
-        // (in case organizationId is actually a hospital ID)
-        const { data: hospital } = await supabase
-          .from('hospitals')
-          .select('organization_id')
-          .eq('id', organizationId)
-          .single();
-
-        if (hospital?.organization_id) {
-          console.log('[paymentService] Resolved hospital→org:', hospital.organization_id);
-          return this.checkCashEligibility(hospital.organization_id, estimatedAmount);
-        }
-
-        // Fail closed: cash needs a verifiable org wallet to cover the fee
-        console.warn('[paymentService] Cannot resolve org for cash check, blocking cash');
+      if (error) {
+        console.warn('[paymentService] Cash availability check failed:', {
+          code: error.code || null,
+          message: error.message || 'Unknown error',
+        });
         return false;
       }
 
-      if (!org.is_active) {
-        console.warn('[paymentService] Organization is inactive');
-        return false;
-      }
-
-      const feeRate = parseFloat(org.ivisit_fee_percentage || 2.5);
-      const requiredBalance = amount * (feeRate / 100);
-
-      // 2. Get wallet balance
-      const { data: wallet, error: walletError } = await supabase
-        .from('organization_wallets')
-        .select('balance')
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (walletError || !wallet) {
-        console.warn('[paymentService] No wallet found for org:', organizationId);
-        return false;
-      }
-
-      const balance = parseFloat(wallet.balance || 0);
-      const eligible = balance >= requiredBalance;
-
-      console.log('[paymentService] Cash Eligibility Result:', {
-        orgId: organizationId,
-        feeRate: `${feeRate}%`,
-        requiredBalance: requiredBalance.toFixed(2),
-        walletBalance: balance.toFixed(2),
-        eligible
-      });
-
-      return eligible;
+      return data === true;
     } catch (error) {
       console.error('[paymentService] Cash eligibility check error:', error);
       return false;
