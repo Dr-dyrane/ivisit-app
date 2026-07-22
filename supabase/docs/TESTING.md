@@ -899,3 +899,24 @@ Do not ship test-generated side effects to shared environments.
 ---
 
 **Remember**: 100% test success rate is mandatory for all schema changes.
+# Strategic Completeness Matrix
+
+For onboarding, marketplace, emergency, payment, dispatch, identity, or any
+App/Console/shared-backend lifecycle, receiver tests are necessary but not
+sufficient. The test plan must name the business initiator and prove every
+applicable row:
+
+| State | Required proof |
+| --- | --- |
+| Cold start | The initiating actor can begin with zero domain rows and without another actor bootstrapping the record. |
+| Warm/mature | Existing, owned, duplicated, cached, and historical records do not change authority or truth. |
+| Partial | Incomplete prerequisites recover without duplicate identity or misleading success. |
+| Degraded | Provider, permission, network, realtime, and downstream failure are visible and recoverable. |
+| Retry/replay | Refresh, reconnect, double submit, and repeated commands remain idempotent. |
+| Cross-surface | Canonical backend truth reflects into every authorized producer and consumer. |
+| Negative gate | Verification, ownership, payment, dispatch, and eligibility remain false until approved. |
+| Residue/rollback | Exact owned fixtures clean or retire without deleting real, discovered, or claimable truth. |
+
+A warm fixture cannot substitute for cold-start proof. Test reports must state
+the bounded implementation result and the business-outcome result separately,
+with untested rows visible.
