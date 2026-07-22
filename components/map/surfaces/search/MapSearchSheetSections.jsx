@@ -343,9 +343,11 @@ export default function MapSearchSheetSections({ model }) {
 		isDarkMode,
 		isDismissing,
 		isResolvingLocation,
+		isSearchingHospitals,
 		isSearchingLocations,
 		isUsingDeviceLocation,
 		locationError,
+		hospitalSearchError,
 		mutedColor,
 		nearbyHospitals,
 		onClearHistory,
@@ -537,6 +539,43 @@ export default function MapSearchSheetSections({ model }) {
 			) : (
 				<>
 					{orderedQuerySections.map((sectionKey) => {
+						if (
+							sectionKey === "hospitals" &&
+							isSearchingHospitals &&
+							hospitalResults.length === 0
+						) {
+							return (
+								<View
+									key="hospitals-loading"
+									style={[styles.section, responsiveStyles.section]}
+								>
+									<Text
+										style={[
+											styles.sectionTitle,
+											responsiveStyles.sectionTitle,
+											{ color: mutedColor },
+										]}
+									>
+										Hospitals
+									</Text>
+									<View style={[styles.resultGroup, { backgroundColor: groupedSurface }]}>
+										<View style={[styles.loadingRow, responsiveStyles.loadingRow]}>
+											<ActivityIndicator size="small" color={COLORS.brandPrimary} />
+											<Text
+												style={[
+													styles.loadingText,
+													responsiveStyles.loadingText,
+													{ color: mutedColor },
+												]}
+											>
+												Checking hospital directories
+											</Text>
+										</View>
+									</View>
+								</View>
+							);
+						}
+
 						if (sectionKey === "hospitals" && hospitalResults.length > 0) {
 							return (
 								<ResultsSection
@@ -665,7 +704,16 @@ export default function MapSearchSheetSections({ model }) {
 						</Text>
 					) : null}
 
-					{hospitalResults.length === 0 && placeResults.length === 0 && !isSearchingLocations ? (
+					{hospitalSearchError && hospitalResults.length === 0 ? (
+						<Text style={[styles.loadingText, responsiveStyles.loadingText, { color: COLORS.brandPrimary }]}>
+							{hospitalSearchError}
+						</Text>
+					) : null}
+
+					{hospitalResults.length === 0 &&
+					placeResults.length === 0 &&
+					!isSearchingHospitals &&
+					!isSearchingLocations ? (
 						<View style={[styles.emptyState, responsiveStyles.emptyState, { backgroundColor: groupedSurface }]}>
 							<View style={[styles.emptyIconWrap, responsiveStyles.emptyIconWrap]}>
 								<Ionicons name="location-outline" size={24} color={COLORS.brandPrimary} />

@@ -42,3 +42,25 @@ export const normalizeExternalProviderRows = ({
         place.distance_km <= radiusMeters / 1000 &&
         shouldKeepProviderForRequestedCategory(place, providerCategory)
     );
+
+export const normalizeGoogleDirectoryRows = ({
+  providerData,
+  providerCategory,
+  buildMediaProxyUrl,
+}: {
+  providerData: any[];
+  providerCategory: string;
+  buildMediaProxyUrl: ProviderMediaProxyBuilder;
+}): any[] =>
+  providerData
+    .map((place: any, index: number) =>
+      normalizeGooglePlace(place, Number.NaN, Number.NaN, index, buildMediaProxyUrl)
+    )
+    .map((place: any) => withProviderDefaults(place, "google", providerCategory))
+    .filter(
+      (place: any) =>
+        !!place?.place_id &&
+        Number.isFinite(place?.latitude) &&
+        Number.isFinite(place?.longitude) &&
+        shouldKeepProviderForRequestedCategory(place, providerCategory)
+    );

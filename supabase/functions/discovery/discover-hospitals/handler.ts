@@ -8,13 +8,17 @@ import {
   fetchExternalProviderData,
   type ProviderSource,
 } from "../../_shared/domain/providers/discoveryFlow.ts";
+import { fetchGoogleProviderPlaces } from "../../_shared/domain/providers/googlePlaces.ts";
 import { enrichGoogleProviderDetails } from "../../_shared/domain/providers/enrichmentFlow.ts";
 import {
   MAP_LOCAL_NEARBY_RADIUS_KM,
   MAP_LOCAL_NEARBY_COMFORT_THRESHOLD,
   REGION_LOCAL_FIRST_COUNTRY_CODES,
 } from "../../_shared/domain/providers/locality.ts";
-import { normalizeExternalProviderRows } from "../../_shared/domain/providers/normalizationFlow.ts";
+import {
+  normalizeExternalProviderRows,
+  normalizeGoogleDirectoryRows,
+} from "../../_shared/domain/providers/normalizationFlow.ts";
 import { persistDiscoveredProviderRows } from "../../_shared/domain/providers/persistenceFlow.ts";
 import {
   parseProviderDiscoveryRequest,
@@ -29,7 +33,10 @@ import {
 } from "../../_shared/domain/providers/rows.ts";
 import { jsonResponse, optionsResponse } from "../../_shared/http/cors.ts";
 import { isOptionsRequest } from "../../_shared/http/request.ts";
-import { probeOptionalAuthHeader } from "../../_shared/supabase/auth.ts";
+import {
+  probeOptionalAuthHeader,
+  requireAuthenticatedUser,
+} from "../../_shared/supabase/auth.ts";
 import { createServiceClient } from "../../_shared/supabase/clients.ts";
 
 const MAP_NEARBY_COMFORT_THRESHOLD = 5;
@@ -46,6 +53,65 @@ export const handleDiscoverHospitalsRequest = async (req: Request): Promise<Resp
 
     const body = await req.json();
     const action = typeof body?.action === "string" ? body.action.trim() : "discover";
+    if (action === "directory_search") {
+      await requireAuthenticatedUser(req, {
+        missingMessage: "Authentication is required for directory capture",
+        invalidMessage: "Authentication is invalid for directory capture",
+      });
+
+      const query = typeof body?.query === "string" ? body.query.trim() : "";
+      if (query.length < 3 || query.length > 120) {
+        throw new Error("query must contain 3 to 120 characters");
+      }
+
+      const providerCategory = parseProviderEnrichmentRequest(body).providerCategory;
+      const { enabled, apiKey } = getProviderGooglePlacesConfig();
+      if (!enabled || !apiKey) {
+        return jsonResponse({ error: "Provider directory search is unavailable" }, { status: 503 });
+      }
+
+      const providerData = await fetchGoogleProviderPlaces({
+        apiKey,
+        radius: 1,
+        mode: "text_search",
+        query,
+        limit: Math.min(Math.max(Number(body?.limit) || 8, 1), 12),
+        providerCategory,
+        countryCode: typeof body?.countryCode === "string" ? body.countryCode : "",
+      });
+      const normalizedRows = normalizeGoogleDirectoryRows({
+        providerData,
+        providerCategory,
+        buildMediaProxyUrl: buildConfiguredProviderMediaProxyUrl,
+      });
+      const firstRow = normalizedRows[0];
+      const persistence = normalizedRows.length > 0
+        ? await persistDiscoveredProviderRows({
+            supabaseClient: createServiceClient(),
+            dbResults: [],
+            normalizedProviderRows: normalizedRows,
+            isEmergencyMode: false,
+            latitude: firstRow.latitude,
+            longitude: firstRow.longitude,
+            providerCategory,
+            radiusKm: 1,
+            limit: normalizedRows.length,
+            refreshDatabaseResults: false,
+            preserveExistingRows: true,
+          })
+        : { providerPersistenceCount: 0, providerPersistenceErrorCount: 0 };
+
+      return jsonResponse({
+        data: normalizedRows,
+        meta: {
+          action,
+          provider_category: providerCategory,
+          provider_count: normalizedRows.length,
+          provider_persistence_count: persistence.providerPersistenceCount,
+          provider_persistence_error_count: persistence.providerPersistenceErrorCount,
+        },
+      });
+    }
     if (action === "enrich_provider") {
       const { placeId, providerCategory } = parseProviderEnrichmentRequest(body);
       if (!placeId) {

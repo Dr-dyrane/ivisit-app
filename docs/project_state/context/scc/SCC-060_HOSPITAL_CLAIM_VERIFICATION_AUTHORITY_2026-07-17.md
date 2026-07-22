@@ -22,6 +22,10 @@ organization and facility eligibility gates are both satisfied.
 - Evidence, claim, organization, and facility decisions remain distinct.
 - `nearby_hospitals` and emergency matching continue requiring a verified
   organization and dispatch-eligible facility.
+- Patient map name search may capture an external, unverified hospital shadow
+  by stable provider `place_id` for later claiming. That Explore Care ingress
+  is never emergency-selectable until the existing organization and facility
+  gates pass.
 - Production deployment must use exact SQL emitted from the reviewed pillar
   markers, followed by live proof, cleanup, temporary-history repair, and drift
   validation. No EAS update, APK, or AAB is required because patient behavior

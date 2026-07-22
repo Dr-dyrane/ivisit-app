@@ -59,8 +59,8 @@ export const fetchGoogleProviderPlaces = async ({
   countryCode,
 }: {
   apiKey: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   radius: number;
   mode: "nearby" | "text_search";
   query: string;
@@ -80,17 +80,25 @@ export const fetchGoogleProviderPlaces = async ({
   // explicit provider-detail enrichment so list browsing cannot fan out costs.
   const fieldMask = GOOGLE_PROVIDER_LIST_FIELD_MASK;
   const googleTypes = CATEGORY_TO_GOOGLE_TYPES[providerCategory] ?? ["hospital"];
+  const hasLocationBias = Number.isFinite(latitude) && Number.isFinite(longitude);
   const body =
     useTextSearch
       ? {
           textQuery: textSearchQuery,
           pageSize: limit,
-          locationBias: {
-            circle: {
-              center: { latitude, longitude },
-              radius: Math.max(1, Math.round(radius)),
-            },
-          },
+          ...(hasLocationBias
+            ? {
+                locationBias: {
+                  circle: {
+                    center: {
+                      latitude: latitude as number,
+                      longitude: longitude as number,
+                    },
+                    radius: Math.max(1, Math.round(radius)),
+                  },
+                },
+              }
+            : {}),
         }
       : {
           includedTypes: googleTypes,
@@ -98,7 +106,10 @@ export const fetchGoogleProviderPlaces = async ({
           rankPreference: "DISTANCE",
           locationRestriction: {
             circle: {
-              center: { latitude, longitude },
+              center: {
+                latitude: latitude as number,
+                longitude: longitude as number,
+              },
               radius: Math.max(1, Math.round(radius)),
             },
           },

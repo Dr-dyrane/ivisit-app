@@ -60,6 +60,12 @@ try {
   const {
     parseProviderDiscoveryRequest,
   } = require("../supabase/functions/_shared/domain/providers/request.ts");
+  const {
+    shouldKeepProviderForRequestedCategory,
+  } = require("../supabase/functions/_shared/domain/providers/guards.ts");
+  const {
+    withProviderDefaults,
+  } = require("../supabase/functions/_shared/domain/providers/defaults.ts");
 
   const parseDiscovery = (body) =>
     parseProviderDiscoveryRequest(body, { googlePlacesEnabled: true });
@@ -84,6 +90,26 @@ try {
     false,
     "non-hospital categories can never select the emergency RPC",
   );
+
+	const genericGoogleNavyHospital = {
+		place_id: "ChIJLw173O2IOxARmAgfCKa-KSo",
+		name: "Nigerian Navy Hospital",
+		address: "Nigerian Navy Hospital, Oluti, Lagos 102102, Lagos, Nigeria",
+		google_type: "premise",
+		google_types: ["premise", "street_address"],
+		latitude: 6.452147,
+		longitude: 3.2831993,
+	};
+	assert.equal(
+		shouldKeepProviderForRequestedCategory(genericGoogleNavyHospital, "hospital"),
+		true,
+		"hospital name evidence must recover valid facilities with generic Google types",
+	);
+	assert.equal(
+		withProviderDefaults(genericGoogleNavyHospital, "google", "hospital").provider_type,
+		"hospital",
+		"generic Google types must not override a positive hospital name match",
+	);
 
   const eligibleHospital = {
     id: "hospital-eligible",
@@ -309,7 +335,7 @@ try {
       isValidUUID: () => true,
       resolveEntityId: async (value) => value,
     },
-    "./mapApiConfig": { isGooglePlacesEnabled: () => false },
+    "./mapApiConfig": { isGooglePlacesEnabled: () => true },
     "./hospitalIdentity": {
       coordinateClusterKey: (value) => String(value ?? ""),
       getHospitalFacilityKey: (hospital) =>
@@ -457,6 +483,46 @@ try {
     false,
     "Explore Care must explicitly opt out of emergency discovery",
   );
+
+	edgeRows = [{
+		...genericGoogleNavyHospital,
+		id: "provider_google_0",
+		provider_type: "hospital",
+		emergency_eligible: true,
+		dispatch_eligible: false,
+		verified: false,
+		status: "available",
+		distance_km: 0.13,
+	}];
+	const hospitalDirectoryMatches = await hospitalsService.searchNearbyProvidersByText(
+		6.45165,
+		3.28212,
+		"Nigerian Navy Reference Hospital Ojo",
+		"hospital",
+		50000,
+		{ countryCode: "ng" },
+	);
+	assert.equal(hospitalDirectoryMatches.length, 1);
+	assert.equal(hospitalDirectoryMatches[0].name, "Nigerian Navy Hospital");
+	assert.equal(hospitalDirectoryMatches[0].isDispatchReady, false);
+	assert.equal(lastDiscoveryBody?.mode, "text_search");
+	assert.equal(lastDiscoveryBody?.emergencyMode, false);
+	assert.equal(lastDiscoveryBody?.mergeWithDatabase, true);
+	assert.equal(lastDiscoveryBody?.includeGooglePlaces, true);
+	assert.equal(lastDiscoveryBody?.countryCode, "NG");
+	assert.equal(
+		lastDiscoveryBody?.query,
+		"Nigerian Navy Reference Hospital Ojo",
+	);
+
+	const mapSearchModel = read(
+		"components/map/surfaces/search/useMapSearchSheetModel.js",
+	);
+	assert.match(
+		mapSearchModel,
+		/hospitalsService\.searchNearbyProvidersByText\([\s\S]*?"hospital"[\s\S]*?includeGooglePlaces: true/,
+		"map search must route hospital-name queries through bounded directory search",
+	);
 
   const nearbyHospitalsRpc = read("supabase/migrations/20260219010000_core_rpcs.sql");
   assert.match(

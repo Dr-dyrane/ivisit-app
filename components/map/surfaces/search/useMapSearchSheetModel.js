@@ -4,6 +4,7 @@ import { useGlobalLocation } from "../../../../contexts/GlobalLocationContext";
 import { useSearch } from "../../../../contexts/SearchContext";
 import { useLocationStore } from "../../../../stores/locationStore";
 import googleLocationService from "../../../../services/googleLocationService";
+import { hospitalsService } from "../../../../services/hospitalsService";
 import { areLocationsNearby } from "../../../../utils/mapUtils";
 import {
 	buildHospitalMeta,
@@ -67,10 +68,14 @@ export function useMapSearchSheetModel({
 	const [isSearchingLocations, setIsSearchingLocations] = useState(false);
 	const [isResolvingLocation, setIsResolvingLocation] = useState(null);
 	const [locationError, setLocationError] = useState(null);
+	const [remoteHospitalResults, setRemoteHospitalResults] = useState([]);
+	const [isSearchingHospitals, setIsSearchingHospitals] = useState(false);
+	const [hospitalSearchError, setHospitalSearchError] = useState(null);
 	const [showNearbyHospitals, setShowNearbyHospitals] = useState(false);
 	const [isDismissing, setIsDismissing] = useState(false);
 	const [showClearConfirm, setShowClearConfirm] = useState(false);
 	const requestIdRef = useRef(0);
+	const hospitalRequestIdRef = useRef(0);
 	const sessionTokenRef = useRef(null);
 
 	// Get saved locations from store
@@ -110,6 +115,11 @@ export function useMapSearchSheetModel({
 			: "Live";
 	const nearbyHospitals = Array.isArray(hospitals) ? hospitals.filter(Boolean).slice(0, 4) : [];
 	const locationBias = currentLocation?.location || currentLocation || null;
+	const hospitalSearchOrigin = locationBias?.location || locationBias;
+	const hospitalSearchLatitude = Number(hospitalSearchOrigin?.latitude);
+	const hospitalSearchLongitude = Number(hospitalSearchOrigin?.longitude);
+	const hospitalSearchCountryCode =
+		hospitalSearchOrigin?.countryCode || currentLocation?.countryCode || null;
 
 	// Get device location to compare with current selected location
 	// PULLBACK NOTE: useGlobalLocation() returns userLocation directly, not wrapped in a location property.
@@ -138,9 +148,13 @@ export function useMapSearchSheetModel({
 			setShowNearbyHospitals(false);
 			setLocationSuggestions([]);
 			setLocationError(null);
+			setRemoteHospitalResults([]);
+			setHospitalSearchError(null);
 			setIsSearchingLocations(false);
+			setIsSearchingHospitals(false);
 			setIsResolvingLocation(null);
 			requestIdRef.current += 1;
+			hospitalRequestIdRef.current += 1;
 			sessionTokenRef.current = null;
 			return;
 		}
@@ -190,6 +204,68 @@ export function useMapSearchSheetModel({
 		return () => clearTimeout(timeout);
 	}, [locationBias, trimmedQuery, visible]);
 
+	useEffect(() => {
+		if (!visible) return undefined;
+
+		const canSearchHospitals =
+			trimmedQuery.length >= 3 &&
+			Number.isFinite(hospitalSearchLatitude) &&
+			Number.isFinite(hospitalSearchLongitude) &&
+			detectQueryIntent(trimmedQuery) !== "location";
+
+		if (!canSearchHospitals) {
+			hospitalRequestIdRef.current += 1;
+			setRemoteHospitalResults([]);
+			setHospitalSearchError(null);
+			setIsSearchingHospitals(false);
+			return undefined;
+		}
+
+		const requestId = hospitalRequestIdRef.current + 1;
+		hospitalRequestIdRef.current = requestId;
+		setRemoteHospitalResults([]);
+
+		const timeout = setTimeout(async () => {
+			setIsSearchingHospitals(true);
+			setHospitalSearchError(null);
+
+			try {
+				const results = await hospitalsService.searchNearbyProvidersByText(
+					hospitalSearchLatitude,
+					hospitalSearchLongitude,
+					trimmedQuery,
+					"hospital",
+					50000,
+					{
+						limit: 25,
+						includeGooglePlaces: true,
+						includeMapboxPlaces: true,
+						countryCode: hospitalSearchCountryCode,
+					},
+				);
+
+				if (hospitalRequestIdRef.current !== requestId) return;
+				setRemoteHospitalResults(Array.isArray(results) ? results : []);
+			} catch (_error) {
+				if (hospitalRequestIdRef.current !== requestId) return;
+				setRemoteHospitalResults([]);
+				setHospitalSearchError("We couldn't search hospital directories right now.");
+			} finally {
+				if (hospitalRequestIdRef.current === requestId) {
+					setIsSearchingHospitals(false);
+				}
+			}
+		}, 420);
+
+		return () => clearTimeout(timeout);
+	}, [
+		hospitalSearchCountryCode,
+		hospitalSearchLatitude,
+		hospitalSearchLongitude,
+		trimmedQuery,
+		visible,
+	]);
+
 	const visibleTrending = useMemo(() => {
 		const merged = [];
 		const seen = new Set();
@@ -237,7 +313,24 @@ export function useMapSearchSheetModel({
 	const hospitalResults = useMemo(() => {
 		if (!hasQuery) return [];
 
-		return (Array.isArray(hospitals) ? hospitals : [])
+		const candidates = [];
+		const seen = new Set();
+		for (const hospital of [
+			...(Array.isArray(hospitals) ? hospitals : []),
+			...(Array.isArray(remoteHospitalResults) ? remoteHospitalResults : []),
+		]) {
+			if (!hospital) continue;
+			const key =
+				hospital?.placeId ||
+				hospital?.place_id ||
+				hospital?.id ||
+				`${normalizeText(hospital?.name)}:${hospital?.latitude}:${hospital?.longitude}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			candidates.push(hospital);
+		}
+
+		return candidates
 			.filter(Boolean)
 			.map((hospital) => ({
 				hospital,
@@ -248,7 +341,7 @@ export function useMapSearchSheetModel({
 			.sort((a, b) => b.score - a.score)
 			.slice(0, 5) // Cap at 5 to keep areas visible
 			.map((s) => ({ hospital: s.hospital, score: s.score }));
-	}, [hasQuery, hospitals, query]);
+	}, [hasQuery, hospitals, query, remoteHospitalResults]);
 
 	const placeResults = useMemo(
 		() =>
@@ -384,7 +477,9 @@ export function useMapSearchSheetModel({
 		isResolvingLocation,
 		isUsingDeviceLocation,
 		isSearchingLocations,
+		isSearchingHospitals,
 		locationError,
+		hospitalSearchError,
 		locationPromptBody,
 		locationPromptTitle,
 		locationSectionTitle: "Places",

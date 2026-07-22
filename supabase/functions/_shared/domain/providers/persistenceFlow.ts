@@ -20,6 +20,8 @@ export const persistDiscoveredProviderRows = async ({
   providerCategory,
   radiusKm,
   limit,
+  refreshDatabaseResults = true,
+  preserveExistingRows = false,
 }: {
   supabaseClient: any;
   dbResults: any[];
@@ -30,6 +32,8 @@ export const persistDiscoveredProviderRows = async ({
   providerCategory: string;
   radiusKm: number;
   limit: number;
+  refreshDatabaseResults?: boolean;
+  preserveExistingRows?: boolean;
 }): Promise<{
   dbResults: any[];
   providerPersistenceCount: number;
@@ -40,7 +44,7 @@ export const persistDiscoveredProviderRows = async ({
   let providerPersistenceErrorCount = 0;
 
   const existingFacilityKeys = new Set(dbResults.map((row: any) => toMergeKey(row)));
-  const providerOnlyRows = [];
+  let providerOnlyRows = [];
   const providerSeen = new Set<string>();
 
   normalizedProviderRows.forEach((row: any) => {
@@ -71,6 +75,12 @@ export const persistDiscoveredProviderRows = async ({
         existingByPlaceId.set(key, row);
       });
     }
+  }
+
+  if (preserveExistingRows && existingByPlaceId.size > 0) {
+    providerOnlyRows = providerOnlyRows.filter(
+      (row: any) => !existingByPlaceId.has(toSafeString(row?.place_id)),
+    );
   }
 
   const upsertRows = providerOnlyRows
@@ -216,6 +226,14 @@ export const persistDiscoveredProviderRows = async ({
         });
       }
     }
+  }
+
+  if (!refreshDatabaseResults) {
+    return {
+      dbResults: nextDbResults,
+      providerPersistenceCount,
+      providerPersistenceErrorCount,
+    };
   }
 
   const refreshedDbFetch = await fetchNearbyProviderRows({

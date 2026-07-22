@@ -917,6 +917,74 @@ export const hospitalsService = {
 	},
 
 	/**
+	 * Search provider directories by name near a map origin.
+	 *
+	 * This is an Explore Care lookup only. Results may be persisted as unverified
+	 * provider shadows for later claiming, but they never acquire emergency or
+	 * dispatch authority through this path.
+	 */
+	async searchNearbyProvidersByText(
+		lat,
+		lng,
+		query,
+		providerCategory = 'hospital',
+		radius = 50000,
+		options = {},
+	) {
+		const normalizedQuery = toText(query);
+		if (
+			normalizedQuery.length < 3 ||
+			!Number.isFinite(lat) ||
+			!Number.isFinite(lng)
+		) {
+			return [];
+		}
+
+		try {
+			const includeGooglePlaces =
+				options?.includeGooglePlaces !== false && isGooglePlacesEnabled();
+			const includeMapboxPlaces = options?.includeMapboxPlaces !== false;
+			const limit = Math.max(1, Math.min(25, Number(options?.limit) || 25));
+			const countryCode =
+				typeof options?.countryCode === "string" && options.countryCode.trim()
+					? options.countryCode.trim().toUpperCase()
+					: null;
+
+			const { data, error } = await supabase.functions.invoke('discover-hospitals', {
+				body: {
+					latitude: lat,
+					longitude: lng,
+					radius,
+					mode: 'text_search',
+					query: normalizedQuery,
+					limit,
+					providerCategory,
+					emergencyMode: false,
+					includeProviderDiscovery: true,
+					includeMapboxPlaces,
+					includeGooglePlaces,
+					countryCode,
+					mergeWithDatabase: true,
+				},
+			});
+
+			if (error) return [];
+
+			const mapped = (Array.isArray(data?.data) ? data.data : [])
+				.map((row) => this._mapHospital(row))
+				.filter((row) => row?.providerType === providerCategory);
+
+			return sortProvidersForExplore(mapped);
+		} catch (error) {
+			console.warn(
+				"hospitalsService.searchNearbyProvidersByText skipped:",
+				error?.message || error,
+			);
+			return [];
+		}
+	},
+
+	/**
 	 * Query nearby_providers RPC directly — explore mode, no emergency filter.
 	 * Falls back from discoverNearbyProviders when edge function is unavailable.
 	 */
