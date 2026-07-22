@@ -40,6 +40,7 @@ export default function MapSheetOrchestrator({
 	nearestHospital,
 	nearestHospitalMeta = [],
 	selectedCare = null,
+	isCareDiscoveryPending = false,
 	isHospitalsLoading = false,
 	onOpenSearch,
 	onOpenHospitals,
@@ -562,6 +563,7 @@ export default function MapSheetOrchestrator({
 								: nearestHospitalMeta
 						}
 						selectedCare={selectedCare}
+						isCareDiscoveryPending={isCareDiscoveryPending}
 						onOpenSearch={onOpenSearch}
 						onOpenHospitals={onOpenHospitals}
 						onChooseCare={onChooseCare}

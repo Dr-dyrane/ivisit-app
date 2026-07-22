@@ -25,9 +25,28 @@ const serviceRoleKey =
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const TEST_USER_PASSWORD = 'password123!';
 const PREPARE_BROWSER_FIXTURE = process.argv.includes('--prepare-browser-fixture');
+const BROWSER_FIXTURE_STATES = new Set(['ready', 'offered']);
+const BROWSER_FIXTURE_PROFILES = new Set(['standard', 'fleet-rich', 'provider-rich']);
+
+function argumentValue(name, argv = process.argv.slice(2)) {
+  const prefix = `--${name}=`;
+  const exact = argv.find((value) => value.startsWith(prefix));
+  return exact ? exact.slice(prefix.length) : null;
+}
+
+const BROWSER_FIXTURE_STATE = argumentValue('browser-state') || 'ready';
+const BROWSER_FIXTURE_PROFILE = argumentValue('fixture-profile') || 'standard';
 
 if (!supabaseUrl || !serviceRoleKey || !anonKey) {
   console.error('Missing Supabase credentials.');
+  process.exit(1);
+}
+if (PREPARE_BROWSER_FIXTURE && !BROWSER_FIXTURE_STATES.has(BROWSER_FIXTURE_STATE)) {
+  console.error(`Unsupported browser fixture state: ${BROWSER_FIXTURE_STATE}`);
+  process.exit(1);
+}
+if (PREPARE_BROWSER_FIXTURE && !BROWSER_FIXTURE_PROFILES.has(BROWSER_FIXTURE_PROFILE)) {
+  console.error(`Unsupported browser fixture profile: ${BROWSER_FIXTURE_PROFILE}`);
   process.exit(1);
 }
 
@@ -411,8 +430,12 @@ async function cleanup(ctx, report) {
 async function runManifestCleanupPass(ctx, pass) {
   const plan = await buildCleanupPlan(supabase, ctx.manifest);
   const planned = countPlan(plan);
-  await applyCleanupPlan(supabase, plan);
-  const residue = countPlan(await buildCleanupPlan(supabase, ctx.manifest));
+  await applyCleanupPlan(supabase, plan, ctx.manifest.resources.authUserIds);
+  const residue = countPlan(
+    await buildCleanupPlan(supabase, ctx.manifest, {
+      authUsersExpectedAbsent: true,
+    })
+  );
   assert(
     Object.values(residue).every((count) => count === 0),
     `manifest cleanup pass ${pass} left residue: ${JSON.stringify(residue)}`
@@ -693,6 +716,188 @@ async function createFoundation(ctx) {
   };
 }
 
+async function createRichFleetFixture(ctx, foundation) {
+  const suffix = String(TS).slice(-4);
+  const fleetRows = [
+    {
+      call_sign: `E2E-RTR-${suffix}`,
+      type: 'advanced',
+      status: 'returning',
+      vehicle_number: `RTR-${suffix}`,
+      license_plate: `E2E-RTR-${suffix}`,
+      eta: new Date(Date.now() + 8 * 60 * 1000).toISOString(),
+      base_price: 220,
+      crew: ['Lead paramedic', 'Emergency technician'],
+    },
+    {
+      call_sign: `E2E-MNT-${suffix}`,
+      type: 'basic',
+      status: 'maintenance',
+      vehicle_number: `MNT-${suffix}`,
+      license_plate: `E2E-MNT-${suffix}`,
+      base_price: 160,
+      crew: ['Fleet technician'],
+    },
+    {
+      call_sign: `E2E-OFF-${suffix}`,
+      type: 'patient_transport',
+      status: 'offline',
+      vehicle_number: `OFF-${suffix}`,
+      license_plate: `E2E-OFF-${suffix}`,
+      base_price: 120,
+    },
+    {
+      call_sign: `E2E-PND-${suffix}`,
+      type: 'basic',
+      status: 'pending_approval',
+      vehicle_number: `PND-${suffix}`,
+      license_plate: `E2E-PND-${suffix}`,
+      base_price: 150,
+      crew: ['Pending crew review'],
+    },
+    {
+      call_sign: `E2E-RDY-${suffix}`,
+      type: 'advanced',
+      status: 'available',
+      vehicle_number: `RDY-${suffix}`,
+      license_plate: `E2E-RDY-${suffix}`,
+      eta: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
+      base_price: 250,
+      crew: ['Paramedic', 'Emergency technician'],
+    },
+  ].map((row) => ({
+    ...row,
+    hospital_id: foundation.hospital.id,
+    organization_id: foundation.org.id,
+  }));
+
+  const { data, error } = await supabase
+    .from('ambulances')
+    .insert(fleetRows)
+    .select('id,call_sign,status,type,vehicle_number,license_plate,eta,base_price');
+  if (error) throw new Error(`rich fleet fixture create failed: ${error.message}`);
+  (data || []).forEach((row) => ctx.ambulanceIds.add(row.id));
+  return data || [];
+}
+
+async function createRichProviderFixture(ctx, foundation) {
+  const suffix = String(TS).slice(-4);
+  const doctorRows = [
+    {
+      name: `Dr Amara Cole ${suffix}`,
+      specialization: 'Emergency Medicine',
+      department: 'Emergency',
+      status: 'available',
+      is_available: true,
+      is_on_call: false,
+      current_patients: 1,
+      max_patients: 8,
+      experience: 12,
+      rating: 4.8,
+      reviews_count: 32,
+      consultation_fee: '180',
+      phone: '+15555550101',
+      email: `amara-${suffix}@ivisit-e2e.local`,
+      license_number: `E2E-AM-${suffix}`,
+    },
+    {
+      name: `Dr Bayo Mensah ${suffix}`,
+      specialization: 'Cardiology',
+      department: 'Cardiology',
+      status: 'on_call',
+      is_available: true,
+      is_on_call: true,
+      current_patients: 2,
+      max_patients: 6,
+      experience: 9,
+      rating: 4.6,
+      reviews_count: 18,
+      consultation_fee: '240',
+      phone: '+15555550102',
+      email: `bayo-${suffix}@ivisit-e2e.local`,
+      license_number: `E2E-BM-${suffix}`,
+    },
+    {
+      name: `Dr Chinwe Okafor ${suffix}`,
+      specialization: 'Pediatrics',
+      department: 'Pediatrics',
+      status: 'busy',
+      is_available: false,
+      is_on_call: false,
+      current_patients: 4,
+      max_patients: 5,
+      experience: 7,
+      rating: 4.9,
+      reviews_count: 41,
+      consultation_fee: '210',
+      phone: '+15555550103',
+      email: `chinwe-${suffix}@ivisit-e2e.local`,
+      license_number: `E2E-CO-${suffix}`,
+    },
+    {
+      name: `Dr Dara Yusuf ${suffix}`,
+      specialization: 'Neurology',
+      department: 'Neurology',
+      status: 'off_duty',
+      is_available: false,
+      is_on_call: false,
+      current_patients: 0,
+      max_patients: 4,
+      experience: 15,
+      consultation_fee: '260',
+      phone: '+15555550104',
+      email: `dara-${suffix}@ivisit-e2e.local`,
+      license_number: `E2E-DY-${suffix}`,
+    },
+    {
+      name: `Dr Efe Nwosu ${suffix}`,
+      specialization: 'General Practice',
+      department: 'Outpatient',
+      status: 'available',
+      is_available: false,
+      is_on_call: false,
+      current_patients: 0,
+      max_patients: 10,
+      experience: 5,
+      consultation_fee: '150',
+      phone: '+15555550105',
+      email: `efe-${suffix}@ivisit-e2e.local`,
+      license_number: `E2E-EN-${suffix}`,
+    },
+  ].map((row) => ({
+    ...row,
+    hospital_id: foundation.hospital.id,
+    about: `Exact-run provider fixture ${TAG}`,
+  }));
+
+  const { data: doctors, error: doctorError } = await supabase
+    .from('doctors')
+    .insert(doctorRows)
+    .select('id,display_id,name,specialization,status,is_available,is_on_call,current_patients,max_patients');
+  if (doctorError) throw new Error(`rich provider fixture create failed: ${doctorError.message}`);
+  (doctors || []).forEach((doctor) => ctx.doctorIds.add(doctor.id));
+
+  const today = new Date().toISOString().slice(0, 10);
+  const scheduleRows = (doctors || []).slice(0, 4).map((doctor, index) => ({
+    doctor_id: doctor.id,
+    date: today,
+    start_time: ['07:00', '09:00', '12:00', '18:00'][index],
+    end_time: ['15:00', '17:00', '20:00', '23:00'][index],
+    shift_type: ['day', 'day', 'evening', 'night'][index],
+    is_available: index !== 2,
+  }));
+  const { data: schedules, error: scheduleError } = await supabase
+    .from('doctor_schedules')
+    .insert(scheduleRows)
+    .select('id,doctor_id,date,start_time,end_time,shift_type,is_available');
+  if (scheduleError) throw new Error(`rich provider schedule create failed: ${scheduleError.message}`);
+
+  return {
+    doctors: doctors || [],
+    schedules: schedules || [],
+  };
+}
+
 async function createEmergencyViaRpc({ client, userId, hospital, service_type, paymentMethod, totalAmount, specialty }) {
   const { data, error } = await client.rpc('create_emergency_v4', {
     p_user_id: userId,
@@ -920,14 +1125,87 @@ async function run() {
     };
 
     if (PREPARE_BROWSER_FIXTURE) {
+      const richFleet = BROWSER_FIXTURE_PROFILE === 'fleet-rich'
+        ? await createRichFleetFixture(ctx, foundation)
+        : [];
+      const richProviders = BROWSER_FIXTURE_PROFILE === 'provider-rich'
+        ? await createRichProviderFixture(ctx, foundation)
+        : { doctors: [], schedules: [] };
+      let browserRequest = null;
+      let browserPayment = null;
+      if (BROWSER_FIXTURE_STATE === 'offered') {
+        const browserCreate = await createEmergencyViaRpc({
+          client: foundation.patientClient,
+          userId: foundation.patient.id,
+          hospital: foundation.hospital,
+          service_type: 'ambulance',
+          paymentMethod: 'cash',
+          totalAmount: 130
+        });
+        ctx.requestIds.add(browserCreate.request_id);
+        if (browserCreate.payment_id) ctx.paymentIds.add(browserCreate.payment_id);
+
+        await runJsonRpc(
+          foundation.orgAdminClient,
+          'approve_cash_payment',
+          {
+            p_payment_id: browserCreate.payment_id,
+            p_request_id: browserCreate.request_id
+          },
+          'browser fixture cash approval'
+        );
+        browserRequest = await qOne(
+          'emergency_requests',
+          'id,status,payment_status,ambulance_id,current_responder_assignment_id',
+          'id',
+          browserCreate.request_id
+        );
+        browserPayment = await qOne(
+          'payments',
+          'id,status,payment_method,emergency_request_id',
+          'id',
+          browserCreate.payment_id
+        );
+        assert(
+          browserRequest.status === 'in_progress'
+          && browserRequest.current_responder_assignment_id,
+          `browser fixture did not reach offered state: ${JSON.stringify(browserRequest)}`
+        );
+        ctx.assignmentIds.add(browserRequest.current_responder_assignment_id);
+      }
+
       retainBrowserFixture = true;
       report.browserHandoff = {
         runId: TAG,
         manifestPath,
+        fixtureState: BROWSER_FIXTURE_STATE,
+        fixtureProfile: BROWSER_FIXTURE_PROFILE,
         patientEmail: foundation.patient.email,
         driverEmail: foundation.driver.email,
         orgAdminEmail: foundation.orgAdmin.email,
         hospitalName: foundation.hospital.name,
+        request: browserRequest,
+        payment: browserPayment,
+        fleetUnits: [
+          {
+            id: foundation.ambulance.id,
+            call_sign: foundation.ambulance.call_sign,
+            status: foundation.ambulance.status,
+            type: foundation.ambulance.type,
+          },
+          ...richFleet,
+        ],
+        providerStaff: [
+          {
+            id: foundation.doctor.id,
+            display_id: foundation.doctor.display_id,
+            name: foundation.doctor.name,
+            specialization: foundation.doctor.specialization,
+            status: foundation.doctor.status,
+          },
+          ...richProviders.doctors,
+        ],
+        providerSchedules: richProviders.schedules,
         status: 'prepared',
         cleanupRequired: true,
       };
@@ -1610,7 +1888,7 @@ async function run() {
   }
 
   if (primaryError) throw primaryError;
-  if (!report.cleanupPassed || !report.zeroResiduePassed) {
+  if (!retainBrowserFixture && (!report.cleanupPassed || !report.zeroResiduePassed)) {
     throw new Error(`cleanup failed: ${report.cleanupWarnings.join('; ')}`);
   }
 }

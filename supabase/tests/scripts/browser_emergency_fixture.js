@@ -22,6 +22,7 @@ const ALLOWED_ACTIONS = new Set([
   'accept',
   'telemetry',
   'arrive',
+  'acknowledge-arrival',
   'complete',
 ]);
 
@@ -284,6 +285,20 @@ async function main(argv = process.argv.slice(2)) {
         'responder_arrive_emergency',
         { p_request_id: graph.request.id },
         'responder arrival'
+      );
+    }
+  }
+
+  if (action === 'acknowledge-arrival') {
+    if (graph.request.patient_acknowledged_arrival_at) {
+      result = { action, status: 'already_acknowledged' };
+    } else {
+      const client = await createAuthedClient(emailFor(manifest.runId, 'patient'), 'patient');
+      result = await rpc(
+        client,
+        'patient_acknowledge_responder_arrival',
+        { p_request_id: graph.request.id },
+        'patient arrival acknowledgement'
       );
     }
   }

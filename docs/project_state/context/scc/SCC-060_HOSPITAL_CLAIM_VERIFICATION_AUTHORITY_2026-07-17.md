@@ -719,3 +719,52 @@ claim/verification gate. The separate short-lived responder telemetry limitation
 in the pre-created `ready` browser fixture remains a test-harness improvement;
 it is not evidence of a production lifecycle regression. No EAS update is
 required for this Console-only closure.
+
+## Patient Cash Preflight And Rich-Fixture Closure (2026-07-21)
+
+- The patient cash-availability gate no longer reads organization fee
+  percentages or organization-wallet balances. It calls the boolean-only
+  `check_patient_cash_eligibility` receiver with the same service, hospital,
+  ambulance tier, and distance context used by the active checkout surface.
+  A missing or failed receiver fails closed and asks the patient to choose a
+  different payment method; the eligibility boundary exposes no finance
+  details. Existing checkout-fee presentation remains a separately owned
+  pricing concern and was not changed by this pack.
+- The exact three-statement receiver bundle was extracted from the canonical
+  emergency pillar, rehearsed inside a rolled-back transaction, and applied to
+  project `dlwtcmhdzoklveihuhjf`. Six live preflight checks and two post-deploy
+  catalog/ACL assertions passed. A direct service-role probe returned a BOOLEAN
+  and returned `false` for an unknown hospital. Exact rollback is
+  `DROP FUNCTION IF EXISTS public.check_patient_cash_eligibility(TEXT, UUID,
+  TEXT, NUMERIC);`.
+- The Console top-up command now sends the receiver-owned top-level
+  `is_top_up: true` discriminator in addition to descriptive metadata. This
+  prevents future top-up confirmations from being misclassified as ordinary
+  payments without changing the payments schema.
+- The emergency flow matrix passed payment, dispatch, arrival,
+  acknowledgement, completion, transition-history, notification, billing, and
+  wallet assertions. Its first exact-manifest cleanup removed three requests,
+  five payments, 13 transitions, 23 notifications, seven ledger effects, and
+  the rest of the owned graph with zero residue. The second cleanup planned
+  zero resources.
+- The cleanup harness had a proof-only Auth residue bug: after deleting and
+  directly asserting captured Auth users were absent, it re-counted every
+  manifest Auth ID without querying existence. The follow-up planner now uses
+  the proven-absent option. The interrupted run was cleaned twice; the repeated
+  full matrix then passed with both cleanup proofs.
+- `fleet-rich` prepared six independently rendered ambulance states using
+  valid timestamp ETAs. `provider-rich` prepared six provider states and four
+  schedules. Both exact-run manifests were cleaned to zero residue and applied
+  a second time as no-ops. Discovered hospitals were not targeted.
+- Seven emergency continuity test files, the RPC authority guard, all 17
+  shared App/Console source contracts, and all 16 live shared contracts passed.
+  The App web export and Console production build remain required release gates
+  after the final diff review.
+
+**Next incomplete lane:** finish App and Console production builds, commit and
+push coherent packs, and verify the deployed Console build. The current task
+session does not expose the in-app browser-control runtime, so a fresh visual
+desktop/mobile click-through remains an explicit release observation rather
+than an inferred pass. Publish an App EAS OTA only after that observation and
+only if the final patient JavaScript diff is intentionally released before
+1.0.9.
