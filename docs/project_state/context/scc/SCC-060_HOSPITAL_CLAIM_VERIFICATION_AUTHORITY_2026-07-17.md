@@ -813,8 +813,23 @@ only if the final patient JavaScript diff is intentionally released before
   zero horizontal overflow and correct mobile recomposition. No schema,
   migration, RPC, payment receiver, or Console contract changed in this pack.
 
-**Next incomplete lane:** commit and push the request-owned pickup continuation,
-wait for the Git-linked App web deployment, then reload the still-owned exact
-accepted request to prove the deployed facility, pickup, and route all come
-from the request rather than the prior map selection. Clean that manifest
-twice. Publish EAS only after that post-deploy proof passes.
+### Day 6 release closure
+
+- Commits `3423afe5`, `816cf16e`, and `de12c541` were pushed to `main`; each
+  Git-linked production web deployment completed successfully.
+- Final deployed reload rendered the map at the Lagos request coordinates,
+  exposed `Request pickup` as the pickup marker label, injected only the exact
+  request-owned demo hospital into the tracked map, and kept the hospital name,
+  `1 E2E Validation Ave`, sheet state, route metrics, and responder presentation
+  aligned. The prior Banning discovery selection no longer entered the active
+  journey projection.
+- Exact manifest `flow-matrix-1784684660385-f83ed3e3` was cleaned twice. The
+  second pass found zero resources in every disposable class; no discovered or
+  claimable hospital was targeted.
+- The marker-density OTA law and bundled service-role guard passed. Production
+  EAS update group `4343b25b-a116-47a7-a5e7-722d8bc365e5` was published for
+  runtime `1.0.8` on Android and iOS from commit `de12c541`.
+
+**Next incomplete lane:** none for the Day 6 payment-to-tracking browser and
+runtime 1.0.8 release gate. Continue ordinary device observation; 1.0.9 remains
+a separate future native-build milestone.
