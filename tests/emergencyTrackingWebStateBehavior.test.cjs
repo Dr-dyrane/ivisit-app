@@ -103,15 +103,29 @@ const canonicalRequestModel = activeRequestModel.buildActiveMapRequestModel({
     hospitalId: requestHospital.id,
     hospitalName: requestHospital.name,
     hospital: requestHospital,
+    patientLocation: { latitude: 6.5244, longitude: 3.3792 },
     status: EmergencyRequestStatus.ACCEPTED,
   },
   preferredHospital: mismatchedCachedHospital,
   hospitals: [mismatchedCachedHospital],
   allHospitals: [mismatchedCachedHospital],
+  currentLocationDetails: {
+    primaryText: "Unrelated current map location",
+    secondaryText: "Banning, California",
+  },
   nowMs,
 });
 assert.equal(canonicalRequestModel.hospital.id, requestHospital.id);
 assert.equal(canonicalRequestModel.hospitalName, requestHospital.name);
+assert.deepEqual(canonicalRequestModel.pickupLocation, {
+  latitude: 6.5244,
+  longitude: 3.3792,
+});
+assert.equal(canonicalRequestModel.pickupLabel, "Request pickup");
+assert.equal(
+  canonicalRequestModel.pickupDetail,
+  "Location captured when this request was made",
+);
 
 function buildAmbulanceState({
   status,

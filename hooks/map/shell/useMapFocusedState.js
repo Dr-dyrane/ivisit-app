@@ -89,14 +89,19 @@ export function useMapFocusedState({
   }, [sheetPhase, sheetPayload?.transport]);
 
   const mapHospitals = useMemo(() => {
-    if (!historyFocusedHospital) return discoveredHospitals;
-    const alreadyPresent = discoveredHospitals.some(
-      (item) => item?.id === historyFocusedHospital?.id,
-    );
-    return alreadyPresent
-      ? discoveredHospitals
-      : [historyFocusedHospital, ...discoveredHospitals];
-  }, [discoveredHospitals, historyFocusedHospital]);
+    const supplementalHospitals = [
+      historyFocusedHospital,
+      activeMapRequest?.hospital,
+    ].filter(Boolean);
+    if (supplementalHospitals.length === 0) return discoveredHospitals;
+    const seen = new Set(discoveredHospitals.map((item) => item?.id).filter(Boolean));
+    const missing = supplementalHospitals.filter((hospital) => {
+      if (!hospital?.id || seen.has(hospital.id)) return false;
+      seen.add(hospital.id);
+      return true;
+    });
+    return missing.length > 0 ? [...missing, ...discoveredHospitals] : discoveredHospitals;
+  }, [activeMapRequest?.hospital, discoveredHospitals, historyFocusedHospital]);
 
   const mapFocusedHospitalId = useMemo(() => {
     // Provider focus phases: suppress hospital selection entirely

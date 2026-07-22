@@ -797,13 +797,22 @@ only if the final patient JavaScript diff is intentionally released before
   across same-request refreshes, and falls back to an ID/name-only object when
   facility hydration is unavailable. It will no longer route or label an
   active emergency with an unrelated cached hospital.
+- Post-deploy verification proved the exact facility name and address were
+  restored, then exposed the matching pickup boundary: the tracking sheet and
+  route still used the browser's current Banning pickup while the request-owned
+  `patient_location` was in Lagos. Git history traced that fallback to the same
+  April map-model extraction. The follow-up projects the request pickup into
+  the tracking model, map origin, responder bearing, route calculation, and
+  sheet copy. Non-tracking discovery continues to use the user's current map
+  location. A stable coordinate memo prevents the shared tracking clock from
+  causing route recalculation every second.
 - All seven emergency continuity contracts and the production web export pass.
   The deployed Console login shell also passed at desktop and 390 x 844 with
   zero horizontal overflow and correct mobile recomposition. No schema,
   migration, RPC, payment receiver, or Console contract changed in this pack.
 
-**Next incomplete lane:** commit and push the request-owned facility repair,
-wait for the Git-linked App web deployment, then repeat a fresh exact accepted
-request across desktop/reload to prove the deployed hospital label, address,
-and route no longer inherit the prior map selection. Publish EAS only after
-that post-deploy proof passes.
+**Next incomplete lane:** commit and push the request-owned pickup continuation,
+wait for the Git-linked App web deployment, then reload the still-owned exact
+accepted request to prove the deployed facility, pickup, and route all come
+from the request rather than the prior map selection. Clean that manifest
+twice. Publish EAS only after that post-deploy proof passes.

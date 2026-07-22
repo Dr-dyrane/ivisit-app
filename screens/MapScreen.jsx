@@ -462,6 +462,40 @@ export default function MapScreen() {
     [isProviderMapPhase, exploreProviderCategory, exploreProviders.length],
   );
 
+  const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
+  const requestPickupLocation =
+    isActiveTrackingMap && activeMapRequest?.isAmbulance
+      ? activeMapRequest?.pickupLocation || null
+      : null;
+  const trackingPickupLocation = useMemo(() => {
+    const latitude = Number(requestPickupLocation?.latitude);
+    const longitude = Number(requestPickupLocation?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    return { latitude, longitude };
+  }, [requestPickupLocation?.latitude, requestPickupLocation?.longitude]);
+  const mapCanvasLocation = useMemo(
+    () => trackingPickupLocation || activeLocation,
+    [activeLocation, trackingPickupLocation],
+  );
+  const trackingLocationDetails = useMemo(
+    () =>
+      trackingPickupLocation
+        ? {
+            ...trackingPickupLocation,
+            primaryText: activeMapRequest?.pickupLabel || "Request pickup",
+            secondaryText:
+              activeMapRequest?.pickupDetail ||
+              "Location captured when this request was made",
+          }
+        : currentLocationDetails,
+    [
+      activeMapRequest?.pickupDetail,
+      activeMapRequest?.pickupLabel,
+      currentLocationDetails,
+      trackingPickupLocation,
+    ],
+  );
+
   // PULLBACK NOTE: Pass 5 — map focus + service-marker derivations extracted
   const {
     mapHospitals,
@@ -482,7 +516,7 @@ export default function MapScreen() {
     activeMapRequest,
     featuredHospital,
     nearestHospital,
-    activeLocation,
+    activeLocation: mapCanvasLocation,
     selectedProvider,
   });
 
@@ -515,8 +549,6 @@ export default function MapScreen() {
     openCommitPayment,
     closeCommitTriage,
   });
-
-  const isActiveTrackingMap = sheetPhase === MAP_SHEET_PHASES.TRACKING;
 
   // PULLBACK NOTE: Phase 8 — Pass B: in-flow tracking rating modal lifted here
   // Modal renderer survives sheet phase transitions (was previously inside MapTrackingStageBase)
@@ -640,7 +672,7 @@ export default function MapScreen() {
       ]}
     >
       <EmergencyLocationPreviewMap
-        location={activeLocation}
+        location={mapCanvasLocation}
         hospitals={mapHospitals}
         selectedHospitalId={mapFocusedHospitalId}
         serviceMarkerKind={mapServiceMarkerKind}
@@ -828,7 +860,7 @@ export default function MapScreen() {
           trackingStopBedBooking={stopBedBooking}
           trackingIsArrived={isArrived}
           trackingIsPendingApproval={isPendingApproval}
-          currentLocation={currentLocationDetails}
+          currentLocation={trackingLocationDetails}
           locationControl={locationControl}
           onSelectHospital={handleSelectHospital}
           onUseCurrentLocation={handleUseCurrentLocation}

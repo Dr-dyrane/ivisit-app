@@ -30,6 +30,13 @@ function normalizeEtaSeconds(value) {
 	return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function normalizeRequestCoordinate(value) {
+	const latitude = Number(value?.latitude ?? value?.lat);
+	const longitude = Number(value?.longitude ?? value?.lng ?? value?.lon);
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+	return { latitude, longitude };
+}
+
 export function normalizeMapTimestampMs(value) {
 	if (Number.isFinite(value)) return Number(value);
 	if (typeof value === "string") {
@@ -379,6 +386,9 @@ export function buildActiveMapRequestModel({
 		nearestHospital ||
 		null;
 	const hospitalName = record?.hospitalName || hospital?.name || "Hospital";
+	const requestPickupLocation = requestId
+		? normalizeRequestCoordinate(record?.patientLocation)
+		: null;
 	const serviceLabel = resolveServiceLabel({ kind, pendingKind, record });
 	const telemetryState = ambulanceTelemetryHealth?.state ?? "inactive";
 	const statusLabel = resolveStatusLabel({
@@ -469,8 +479,13 @@ export function buildActiveMapRequestModel({
 		distanceValue: toHeaderDistanceKmValue(distanceLabel),
 		minuteValue,
 		progressValue,
-		pickupLabel: currentLocationDetails?.primaryText || "Pickup",
-		pickupDetail: currentLocationDetails?.secondaryText || "",
+		pickupLocation: requestPickupLocation,
+		pickupLabel: requestPickupLocation
+			? "Request pickup"
+			: currentLocationDetails?.primaryText || "Pickup",
+		pickupDetail: requestPickupLocation
+			? "Location captured when this request was made"
+			: currentLocationDetails?.secondaryText || "",
 		telemetryState,
 		canConfirmArrival:
 			kind === MAP_ACTIVE_REQUEST_KINDS.AMBULANCE &&

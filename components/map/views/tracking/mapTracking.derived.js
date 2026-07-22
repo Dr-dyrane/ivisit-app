@@ -58,9 +58,13 @@ export function buildTrackingViewState({
     pendingApproval?.hospitalName ||
     "Hospital";
   const hospitalAddress = resolveHospitalAddress(resolvedHospital);
-  const pickupLabel = currentLocation?.primaryText || "My location";
+  const pickupLabel =
+    activeMapRequest?.pickupLabel || currentLocation?.primaryText || "My location";
   const pickupDetail =
-    currentLocation?.secondaryText || currentLocation?.formattedAddress || "";
+    activeMapRequest?.pickupDetail ||
+    currentLocation?.secondaryText ||
+    currentLocation?.formattedAddress ||
+    "";
   const responder = activeAmbulanceTrip?.assignedAmbulance || (
     activeAmbulanceTrip?.responderName ||
     activeAmbulanceTrip?.responderVehicleType ||

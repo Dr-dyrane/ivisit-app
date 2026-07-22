@@ -4,6 +4,8 @@ const path = require("node:path");
 const Module = require("node:module");
 const babel = require("@babel/core");
 
+global.__DEV__ = false;
+
 const ROOT = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
 
@@ -1131,6 +1133,31 @@ assert.equal(
   }),
   "ambulance",
 );
+const requestOwnedHospital = {
+  id: "request-owned-hospital",
+  name: "Request-owned hospital",
+};
+const focusedRequestState = focusedMapState.useMapFocusedState({
+  sheetPhase: "tracking",
+  sheetPayload: null,
+  discoveredHospitals: [{ id: "cached-hospital", name: "Cached hospital" }],
+  historyFocusedHospital: null,
+  historyVisitDetailsVisible: false,
+  activeMapRequest: {
+    kind: "ambulance",
+    status: "accepted",
+    hospitalId: requestOwnedHospital.id,
+    hospital: requestOwnedHospital,
+  },
+  featuredHospital: null,
+  nearestHospital: null,
+  activeLocation: { latitude: 6.5244, longitude: 3.3792 },
+});
+assert.equal(focusedRequestState.mapHospitals[0].id, requestOwnedHospital.id);
+assert.equal(focusedRequestState.mapFocusedHospital.id, requestOwnedHospital.id);
+const mapScreen = read("screens/MapScreen.jsx");
+assert.match(mapScreen, /location=\{mapCanvasLocation\}/);
+assert.match(mapScreen, /currentLocation=\{trackingLocationDetails\}/);
 const emergencyActions = read("hooks/emergency/useEmergencyActions.js");
 assert.match(emergencyActions, /"report_telemetry"/);
 assert.match(emergencyActions, /"ensure_dispatch"/);
